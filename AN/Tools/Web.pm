@@ -484,7 +484,7 @@ sub get_cgi
 	{
 		# A stray comma will cause a loop with no var name
 		next if not $variable;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "variable", value1 => $variable, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -505,7 +505,7 @@ sub get_cgi
 		if (defined $cgi->param($variable))
 		{
 			my $value = $cgi->param($variable);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "value", value1 => $value,
 			}, file => $THIS_FILE, line => __LINE__});
 			

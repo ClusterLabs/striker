@@ -220,7 +220,7 @@ exit(0) if not $an->data->{scancore}{enabled};
 print $an->String->get({key => "scancore_message_0001"})."\n";
 
 # Get (create if needed) my UUID.
-$an->Storage->prep_local_uuid($an);
+$an->Storage->prep_uuid();
 
 # Is our health state is 'shutdown', clear that.
 clear_shutdown_state($an);

@@ -59,7 +59,7 @@ $an->Log->entry({log_level => 1, message_key => "log_0001", message_variables =>
 }, file => $THIS_FILE, line => __LINE__});
 
 # Get (create if needed) my UUID.
-$an->Storage->prep_local_uuid($an);
+$an->Storage->prep_uuid();
 
 # Connect to the databases.
 $an->data->{sys}{db_connections} = $an->DB->connect_to_databases({

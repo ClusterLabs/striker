@@ -197,8 +197,14 @@ sub load_anvil
 	if ($parameter->{anvil_uuid})
 	{
 		$anvil_uuid = $parameter->{anvil_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvil_uuid", value1 => $anvil_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $anvil_uuid)
 	{
 		# Nothing passed in or set in CGI
@@ -264,6 +270,10 @@ sub load_anvil
 	
 	foreach my $node_key ("node1", "node2")
 	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node_key",   value1 => $node_key, 
+			name2 => "anvil_uuid", value2 => $anvil_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->data->{sys}{anvil}{$node_key}{uuid}           =  $an->data->{anvils}{$anvil_uuid}{$node_key}{uuid};
 		$an->data->{sys}{anvil}{$node_key}{name}           =  $an->data->{anvils}{$anvil_uuid}{$node_key}{name};
 		$an->data->{sys}{anvil}{$node_key}{short_name}     =  $an->data->{anvils}{$anvil_uuid}{$node_key}{name};
@@ -7082,8 +7092,8 @@ sub _header
 	}
 	
 	# Header buttons.
-	my $say_back        = "&nbsp;";
-	my $say_refresh     = "&nbsp;";
+	my $say_back    = "&nbsp;";
+	my $say_refresh = "&nbsp;";
 	
 	my $back_image = $an->Web->template({file => "common.html", template => "image", replace => { 
 		image_source	=>	$an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
@@ -7097,14 +7107,14 @@ sub _header
 		id		=>	"refresh_icon",
 	}});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "caller", value1 => $caller,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($caller eq "configure")
 	{
 		$an->data->{sys}{cgi_string} =~ s/anvil_uuid=(.*?)&//;
 		$an->data->{sys}{cgi_string} =~ s/anvil_uuid=(.*)$//;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "cgi::save", value1 => $an->data->{cgi}{save},
 			name2 => "cgi::task", value2 => $an->data->{cgi}{task},
 		}, file => $THIS_FILE, line => __LINE__});

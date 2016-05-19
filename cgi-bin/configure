@@ -632,7 +632,7 @@ sub save_anvil_form
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_anvil_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### Some sanity checks before we begin.
+	# Some sanity checks before we begin.
 	my $notices        = [];
 	my $error_fields   = [];
 	my $notice_message = "";
@@ -858,6 +858,21 @@ sub save_anvil_form
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# All was good!
+		my $message = $an->String->get({key => "message_0485", variables => {
+				anvil      => $an->data->{cgi}{anvil_name},
+				manage_url => "/cgi-bin/striker?anvil_uuid=".$an->data->{cgi}{anvil_uuid},
+			}});
+		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
+				title		=>	"#!string!title_0203!#",
+				row_class	=>	"highlight_good_bold",
+				row_body	=>	"#!string!row_0083!#",
+				message_class	=>	"",
+				message_body	=>	$message,
+			}});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -3887,59 +3902,6 @@ WHERE
 	}
 	
 	$an->Striker->_footer();
-
-	### TODO: What the heck was this?
-# 	# Put the menu template together
-# 	my $menu = $an->Web->template({file => "web.html", template => "generic-4column-menu", replace => {
-# 			title		=>	"#!string!title_0198!#",
-# 			menu_items	=>	$menu_items,
-# 		}});
-# 	# Wrap it in a <form>
-# 	$menu = $an->Web->template({file => "web.html", template => "form-wrapper", replace => { body => $menu }});
-# 	
-# 	# Put together the page's frame...
-# 	my $back_image = $an->Web->template({file => "common.html", template => "image", no_comment => 1, replace => {
-# 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
-# 			alt_text     => "#!string!button_0001!#",
-# 			id           => "back_icon",
-# 		}});
-# 	
-# 	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
-# 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
-# 			alt_text     => "#!string!button_0002!#",
-# 			id           => "refresh_icon",
-# 		}});
-# 	my $back_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-# 			name	=>	"back",
-# 			id	=>	"back",
-# 			alt	=>	"#!string!button_0001!#",
-# 			value	=>	$back_image,
-# 			url	=>	"?",
-# 		}, no_comment => 1});
-# 	my $refresh_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-# 			name	=>	"refresh",
-# 			id	=>	"refresh",
-# 			alt	=>	"#!string!button_0002!#",
-# 			value	=>	$refresh_image,
-# 			url	=>	$refresh_link,
-# 		}, no_comment => 1});
-# 	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
-# 			back	=>	$back_anchor,
-# 			refresh	=>	$refresh_anchor,
-# 		}});
-# 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
-# 	
-# 	# Print it!
-# 	print $an->Web->template({
-# 			file		=>	"configure.html",
-# 			template	=>	"configure-main-page",
-# 			replace		=>	{
-# 				header		=>	$header, 
-# 				notices		=>	$notice_message,
-# 				body		=>	$menu, 
-# 				footer		=>	$footer, 
-# 			},
-# 		});
 	
 	return(0);
 }
@@ -4999,6 +4961,17 @@ sub anvil_menu
 		$refresh_link =~ s/delete=.*?&/&/;
 		$refresh_link =~ s/delete=.*//;
 		$refresh_link =~ s/&&+/&/;
+	}
+	
+	# If I have a manifest_uuid, then I am here after an install run and want to use the info in that 
+	# manifest to populate the fields.
+	if ($an->data->{cgi}{manifest_uuid})
+	{
+		$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_password", value1 => $an->data->{cgi}{anvil_password},
+		}, file => $THIS_FILE, line => __LINE__});
+		
 	}
 	
 	if ($an->data->{cgi}{save})

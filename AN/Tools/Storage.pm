@@ -12,7 +12,7 @@ my $THIS_FILE = "Storage.pm";
 ### Methods;
 # cleanup_gfs2
 # find
-# prep_local_uuid
+# prep_uuid
 # read_conf
 # read_hosts
 # read_ssh_config
@@ -248,82 +248,122 @@ sub find
 }
 
 # Get (create if needed) my UUID.
-sub prep_local_uuid
+sub prep_uuid
 {
 	my $self      = shift;
 	my $parameter = shift;
+	my $an        = $self->parent;
 	
-	# Clear any prior errors.
-	my $an    = $self->parent;
-	$an->Alert->_set_error;
-	
-	# Does it exist?
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "path::host_uuid", value1 => $an->data->{path}{host_uuid}, 
+	# Did the user give us a UUID to use?
+	my $host_uuid = $parameter->{host_uuid} ? $parameter->{host_uuid} : $an->Get->uuid();
+	my $target    = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port      = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password  = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "host_uuid", value1 => $host_uuid, 
+		name2 => "target",    value2 => $target, 
+		name3 => "port",      value3 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not -e $an->data->{path}{host_uuid})
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# The shell call needs to work locally and remotely, so we can't use perl built-in file tests (well,
+	# we could, but then we'd have two ways to do the same job).
+	my ($directory, $file) = ($an->data->{path}{host_uuid} =~ /^(.*)\/(.*)/);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "directory", value1 => $directory, 
+		name2 => "file",      value2 => $file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $set_sys_host_uuid = 1;
+	my $return            = [];
+	my $shell_call        = "
+if [ ! -e '$directory' ];
+then
+    ".$an->data->{path}{echo}." creating $directory
+    ".$an->data->{path}{'mkdir'}." $directory
+    ".$an->data->{path}{'chmod'}." 755 $directory
+fi
+if [ ! -e '".$an->data->{path}{host_uuid}."' ];
+then
+    ".$an->data->{path}{echo}." generating ".$an->data->{path}{host_uuid}."
+    ".$an->data->{path}{echo}." $host_uuid > ".$an->data->{path}{host_uuid}."
+fi
+UUID=\$(".$an->data->{path}{cat}." ".$an->data->{path}{host_uuid}.")
+".$an->data->{path}{echo}." host_uuid:\$UUID
+";
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
-		# Nope. What about the parent directory? Split the path from 
-		# the file name.
-		my ($directory, $file) = ($an->data->{path}{host_uuid} =~ /^(.*)\/(.*)/);
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "directory", value1 => $directory, 
-			name2 => "file",      value2 => $file, 
+		### Remote call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Check the directory now
-		if (not -e $directory)
-		{
-			# The directory needs to be created.
-			mkdir $directory or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0019", message_variables => {
-				directory => $directory, 
-				error     => $! 
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
-			
-			# Set the mode
-			my $directory_mode = 0775;
-			$an->Log->entry({log_level => 2, message_key => "tools_log_0024", message_variables => {
-				directory_mode => sprintf("%04o", $directory_mode), 
-			}, file => $THIS_FILE, line => __LINE__});
-			chmod $directory_mode, $an->data->{path}{email_directory};
-		}
-		
-		### I don't use AN::Get->uuid() because I need to write to the file anyway, so I can do both
-		### in one step.
-		# Now create the UUID.
-		my $shell_call = $an->data->{path}{uuidgen}." > ".$an->data->{path}{host_uuid};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port,
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		$set_sys_host_uuid = 0;
+	}
+	else
+	{
+		### Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
-			# There should never be any output, but just in case...
 			chomp;
-			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
+			my $line =  $_;
+			push @{$return}, $line;
 		}
 		close $file_handle;
 	}
-	
-	# Now read in the UUID.
-	$an->Get->uuid({get => 'host_uuid'});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^host_uuid:(.*)$/)
+		{
+			$host_uuid = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "host_uuid", value1 => $host_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
 	
 	# Verify I have a good UUID.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "host_uuid", value1 => $host_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{sys}{host_uuid} !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+	if ($host_uuid !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
 	{
 		# derp
 		$an->Log->entry({log_level => 0, message_key => "error_message_0061", file => $THIS_FILE, line => __LINE__});
+		
 		### TODO: Make this exit 69?
 		exit(7);
 	}
 	
-	return($an->data->{sys}{host_uuid});
+	# Set the system host_uuid if this is local
+	if ($set_sys_host_uuid)
+	{
+		$an->data->{sys}{host_uuid} = $host_uuid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "host_uuid", value1 => $host_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($host_uuid);
 }
 
 # This reads in a configuration file and stores it in either the passed hash reference else in $an->data else

@@ -1155,11 +1155,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0087"><![CDATA[Failed to promote to '<span class="highlight_detail">Primary</span>'. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
 		<key name="state_0088">Failed; Please see logs</key>
 		<key name="state_0089">Failed to format the logical volume as a gfs2 partition</key>
-		<key name="state_0090"><![CDATA[Failed to append '<span class="highlight_detail">/shared</span>' to '<span class="highlight_detail">/etc/fstab</span>']]></key>
-		<key name="state_0091"><![CDATA[Failed to mount '<span class="highlight_detail">/shared</span>']]></key>
-		<key name="state_0092"><![CDATA[GFS2 check of '<span class="highlight_detail">/shared</span>' failed]]></key>
-		<key name="state_0093"><![CDATA[Failed to create subdirectories under '<span class="highlight_detail">/shared</span>']]></key>
-		<key name="state_0094"><![CDATA[Failed to update SELinux context on '<span class="highlight_detail">/shared</span>']]></key>
+		<key name="state_0090"><![CDATA[Failed to append '<span class="highlight_detail">#!data!path::shared!#/span>' to '<span class="highlight_detail">/etc/fstab</span>']]></key>
+		<key name="state_0091"><![CDATA[Failed to mount '<span class="highlight_detail">#!data!path::shared!#</span>']]></key>
+		<key name="state_0092"><![CDATA[GFS2 check of '<span class="highlight_detail">#!data!path::shared!#</span>' failed]]></key>
+		<key name="state_0093"><![CDATA[Failed to create subdirectories under '<span class="highlight_detail">#!data!path::shared!#</span>']]></key>
+		<key name="state_0094"><![CDATA[Failed to update SELinux context on '<span class="highlight_detail">#!data!path::shared!#</span>']]></key>
 		<key name="state_0095">UUID for the GFS2 partition not recorded</key>
 		<key name="state_0096">Timed out</key>
 		<key name="state_0097">Manual Reboot Needed</key>
@@ -1400,6 +1400,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0200">Confirmation of potential conflict required</key>
 		<key name="title_0201">Edit Raw Install Manifest</key>
 		<key name="title_0202"><![CDATA[Fencing <span class="fixed_width">#!variable!node_name!#</span> node directly...]]></key>
+		<key name="title_0203">The new Anvil! was successfully saved.</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1822,7 +1823,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0401"><![CDATA[Failed to connect the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
 		<key name="message_0402"><![CDATA[The #!string!brand_0004!# has been built successfully!<br />The next step is to <a href="#!variable!url!#">add it</a> to your #!string!brand_0002!# dashboard!]]></key>
 		<key name="message_0403"><![CDATA[<br />The initial scan of: [<span class="highlight_detail">#!variable!device!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>],<br />which is the backing device for resource: [<span class="highlight_detail">#!variable!resource!#</span>], showed it to be a <span class="highlight_detail">drbd</span> device.<br />However, the drbd program doesn't recognize it and would not use it.<br />This can happen if you are rebuilding a node that previously used drbd.<br />To prevent accidental data loss, the installer will exit now.<br /><br />If you want to clear it, log into the node and run:<br />[<span class="highlight_detail">drbdadm create-md #!variable!resource!#</span>].<br /><span class="highlight_dangerous">Warning!</span> - That command will destroy any data on that partition!<br /><br />]]></key>
-		<key name="message_0404"><![CDATA[There was a problem building your #!string!brand_0004!#. Sorry about that.<br />Please correct the problems and try to run the install again.<br />#!string!brand_0014!#]]></key>
+		<key name="message_0404"><![CDATA[There was a problem building your #!string!brand_0004!#. Sorry about that.<br />Please correct the problems and try to run the install again.<br />If there are no useful messages above, please check #!data!log::file!#.<br />#!string!brand_0014!#]]></key>
 		<key name="message_0405"><![CDATA[This #!string!brand_0002!# dashboard is not configured to be an <a href="https://alteeve.ca/w/Anvil!_m2_Tutorial#Do_we_want_to_be_an_Anvil.21_node_install_target.3F" target="_new">#!string!button_0056!#</a>.]]></key>
 		<key name="message_0406"><![CDATA[The "#!string!button_0056!#" service is currently running.]]></key>
 		<key name="message_0407"><![CDATA[The "#!string!button_0056!#" service is currently stopped.]]></key>
@@ -1903,6 +1904,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0482"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] was already on, no action taken.]]></key>
 		<key name="message_0483"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown power state. It can't be booted.]]></key>
 		<key name="message_0484"><![CDATA[No #!string!brand_0003!# configured yet, redirecting...]]></key>
+		<key name="message_0485"><![CDATA[The new: [<span class="highlight_detail">#!variable!anvil!#</span>] Anvil! system has been saved.<br /><a href="#!variable!manage_url!#">Click here</a> to start using it!]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>
@@ -2027,7 +2029,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0045">Failed to start: [#!variable!service!#]. The return code was: [#!variable!return_code!#].</key>
 		<key name="log_0046">Failed to append: [#!variable!string!#] to '/etc/fstab'.</key>
 		<key name="log_0047">Successfuly mounted '/shared'.</key>
-		<key name="log_0048">Failed to mount '/shared', return code was: [#!variable!return_code!#].</key>
+		<key name="log_0048">Failed to mount '#!data!path::shared!#', return code was: [#!variable!return_code!#].</key>
 		<key name="log_0049">The GFS2 LSB script sees that '/shared' is mounted.</key>
 		<key name="log_0050">The GFS2 LSB script failed to see the '/shared' file system. The return code was: [#!variable!return_code!#].</key>
 		<key name="log_0051">Created the: [/shared/#!variable!directory!#] subdirectory.</key>

@@ -1078,7 +1078,7 @@ sub check_config_for_anvil
 		{
 			# Match!
 			$anvil_configured = 1;
-			$an->Log->entry({log_level => 3, message_key => "log_0041", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "log_0041", file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 	}
@@ -8659,6 +8659,7 @@ sub enable_tools
 	# sas_rc  == anvil-safe-start, return code
 	# akau_rc == anvil-kick-apc-ups, return code
 	my ($node1_sas_rc, $node1_akau_rc, $node1_sc_rc) = $an->InstallManifest->enable_tools_on_node({
+			host_uuid => $an->data->{cgi}{anvil_node1_uuid}, 
 			node      => $node1, 
 			target    => $an->data->{sys}{anvil}{node1}{use_ip}, 
 			port      => $an->data->{sys}{anvil}{node1}{use_port}, 
@@ -8666,6 +8667,7 @@ sub enable_tools
 			node_name => $node1,
 		});
 	my ($node2_sas_rc, $node2_akau_rc, $node2_sc_rc) = $an->InstallManifest->enable_tools_on_node({
+			host_uuid => $an->data->{cgi}{anvil_node2_uuid}, 
 			node      => $node2, 
 			target    => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			port      => $an->data->{sys}{anvil}{node2}{use_port}, 
@@ -8922,17 +8924,31 @@ sub enable_tools_on_node
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "enable_tools_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "node",   value1 => $node, 
-		name2 => "target", value2 => $target, 
-		name3 => "port",   value3 => $port, 
+	my $host_uuid = $parameter->{host_uuid} ? $parameter->{host_uuid} : $an->Get->uuid();
+	my $node      = $parameter->{node}      ? $parameter->{node}      : "";
+	my $target    = $parameter->{target}    ? $parameter->{target}    : "";
+	my $port      = $parameter->{port}      ? $parameter->{port}      : "";
+	my $password  = $parameter->{password}  ? $parameter->{password}  : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "host_uuid", value1 => $host_uuid, 
+		name2 => "node",      value2 => $node, 
+		name3 => "target",    value3 => $target, 
+		name4 => "port",      value4 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### First, setup to host UUID.
+	$host_uuid = $an->Storage->prep_uuid({
+			node      => $node, 
+			target    => $target, 
+			port      => $port, 
+			password  => $password, 
+			host_uuid => $host_uuid, 
+		});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "host_uuid", value1 => $host_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### anvil-safe-start
@@ -13582,6 +13598,9 @@ sub run_new_install_manifest
 		### If we're not dead, it's time to celebrate!
 		# Is this Anvil! already in the database?
 		my ($anvil_configured) = $an->InstallManifest->check_config_for_anvil();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvil_configured", value1 => $anvil_configured,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If the 'anvil_configured' is 1, run 'configure_ssh_local()'
 		if ($anvil_configured)
@@ -13606,21 +13625,37 @@ sub run_new_install_manifest
 		
 		# Do we need to show the link for adding the Anvil! to the config?
 		my $message = $an->String->get({key => "message_0286", variables => { url => "?cluster=".$an->data->{cgi}{cluster} }});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "message", value1 => $message,
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $anvil_configured)
 		{
 			# Nope
-			my $url = "?task=anvil";
+			my $say_node1_access = $an->data->{sys}{anvil}{node1}{use_ip};
+			if (($an->data->{sys}{anvil}{node1}{use_port}) && ($an->data->{sys}{anvil}{node1}{use_port} ne "22"))
+			{
+				$say_node1_access .= ":".$an->data->{sys}{anvil}{node1}{use_port};
+			}
+			my $say_node2_access = $an->data->{sys}{anvil}{node2}{use_ip};
+			if (($an->data->{sys}{anvil}{node2}{use_port}) && ($an->data->{sys}{anvil}{node2}{use_port} ne "22"))
+			{
+				$say_node2_access .= ":".$an->data->{sys}{anvil}{node2}{use_port};
+			}
+			
+			# NOTE: Don't pass the password. It will be read in from the manifest.
+			my $url =  "?task=anvil&";
+			   $url .= "manifest_uuid=".$an->data->{cgi}{manifest_uuid}."&";
+			   $url .= "node1_access=$say_node1_access&";
+			   $url .= "node2_access=$say_node2_access";
 			
 			# Now the string.
 			$message = $an->String->get({key => "message_0402", variables => { url => $url }});
 		}
-		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-succes", replace => { message => $message }});
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-success", replace => { message => $message }});
 		
+		### NOTE: I can't find this template anywhere... o_O
 		# Enough of that, now everyone go home.
-		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-footer"});
+		#print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-footer"});
 	}
 	
 	return(0);
@@ -15439,7 +15474,8 @@ fi";
 		# Test mount using the 'mount' command
 		if ($return_code ne "1")
 		{
-			my $shell_call = $an->data->{path}{mount}." ".$an->data->{path}{shared}."; ".$an->data->{path}{echo}." rc:\$?";
+			my $already_mounted = 0;
+			my $shell_call      = $an->data->{path}{mount}." ".$an->data->{path}{shared}."; ".$an->data->{path}{echo}." rc:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "target",     value1 => $target,
 				name2 => "shell_call", value2 => $shell_call,
@@ -15456,12 +15492,29 @@ fi";
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				if ($line =~ /already mounted/)
+				{
+					$already_mounted = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "already_mounted", value1 => $already_mounted, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
 				if ($line =~ /^rc:(\d+)/)
 				{
 					my $rc = $1;
-					if ($rc eq "0")
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "rc",              value1 => $rc, 
+						name2 => "already_mounted", value2 => $already_mounted, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if (($rc eq "0") or (($rc eq "1") && ($already_mounted)))
 					{
 						# Success
+						$rc = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "rc", value1 => $rc, 
+						}, file => $THIS_FILE, line => __LINE__});
 						$an->Log->entry({log_level => 2, message_key => "log_0047", file => $THIS_FILE, line => __LINE__});
 					}
 					else
@@ -15471,11 +15524,17 @@ fi";
 							return_code => $rc, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 2;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "return_code", value1 => $return_code, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 			}
 			
 			# Finally, test '/etc/init.d/gfs2 status'
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($return_code ne "2")
 			{
 				my $shell_call = $an->data->{path}{initd}."/gfs2 status; ".$an->data->{path}{echo}." rc:\$?";
@@ -15498,6 +15557,9 @@ fi";
 					if ($line =~ /^rc:(\d+)/)
 					{
 						my $rc = $1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "rc", value1 => $rc, 
+						}, file => $THIS_FILE, line => __LINE__});
 						if ($rc eq "0")
 						{
 							# Success
@@ -15510,6 +15572,9 @@ fi";
 								return_code => $rc, 
 							}, file => $THIS_FILE, line => __LINE__});
 							$return_code = 3;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "return_code", value1 => $return_code, 
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 				}
@@ -15554,6 +15619,9 @@ fi";
 					if ($line =~ /^rc:(\d+)/)
 					{
 						my $rc = $1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "rc", value1 => $rc, 
+						}, file => $THIS_FILE, line => __LINE__});
 						if ($rc eq "0")
 						{
 							# Success
@@ -15569,6 +15637,9 @@ fi";
 								return_code => $rc, 
 							}, file => $THIS_FILE, line => __LINE__});
 							$return_code = 4;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "return_code", value1 => $return_code, 
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 				}
@@ -15576,6 +15647,9 @@ fi";
 		}
 		
 		# Setup SELinux context on /shared
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "return_code", value1 => $return_code, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not $return_code)
 		{
 			my $shell_call = "
@@ -16983,6 +17057,7 @@ sub stop_drbd
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "connected_state", value1 => $connected_state, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
 			if ($connected_state =~ /SyncSource/i)
 			{
 				# Stop node 2 first
@@ -17020,6 +17095,9 @@ sub stop_drbd
 		if ((not $drbd_node1_ok) or (not $drbd_node2_ok))
 		{
 			$ok = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ok", value1 => $ok, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	else
@@ -17044,9 +17122,15 @@ sub stop_drbd
 		if ((not $drbd_node1_ok) or (not $drbd_node2_ok))
 		{
 			$ok = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ok", value1 => $ok, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ok", value1 => $ok, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($ok);
 }
 
@@ -17057,7 +17141,7 @@ sub stop_drbd_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_drbd_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "stop_drbd_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -17120,7 +17204,6 @@ sub stop_drbd_on_node
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
-			
 		}
 	}
 	
@@ -17145,7 +17228,7 @@ sub stop_drbd_on_node
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if (($line =~ /^(\d+): /) && ($line =~ /Primary/i))
+		if (($line =~ /^(\d+): /) && ($line =~ /ro:Primary/i))
 		{
 			$ok = 0;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -17155,6 +17238,9 @@ sub stop_drbd_on_node
 	}
 	
 	# If we're OK, stop
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ok", value1 => $ok, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($ok)
 	{
 		# Down
