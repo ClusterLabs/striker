@@ -484,7 +484,7 @@ sub save_smtp_form
 		foreach my $notice (@{$notices})
 		{
 			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
-					row_class	=>	"highlight_warning",
+					row_class	=>	"highlight_warning_bold",
 					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
 					body_message	=>	$notice,
@@ -550,7 +550,7 @@ sub save_notify_form
 		foreach my $notice (@{$notices})
 		{
 			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
-					row_class	=>	"highlight_warning",
+					row_class	=>	"highlight_warning_bold",
 					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
 					body_message	=>	$notice,
@@ -604,7 +604,7 @@ sub save_owner_form
 		foreach my $notice (@{$notices})
 		{
 			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
-					row_class	=>	"highlight_warning",
+					row_class	=>	"highlight_warning_bold",
 					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
 					body_message	=>	$notice,
@@ -644,11 +644,13 @@ sub save_anvil_form
 	my $node1_port    = 22;
 	my $node2_address = $an->data->{cgi}{node2_access};
 	my $node2_port    = 22;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "node1_address", value1 => $node1_address,
-		name2 => "node1_port",    value2 => $node1_port,
-		name3 => "node2_address", value3 => $node2_address,
-		name4 => "node2_port",    value4 => $node2_port,
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "node1_address",     value1 => $node1_address,
+		name2 => "node1_port",        value2 => $node1_port,
+		name3 => "cgi::node1_access", value3 => $an->data->{cgi}{node1_access},
+		name4 => "node2_address",     value4 => $node2_address,
+		name5 => "node2_port",        value5 => $node2_port,
+		name6 => "cgi::node2_access", value6 => $an->data->{cgi}{node2_access},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{cgi}{node1_access})
 	{
@@ -683,6 +685,9 @@ sub save_anvil_form
 	}
 	
 	# Do I have an owner?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::owner_name", value1 => $an->data->{cgi}{owner_name},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{cgi}{owner_name})
 	{
 		push @{$notices},      $an->String->get({key => "message_0360", variables => { field => "#!string!row_0023!#" }});
@@ -690,6 +695,9 @@ sub save_anvil_form
 	}
 	
 	# What about a password?
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::anvil_password", value1 => $an->data->{cgi}{anvil_password},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{cgi}{anvil_password})
 	{
 		push @{$notices},      $an->String->get({key => "message_0360", variables => { field => "#!string!row_0025!#" }});
@@ -697,9 +705,13 @@ sub save_anvil_form
 	}
 	
 	# The SMTP password can only be blank is the password security is 'none'.
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+		name1 => "cgi::smtp_password",       value1 => $an->data->{cgi}{smtp_password},
+		name2 => "cgi::smtp_authentication", value2 => $an->data->{cgi}{smtp_authentication},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $an->data->{cgi}{smtp_password}) && ($an->data->{cgi}{smtp_authentication} ne "none"))
 	{
-		push @{$notices},      $an->String->get({key => "message_0361"});
+		push @{$notices},      $an->String->get({key => "message_0486"});
 		push @{$error_fields}, "smtp_password";
 	}
 	
@@ -714,18 +726,22 @@ sub save_anvil_form
 		my $error_body = "";
 		foreach my $notice (@{$notices})
 		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "notice", value1 => $notice,
+			}, file => $THIS_FILE, line => __LINE__});
 			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
-					row_class	=>	"highlight_warning",
+					row_class	=>	"highlight_warning_bold",
 					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
 					body_message	=>	$notice,
 				}});
 		}
+		
 		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
 				title	=>	"#!string!title_0194!#",
 				errors	=>	$error_body,
 			}});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -845,17 +861,17 @@ sub save_anvil_form
 		foreach my $notice (@{$notices})
 		{
 			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
-					row_class	=>	"highlight_warning",
+					row_class	=>	"highlight_warning_bold",
 					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
-					body_message	=>	$notices,
+					body_message	=>	$notice,
 				}});
 		}
 		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
 				title	=>	"#!string!title_0194!#",
 				errors	=>	$error_body,
 			}});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
 	}

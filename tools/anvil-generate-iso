@@ -2512,7 +2512,6 @@ sub build_source
 	
 	print "- Auxiliary files now in place, ready to grab Anvil! files.\n";
 	
-	
 	return(0);
 }
 
@@ -2639,7 +2638,7 @@ sub prep_source
 		read_directory($conf, $iso, $conf->{path}{updates_dir});
 		$conf->{source}{$iso}{name}  = "Local updates";
 		$conf->{source}{$iso}{mount} = 1;
-}
+	}
 	
 	# Get a count of RPMs found in '/Packages'
 	my $package_count = 0;

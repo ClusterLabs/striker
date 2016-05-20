@@ -1408,10 +1408,13 @@ sub check_fencing_on_node
 	}
 	$message =~ s/<br \/>\n$//;
 	
-	# If it failed, sleep 15 seconds and try again.
+	# If it failed, sleep for a minute and try again.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ok", value1 => $ok, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $ok)
 	{
-		sleep 15;
+		sleep 60;
 		$message = "";
 		$ok      = 1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -3857,10 +3860,20 @@ COMMIT";
 	   $hosts .= $an->data->{cgi}{anvil_ups1_ip}."	$ups1_short_name ".$an->data->{cgi}{anvil_ups1_name}."\n";
 	   $hosts .= $an->data->{cgi}{anvil_ups2_ip}."	$ups2_short_name ".$an->data->{cgi}{anvil_ups2_name}."\n";
 	   $hosts .= "\n";
-	   $hosts .= "# PTSes\n";
-	   $hosts .= $an->data->{cgi}{anvil_pts1_ip}."	$pts1_short_name ".$an->data->{cgi}{anvil_pts1_name}."\n";
-	   $hosts .= $an->data->{cgi}{anvil_pts2_ip}."	$pts2_short_name ".$an->data->{cgi}{anvil_pts2_name}."\n";
-	   $hosts .= "\n";
+	   # Only add the PTS entries if they're defined.
+	   if (($an->data->{cgi}{anvil_pts1_ip}) or ($an->data->{cgi}{anvil_pts2_ip}))
+	   {
+		$hosts .= "# PTSes\n";
+		if ($an->data->{cgi}{anvil_pts1_ip})
+		{
+			$hosts .= $an->data->{cgi}{anvil_pts1_ip}."	$pts1_short_name ".$an->data->{cgi}{anvil_pts1_name}."\n";
+		}
+		if ($an->data->{cgi}{anvil_pts2_ip})
+		{
+			$hosts .= $an->data->{cgi}{anvil_pts2_ip}."	$pts2_short_name ".$an->data->{cgi}{anvil_pts2_name}."\n";
+		}
+		$hosts .= "\n";
+	   }
 	   $hosts .= "# Striker dashboards\n";
 	   $hosts .= $an->data->{cgi}{anvil_striker1_bcn_ip}."	$striker1_short_name.bcn $striker1_short_name ".$an->data->{cgi}{anvil_striker1_name}."\n";
 	   $hosts .= $an->data->{cgi}{anvil_striker1_ifn_ip}."	$striker1_short_name.ifn\n";
@@ -4500,6 +4513,7 @@ sub configure_scancore
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
 
 	my ($node1_rc, $node1_rc_message) = $an->InstallManifest->configure_scancore_on_node({
+			host_uuid => $an->data->{cgi}{anvil_node1_uuid}, 
 			node      => $node1, 
 			target    => $an->data->{sys}{anvil}{node1}{use_ip}, 
 			port      => $an->data->{sys}{anvil}{node1}{use_port}, 
@@ -4507,6 +4521,7 @@ sub configure_scancore
 			node_name => $an->data->{sys}{anvil}{node1}{name},
 		});
 	my ($node2_rc, $node2_rc_message) = $an->InstallManifest->configure_scancore_on_node({
+			host_uuid => $an->data->{cgi}{anvil_node2_uuid}, 
 			node      => $node2, 
 			target    => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			port      => $an->data->{sys}{anvil}{node2}{use_port}, 
@@ -4525,7 +4540,7 @@ sub configure_scancore
 	# 3 == Base striker.conf not found.
 	# 4 == Failed to create the striker.conf file.
 	# 5 == Failed to add to root's crontab
-	# 6 == Failed to generate the host UUID file
+	# 6 == ...free...
 	# 7 == Host UUID is invalid
 	# 8 == Target's ssh fingerprint changed.
 	
@@ -4569,13 +4584,6 @@ sub configure_scancore
 		# Failed to add ScanCore to root's crontab
 		$node1_class   = "highlight_warning_bold";
 		$node1_message = "#!string!state_0116!#";
-		$ok            = 0;
-	}
-	elsif ($node1_rc eq "6")
-	{
-		# Failed to generate the host UUID file
-		$node1_class   = "highlight_warning_bold";
-		$node1_message = "#!string!state_0117!#";
 		$ok            = 0;
 	}
 	elsif ($node1_rc eq "7")
@@ -4629,13 +4637,6 @@ sub configure_scancore
 		$node2_message = "#!string!state_0116!#";
 		$ok            = 0;
 	}
-	elsif ($node2_rc eq "6")
-	{
-		# Failed to generate the host UUID file
-		$node2_class   = "highlight_warning_bold";
-		$node2_message = "#!string!state_0117!#";
-		$ok            = 0;
-	}
 	elsif ($node2_rc eq "7")
 	{
 		# The UUID in the host file is invalid.
@@ -4673,14 +4674,16 @@ sub configure_scancore_on_node
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_scancore_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "node",   value1 => $node, 
-		name2 => "target", value2 => $target, 
-		name3 => "port",   value3 => $port, 
+	my $host_uuid = $parameter->{host_uuid} ? $parameter->{host_uuid} : $an->Get->uuid();
+	my $node      = $parameter->{node}      ? $parameter->{node}      : "";
+	my $target    = $parameter->{target}    ? $parameter->{target}    : "";
+	my $port      = $parameter->{port}      ? $parameter->{port}      : "";
+	my $password  = $parameter->{password}  ? $parameter->{password}  : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "host_uuid", value1 => $host_uuid, 
+		name2 => "node",      value2 => $node, 
+		name3 => "target",    value3 => $target, 
+		name4 => "port",      value4 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
@@ -4689,30 +4692,27 @@ sub configure_scancore_on_node
 	my $return_code = 255;
 	my $message     = "";
 	
-	my $uuid = "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node",                        value1 => $node,
-		name2 => "cgi::anvil_node1_current_ip", value2 => $an->data->{sys}{anvil}{node1}{use_ip},
+	### First, setup to host UUID.
+	$host_uuid = $an->Storage->prep_uuid({
+			node      => $node, 
+			target    => $target, 
+			port      => $port, 
+			password  => $password, 
+			host_uuid => $host_uuid, 
+		});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "host_uuid", value1 => $host_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($node eq $an->data->{sys}{anvil}{node1}{use_ip})
+	
+	if ($host_uuid !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
 	{
-		$uuid = $an->data->{cgi}{anvil_node1_uuid} ? $an->data->{cgi}{anvil_node1_uuid} : $an->Get->uuid();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "uuid",                  value1 => $uuid,
-			name2 => "cgi::anvil_node1_uuid", value2 => $an->data->{cgi}{anvil_node1_uuid},
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		$uuid = $an->data->{cgi}{anvil_node2_uuid} ? $an->data->{cgi}{anvil_node2_uuid} : $an->Get->uuid();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "uuid",                  value1 => $uuid,
-			name2 => "cgi::anvil_node2_uuid", value2 => $an->data->{cgi}{anvil_node2_uuid},
+		$return_code = 7;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "return_code", value1 => $return_code, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# First, copy the ScanCore files into place. Create the striker config
-	# directory if needed, as well.
+	# First, copy the ScanCore files into place. Create the striker config directory if needed, as well.
 	my $generate_config  = 0;
 	my ($path, $tarball) = ($an->data->{path}{nodes}{striker_tarball} =~ /^(.*)\/(.*)/);
 	my $download_1       = "http://".$an->data->{cgi}{anvil_striker1_bcn_ip}."/files/$tarball";
@@ -4777,18 +4777,6 @@ then
 else
     ".$an->data->{path}{echo}." 'striker config needs to be generated'
 fi;
-
-if [ ! -e '".$an->data->{path}{nodes}{host_uuid}."' ]
-then
-    ".$an->data->{path}{echo}." 'Recording the host UUID'
-    ".$an->data->{path}{echo}." $uuid > ".$an->data->{path}{nodes}{host_uuid}."
-    if [ -e '".$an->data->{path}{nodes}{host_uuid}."' ]
-    then
-        ".$an->data->{path}{echo}." -n 'host_uuid = '; ".$an->data->{path}{cat}." /etc/striker/host.uuid 
-    else
-        ".$an->data->{path}{echo}." 'failed to create host uuid file'
-    fi
-fi
 ";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
@@ -4821,18 +4809,6 @@ fi
 		if ($line =~ /config needs to be generated/)
 		{
 			$generate_config = 1;
-		}
-		if ($line =~ /failed to create host uuid file/)
-		{
-			$return_code = 6;
-		}
-		if ($line =~ /host_uuid = (.*)/)
-		{
-			my $uuid = $1;
-			if ($uuid !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
-			{
-				$return_code = 7;
-			}
 		}
 	}
 	
@@ -5199,7 +5175,7 @@ fi
 	# 3 == Base striker.conf not found.
 	# 4 == Failed to create the striker.conf file.
 	# 5 == Failed to add to root's crontab
-	# 6 == Failed to generate the host UUID file
+	# 6 == ...free...
 	# 7 == Host UUID is invalid
 	# 8 == Target's ssh fingerprint changed.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -8659,7 +8635,6 @@ sub enable_tools
 	# sas_rc  == anvil-safe-start, return code
 	# akau_rc == anvil-kick-apc-ups, return code
 	my ($node1_sas_rc, $node1_akau_rc, $node1_sc_rc) = $an->InstallManifest->enable_tools_on_node({
-			host_uuid => $an->data->{cgi}{anvil_node1_uuid}, 
 			node      => $node1, 
 			target    => $an->data->{sys}{anvil}{node1}{use_ip}, 
 			port      => $an->data->{sys}{anvil}{node1}{use_port}, 
@@ -8667,7 +8642,6 @@ sub enable_tools
 			node_name => $node1,
 		});
 	my ($node2_sas_rc, $node2_akau_rc, $node2_sc_rc) = $an->InstallManifest->enable_tools_on_node({
-			host_uuid => $an->data->{cgi}{anvil_node2_uuid}, 
 			node      => $node2, 
 			target    => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			port      => $an->data->{sys}{anvil}{node2}{use_port}, 
@@ -8924,31 +8898,17 @@ sub enable_tools_on_node
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "enable_tools_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $host_uuid = $parameter->{host_uuid} ? $parameter->{host_uuid} : $an->Get->uuid();
-	my $node      = $parameter->{node}      ? $parameter->{node}      : "";
-	my $target    = $parameter->{target}    ? $parameter->{target}    : "";
-	my $port      = $parameter->{port}      ? $parameter->{port}      : "";
-	my $password  = $parameter->{password}  ? $parameter->{password}  : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "host_uuid", value1 => $host_uuid, 
-		name2 => "node",      value2 => $node, 
-		name3 => "target",    value3 => $target, 
-		name4 => "port",      value4 => $port, 
+	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "node",   value1 => $node, 
+		name2 => "target", value2 => $target, 
+		name3 => "port",   value3 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### First, setup to host UUID.
-	$host_uuid = $an->Storage->prep_uuid({
-			node      => $node, 
-			target    => $target, 
-			port      => $port, 
-			password  => $password, 
-			host_uuid => $host_uuid, 
-		});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "host_uuid", value1 => $host_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### anvil-safe-start
@@ -17016,6 +16976,7 @@ sub start_cman_on_node
 	return(0)
 }
 
+### TODO: Don't stop until both nodes show their storage service as 'started'
 # This looks at the disk states for r0 and if one node is Inconsistent, it is stopped first. Otherwise, we'll
 # stop node 1, then node 2.
 sub stop_drbd

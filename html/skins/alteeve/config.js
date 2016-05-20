@@ -194,47 +194,49 @@ $("#set_secondary_values").click(function(){
 	{
 		$("#anvil_ups2_name").val(ups2_name);
 	}
-	// PTS 1
-	var pts1_name = prefix + '-pts01.' + domain;
-	if (!prefix)
-	{
-		var pts1_name = 'pts01.' + domain;
-	}
-	if (!$("#anvil_pts1_name").val())
-	{
-		$("#anvil_pts1_name").val(pts1_name);
-	}
-	// PTS 2
-	var pts2_name = prefix + '-pts02.' + domain;
-	if (!prefix)
-	{
-		var pts2_name = 'pts02.' + domain;
-	}
-	if (!$("#anvil_pts2_name").val())
-	{
-		$("#anvil_pts2_name").val(pts2_name);
-	}
-	// NTP doesn't have a name section (yet?), only IP.
-	// NTP 1
-	var ntp1_name = prefix + '-ntp01.' + domain;
-	if (!prefix)
-	{
-		var ntp1_name = 'ntp01.' + domain;
-	}
-	if (!$("#anvil_ntp1_name").val())
-	{
-		$("#anvil_ntp1_name").val(ntp1_name);
-	}
-	// NTP 2
-	var ntp2_name = prefix + '-ntp02.' + domain;
-	if (!prefix)
-	{
-		var ntp2_name = 'ntp02.' + domain;
-	}
-	if (!$("#anvil_ntp2_name").val())
-	{
-		$("#anvil_ntp2_name").val(ntp2_name);
-	}
+	
+// 	Disabled for now, PTSes and NTP servers are not part of a standard build.
+// 	// PTS 1
+// 	var pts1_name = prefix + '-pts01.' + domain;
+// 	if (!prefix)
+// 	{
+// 		var pts1_name = 'pts01.' + domain;
+// 	}
+// 	if (!$("#anvil_pts1_name").val())
+// 	{
+// 		$("#anvil_pts1_name").val(pts1_name);
+// 	}
+// 	// PTS 2
+// 	var pts2_name = prefix + '-pts02.' + domain;
+// 	if (!prefix)
+// 	{
+// 		var pts2_name = 'pts02.' + domain;
+// 	}
+// 	if (!$("#anvil_pts2_name").val())
+// 	{
+// 		$("#anvil_pts2_name").val(pts2_name);
+// 	}
+// 	// NTP doesn't have a name section (yet?), only IP.
+// 	// NTP 1
+// 	var ntp1_name = prefix + '-ntp01.' + domain;
+// 	if (!prefix)
+// 	{
+// 		var ntp1_name = 'ntp01.' + domain;
+// 	}
+// 	if (!$("#anvil_ntp1_name").val())
+// 	{
+// 		$("#anvil_ntp1_name").val(ntp1_name);
+// 	}
+// 	// NTP 2
+// 	var ntp2_name = prefix + '-ntp02.' + domain;
+// 	if (!prefix)
+// 	{
+// 		var ntp2_name = 'ntp02.' + domain;
+// 	}
+// 	if (!$("#anvil_ntp2_name").val())
+// 	{
+// 		$("#anvil_ntp2_name").val(ntp2_name);
+// 	}
 	// Striker 1
 	var striker1_name = prefix + '-striker01.' + domain;
 	if (!prefix)
@@ -463,53 +465,53 @@ $("#set_secondary_values").click(function(){
 		}
 		
 		// PTSes
-		var pts1_ip = bcn_root + '.5.' + 1;
-		    pts1_ip = pts1_ip.replace(/\.\./g, ".");
-		var pts2_ip = bcn_root + '.5.' + 2;
-		    pts2_ip = pts2_ip.replace(/\.\./g, ".");
-		if (regex_ipv4.test(pts1_ip))
-		{
-			if (!$("#anvil_pts1_ip").val())
-			{
-				$("#anvil_pts1_ip").val(pts1_ip);
-			}
-		}
-		if (regex_ipv4.test(pts2_ip))
-		{
-			if (!$("#anvil_pts2_ip").val())
-			{
-				$("#anvil_pts2_ip").val(pts2_ip);
-			}
-		}
+// 		var pts1_ip = bcn_root + '.5.' + 1;
+// 		    pts1_ip = pts1_ip.replace(/\.\./g, ".");
+// 		var pts2_ip = bcn_root + '.5.' + 2;
+// 		    pts2_ip = pts2_ip.replace(/\.\./g, ".");
+// 		if (regex_ipv4.test(pts1_ip))
+// 		{
+// 			if (!$("#anvil_pts1_ip").val())
+// 			{
+// 				$("#anvil_pts1_ip").val(pts1_ip);
+// 			}
+// 		}
+// 		if (regex_ipv4.test(pts2_ip))
+// 		{
+// 			if (!$("#anvil_pts2_ip").val())
+// 			{
+// 				$("#anvil_pts2_ip").val(pts2_ip);
+// 			}
+// 		}
 		
 		// NTP doesn't have a name section, so for now, the input field doesn't use '_ip'
 		// NTPes
-		var ntp1_ip = bcn_root + '.6.' + 1;
-		    ntp1_ip = ntp1_ip.replace(/\.\./g, ".");
-		var ntp2_ip = bcn_root + '.6.' + 2;
-		    ntp2_ip = ntp2_ip.replace(/\.\./g, ".");
-		if (regex_ipv4.test(ntp1_ip))
-		{
+// 		var ntp1_ip = bcn_root + '.6.' + 1;
+// 		    ntp1_ip = ntp1_ip.replace(/\.\./g, ".");
+// 		var ntp2_ip = bcn_root + '.6.' + 2;
+// 		    ntp2_ip = ntp2_ip.replace(/\.\./g, ".");
+// 		if (regex_ipv4.test(ntp1_ip))
+// 		{
 // 			if (!$("#anvil_ntp1_ip").val())
 // 			{
 // 				$("#anvil_ntp1_ip").val(ntp1_ip);
 // 			}
-			if (!$("#anvil_ntp1").val())
-			{
-				$("#anvil_ntp1").val(ntp1_ip);
-			}
-		}
-		if (regex_ipv4.test(ntp2_ip))
-		{
+// 			if (!$("#anvil_ntp1").val())
+// 			{
+// 				$("#anvil_ntp1").val(ntp1_ip);
+// 			}
+// 		}
+// 		if (regex_ipv4.test(ntp2_ip))
+// 		{
 // 			if (!$("#anvil_ntp2_ip").val())
 // 			{
 // 				$("#anvil_ntp2_ip").val(ntp2_ip);
 // 			}
-			if (!$("#anvil_ntp2").val())
-			{
-				$("#anvil_ntp2").val(ntp2_ip);
-			}
-		}
+// 			if (!$("#anvil_ntp2").val())
+// 			{
+// 				$("#anvil_ntp2").val(ntp2_ip);
+// 			}
+// 		}
 		
 		// Striker Dashboards
 		var striker1_bcn_ip = bcn_root + '.4.' + 1;
@@ -666,7 +668,7 @@ $("#set_secondary_values").click(function(){
 		}
 		
 		// IFN Default Gateway
-		var ifn_gateway = ifn_root + '.254';
+		var ifn_gateway = ifn_root + '.1';
 		    ifn_gateway = ifn_gateway.replace(/\.\./g, ".");
 		if (regex_ipv4.test(ifn_gateway))
 		{

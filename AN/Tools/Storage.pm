@@ -255,10 +255,10 @@ sub prep_uuid
 	my $an        = $self->parent;
 	
 	# Did the user give us a UUID to use?
-	my $host_uuid = $parameter->{host_uuid} ? $parameter->{host_uuid} : $an->Get->uuid();
-	my $target    = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port      = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password  = $parameter->{password} ? $parameter->{password} : "";
+	my $host_uuid = $parameter->{host_uuid} ? $parameter->{host_uuid} : "";
+	my $target    = $parameter->{target}    ? $parameter->{target}    : "";
+	my $port      = $parameter->{port}      ? $parameter->{port}      : "";
+	my $password  = $parameter->{password}  ? $parameter->{password}  : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "host_uuid", value1 => $host_uuid, 
 		name2 => "target",    value2 => $target, 
@@ -267,6 +267,16 @@ sub prep_uuid
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	### NOTE: We don't call ->uuid() above to help debug passed-in values.
+	# If I wasn't passed in a UUID, set one now.
+	if (not $host_uuid)
+	{
+		$host_uuid = $an->Get->uuid();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "host_uuid", value1 => $host_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# The shell call needs to work locally and remotely, so we can't use perl built-in file tests (well,
 	# we could, but then we'd have two ways to do the same job).
@@ -332,7 +342,7 @@ UUID=\$(".$an->data->{path}{cat}." ".$an->data->{path}{host_uuid}.")
 		if ($line =~ /^host_uuid:(.*)$/)
 		{
 			$host_uuid = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "host_uuid", value1 => $host_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
