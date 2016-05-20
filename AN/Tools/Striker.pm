@@ -6694,7 +6694,7 @@ fi";
 	});
 	
 	# clustat info
-	$shell_call = $an->data->{path}{clustat};
+	$shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{clustat}."; ".$an->data->{path}{echo}." clustat:\$?";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "time",       value1 => time,
 		name2 => "target",     value2 => $target,
@@ -6721,13 +6721,15 @@ fi";
 		shell_call	=>	$shell_call,
 	});
 	
+	### NOTE: In the case of a failed/pending fence, it is possible that calling status on the cluster 
+	###       daemons could hang. In such cases, the timeout will fire and allow the load to finish.
 	# Read the daemon states
 	$shell_call = "
-".$an->data->{path}{initd}."/rgmanager status; ".$an->data->{path}{echo}." striker:rgmanager:\$?; 
-".$an->data->{path}{initd}."/cman status; ".$an->data->{path}{echo}." striker:cman:\$?; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{initd}."/rgmanager status; ".$an->data->{path}{echo}." striker:rgmanager:\$?; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{initd}."/cman status; ".$an->data->{path}{echo}." striker:cman:\$?; 
 ".$an->data->{path}{initd}."/drbd status; ".$an->data->{path}{echo}." striker:drbd:\$?; 
-".$an->data->{path}{initd}."/clvmd status; ".$an->data->{path}{echo}." striker:clvmd:\$?; 
-".$an->data->{path}{initd}."/gfs2 status; ".$an->data->{path}{echo}." striker:gfs2:\$?; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{initd}."/clvmd status; ".$an->data->{path}{echo}." striker:clvmd:\$?; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{initd}."/gfs2 status; ".$an->data->{path}{echo}." striker:gfs2:\$?; 
 ".$an->data->{path}{initd}."/libvirtd status; ".$an->data->{path}{echo}." striker:libvirtd:\$?;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "time",       value1 => time,
@@ -6743,9 +6745,10 @@ fi";
 	
 	# LVM data
 	$shell_call = "
-".$an->data->{path}{pvscan}."; 
-".$an->data->{path}{vgscan}."; 
-".$an->data->{path}{lvscan};
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{pvscan}."; ".$an->data->{path}{echo}." pvscan:\$?; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{vgscan}."; ".$an->data->{path}{echo}." vgscan:\$?; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{lvscan},"; ".$an->data->{path}{echo}." lvscan:\$?;
+";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "time",       value1 => time,
 		name2 => "target",     value2 => $target,
@@ -6759,9 +6762,10 @@ fi";
 	});
 	
 	$shell_call = "
-".$an->data->{path}{pvs}." --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; 
-".$an->data->{path}{vgs}." --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; 
-".$an->data->{path}{lvs}." --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices;",
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{pvs}." --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; ".$an->data->{path}{echo}." pvs:\$?; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{vgs}." --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; ".$an->data->{path}{echo}." vgs:\$?; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{lvs}." --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices; ".$an->data->{path}{echo}." lvs:\$?;
+";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "time",       value1 => time,
 		name2 => "target",     value2 => $target,
@@ -6805,7 +6809,7 @@ fi";
 	});
 	
 	# server definitions - from file
-	$shell_call = $an->data->{path}{cat}." ".$an->data->{path}{shared_definitions}."/*";
+	$shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{cat}." ".$an->data->{path}{shared_definitions}."/*; ".$an->data->{path}{echo}." rc:\$?; ";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "time",       value1 => time,
 		name2 => "target",     value2 => $target,
@@ -9075,6 +9079,8 @@ sub _parse_cluster_conf
 	return(0);
 }
 
+### TODO: timeout is now used here. Verify we handle it properly. Check for the line 'clustat:(\d+)'. If it 
+###       is 124, timeout fired.
 # Parse the cluster status.
 sub _parse_clustat
 {
@@ -9133,6 +9139,16 @@ sub _parse_clustat
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
+		if ($line =~ /clustat:(\d+)/)
+		{
+			### TODO: If this is 124, make sure sane null values are set because timeout fired.
+			my $return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
 		if ($line =~ /Could not connect to CMAN/i)
 		{
 			# CMAN isn't running.
@@ -9385,6 +9401,7 @@ sub _parse_clustat
 	return(0);
 }
 
+### TODO: timeout is now used here. Verify we handle it properly. If any daemons return 124, timeout fired.
 # Parse the daemon statuses.
 sub _parse_daemons
 {
@@ -10253,6 +10270,15 @@ sub _parse_lvm_data
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /pvs:(\d+)/)
+			{
+				### TODO: If this is 124, make sure sane null values are set because timeout fired.
+				my $return_code = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
 			#   pv_name,  vg_name,     pv_fmt,  pv_attr,     pv_size,     pv_free,   pv_used,     pv_uuid
 			my ($this_pv, $used_by_vg, $format, $attributes, $total_size, $free_size, $used_size, $uuid) = (split /#!#/, $line);
 			$total_size =~ s/B$//;
@@ -10289,6 +10315,15 @@ sub _parse_lvm_data
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /vgs:(\d+)/)
+			{
+				### TODO: If this is 124, make sure sane null values are set because timeout fired.
+				my $return_code = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
 			#   vg_name,  vg_attr,     vg_extent_size, vg_extent_count, vg_uuid, vg_size,  vg_free_count, vg_free,  pv_name
 			my ($this_vg, $attributes, $pe_size,       $total_pe,       $uuid,   $vg_size, $free_pe,      $vg_free, $pv_name) = split /#!#/, $line;
 			$pe_size    = "" if not defined $pe_size;
@@ -10340,11 +10375,20 @@ sub _parse_lvm_data
 		elsif ($in_lvs)
 		{
 			# lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /lvs:(\d+)/)
+			{
+				### TODO: If this is 124, make sure sane null values are set because timeout fired.
+				my $return_code = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
 			my ($lv_name, $on_vg, $attributes, $total_size, $uuid, $path, $devices) = (split /#!#/, $line);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 				name1 => "lv_name",    value1 => $lv_name,
 				name2 => "on_vg",      value2 => $on_vg,
 				name3 => "attributes", value3 => $attributes,
@@ -10362,7 +10406,7 @@ sub _parse_lvm_data
 			$an->data->{node}{$node_name}{lvm}{lv}{$path}{total_size} = $total_size;
 			$an->data->{node}{$node_name}{lvm}{lv}{$path}{uuid}       = $uuid;
 			$an->data->{node}{$node_name}{lvm}{lv}{$path}{on_devices} = $devices;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 				name1 => "node::${node_name}::lvm::lv::${path}::name",       value1 => $an->data->{node}{$node_name}{lvm}{lv}{$path}{name},
 				name2 => "node::${node_name}::lvm::lv::${path}::on_vg",      value2 => $an->data->{node}{$node_name}{lvm}{lv}{$path}{on_vg},
 				name3 => "node::${node_name}::lvm::lv::${path}::active",     value3 => $an->data->{node}{$node_name}{lvm}{lv}{$path}{active},
@@ -10377,6 +10421,8 @@ sub _parse_lvm_data
 	return(0);
 }
 
+### TODO: timeout is now used here. Verify we handle it properly. Check for the line '{pv,vg,lv}scan:(\d+)'.
+###       If they are 124, timeout fired.
 # Parse the LVM scan output.
 sub _parse_lvm_scan
 {
@@ -10403,6 +10449,34 @@ sub _parse_lvm_scan
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /pvscan:(\d+)/)
+		{
+			### TODO: If this is 124, make sure sane null values are set because timeout fired.
+			my $return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		if ($line =~ /vgscan:(\d+)/)
+		{
+			### TODO: If this is 124, make sure sane null values are set because timeout fired.
+			my $return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		if ($line =~ /lvscan:(\d+)/)
+		{
+			### TODO: If this is 124, make sure sane null values are set because timeout fired.
+			my $return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
 		if ($line =~ /(.*?)\s+'(.*?)'\s+\[(.*?)\]/)
 		{
 			my $state     = $1;
@@ -10764,6 +10838,16 @@ sub _parse_server_defs
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /rc:(\d+)/)
+		{
+			### TODO: If this is 124, make sure sane null values are set because timeout fired.
+			my $return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
 		
 		# Find the start of a domain.
 		if ($line =~ /<domain/)

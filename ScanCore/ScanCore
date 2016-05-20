@@ -3617,13 +3617,15 @@ sub update_db
 		# Something somewhere is out of sync. So start with updating the core tables. The agents will
 		# take care of their own.
 		
+		### NOTE: This requires admin access, which may be resolved with C. Keane's reply here: 
+		###       https://forums.aws.amazon.com/thread.jspa?messageID=561509
 		### TODO: Verify that disabling triggers is the right approach.
 		# Disable triggers.
-		my $query = "SET session_replication_role = replica;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		#my $query = "SET session_replication_role = replica;";
+		#$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		#	name1 => "query", value1 => $query, 
+		#}, file => $THIS_FILE, line => __LINE__});
+		#$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		
 		# Update (and commit) the hosts table
 		update_db_hosts($an);
@@ -3654,11 +3656,11 @@ sub update_db
 		$an->DB->update_time({file => $THIS_FILE});
 
 		# Re-enable triggers
-		$query = "SET session_replication_role = DEFAULT;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		#$query = "SET session_replication_role = DEFAULT;";
+		#$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		#	name1 => "query", value1 => $query, 
+		#}, file => $THIS_FILE, line => __LINE__});
+		#$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	
 	}
 	

@@ -120,6 +120,7 @@ my $conf = {
 		debug		=>	0,
 		md5sum		=>	{
 			'a2bc9de743bfb0bfe1f14676a46a624b'	=>	"RHEL 6.7, Disk 1",	# v6.7
+			'ef0f3bbfbb846491a07e4a02b5d5640a'	=>	"RHEL 6.8, Disk 1",	# v6.7
 			'51f90e8ddd2ea199780065eaf75130ad'	=>	"CentOS 6.7, Disk 1",	# v6.7, Disk 1
 			'efd54b939787519b350d986329e2c7a3'	=>	"CentOS 6.7, Disk 2",	# v6.7, Disk 2
 		},
@@ -2784,6 +2785,13 @@ sub validate_source
 					$conf->{sys}{os}            = $conf->{sys}{md5sum}{$this_sum};
 					$conf->{source}{$iso}{name} = $conf->{sys}{md5sum}{$this_sum};
 					print "- Source identified as: [$conf->{sys}{os}] (sum: [$this_sum])\n" if $conf->{sys}{debug} >= 2;
+					
+					# If this is a 6.8 ISO, change the 'release'
+					if ($conf->{sys}{os} =~ /(6\.\d+)/)
+					{
+						$conf->{sys}{name}{release} = $1;
+						print "- Set the release version as: [$conf->{sys}{name}{release}].\n" if $conf->{sys}{debug} >= 2;
+					}
 				}
 			}
 			
@@ -3057,9 +3065,10 @@ sub get_package_list
 		"glibc-headers.x86_64",
 		"glibc.i686",
 		"glibc.x86_64",
-		"glusterfs-api.x86_64",
-		"glusterfs-libs.x86_64",
 		"glusterfs.x86_64",
+		"glusterfs-api.x86_64",
+		"glusterfs-client-xlators.x86_64",	# Added in 6.8
+		"glusterfs-libs.x86_64",
 		"glx-utils.x86_64",
 		"gmp.x86_64",
 		"gnome-applets.x86_64",
@@ -3518,6 +3527,7 @@ sub get_package_list
 		"python-iniparse.noarch",
 		"python-libs.x86_64",
 		"python-lxml.x86_64",
+		"python-magic.x86_64",		# added in 6.8
 		"python-pcp.x86_64",
 		"python-pycurl.x86_64",
 		"python-suds.noarch",
@@ -3670,7 +3680,6 @@ sub get_package_list
 		"xorg-x11-drv-keyboard.x86_64",
 		"xorg-x11-drv-mach64.x86_64",
 		"xorg-x11-drv-mga.x86_64",
-		"xorg-x11-drv-modesetting.x86_64",
 		"xorg-x11-drv-mouse.x86_64",
 		"xorg-x11-drv-mutouch.x86_64",
 		"xorg-x11-drv-nouveau.x86_64",
@@ -3696,7 +3705,6 @@ sub get_package_list
 		"xorg-x11-drv-voodoo.x86_64",
 		"xorg-x11-drv-wacom.x86_64",
 		"xorg-x11-drv-xgi.x86_64",
-		"xorg-x11-glamor.x86_64",
 		"xorg-x11-server-Xorg.x86_64",
 		"xorg-x11-server-common.x86_64",
 		"xorg-x11-server-utils.x86_64",
@@ -3783,6 +3791,9 @@ sub get_package_list
 		push @{$conf->{sys}{packages}{alteeve}}, "perl-Text-Diff.noarch";
 		push @{$conf->{sys}{packages}{alteeve}}, "sharutils.x86_64";
 		push @{$conf->{sys}{packages}{alteeve}}, "syslinux-tftpboot.noarch";
+		# These disappeared in 6.8 and may not be needed now.
+		# "xorg-x11-drv-modesetting.x86_64",
+		# "xorg-x11-glamor.x86_64",
 	}
 	
 	# Binary packages from third parties

@@ -1367,7 +1367,7 @@ AND
 AND 
     node_cache_name      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_name)." 
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1380,7 +1380,7 @@ AND
 		foreach my $row (@{$results})
 		{
 			$node_cache_uuid = $row->[0];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_cache_uuid", value1 => $node_cache_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1412,7 +1412,7 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});

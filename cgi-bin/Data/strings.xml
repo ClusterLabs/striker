@@ -825,7 +825,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0309">Language</key>
 		<key name="row_0310">Alert Level</key>
 		<key name="row_0311">Measurements</key>
-		<key name="row_0312">Potential Conflict</key>
+		<key name="row_0312">Caution</key>
 		<key name="row_0313">Manifest</key>
 		
 		<!-- Table headers -->

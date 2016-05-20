@@ -720,6 +720,7 @@ my $conf = {
 		striker_password	=>	"",		# no default password, evar!
 		switch_count		=>	0,
 		tarball_dir		=>	"striker-#!striker_version!#",
+		update_os		=>	0,
 		yum_switches		=>	"-y",		# Adds: [--disablerepo='*' --enablerepo='striker*'] if no internet connection found.
 	},
 	url		=>	{
@@ -6421,7 +6422,15 @@ sub install_packages
 	}
 	
 	# Check for OS updates.
-	update_os($conf);
+	$conf->{sys}{update_os} = 0 if $conf->{switches}{'no-os-updates'};
+	if ($conf->{sys}{update_os})
+	{
+		update_os($conf);
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- OS update disabled, skipping.", 1);
+	}
 	
 	# Get a list of already installed packages.
 	get_list_of_installed_packages($conf);
@@ -8316,6 +8325,11 @@ SWITCHES
 	access, this can cause problems. This option prevents the installer
 	from configuring the repository and, if it is installed, will remove
 	it.
+
+ --no-os-updates
+
+	By default, the operating system will be updated if there is Internet
+	access. You can disable this behaviour with this switch.
 
  --no-striker-configure-vmm
 
