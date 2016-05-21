@@ -58,7 +58,7 @@
 		<key name="button_0051">Replace Node</key>	<!-- Also used as a row value -->
 		<key name="button_0052">Begin Install</key>
 		<key name="button_0053">Install</key>
-		<key name="button_0054">Remap Network</key>
+		<key name="button_0054">Start Over</key>
 		<key name="button_0055">Modify Manifest</key>
 		<key name="button_0056">Install Target</key>
 		<key name="button_0057">Enable #!string!button_0056!#</key>

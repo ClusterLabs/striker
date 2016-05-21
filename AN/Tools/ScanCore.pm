@@ -3908,7 +3908,7 @@ sub save_install_manifest
 		$an->data->{cgi}{anvil_node2_uuid}          = $an->Get->uuid() if not $an->data->{cgi}{anvil_node2_uuid};
 		
 		### TODO: This isn't set for some reason, fix
-		$an->data->{cgi}{anvil_open_vnc_ports} = $an->data->{sys}{install_manifest}{open_vnc_ports} if not $an->data->{cgi}{anvil_open_vnc_ports};
+		$an->data->{cgi}{anvil_open_vnc_ports} = $an->data->{sys}{install_manifest}{'default'}{open_vnc_ports} if not $an->data->{cgi}{anvil_open_vnc_ports};
 		
 		# Set the MTU.
 		$an->data->{cgi}{anvil_mtu_size} = $an->data->{sys}{install_manifest}{'default'}{mtu_size} if not $an->data->{cgi}{anvil_mtu_size};

@@ -13031,7 +13031,8 @@ sub register_node_with_rhn
 ".$an->data->{path}{'rhn-channel'}." --add --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --channel=rhel-x86_64-server-rs-6 && 
 ".$an->data->{path}{'rhn-channel'}." --add --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --channel=rhel-x86_64-server-optional-6 && 
 ".$an->data->{path}{'rhn-channel'}." --list --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\"";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	# Exposes the RHN password, so log level 4.
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});

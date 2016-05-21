@@ -652,30 +652,30 @@ my $conf = {
 		'autostart-dhcpd'	=>	"",
 		'b'			=>	"", # <ip_address/netmask>
 		'c'			=>	"", # <customer/owner>
-		'centos-iso'		=>	"", # <'none', 'dvd', local path or URL>
+# 		'centos-iso'		=>	"", # <'none', 'dvd', local path or URL>
 		'custom-config'		=>	"", # /path/to/striker.conf
 		'd'			=>	"", # <version>
 		'disable-scancore'	=>	"",
-		'e'			=>	"", # <user:password>
+# 		'e'			=>	"", # <user:password>
 		'ethtool-opts'		=>	"", # "<options>"
-		gui			=>	"",
+		gui			=>	1,
 		'h'			=>	"",
 		help			=>	"",
 		'i'			=>	"", # <ip_address/netmask>,dg=<ip_address>[,dns1=<ip_address>,dns2=<ip_address>]
 		'ipmi-user'		=>	"", # <user:password>
 		'ipmi-ip'		=>	"", # <ip_address/netmask>[,gw=<ip_address>]
 		'use-lsi'		=>	"",
-		'm'			=>	"", # <mail server:port>
+# 		'm'			=>	"", # <mail server:port>
 		mtu			=>	1500,
 		'n'			=>	"", # <hostname>
-		'no-an-repo'		=>	"",
+# 		'no-an-repo'		=>	"",
 		'no-reboot'		=>	"",
 		'no-striker-configure-vmm' =>	"",
 		ntp			=>	"", # <ip[,ip]>
 		'p'			=>	"", # <start_ip:end_ip>
 		'peer-dashboard'	=>	"", # <hostname=x,bcn_ip=y>
-		'r'			=>	"", # <repo>
-		'rhel-iso'		=>	"", # <'none', 'dvd', local path or URL>
+# 		'r'			=>	"", # <repo>
+# 		'rhel-iso'		=>	"", # <'none', 'dvd', local path or URL>
 		rhn			=>	"", # <user:password>
 		'router-mode'		=>	"",
 		'run-rc-local'		=>	"",
@@ -699,9 +699,9 @@ my $conf = {
 		ipmi_password		=>	"",
 		ipmi_user		=>	"",
 		is_rhel			=>	0,
-		mail_server		=>	"",
-		mail_user		=>	"",
-		mail_password		=>	"",
+# 		mail_server		=>	"",
+# 		mail_user		=>	"",
+# 		mail_password		=>	"",
 		network_map_cache_read	=>	0,
 		reboot_needed		=>	0,
 		register_with_rhn	=>	0,
@@ -709,7 +709,7 @@ my $conf = {
 		rhn_user		=>	"",
 		rhn_password		=>	"",
 		skip_hostname		=>	0,
-		skip_mail		=>	0,
+		skip_mail		=>	1,
 		skip_network		=>	0,
 		ssl_checked		=>	0,
 		stable_version		=>	"1.1.6",
@@ -5189,23 +5189,8 @@ sub install_striker_files
 	# Update /etc/striker/striker.conf if a custom config was not used.
 	if (not $conf->{switches}{'custom-config'})
 	{
-		# Update the striker.conf file with the user's selected mail server
-		# values.
-		my $mail_server = "mail.example.com";
-		my $mail_port   = "587";
-		if ($conf->{sys}{mail_server} =~ /^(.*?):(\d+)$/)
-		{
-			$mail_server = $1;
-			$mail_port   = $2;
-		}
-		elsif ($conf->{sys}{mail_server})
-		{
-			$mail_server = $conf->{sys}{mail_server};
-		}
-		
-		logger($conf, $THIS_FILE, __LINE__, "- Updating mail server values in Striker's configuration file.", 1);
-		logger($conf, $THIS_FILE, __LINE__, "mail_server: [$mail_server], mail_port: [$mail_port]", 3);
-		logger($conf, $THIS_FILE, __LINE__, "mail user: [$conf->{sys}{mail_user}], password: [$conf->{sys}{mail_password}]", 3);
+		# Update the striker.conf file.
+		logger($conf, $THIS_FILE, __LINE__, "- Updating striker.conf.", 1);
 		logger($conf, $THIS_FILE, __LINE__, "Reading: [$conf->{path}{striker_config}]", 3);
 		my $striker_config = "";
 		open (my $file_handle, "<", $conf->{path}{striker_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{striker_config}], the error was: $!\n";
@@ -5213,14 +5198,6 @@ sub install_striker_files
 		{
 			chomp;
 			my $line = $_;
-			
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] >> line: [$line]", 3);
-			# Mail stuff
-			$line =~ s/^smtp::server(\s+)=(\s+).*$/smtp::server$1=$2$mail_server/                    if $mail_server;
-			$line =~ s/^smtp::port(\s+)=(\s+).*$/smtp::port$1=$2$mail_port/                          if $mail_port;
-			$line =~ s/^smtp::username(\s+)=(\s+).*$/smtp::username$1=$2$conf->{sys}{mail_user}/     if $conf->{sys}{mail_user};
-			$line =~ s/^smtp::password(\s+)=(\s+).*$/smtp::password$1=$2$conf->{sys}{mail_password}/ if $conf->{sys}{mail_password};
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] << line: [$line]", 3);
 			
 			# Inject this machine's details for the local ScanCore DB.
 			$striker_config .= "$line\n";
@@ -7533,47 +7510,6 @@ sub sanity_check_switches
 		}
 	}
 	
-	# With mail, both or neither must be provided (XNOR y'all!)
-	if (($conf->{switches}{e}) && ($conf->{switches}{m}))
-	{
-		# Validate the mail domain
-		($bad_value) = sanity_check_hostname($conf, $conf->{switches}{m}, 1, $bad_value);
-		# TODO: Validate the email local user part. Note that a lot 
-		#       more flexibility is allowed here than in the domain, 
-		#       including UTF-8. See:
-		#       https://en.wikipedia.org/wiki/Email_address#Local_part
-		$conf->{sys}{mail_server}   = $conf->{switches}{m};
-		if ($conf->{switches}{e} =~ /^(.*?):(.*)$/)
-		{
-			$conf->{sys}{mail_user}     = $1;
-			$conf->{sys}{mail_password} = $2;
-		}
-		else
-		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The email switch needs to be in the format '<email>:<password>'", 0);
-			$bad_value = 1;
-		}
-	}
-	elsif ((not $conf->{switches}{e}) && (not $conf->{switches}{m}))
-	{
-		logger($conf, $THIS_FILE, __LINE__, "- Mail server information not provided, mail configuration will be skipped.", 1);
-		#logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - If mail sending was not previously configured, you may encounter", 1);
-		#logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   problems later!", 1);
-		$conf->{sys}{skip_mail} = 1;
-	}
-	elsif (not $conf->{switches}{e})
-	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - A mail server alone can not be specified. Please specify", 0);
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   credentials to use when logging into: [$conf->{switches}{m}].", 0);
-		$bad_value = 1;
-	}
-	elsif (not $conf->{switches}{m})
-	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Credentials for logging into a mail server were given but the mail", 0);
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   server address itself was not.", 0);
-		$bad_value = 1;
-	}
-	
 	# Check to see if either the htpasswd file exists or the user is giving us a user now.
 	if ((not -e $conf->{path}{apache_htpasswd}) && (not $conf->{switches}{u}))
 	{
@@ -8204,16 +8140,6 @@ SWITCHES
 	by apache at the top of the input box when asking the user for their 
 	credentials. If this is not set, "Striker Dashboard" will be used alone.
 
- --centos-iso <'none', 'dvd', local path or URL>
-
-	This is the local path or URL of the ISO to download for setting up the
-	CentOS PXE server installer options. If this is set to 'none', CentOS
-	will not be configured. 
-	
-	If it is set to 'dvd', the disk in the optical drive will be converted
-	to an ISO and used. This option is very useful if you just installed
-	CentOS off of a physical DVD.
-
  --custom-config /path/to/striker.conf
 
 	This is an optional way to specify a custom striker.conf file to use
@@ -8230,19 +8156,6 @@ SWITCHES
 	the latest version in github will be installed. You probably don't want
 	this unless you're a developer.
 
- --disable-scancore
-
-	By default, ScanCore will not run boot. This may not be desired in some
-	environments, so this switch can be used to disable ScanCore from 
-	running when the Striker dashboard starts. When used, an entry is still
-	added to root's cron table, but it will be commented out.
-
- -e <user:password>
-
-	This is the email address user and password to use when logging in to
-	the mail server. This information will be recorded in postfix's
-	/etc/postfix/relay_password file.
-
  --ethtool-opts "<options>"
 
 	If you need to pass any special 'ethtool' configuration options to your
@@ -8251,10 +8164,6 @@ SWITCHES
 	
 	Note that these options will be applied to both/all ifn_linkX and
 	bcn_link* interfaces.
-
- --gui
- 
-	This tells striker to install a graphical interface.
 
  -h, -?, --help
 
@@ -8300,12 +8209,6 @@ SWITCHES
 	you've installed (or specify a repo with) the LSI 'storcli' and 
 	'MegaCli' RPMs, then they will be installed and configured.
 
- -m <mail server:port>
-
-	This sets the mail server and port to use for sending email. If no port
-	is set, 587 will be used. This information will be recorded in
-	postfix's /etc/postfix/relay_password file.
-
  --mtu <byte_size>
 
 	If your network can handle jumbo frames, you can use this switch to set
@@ -8318,14 +8221,6 @@ SWITCHES
 
 	This sets the host name of the Striker dashboard.
 
- --no-an-repo
-
-	By default, a repository maintained by Alteeve's Niche! is added to
-	Striker dashboards. If your dashboard machines will not have Internet
-	access, this can cause problems. This option prevents the installer
-	from configuring the repository and, if it is installed, will remove
-	it.
-
  --no-os-updates
 
 	By default, the operating system will be updated if there is Internet
@@ -8333,10 +8228,9 @@ SWITCHES
 
  --no-striker-configure-vmm
 
-	When --gui is used, by default, the 'striker-configure-vmm' will be 
-	used to configure Virtual Machine Manager so that Anvil! systems added
-	via Striker are automatically added to and removed from VMM. Using this
-	switch along with --gui disables this feature.
+	By default, the 'striker-configure-vmm' will be used to configure 
+	Virtual Machine Manager so that Anvil! systems added via Striker are
+	automatically added to and removed from VMM.
 
  --no-reboot
  
@@ -8370,22 +8264,6 @@ SWITCHES
 	      a differing configuration or password, please manually add the
 	      peer information to striker.conf and /etc/hosts after the install
 	      completes.
-
- -r <repo>
-
-	This allows for a repository to be added to the system. This must be
-	either a network path (http, https or ftp). Multiple repos can be
-	specified by using comma-separated URLs.
-
- --rhel-iso <'none', 'dvd', local path or URL>
-
-	This is the local path or URL of the ISO to download for setting up the
-	Red Hat Enterprise Linux PXE server installer options. If this is set
-	to 'none', RHEL will not be configured. 
-	
-	If it is set to 'dvd', the disk in the optical drive will be converted
-	to an ISO and used. This option is very useful if you just installed
-	RHEL off of a physical DVD.
 
  --rhn <user:password>
 
@@ -8440,42 +8318,24 @@ between the IP address and netmask
 
 EXAMPLE
 
-Normal install, downloading ISOs from local web server:
+Normal install
 
  ./striker-installer -c "Alteeve's Niche\!" \
-                  -e "foo@alteeve.ca:secret password" \
-                  -m mail.alteeve.ca:587 \
                   -n an-striker01.alteeve.ca \
                   -u "admin:secret password" \
                   -p 10.20.10.200:10.20.10.210 \
-                  -r http://10.255.255.254/repo/rhel6/local.repo \
-                  --centos-iso http://10.255.255.254/centos6/x86_64/iso/CentOS-6.6-x86_64-bin-DVD1.iso \
-                  --rhel-iso http://10.255.255.254/rhel6/x86_64/iso/rhel-server-6.6-x86_64-dvd.iso \
                   -b 10.20.4.1/16 \
                   -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
 
 Developer install, using local copies of ISOs:
 
  ./striker-installer -c "Alteeve's Niche\!" \
-                  -e "foo@alteeve.ca:secret password" \
-                  -m mail.alteeve.ca:587 \
                   -n an-striker01.alteeve.ca \
                   -d git \
                   -u "admin:secret password" \
                   -p 10.20.10.200:10.20.10.210 \
-                  --centos-iso ./iso/CentOS-6.6-x86_64-bin-DVD1.iso \
-                  --rhel-iso ./iso/rhel-server-6.6-x86_64-dvd.iso \
                   -b 10.20.4.1/16 \
                   -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4
-
-Install without configuring the network or PXE server:
-
- ./striker-installer -c "Alteeve's Niche\!" \
-                  -e "foo@alteeve.ca:secret password" \
-                  -m mail.alteeve.ca:587 \
-                  -n an-striker01.alteeve.ca \
-                  -p none \
-                  -u "admin:secret password"
 
 Note: As with any bash call, you must escape '!' characters with '\!'.
 

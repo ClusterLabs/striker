@@ -4651,7 +4651,7 @@ sub _display_drbd_details
 				$say_n2_ds  = $an->data->{drbd}{$res}{node}{$node2}{disk_state}       if $an->data->{drbd}{$res}{node}{$node2}{disk_state};
 				if (($an->data->{drbd}{$res}{node}{$node2}{disk_state} eq "Inconsistent") && ($an->data->{drbd}{$res}{node}{$node2}{resync_percent} =~ /^\d/))
 				{
-					$say_n2_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">($an->data->{drbd}{$res}{node}{$node2}{resync_percent}%)</span>";
+					$say_n2_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">(".$an->data->{drbd}{$res}{node}{$node2}{resync_percent}."%)</span>";
 				}
 			}
 			else
