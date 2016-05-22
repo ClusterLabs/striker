@@ -863,7 +863,14 @@ sub check_for_dlm_hang
 			}
 			
 			# We can log in, so call 'timeout X ls /shared'
-			my $shell_call = $an->data->{path}{timeout}." ".$an->data->{scancore}{dashboard}{dlm_hung_timeout}." ".$an->data->{path}{ls}." ".$an->data->{path}{shared}." || ".$an->data->{path}{echo}." timeout";
+			my $shell_call = "
+if [ -e '".$an->data->{path}{shared}." ];
+then
+    ".$an->data->{path}{timeout}." ".$an->data->{scancore}{dashboard}{dlm_hung_timeout}." ".$an->data->{path}{ls}." ".$an->data->{path}{shared}." || ".$an->data->{path}{echo}." timeout
+else
+    ".$an->data->{path}{echo}." 'does not exist'
+fi
+";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "target",     value2 => $node,
