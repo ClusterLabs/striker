@@ -139,6 +139,9 @@ if (not $an->DB->verify_host_uuid())
 # Look for changes.
 find_changes($an);
 
+# This checks to ensure that libvirtd is not set to start on boot, which can be set after an OS update.
+check_libvirtd($an);
+
 # Update the database
 $an->DB->update_time({file => $THIS_FILE});
 
@@ -149,10 +152,48 @@ nice_exit($an, 0);
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This checks to ensure that libvirtd is not set to start on boot, which can be set after an OS update.
+sub check_libvirtd
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_libvirtd", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $state = $an->System->daemon_boot_config({daemon => "libvirtd"});
+	my $rc3   = $state->{3};
+	my $rc5   = $state->{5};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "rc3", value1 => $rc3, 
+		name2 => "rc5", value2 => $rc5, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($rc3 eq "on") or ($rc5 eq "on"))
+	{
+		# Turn it off.
+		$an->Log->entry({log_level => 1, message_key => "scan_server_log_0001", message_variables => {
+			'3' => $rc3, 
+			'5' => $rc5, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $state = $an->System->daemon_boot_config({
+				daemon => "libvirtd",
+				set    => "off",
+			});
+		my $rc3   = $state->{3};
+		my $rc5   = $state->{5};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "rc3", value1 => $rc3, 
+			name2 => "rc5", value1 => $rc5, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
 # Change to a user-requested log level.
 sub adjust_log_level
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "adjust_log_level", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
 	if ($an->data->{switches}{v})
 	{
 		$an->data->{'scan-server'}{log_level} = 1;

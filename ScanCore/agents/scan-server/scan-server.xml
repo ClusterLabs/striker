@@ -16,7 +16,7 @@ not to use names used by the main Striker strings file. Do this by prefixing all
 		<key name="scan_server_brand_0001">'server' Scan Agent</key>
 		
 		<!-- Log messages -->
-		<key name="scan_server_log_0001"></key>
+		<key name="scan_server_log_0001">The 'libvirtd' daemon was set to start on boot in run-level 3 and/or 5 (3: [#!variable!3!#], 5: [#!variable!5!#]), turning it off again.</key>
 		
 		<!-- Notices -->
 		<key name="scan_server_note_0001"></key>

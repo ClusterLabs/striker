@@ -8112,33 +8112,34 @@ sub print_usage
 
 DESCRIPTION
 
-This program installs and configures Striker, the Anvil! dashboard, on an
-almost minimal EL6 install.
+This program performs the "Stage 2" Striker install. This is where you get to
+customize the install to suit your liking.
 
 
 SWITCHES
 
  --autostart-dhcpd
 	
-	By default, Striker will not run it's DHCP server on boot. This is done
-	to avoid accidental conflict with a site's main DHCP server(s). 
-	Ideally, the BCN will be isolated and, if so, the DHCP server on the
-	dashboard can safely run all the time, avoiding the need to manually
-	enable the "Install Target" when needed.
+	By default, Striker will not run its "Install Target" feature on boot.
+	This is done to avoid an accidental conflict with your site's main DHCP
+	server(s). Ideally, the BCN will be isolated from the main network. If
+	so, the DHCP server on the dashboard can safely run all the time, 
+	avoiding the need to manually enable the "Install Target" when needed.
 	
-	If you know that your BCN is VLAN isolated, then you can use this
-	switch to auto-start the DHCP server on boot.
+	If you know that your BCN is VLAN or hard isolated, then you can use
+	this switch to auto-start the "Install Target" feature on boot.
 
  -b <ip_address/netmask>
 	
-	This sets the IP address and subnet to be assigned to the Back-Channel
-	Network interface.
+	This sets the IP address and subnet mask to be assigned to the 
+	Back-Channel Network interface.
 
  -c <customer/owner>
 
-	This sets the name of the customer/owner of the dashboard. This is used
-	by apache at the top of the input box when asking the user for their 
-	credentials. If this is not set, "Striker Dashboard" will be used alone.
+	This sets the name of the customer/owner of the Anvil!. This is used
+	by the web browser at the top of the input box when asking the user for
+	their login credentials. If this is not set, "Striker Dashboard" will 
+	be used alone.
 
  --custom-config /path/to/striker.conf
 

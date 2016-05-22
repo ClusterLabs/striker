@@ -884,6 +884,14 @@ The 'AN::Tools::InstallManifest' module's 'read_cluster_conf()' was called witho
 
 The 'AN::Tools::InstallManifest' module's 'write_cluster_conf()' was called without a node name.
 
+=head2 C<162>
+
+The 'AN::Tools::System' module's 'daemon_boot_config()' was called without a daemon name.
+
+=head2 C<163>
+
+The 'AN::Tools::System' module's 'daemon_boot_config()' was called with an invalid 'set' value. Nnly 'on' or 'off' are valid.
+
 
 =head1 SEE ALSO
 

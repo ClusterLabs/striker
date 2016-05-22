@@ -853,7 +853,6 @@ sub host_state
 	}
 	
 	# First, read the current state. We'll update it if needed in a minute.
-	
 	my $query = "
 SELECT 
     host_health 

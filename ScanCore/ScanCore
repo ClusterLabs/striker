@@ -646,6 +646,8 @@ fi";
 	return($ok);
 }
 
+# These are the scan run (different for nodes and dashboards) after a sweep is finished. This is where the 
+# big decisions are made.
 sub do_post_scan_checks
 {
 	my ($an) = @_;
@@ -1769,19 +1771,15 @@ sub do_post_scan_node_tasks
 		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Enable load shedding where, if the power is out for > 5 minutes and/or if the temperature
-	###       has climbed into warning on both nodes for > 5 minutes, consolidate the VMs by migrating 
-	###       servers from the node with the lease guests to the node with the most guests (to minimize 
-	###       migration time) and then power off the node. To this, I will need to know who my peer is 
-	###       and read in the UPS and thermal data for both of us, looking at the times that we both went
-	###       into a 'warning' state.
+	### TODO: Enable load shedding where, if the power is out for > 2 minutes and/or if the temperature
+	###       has climbed into warning on both nodes for > 2 minutes. The logic on how to do this is in
+	###       'anvil-safe-stop --load-shed'.
 	
-	# OK, if both are '1', make sure our health file is set to 'OK'. If either returned '2', make sure
-	# our health file is set to 'Warning'. If either returned '3', set the health file to 'Critical' and 
-	# set the hosts -> host_emergency_stop to TRUE and then call 'anvil-safe-stop'.
+	# OK, if both are '1', make sure our health is set to 'OK'. If either returned '2', make sure our 
+	# health is set to 'Warning'. If either returned '3', set the health to 'Critical' and set the hosts
+	#  -> host_emergency_stop to TRUE and then call 'anvil-safe-stop --local'.
 	if (($node_power_ok eq "3") || ($node_temperature_ok eq "3"))
 	{
-		### TODO: phase this out
 		# Set the health to 'Critical'.
 		$an->ScanCore->host_state({set => "critical"});
 		
@@ -1922,6 +1920,10 @@ WHERE
 	}
 	elsif (($node_power_ok eq "2") || ($node_temperature_ok eq "2"))
 	{
+		### TODO: Load shed checks go here, just need to check how long ago we went into 'warning' 
+		###       and verify that both UPSes/enough temperature sensors went bad to trigger a 
+		###       shutdown (same criteria for 'shutdown' applies to load shed).
+		
 		### We're sick
 		# Set the health to 'Warning'.
 		$an->ScanCore->host_state({set => "warning"});

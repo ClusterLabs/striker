@@ -759,6 +759,8 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0159"><![CDATA[The 'AN::Tools::InstallManifest' module's 'map_network_on_node()' method failed to match the node name being processed.]]></key>
 		<key name="error_message_0160"><![CDATA[The 'AN::Tools::InstallManifest' module's 'read_cluster_conf()' was called without a node name.]]></key>
 		<key name="error_message_0161"><![CDATA[The 'AN::Tools::InstallManifest' module's 'write_cluster_conf()' was called without a node name.]]></key>
+		<key name="error_message_0162"><![CDATA[The 'AN::Tools::System' module's 'daemon_boot_config()' was called without a daemon name.]]></key>
+		<key name="error_message_0163"><![CDATA[The 'AN::Tools::System' module's 'daemon_boot_config()' was called with an invalid 'set' value. Received: [#!variable!set!#], but only 'on' or 'off' are valid.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
