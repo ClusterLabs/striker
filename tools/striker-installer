@@ -382,6 +382,7 @@ my $conf = {
 		hosts			=>	"/etc/hosts",
 		inittab			=>	"/etc/inittab",
 		iptables		=>	"/etc/sysconfig/iptables",
+		logrotate_config	=>	"/etc/logrotate.d/anvil",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
 		network_map_cache	=>	"/root/.striker-network-map.cache",
 		ntp_conf		=>	"/etc/ntp.conf",
@@ -699,6 +700,18 @@ my $conf = {
 		ipmi_password		=>	"",
 		ipmi_user		=>	"",
 		is_rhel			=>	0,
+		logrotate	=>	{
+			'striker.log'	=>	{
+				count		=>	5,		# Backups made before deletion.
+				frequency	=>	"weekly",	# daily, weekly, monthly, yearly
+				maxsize		=>	"100M",		# Rotates if bigger than this, regardless of frequency
+			},
+			'Scancore.log'	=>	{
+				count		=>	5,		# Backups made before deletion.
+				frequency	=>	"weekly",	# daily, weekly, monthly, yearly
+				maxsize		=>	"100M",		# Rotates if bigger than this, regardless of frequency
+			}
+		},
 # 		mail_server		=>	"",
 # 		mail_user		=>	"",
 # 		mail_password		=>	"",
@@ -2384,6 +2397,9 @@ sub setup_striker
 		}
 	}
 	
+	# Configure logrotate
+	configure_logrotate($conf);
+	
 	# NOTE: Always call this last. If the password gets set, there is a
 	#       notice box informing the user that we want to ensure doesn't
 	#       get scrolled off the screen.
@@ -2392,6 +2408,40 @@ sub setup_striker
 	
 	# Remove the 'priority=1' from our repos.
 	remove_yum_priority($conf);
+	
+	return(0);
+}
+
+# Writes out the logrotate configuration for Striker and ScanCore.
+sub configure_logrotate
+{
+	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "Configuring logrotate.", 1);
+	
+	my $logrotate = "compress";
+	
+	foreach my $log_file (sort {$a cmp $b} keys %{$conf->{sys}{logrotate}})
+	{
+		my $count     = $conf->{sys}{logrotate}{$log_file}{count}     ? $conf->{sys}{logrotate}{$log_file}{count}     : 5;
+		my $frequency = $conf->{sys}{logrotate}{$log_file}{frequency} ? $conf->{sys}{logrotate}{$log_file}{frequency} : "weekly";
+		my $maxsize   = $conf->{sys}{logrotate}{$log_file}{maxsize}   ? $conf->{sys}{logrotate}{$log_file}{maxsize}   : "100M";
+		
+		$logrotate .= "
+/var/log/$log_file {
+    rotate $count
+    $frequency
+    maxsize $maxsize
+}
+";
+	}
+	
+	my $logrotate_config = $conf->{path}{logrotate_config};
+	logger($conf, $THIS_FILE, __LINE__, "- Writing: [$logrotate_config].", 1);
+	my $shell_call = $logrotate_config;
+	open (my $file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+	print $file_handle $logrotate;
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
 	
 	return(0);
 }

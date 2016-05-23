@@ -9125,6 +9125,43 @@ fi
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	# Configure logrotate.
+	my $logrotate = "compress";
+	foreach my $log_file (sort {$a cmp $b} keys %{$an->data->{sys}{logrotate}})
+	{
+		my $count     =  $an->data->{sys}{logrotate}{$log_file}{count}     ? $an->data->{sys}{logrotate}{$log_file}{count}     : 5;
+		my $frequency =  $an->data->{sys}{logrotate}{$log_file}{frequency} ? $an->data->{sys}{logrotate}{$log_file}{frequency} : "weekly";
+		my $maxsize   =  $an->data->{sys}{logrotate}{$log_file}{maxsize}   ? $an->data->{sys}{logrotate}{$log_file}{maxsize}   : "100M";
+		   $logrotate .= "
+/var/log/$log_file {
+    rotate $count
+    $frequency
+    maxsize $maxsize
+}
+";
+	}
+	$shell_call = "
+".$an->data->{path}{cat}." > ".$an->data->{path}{logrotate_config}." << EOF
+$logrotate
+EOF
+";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	# 0 == No changes made
 	# 1 == Enabled successfully
 	# 2 == Disabled successfully

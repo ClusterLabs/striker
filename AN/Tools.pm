@@ -642,17 +642,18 @@ sub _set_paths
 	$an->data->{path}{yum}                 = "/usr/bin/yum";
 	
 	# Text files
-	$an->data->{path}{'anvil-jobs'}    = "/tmp/anvil.jobs";
-	$an->data->{path}{cman_config}     = "/etc/cluster/cluster.conf";
-	$an->data->{path}{dhcpd_conf}      = "/etc/dhcp/dhcpd.conf";
-	$an->data->{path}{etc_fstab}       = "/etc/fstab";
-	$an->data->{path}{etc_hosts}       = "/etc/hosts";
-	$an->data->{path}{etc_passwd}      = "/etc/passwd";
-	$an->data->{path}{etc_virbr0}      = "/etc/libvirt/qemu/networks/default.xml";
-	$an->data->{path}{gdm_presession}  = "/etc/gdm/PreSession/Default";
-	$an->data->{path}{host_uuid}       = "/etc/striker/host.uuid";
-	$an->data->{path}{ssh_config}      = "/etc/ssh/ssh_config";
-	$an->data->{path}{root_crontab}    = "/var/spool/cron/root";
+	$an->data->{path}{'anvil-jobs'}     = "/tmp/anvil.jobs";
+	$an->data->{path}{cman_config}      = "/etc/cluster/cluster.conf";
+	$an->data->{path}{dhcpd_conf}       = "/etc/dhcp/dhcpd.conf";
+	$an->data->{path}{etc_fstab}        = "/etc/fstab";
+	$an->data->{path}{etc_hosts}        = "/etc/hosts";
+	$an->data->{path}{etc_passwd}       = "/etc/passwd";
+	$an->data->{path}{etc_virbr0}       = "/etc/libvirt/qemu/networks/default.xml";
+	$an->data->{path}{gdm_presession}   = "/etc/gdm/PreSession/Default";
+	$an->data->{path}{host_uuid}        = "/etc/striker/host.uuid";
+	$an->data->{path}{logrotate_config} = "/etc/logrotate.d/anvil";
+	$an->data->{path}{ssh_config}       = "/etc/ssh/ssh_config";
+	$an->data->{path}{root_crontab}     = "/var/spool/cron/root";
 	
 	# This is a text file with '#!token!#' replaced with a job's UUID token when running Anvil! jobs from 'anvil-run-jobs'
 	$an->data->{path}{'anvil-jobs-output'} = "/tmp/anvil-job.#!token!#.txt";
