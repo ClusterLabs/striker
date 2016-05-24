@@ -1091,7 +1091,7 @@ sub log_abnormal_temperatures
 	# the 'Ambient' and 'Systemboard' temperatures (or whatever the user
 	# defined) as 'good', if they're not already in the 
 	# 'new::temperature::x' hash.
-	my $i_am_a = who_am_i($an);
+	my $i_am_a = $an->Get->what_am_i();
 	foreach my $sensor (split/,/, $an->data->{'scan-ipmitool'}{offline_sensor_list})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {

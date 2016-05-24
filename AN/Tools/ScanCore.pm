@@ -2317,7 +2317,7 @@ WHERE
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $row (@{$results})
 			{
-				my $old_variable_name = $row->[0];
+				my $old_variable_value = $row->[0];
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "old_variable_value", value1 => $old_variable_value, 
 				}, file => $THIS_FILE, line => __LINE__});

@@ -209,10 +209,31 @@ sub load_anvil
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "cluster_name", value1 => $cluster_name,
 		}, file => $THIS_FILE, line => __LINE__});
+		my $anvil_data = $an->ScanCore->get_anvils();
+		foreach my $hash_ref (@{$anvil_data})
+		{
+			my $anvil_name = $hash_ref->{anvil_name};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_name", value1 => $anvil_name,
+			}, file => $THIS_FILE, line => __LINE__});
+
+			if ($anvil_name eq $cluster_name)
+			{
+				# Found it.
+				$anvil_uuid = $hash_ref->{anvil_uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "anvil_uuid", value1 => $anvil_uuid,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 		
-		# Nothing passed in or set in CGI
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0102", code => 102, file => "$THIS_FILE", line => __LINE__});
-		return(1);
+		# Did we find it?
+		if (not $anvil_uuid)
+		{
+			# Nope ;_;
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0102", code => 102, file => "$THIS_FILE", line => __LINE__});
+			return(1);
+		}
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -8713,15 +8734,34 @@ sub _parse_cluster_conf
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
-	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
-	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data       = $parameter->{data};
+	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
+	my $data      = $parameter->{data} ? $parameter->{data} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_uuid", value1 => $node_uuid,
+		name2 => "data",      value2 => $data,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $node_name = "local";
+	my $target     = "";
+	my $port       = "";
+	my $password   = "";
+	if ($node_uuid)
+	{
+		my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
+		   $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		   $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		   $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
+		   $password  = $an->data->{sys}{anvil}{$node_key}{password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "node_key",  value1 => $node_key,
+			name2 => "node_name", value2 => $node_name,
+			name3 => "target",    value3 => $target,
+			name4 => "port",      value4 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	my $in_failover_domain      = 0;
 	my $current_failover_domain = "";
@@ -8733,6 +8773,27 @@ sub _parse_cluster_conf
 	my $this_host_name          = "";
 	my $this_node               = "";
 	my $method_counter          = 0;
+	
+	# If the 'node_name' is "local" and there is no $data, read in the local cluster.conf
+	if (($node_name eq "local") && (not $data))
+	{
+		   $data       = [];
+		my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{cman_config};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$data}, $line;
+		}
+		close $file_handle;
+	}
 	
 	foreach my $line (@{$data})
 	{

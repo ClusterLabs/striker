@@ -100,7 +100,7 @@ sub anvil_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "anvil_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "anvil_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return     = {};
 	my $anvil_name = $parameter->{name} ? $parameter->{name} : "";
@@ -240,7 +240,7 @@ sub current_directory
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "current_directory" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "current_directory" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $current_dir = "/var/www/html/";
 	if ($ENV{DOCUMENT_ROOT})
@@ -511,7 +511,7 @@ sub drbd_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "drbd_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "drbd_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will store the LVM data returned to the caller.
 	my $return     = {};
@@ -1053,7 +1053,7 @@ sub install_target_state
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "install_target_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "install_target_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the control program exists, call it with '--status'
 	my $install_target_state = 2;
@@ -1124,7 +1124,7 @@ sub ip
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "ip" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ip" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Error if no host given.
 	my $ip        = "";
@@ -1232,7 +1232,7 @@ sub local_anvil_details
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "local_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "local_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If no host name is passed in, use this machine's host name.
 	my $hostname_full  = $parameter->{hostname_full}  ? $parameter->{hostname_full}  : $an->hostname;
@@ -1341,7 +1341,7 @@ sub local_users
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "local_users" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "local_users" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $users = [];
 	my $shell_call = "/etc/passwd";
@@ -1388,7 +1388,7 @@ sub lvm_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "lvm_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lvm_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will store the LVM data returned to the caller.
 	my $data     = {};
@@ -1771,7 +1771,7 @@ sub manifest_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "manifest_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "manifest_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $manifest_uuid = $parameter->{manifest_uuid} ? $parameter->{manifest_uuid} : "";
 	if (not $manifest_uuid)
@@ -1813,7 +1813,7 @@ sub netmask_from_ip
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "netmask_from_ip" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "netmask_from_ip" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if (not $parameter->{ip})
 	{
@@ -1912,7 +1912,7 @@ sub node_info
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "node_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "node_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If no host name is passed in, use this machine's host name.
 	my $node_name = $parameter->{name} ? $parameter->{name} : $an->hostname;
@@ -1978,7 +1978,7 @@ sub notify_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "notify_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "notify_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return        = {};
 	my $notify_target = $parameter->{target} ? $parameter->{target} : "";
@@ -2075,7 +2075,7 @@ sub owner_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "owner_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "owner_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return     = {};
 	my $owner_name = $parameter->{name} ? $parameter->{name} : "";
@@ -2152,7 +2152,7 @@ sub peer_network_details
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "peer_network_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "peer_network_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_key = "";
 	if ($an->hostname eq $an->data->{sys}{anvil}{node1}{name})
@@ -2194,7 +2194,7 @@ sub pids
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "pids" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "pids" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# What program?
 	if (not $parameter->{program_name})
@@ -2323,7 +2323,7 @@ sub ram_used_by_pid
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "ram_used_by_pid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ram_used_by_pid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# What PID?
 	my $pid = $parameter->{pid} ? $parameter->{pid} : $$;
@@ -2368,7 +2368,7 @@ sub ram_used_by_program
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "ram_used_by_program" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ram_used_by_program" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
@@ -2412,7 +2412,7 @@ sub recipient_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "recipient_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "recipient_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return         = {};
 	my $anvil_uuid     = $parameter->{anvil_uuid}  ? $parameter->{anvil_uuid}  : "";
@@ -2502,7 +2502,7 @@ sub remote_anvil_details
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "remote_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remote_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
 	my $anvil = $parameter->{anvil};
 	if (not $anvil)
@@ -2547,7 +2547,7 @@ sub rsa_public_key
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "rsa_public_key" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "rsa_public_key" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $user = $parameter->{user};
 	if (not $user)
@@ -2659,7 +2659,7 @@ sub say_pm
 	my $self = shift;
 	my $say  = shift;
 	my $an   = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "say_pm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "say_pm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if ( defined $say )
 	{
@@ -2676,7 +2676,7 @@ sub server_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "server_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "server_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return      = {};
 	my $server_name = $parameter->{server}     ? $parameter->{server}     : "";
@@ -3000,7 +3000,7 @@ sub server_uuid
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "server_uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "server_uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $uuid = "";
 	my $server = $parameter->{server} ? $parameter->{server} : "";
@@ -3154,7 +3154,7 @@ sub server_xml
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "server_xml" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "server_xml" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $server   = $parameter->{server};
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -3385,7 +3385,7 @@ sub shared_files
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "shared_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "shared_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Pick up our parameters
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -3602,7 +3602,7 @@ sub smtp_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "smtp_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "smtp_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return      = {};
 	my $smtp_server = $parameter->{server} ? $parameter->{server} : "";
@@ -3703,7 +3703,7 @@ sub striker_peers
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "striker_peers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "striker_peers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This array will store the hashes for the peer host names and their passwords.
 	my $peers = [];
@@ -3759,7 +3759,7 @@ sub switches
 {
 	my $self = shift;
 	my $an   = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "switches" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "switches" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $last_argument = "";
 	foreach my $argument (@ARGV)
@@ -3826,7 +3826,7 @@ sub target_details
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "target_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "target_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If no host name is passed in, use this machine's host name.
 	my $target   = $parameter->{target}   ? $parameter->{target}   : $an->hostname;
@@ -4051,7 +4051,7 @@ sub users_home
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "users_home" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "users_home" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $user = $parameter->{user};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -4110,7 +4110,7 @@ sub uuid
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Figure out why the heck I did this... Remove it, most likely.
 	# Set the 'uuidgen' path if set by the user.
@@ -4199,7 +4199,7 @@ sub what_am_i
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "what_am_i" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "what_am_i" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# When called initially, we don't have a DB connection yet so we can't query the db.
 	my $i_am_a = "";

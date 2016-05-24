@@ -668,11 +668,7 @@ sub do_post_scan_checks
 	if (not $an->data->{scancore}{i_am_a})
 	{
 		# What am I?
-		my $query = "SELECT host_type FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->data->{scancore}{i_am_a} = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->data->{scancore}{i_am_a} = $an->Get->what_am_i();
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::i_am_a", value1 => $an->data->{scancore}{i_am_a}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -698,10 +694,10 @@ sub do_post_scan_checks
 
 ### TODO: Make this AN::Tools::Get->node_cache().
 # This reads in the various node cache files
-sub read_cache_files
+sub read_cache
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_cache_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will be stuck onto the start of fence agents that don't have a full path.
 	my $fence_path = $an->data->{path}{fence_agents};
@@ -907,7 +903,7 @@ sub do_post_scan_dashboard_tasks
 	
 	# Start by reading in all the cache files we have. We'll skip any nodes we see in the DB that don't
 	# have a cache file.
-	read_cache_files($an);
+	read_cache($an);
 	
 	### TODO: Switch this to $an->ScanCore->get_hosts()'.
 	# Now read in all the nodes we know about.
@@ -1758,6 +1754,37 @@ sub do_post_scan_node_tasks
 		name1 => "hostname",       value1 => $hostname, 
 		name2 => "short_hostname", value2 => $short_hostname, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Load the information about the Anvil! this node is a part of (if it's been added to the database yet).
+	my $cluster_name = $an->Cman->cluster_name();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cluster_name", value1 => $cluster_name,
+	}, file => $THIS_FILE, line => __LINE__});
+	my $anvil_data = $an->ScanCore->get_anvils();
+	my $anvil_uuid = "";
+	foreach my $hash_ref (@{$anvil_data})
+	{
+		my $anvil_name = $hash_ref->{anvil_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvil_name", value1 => $anvil_name,
+		}, file => $THIS_FILE, line => __LINE__});
+
+		if ($anvil_name eq $cluster_name)
+		{
+			# Found it.
+			$anvil_uuid = $hash_ref->{anvil_uuid};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_uuid", value1 => $anvil_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($anvil_uuid)
+	{
+		$an->Striker->load_anvil();
+	}
 	
 	my ($node_power_ok) = check_node_power($an);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
