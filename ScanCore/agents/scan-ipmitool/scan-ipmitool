@@ -80,17 +80,12 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 }
 my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0];
 
+### TODO: Rework this whole agent...
 # Get the handle to the AN::Tools and preset some variables I will use.
 my $an = AN::Tools->new({data => 
 	{
 		path			=>	{
-			'anvil-report-ipmi-details' =>	"/sbin/striker/anvil-report-ipmi-details",
 			core_strings		=>	"$scancore_directory/ScanCore.xml",
-			# This stores this node's UUID. It is used to track all our sensor data in the 
-			# database. If you change this here, change it ScanCore, too.
-			host_uuid		=>	"/etc/striker/host.uuid",
-			ipmitool		=>	"/usr/bin/ipmitool",
-			node_cache		=>	"/var/www/home/cache", 
 			sql			=>	"$running_directory/$THIS_FILE.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
@@ -163,14 +158,19 @@ $an->Storage->read_words({file => $an->data->{path}{strings}});
 $an->Storage->read_words({file => $an->data->{path}{core_strings}});
 $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
-# Get the switches before printing anything in case the user is asking for
-# help.
+# Get the switches before printing anything in case the user is asking for help.
 $an->Get->switches();
 
 # Adjust the log level if requested.
 adjust_log_level($an);
 
 print $an->String->get({key => "scan_ipmitool_message_0001"})."\n";
+
+# I'll need to loop through the DBs and ensure our schema is loaded for each one.
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => {
+	connections => $connections,
+}, file => $THIS_FILE, line => __LINE__});
 
 # This calls anvil-report-ipmi-details to find IPMI devices to scan. It also handles any user-defined IPMI 
 # devices set in striker.conf.
@@ -179,12 +179,6 @@ if (not find_ipmi_targets($an))
 	# No targets found, exit.
 	nice_exit($an, 1);
 }
-
-# I'll need to loop through the DBs and ensure our schema is loaded for each one.
-my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({log_level => 3, message_key => "notice_message_0013", message_variables => {
-	connections => $connections,
-}, file => $THIS_FILE, line => __LINE__});
 
 # Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
 # running ScanCore, it won't be.
@@ -260,13 +254,6 @@ sub find_changes
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "machine", value1 => $machine, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Was it accessible?
-		if (not $an->data->{ipmi}{$machine}{access})
-		{
-			### TODO: Check if access was lost and if so, record it in the DB if it was 
-			###       accessible last time.
-		}
 		
 		# This returns the number of read sensors already in the DB for this machine recorded by us 
 		# previously.
@@ -1130,38 +1117,6 @@ sub log_abnormal_temperatures
 	}
 	
 	return(0);
-}
-
-# This returns what type of machine this is (node or dashboard)
-sub who_am_i
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "who_am_i", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# When called initially, we don't have a DB connection yet so we can't query the db.
-	my $i_am_a = "";
-	if (not $an->data->{sys}{use_db_fh})
-	{
-		my $host_name = $an->hostname;
-		   $i_am_a    = "node";
-		if (($host_name =~ /striker/) || ($host_name =~ /dashboard/))
-		{
-			$i_am_a = "dashboard";
-		}
-	}
-	else
-	{
-		my $query = "SELECT host_type FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1  => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		my $i_am_a = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1  => "i_am_a", value1 => $i_am_a
-	}, file => $THIS_FILE, line => __LINE__});
-	return($i_am_a);
 }
 
 # This processes a temperature sensor, handling changes and recording values that are in a warning or 
@@ -2248,25 +2203,6 @@ sub query_ipmi_targets
 	
 	foreach my $machine (sort {$a cmp $b} keys %{$an->data->{'scan-ipmitool'}{machine}})
 	{
-		# Now, make sure I can ping the targets I found.
-		if ($an->Check->ping({ping => $machine}))
-		{
-			# Can't ping it.
-			$an->data->{ipmi}{$machine}{access} = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "ipmi::${machine}::access", value1 => $an->data->{ipmi}{$machine}{access},
-			}, file => $THIS_FILE, line => __LINE__});
-			next;
-		}
-		else
-		{
-			# Pinged it!
-			$an->data->{ipmi}{$machine}{access} = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "ipmi::${machine}::access", value1 => $an->data->{ipmi}{$machine}{access},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
 		my $ipmitool_command = $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmitool_command};
 		my $ipmi_password    = $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmi_password};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -2427,8 +2363,9 @@ sub query_ipmi_targets
 	return(0);
 }
 
-# This calls anvil-report-ipmi-details to find IPMI devices to scan. It also
-# handles any user-defined IPMI devices set in striker.conf.
+### TODO: This currently has no way of dealing with IPMI-equiped dashboards.
+# This calls anvil-report-ipmi-details to find IPMI devices to scan. It also handles any user-defined IPMI 
+# devices set in striker.conf.
 sub find_ipmi_targets
 {
 	my ($an) = @_;
@@ -2438,127 +2375,73 @@ sub find_ipmi_targets
 	my $ipmi_targets = 0;
 
 	# If I am a node, I will only scan myself.
-	my $i_am_a   = who_am_i($an);
+	my $i_am_a   = $an->Get->what_am_i();
 	my $hostname = $an->hostname();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "i_am_a",   value1 => $i_am_a,
 		name2 => "hostname", value2 => $hostname
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# First, call 'anvil-report-ipmi-details' and see what we find. Then
-	# we'll read in user definitions so that the user can override what we
-	# find.
-	my $shell_call = $an->data->{path}{'anvil-report-ipmi-details'}." 2>&1 |";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
+	# This returns an array of power_check commands that this machine knows about.
+	my $power_check_data = $an->ScanCore->get_power_check_data();
+	foreach my $hash_ref (@{$power_check_data})
 	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
+		my $node_name           = $hash_ref->{node_name};
+		my $node_uuid           = $hash_ref->{node_uuid};
+		my $power_check_command = $hash_ref->{power_check_command};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node_name",           value1 => $node_name,
+			name2 => "node_uuid",           value2 => $node_uuid, 
+			name3 => "power_check_command", value3 => $power_check_command, 
 		}, file => $THIS_FILE, line => __LINE__});
-
-		# Skip if I am a node and this entry is not for me
-		next if (($i_am_a eq "node") && ($line !~ /$hostname/));
 		
-		if ($line =~ /^!!node!(.*?)!!,!!power_check_command!(.*?)!!$/)
-		{
-			my $machine             = $1;
-			my $power_check_command = $2;
-			   $ipmi_targets++;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "machine",             value1 => $machine, 
-				name2 => "power_check_command", value2 => $power_check_command, 
-				name3 => "ipmi_targets",        value3 => $ipmi_targets
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# I need to remove the double-quotes from the 
-			# '-p "<password>"'.
-			$power_check_command =~ s/-p "(.*?)"/-p $1/;
-			
-			$an->data->{'scan-ipmitool'}{machine}{$machine}{power_check_command} = $power_check_command;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "scan-ipmitool::${machine}::power_check_command", value1 => $an->data->{'scan-ipmitool'}{machine}{$machine}{power_check_command}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	close $file_handle;
-	
-	# Now, loop through the machines and see if any are defined using the
-	# simple 'address / username / password' variables from striker.conf.
-	# Convert those to 'power_check_command' versions.
-	foreach my $machine (sort {$a cmp $b} keys %{$an->data->{'scan-ipmitool'}{machine}})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "machine",                          value1 => $machine, 
-			name2 => "scan-ipmitool::${machine}::address",  value2 => $an->data->{'scan-ipmitool'}{machine}{$machine}{address}, 
-			name3 => "scan-ipmitool::${machine}::username", value3 => $an->data->{'scan-ipmitool'}{machine}{$machine}{username}, 
-			name4 => "scan-ipmitool::${machine}::password", value4 => $an->data->{'scan-ipmitool'}{machine}{$machine}{password}, 
+		# Get the ipaddress and see if I can ping the target. If I can't, there is no sense in 
+		# recording this entry.
+		my $access = 0;
+		my $target = ($power_check_command =~ /-a (.*?) /)[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "target", value1 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($an->data->{'scan-ipmitool'}{machine}{$machine}{address}) && 
-		    ($an->data->{'scan-ipmitool'}{machine}{$machine}{username}) && 
-		    ($an->data->{'scan-ipmitool'}{machine}{$machine}{password}))
+		if ($target)
 		{
-			# OK, user has defined things, so use their values.
-			my $address  = $an->data->{'scan-ipmitool'}{machine}{$machine}{address};
-			my $username = $an->data->{'scan-ipmitool'}{machine}{$machine}{username};
-			my $password = $an->data->{'scan-ipmitool'}{machine}{$machine}{password};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "address",  value1 => $address, 
-				name2 => "username", value2 => $username, 
-				name3 => "password", value3 => $password, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			$an->data->{'scan-ipmitool'}{machine}{$machine}{power_check_command} = "fence_ipmilan -a $address -l $username -p $password";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "scan-ipmitool::${machine}::power_check_command", value1 => $an->data->{'scan-ipmitool'}{machine}{$machine}{power_check_command}, 
+			$access = $an->Check->ping({ping => $target});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "access", value1 => $access,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		next if not $access;
+		$ipmi_targets++;
 		
-		# Convert the 'power_check_command' into an 'ipmitool' call.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "scan-ipmitool::${machine}::power_check_command", value1 => $an->data->{'scan-ipmitool'}{machine}{$machine}{power_check_command}, 
+		# I need to remove the double-quotes from the '-p "<password>"'.
+		$power_check_command =~ s/-p "(.*?)"/-p $1/;
+		
+		# Convert to an 'ipmitool' call.
+		my $ipmitool_command = $an->data->{path}{ipmitool};
+		my $ipmi_password    = "";
+		if ($power_check_command =~ /-A (.*?) /) { $ipmitool_command .= " -A $1"; }	# IPMI Lan Auth type (md5, password, or none)
+		if ($power_check_command =~ /-a (.*?) /) { $ipmitool_command .= " -H $1"; }	# IPMI Lan IP to talk to
+		if ($power_check_command =~ /-P (.*?) /) { $ipmitool_command .= " -I $1"; }	# Use Lanplus to improve security of connection
+		if ($power_check_command =~ /-l (.*?) /) { $ipmitool_command .= " -U $1"; }	# Username/Login (if required) to control power on IPMI device
+		if ($power_check_command =~ /-C (.*?) /) { $ipmitool_command .= " -C $1"; }	# Ciphersuite to use (same as ipmitool -C parameter)
+		if ($power_check_command =~ /-L (.*?) /) { $ipmitool_command .= " -L $1"; }	# Privilege level on IPMI device
+		
+		if ($power_check_command =~ /-p (.*?) /) { $ipmi_password .= "$1"; }	# Password (if required) to control power on IPMI device
+		
+		### TODO: Find a way to get this info... may need to add it to the cache.
+		#if ($power_check_command =~ /-S (.*?) /) { $ipmi_password .= "$1"; }	# Script to retrieve password (if required)
+		
+		# Currently unsupported.
+		#if ($power_check_command =~ /-t (.*?) /) { $ipmitool_command .= " - $1"; }	# Timeout (sec) for IPMI operation
+		#if ($power_check_command =~ /-T (.*?) /) { $ipmitool_command .= " - $1"; }	# Wait X seconds after on/off operation (Default Value: 2)
+		
+		$an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command} = $power_check_command;
+		$an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command}      = $ipmitool_command;
+		$an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmi_password}         = $ipmi_password;
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+			name1 => "scan-ipmitool::machine::${node_name}::power_check_command", value1 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command},
+			name2 => "scan-ipmitool::machine::${node_name}::ipmitool_command",    value2 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command},
+			name3 => "scan-ipmitool::machine::${node_name}::ipmi_password",       value3 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmi_password}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{'scan-ipmitool'}{machine}{$machine}{power_check_command})
-		{
-			# Passwords will be written to a temp file, ipmitool 
-			# will be called and then the temp file will be 
-			# deleted. So we'll store the password separately.
-			my $power_check_command = $an->data->{'scan-ipmitool'}{machine}{$machine}{power_check_command}." ";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "machine",             value1 => $machine,
-				name2 => "power_check_command", value2 => $power_check_command, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			my $ipmitool_command = $an->data->{path}{ipmitool};
-			my $ipmi_password    = "";
-			if ($power_check_command =~ /-A (.*?) /) { $ipmitool_command .= " -A $1"; }	# IPMI Lan Auth type (md5, password, or none)
-			if ($power_check_command =~ /-a (.*?) /) { $ipmitool_command .= " -H $1"; }	# IPMI Lan IP to talk to
-			if ($power_check_command =~ /-P (.*?) /) { $ipmitool_command .= " -I $1"; }	# Use Lanplus to improve security of connection
-			if ($power_check_command =~ /-l (.*?) /) { $ipmitool_command .= " -U $1"; }	# Username/Login (if required) to control power on IPMI device
-			if ($power_check_command =~ /-C (.*?) /) { $ipmitool_command .= " -C $1"; }	# Ciphersuite to use (same as ipmitool -C parameter)
-			if ($power_check_command =~ /-L (.*?) /) { $ipmitool_command .= " -L $1"; }	# Privilege level on IPMI device
-			
-			if ($power_check_command =~ /-p (.*?) /) { $ipmi_password .= "$1"; }	# Password (if required) to control power on IPMI device
-			
-			### TODO: Find a way to get this info... may need to 
-			###       add it to the cache file.
-			#if ($power_check_command =~ /-S (.*?) /) { $ipmi_password .= "$1"; }	# Script to retrieve password (if required)
-			
-			# Currently unsupported.
-			#if ($power_check_command =~ /-t (.*?) /) { $ipmitool_command .= " - $1"; }	# Timeout (sec) for IPMI operation
-			#if ($power_check_command =~ /-T (.*?) /) { $ipmitool_command .= " - $1"; }	# Wait X seconds after on/off operation (Default Value: 2)
-			
-			$an->data->{'scan-ipmitool'}{machine}{$machine}{ipmitool_command} = $ipmitool_command;
-			$an->data->{'scan-ipmitool'}{machine}{$machine}{ipmi_password}    = $ipmi_password;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "scan-ipmitool::machine::${machine}::ipmitool_command", value1 => $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmitool_command},
-				name2 => "scan-ipmitool::machine::${machine}::ipmi_password",    value2 => $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmi_password}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
 	}
 	
 	return($ipmi_targets);

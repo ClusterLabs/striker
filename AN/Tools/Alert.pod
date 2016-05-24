@@ -892,6 +892,11 @@ The 'AN::Tools::System' module's 'daemon_boot_config()' was called without a dae
 
 The 'AN::Tools::System' module's 'daemon_boot_config()' was called with an invalid 'set' value. Nnly 'on' or 'off' are valid.
 
+=head2 C<164>
+
+The 'AN::Tools::Web' module's 'insert_or_update_variables()' method was called without passing in an variable name.
+
+
 
 =head1 SEE ALSO
 

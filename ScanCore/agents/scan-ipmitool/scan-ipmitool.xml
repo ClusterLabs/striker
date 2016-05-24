@@ -59,7 +59,7 @@ The IPMI sensor: [#!variable!sensor_name!#] has appeared:
 		</key>
 		
 		<!-- IPMI Agent-specific messages -->
-		<key name="scan_ipmitool_message_0001">Starting #!string!scan_ipmitool_brand_0001!#:</key>
+		<key name="scan_ipmitool_message_0001">Starting #!string!scan_ipmitool_brand_0001!#</key>
 		<key name="scan_ipmitool_message_0002"><![CDATA[
  -=] IPMI Scan Agent
 

@@ -1,11 +1,10 @@
 #!/usr/bin/perl
 # 
-# This looks for IPMI information in the cluster configuration (on nodes) and
-# in Striker's cache files (on dashboards). It formats the found data and
-# reports it in a machine-parsable format.
+# This looks for IPMI information in the cluster configuration (on nodes) and in Striker's cache files (on 
+# dashboards). It formats the found data and reports it in a machine-parsable format.
 # 
-# This software was created by Alteeve's Niche! Inc. and has been released
-# under the terms of the GNU GPL version 2.
+# This software was created by Alteeve's Niche! Inc. and has been released under the terms of the GNU GPL 
+# version 2.
 #
 # https://alteeve.ca
 # 
@@ -22,8 +21,7 @@ use IO::Handle;
 
 $| = 1;
 
-# Don't set defaults for security here. The user *must* set them in their
-# striker.conf file.
+# Don't set defaults for security here. The user *must* set them in their striker.conf file.
 my $conf = {
 	path	=>	{
 		cman_config	=>	"/etc/cluster/cluster.conf",

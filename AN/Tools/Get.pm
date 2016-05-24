@@ -49,6 +49,7 @@ my $THIS_FILE = "Get.pm";
 # users_home
 # use_24h
 # uuid
+# what_am_i
 
 #############################################################################################################
 # House keeping methods                                                                                     #
@@ -99,6 +100,7 @@ sub anvil_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "anvil_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return     = {};
 	my $anvil_name = $parameter->{name} ? $parameter->{name} : "";
@@ -238,6 +240,7 @@ sub current_directory
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "current_directory" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $current_dir = "/var/www/html/";
 	if ($ENV{DOCUMENT_ROOT})
@@ -256,15 +259,13 @@ sub current_directory
 	return($current_dir);
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # This returns the date and time based on the given unix-time.
 sub date_and_time
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
 	
 	my $offset          = $parameter->{offset}          ? $parameter->{offset}          : 0;
 	my $use_time        = $parameter->{use_time}        ? $parameter->{use_time}        : time;
@@ -423,7 +424,7 @@ sub date_and_time
 	$time{mon}++;
 	
 	# Parse the 12/24h time components.
-	if ($self->use_24h)
+	if ($an->Get->use_24h)
 	{
 		# 24h time.
 		$time{pad_hour} = sprintf("%02d", $time{hour});
@@ -435,17 +436,17 @@ sub date_and_time
 		if ( $time{hour} == 0 )
 		{
 			$time{pad_hour} = 12;
-			$time{suffix}   = " ".$self->say_am;
+			$time{suffix}   = " ".$an->Get->say_am;
 		}
 		elsif ( $time{hour} < 12 )
 		{
 			$time{pad_hour} = $time{hour};
-			$time{suffix}   = " ".$self->say_am;
+			$time{suffix}   = " ".$an->Get->say_am;
 		}
 		else
 		{
 			$time{pad_hour} = ($time{hour}-12);
-			$time{suffix}   = " ".$self->say_pm;
+			$time{suffix}   = " ".$an->Get->say_pm;
 		}
 		$time{pad_hour} = sprintf("%02d", $time{pad_hour});
 	}
@@ -458,8 +459,8 @@ sub date_and_time
 	$time{pad_mday} = sprintf("%02d", $time{mday});
 	$time{mon}++;
 	
-	my $date = $time{year}.$self->date_seperator.$time{pad_mon}.$self->date_seperator.$time{pad_mday};
-	my $time = $time{pad_hour}.$self->time_seperator.$time{pad_min}.$self->time_seperator.$time{pad_sec}.$time{suffix};
+	my $date = $time{year}.$an->Get->date_seperator.$time{pad_mon}.$an->Get->date_seperator.$time{pad_mday};
+	my $time = $time{pad_hour}.$an->Get->time_seperator.$time{pad_min}.$an->Get->time_seperator.$time{pad_sec}.$time{suffix};
 	
 	if ($split_date_time)
 	{
@@ -488,17 +489,13 @@ sub date_and_time
 	}
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # Sets/returns the date separator.
 sub date_seperator
 {
-	my $self=shift;
-	my $symbol=shift;
-	
-	# This just makes the code more consistent.
-	my $an=$self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $self   = shift;
+	my $symbol = shift;
+	my $an     = $self->parent;
 	
 	if ( defined $symbol )
 	{
@@ -513,10 +510,8 @@ sub drbd_data
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
-	$an->Alert->_set_error;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "drbd_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will store the LVM data returned to the caller.
 	my $return     = {};
@@ -1058,9 +1053,7 @@ sub install_target_state
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "install_target_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the control program exists, call it with '--status'
 	my $install_target_state = 2;
@@ -1131,6 +1124,7 @@ sub ip
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "ip" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Error if no host given.
 	my $ip        = "";
@@ -1347,6 +1341,7 @@ sub local_users
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "local_users" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $users = [];
 	my $shell_call = "/etc/passwd";
@@ -1392,10 +1387,8 @@ sub lvm_data
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
-	$an->Alert->_set_error;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "lvm_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will store the LVM data returned to the caller.
 	my $data     = {};
@@ -1778,6 +1771,7 @@ sub manifest_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "manifest_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $manifest_uuid = $parameter->{manifest_uuid} ? $parameter->{manifest_uuid} : "";
 	if (not $manifest_uuid)
@@ -1819,9 +1813,7 @@ sub netmask_from_ip
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "netmask_from_ip" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if (not $parameter->{ip})
 	{
@@ -1920,6 +1912,7 @@ sub node_info
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "node_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If no host name is passed in, use this machine's host name.
 	my $node_name = $parameter->{name} ? $parameter->{name} : $an->hostname;
@@ -1985,6 +1978,7 @@ sub notify_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "notify_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return        = {};
 	my $notify_target = $parameter->{target} ? $parameter->{target} : "";
@@ -2081,6 +2075,7 @@ sub owner_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "owner_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return     = {};
 	my $owner_name = $parameter->{name} ? $parameter->{name} : "";
@@ -2157,6 +2152,7 @@ sub peer_network_details
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "peer_network_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_key = "";
 	if ($an->hostname eq $an->data->{sys}{anvil}{node1}{name})
@@ -2197,12 +2193,8 @@ sub pids
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "pids" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# What program?
 	if (not $parameter->{program_name})
@@ -2330,12 +2322,8 @@ sub ram_used_by_pid
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "ram_used_by_pid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# What PID?
 	my $pid = $parameter->{pid} ? $parameter->{pid} : $$;
@@ -2379,9 +2367,8 @@ sub ram_used_by_program
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "ram_used_by_program" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
@@ -2425,6 +2412,7 @@ sub recipient_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "recipient_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return         = {};
 	my $anvil_uuid     = $parameter->{anvil_uuid}  ? $parameter->{anvil_uuid}  : "";
@@ -2514,9 +2502,7 @@ sub remote_anvil_details
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "remote_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
 	my $anvil = $parameter->{anvil};
 	if (not $anvil)
@@ -2561,6 +2547,7 @@ sub rsa_public_key
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "rsa_public_key" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $user = $parameter->{user};
 	if (not $user)
@@ -2649,17 +2636,13 @@ sub rsa_public_key
 	return($key_owner, $key_string);
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # Sets/returns the "am" suffix.
 sub say_am
 {
 	my $self = shift;
 	my $say  = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $an   = $self->parent;
 	
 	if ( defined $say )
 	{
@@ -2669,17 +2652,14 @@ sub say_am
 	return $self->{SAY}->{AM};
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # Sets/returns the "pm" suffix.
 sub say_pm
 {
 	my $self = shift;
 	my $say  = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $an   = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "say_pm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if ( defined $say )
 	{
@@ -2696,6 +2676,7 @@ sub server_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "server_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return      = {};
 	my $server_name = $parameter->{server}     ? $parameter->{server}     : "";
@@ -3019,6 +3000,7 @@ sub server_uuid
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "server_uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $uuid = "";
 	my $server = $parameter->{server} ? $parameter->{server} : "";
@@ -3172,6 +3154,7 @@ sub server_xml
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "server_xml" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $server   = $parameter->{server};
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -3402,6 +3385,7 @@ sub shared_files
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "shared_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Pick up our parameters
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -3618,6 +3602,7 @@ sub smtp_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "smtp_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return      = {};
 	my $smtp_server = $parameter->{server} ? $parameter->{server} : "";
@@ -3718,9 +3703,7 @@ sub striker_peers
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "striker_peers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This array will store the hashes for the peer host names and their passwords.
 	my $peers = [];
@@ -3774,13 +3757,9 @@ sub striker_peers
 # This reads in command line switches.
 sub switches
 {
-	my $self  = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $self = shift;
+	my $an   = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "switches" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $last_argument = "";
 	foreach my $argument (@ARGV)
@@ -3846,12 +3825,8 @@ sub target_details
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "target_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If no host name is passed in, use this machine's host name.
 	my $target   = $parameter->{target}   ? $parameter->{target}   : $an->hostname;
@@ -4028,17 +4003,13 @@ sub target_details
 	return($return);
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # Sets/returns the time separator.
 sub time_seperator
 {
 	my $self   = shift;
 	my $symbol = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $an     = $self->parent;
 	
 	if ( defined $symbol )
 	{
@@ -4048,21 +4019,20 @@ sub time_seperator
 	return $self->{SEPERATOR}->{TIME};
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # This sets/returns whether to use 24-hour or 12-hour, am/pm notation.
 sub use_24h
 {
 	my $self    = shift;
 	my $use_24h = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $an      = $self->parent;
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
 	if (defined $use_24h)
 	{
-		if (( $use_24h == 0 ) || ( $use_24h == 1 ))
+		if (( $use_24h == 0 ) or ( $use_24h == 1 ))
 		{
 			$self->{USE_24H} = $use_24h;
 		}
@@ -4081,6 +4051,7 @@ sub users_home
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "users_home" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $user = $parameter->{user};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -4139,6 +4110,7 @@ sub uuid
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Figure out why the heck I did this... Remove it, most likely.
 	# Set the 'uuidgen' path if set by the user.
@@ -4219,6 +4191,48 @@ sub uuid
 	}
 	
 	return($uuid);
+}
+
+# This method returns 'node' or 'dashboard' depending on what the caller is.
+sub what_am_i
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "what_am_i" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# When called initially, we don't have a DB connection yet so we can't query the db.
+	my $i_am_a = "";
+	if (not $an->data->{sys}{use_db_fh})
+	{
+		my $host_name = $an->hostname;
+		   $i_am_a    = "node";
+		if (($host_name =~ /striker/) || ($host_name =~ /dashboard/))
+		{
+			$i_am_a = "dashboard";
+		}
+	}
+	else
+	{
+		my $query = "SELECT host_type FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
+		if ($an->data->{sys}{host_uuid})
+		{
+			$query = "SELECT host_type FROM hosts WHERE host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		$i_am_a = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "i_am_a", value1 => $i_am_a
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "i_am_a", value1 => $i_am_a
+	}, file => $THIS_FILE, line => __LINE__});
+	return($i_am_a);
 }
 
 

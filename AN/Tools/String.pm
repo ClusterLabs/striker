@@ -83,6 +83,7 @@ sub force_utf8
 	return ($self->{FORCE_UTF8});
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # This takes a word key and, optionally, a hash reference, a language and/or an variables array reference. It
 # returns the corresponding string from the hash reference data containing the data from a 'read_words()' 
 # call.
@@ -91,9 +92,6 @@ sub get
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
 	
 	# Catch infinite loops
 	my $i     = 0;

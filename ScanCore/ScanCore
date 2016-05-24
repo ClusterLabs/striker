@@ -703,93 +703,84 @@ sub read_cache_files
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_cache_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# This will be stuck onto the start of fence agents that don't have a full path.
+	my $fence_path = $an->data->{path}{fence_agents};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "path::node_cache", value1 => $an->data->{path}{node_cache}
+		name1 => "fence_path", value1 => $fence_path
 	}, file => $THIS_FILE, line => __LINE__});
-	if (-d $an->data->{path}{node_cache})
+	my $node_cache = $an->ScanCore->get_nodes_cache();
+	my $node_data  = $an->ScanCore->get_nodes();
+	foreach my $hash_ref (@{$node_data})
 	{
-		# This will be stuck onto the start of fence agents that don't have a full path.
-		my $fence_path = $an->data->{path}{fence_agents};
+		my $node_name                                  = $hash_ref->{host_name};
+		my $node_uuid                                  = $hash_ref->{node_uuid};
+		   $an->data->{node}{uuid_to_name}{$node_uuid} = $node_name;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "fence_path", value1 => $fence_path
+			name1 => "node::uuid_to_name::$node_uuid", value1 => $an->data->{node}{uuid_to_name}{$node_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	foreach my $hash_ref (@{$node_cache})
+	{
+		# Ignore any data cache by other nodes.
+		my $node_cache_host_uuid = $hash_ref->{node_cache_host_uuid}; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::host_uuid",       value1 => $an->data->{sys}{host_uuid}, 
+			name2 => "node_cache_host_uuid", value2 => $node_cache_host_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		next if $node_cache_host_uuid ne $an->data->{sys}{host_uuid};
+		
+		my $node_cache_node_uuid = $hash_ref->{node_cache_node_uuid};
+		my $node_cache_name      = $hash_ref->{node_cache_name};
+		my $node_cache_data      = $hash_ref->{node_cache_data};
+		my $node_name            = $an->data->{node}{uuid_to_name}{$node_cache_node_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "node_cache_node_uuid", value1 => $node_cache_node_uuid, 
+			name2 => "node_cache_name",      value2 => $node_cache_name, 
+			name3 => "node_cache_data",      value3 => $node_cache_name, 
+			name4 => "node_name",            value4 => $node_name, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# So we do have a cache directory. What about actual cache files?
-		local(*DIRECTORY);
-		opendir(DIRECTORY, $an->data->{path}{node_cache});
-		while(my $file = readdir(DIRECTORY))
+		# Parse out the data
+		if ($node_cache_name eq "etc_hosts")
 		{
-			next if $file eq ".";
-			next if $file eq "..";
-			next if $file !~ /cache_.*?\.striker/;
-			my $full_path = $an->data->{path}{node_cache}."/$file";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "full_path", value1 => "$full_path"
-			}, file => $THIS_FILE, line => __LINE__});
-			if (-r $full_path)
+			foreach my $line (split/\n/, $node_cache_data)
 			{
-				# Woot!
-				my $in_hosts       = 0;
-				my $shell_call     = $full_path;
-				my ($anvil, $node) = ($full_path =~ /cache_(.*?)_(.*?)\.striker/);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-					name1 => "in_hosts",   value1 => "$in_hosts", 
-					name2 => "shell_call", value2 => "$shell_call", 
-					name3 => "anvil",      value3 => "$anvil", 
-					name4 => "node",       value4 => "$node", 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-				while(<$file_handle>)
+				
+				if ($line =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+(.*)/)
 				{
-					chomp;
-					my $line =  $_;
-						$line =~ s/\s+/ /g;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => "$line"
+					### TODO: Check if the host has spaces and split if so.
+					my $this_ip   = $1;
+					my $this_host = $2;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "this_ip",   value1 => $this_ip, 
+						name2 => "this_host", value2 => $this_host, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					if ($line eq "#! start hosts !#")
-					{
-						$in_hosts = 1;
-						next;
-					}
-					if ($line eq "#! end hosts !#")
-					{
-						$in_hosts = 1;
-						next;
-					}
-					if (($in_hosts) && ($line =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+(.*)/))
-					{
-						my $this_ip   = $1;
-						my $this_host = $2;
-						$an->data->{cache}{$node}{host}{$this_host}{ip} = $this_ip;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "cache::${node}::host::${this_host}::ip", value1 => $an->data->{cache}{$node}{host}{$this_host}{ip}
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-					else
-					{
-						next if $line !~ /=/;
-						my ($variable, $value) = (split/=/, $line, 2);
-						$variable =~ s/^\s+//;
-						$variable =~ s/\s+$//;
-						$value    =~ s/^\s+//;
-						$value    =~ s/\s+$//;
-						
-						# Stick the full path onto the 'power_check_command'.
-						if ($variable eq "power_check_command")
-						{
-							$value =~ s/^fence/$fence_path\/fence/;
-						}
-						
-						$an->data->{cache}{$node}{info}{$variable} = $value;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "cache::${node}::info::${variable}", value1 => $an->data->{cache}{$node}{info}{$variable}
-						}, file => $THIS_FILE, line => __LINE__});
-					}
+					$an->data->{cache}{$node_name}{host}{$this_host}{ip} = $this_ip;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "cache::${node_name}::host::${this_host}::ip", value1 => $an->data->{cache}{$node_name}{host}{$this_host}{ip}, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
-				close $file_handle;
 			}
+		}
+		else
+		{
+			if ($node_cache_name eq "power_check")
+			{
+				# Stick the full path onto the 'power_check_command'.
+				$node_cache_data =~ s/^fence/$fence_path\/fence/;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node_cache_data", value1 => $node_cache_data, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			$an->data->{cache}{$node_name}{info}{$node_cache_name} = $node_cache_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cache::${node_name}::info::${node_cache_name}", value1 => $an->data->{cache}{$node_name}{info}{$node_cache_name}
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	

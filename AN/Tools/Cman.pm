@@ -72,6 +72,7 @@ sub boot_server
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "boot_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If requested_node is healthy, we will boot on that. If 'force' is set and both nodes are sick, 
 	# we'll boot on the requested node or, if not set, the highest priority node, if storage is OK on 
@@ -510,7 +511,7 @@ sub cluster_conf_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "cluster_conf_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will store the LVM data returned to the caller.
 	my $return   = {};
@@ -535,15 +536,13 @@ sub cluster_conf_data
 		### Remote calls
 		# Read in drbdadm dump-xml regardless of whether the module is loaded.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $target,
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		(my $error, my $ssh_fh, $cluster_conf_return) = $an->Remote->remote_call({
 			target		=>	$target,
 			port		=>	$port, 
 			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
 	}
@@ -761,6 +760,7 @@ sub cluster_name
 {
 	my $self = shift;
 	my $an   = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "cluster_name" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in cluster.conf. if necessary
 	$an->Cman->_read_cluster_conf();
@@ -778,6 +778,7 @@ sub find_node_in_cluster
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_node_in_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If no anvil uuid has been set, return.
 	if (not $an->data->{cgi}{anvil_uuid})
@@ -846,6 +847,7 @@ sub get_clustat_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_clustat_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
@@ -1065,6 +1067,7 @@ sub get_cluster_server_list
 {
 	my $self      = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_cluster_server_list" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $servers = [];
 	my $state   = {};
@@ -1109,7 +1112,9 @@ sub migrate_server
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	my $server    = $parameter->{server} ? $parameter->{server} : "";
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "migrate_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $server = $parameter->{server} ? $parameter->{server} : "";
 	if (not $server)
 	{
 		$an->Alert->error({fatal => 1, title_key => "error_title_0003", message_key => "error_message_0120", code => 120, file => $THIS_FILE, line => __LINE__});
@@ -1139,6 +1144,7 @@ sub peer_hostname
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "peer_hostname" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $peer_hostname = "";
 	my $hostname      = $parameter->{node} ? $parameter->{node} : $an->hostname();
@@ -1198,15 +1204,16 @@ sub peer_hostname
 			# Found myself, but not my peer.
 			$an->Alert->error({fatal => 1, title_key => "error_title_0025", message_key => "error_message_0045", message_variables => { file => $an->data->{path}{cman_config} }, code => 42, file => "$THIS_FILE", line => __LINE__});
 			# Return nothing in case the user is blocking fatal errors.
-			return (undef);
+			return ("");
 		}
 	}
 	else
 	{
 		# I didn't find myself, so I can't trust the peer was found or is accurate.
 		$an->Alert->error({fatal => 1, title_key => "error_title_0025", message_key => "error_message_0046", message_variables => { file => $an->data->{path}{cman_config} }, code => 46, file => "$THIS_FILE", line => __LINE__});
+		
 		# Return nothing in case the user is blocking fatal errors.
-		return (undef);
+		return ("");
 	}
 	
 	return($peer_hostname);
@@ -1218,6 +1225,7 @@ sub peer_short_hostname
 {
 	my $self = shift;
 	my $an   = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "peer_short_hostname" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $peer_short_hostname =  $an->Cman->peer_hostname();
 	   $peer_short_hostname =~ s/\..*$//;
@@ -1231,7 +1239,7 @@ sub stop_server
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "stop_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will store the shutdown output and return it to the caller.
 	my $output   = "";
@@ -1335,6 +1343,7 @@ sub withdraw_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "withdraw_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
@@ -1664,6 +1673,7 @@ sub _do_server_boot
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_do_server_boot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return      = 0;
 	my $boot_return = [];
@@ -1761,6 +1771,7 @@ sub _read_cluster_conf
 {
 	my $self = shift;
 	my $an   = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_read_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cman_file = $an->data->{path}{cman_config};
 	if (not exists $an->data->{cman_config}{'read'})
@@ -1788,6 +1799,7 @@ sub _recover_rgmanager
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_recover_rgmanager" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";

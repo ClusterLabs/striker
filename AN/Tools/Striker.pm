@@ -189,29 +189,36 @@ sub load_anvil
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid} ? $an->data->{cgi}{anvil_uuid} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	if ($parameter->{anvil_uuid})
+	if ($anvil_uuid)
 	{
 		$anvil_uuid = $parameter->{anvil_uuid};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "anvil_uuid", value1 => $anvil_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name},
-	}, file => $THIS_FILE, line => __LINE__});
-	if (not $anvil_uuid)
+	else
 	{
+		# See if we can divine the UUID by reading the cluster name from the local cluster.conf, if 
+		# it exists.
+		my $cluster_name = $an->Cman->cluster_name();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cluster_name", value1 => $cluster_name,
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		# Nothing passed in or set in CGI
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0102", code => 102, file => "$THIS_FILE", line => __LINE__});
 		return(1);
 	}
-	elsif (not $an->Validate->is_uuid({uuid => $anvil_uuid}))
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $an->Validate->is_uuid({uuid => $anvil_uuid}))
 	{
 		# Value read, but it isn't a UUID.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0103", message_variables => { uuid => $anvil_uuid }, code => 103, file => "$THIS_FILE", line => __LINE__});
@@ -8948,7 +8955,7 @@ sub _parse_cluster_conf
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "this_node", value1 => $this_node,
-				name2 => "method",    value2 => $in_method,
+				name2 => "in_method", value2 => $in_method,
 			}, file => $THIS_FILE, line => __LINE__});
 			my $fence_command = "$in_method: ";
 			foreach my $device_count (sort {$a cmp $b} keys %{$an->data->{node}{$this_node}{fence}{method}{$in_method}{device}})
@@ -9074,7 +9081,6 @@ sub _parse_cluster_conf
 			node_cache_data		=>	$an->data->{node}{$node_name}{info}{fence_methods},
 		});
 	}
-	
 	
 	return(0);
 }

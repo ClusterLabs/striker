@@ -19,6 +19,7 @@ my $THIS_FILE = "ScanCore.pm";
 # get_nodes_cache
 # get_notifications
 # get_owners
+# get_power_check_data
 # get_recipients
 # get_servers
 # get_smtp
@@ -30,6 +31,7 @@ my $THIS_FILE = "ScanCore.pm";
 # insert_or_update_owners
 # insert_or_update_recipients
 # insert_or_update_smtp
+# insert_or_update_variables
 # parse_anvil_data
 # parse_install_manifest
 # read_cache
@@ -74,9 +76,7 @@ sub get_anvils
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_anvils" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -145,9 +145,7 @@ sub get_hosts
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -213,9 +211,7 @@ sub get_manifests
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_manifests" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -266,14 +262,12 @@ sub get_migration_target
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_migration_target" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $server = $parameter->{server} ? $parameter->{server} : "";
 	if (not $server)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0101", code => 101, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0101", code => 101, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -308,9 +302,7 @@ sub get_nodes
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -398,9 +390,13 @@ sub get_nodes_cache
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_nodes_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	# The user may want cache data from all machines but only of a certain type.
+	my $type = $parameter->{type} ? $parameter->{type} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "type", value1 => $type,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: This is NOT restricted to the host because if this host doesn't have cache data for a given
 	###       node, it might be able to use data cached by another host.
@@ -414,9 +410,17 @@ SELECT
     node_cache_note, 
     modified_date 
 FROM 
-    nodes_cache 
+    nodes_cache ";
+	if ($type)
+	{
+		$query .= "
+WHERE 
+    node_cache_name = ".$an->data->{sys}{use_db_fh}->quote($type)."
+";
+	}
+	$query .= "
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -465,9 +469,7 @@ sub get_notifications
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_notifications" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -534,9 +536,7 @@ sub get_owners
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_owners" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -581,15 +581,94 @@ FROM
 	return($return);
 }
 
+# This returns an array containing all of the power check commands for nodes that the caller knows about.
+sub get_power_check_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_power_check_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If I am a node, I will check the local cluster.conf and override anything that conflicts with cache
+	# as the cluster.conf is more accurate.
+	my $return   = [];
+	my $i_am_a   = $an->Get->what_am_i();
+	my $hostname = $an->hostname();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "i_am_a",   value1 => $i_am_a,
+		name2 => "hostname", value2 => $hostname
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Parse the cluster.conf file. This will cause the cache to be up to date.
+	if (($i_am_a eq "node") && (-e $an->data->{path}{cman_config}))
+	{
+		# Read and parse our cluster.conf (which updates the cache).
+		$an->Striker->_parse_cluster_conf();
+	}
+	
+	# Read the power_check data from cache for all the machines we know about.
+	my $power_check_data = $an->ScanCore->get_nodes_cache({type => "power_check"});
+	my $node_data        = $an->ScanCore->get_nodes();
+	foreach my $hash_ref (@{$node_data})
+	{
+		my $node_name                                  = $hash_ref->{host_name};
+		my $node_uuid                                  = $hash_ref->{node_uuid};
+		   $an->data->{node}{uuid_to_name}{$node_uuid} = $node_name;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::uuid_to_name::$node_uuid", value1 => $an->data->{node}{uuid_to_name}{$node_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	foreach my $hash_ref (@{$power_check_data})
+	{
+		# Ignore any data cache by other nodes.
+		my $node_cache_host_uuid = $hash_ref->{node_cache_host_uuid}; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::host_uuid",       value1 => $an->data->{sys}{host_uuid}, 
+			name2 => "node_cache_host_uuid", value2 => $node_cache_host_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		next if $node_cache_host_uuid ne $an->data->{sys}{host_uuid};
+		
+		my $node_cache_node_uuid = $hash_ref->{node_cache_node_uuid};
+		my $node_cache_data      = $hash_ref->{node_cache_data};
+		my $node_name            = $an->data->{node}{uuid_to_name}{$node_cache_node_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node_cache_node_uuid", value1 => $node_cache_node_uuid, 
+			name2 => "node_cache_data",      value2 => $node_cache_data, 
+			name3 => "node_name",            value3 => $node_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Find the IPMI entry, if any
+		my $power_check_command = ($node_cache_data =~ /(fence_ipmilan .*?);/)[0];
+		next if not $power_check_command;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "power_check_command", value1 => $power_check_command, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# I need to remove the double-quotes from the '-p "<password>"'.
+		$power_check_command =~ s/-p "(.*?)"/-p $1/;
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "node_name",            value1 => $node_name, 
+			name2 => "node_cache_node_uuid", value2 => $node_cache_node_uuid, 
+			name3 => "power_check_command",  value3 => $power_check_command, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			node_name           => $node_name,
+			node_uuid           => $node_cache_node_uuid, 
+			power_check_command => $power_check_command,
+		};
+	}
+	
+	return($return);
+}
+
 # Get a list of recipients (links between Anvil! systems and who receives alert notifications from it).
 sub get_recipients
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_recipients" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -648,9 +727,7 @@ sub get_servers
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -745,9 +822,7 @@ sub get_smtp
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_smtp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -820,9 +895,7 @@ sub host_state
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "host_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will store the state.
 	my $state = "";
@@ -847,7 +920,7 @@ sub host_state
 		if (not $valid)
 		{
 			# No host 
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0099", message_variables => { target => $parameter->{target} }, code => 99, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0099", message_variables => { target => $parameter->{target} }, code => 99, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 	}
@@ -874,7 +947,7 @@ WHERE
 	# If the count is '0', the host wasn't found and we've hit a program error.
 	if (not $count)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0100", message_variables => { target => $target }, code => 100, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0100", message_variables => { target => $target }, code => 100, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	my $current_health = "";
@@ -940,6 +1013,7 @@ sub insert_or_update_anvils
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_anvils" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_uuid        = $parameter->{anvil_uuid}        ? $parameter->{anvil_uuid}        : "";
 	my $anvil_owner_uuid  = $parameter->{anvil_owner_uuid}  ? $parameter->{anvil_owner_uuid}  : "";
@@ -951,7 +1025,7 @@ sub insert_or_update_anvils
 	if (not $anvil_name)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0079", code => 79, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0079", code => 79, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -991,12 +1065,12 @@ WHERE
 		# INSERT, *if* we have an owner and smtp UUID.
 		if (not $anvil_owner_uuid)
 		{
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0080", code => 80, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0080", code => 80, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 		if (not $anvil_smtp_uuid)
 		{
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0081", code => 81, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0081", code => 81, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 		   $anvil_uuid = $an->Get->uuid();
@@ -1113,6 +1187,7 @@ sub insert_or_update_nodes
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_uuid        = $parameter->{node_uuid}        ? $parameter->{node_uuid}        : "";
 	my $node_anvil_uuid  = $parameter->{node_anvil_uuid}  ? $parameter->{node_anvil_uuid}  : "";
@@ -1175,12 +1250,12 @@ WHERE
 		# INSERT, *if* we have an owner and smtp UUID.
 		if (not $node_anvil_uuid)
 		{
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 		if (not $node_host_uuid)
 		{
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 		   $node_uuid = $an->Get->uuid();
@@ -1318,6 +1393,7 @@ sub insert_or_update_nodes_cache
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_nodes_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_cache_uuid      = $parameter->{node_cache_uuid}      ? $parameter->{node_cache_uuid}      : "";
 	my $node_cache_host_uuid = $parameter->{node_cache_host_uuid} ? $parameter->{node_cache_host_uuid} : "";
@@ -1337,17 +1413,17 @@ sub insert_or_update_nodes_cache
 	# We need a host_uuid, node_uuid and name
 	if (not $node_cache_host_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_cache_node_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_cache_name)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -1500,6 +1576,7 @@ sub insert_or_update_notifications
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_notifications" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $notify_uuid     = $parameter->{notify_uuid}     ? $parameter->{notify_uuid}     : "";
 	my $notify_name     = $parameter->{notify_name}     ? $parameter->{notify_name}     : "";
@@ -1511,7 +1588,7 @@ sub insert_or_update_notifications
 	if (not $notify_target)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0088", code => 88, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0088", code => 88, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -1663,6 +1740,7 @@ sub insert_or_update_owners
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_owners" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $owner_uuid = $parameter->{owner_uuid} ? $parameter->{owner_uuid} : "";
 	my $owner_name = $parameter->{owner_name} ? $parameter->{owner_name} : "";
@@ -1670,7 +1748,7 @@ sub insert_or_update_owners
 	if (not $owner_name)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0078", code => 78, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0078", code => 78, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -1794,6 +1872,7 @@ sub insert_or_update_recipients
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_recipients" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $recipient_uuid         = $parameter->{recipient_uuid}         ? $parameter->{recipient_uuid}         : "";
 	my $recipient_anvil_uuid   = $parameter->{recipient_anvil_uuid}   ? $parameter->{recipient_anvil_uuid}   : "";
@@ -1803,7 +1882,7 @@ sub insert_or_update_recipients
 	if ((not $recipient_anvil_uuid) or (not $recipient_notify_uuid))
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0091", code => 91, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0091", code => 91, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -1943,6 +2022,7 @@ sub insert_or_update_smtp
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_smtp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $smtp_uuid           = $parameter->{smtp_uuid}           ? $parameter->{smtp_uuid}           : "";
 	my $smtp_server         = $parameter->{smtp_server}         ? $parameter->{smtp_server}         : "";
@@ -1956,7 +2036,7 @@ sub insert_or_update_smtp
 	if (not $smtp_server)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0077", code => 77, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0077", code => 77, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -2116,6 +2196,227 @@ WHERE
 	return($smtp_uuid);
 }
 
+### NOTE: Unlike the other methods of this type, this method can be told to update the 'variable_value' only.
+###       This is so because the section, description and default columns rarely ever change. If this is set
+###       and the variable name is new, an INSERT will be done the same as if it weren't set, with the unset
+###       columns set to NULL.
+# This updates (or inserts) a record in the 'variables' table.
+sub insert_or_update_variables
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $variable_uuid        = $parameter->{variable_uuid}        ? $parameter->{variable_uuid}        : "";
+	my $variable_name        = $parameter->{variable_name}        ? $parameter->{variable_name}        : "";
+	my $variable_value       = $parameter->{variable_value}       ? $parameter->{variable_value}       : "NULL";
+	my $variable_default     = $parameter->{variable_default}     ? $parameter->{variable_default}     : "NULL";
+	my $variable_description = $parameter->{variable_description} ? $parameter->{variable_description} : "NULL";
+	my $variable_section     = $parameter->{variable_section}     ? $parameter->{variable_section}     : "NULL";
+	my $update_value_only    = $parameter->{update_value_only}    ? $parameter->{update_value_only}    : 1;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "variable_uuid",        value1 => $variable_uuid, 
+		name2 => "variable_name",        value2 => $variable_name, 
+		name3 => "variable_value",       value3 => $variable_value, 
+		name4 => "variable_default",     value4 => $variable_default, 
+		name5 => "variable_description", value5 => $variable_description, 
+		name6 => "variable_section",     value6 => $variable_section, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $variable_name)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0164", code => 164, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# If we don't have a UUID, see if we can find one for the given SMTP server name.
+	if (not $variable_uuid)
+	{
+		my $query = "
+SELECT 
+    variable_uuid 
+FROM 
+    variables 
+WHERE 
+    variable_name = ".$an->data->{sys}{use_db_fh}->quote($variable_name)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$variable_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "variable_uuid", value1 => $variable_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have an variable_uuid, we're INSERT'ing .
+	if (not $variable_uuid)
+	{
+		# INSERT
+		   $variable_uuid = $an->Get->uuid();
+		my $query         = "
+INSERT INTO 
+    variables 
+(
+    variable_uuid, 
+    variable_name, 
+    variable_value, 
+    variable_default, 
+    variable_description, 
+    variable_section, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($variable_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_default).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_description).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_section).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query only the value
+		if ($update_value_only)
+		{
+			my $query = "
+SELECT 
+    variable_value 
+FROM 
+    variables 
+WHERE 
+    variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)." 
+;";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+			my $count   = @{$results};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "results", value1 => $results, 
+				name2 => "count",   value2 => $count
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $row (@{$results})
+			{
+				my $old_variable_name = $row->[0];
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "old_variable_value", value1 => $old_variable_value, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Anything change?
+				if ($old_variable_value ne $variable_value)
+				{
+					# Variable changed, save.
+					my $query = "
+UPDATE 
+    variables 
+SET 
+    variable_value = ".$an->data->{sys}{use_db_fh}->quote($variable_value).", 
+    modified_date  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)." 
+";
+					$query =~ s/'NULL'/NULL/g;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		else
+		{
+			# Query the rest of the values and see if anything changed.
+			my $query = "
+SELECT 
+    variable_name, 
+    variable_value, 
+    variable_default, 
+    variable_description, 
+    variable_section 
+FROM 
+    variables 
+WHERE 
+    variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)." 
+;";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+			my $count   = @{$results};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "results", value1 => $results, 
+				name2 => "count",   value2 => $count
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $row (@{$results})
+			{
+				my $old_variable_name        = $row->[0];
+				my $old_variable_value       = $row->[1] ? $row->[1] : "NULL";
+				my $old_variable_default     = $row->[2] ? $row->[2] : "NULL";
+				my $old_variable_description = $row->[3] ? $row->[3] : "NULL";
+				my $old_variable_section     = $row->[4] ? $row->[4] : "NULL";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+					name1 => "old_variable_name",        value1 => $old_variable_name, 
+					name2 => "old_variable_value",       value2 => $old_variable_value, 
+					name3 => "old_variable_default",     value3 => $old_variable_default, 
+					name4 => "old_variable_description", value4 => $old_variable_description, 
+					name5 => "old_variable_section",     value5 => $old_variable_section, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Anything change?
+				if (($old_variable_name        ne $variable_name)        or 
+				    ($old_variable_value       ne $variable_value)       or 
+				    ($old_variable_default     ne $variable_default)     or 
+				    ($old_variable_description ne $variable_description) or 
+				    ($old_variable_section     ne $variable_section))
+				{
+					# Something changed, save.
+					my $query = "
+UPDATE 
+    variables 
+SET 
+    variable_name        = ".$an->data->{sys}{use_db_fh}->quote($variable_name).", 
+    variable_value       = ".$an->data->{sys}{use_db_fh}->quote($variable_value).", 
+    variable_default     = ".$an->data->{sys}{use_db_fh}->quote($variable_default).", 
+    variable_description = ".$an->data->{sys}{use_db_fh}->quote($variable_description).", 
+    variable_section     = ".$an->data->{sys}{use_db_fh}->quote($variable_section).", 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    variable_uuid        = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)." 
+";
+					$query =~ s/'NULL'/NULL/g;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+	}
+	
+	return($variable_uuid);
+}
+
 # This uses the data from 'get_anvils()', 'get_nodes()' and 'get_owners()' and stores the data in 
 # '$an->data->{anvils}{<uuid>}{<values>}' as used in striker.
 sub parse_anvil_data
@@ -2123,6 +2424,7 @@ sub parse_anvil_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_anvil_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_data = $an->ScanCore->get_anvils();
 	my $host_data  = $an->ScanCore->get_hosts();
@@ -2424,11 +2726,12 @@ sub parse_install_manifest
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Support getting a UUID
 	if (not $parameter->{uuid})
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0093", code => 93, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0093", code => 93, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -2448,7 +2751,7 @@ sub parse_install_manifest
 	
 	if (not $manifest_data)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0094", message_variables => { uuid => $parameter->{uuid} }, code => 94, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0094", message_variables => { uuid => $parameter->{uuid} }, code => 94, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -3816,6 +4119,7 @@ sub read_cache
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $target = $parameter->{target} ? $parameter->{target} : "";
 	my $type   = $parameter->{type}   ? $parameter->{type}   : "";
@@ -3862,6 +4166,7 @@ sub save_install_manifest
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If 'raw' is set, just straight update the manifest_data.
 	my $xml;
@@ -4196,6 +4501,7 @@ sub target_power
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "target_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $task   = $parameter->{task}   ? $parameter->{task}   : "status";
 	my $target = $parameter->{target} ? $parameter->{target} : "";
@@ -4204,19 +4510,19 @@ sub target_power
 	if (($task ne "status") && ($task ne "on") && ($task ne "off"))
 	{
 		# Bad task.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0111", message_variables => { task => $task }, code => 111, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0111", message_variables => { task => $task }, code => 111, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $target)
 	{
 		# No target UUID
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0112", code => 112, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0112", code => 112, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	elsif (not $an->Validate->is_uuid({uuid => $target}))
 	{
 		# Not a valid UUID.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0113", message_variables => { target => $target }, code => 113, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0113", message_variables => { target => $target }, code => 113, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -4273,7 +4579,7 @@ sub target_power
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -4320,6 +4626,7 @@ sub update_server_stop_reason
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_server_stop_reason" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $server_name = $parameter->{server_name} ? $parameter->{server_name} : "";
 	my $stop_reason = $parameter->{stop_reason} ? $parameter->{stop_reason} : "NULL";
@@ -4331,7 +4638,7 @@ sub update_server_stop_reason
 	# Die if I wasn't passed a server name or stop reason.
 	if (not $server_name)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0158", code => 159, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0158", code => 159, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	

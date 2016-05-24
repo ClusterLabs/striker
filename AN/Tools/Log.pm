@@ -59,7 +59,6 @@ sub db_transactions
 	my $self = shift;
 	my $set  = shift if defined $_[0];
 	my $an   = $self->parent;
-	$an->Alert->_set_error;
 	
 	if ((defined $set) && (($set ne "0") && ($set ne "1")))
 	{
@@ -81,7 +80,6 @@ sub entry
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Alert->_set_error;
 	
 	# Setup my variables.
 	my $string            = "";
@@ -198,14 +196,13 @@ sub entry
 	return($string);
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # This sets or returns the log level.
 sub level
 {
 	my $self = shift;
 	my $set  = shift if defined $_[0];
-	
 	my $an   = $self->parent;
-	$an->Alert->_set_error;
 	
 	if ((defined $set) && ($set =~ /\D/))
 	{

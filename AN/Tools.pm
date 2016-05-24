@@ -211,6 +211,7 @@ sub new
 	return ($self);
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # This sets or returns the default language the various modules use when processing word strings.
 sub default_language
 {
@@ -223,6 +224,7 @@ sub default_language
 	return ($self->{DEFAULT}{LANGUAGE});
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # This sets or returns the default language the various modules use when processing word strings.
 sub default_log_language
 {
@@ -235,6 +237,7 @@ sub default_log_language
 	return ($self->{DEFAULT}{LOG_LANGUAGE});
 }
 
+### WARNING: DO NOT CALL $an->Log->entry() in this method! It will loop because that method calls this one.
 # This sets or returns the default log file.
 sub default_log_file
 {
@@ -678,16 +681,17 @@ sub _set_paths
 	$an->data->{path}{yum_repos}          = "/etc/yum.repos.d";
 	
 	# Tools
-	$an->data->{path}{'anvil-boot-server'}    = "/sbin/striker/anvil-boot-server";
-	$an->data->{path}{'anvil-kick-apc-ups'}   = "/sbin/striker/anvil-kick-apc-ups";
-	$an->data->{path}{'anvil-run-jobs'}       = "/sbin/striker/anvil-run-jobs";
-	$an->data->{path}{'anvil-map-network'}    = "/sbin/striker/anvil-map-network";
-	$an->data->{path}{'anvil-migrate-server'} = "/sbin/striker/anvil-migrate-server";
-	$an->data->{path}{'anvil-report-memory'}  = "/sbin/striker/anvil-report-memory";
-	$an->data->{path}{'anvil-safe-start'}     = "/sbin/striker/anvil-safe-start";
-	$an->data->{path}{'anvil-safe-stop'}      = "/sbin/striker/anvil-safe-stop";
-	$an->data->{path}{'anvil-stop-server'}    = "/sbin/striker/anvil-stop-server";
-	$an->data->{path}{ScanCore}               = "/sbin/striker/ScanCore/ScanCore";
+	$an->data->{path}{'anvil-boot-server'}         = "/sbin/striker/anvil-boot-server";
+	$an->data->{path}{'anvil-kick-apc-ups'}        = "/sbin/striker/anvil-kick-apc-ups";
+	$an->data->{path}{'anvil-run-jobs'}            = "/sbin/striker/anvil-run-jobs";
+	$an->data->{path}{'anvil-map-network'}         = "/sbin/striker/anvil-map-network";
+	$an->data->{path}{'anvil-migrate-server'}      = "/sbin/striker/anvil-migrate-server";
+	$an->data->{path}{'anvil-report-ipmi-details'} = "/sbin/striker/anvil-report-ipmi-details";	# Deprecated, will be deleted soon
+	$an->data->{path}{'anvil-report-memory'}       = "/sbin/striker/anvil-report-memory";
+	$an->data->{path}{'anvil-safe-start'}          = "/sbin/striker/anvil-safe-start";
+	$an->data->{path}{'anvil-safe-stop'}           = "/sbin/striker/anvil-safe-stop";
+	$an->data->{path}{'anvil-stop-server'}         = "/sbin/striker/anvil-stop-server";
+	$an->data->{path}{ScanCore}                    = "/sbin/striker/ScanCore/ScanCore";
 	
 	# setuid tools
 	$an->data->{path}{'call_striker-manage-install-target'} = "/sbin/striker/call_striker-manage-install-target";

@@ -262,9 +262,10 @@ CREATE TRIGGER trigger_nodes
 CREATE TABLE variables (
 	variable_uuid			uuid				not null	primary key,	-- 
 	variable_name			text				not null,			-- This is the 'x::y::z' style variable name.
-	variable_default		text,								-- This acts as a reference for the user should they want to roll-back changes.
 	variable_value			text,								-- It is up to the software to sanity check variable values before they are stored
+	variable_default		text,								-- This acts as a reference for the user should they want to roll-back changes.
 	variable_description		text,								-- This is a string key that describes this variable's use.
+	variable_section		text,								-- This is a free-form field that is used when displaying the various entries to a user. This allows for the various variables to be grouped into sections.
 	modified_date			timestamp with time zone	not null 
 );
 ALTER TABLE variables OWNER TO #!variable!user!#;
@@ -273,9 +274,10 @@ CREATE TABLE history.variables (
 	history_id			bigserial,
 	variable_uuid			uuid,
 	variable_name			text,
-	variable_default		text,
 	variable_value			text,
+	variable_default		text,
 	variable_description		text,
+	variable_section		text,
 	modified_date			timestamp with time zone	not null 
 );
 ALTER TABLE history.variables OWNER TO #!variable!user!#;
@@ -289,16 +291,18 @@ BEGIN
 	INSERT INTO history.variables
 		(variable_uuid,
 		 variable_name, 
-		 variable_default, 
 		 variable_value, 
+		 variable_default, 
 		 variable_description, 
+		 variable_section, 
 		 modified_date)
 	VALUES
 		(history_variables.variable_uuid,
 		 history_variables.variable_name, 
-		 history_variables.variable_default, 
 		 history_variables.variable_value, 
+		 history_variables.variable_default, 
 		 history_variables.variable_description, 
+		 history_variables.variable_section, 
 		 history_variables.modified_date);
 	RETURN NULL;
 END;
