@@ -3675,9 +3675,7 @@ sub update_db
 		update_db_recipients($an);
 		update_db_manifests($an);
 		update_db_smtp($an);
-		
-		### TODO: These need to be written still
-		#update_db_variables($an);
+		update_db_variables($an);
 		
 		# Record the time
 		$an->DB->update_time({file => $THIS_FILE});
@@ -4193,6 +4191,269 @@ INSERT INTO
 				} # Seen smtp_uuid?
 			} # foreach my $id 
 		} # foreach my $smtp_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# This updates the variables table. Like 'servers', this table is not bound to a host.
+sub update_db_variables
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'variables' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		### NOTE: This table is special in that it does NOT link back to a specific host.
+		# Read in the history schema
+		my $query = "
+SELECT 
+    variable_uuid,
+    variable_name, 
+    variable_value, 
+    variable_default, 
+    variable_description, 
+    variable_section, 
+    variable_source_uuid, 
+    variable_source_table, 
+    modified_date 
+FROM 
+    history.variables 
+;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $variable_uuid         = $row->[0];
+			my $variable_name         = $row->[1]; 
+			my $variable_value        = $row->[2] ? $row->[2] : "NULL"; 
+			my $variable_default      = $row->[3] ? $row->[3] : "NULL"; 
+			my $variable_description  = $row->[4] ? $row->[4] : "NULL"; 
+			my $variable_section      = $row->[5] ? $row->[5] : "NULL"; 
+			my $variable_source_uuid  = $row->[6] ? $row->[6] : "NULL"; 
+			my $variable_source_table = $row->[7] ? $row->[7] : "NULL"; 
+			my $modified_date         = $row->[8] ? $row->[8] : "NULL";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "variable_uuid",         value1 => $variable_uuid, 
+				name2 => "variable_name",         value2 => $variable_name,
+				name3 => "variable_value",        value3 => $variable_value,
+				name4 => "variable_default",      value4 => $variable_default,
+				name5 => "variable_description",  value5 => $variable_description,
+				name6 => "variable_section",      value6 => $variable_section,
+				name7 => "variable_source_uuid",  value7 => $variable_source_uuid,
+				name8 => "variable_source_table", value8 => $variable_source_table,
+				name9 => "modified_date",         value9 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid} = {
+				variable_value		=>	$variable_value,
+				variable_default	=>	$variable_default,
+				variable_description	=>	$variable_description,
+				variable_section	=>	$variable_section,
+				variable_source_uuid	=>	$variable_source_uuid,
+				variable_source_table	=>	$variable_source_table,
+			};
+			
+			$an->data->{db_data}{$id}{variables}{variable_uuid}{$variable_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{variables}{variable_uuid}{$variable_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid} = {
+				variable_value		=>	$variable_value,
+				variable_default	=>	$variable_default,
+				variable_description	=>	$variable_description,
+				variable_section	=>	$variable_section,
+				variable_source_uuid	=>	$variable_source_uuid,
+				variable_source_table	=>	$variable_source_table,
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{variables}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $variable_uuid (keys %{$an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}})
+		{
+			my $variable_value        = $an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid}{variable_value};
+			my $variable_default      = $an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid}{variable_default};
+			my $variable_description  = $an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid}{variable_description};
+			my $variable_section      = $an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid}{variable_section};
+			my $variable_source_uuid  = $an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid}{variable_source_uuid};
+			my $variable_source_table = $an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid}{variable_source_table};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "variable_uuid",         value1 => $variable_uuid, 
+				name2 => "variable_name",         value2 => $variable_name,
+				name3 => "variable_value",        value3 => $variable_value,
+				name4 => "variable_default",      value4 => $variable_default,
+				name5 => "variable_description",  value5 => $variable_description,
+				name6 => "variable_section",      value6 => $variable_section,
+				name7 => "variable_source_uuid",  value7 => $variable_source_uuid,
+				name8 => "variable_source_table", value8 => $variable_source_table,
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'variable_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::variable::variable_uuid::${variable_uuid}::seen", value1 => $an->data->{db_data}{$id}{variables}{variable_uuid}{$variable_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{variables}{variable_uuid}{$variable_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{variables}{variable_uuid}{$variable_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::variable::variable_uuid::${variable_uuid}::exists", value1 => $an->data->{db_data}{$id}{variables}{variable_uuid}{$variable_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{variables}{variable_uuid}{$variable_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::variable::modified_date::${modified_date}::variable_uuid::${variable_uuid}", value1 => $an->data->{db_data}{$id}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.variables 
+SET
+    variable_name         = ".$an->data->{sys}{use_db_fh}->quote($variable_name).", 
+    variable_value        = ".$an->data->{sys}{use_db_fh}->quote($variable_value).", 
+    variable_default      = ".$an->data->{sys}{use_db_fh}->quote($variable_default).", 
+    variable_description  = ".$an->data->{sys}{use_db_fh}->quote($variable_description).", 
+    variable_section      = ".$an->data->{sys}{use_db_fh}->quote($variable_section).", 
+    variable_source_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_source_uuid).", 
+    variable_source_table = ".$an->data->{sys}{use_db_fh}->quote($variable_source_table).", 
+    modified_date         = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.variables 
+(
+    variable_uuid, 
+    variable_name, 
+    variable_value, 
+    variable_default, 
+    variable_description, 
+    variable_section, 
+    variable_source_uuid, 
+    variable_source_table, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($variable_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_default).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_description).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_section).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_source_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_source_table).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'variable_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.variables 
+(
+    variable_uuid, 
+    variable_name, 
+    variable_value, 
+    variable_default, 
+    variable_description, 
+    variable_section, 
+    variable_source_uuid, 
+    variable_source_table, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($variable_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_default).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_description).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_section).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_source_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_source_table).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen variable_uuid?
+			} # foreach my $id 
+		} # foreach my $variable_uuid ...
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.

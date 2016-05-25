@@ -266,6 +266,8 @@ CREATE TABLE variables (
 	variable_default		text,								-- This acts as a reference for the user should they want to roll-back changes.
 	variable_description		text,								-- This is a string key that describes this variable's use.
 	variable_section		text,								-- This is a free-form field that is used when displaying the various entries to a user. This allows for the various variables to be grouped into sections.
+	variable_source_uuid		text,								-- Optional; Marks the variable as belonging to a specific X_uuid, where 'X' is a table name set in 'variable_source_table'
+	variable_source_table		text,								-- Optional; Marks the database table corresponding to the 'variable_source_uuid' value.
 	modified_date			timestamp with time zone	not null 
 );
 ALTER TABLE variables OWNER TO #!variable!user!#;
@@ -278,6 +280,8 @@ CREATE TABLE history.variables (
 	variable_default		text,
 	variable_description		text,
 	variable_section		text,
+	variable_source_uuid		text,
+	variable_source_table		text,
 	modified_date			timestamp with time zone	not null 
 );
 ALTER TABLE history.variables OWNER TO #!variable!user!#;
@@ -295,6 +299,8 @@ BEGIN
 		 variable_default, 
 		 variable_description, 
 		 variable_section, 
+		 variable_source_uuid, 
+		 variable_source_table, 
 		 modified_date)
 	VALUES
 		(history_variables.variable_uuid,
@@ -303,6 +309,8 @@ BEGIN
 		 history_variables.variable_default, 
 		 history_variables.variable_description, 
 		 history_variables.variable_section, 
+		 history_variables.variable_source_uuid, 
+		 history_variables.variable_source_table, 
 		 history_variables.modified_date);
 	RETURN NULL;
 END;

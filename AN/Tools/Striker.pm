@@ -189,19 +189,24 @@ sub load_anvil
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $anvil_uuid = $an->data->{cgi}{anvil_uuid} ? $an->data->{cgi}{anvil_uuid} : "";
+	# Did the user specify an anvil_uuid?
+	my $anvil_uuid = $an->data->{parameter}{anvil_uuid} ? $an->data->{parameter}{anvil_uuid} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	if ($anvil_uuid)
+	# If not, is the CGI variable set?
+	if ((not $anvil_uuid) && ($an->data->{cgi}{anvil_uuid}))
 	{
-		$anvil_uuid = $parameter->{anvil_uuid};
+		$anvil_uuid = $an->data->{cgi}{anvil_uuid};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "anvil_uuid", value1 => $anvil_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	else
+	
+	# If we still don't have an anvil_uuid, see if this is an Anvil! node and, if so, if we can locate 
+	# the anvil_uuid by matching the cluster name to an entry in 'anvils'.
+	if (not $anvil_uuid)
 	{
 		# See if we can divine the UUID by reading the cluster name from the local cluster.conf, if 
 		# it exists.
@@ -209,6 +214,7 @@ sub load_anvil
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "cluster_name", value1 => $cluster_name,
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		my $anvil_data = $an->ScanCore->get_anvils();
 		foreach my $hash_ref (@{$anvil_data})
 		{

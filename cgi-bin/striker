@@ -103,7 +103,7 @@ if ($an->data->{cgi}{device_keys})
 	$an->Web->get_cgi({variables => \@more_vars});
 }
 
-# Do I have a cluster name?
+# Do I have an Anvil! UUID?
 $an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 	name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
 }, file => $THIS_FILE, line => __LINE__});

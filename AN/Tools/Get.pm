@@ -4116,7 +4116,7 @@ sub uuid
 	# Set the 'uuidgen' path if set by the user.
 	$an->_uuidgen_path($parameter->{uuidgen_path}) if $parameter->{uuidgen_path};
 	my $get = $parameter->{get} ? $parameter->{get} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "get", value1 => $get, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4125,7 +4125,7 @@ sub uuid
 	if ($get eq "host_uuid")
 	{
 		my $shell_call = $an->data->{path}{host_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -4144,19 +4144,19 @@ sub uuid
 	{
 		# Query the DB's hosts table to find a UUID matching the 'get' string (should be a host name)
 		my $query = "SELECT host_uuid FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($get).";";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		$uuid = "" if not $uuid;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "uuid", value1 => $uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		my $shell_call = $an->_uuidgen_path." -r";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -4173,7 +4173,7 @@ sub uuid
 	}
 	
 	# Did we get a sane value?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "uuid", value1 => $uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($uuid =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)

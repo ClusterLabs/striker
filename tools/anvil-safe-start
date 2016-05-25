@@ -99,6 +99,11 @@ my $an = AN::Tools->new({data => {
 			resync_boost_speed	=>	80,
 			resync_max_wait_time	=>	300,
 			resync_delay		=>	15,
+			single_node_start	=>	{
+				enabled			=>	0,
+				boot_frequency		=>	86400,
+				boot_delay		=>	300,
+			},
 		},
 	},
 });
@@ -2106,11 +2111,13 @@ sub wait_for_access
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "wait_for_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_key = $an->data->{sys}{local_key};
-	my $peer_key = $an->data->{sys}{peer_key};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node_key", value1 => $node_key,
-		name2 => "peer_key", value2 => $peer_key,
+	my $node_key  = $an->data->{sys}{local_key};
+	my $peer_key  = $an->data->{sys}{peer_key};
+	my $peer_name = $an->data->{sys}{anvil}{$node_key}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "node_key",  value1 => $node_key,
+		name2 => "peer_key",  value2 => $peer_key,
+		name3 => "peer_name", value3 => $peer_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the node_key for my peer.
@@ -2119,6 +2126,15 @@ sub wait_for_access
 		name1 => "peer_bcn", value1 => $peer_bcn, 
 		name2 => "peer_sn",  value2 => $peer_sn, 
 		name3 => "peer_ifn", value3 => $peer_ifn, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If 'sys::single_node_start::enabled' is enabled and the peer was last known to be offline, we'll 
+	# only wait for so long. This tracks when we started waiting.
+	my $waiting_started_at = time;
+	my $stop_waiting_at    = $waiting_started_at + $an->data->{sys}{single_node_start}{boot_delay};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "waiting_started_at", value1 => $node_key,
+		name2 => "peer_key", value2 => $peer_key,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $can_ping = 0;
@@ -2151,6 +2167,57 @@ sub wait_for_access
 			# Something isn't responding, so sleep.
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0007", file => $THIS_FILE, line => __LINE__});
 			sleep 5;
+		}
+		
+		# Waited more that our boot delay and single node start is enabled, so see if we last saw the
+		# peer as offline and, if so, end the wait.
+		if (($stop_waiting_at > time) && ($an->data->{sys}{single_node_start}{enabled}))
+		{
+			# what was the state of my peer last time I saw it?
+			my $peer_state_variable  = "sys::node::".$peer_name."::last_seen";
+			my $last_booted_variable = "sys::node::".$peer_name."::last_booted_without";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "peer_state_variable",  value1 => $peer_state_variable,
+				name2 => "last_booted_variable", value2 => $last_booted_variable,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $last_peer_state = $an->ScanCore->read_variable({
+					variable_name         => $peer_state_variable,
+					variable_source_uuid  => $an->data->{sys}{host_uuid},
+					variable_source_table => "hosts",
+				});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "last_peer_state", value1 => $last_peer_state,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($last_peer_state eq "off")
+			{
+				# It was off. See if we've kicked it before and, if so, how long ago.
+				my $last_booted = $an->ScanCore->read_variable({
+					variable_name         => $last_booted_variable,
+					variable_source_uuid  => $an->data->{sys}{host_uuid},
+					variable_source_table => "hosts",
+				});
+				$last_booted = 0 if not $last_booted;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "last_booted", value1 => $last_booted,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# I am allowed to boot when the current time is greater than the last boot 
+				# time plus the boot frequency time.
+				my $boot_after = $last_booted + $an->data->{sys}{single_node_start}{boot_frequency};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "time",                                   value1 => time,
+					name2 => "sys::single_node_start::boot_frequency", value2 => $an->data->{sys}{single_node_start}{boot_frequency},
+					name3 => "boot_after",                             value3 => $boot_after,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Is it time?
+				if (time > $boot_after)
+				{
+					# Boot!
+				}
+			}
 		}
 	}
 	

@@ -259,7 +259,7 @@ sub prep_uuid
 	my $target    = $parameter->{target}    ? $parameter->{target}    : "";
 	my $port      = $parameter->{port}      ? $parameter->{port}      : "";
 	my $password  = $parameter->{password}  ? $parameter->{password}  : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "host_uuid", value1 => $host_uuid, 
 		name2 => "target",    value2 => $target, 
 		name3 => "port",      value3 => $port, 
@@ -273,7 +273,7 @@ sub prep_uuid
 	if (not $host_uuid)
 	{
 		$host_uuid = $an->Get->uuid();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "host_uuid", value1 => $host_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -281,7 +281,7 @@ sub prep_uuid
 	# The shell call needs to work locally and remotely, so we can't use perl built-in file tests (well,
 	# we could, but then we'd have two ways to do the same job).
 	my ($directory, $file) = ($an->data->{path}{host_uuid} =~ /^(.*)\/(.*)/);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "directory", value1 => $directory, 
 		name2 => "file",      value2 => $file, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -306,7 +306,7 @@ UUID=\$(".$an->data->{path}{cat}." ".$an->data->{path}{host_uuid}.")
 	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
 		### Remote call
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -321,7 +321,7 @@ UUID=\$(".$an->data->{path}{cat}." ".$an->data->{path}{host_uuid}.")
 	else
 	{
 		### Local call
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -335,21 +335,21 @@ UUID=\$(".$an->data->{path}{cat}." ".$an->data->{path}{host_uuid}.")
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^host_uuid:(.*)$/)
 		{
 			$host_uuid = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "host_uuid", value1 => $host_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# Verify I have a good UUID.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "host_uuid", value1 => $host_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($host_uuid !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
@@ -365,12 +365,12 @@ UUID=\$(".$an->data->{path}{cat}." ".$an->data->{path}{host_uuid}.")
 	if ($set_sys_host_uuid)
 	{
 		$an->data->{sys}{host_uuid} = $host_uuid;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "host_uuid", value1 => $host_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($host_uuid);

@@ -951,7 +951,7 @@ sub prep_databases
 			# Send an alert telling the user that we've initialized this database.
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"notice_message_0002",
 				alert_message_variables	=>	{
@@ -1130,7 +1130,7 @@ WHERE
 			{
 				$an->Alert->register_alert({
 					alert_level		=>	$say_alert_level, 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_title_key		=>	$say_alert_title,
 					alert_message_key	=>	$say_alert_message,
 					alert_message_variables	=>	$variables,
@@ -1173,7 +1173,7 @@ WHERE
 				# New node message.
 				$an->Alert->register_alert({
 					alert_level		=>	"notice", 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"scan_clustat_note_0004",
 					alert_message_variables	=>	{
@@ -1188,38 +1188,25 @@ WHERE
 				my $new_cluster_id = $an->data->{clustat}{node}{$node}{cluster_id};
 				my $old_status     = $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status};
 				my $new_status     = $an->data->{clustat}{node}{$node}{status};
-				
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "node", value1 => $node, 
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+					name1 => "node",           value1 => $node, 
+					name2 => "old_cluster_id", value2 => $old_cluster_id, 
+					name3 => "new_cluster_id", value3 => $new_cluster_id, 
+					name4 => "old_status",     value4 => $old_status, 
+					name5 => "new_status",     value5 => $new_status, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "old_cluster_id", value1 => $old_cluster_id, 
-					name2 => "new_cluster_id", value2 => $new_cluster_id, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "old_status", value1 => $old_status, 
-					name2 => "new_status", value2 => $new_status, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if (($new_cluster_id ne $old_cluster_id) ||
+				if (($new_cluster_id ne $old_cluster_id) or
 				    ($new_status     ne $old_status))
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "old_cluster_id", value1 => $old_cluster_id, 
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "new_cluster_id", value1 => $new_cluster_id, 
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "old_status",     value1 => $old_status, 
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "new_status",     value1 => $new_status, 
+						name2 => "new_cluster_id", value2 => $new_cluster_id, 
+						name3 => "old_status",     value3 => $old_status, 
+						name4 => "new_status",     value4 => $new_status, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					### TODO: Have Striker set a flag that
-					###       suppresses alerts when doing
+					### TODO: Have Striker set a flag that suppresses alerts when doing
 					###       a controlled shutdown.
 					# Something changed.
 					$an->Log->entry({log_level => 2, message_key => "scancore_log_0025", message_variables => {
@@ -1354,7 +1341,7 @@ WHERE
 					{
 						$an->Alert->register_alert({
 							alert_level		=>	"$say_alert_level", 
-							alert_agent_name	=>	"$THIS_FILE",
+							alert_agent_name	=>	$THIS_FILE,
 							alert_title_key		=>	"$say_alert_title",
 							alert_message_key	=>	$say_alert_message,
 							alert_message_variables	=>	$variables,
@@ -1367,7 +1354,7 @@ WHERE
 					{
 						$an->Alert->register_alert({
 							alert_level		=>	"notice", 
-							alert_agent_name	=>	"$THIS_FILE",
+							alert_agent_name	=>	$THIS_FILE,
 							alert_title_key		=>	"an_alert_title_0003",
 							alert_message_key	=>	"scan_clustat_note_0012",
 							alert_message_variables	=>	{
@@ -1406,9 +1393,11 @@ WHERE
 								# We'll check/log the returned UUID, mainly 
 								# for debugging purposes.
 								my $variable_uuid = $an->ScanCore->insert_or_update_variables({
-									variable_name     => $variable_name,
-									variable_value    => "off",
-									update_value_only => 1,
+									variable_name         => $variable_name,
+									variable_value        => "off",
+									variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+									variable_source_table => "hosts", 
+									update_value_only     => 1,
 								});
 								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 									name1 => "variable_uuid", value1 => $variable_uuid, 
@@ -1416,6 +1405,7 @@ WHERE
 							}
 							elsif ($set_peer_on)
 							{
+								### TODO: Should we clear 'sys::node::<peer>::last_booted_without'?
 								my $variable_name = "sys::node::".$node."::last_seen";
 								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 									name1 => "variable_name", value1 => $variable_name, 
@@ -1424,9 +1414,11 @@ WHERE
 								# We'll check/log the returned UUID, mainly 
 								# for debugging purposes.
 								my $variable_uuid = $an->ScanCore->insert_or_update_variables({
-									variable_name     => $variable_name,
-									variable_value    => "on",
-									update_value_only => 1,
+									variable_name         => $variable_name,
+									variable_value        => "on",
+									variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+									variable_source_table => "hosts", 
+									update_value_only     => 1,
 								});
 								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 									name1 => "variable_uuid", value1 => $variable_uuid, 
@@ -1473,7 +1465,7 @@ WHERE
 				}
 				$an->Alert->register_alert({
 					alert_level		=>	"notice", 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"$say_message",
 					alert_message_variables	=>	{
@@ -2059,7 +2051,7 @@ WHERE
 					{
 						$an->Alert->register_alert({
 							alert_level		=>	"$say_alert_level", 
-							alert_agent_name	=>	"$THIS_FILE",
+							alert_agent_name	=>	$THIS_FILE,
 							alert_title_key		=>	"$say_alert_title",
 							alert_message_key	=>	$say_alert_message,
 							alert_message_variables	=>	$variables,
@@ -2082,7 +2074,7 @@ WHERE
 						# the name of the service will indicate that.
 						$an->Alert->register_alert({
 							alert_level		=>	"notice", 
-							alert_agent_name	=>	"$THIS_FILE",
+							alert_agent_name	=>	$THIS_FILE,
 							alert_title_key		=>	"an_alert_title_0003",
 							alert_message_key	=>	"scan_clustat_note_0028",
 							alert_message_variables	=>	{
@@ -2132,7 +2124,7 @@ WHERE
 		# Enter ther alert.
 		$an->Alert->register_alert({
 			alert_level		=>	"notice", 
-			alert_agent_name	=>	"$THIS_FILE",
+			alert_agent_name	=>	$THIS_FILE,
 			alert_title_key		=>	"an_alert_title_0003",
 			alert_message_key	=>	"scan_clustat_note_0001",
 			alert_message_variables	=>	{
@@ -2156,7 +2148,7 @@ WHERE
 			# Enter ther alert.
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"$message_key",	# Node deleted
 				alert_message_variables	=>	{

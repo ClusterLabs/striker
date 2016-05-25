@@ -35,6 +35,7 @@ my $THIS_FILE = "ScanCore.pm";
 # parse_anvil_data
 # parse_install_manifest
 # read_cache
+# read_variable
 # save_install_manifest
 # target_power
 # update_server_stop_reason
@@ -2208,20 +2209,25 @@ sub insert_or_update_variables
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $variable_uuid        = $parameter->{variable_uuid}        ? $parameter->{variable_uuid}        : "";
-	my $variable_name        = $parameter->{variable_name}        ? $parameter->{variable_name}        : "";
-	my $variable_value       = $parameter->{variable_value}       ? $parameter->{variable_value}       : "NULL";
-	my $variable_default     = $parameter->{variable_default}     ? $parameter->{variable_default}     : "NULL";
-	my $variable_description = $parameter->{variable_description} ? $parameter->{variable_description} : "NULL";
-	my $variable_section     = $parameter->{variable_section}     ? $parameter->{variable_section}     : "NULL";
-	my $update_value_only    = $parameter->{update_value_only}    ? $parameter->{update_value_only}    : 1;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-		name1 => "variable_uuid",        value1 => $variable_uuid, 
-		name2 => "variable_name",        value2 => $variable_name, 
-		name3 => "variable_value",       value3 => $variable_value, 
-		name4 => "variable_default",     value4 => $variable_default, 
-		name5 => "variable_description", value5 => $variable_description, 
-		name6 => "variable_section",     value6 => $variable_section, 
+	my $variable_uuid         = $parameter->{variable_uuid}         ? $parameter->{variable_uuid}         : "";
+	my $variable_name         = $parameter->{variable_name}         ? $parameter->{variable_name}         : "";
+	my $variable_value        = $parameter->{variable_value}        ? $parameter->{variable_value}        : "NULL";
+	my $variable_default      = $parameter->{variable_default}      ? $parameter->{variable_default}      : "NULL";
+	my $variable_description  = $parameter->{variable_description}  ? $parameter->{variable_description}  : "NULL";
+	my $variable_section      = $parameter->{variable_section}      ? $parameter->{variable_section}      : "NULL";
+	my $variable_source_uuid  = $parameter->{variable_source_uuid}  ? $parameter->{variable_source_uuid}  : "NULL";
+	my $variable_source_table = $parameter->{variable_source_table} ? $parameter->{variable_source_table} : "NULL";
+	my $update_value_only     = $parameter->{update_value_only}     ? $parameter->{update_value_only}     : 1;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+		name1 => "variable_uuid",         value1 => $variable_uuid, 
+		name2 => "variable_name",         value2 => $variable_name, 
+		name3 => "variable_value",        value3 => $variable_value, 
+		name4 => "variable_default",      value4 => $variable_default, 
+		name5 => "variable_description",  value5 => $variable_description, 
+		name6 => "variable_section",      value6 => $variable_section, 
+		name7 => "variable_source_uuid",  value7 => $variable_source_uuid, 
+		name8 => "variable_source_table", value8 => $variable_source_table, 
+		name9 => "update_value_only",     value9 => $update_value_only, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $variable_name)
 	{
@@ -2239,8 +2245,17 @@ SELECT
 FROM 
     variables 
 WHERE 
-    variable_name = ".$an->data->{sys}{use_db_fh}->quote($variable_name)." 
-;";
+    variable_name         = ".$an->data->{sys}{use_db_fh}->quote($variable_name)
+		if (($variable_source_uuid ne "NULL") && ($variable_source_table ne "NULL"))
+		{
+			$query .= "
+AND 
+    variable_source_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_source_uuid)." 
+AND 
+    variable_source_table = ".$an->data->{sys}{use_db_fh}->quote($variable_source_table)." 
+";
+		}
+		$query .= ";";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2303,8 +2318,17 @@ SELECT
 FROM 
     variables 
 WHERE 
-    variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)." 
-;";
+    variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)
+			if (($variable_source_uuid ne "NULL") && ($variable_source_table ne "NULL"))
+			{
+				$query .= "
+AND 
+    variable_source_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_source_uuid)." 
+AND 
+    variable_source_table = ".$an->data->{sys}{use_db_fh}->quote($variable_source_table)." 
+";
+			}
+			$query .= ";";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -2333,8 +2357,17 @@ SET
     variable_value = ".$an->data->{sys}{use_db_fh}->quote($variable_value).", 
     modified_date  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
-    variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)." 
+    variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)
+					if (($variable_source_uuid ne "NULL") && ($variable_source_table ne "NULL"))
+					{
+						$query .= "
+AND 
+    variable_source_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_source_uuid)." 
+AND 
+    variable_source_table = ".$an->data->{sys}{use_db_fh}->quote($variable_source_table)." 
 ";
+					}
+					$query .= ";";
 					$query =~ s/'NULL'/NULL/g;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query, 
@@ -4158,6 +4191,81 @@ AND
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return($data);
+}
+
+# This reads a variable
+sub read_variable
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_variable" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $variable_uuid         = $parameter->{variable_uuid}         ? $parameter->{variable_uuid}         : "";
+	my $variable_name         = $parameter->{variable_name}         ? $parameter->{variable_name}         : "";
+	my $variable_source_uuid  = $parameter->{variable_source_uuid}  ? $parameter->{variable_source_uuid}  : "NULL";
+	my $variable_source_table = $parameter->{variable_source_table} ? $parameter->{variable_source_table} : "NULL";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "variable_uuid",         value1 => $variable_uuid, 
+		name2 => "variable_name",         value2 => $variable_name, 
+		name3 => "variable_source_uuid",  value3 => $variable_source_uuid, 
+		name4 => "variable_source_table", value4 => $variable_source_table, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $variable_name)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0165", code => 165, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# If we don't have a UUID, see if we can find one for the given SMTP server name.
+	my $query = "
+SELECT 
+    variable_value 
+FROM 
+    variables 
+WHERE ";
+	if ($variable_uuid)
+	{
+		$query .= "
+    variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid);
+	}
+	else
+	{
+		$query .= "
+    variable_name         = ".$an->data->{sys}{use_db_fh}->quote($variable_name)
+		if (($variable_source_uuid ne "NULL") && ($variable_source_table ne "NULL"))
+		{
+			$query .= "
+AND 
+    variable_source_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_source_uuid)." 
+AND 
+    variable_source_table = ".$an->data->{sys}{use_db_fh}->quote($variable_source_table)." 
+";
+		}
+	}
+	$query .= ";";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $variable_value = "";
+	my $results        = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count          = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		$variable_value = $row->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable_value", value1 => $variable_value, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return($variable_value);
 }
 
 # This generates an Install Manifest and records it in the 'manifests' table.

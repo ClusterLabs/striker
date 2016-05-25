@@ -762,6 +762,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0162"><![CDATA[The 'AN::Tools::System' module's 'daemon_boot_config()' was called without a daemon name.]]></key>
 		<key name="error_message_0163"><![CDATA[The 'AN::Tools::System' module's 'daemon_boot_config()' was called with an invalid 'set' value. Received: [#!variable!set!#], but only 'on' or 'off' are valid.]]></key>
 		<key name="error_message_0164"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_variables()' method was called without passing in an variable name.]]></key>
+		<key name="error_message_0165"><![CDATA[The 'AN::Tools::Web' module's 'read_variables()' method was called without passing in an variable name.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
