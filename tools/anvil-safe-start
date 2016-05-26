@@ -15,7 +15,8 @@
 # 9  = A DRBD resource on the local machine failed to connect.
 # 10 = A clustered LV failed to ACTIVATE.
 # 11 = Failed to mount /shared
-# 12 = Failed to find this Anvil!'s password in the local striker.conf
+# 12 = Failed to find this Anvil!'s password.
+# 13 = During single-node start, the 'cman' daemon was found to already be running which should not happen.
 #
 # TODO:
 # - Make this work without DB access
@@ -100,9 +101,10 @@ my $an = AN::Tools->new({data => {
 			resync_max_wait_time	=>	300,
 			resync_delay		=>	15,
 			single_node_start	=>	{
-				enabled			=>	0,
 				boot_frequency		=>	86400,
 				boot_delay		=>	300,
+				enabled			=>	0,
+				ran			=>	0,
 			},
 		},
 	},
@@ -212,11 +214,14 @@ $an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{host_uuid}});
 # networks. There is no timeout.
 wait_for_access($an);
 
-# If I am node 2, sleep for five minutes.
-wait_if_node2($an);
-
-# Start the cluster
-start_the_cluster($an);
+if (not $an->data->{sys}{single_node_start}{ran})
+{
+	# If I am node 2, sleep for five minutes.
+	wait_if_node2($an);
+	
+	# Start the cluster
+	start_the_cluster($an);
+}
 
 # Start the servers!!
 start_servers($an);
@@ -1794,12 +1799,10 @@ sub start_daemons
 		name2 => "peer_key", value2 => $peer_key,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: It is hanging here 
-	
 	# Check to see if the daemon is running locally and remotely. States are:
 	# 0 = Stopped
 	# 1 = Running
-	# 2 = Daemin not found
+	# 2 = Daemon not found
 	my $local_state  = $an->Check->daemon({daemon => $daemon});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "local_state", value1 => $local_state, 
@@ -2169,56 +2172,17 @@ sub wait_for_access
 			sleep 5;
 		}
 		
-		# Waited more that our boot delay and single node start is enabled, so see if we last saw the
-		# peer as offline and, if so, end the wait.
-		if (($stop_waiting_at > time) && ($an->data->{sys}{single_node_start}{enabled}))
-		{
-			# what was the state of my peer last time I saw it?
-			my $peer_state_variable  = "sys::node::".$peer_name."::last_seen";
-			my $last_booted_variable = "sys::node::".$peer_name."::last_booted_without";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "peer_state_variable",  value1 => $peer_state_variable,
-				name2 => "last_booted_variable", value2 => $last_booted_variable,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			my $last_peer_state = $an->ScanCore->read_variable({
-					variable_name         => $peer_state_variable,
-					variable_source_uuid  => $an->data->{sys}{host_uuid},
-					variable_source_table => "hosts",
-				});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "last_peer_state", value1 => $last_peer_state,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($last_peer_state eq "off")
-			{
-				# It was off. See if we've kicked it before and, if so, how long ago.
-				my $last_booted = $an->ScanCore->read_variable({
-					variable_name         => $last_booted_variable,
-					variable_source_uuid  => $an->data->{sys}{host_uuid},
-					variable_source_table => "hosts",
-				});
-				$last_booted = 0 if not $last_booted;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "last_booted", value1 => $last_booted,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# I am allowed to boot when the current time is greater than the last boot 
-				# time plus the boot frequency time.
-				my $boot_after = $last_booted + $an->data->{sys}{single_node_start}{boot_frequency};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "time",                                   value1 => time,
-					name2 => "sys::single_node_start::boot_frequency", value2 => $an->data->{sys}{single_node_start}{boot_frequency},
-					name3 => "boot_after",                             value3 => $boot_after,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Is it time?
-				if (time > $boot_after)
-				{
-					# Boot!
-				}
-			}
-		}
+		# This will set 'sys::single_node_start::ran' if we gave up waiting and started alone.
+		check_single_node_start($an);
+	}
+	
+	# Return now if we started alone.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::single_node_start::ran", value1 => $an->data->{sys}{single_node_start}{ran},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{single_node_start}{ran})
+	{
+		return(0);
 	}
 	
 	my $access = 0;
@@ -2273,6 +2237,154 @@ sub wait_for_access
 			}
 			# Sleep a bit.
 			sleep 5;
+		}
+	}
+	
+	return(0);
+}
+
+# This checks to see if we should start without our peer and sets 'sys::single_node_start::ran' if it does.
+sub check_single_node_start
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_single_node_start" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Waited more that our boot delay and single node start is enabled, so see if we last saw the peer as
+	# offline and, if so, end the wait.
+	if (($stop_waiting_at > time) && ($an->data->{sys}{single_node_start}{enabled}))
+	{
+		# what was the state of my peer last time I saw it?
+		my $peer_state_variable  = "sys::node::".$peer_name."::last_seen";
+		my $last_booted_variable = "sys::node::".$peer_name."::last_booted_without";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "peer_state_variable",  value1 => $peer_state_variable,
+			name2 => "last_booted_variable", value2 => $last_booted_variable,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $last_peer_state = $an->ScanCore->read_variable({
+				variable_name         => $peer_state_variable,
+				variable_source_uuid  => $an->data->{sys}{host_uuid},
+				variable_source_table => "hosts",
+			});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "last_peer_state", value1 => $last_peer_state,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($last_peer_state eq "off")
+		{
+			# It was off. See if we've kicked it before and, if so, how long ago.
+			my $last_booted = $an->ScanCore->read_variable({
+				variable_name         => $last_booted_variable,
+				variable_source_uuid  => $an->data->{sys}{host_uuid},
+				variable_source_table => "hosts",
+			});
+			$last_booted = 0 if not $last_booted;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "last_booted", value1 => $last_booted,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# I am allowed to boot when the current time is greater than the last boot time plus
+			# the boot frequency time.
+			my $boot_after = $last_booted + $an->data->{sys}{single_node_start}{boot_frequency};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "sys::single_node_start::boot_frequency", value1 => $an->data->{sys}{single_node_start}{boot_frequency},
+				name2 => "time",                                   value2 => time,
+				name3 => "boot_after",                             value3 => $boot_after,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Is it time?
+			my $waited_long_enough = 0;
+			until ($waited_long_enough)
+			{
+				if (time > $boot_after)
+				{
+					### Boot!
+					$waited_long_enough = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "waited_long_enough", value1 => $waited_long_enough,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# We'll now start cman, set a delayed_run for five minutes in the 
+					# future to call 'pkill drbdadm', start rgmanager and wait for the
+					# pkill to fire. Once fired, we'll verify that our local storage is
+					# 'Primary/UpToDate' and if so, proceed with the boot. If not, we'll
+					# shut down.
+					
+					### Verify cman is stopped and then 
+					# States are:
+					# 0 = Stopped
+					# 1 = Running
+					# 2 = Daemon not found
+					my $cman_state = $an->Check->daemon({daemon => "cman"});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "cman_state", value1 => $cman_state, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if (not $cman_state)
+					{
+						# Start cman
+						my $shell_call = $an->data->{path}{initd}."/cman start";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "shell_call", value1 => $shell_call, 
+						}, file => $THIS_FILE, line => __LINE__});
+						open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+						while(<$file_handle>)
+						{
+							chomp;
+							my $line =  $_;
+							$line =~ s/\r//g;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "line", value1 => $line, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						close $file_handle;
+					}
+					else
+					{
+						# Error out... cman shouldn't be running so what?!
+						$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0012", code => 13, file => "$THIS_FILE", line => __LINE__});
+						exit(13);
+					}
+					
+					# Set the delayed pkill to abort drbd's wait-for-connection
+					my ($token, $delayed_run_output, $problem) = $an->Remote->delayed_run({
+						command  => $an->data->{path}{pkill}." drbdadm",
+						delay    => 300,
+						target   => "local",
+					});
+					
+					# Now start rgmanager
+					my $shell_call = $an->data->{path}{initd}."/rgmanager start";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "shell_call", value1 => $shell_call, 
+					}, file => $THIS_FILE, line => __LINE__});
+					open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line =  $_;
+						$line =~ s/\r//g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					close $file_handle;
+					
+					### TODO: Left off here...
+					# Now wait for the output from the pkill.
+					
+					# Record that we started alone.
+					$an->data->{sys}{single_node_start}{ran} = 1;
+				}
+				else
+				{
+					sleep 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "time",               value1 => time,
+						name2 => "boot_after",         value2 => $boot_after,
+						name3 => "waited_long_enough", value3 => $waited_long_enough,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
 		}
 	}
 	

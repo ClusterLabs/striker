@@ -2729,6 +2729,7 @@ SUPPORT
 		<key name="asst_error_0009">One of more clustered logical volumes is 'inactive'. Unable to proceed.</key>
 		<key name="asst_error_0010">The 'shared' cluster file system failed to mount on one or both nodes. Unable to proceed.</key>
 		<key name="asst_error_0011">Unable to locate this #!string!brand_0004!#'s password in #!data!path::striker_config!#. Has it been added?</key>
+		<key name="asst_error_0012">During single-node start, the 'cman' daemon was found to already be running which should not happen.</key>
 		
 		
 		<!-- anvil-safe-stop -->

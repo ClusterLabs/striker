@@ -265,6 +265,7 @@ sub add_target_to_known_hosts
 	return(0);
 }
 
+### TODO: This isn't 'remote' alone anymore and should move to a different module.
 # This uses 'anvil-run-jobs' to run a job in the future
 sub delayed_run
 {
@@ -326,7 +327,7 @@ sub delayed_run
 		my $return     = [];
 		
 		# If the node name is 'local', we'll run locally.
-		if (($target eq "local") or ($target eq $an->hostname) or ($target eq $an->short_hostname))
+		if ((not $target) or ($target eq "local") or ($target eq $an->hostname) or ($target eq $an->short_hostname))
 		{
 			# Local call.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
