@@ -426,6 +426,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0208">A place for you to keep any notes you wish about this alert recipient.</key>
 		<key name="explain_0209"><![CDATA[<span class="highlight_detail">Note</span>: This sets the default alert level and can be overridden for a given #!string!brand_0003!# system.]]></key>
 		<key name="explain_0210"><![CDATA[Below is the raw Install Manifest data. You can customize it as you wish.<br /><span class="highlight_detail">Note</span>: Please be careful that you maintain valid XML format.]]></key>
+		<key name="explain_0211"><![CDATA[<span class="highlight_detail">Optional</span>: A backup email server that #!string!brand_0015!# will use if the main email server stops responding.<br />A non-standard port can be set the same as above. <span class="highlight_detail">Note</span>; The backup server<br />must accept the same credentials and use the same security as the main email server!]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -827,6 +828,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0311">Measurements</key>
 		<key name="row_0312">Caution</key>
 		<key name="row_0313">Manifest</key>
+		<key name="row_0314">Backup Mail Server</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -3091,7 +3093,7 @@ If no jobs are left, the jobs file is removed.
 
 NOTE
 
-Jobs are queued by AN::Tools::Remote->synchronous_command_run(). This is not
+Jobs are queued by AN::Tools::System->synchronous_command_run(). This is not
 meant to be used by other tools or applications, though there should be no harm
 in doing so.
 

@@ -16,6 +16,8 @@ CREATE TABLE smtp (
 	smtp_authentication	text				not null,			-- 'None', 'Plain Text', 'Encrypted' (will add other types later.
 	smtp_helo_domain	text				not null,			-- The domain we identify to the mail server as being from.
 	smtp_note		text,
+	smtp_alt_server		text,								-- This is an alternate/backup mail server to use when the main SMTP server can't be accessed
+	smtp_alt_port		text,								-- This is the TCP port for the alternate server
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE smtp OWNER TO #!variable!user!#;
@@ -31,6 +33,8 @@ CREATE TABLE history.smtp (
 	smtp_authentication	text,
 	smtp_helo_domain	text,
 	smtp_note		text,
+	smtp_alt_server		text,
+	smtp_alt_port		text,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.smtp OWNER TO #!variable!user!#;
@@ -51,6 +55,8 @@ BEGIN
 		 smtp_authentication, 
 		 smtp_helo_domain, 
 		 smtp_note, 
+		 smtp_alt_server, 
+		 smtp_alt_port, 
 		 modified_date)
 	VALUES
 		(history_smtp.smtp_uuid, 
@@ -62,6 +68,8 @@ BEGIN
 		 history_smtp.smtp_authentication, 
 		 history_smtp.smtp_helo_domain, 
 		 history_smtp.smtp_note, 
+		 history_smtp.smtp_alt_server, 
+		 history_smtp.smtp_alt_port, 
 		 history_smtp.modified_date);
 	RETURN NULL;
 END;

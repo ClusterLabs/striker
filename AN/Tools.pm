@@ -602,7 +602,6 @@ sub _set_paths
 	$an->data->{path}{pg_dump}             = "/usr/bin/pg_dump";
 	$an->data->{path}{'ping'}              = "/bin/ping";
 	$an->data->{path}{pkill}               = "/usr/bin/pkill";
-	$an->data->{path}{postfix_init}        = "/etc/init.d/postfix";
 	$an->data->{path}{postfix_main}        = "/etc/postfix/main.cf";
 	$an->data->{path}{postfix_relay_file}  = "/etc/postfix/relay_password";
 	$an->data->{path}{postmap}             = "/usr/sbin/postmap";

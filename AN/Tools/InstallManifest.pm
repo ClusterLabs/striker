@@ -16724,7 +16724,7 @@ sub start_cman
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "command", value1 => $command,
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->Remote->synchronous_command_run({
+		$an->System->synchronous_command_run({
 			command => $command, 
 			delay   => 30,
 		});

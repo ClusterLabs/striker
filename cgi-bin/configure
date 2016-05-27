@@ -189,6 +189,18 @@ sub load_smtp_form
 		name1 => "uuid", value1 => $uuid,  
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Blank the fields.
+	$an->data->{cgi}{smtp_uuid}           = "";
+	$an->data->{cgi}{smtp_authentication} = "";
+	$an->data->{cgi}{smtp_helo_domain}    = "";
+	$an->data->{cgi}{smtp_password}       = "";
+	$an->data->{cgi}{smtp_port}           = "";
+	$an->data->{cgi}{smtp_security}       = "";
+	$an->data->{cgi}{smtp_server}         = "";
+	$an->data->{cgi}{smtp_username}       = "";
+	$an->data->{cgi}{smtp_note}           = "";
+	$an->data->{cgi}{smtp_alt_server}     = "";
+	$an->data->{cgi}{smtp_alt_port}       = "";
 	if ($uuid)
 	{
 		foreach my $hash_ref (@{$smtp})
@@ -202,28 +214,59 @@ sub load_smtp_form
 				$an->data->{cgi}{smtp_uuid}           = $hash_ref->{smtp_uuid};
 				$an->data->{cgi}{smtp_authentication} = $hash_ref->{smtp_authentication};
 				$an->data->{cgi}{smtp_helo_domain}    = $hash_ref->{smtp_helo_domain};
-				$an->data->{cgi}{smtp_password}       = $hash_ref->{smtp_password};
 				$an->data->{cgi}{smtp_port}           = $hash_ref->{smtp_port};
 				$an->data->{cgi}{smtp_security}       = $hash_ref->{smtp_security};
 				$an->data->{cgi}{smtp_server}         = $hash_ref->{smtp_server};
 				$an->data->{cgi}{smtp_username}       = $hash_ref->{smtp_username};
+				$an->data->{cgi}{smtp_alt_server}     = $hash_ref->{smtp_alt_server}; 
+				$an->data->{cgi}{smtp_alt_port}       = $hash_ref->{smtp_alt_port};
 				$an->data->{cgi}{smtp_note}           = $hash_ref->{smtp_note};
+				$an->data->{cgi}{smtp_password}       = $hash_ref->{smtp_password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+					name1  => "cgi::smtp_uuid",           value1  => $an->data->{cgi}{smtp_uuid},
+					name2  => "cgi::smtp_authentication", value2  => $an->data->{cgi}{smtp_authentication},
+					name3  => "cgi::smtp_helo_domain",    value3  => $an->data->{cgi}{smtp_helo_domain},
+					name4  => "cgi::smtp_port",           value4  => $an->data->{cgi}{smtp_port},
+					name5  => "cgi::smtp_security",       value5  => $an->data->{cgi}{smtp_security},
+					name6  => "cgi::smtp_server",         value6  => $an->data->{cgi}{smtp_server},
+					name7  => "cgi::smtp_username",       value7  => $an->data->{cgi}{smtp_username},
+					name8  => "cgi::smtp_alt_server",     value8  => $an->data->{cgi}{smtp_alt_server},
+					name9  => "cgi::smtp_alt_port",       value9  => $an->data->{cgi}{smtp_alt_port},
+					name10 => "cgi::smtp_note",           value10 => $an->data->{cgi}{smtp_note},
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+					name1 => "cgi::smtp_password", value1 => $an->data->{cgi}{smtp_password},
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If the port is set to a non-standard port for either the server or alt 
+				# server, append it.
+				if ($an->data->{cgi}{smtp_port})
+				{
+					if ((($an->data->{cgi}{smtp_security} eq "starttls") && ($an->data->{cgi}{smtp_port} ne "587")) or 
+					    (($an->data->{cgi}{smtp_security} eq "tls_ssl")  && ($an->data->{cgi}{smtp_port} ne "465")) or 
+					    (($an->data->{cgi}{smtp_security} eq "none")     && ($an->data->{cgi}{smtp_port} ne "25")))
+					{
+						$an->data->{cgi}{smtp_server} .= ":".$an->data->{cgi}{smtp_port};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "cgi::smtp_server", value1 => $an->data->{cgi}{smtp_server},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				if ($an->data->{cgi}{smtp_alt_port})
+				{
+					if ((($an->data->{cgi}{smtp_security} eq "starttls") && ($an->data->{cgi}{smtp_alt_port} ne "587")) or 
+					    (($an->data->{cgi}{smtp_security} eq "tls_ssl")  && ($an->data->{cgi}{smtp_alt_port} ne "465")) or 
+					    (($an->data->{cgi}{smtp_security} eq "none")     && ($an->data->{cgi}{smtp_alt_port} ne "25")))
+					{
+						$an->data->{cgi}{smtp_alt_server} .= ":".$an->data->{cgi}{smtp_alt_port};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "cgi::smtp_alt_server", value1 => $an->data->{cgi}{smtp_alt_server},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
 				last;
 			}
 		}
-	}
-	else
-	{
-		# Blank the fields.
-		$an->data->{cgi}{smtp_uuid}           = "";
-		$an->data->{cgi}{smtp_authentication} = "";
-		$an->data->{cgi}{smtp_helo_domain}    = "";
-		$an->data->{cgi}{smtp_password}       = "";
-		$an->data->{cgi}{smtp_port}           = "";
-		$an->data->{cgi}{smtp_security}       = "";
-		$an->data->{cgi}{smtp_server}         = "";
-		$an->data->{cgi}{smtp_username}       = "";
-		$an->data->{cgi}{smtp_note}           = "";
 	}
 	
 	return(0);
@@ -1093,23 +1136,28 @@ sub save_smtp
 	my $smtp_uuid           = $an->data->{cgi}{smtp_uuid};
 	my $smtp_server         = $an->data->{cgi}{smtp_server};
 	my $smtp_port           = "";
+	my $smtp_alt_server  = $an->data->{cgi}{smtp_alt_server};
+	my $smtp_alt_port    = "";
 	my $smtp_username       = $an->data->{cgi}{smtp_username};
 	my $smtp_password       = $an->data->{cgi}{smtp_password};
 	my $smtp_security       = $an->data->{cgi}{smtp_security};
 	my $smtp_authentication = $an->data->{cgi}{smtp_authentication};
 	my $smtp_helo_domain    = $an->data->{cgi}{smtp_helo_domain};
 	my $smtp_note           = $an->data->{cgi}{smtp_note};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
-		name1 => "smtp_server",         value1 => $smtp_server,
-		name2 => "smtp_port",           value2 => $smtp_port,
-		name3 => "smtp_username",       value3 => $smtp_username,
-		name4 => "smtp_password",       value4 => $smtp_password,
-		name5 => "smtp_security",       value5 => $smtp_security,
-		name6 => "smtp_authentication", value6 => $smtp_authentication,
-		name7 => "smtp_helo_domain",    value7 => $smtp_helo_domain,
-		name8 => "smtp_note",           value8 => $smtp_note,
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		name1  => "smtp_server",         value1  => $smtp_server,
+		name2  => "smtp_port",           value2  => $smtp_port,
+		name3  => "smtp_alt_server",     value3  => $smtp_alt_server,
+		name4  => "smtp_alt_port",       value4  => $smtp_alt_port,
+		name5  => "smtp_username",       value5  => $smtp_username,
+		name6  => "smtp_password",       value6  => $smtp_password,
+		name7  => "smtp_security",       value7  => $smtp_security,
+		name8  => "smtp_authentication", value8  => $smtp_authentication,
+		name9  => "smtp_helo_domain",    value9  => $smtp_helo_domain,
+		name10 => "smtp_note",           value10 => $smtp_note,
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{cgi}{smtp_server} =~ /(.*):(\d+)/)
+	
+	if ($smtp_server =~ /(.*):(\d+)/)
 	{
 		$smtp_server = $1;
 		$smtp_port   = $2;
@@ -1142,6 +1190,40 @@ sub save_smtp
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
+	
+	if ($smtp_alt_server =~ /(.*):(\d+)/)
+	{
+		$smtp_alt_server = $1;
+		$smtp_alt_port   = $2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "smtp_alt_server", value1 => $smtp_alt_server,
+			name2 => "smtp_alt_port",   value2 => $smtp_alt_port,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if (($smtp_alt_server) && (not $smtp_alt_port))
+	{
+		if ($smtp_security eq "starttls")
+		{
+			$smtp_alt_port = 587;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "smtp_alt_port", value1 => $smtp_alt_port,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($smtp_security eq "tls_ssl")
+		{
+			$smtp_alt_port = 465;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "smtp_alt_port", value1 => $smtp_alt_port,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($smtp_security eq "none")
+		{
+			$smtp_alt_port = 25;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "smtp_alt_port", value1 => $smtp_alt_port,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
 	if (not $smtp_helo_domain)
 	{
 		$smtp_helo_domain = $an->domain_name();
@@ -1156,6 +1238,8 @@ sub save_smtp
 		smtp_uuid		=>	$smtp_uuid,
 		smtp_server		=>	$smtp_server,
 		smtp_port		=>	$smtp_port,
+		smtp_alt_server		=>	$smtp_alt_server,
+		smtp_alt_port		=>	$smtp_alt_port,
 		smtp_username		=>	$smtp_username,
 		smtp_password		=>	$smtp_password,
 		smtp_security		=>	$smtp_security,
@@ -4433,13 +4517,14 @@ sub smtp_menu
 	# blanked on purpose).
 	if (not $an->data->{cgi}{save})
 	{
-		if (not $an->data->{cgi}{smtp_server})         { $an->data->{cgi}{smtp_server}         = "mail.".$an->domain_name(); }
-		if (not $an->data->{cgi}{smtp_username})       { $an->data->{cgi}{smtp_username}       = "admin\@".$an->domain_name(); }
-		if (not $an->data->{cgi}{smtp_security})       { $an->data->{cgi}{smtp_security}       = "starttls"; }
-		if (not $an->data->{cgi}{smtp_authentication}) { $an->data->{cgi}{smtp_authentication} = "encrypted"; }
+		if (not $an->data->{cgi}{smtp_server})           { $an->data->{cgi}{smtp_server}         = "mail.".$an->domain_name(); }
+		if (not $an->data->{cgi}{smtp_username})         { $an->data->{cgi}{smtp_username}       = "admin\@".$an->domain_name(); }
+		if (not $an->data->{cgi}{smtp_security})         { $an->data->{cgi}{smtp_security}       = "starttls"; }
+		if (not $an->data->{cgi}{smtp_authentication})   { $an->data->{cgi}{smtp_authentication} = "encrypted"; }
+		if ($an->data->{cgi}{smtp_alt_server} eq "NULL") { $an->data->{cgi}{smtp_alt_server}     = ""; }
 	}
 	
-	# SMTP Server
+	# Primary SMTP Server
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
 			column1_class	=>	"highlight_row_bold",
 			column1		=>	"#!string!row_0250!#",
@@ -4449,6 +4534,18 @@ sub smtp_menu
 			column3		=>	"#!string!explain_0184!#",
 			column4_class	=>	"input_url",
 			column4		=>	$an->Web->more_info_link({url => "#!string!url_0002!#"}),
+		}});
+	
+	# Backup SMTP Server
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0314!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"smtp_alt_server\" id=\"smtp_alt_server\" value=\"".$an->data->{cgi}{smtp_alt_server}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0211!#",
+			column4_class	=>	"",
+			column4		=>	"",
 		}});
 	
 	# SMTP user name
@@ -4555,8 +4652,8 @@ sub smtp_menu
 				my $anvil_description = $hash_ref->{anvil_description};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "cgi::anvil_uuid",        value1 => $an->data->{cgi}{anvil_uuid},
-					name1 => "cgi::anvil_name",        value1 => $an->data->{cgi}{anvil_name},
-					name2 => "cgi::anvil_description", value2 => $an->data->{cgi}{anvil_description},
+					name2 => "cgi::anvil_name",        value2 => $an->data->{cgi}{anvil_name},
+					name3 => "cgi::anvil_description", value3 => $an->data->{cgi}{anvil_description},
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				if (not $break_printed)
@@ -5867,7 +5964,6 @@ sub _initialize_an
 			perl_library		=>	"/usr/share/perl5",
 			perl_source		=>	"/sbin/striker/AN",
 			ping			=>	"/usr/bin/ping",
-			postfix_init		=>	"/etc/init.d/postfix",
 			postfix_main		=>	"/etc/postfix/main.cf",
 			postfix_relay_file	=>	"/etc/postfix/relay_password",
 			postmap			=>	"/usr/sbin/postmap",

@@ -835,6 +835,9 @@ SELECT
     smtp_security, 
     smtp_authentication, 
     smtp_helo_domain,
+    smtp_alt_server, 
+    smtp_alt_port, 
+    smtp_note, 
     modified_date 
 FROM 
     smtp
@@ -860,20 +863,27 @@ FROM
 		my $smtp_security       = $row->[5];
 		my $smtp_authentication = $row->[6];
 		my $smtp_helo_domain    = $row->[7];
-		my $modified_date       = $row->[8];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-			name1 => "smtp_uuid",           value1 => $smtp_uuid, 
-			name2 => "smtp_server",         value2 => $smtp_server, 
-			name3 => "smtp_port",           value3 => $smtp_port, 
-			name4 => "smtp_username",       value4 => $smtp_username, 
-			name5 => "smtp_security",       value5 => $smtp_security, 
-			name6 => "smtp_authentication", value6 => $smtp_authentication, 
-			name7 => "smtp_helo_domain",    value7 => $smtp_helo_domain, 
-			name8 => "modified_date",       value8 => $modified_date, 
+		my $smtp_alt_server     = defined $row->[8]  ? $row->[8]  : "";
+		my $smtp_alt_port       = defined $row->[9]  ? $row->[9]  : ""; 
+		my $smtp_note           = defined $row->[10] ? $row->[10] : "";
+		my $modified_date       = $row->[11];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+			name1  => "smtp_uuid",           value1  => $smtp_uuid, 
+			name2  => "smtp_server",         value2  => $smtp_server, 
+			name3  => "smtp_port",           value3  => $smtp_port, 
+			name4  => "smtp_username",       value4  => $smtp_username, 
+			name5  => "smtp_security",       value5  => $smtp_security, 
+			name6  => "smtp_authentication", value6  => $smtp_authentication, 
+			name7  => "smtp_helo_domain",    value7  => $smtp_helo_domain, 
+			name8  => "smtp_alt_server",     value8  => $smtp_alt_server, 
+			name9  => "smtp_alt_port",       value9  => $smtp_alt_port, 
+			name10 => "smtp_note",           value10 => $smtp_note, 
+			name11 => "modified_date",       value11 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "smtp_password", value1 => $smtp_password, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		push @{$return}, {
 			smtp_uuid		=>	$smtp_uuid,
 			smtp_server		=>	$smtp_server, 
@@ -883,6 +893,9 @@ FROM
 			smtp_security		=>	$smtp_security, 
 			smtp_authentication	=>	$smtp_authentication, 
 			smtp_helo_domain	=>	$smtp_helo_domain, 
+			smtp_alt_server		=>	$smtp_alt_server, 
+			smtp_alt_port		=>	$smtp_alt_port, 
+			smtp_note		=>	$smtp_note, 
 			modified_date		=>	$modified_date, 
 		};
 	}
@@ -2028,6 +2041,8 @@ sub insert_or_update_smtp
 	my $smtp_uuid           = $parameter->{smtp_uuid}           ? $parameter->{smtp_uuid}           : "";
 	my $smtp_server         = $parameter->{smtp_server}         ? $parameter->{smtp_server}         : "";
 	my $smtp_port           = $parameter->{smtp_port}           ? $parameter->{smtp_port}           : "";
+	my $smtp_alt_server     = $parameter->{smtp_alt_server}     ? $parameter->{smtp_alt_server}     : "";
+	my $smtp_alt_port       = $parameter->{smtp_alt_port}       ? $parameter->{smtp_alt_port}       : "";
 	my $smtp_username       = $parameter->{smtp_username}       ? $parameter->{smtp_username}       : "";
 	my $smtp_password       = $parameter->{smtp_password}       ? $parameter->{smtp_password}       : "";
 	my $smtp_security       = $parameter->{smtp_security}       ? $parameter->{smtp_security}       : "";
@@ -2089,6 +2104,8 @@ INSERT INTO
     smtp_authentication, 
     smtp_helo_domain, 
     smtp_note, 
+    smtp_alt_server, 
+    smtp_alt_port, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid).", 
@@ -2100,6 +2117,8 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($smtp_authentication).", 
     ".$an->data->{sys}{use_db_fh}->quote($smtp_helo_domain).", 
     ".$an->data->{sys}{use_db_fh}->quote($smtp_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_alt_server).", 
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_alt_port).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
@@ -2121,6 +2140,8 @@ SELECT
     smtp_security, 
     smtp_authentication, 
     smtp_helo_domain, 
+    smtp_alt_server, 
+    smtp_alt_port, 
     smtp_note  
 FROM 
     smtp 
@@ -2146,16 +2167,20 @@ WHERE
 			my $old_smtp_security       = $row->[4];
 			my $old_smtp_authentication = $row->[5];
 			my $old_smtp_helo_domain    = $row->[6] ? $row->[6] : "";
-			my $old_smtp_note           = $row->[7] ? $row->[7] : "NULL";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-				name1 => "old_smtp_server",         value1 => $old_smtp_server, 
-				name2 => "old_smtp_port",           value2 => $old_smtp_port, 
-				name3 => "old_smtp_username",       value3 => $old_smtp_username, 
-				name4 => "old_smtp_password",       value4 => $old_smtp_password, 
-				name5 => "old_smtp_security",       value5 => $old_smtp_security, 
-				name6 => "old_smtp_authentication", value6 => $old_smtp_authentication, 
-				name7 => "old_smtp_helo_domain",    value7 => $old_smtp_helo_domain, 
-				name8 => "old_smtp_note",           value8 => $old_smtp_note, 
+			my $old_smtp_alt_server     = $row->[7] ? $row->[7] : "NULL";
+			my $old_smtp_alt_port       = $row->[8] ? $row->[8] : "NULL";
+			my $old_smtp_note           = $row->[9] ? $row->[9] : "NULL";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+				name1  => "old_smtp_server",         value1  => $old_smtp_server, 
+				name2  => "old_smtp_port",           value2  => $old_smtp_port, 
+				name3  => "old_smtp_username",       value3  => $old_smtp_username, 
+				name4  => "old_smtp_password",       value4  => $old_smtp_password, 
+				name5  => "old_smtp_security",       value5  => $old_smtp_security, 
+				name6  => "old_smtp_authentication", value6  => $old_smtp_authentication, 
+				name7  => "old_smtp_helo_domain",    value7  => $old_smtp_helo_domain, 
+				name8  => "old_smtp_note",           value8  => $old_smtp_note, 
+				name9  => "old_smtp_alt_server",     value9  => $old_smtp_alt_server, 
+				name10 => "old_smtp_alt_port",       value10 => $old_smtp_alt_port, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Anything change?
@@ -2165,8 +2190,10 @@ WHERE
 			    ($old_smtp_password       ne $smtp_password)       or 
 			    ($old_smtp_security       ne $smtp_security)       or 
 			    ($old_smtp_authentication ne $smtp_authentication) or 
+			    ($old_smtp_helo_domain    ne $smtp_helo_domain)    or
 			    ($old_smtp_note           ne $smtp_note)           or
-			    ($old_smtp_helo_domain    ne $smtp_helo_domain))
+			    ($old_smtp_alt_server     ne $smtp_alt_server)     or
+			    ($old_smtp_alt_port       ne $smtp_alt_port))
 			{
 				# Something changed, save.
 				my $query = "
@@ -2181,6 +2208,8 @@ SET
     smtp_authentication = ".$an->data->{sys}{use_db_fh}->quote($smtp_authentication).", 
     smtp_helo_domain    = ".$an->data->{sys}{use_db_fh}->quote($smtp_helo_domain).", 
     smtp_note           = ".$an->data->{sys}{use_db_fh}->quote($smtp_note).", 
+    smtp_alt_server     = ".$an->data->{sys}{use_db_fh}->quote($smtp_alt_server).", 
+    smtp_alt_port       = ".$an->data->{sys}{use_db_fh}->quote($smtp_alt_port).", 
     modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     smtp_uuid           = ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid)." 
@@ -2245,7 +2274,7 @@ SELECT
 FROM 
     variables 
 WHERE 
-    variable_name         = ".$an->data->{sys}{use_db_fh}->quote($variable_name)
+    variable_name         = ".$an->data->{sys}{use_db_fh}->quote($variable_name);
 		if (($variable_source_uuid ne "NULL") && ($variable_source_table ne "NULL"))
 		{
 			$query .= "
@@ -2318,7 +2347,7 @@ SELECT
 FROM 
     variables 
 WHERE 
-    variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)
+    variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid);
 			if (($variable_source_uuid ne "NULL") && ($variable_source_table ne "NULL"))
 			{
 				$query .= "
@@ -2357,7 +2386,7 @@ SET
     variable_value = ".$an->data->{sys}{use_db_fh}->quote($variable_value).", 
     modified_date  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
-    variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)
+    variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid);
 					if (($variable_source_uuid ne "NULL") && ($variable_source_table ne "NULL"))
 					{
 						$query .= "
@@ -4234,7 +4263,7 @@ WHERE ";
 	else
 	{
 		$query .= "
-    variable_name         = ".$an->data->{sys}{use_db_fh}->quote($variable_name)
+    variable_name         = ".$an->data->{sys}{use_db_fh}->quote($variable_name);
 		if (($variable_source_uuid ne "NULL") && ($variable_source_table ne "NULL"))
 		{
 			$query .= "

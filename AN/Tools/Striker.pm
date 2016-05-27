@@ -6126,7 +6126,7 @@ sub _dual_join
 		my $say_title = $an->String->get({key => "title_0054", variables => { anvil => $anvil_name }});
 		print $an->Web->template({file => "server.html", template => "dual-join-anvil-header", replace => { title => $say_title }});
 		
-		# Now call the command against both nodes using '$an->Remote->synchronous_command_run()'.
+		# Now call the command against both nodes using '$an->System->synchronous_command_run()'.
 		my $command  = $an->data->{path}{initd}."/cman start && ".$an->data->{path}{initd}."/rgmanager start";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 			name1 => "command",                     value1 => $command,
@@ -6139,7 +6139,7 @@ sub _dual_join
 			name1 => "sys::anvil::node1::use_password", value1 => $an->data->{sys}{anvil}{node1}{use_password},
 			name2 => "sys::anvil::node2::use_password", value2 => $an->data->{sys}{anvil}{node2}{use_password},
 		}, file => $THIS_FILE, line => __LINE__});
-		my ($output) = $an->Remote->synchronous_command_run({
+		my ($output) = $an->System->synchronous_command_run({
 			command		=>	$command, 
 			delay		=>	30,
 			node1_ip	=>	$an->data->{sys}{anvil}{node1}{use_ip}, 

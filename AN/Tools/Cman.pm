@@ -1364,9 +1364,9 @@ sub withdraw_node
 	my $output      = "";
 	
 	# Sometimes rgmanager gets stuck waiting for gfs2 and/or clvmd2 to stop. So to help with these cases,
-	# we'll call '$an->Remote->delayed_run()' for at least 60 seconds in the future. This usually gives 
+	# we'll call '$an->System->delayed_run()' for at least 60 seconds in the future. This usually gives 
 	# rgmanager the kick it needs to actually stop.
-	my ($token, $delayed_run_output, $problem) = $an->Remote->delayed_run({
+	my ($token, $delayed_run_output, $problem) = $an->System->delayed_run({
 		command  => $an->data->{path}{initd}."/gfs2 stop && ".$an->data->{path}{initd}."/clvmd stop",
 		delay    => 60,
 		target   => $target,

@@ -200,7 +200,6 @@ sub _initialize_an
 			perl_library		=>	"/usr/share/perl5",
 			perl_source		=>	"/sbin/striker/AN",
 			ping			=>	"/usr/bin/ping",
-			postfix_init		=>	"/etc/init.d/postfix",
 			postfix_main		=>	"/etc/postfix/main.cf",
 			postfix_relay_file	=>	"/etc/postfix/relay_password",
 			postmap			=>	"/usr/sbin/postmap",

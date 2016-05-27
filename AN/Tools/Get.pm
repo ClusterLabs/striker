@@ -267,18 +267,36 @@ sub date_and_time
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $offset          = $parameter->{offset}          ? $parameter->{offset}          : 0;
-	my $use_time        = $parameter->{use_time}        ? $parameter->{use_time}        : time;
-	my $require_weekday = $parameter->{require_weekday} ? $parameter->{require_weekday} : 0;
-	my $skip_weekends   = $parameter->{skip_weekends}   ? $parameter->{skip_weekends}   : 0;
-	my $split_date_time = $parameter->{split_date_time} ? $parameter->{split_date_time} : 1;
-	my $no_spaces       = $parameter->{no_spaces}       ? $parameter->{no_spaces}       : 0;
-	my $time_only       = $parameter->{time_only}       ? $parameter->{time_only}       : 0;
+	my $offset          = defined $parameter->{offset}          ? $parameter->{offset}          : 0;
+	my $use_time        = defined $parameter->{use_time}        ? $parameter->{use_time}        : time;
+	my $require_weekday = defined $parameter->{require_weekday} ? $parameter->{require_weekday} : 0;
+	my $skip_weekends   = defined $parameter->{skip_weekends}   ? $parameter->{skip_weekends}   : 0;
+	my $split_date_time = defined $parameter->{split_date_time} ? $parameter->{split_date_time} : 1;
+	my $no_spaces       = defined $parameter->{no_spaces}       ? $parameter->{no_spaces}       : 0;
+	my $time_only       = defined $parameter->{time_only}       ? $parameter->{time_only}       : 0;
+	my $debug           = defined $parameter->{debug}           ? $parameter->{debug}           : 0;
+	
+	# We can't use normal logging, so this is a bit of a hack to help debugging.
+	if ($debug)
+	{
+		print "$THIS_FILE ".__LINE__."; 
+offset: ........ [$offset]
+use_time: ...... [$use_time]
+require_weekday: [$require_weekday]
+skip_weekends: . [$skip_weekends]
+split_date_time: [$split_date_time]
+no_spaces: ..... [$no_spaces]
+time_only: ..... [$time_only]
+";
+	}
 	
 	# Do my initial calculation.
 	my %time          = ();
-	my $adjusted_time = $use_time+$offset;
+	my $adjusted_time = $use_time + $offset;
+	print "$THIS_FILE ".__LINE__."; adjusted_time: [$adjusted_time]\n" if $debug;
+	
 	($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
+	print "$THIS_FILE ".__LINE__."; time{sec}: [$time{sec}], time{min}: [$time{min}], time{hour}: [$time{hour}], time{mday}: [$time{mday}], time{mon}: [$time{mon}], time{year}: [$time{year}], time{wday}: [$time{wday}], time{yday}: [$time{yday}], time{isdst}: [$time{isdst}]\n" if $debug;
 
 	# If I am set to skip weekends and I land on a weekend, simply add 48 hours. This is useful when you 
 	# need to move X-weekdays.
@@ -290,6 +308,7 @@ sub date_and_time
 		my $local_offset = $offset;		# Local offset I can mess with.
 		my $day          = 24 * 60 * 60;	# For clarity.
 		my $week         = $day * 7;		# For clarity.
+		print "$THIS_FILE ".__LINE__."; local_offset: [$local_offset], day: [$day], week: [$week]\n" if $debug;
 		
 		# As I proceed, 'local_time' will be subtracted as I account for time and 'difference' will 
 		# increase to account for known weekend days.
@@ -299,14 +318,18 @@ sub date_and_time
 			$local_offset =~ s/^-//;
 			
 			# First, how many seconds have passed today?
-			my $seconds_passed_today = $time{sec} + ($time{min}*60) + ($time{hour}*60*60);
+			my $seconds_passed_today = $time{sec} + ($time{min} * 60) + ($time{hour} * 60 * 60);
+			print "$THIS_FILE ".__LINE__."; seconds_passed_today: [$seconds_passed_today]\n" if $debug;
 			
 			# Now, get the number of seconds in the offset beyond an even day. This is compared 
 			# to the seconds passed in this day. If greater, I count an extra day.
 			my $local_offset_second_over_day =  $local_offset % $day;
-			$local_offset                    -= $local_offset_second_over_day;
+			   $local_offset                 -= $local_offset_second_over_day;
 			my $local_offset_days            =  $local_offset / $day;
+			print "$THIS_FILE ".__LINE__."; local_offset_second_over_day: [$local_offset_second_over_day], local_offset: [$local_offset], local_offset_days: [$local_offset_days]\n" if $debug;
+
 			$local_offset_days++ if $local_offset_second_over_day > $seconds_passed_today;
+			print "$THIS_FILE ".__LINE__."; local_offset_days: [$local_offset_days]\n" if $debug;
 			
 			# If the number of days is greater than one week, add two days to the 'difference' 
 			# for every seven days and reduce 'local_offset_days' to the number of days beyond 
@@ -315,34 +338,42 @@ sub date_and_time
 			if ($local_offset_days > 7)
 			{
 				# Greater than a week, do the math.
-				$local_offset_remaining_days =  $local_offset_days % 7;
-				$local_offset_days           -= $local_offset_remaining_days;
-				my $weeks_passed             =  $local_offset_days / 7;
-				$difference                  += ($weeks_passed * (2 * $day));
+				   $local_offset_remaining_days =  $local_offset_days % 7;
+				   $local_offset_days           -= $local_offset_remaining_days;
+				my $weeks_passed                =  $local_offset_days / 7;
+				   $difference                  += ($weeks_passed * (2 * $day));
+				print "$THIS_FILE ".__LINE__."; local_offset_remaining_days: [$local_offset_remaining_days], local_offset_days: [$local_offset_days], weeks_passed: [$weeks_passed], difference: [$difference]\n" if $debug;
 			}
 			
 			# If I am currently in a weekend, add two days.
 			if (($time{wday} == 6) || ($time{wday} == 0))
 			{
 				$difference += (2 * $day);
+				print "$THIS_FILE ".__LINE__."; difference: [$difference]\n" if $debug;
 			}
 			else
 			{
 				# Compare 'local_offset_remaining_days' to today's day. If greater, I've 
 				# passed a weekend and need to add two days to 'difference'.
 				my $today_day = (localtime())[6];
+				print "$THIS_FILE ".__LINE__."; today_day: [$today_day]\n" if $debug;
 				if ($local_offset_remaining_days > $today_day)
 				{
-					$difference+=(2 * $day);
+					$difference += (2 * $day);
+					print "$THIS_FILE ".__LINE__."; difference: [$difference]\n" if $debug;
 				}
 			}
 			
 			# If I have a difference, recalculate the offset date.
+			print "$THIS_FILE ".__LINE__."; difference: [$difference]\n" if $debug;
 			if ($difference)
 			{
-				my $new_offset = ($offset - $difference);
-				$adjusted_time = ($use_time + $new_offset);
+				my $new_offset    = ($offset - $difference);
+				   $adjusted_time = ($use_time + $new_offset);
+				print "$THIS_FILE ".__LINE__."; new_offset: [$new_offset], adjusted_time: [$adjusted_time]\n" if $debug;
+				
 				($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
+				print "$THIS_FILE ".__LINE__."; time{sec}: [$time{sec}], time{min}: [$time{min}], time{hour}: [$time{hour}], time{mday}: [$time{mday}], time{mon}: [$time{mon}], time{year}: [$time{year}], time{wday}: [$time{wday}], time{yday}: [$time{yday}], time{isdst}: [$time{isdst}]\n" if $debug;
 			}
 		}
 		else
@@ -353,50 +384,61 @@ sub date_and_time
 			my $left_minutes          = 59 - $time{min};
 			my $left_seconds          = 59 - $time{sec};
 			my $seconds_left_in_today = $left_seconds + ($left_minutes*60) + ($left_hours*60*60);
+			print "$THIS_FILE ".__LINE__."; left_hours: [$left_hours], left_minutes: [$left_minutes], left_seconds: [$left_seconds], seconds_left_in_today: [$seconds_left_in_today]\n" if $debug;
 			
 			# Now, get the number of seconds in the offset beyond an even day. This is compared 
 			# to the seconds left in this day. If greater, I count an extra day.
 			my $local_offset_second_over_day =  $local_offset % $day;
-			$local_offset                    -= $local_offset_second_over_day;
+			   $local_offset                 -= $local_offset_second_over_day;
 			my $local_offset_days            =  $local_offset / $day;
+			print "$THIS_FILE ".__LINE__."; local_offset_second_over_day: [$local_offset_second_over_day], local_offset: [$local_offset], local_offset_days: [$local_offset_days]\n" if $debug;
+			
 			$local_offset_days++ if $local_offset_second_over_day > $seconds_left_in_today;
+			print "$THIS_FILE ".__LINE__."; local_offset_days: [$local_offset_days]\n" if $debug;
 			
 			# If the number of days is greater than one week, add two days to the 'difference'
 			# for every seven days and reduce 'local_offset_days' to the number of days beyond 
 			# the given number of weeks.
 			my $local_offset_remaining_days = $local_offset_days;
+			print "$THIS_FILE ".__LINE__."; local_offset_remaining_days: [$local_offset_remaining_days]\n" if $debug;
 			if ($local_offset_days > 7)
 			{
 				# Greater than a week, do the math.
-				$local_offset_remaining_days =  $local_offset_days % 7;
-				$local_offset_days           -= $local_offset_remaining_days;
-				my $weeks_passed             =  $local_offset_days / 7;
-				$difference                  += ($weeks_passed * (2 * $day));
+				   $local_offset_remaining_days =  $local_offset_days % 7;
+				   $local_offset_days           -= $local_offset_remaining_days;
+				my $weeks_passed                =  $local_offset_days / 7;
+				   $difference                  += ($weeks_passed * (2 * $day));
+				print "$THIS_FILE ".__LINE__."; local_offset_remaining_days: [$local_offset_remaining_days], local_offset_days: [$local_offset_days], weeks_passed: [$weeks_passed], difference: [$difference]\n" if $debug;
 			}
 			
 			# If I am currently in a weekend, add two days.
 			if (($time{wday} == 6) || ($time{wday} == 0))
 			{
 				$difference += (2 * $day);
+				print "$THIS_FILE ".__LINE__."; difference: [$difference]\n" if $debug;
 			}
 			else
 			{
 				# Compare 'local_offset_remaining_days' to 5 minus today's day to get the 
 				# number of days until the weekend. If greater, I've crossed a weekend and 
 				# need to add two days to 'difference'.
-				my $today_day=(localtime())[6];
-				my $days_to_weekend=5 - $today_day;
+				my $today_day       = (localtime())[6];
+				my $days_to_weekend = 5 - $today_day;
+				print "$THIS_FILE ".__LINE__."; today_day: [$today_day], days_to_weekend: [$days_to_weekend]\n" if $debug;
 				if ($local_offset_remaining_days > $days_to_weekend)
 				{
-					$difference+=(2 * $day);
+					$difference += (2 * $day);
+					print "$THIS_FILE ".__LINE__."; difference: [$difference]\n" if $debug;
 				}
 			}
 			
 			# If I have a difference, recalculate the offset date.
+			print "$THIS_FILE ".__LINE__."; difference: [$difference]\n" if $debug;
 			if ($difference)
 			{
-				my $new_offset = ($offset + $difference);
-				$adjusted_time = ($use_time + $new_offset);
+				my $new_offset    = ($offset + $difference);
+				   $adjusted_time = ($use_time + $new_offset);
+				print "$THIS_FILE ".__LINE__."; new_offset: [$new_offset], adjusted_time: [$adjusted_time]\n" if $debug;
 				($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
 			}
 		}
@@ -404,24 +446,25 @@ sub date_and_time
 
 	# If the 'require_weekday' is set and if 'time{wday}' is 0 (Sunday) or 6 (Saturday), set or increase 
 	# the offset by 24 or 48 hours.
+	print "$THIS_FILE ".__LINE__."; require_weekday: [$require_weekday], time{wday}: [$time{wday}], time{wday}: [$time{wday}]\n" if $debug;
 	if (($require_weekday) && (( $time{wday} == 0 ) || ( $time{wday} == 6 )))
 	{
 		# The resulting day is a weekend and the require weekday was set.
 		$adjusted_time = $use_time + ($offset + (24 * 60 * 60));
+		print "$THIS_FILE ".__LINE__."; adjusted_time: [$adjusted_time]\n" if $debug;
 		($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
 		
 		# I don't check for the date and adjust automatically because I don't know if I am going 
 		# forward or backwards in the calander.
-		if (( $time{wday} == 0 ) || ( $time{wday} == 6 ))
+		print "$THIS_FILE ".__LINE__."; time{wday}: [$time{wday}], time{wday}: [$time{wday}]\n" if $debug;
+		if (($time{wday} == 0) || ($time{wday} == 6))
 		{
 			# Am I still ending on a weekday?
 			$adjusted_time = $use_time + ($offset + (48 * 60 * 60));
+			print "$THIS_FILE ".__LINE__."; adjusted_time: [$adjusted_time]\n" if $debug;
 			($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
 		}
 	}
-
-	# Increment the month by one.
-	$time{mon}++;
 	
 	# Parse the 12/24h time components.
 	if ($an->Get->use_24h)
@@ -429,6 +472,7 @@ sub date_and_time
 		# 24h time.
 		$time{pad_hour} = sprintf("%02d", $time{hour});
 		$time{suffix}   = "";
+		print "$THIS_FILE ".__LINE__."; time{pad_hour}: [$time{pad_hour}], time{suffix}: [$time{suffix}]\n" if $debug;
 	}
 	else
 	{
@@ -437,54 +481,66 @@ sub date_and_time
 		{
 			$time{pad_hour} = 12;
 			$time{suffix}   = " ".$an->Get->say_am;
+			print "$THIS_FILE ".__LINE__."; time{pad_hour}: [$time{pad_hour}], time{suffix}: [$time{suffix}]\n" if $debug;
 		}
 		elsif ( $time{hour} < 12 )
 		{
 			$time{pad_hour} = $time{hour};
 			$time{suffix}   = " ".$an->Get->say_am;
+			print "$THIS_FILE ".__LINE__."; time{pad_hour}: [$time{pad_hour}], time{suffix}: [$time{suffix}]\n" if $debug;
 		}
 		else
 		{
 			$time{pad_hour} = ($time{hour}-12);
 			$time{suffix}   = " ".$an->Get->say_pm;
+			print "$THIS_FILE ".__LINE__."; time{pad_hour}: [$time{pad_hour}], time{suffix}: [$time{suffix}]\n" if $debug;
 		}
 		$time{pad_hour} = sprintf("%02d", $time{pad_hour});
+		print "$THIS_FILE ".__LINE__."; time{pad_hour}: [$time{pad_hour}]\n" if $debug;
 	}
 	
 	# Now parse the global components.
+	$time{mon}++;
 	$time{pad_min}  = sprintf("%02d", $time{min});
 	$time{pad_sec}  = sprintf("%02d", $time{sec});
 	$time{year}     = ($time{year} + 1900);
 	$time{pad_mon}  = sprintf("%02d", $time{mon});
 	$time{pad_mday} = sprintf("%02d", $time{mday});
-	$time{mon}++;
+	print "$THIS_FILE ".__LINE__."; time{pad_min}: [$time{pad_min}], time{pad_sec}: [$time{pad_sec}], time{year}: [$time{year}], time{pad_mon}: [$time{pad_mon}], time{pad_mday}: [$time{pad_mday}], time{mon}: [$time{mon}]\n" if $debug;
 	
-	my $date = $time{year}.$an->Get->date_seperator.$time{pad_mon}.$an->Get->date_seperator.$time{pad_mday};
-	my $time = $time{pad_hour}.$an->Get->time_seperator.$time{pad_min}.$an->Get->time_seperator.$time{pad_sec}.$time{suffix};
+	my $say_date = $time{year}.$an->Get->date_seperator.$time{pad_mon}.$an->Get->date_seperator.$time{pad_mday};
+	my $say_time = $time{pad_hour}.$an->Get->time_seperator.$time{pad_min}.$an->Get->time_seperator.$time{pad_sec}.$time{suffix};
+	print "$THIS_FILE ".__LINE__."; say_date: [$say_date], say_time: [$say_time]\n" if $debug;
 	
 	if ($split_date_time)
 	{
 		if ($time_only)
 		{
-			return ($time);
+			print "$THIS_FILE ".__LINE__."; say_time: [$say_time]\n" if $debug;
+			return ($say_time);
 		}
 		else
 		{
-			return ($date, $time);
+			print "$THIS_FILE ".__LINE__."; say_date: [$say_date], say_time: [$say_time]\n" if $debug;
+			return ($say_date, $say_time);
 		}
 	}
 	else
 	{
-		my $return = "$date, $time";
+		my $return = "$say_date, $say_time";
+		print "$THIS_FILE ".__LINE__."; return: [$return]\n" if $debug;
 		if ($time_only)
 		{
-			$return = $time;
+			$return = $say_time;
+			print "$THIS_FILE ".__LINE__."; return: [$return]\n" if $debug;
 		}
 		if ($no_spaces)
 		{
 			$return =~ s/,//g;
 			$return =~ s/ /_/g;
+			print "$THIS_FILE ".__LINE__."; return: [$return]\n" if $debug;
 		}
+		print "$THIS_FILE ".__LINE__."; return: [$return]\n" if $debug;
 		return ($return);
 	}
 }
