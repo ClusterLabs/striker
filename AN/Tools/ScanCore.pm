@@ -2586,21 +2586,25 @@ sub parse_anvil_data
 		my $smtp_uuid = $hash_ref->{smtp_uuid};
 		
 		# Store the data
-		$an->data->{db}{smtp}{$smtp_uuid}{server}         = $hash_ref->{smtp_uuid};
+		$an->data->{db}{smtp}{$smtp_uuid}{server}         = $hash_ref->{smtp_server};
 		$an->data->{db}{smtp}{$smtp_uuid}{port}           = $hash_ref->{smtp_port};
+		$an->data->{db}{smtp}{$smtp_uuid}{alt_server}     = $hash_ref->{smtp_alt_server};
+		$an->data->{db}{smtp}{$smtp_uuid}{alt_port}       = $hash_ref->{smtp_alt_port};
 		$an->data->{db}{smtp}{$smtp_uuid}{username}       = $hash_ref->{smtp_username};
 		$an->data->{db}{smtp}{$smtp_uuid}{security}       = $hash_ref->{smtp_security};
 		$an->data->{db}{smtp}{$smtp_uuid}{authentication} = $hash_ref->{smtp_authentication};
 		$an->data->{db}{smtp}{$smtp_uuid}{helo_domain}    = $hash_ref->{smtp_helo_domain};
 		$an->data->{db}{smtp}{$smtp_uuid}{password}       = $hash_ref->{smtp_password};
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "db::smtp::${smtp_uuid}::server",         value1 => $an->data->{db}{smtp}{$smtp_uuid}{server}, 
 			name2 => "db::smtp::${smtp_uuid}::port",           value2 => $an->data->{db}{smtp}{$smtp_uuid}{port}, 
-			name3 => "db::smtp::${smtp_uuid}::username",       value3 => $an->data->{db}{smtp}{$smtp_uuid}{username}, 
-			name4 => "db::smtp::${smtp_uuid}::security",       value4 => $an->data->{db}{smtp}{$smtp_uuid}{security}, 
-			name5 => "db::smtp::${smtp_uuid}::authentication", value5 => $an->data->{db}{smtp}{$smtp_uuid}{authentication}, 
-			name6 => "db::smtp::${smtp_uuid}::helo_domain",    value6 => $an->data->{db}{smtp}{$smtp_uuid}{helo_domain}, 
+			name3 => "db::smtp::${smtp_uuid}::alt_server",     value3 => $an->data->{db}{smtp}{$smtp_uuid}{alt_server}, 
+			name4 => "db::smtp::${smtp_uuid}::alt_port",       value4 => $an->data->{db}{smtp}{$smtp_uuid}{alt_port}, 
+			name5 => "db::smtp::${smtp_uuid}::username",       value5 => $an->data->{db}{smtp}{$smtp_uuid}{username}, 
+			name6 => "db::smtp::${smtp_uuid}::security",       value6 => $an->data->{db}{smtp}{$smtp_uuid}{security}, 
+			name7 => "db::smtp::${smtp_uuid}::authentication", value7 => $an->data->{db}{smtp}{$smtp_uuid}{authentication}, 
+			name8 => "db::smtp::${smtp_uuid}::helo_domain",    value8 => $an->data->{db}{smtp}{$smtp_uuid}{helo_domain}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "db::smtp::${smtp_uuid}::password", value1 => $an->data->{db}{smtp}{$smtp_uuid}{password}, 
@@ -2759,18 +2763,22 @@ sub parse_anvil_data
 			{
 				$an->data->{anvils}{$anvil_uuid}{smtp}{server}         = $an->data->{db}{smtp}{$smtp_uuid}{server};
 				$an->data->{anvils}{$anvil_uuid}{smtp}{port}           = $an->data->{db}{smtp}{$smtp_uuid}{port};
+				$an->data->{anvils}{$anvil_uuid}{smtp}{alt_server}     = $an->data->{db}{smtp}{$smtp_uuid}{alt_server};
+				$an->data->{anvils}{$anvil_uuid}{smtp}{alt_port}       = $an->data->{db}{smtp}{$smtp_uuid}{alt_port};
 				$an->data->{anvils}{$anvil_uuid}{smtp}{username}       = $an->data->{db}{smtp}{$smtp_uuid}{username};
 				$an->data->{anvils}{$anvil_uuid}{smtp}{security}       = $an->data->{db}{smtp}{$smtp_uuid}{security};
 				$an->data->{anvils}{$anvil_uuid}{smtp}{authentication} = $an->data->{db}{smtp}{$smtp_uuid}{authentication};
 				$an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain}    = $an->data->{db}{smtp}{$smtp_uuid}{helo_domain};
 				$an->data->{anvils}{$anvil_uuid}{smtp}{password}       = $an->data->{db}{smtp}{$smtp_uuid}{password};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 					name1 => "anvils::${anvil_uuid}::smtp::server",         value1 => $an->data->{anvils}{$anvil_uuid}{smtp}{server}, 
 					name2 => "anvils::${anvil_uuid}::smtp::port",           value2 => $an->data->{anvils}{$anvil_uuid}{smtp}{port}, 
-					name3 => "anvils::${anvil_uuid}::smtp::username",       value3 => $an->data->{anvils}{$anvil_uuid}{smtp}{username}, 
-					name4 => "anvils::${anvil_uuid}::smtp::security",       value4 => $an->data->{anvils}{$anvil_uuid}{smtp}{security}, 
-					name5 => "anvils::${anvil_uuid}::smtp::authentication", value5 => $an->data->{anvils}{$anvil_uuid}{smtp}{authentication}, 
-					name6 => "anvils::${anvil_uuid}::smtp::helo_domain",    value6 => $an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain}, 
+					name3 => "anvils::${anvil_uuid}::smtp::alt_server",     value3 => $an->data->{anvils}{$anvil_uuid}{smtp}{alt_server}, 
+					name4 => "anvils::${anvil_uuid}::smtp::alt_port",       value4 => $an->data->{anvils}{$anvil_uuid}{smtp}{alt_port}, 
+					name5 => "anvils::${anvil_uuid}::smtp::username",       value5 => $an->data->{anvils}{$anvil_uuid}{smtp}{username}, 
+					name6 => "anvils::${anvil_uuid}::smtp::security",       value6 => $an->data->{anvils}{$anvil_uuid}{smtp}{security}, 
+					name7 => "anvils::${anvil_uuid}::smtp::authentication", value7 => $an->data->{anvils}{$anvil_uuid}{smtp}{authentication}, 
+					name8 => "anvils::${anvil_uuid}::smtp::helo_domain",    value8 => $an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 					name1 => "anvils::${anvil_uuid}::smtp::password", value1 => $an->data->{anvils}{$anvil_uuid}{smtp}{password}, 

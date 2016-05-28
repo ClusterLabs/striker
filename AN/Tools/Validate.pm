@@ -6,11 +6,13 @@ package AN::Tools::Validate;
 use strict;
 use warnings;
 use Data::Dumper;
+use Mail::RFC822::Address qw(valid validlist);
 
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Validate.pm";
 
 ### Methods;
+# is_email
 # is_domain_name
 # is_integer_or_unsigned_float
 # is_ipv4
@@ -51,15 +53,43 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
+# Check to see if the string is a valid email
+sub is_email
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_email" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $email = $parameter->{email} ? $parameter->{email} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "email", value1 => $email,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# We cheat here by using Mail::RFC822::Address because trying to be thorough with email regex is a 
+	# fool's errand.
+	my $valid = 0;
+	if (valid($email))
+	{
+		$valid = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "valid", value1 => $valid,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "valid", value1 => $valid,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($valid);
+}
+
 # Check to see if the string looks like a valid hostname
 sub is_domain_name
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_domain_name" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $name = $parameter->{name} ? $parameter->{name} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -95,9 +125,7 @@ sub is_integer_or_unsigned_float
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_integer_or_unsigned_float" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $number = $parameter->{number} ? $parameter->{number} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -134,6 +162,7 @@ sub is_ipv4
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_ipv4" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ip = $parameter->{ip} ? $parameter->{ip} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -188,9 +217,7 @@ sub is_url
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_url" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $url = $parameter->{url} ? $parameter->{url} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -302,9 +329,7 @@ sub is_uuid
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $valid = 0;
 	my $uuid  = $parameter->{uuid} ? $parameter->{uuid} : "";
