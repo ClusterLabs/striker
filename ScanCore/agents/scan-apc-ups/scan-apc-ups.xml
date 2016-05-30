@@ -148,7 +148,7 @@ The UPS: [#!variable!ups_name!#] is discharging!:
 		<key name="scan_apc_ups_note_0026">
 The UPS: [#!variable!ups_name!#] has discharged below the warning threshold!:
 - [#!variable!old_value!#%] -> [#!variable!new_value!#%]
-  Warning: If power is not restored soon, this UPS will be marked as unusable. If the other UPS(es) also drop below this level, your #!string!scancore_brand_0002!# will automatically shut down, if configured to do so.
+  Warning: If power is not restored soon, this UPS will be marked as unusable. If the other UPS(es) also drop below this level, your #!string!brand_0004!# will automatically shut down, if configured to do so.
 		</key>
 		<key name="scan_apc_ups_note_0027">
 The UPS: [#!variable!ups_name!#] has had its battery's last replacement date changed:

@@ -24,19 +24,19 @@ all strings with 'scan_clustat_'.
 		<key name="scan_clustat_note_0002">It appears that the 'clustat' service: [#!variable!service!#] was deleted.</key>
 		<key name="scan_clustat_note_0003">It appears that the server: [#!variable!service!#] was deleted.</key>
 		<key name="scan_clustat_note_0004">The new node: [#!variable!node!#] has appeared.</key>
-		<key name="scan_clustat_note_0005">It looks like 'rgmanager' (the cluster's resource manager) was stopped on the node: [#!variable!node!#]. It is still an #!string!scancore_brand_0002!# member, but it can no longer recover lost servers.</key>
+		<key name="scan_clustat_note_0005">It looks like 'rgmanager' (the cluster's resource manager) was stopped on the node: [#!variable!node!#]. It is still an #!string!brand_0004!# member, but it can no longer recover lost servers.</key>
 		<key name="scan_clustat_note_0006">The node has joined the cluster: [#!variable!cluster!#].</key>
-		<key name="scan_clustat_note_0007">The cluster manager was stopped on the node: [#!variable!node!#]. The node is no longer participating in the #!string!scancore_brand_0002!#.</key>
-		<key name="scan_clustat_note_0008">The node: [#!variable!node!#] has rejoined the #!string!scancore_brand_0002!#, but it is not yet able to take over lost servers. It should be ready in the next minute or so.</key>
-		<key name="scan_clustat_note_0009">The node: [#!variable!node!#] is now a full member of #!string!scancore_brand_0002!#. As soon as its storage is 'UpToDate', it will be ready to take over servers.</key>
-		<key name="scan_clustat_note_0010">The node: [#!variable!node!#] has fully rejoined the #!string!scancore_brand_0002!#. As soon as its storage is 'UpToDate', it will be ready to take over servers.</key>
+		<key name="scan_clustat_note_0007">The cluster manager was stopped on the node: [#!variable!node!#]. The node is no longer participating in the #!string!brand_0004!#.</key>
+		<key name="scan_clustat_note_0008">The node: [#!variable!node!#] has rejoined the #!string!brand_0004!#, but it is not yet able to take over lost servers. It should be ready in the next minute or so.</key>
+		<key name="scan_clustat_note_0009">The node: [#!variable!node!#] is now a full member of #!string!brand_0004!#. As soon as its storage is 'UpToDate', it will be ready to take over servers.</key>
+		<key name="scan_clustat_note_0010">The node: [#!variable!node!#] has fully rejoined the #!string!brand_0004!#. As soon as its storage is 'UpToDate', it will be ready to take over servers.</key>
 		<key name="scan_clustat_note_0011">The service: [#!variable!service!#] is starting on the host: [#!variable!host!#]...</key>
 		<key name="scan_clustat_note_0012">The node: [#!variable!node!#]'s internal ID number has changed from: [#!variable!old_id!#] to:  [#!variable!new_id!#]. This should never unless an admin changed this intentionally.</key>
 		<key name="scan_clustat_note_0013">The new service: [#!variable!service!#] has appeared.</key>
 		<key name="scan_clustat_note_0014">Congratulations! Your new server: [#!variable!service!#] has been created.</key>
 		<key name="scan_clustat_note_0015">The server: [#!variable!service!#] is booting on the host: [#!variable!host!#]...</key>
 		<key name="scan_clustat_note_0016">The server: [#!variable!service!#] has booted on the host: [#!variable!host!#].</key>
-		<key name="scan_clustat_note_0017">The node has gained quorum. This means that the node can now participate in the #!string!scancore_brand_0002!# again.</key>
+		<key name="scan_clustat_note_0017">The node has gained quorum. This means that the node can now participate in the #!string!brand_0004!# again.</key>
 		<key name="scan_clustat_note_0018"></key>
 		<key name="scan_clustat_note_0019">The server: [#!variable!service!#] is being stopped on the host: [#!variable!host!#]. Please make sure the OS initiated power off!</key>
 		<key name="scan_clustat_note_0020">The server: [#!variable!service!#] has been stopped.</key>
@@ -100,7 +100,7 @@ Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_bra
 		<key name="scan_clustat_warning_0015">The service: [#!variable!service!#] failed to start!</key>
 		<key name="scan_clustat_warning_0016">The service: [#!variable!service!#] has failed!</key>
 		<key name="scan_clustat_warning_0017">The service: [#!variable!service!#] has been restarted on the host: [#!variable!host!#]. This is generally not normal, unless someone is doing work on a node.</key>
-		<key name="scan_clustat_warning_0018">The node: [#!variable!node!#] has gone offline. If someone is doing work on your #!string!scancore_brand_0002!#, then this is usually OK. If this was not expected, the node may have crashed and been fenced.</key>
+		<key name="scan_clustat_warning_0018">The node: [#!variable!node!#] has gone offline. If someone is doing work on your #!string!brand_0004!#, then this is usually OK. If this was not expected, the node may have crashed and been fenced.</key>
 		<key name="scan_clustat_warning_0019">The server: [#!variable!service!#] was disabled after being marked as failed.</key>
 		<key name="scan_clustat_warning_0020">The server: [#!variable!service!#] was recovered successfully on the host: [#!variable!host!#].</key>
 		<key name="scan_clustat_warning_0021">The server: [#!variable!service!#] was disabled after being marked as failed.</key>
@@ -108,7 +108,7 @@ Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_bra
 		<key name="scan_clustat_warning_0023">The node has left the cluster: [#!variable!cluster!#].</key>
 		<key name="scan_clustat_warning_0024">
 The node has lost quorum. 
-This means that the node can no longer participate in the #!string!scancore_brand_0002!#. 
+This means that the node can no longer participate in the #!string!brand_0004!#. 
 This should never happen. 
 #!string!scancore_brand_0005!#
 		</key>

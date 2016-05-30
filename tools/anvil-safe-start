@@ -2116,7 +2116,7 @@ sub wait_for_access
 	
 	my $node_key  = $an->data->{sys}{local_key};
 	my $peer_key  = $an->data->{sys}{peer_key};
-	my $peer_name = $an->data->{sys}{anvil}{$node_key}{name};
+	my $peer_name = $an->data->{sys}{anvil}{$peer_key}{name};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "node_key",  value1 => $node_key,
 		name2 => "peer_key",  value2 => $peer_key,
@@ -2135,9 +2135,10 @@ sub wait_for_access
 	# only wait for so long. This tracks when we started waiting.
 	my $waiting_started_at = time;
 	my $stop_waiting_at    = $waiting_started_at + $an->data->{sys}{single_node_start}{boot_delay};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "waiting_started_at", value1 => $node_key,
-		name2 => "peer_key", value2 => $peer_key,
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "waiting_started_at", value1 => $waiting_started_at,
+		name2 => "stop_waiting_at",    value2 => $stop_waiting_at,
+		name3 => "time",               value3 => time,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $can_ping = 0;
@@ -2167,16 +2168,16 @@ sub wait_for_access
 		}
 		else
 		{
+			# This will set 'sys::single_node_start::ran' if we gave up waiting and started alone. If 
+			# that is non-zero, we'll set 'can_ping' to end the loop.
+			check_single_node_start($an, $peer_name, $waiting_started_at, $stop_waiting_at);
+			$can_ping = $an->data->{sys}{single_node_start}{ran};
+		
 			# Something isn't responding, so sleep.
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0007", file => $THIS_FILE, line => __LINE__});
 			sleep 5;
 		}
 		
-		# This will set 'sys::single_node_start::ran' if we gave up waiting and started alone. If 
-		# that is non-zero, we'll set 'can_ping' to end the loop.
-		check_single_node_start($an, $peer_name, $waiting_started_at, $stop_waiting_at);
-		
-		$can_ping = $an->data->{sys}{single_node_start}{ran};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "sys::single_node_start::ran", value1 => $an->data->{sys}{single_node_start}{ran},
 			name2 => "can_ping",                    value2 => $can_ping,
@@ -2262,7 +2263,12 @@ sub check_single_node_start
 	
 	# Waited more that our boot delay and single node start is enabled, so see if we last saw the peer as
 	# offline and, if so, end the wait.
-	if (($stop_waiting_at > time) && ($an->data->{sys}{single_node_start}{enabled}))
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "time",                            value1 => time,
+		name2 => "stop_waiting_at",                 value2 => $stop_waiting_at,
+		name3 => "sys::single_node_start::enabled", value3 => $an->data->{sys}{single_node_start}{enabled},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((time > $stop_waiting_at) && ($an->data->{sys}{single_node_start}{enabled}))
 	{
 		# what was the state of my peer last time I saw it?
 		my $peer_state_variable  = "sys::node::".$peer_name."::last_seen";

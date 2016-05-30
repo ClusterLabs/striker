@@ -275,11 +275,13 @@ sub load_anvil
 	$an->data->{sys}{anvil}{owner}{note}          = $an->data->{anvils}{$anvil_uuid}{owner}{note};
 	$an->data->{sys}{anvil}{smtp}{server}         = $an->data->{anvils}{$anvil_uuid}{smtp}{server};
 	$an->data->{sys}{anvil}{smtp}{port}           = $an->data->{anvils}{$anvil_uuid}{smtp}{port};
+	$an->data->{sys}{anvil}{smtp}{alt_server}     = $an->data->{anvils}{$anvil_uuid}{smtp}{alt_server};
+	$an->data->{sys}{anvil}{smtp}{alt_port}       = $an->data->{anvils}{$anvil_uuid}{smtp}{alt_port};
 	$an->data->{sys}{anvil}{smtp}{username}       = $an->data->{anvils}{$anvil_uuid}{smtp}{username};
 	$an->data->{sys}{anvil}{smtp}{security}       = $an->data->{anvils}{$anvil_uuid}{smtp}{security};
 	$an->data->{sys}{anvil}{smtp}{authentication} = $an->data->{anvils}{$anvil_uuid}{smtp}{authentication};
 	$an->data->{sys}{anvil}{smtp}{helo_domain}    = $an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
 		name1  => "sys::anvil::uuid",                 value1  => $an->data->{sys}{anvil}{uuid}, 
 		name2  => "sys::anvil::name",                 value2  => $an->data->{sys}{anvil}{name}, 
 		name3  => "sys::anvil::description",          value3  => $an->data->{sys}{anvil}{description}, 
@@ -288,10 +290,12 @@ sub load_anvil
 		name6  => "sys::anvil::owner::note",          value6  => $an->data->{sys}{anvil}{owner}{note}, 
 		name7  => "sys::anvil::smtp::server",         value7  => $an->data->{sys}{anvil}{smtp}{server}, 
 		name8  => "sys::anvil::smtp::port",           value8  => $an->data->{sys}{anvil}{smtp}{port}, 
-		name9  => "sys::anvil::smtp::username",       value9  => $an->data->{sys}{anvil}{smtp}{username}, 
-		name10 => "sys::anvil::smtp::security",       value10 => $an->data->{sys}{anvil}{smtp}{security}, 
-		name11 => "sys::anvil::smtp::authentication", value11 => $an->data->{sys}{anvil}{smtp}{authentication}, 
-		name12 => "sys::anvil::smtp::helo_domain",    value12 => $an->data->{sys}{anvil}{smtp}{helo_domain}, 
+		name9  => "sys::anvil::smtp::alt_server",     value9  => $an->data->{sys}{anvil}{smtp}{alt_server}, 
+		name10 => "sys::anvil::smtp::alt_port",       value10 => $an->data->{sys}{anvil}{smtp}{alt_port}, 
+		name11 => "sys::anvil::smtp::username",       value11 => $an->data->{sys}{anvil}{smtp}{username}, 
+		name12 => "sys::anvil::smtp::security",       value12 => $an->data->{sys}{anvil}{smtp}{security}, 
+		name13 => "sys::anvil::smtp::authentication", value13 => $an->data->{sys}{anvil}{smtp}{authentication}, 
+		name14 => "sys::anvil::smtp::helo_domain",    value14 => $an->data->{sys}{anvil}{smtp}{helo_domain}, 
 	}, file => $THIS_FILE, line => __LINE__});
 		
 	# Passwords
@@ -547,6 +551,7 @@ WHERE
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $old_health = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	   $old_health = "" if not defined $old_health;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "old_health", value1 => $old_health, 
 	}, file => $THIS_FILE, line => __LINE__});

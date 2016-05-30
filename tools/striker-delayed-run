@@ -39,7 +39,7 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 
 my $an = AN::Tools->new({data => {
 		path		=>	{
-			crontab			=>	"/var/spool/cron/root", 
+			root_crontab		=>	"/var/spool/cron/root", 
 			hosts			=>	"/etc/hosts",
 			log_file		=>	"/var/log/striker.log",
 			ssh_config		=>	"/etc/ssh/ssh_config",
@@ -160,7 +160,7 @@ sub avoid_duplicate_entries
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_entries" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $duplicate  = "";
-	my $shell_call = $an->data->{path}{crontab};
+	my $shell_call = $an->data->{path}{root_crontab};
 	my $call       = $an->data->{switches}{call};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
@@ -262,7 +262,7 @@ sub delete_crontab_entry
 	my $crontab_file = "";
 	my $updated      = 0;
 	my $token        = $an->data->{sys}{token};
-	my $shell_call   = $an->data->{path}{crontab};
+	my $shell_call   = $an->data->{path}{root_crontab};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -296,7 +296,7 @@ sub delete_crontab_entry
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($updated)
 	{
-		my $shell_call = $an->data->{path}{crontab};
+		my $shell_call = $an->data->{path}{root_crontab};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -366,7 +366,7 @@ sub add_entry_to_crontab
 	$an->data->{sys}{token_file}     = "/tmp/token.".$an->data->{sys}{token}.".txt";
 	$an->data->{sys}{crontab_string} = "$time->{min} $time->{hour} $time->{mday} $time->{mon} * ".$an->data->{path}{running_directory}."/$THIS_FILE --token ".$an->data->{sys}{token}." --call '$say_call' > ".$an->data->{sys}{token_file}."\n";;
 	
-	my $shell_call = $an->data->{path}{crontab};
+	my $shell_call = $an->data->{path}{root_crontab};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});

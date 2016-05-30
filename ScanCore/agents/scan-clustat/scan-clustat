@@ -113,8 +113,7 @@ adjust_log_level($an);
 
 print $an->String->get({key => "scan_clustat_message_0001"})."\n";
 
-# Read in clustat. If it returns '1', then clustat wasn't found and we will
-# exit.
+# Read in clustat. If it returns '1', then clustat wasn't found and we will exit.
 if (parse_clustat($an))
 {
 	# Clustat not found, exit.
@@ -2383,12 +2382,12 @@ WHERE
 sub read_last_scan
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Couple of variables to make the code cleaner
 	my $id        = $an->data->{sys}{read_db_id};
 	my $host_name = $an->hostname;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "id",        value1 => $id, 
 		name2 => "host_name", value2 => $host_name, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2410,8 +2409,7 @@ WHERE
 AND 
     b.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
-	# TODO: This query should only ever return one row, but this fact
-	#       should be explicitely checked for.
+	# TODO: This query should only ever return one row, but this fact should be explicitely checked for.
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "query",        value1 => $query, 
@@ -2419,8 +2417,8 @@ AND
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($results->[0])
 	{
-		# We've got an entry in the 'clustat' table, so now we'll look
-		# for data in the node and services tables.
+		# We've got an entry in the 'clustat' table, so now we'll look for data in the node and 
+		# services tables.
 		my ($clustat_uuid, $clustat_quorate, $clustat_cluster_name) = @{$results->[0]};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "clustat_uuid",         value1 => $clustat_uuid,
@@ -2431,14 +2429,10 @@ AND
 		$an->data->{sql}{clustat}{clustat_uuid}                  = $clustat_uuid;
 		$an->data->{clustat}{sql}{clustat}{clustat_quorate}      = $clustat_quorate ? "TRUE" : "FALSE";
 		$an->data->{clustat}{sql}{clustat}{clustat_cluster_name} = $clustat_cluster_name;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "sql::clustat::clustat_uuid",                  value1 => $an->data->{sql}{clustat}{clustat_uuid}, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "clustat::sql::clustat::clustat_quorate",      value1 => $an->data->{clustat}{sql}{clustat}{clustat_quorate}, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "clustat::sql::clustat::clustat_cluster_name", value1 => $an->data->{clustat}{sql}{clustat}{clustat_cluster_name}
+			name2 => "clustat::sql::clustat::clustat_quorate",      value2 => $an->data->{clustat}{sql}{clustat}{clustat_quorate}, 
+			name3 => "clustat::sql::clustat::clustat_cluster_name", value3 => $an->data->{clustat}{sql}{clustat}{clustat_cluster_name}
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $query = "
@@ -2563,9 +2557,9 @@ sub parse_clustat
 	if (-e $an->data->{path}{clustat})
 	{
 		# Found it!
-		my $shell_call  = $an->data->{path}{clustat}." 2>&1 |";
+		my $shell_call  = $an->data->{path}{clustat};
 		$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2588,9 +2582,8 @@ sub parse_clustat
 					name2 => "clustat::quorate",      value2 => $an->data->{clustat}{quorate}
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				### TODO: Should I check this node's entry in
-				###       'clustat_node' (if it exists) and set
-				###       it to 'Offline' if need be?
+				### TODO: Should I check this node's entry in 'clustat_node' (if it exists) 
+				###       and set it to 'Offline' if need be?
 			}
 			elsif ($line =~ /Cluster Status for (.*?) /)
 			{
@@ -2630,8 +2623,7 @@ sub parse_clustat
 					name3 => "clustat::service::${service}::is_server", value3 => $an->data->{clustat}{service}{$service}{is_server},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			# Parse nodes. Note the '\d' to differentiate node
-			# lines from service lines.
+			# Parse nodes. Note the '\d' to differentiate node lines from service lines.
 			elsif ($line =~ /^(.*?) (\d+) (.*)/)
 			{
 				my $node    = $1;

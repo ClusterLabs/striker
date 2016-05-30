@@ -867,7 +867,7 @@ FROM
 		my $smtp_alt_port       = defined $row->[9]  ? $row->[9]  : ""; 
 		my $smtp_note           = defined $row->[10] ? $row->[10] : "";
 		my $modified_date       = $row->[11];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
 			name1  => "smtp_uuid",           value1  => $smtp_uuid, 
 			name2  => "smtp_server",         value2  => $smtp_server, 
 			name3  => "smtp_port",           value3  => $smtp_port, 
@@ -2305,6 +2305,9 @@ AND
 	}
 	
 	# If I still don't have an variable_uuid, we're INSERT'ing .
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "variable_uuid", value1 => $variable_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $variable_uuid)
 	{
 		# INSERT
@@ -2319,6 +2322,8 @@ INSERT INTO
     variable_default, 
     variable_description, 
     variable_section, 
+    variable_source_uuid, 
+    variable_source_table, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($variable_uuid).", 
@@ -2327,11 +2332,13 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($variable_default).", 
     ".$an->data->{sys}{use_db_fh}->quote($variable_description).", 
     ".$an->data->{sys}{use_db_fh}->quote($variable_section).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_source_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable_source_table).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -2358,13 +2365,13 @@ AND
 ";
 			}
 			$query .= ";";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 			my $count   = @{$results};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "results", value1 => $results, 
 				name2 => "count",   value2 => $count
 			}, file => $THIS_FILE, line => __LINE__});
@@ -2596,7 +2603,7 @@ sub parse_anvil_data
 		$an->data->{db}{smtp}{$smtp_uuid}{helo_domain}    = $hash_ref->{smtp_helo_domain};
 		$an->data->{db}{smtp}{$smtp_uuid}{password}       = $hash_ref->{smtp_password};
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "db::smtp::${smtp_uuid}::server",         value1 => $an->data->{db}{smtp}{$smtp_uuid}{server}, 
 			name2 => "db::smtp::${smtp_uuid}::port",           value2 => $an->data->{db}{smtp}{$smtp_uuid}{port}, 
 			name3 => "db::smtp::${smtp_uuid}::alt_server",     value3 => $an->data->{db}{smtp}{$smtp_uuid}{alt_server}, 
@@ -4242,7 +4249,7 @@ sub read_variable
 	my $variable_name         = $parameter->{variable_name}         ? $parameter->{variable_name}         : "";
 	my $variable_source_uuid  = $parameter->{variable_source_uuid}  ? $parameter->{variable_source_uuid}  : "NULL";
 	my $variable_source_table = $parameter->{variable_source_table} ? $parameter->{variable_source_table} : "NULL";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "variable_uuid",         value1 => $variable_uuid, 
 		name2 => "variable_name",         value2 => $variable_name, 
 		name3 => "variable_source_uuid",  value3 => $variable_source_uuid, 

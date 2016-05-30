@@ -2733,10 +2733,13 @@ sub send_email
 	# Select a known_free email file name.
 	my $date_and_time =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
 	   $date_and_time =~ s/:/-/g;
-	my $email_file    =  $an->data->{path}{alert_emails}."/$date_and_time.1";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "date_and_time", value1 => $date_and_time,
-		name2 => "email_file",    value2 => $email_file,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $email_file = $an->data->{path}{alert_emails}."/$date_and_time.1";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "email_file", value1 => $email_file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $file_ok = 0;
@@ -2910,8 +2913,10 @@ sub check_email_configuration
 		return(0);
 	}
 	
+	# These will be set to '1' if either the relay file or main.cf need to be updated.
+	my $reconfigure = 0;
+	
 	# Checking to see of the email relay file needs to be created or updated.
-	my $write_relay_file = 0;
 	$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
 		postfix_relay_file => $an->data->{path}{postfix_relay_file}, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2958,7 +2963,7 @@ sub check_email_configuration
 				{
 					# Changes made
 					$an->Log->entry({log_level => 2, message_key => "scancore_log_0036", file => $THIS_FILE, line => __LINE__});
-					$write_relay_file = 1;
+					$reconfigure = 1;
 				}
 				else
 				{
@@ -2970,9 +2975,9 @@ sub check_email_configuration
 			# If there was a problem, this file might be blanked. If so, rewrite.
 			if ($line eq "[]: :")
 			{
-				$write_relay_file = 1;
+				$reconfigure = 1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "write_relay_file", value1 => $write_relay_file, 
+					name1 => "reconfigure", value1 => $reconfigure, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 ### Wrong place for this.
@@ -2985,7 +2990,7 @@ sub check_email_configuration
 # 				
 # 				if (($alt_domain ne $alt_server) or ($port ne $alt_port))
 # 				{
-# 					$write_relay_file = 1;
+# 					$reconfigure = 1;
 # 				}
 # 				$alt_server_found = 1;
 # 			}
@@ -2998,9 +3003,9 @@ sub check_email_configuration
 # 		}, file => $THIS_FILE, line => __LINE__});
 # 		if (($an->data->{sys}{anvil}{smtp}{alt_server}) && (not $alt_server_found))
 # 		{
-# 			$write_relay_file = 1;
+# 			$reconfigure = 1;
 # 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-# 				name1 => "write_relay_file", value1 => $write_relay_file, 
+# 				name1 => "reconfigure", value1 => $reconfigure, 
 # 			}, file => $THIS_FILE, line => __LINE__});
 # 		}
 	}
@@ -3009,14 +3014,83 @@ sub check_email_configuration
 		# Relay file doesn't exist at all, so this might be an upgrade.
 		# As such, check that the programs we need are installed.
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0037", file => $THIS_FILE, line => __LINE__});
-		$write_relay_file = 1;
+		$reconfigure = 1;
+	}
+	
+	# Read in mail.cf now and see if anything there changed. If so. we'll update and write it out
+	my $smtp_server         = "";
+	my $smtp_port           = "";
+	my $smtp_alt_server     = "";
+	my $smtp_alt_port       = "";
+	# These aren't checked yet
+	#my $smtp_security       = "";
+	#my $smtp_authentication = "";
+	#my $smtp_helo_domain    = "";
+	my $postfix_main_cf     = "";
+	
+	### TODO: Re: issue #80 - Add support for alternate/no security.
+	# Read it in
+	my $shell_call = $an->data->{path}{postfix_main};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line                =  $_;
+		   $postfix_main_cf .= "$line\n";
+		
+		# Find the old values
+		if ($line =~ /^relayhost = \[(.*?)\]:(\d+)/)
+		{
+			$smtp_server = $1;
+			$smtp_port   = $2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "smtp_server", value1 => $smtp_server, 
+				name2 => "smtp_port",   value2 => $smtp_port, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+		}
+		if ($line =~ /^smtp_fallback_relay = \[(.*?)\]:(\d+)/)
+		{
+			$smtp_alt_server = $1;
+			$smtp_alt_port   = $2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "smtp_alt_server", value1 => $smtp_alt_server, 
+				name2 => "smtp_alt_port",   value2 => $smtp_alt_port, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# Something changed?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		name1 => "smtp_server",                  value1 => $smtp_server, 
+		name2 => "sys::anvil::smtp::server",     value2 => $an->data->{sys}{anvil}{smtp}{server},
+		name3 => "smtp_port",                    value3 => $smtp_port, 
+		name4 => "sys::anvil::smtp::port",       value4 => $an->data->{sys}{anvil}{smtp}{port},
+		name5 => "smtp_alt_server",              value5 => $smtp_alt_server, 
+		name6 => "sys::anvil::smtp::alt_server", value6 => $an->data->{sys}{anvil}{smtp}{alt_server},
+		name7 => "smtp_alt_port",                value7 => $smtp_alt_port, 
+		name8 => "sys::anvil::smtp::alt_port",   value8 => $an->data->{sys}{anvil}{smtp}{alt_port},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($smtp_server     ne $an->data->{sys}{anvil}{smtp}{server})     or
+	    ($smtp_port       ne $an->data->{sys}{anvil}{smtp}{port})       or 
+	    ($smtp_alt_server ne $an->data->{sys}{anvil}{smtp}{alt_server}) or
+	    ($smtp_alt_port   ne $an->data->{sys}{anvil}{smtp}{alt_port}))
+	{
+		$reconfigure = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "reconfigure", value1 => $reconfigure, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# (Re)write the relay file now, if needed.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "write_relay_file", value1 => $write_relay_file, 
+		name1 => "reconfigure", value1 => $reconfigure, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($write_relay_file)
+	if ($reconfigure)
 	{
 		# Write the new relay file.
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
@@ -3131,8 +3205,8 @@ sub check_email_configuration
 				{
 					my $port         =  $an->data->{sys}{anvil}{smtp}{alt_port} ? $an->data->{sys}{anvil}{smtp}{alt_port} : $an->data->{sys}{anvil}{smtp}{port};
 					   $postfix_main .= "smtp_fallback_relay = [".$an->data->{sys}{anvil}{smtp}{alt_server}."]:$port\n";
-					   $postfix_main .= "smtp_helo_name = ".$an->data->{sys}{anvil}{smtp}{helo_domain}."\n";
 				}
+				   $postfix_main .= "smtp_helo_name = ".$an->data->{sys}{anvil}{smtp}{helo_domain}."\n";
 				$postfix_main .= "smtp_use_tls = yes\n";
 				$postfix_main .= "smtp_sasl_auth_enable = yes\n";
 				$postfix_main .= "smtp_sasl_password_maps = hash:".$an->data->{path}{postfix_relay_file}."\n";
