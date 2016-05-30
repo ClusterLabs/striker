@@ -210,6 +210,22 @@ find_myself($an);
 # Mark the node as clean on now.
 $an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{host_uuid}});
 
+### Check if cman is running and, if so, abort. 
+# States are:
+# 0 = Stopped
+# 1 = Running
+# 2 = Daemon not found
+my $cman_state = $an->Check->daemon({daemon => "cman"});
+$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	name1 => "cman_state", value1 => $cman_state, 
+}, file => $THIS_FILE, line => __LINE__});
+if ($cman_state)
+{
+	# Error out... cman shouldn't be running so what?!
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0012", code => 13, file => "$THIS_FILE", line => __LINE__});
+	exit(13);
+}
+
 # Wait until I can ping the peer on all three networks. This will not return until access is available on all
 # networks. There is no timeout.
 wait_for_access($an);
@@ -2172,7 +2188,7 @@ sub wait_for_access
 			# that is non-zero, we'll set 'can_ping' to end the loop.
 			check_single_node_start($an, $peer_name, $waiting_started_at, $stop_waiting_at);
 			$can_ping = $an->data->{sys}{single_node_start}{ran};
-		
+			
 			# Something isn't responding, so sleep.
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0007", file => $THIS_FILE, line => __LINE__});
 			sleep 5;
@@ -2316,6 +2332,19 @@ sub check_single_node_start
 				if (time > $boot_after)
 				{
 					### Boot!
+					# Record this start time
+					my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+						variable_name         => $last_booted_variable,
+						variable_value        => time,
+						variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+						variable_source_table => "hosts", 
+						update_value_only     => 1,
+					});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "variable_uuid", value1 => $variable_uuid, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Record that we waited long enough
 					$waited_long_enough = 1;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "waited_long_enough", value1 => $waited_long_enough,
@@ -2326,41 +2355,21 @@ sub check_single_node_start
 					# pkill to fire. Once fired, we'll verify that our local storage is
 					# 'Primary/UpToDate' and if so, proceed with the boot. If not, we'll
 					# shut down.
-					
-					### Verify cman is stopped and then 
-					# States are:
-					# 0 = Stopped
-					# 1 = Running
-					# 2 = Daemon not found
-					my $cman_state = $an->Check->daemon({daemon => "cman"});
+					my $shell_call = $an->data->{path}{initd}."/cman start";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "cman_state", value1 => $cman_state, 
+						name1 => "shell_call", value1 => $shell_call, 
 					}, file => $THIS_FILE, line => __LINE__});
-					if (not $cman_state)
+					open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+					while(<$file_handle>)
 					{
-						# Start cman
-						my $shell_call = $an->data->{path}{initd}."/cman start";
+						chomp;
+						my $line =  $_;
+						$line =~ s/\r//g;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "shell_call", value1 => $shell_call, 
+							name1 => "line", value1 => $line, 
 						}, file => $THIS_FILE, line => __LINE__});
-						open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-						while(<$file_handle>)
-						{
-							chomp;
-							my $line =  $_;
-							$line =~ s/\r//g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-								name1 => "line", value1 => $line, 
-							}, file => $THIS_FILE, line => __LINE__});
-						}
-						close $file_handle;
 					}
-					else
-					{
-						# Error out... cman shouldn't be running so what?!
-						$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0012", code => 13, file => "$THIS_FILE", line => __LINE__});
-						exit(13);
-					}
+					close $file_handle;
 					
 					# Set the delayed pkill to abort drbd's wait-for-connection
 					my ($token, $delayed_run_output, $problem) = $an->System->delayed_run({
@@ -2370,11 +2379,11 @@ sub check_single_node_start
 					});
 					
 					# Now start rgmanager
-					my $shell_call = $an->data->{path}{initd}."/rgmanager start";
+					$shell_call = $an->data->{path}{initd}."/rgmanager start";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "shell_call", value1 => $shell_call, 
 					}, file => $THIS_FILE, line => __LINE__});
-					open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+					open($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 					while(<$file_handle>)
 					{
 						chomp;
@@ -2443,7 +2452,7 @@ sub check_single_node_start
 				else
 				{
 					sleep 1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 						name1 => "time",               value1 => time,
 						name2 => "boot_after",         value2 => $boot_after,
 						name3 => "waited_long_enough", value3 => $waited_long_enough,

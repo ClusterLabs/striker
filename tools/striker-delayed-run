@@ -34,19 +34,15 @@ my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
-	        $running_directory =~ s/^\./$ENV{PWD}/;
+	$running_directory =~ s/^\./$ENV{PWD}/;
 }
 
 my $an = AN::Tools->new({data => {
 		path		=>	{
-			root_crontab		=>	"/var/spool/cron/root", 
-			hosts			=>	"/etc/hosts",
 			log_file		=>	"/var/log/striker.log",
-			ssh_config		=>	"/etc/ssh/ssh_config",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			running_directory	=>	$running_directory,
-			install_manifests	=>	"/var/www/html/manifests",
 		},
 		switches	=>	{},
 		sys		=>	{

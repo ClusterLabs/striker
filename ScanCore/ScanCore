@@ -2745,6 +2745,9 @@ sub send_email
 	my $file_ok = 0;
 	until ($file_ok)
 	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "email_file", value1 => $email_file, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if (-e $email_file)
 		{
 			my ($file, $suffix) = ($email_file =~ /^(.*?)\.(\d+)$/);
@@ -2754,7 +2757,7 @@ sub send_email
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			$suffix++;
-			$email_file = "$file.$suffix\n";
+			$email_file = "$file.$suffix";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "email_file", value1 => $email_file,
 			}, file => $THIS_FILE, line => __LINE__});
