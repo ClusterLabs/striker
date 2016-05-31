@@ -46,7 +46,7 @@ my $THIS_FILE           =  ($program_name =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($program_name =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
-	        $running_directory =~ s/^\./$ENV{PWD}/;
+	$running_directory =~ s/^\./$ENV{PWD}/;
 }
 my $time = time;
 

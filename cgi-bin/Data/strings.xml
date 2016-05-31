@@ -413,7 +413,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0195">A place for you to keep any notes you wish about this SMTP server.</key>
 		<key name="explain_0196">There are no existing notification recipients to send alerts to yet.</key>
 		<key name="explain_0197"><![CDATA[You can select an existing notification target to send '#!string!button_0048!# alerts to,<br />or enter a new one below and it will be added to the list.]]></key>
-		<key name="explain_0198"><![CDATA[When the name of the notification target. If the target is an email address, this is used in the 'To:' field.]]></key>
+		<key name="explain_0198"><![CDATA[The name of the notification target. If the target is an email address, this is used in the 'To:' field.<br />If the recipient is a file, this is a short description.]]></key>
 		<key name="explain_0199"><![CDATA[This is the target of the alerts. This can be an email address or a file name.<br />If it is a file name, the alerts will go to <span class="highlight_detail">/var/log/</span> on the machine generating the alert.]]></key>
 		<key name="explain_0200"><![CDATA[This is the language that alerts will be sent using.<br /><span class="highlight_note_bold">Note</span>: At this time, only 'English (Canadian)' is complete.]]></key>
 		<key name="explain_0201"><![CDATA[Debug level is useful for developers trouble-shooting problems with #!string!brand_0015!# or agents.<br />It will generate an alert on every state change resulting in an extremely high number of alerts.]]></key>

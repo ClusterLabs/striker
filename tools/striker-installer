@@ -255,6 +255,7 @@ my $conf = {
 			rsync				=>	0,
 			screen				=>	0,
 			sharutils			=>	0,
+			shorewall			=>	0,
 			syslinux			=>	0, 
 			sysstat				=>	0,
 			'syslinux-tftpboot'		=>	0,
@@ -3351,9 +3352,8 @@ sub configure_pxe
 	return(0);
 }
 
-# If '--router-mode' mode was set, this will install and configure shorewall to
-# masq the BCN (thus providing Internet access, assuming there is Internet
-# access on the IFN.
+# If '--router-mode' mode was set, this will install and configure shorewall to masq the BCN (thus providing
+# Internet access, assuming there is Internet access on the IFN.
 sub configure_shorewall
 {
 	my ($conf) = @_;
