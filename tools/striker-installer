@@ -988,7 +988,7 @@ sub compile_network_drivers
 	my ($conf) = @_;
 	
 	### For now, this only supports the AXIS 
-	# First, if we don't have 'lsusb',
+	# First, if setup where we'll find the ASIX driver.
 	my $driver_directory = "/var/www/html/".$conf->{pxe}{centos}{short_name}."/x86_64/img/Tools/ASIX";
 	if ($conf->{sys}{is_rhel})
 	{
@@ -1018,7 +1018,11 @@ sub compile_network_drivers
 	logger($conf, $THIS_FILE, __LINE__, "asix_exists: [$asix_exists]", 3);
 	if ($asix_exists)
 	{
-		# First; Is the driver already loaded?
+		# Get a list of the interfaces we have already. We'll use this when we're done to find the
+		# name of the new interface.
+		get_interface_list($conf, "old");
+		
+		# Is the driver already loaded?
 		my $driver_loaded = 0;
 		my $shell_call    = $conf->{executable}{lsmod};
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
@@ -1194,6 +1198,12 @@ sub compile_network_drivers
 								logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 							}
 							close $file_handle;
+							
+							# Write a skeleton config file that is set to DHCP 
+							# because often this interface is used as the IFN 
+							# and is needed to access the web, which is needed 
+							# to register the dashboard with RHN.
+							setup_new_interface($conf);
 						}
 						else
 						{
@@ -1231,6 +1241,106 @@ sub compile_network_drivers
 		}
 		logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	}
+	
+	return(0);
+}
+
+# This function finds the unconfigured interface and sets it up as DHCP and tries to get a lease.
+sub setup_new_interface
+{
+	my ($conf) = @_;
+	
+	# Get the updated list of devices
+	get_interface_list($conf, "new");
+	
+	# Now look for the new interface
+	my $new_interface = "";
+	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}{new}})
+	{
+		# Did this one exist in the old hash?
+		logger($conf, $THIS_FILE, __LINE__, "interface: [$interface]", 3);
+		if (not $conf->{interface}{old}{$interface})
+		{
+			# Found it.
+			$new_interface = $interface;
+			logger($conf, $THIS_FILE, __LINE__, "new_interface: [$new_interface]", 3);
+		}
+	}
+	
+	# Configure the interface if I found it.
+	logger($conf, $THIS_FILE, __LINE__, "new_interface: [$new_interface]", 3);
+	if ($new_interface)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "Found a new interface: [$new_interface], creating a base DHCP config, if needed.", 1);
+		my $config_file = "/etc/sysconfig/network-scripts/ifcfg-".$new_interface;
+		logger($conf, $THIS_FILE, __LINE__, "config_file: [$config_file]", 3);
+		if (-e $config_file)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "The new interface file already has a config file.", 1);
+		}
+		else
+		{
+			my $new_config = "
+# Temporary interface configuration created by $THIS_FILE
+DEVICE=\"$new_interface\"
+BOOTPROTO=\"dhcp\"
+ONBOOT=\"yes\"
+";
+			# Write it out.
+			my $shell_call = ">$config_file";
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+			open (my $file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+			print $file_handle $new_config;
+			close $file_handle;
+			logger($conf, $THIS_FILE, __LINE__, "- Database server security configured.", 1);
+			
+			# Call it up.
+			logger($conf, $THIS_FILE, __LINE__, "Starting the new interface: [$new_interface].", 1);
+			logger($conf, $THIS_FILE, __LINE__, "This might take a minute if there are no DHCP servers on its network.", 1);
+			$shell_call = $conf->{executable}{ifup}." ".$new_interface;
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			}
+			close $file_handle;
+		}
+	}
+	else
+	{
+		# Warn, but proceed.
+		logger($conf, $THIS_FILE, __LINE__, "Did not find a new interface.", 1);
+	}
+	
+	return(0);
+}
+
+# This records the network interfaces found on the system and stores them in the named hash key.
+sub get_interface_list
+{
+	my ($conf, $key) = @_;
+	
+	logger($conf, $THIS_FILE, __LINE__, "Storing the current list of interfaces in the: [$key] hash key.", 2);
+	my $shell_call = $conf->{executable}{ip}." addr";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /^\d+: (.*?): </)
+		{
+			my $interface = $1;
+			next if $interface eq "lo";
+			$conf->{interface}{$key}{$interface} = 1;
+			logger($conf, $THIS_FILE, __LINE__, "interface::${key}::$interface: [".$conf->{interface}{$key}{$interface}."]", 3);
+		}
+	}
+	close $file_handle;
 	
 	return(0);
 }
