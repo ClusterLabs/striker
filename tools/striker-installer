@@ -136,11 +136,13 @@ my $conf = {
 		rhel_tftp_boot		=>	"rhel6",			# Appeanded to 'pxelinux_boot' + arch
 		source			=>	"",
 		sql_files		=>	"/etc/striker/SQL",
+		striker_config		=>	"/etc/striker",
 		striker_tools		=>	"/sbin/striker",		# Change the library directory in the various tools if this changes!
 		udev_rules		=>	"/etc/udev/rules.d/",
 		yum_repos		=>	"/etc/yum.repos.d",
 	},
 	executable	=>	{
+		'striker-update-drivers' =>	"/sbin/striker/striker-update-drivers",
 		cp			=>	"/bin/cp",
 		chkconfig		=>	"/sbin/chkconfig",
 		'chmod'			=>	"/bin/chmod",
@@ -186,6 +188,7 @@ my $conf = {
 		tar			=>	"/bin/tar",
 		touch			=>	"/bin/touch",
 		umount			=>	"/bin/umount",
+		uname			=>	"/bin/uname",
 		unzip			=>	"/usr/bin/unzip",
 		wget			=>	"/usr/bin/wget",
 		yum			=>	"/usr/bin/yum",
@@ -384,6 +387,7 @@ my $conf = {
 		hosts			=>	"/etc/hosts",
 		inittab			=>	"/etc/inittab",
 		iptables		=>	"/etc/sysconfig/iptables",
+		last_kernel		=>	"/etc/striker/last_kernel",
 		logrotate_config	=>	"/etc/logrotate.d/anvil",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
 		network_map_cache	=>	"/root/.striker-network-map.cache",
@@ -397,6 +401,7 @@ my $conf = {
 		power_sh		=>	"/etc/acpi/actions/power.sh",
 		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
+		rc_local		=>	"/etc/rc.local",
 		rhn_file		=>	"/etc/sysconfig/rhn/systemid",
 		selinux_config		=>	"/etc/selinux/config",
 		shorewall		=>	{
@@ -655,11 +660,9 @@ my $conf = {
 		'autostart-dhcpd'	=>	"",
 		'b'			=>	"", # <ip_address/netmask>
 		'c'			=>	"", # <customer/owner>
-# 		'centos-iso'		=>	"", # <'none', 'dvd', local path or URL>
 		'custom-config'		=>	"", # /path/to/striker.conf
 		'd'			=>	"", # <version>
 		'disable-scancore'	=>	"",
-# 		'e'			=>	"", # <user:password>
 		'ethtool-opts'		=>	"", # "<options>"
 		gui			=>	1,
 		'h'			=>	"",
@@ -668,17 +671,13 @@ my $conf = {
 		'ipmi-user'		=>	"", # <user:password>
 		'ipmi-ip'		=>	"", # <ip_address/netmask>[,gw=<ip_address>]
 		'use-lsi'		=>	"",
-# 		'm'			=>	"", # <mail server:port>
 		mtu			=>	1500,
 		'n'			=>	"", # <hostname>
-# 		'no-an-repo'		=>	"",
 		'no-reboot'		=>	"",
 		'no-striker-configure-vmm' =>	"",
 		ntp			=>	"", # <ip[,ip]>
 		'p'			=>	"", # <start_ip:end_ip>
 		'peer-dashboard'	=>	"", # <hostname=x,bcn_ip=y>
-# 		'r'			=>	"", # <repo>
-# 		'rhel-iso'		=>	"", # <'none', 'dvd', local path or URL>
 		rhn			=>	"", # <user:password>
 		'router-mode'		=>	"",
 		'run-rc-local'		=>	"",
@@ -689,6 +688,7 @@ my $conf = {
 		apache_group		=>	"apache",
 		apache_timeout		=>	"60000",	# This will go away with AJAX
 		apache_user		=>	"apache",
+		asix_driver		=>	"AX88179_178A_LINUX_DRIVER_v1.14.4_SOURCE",
 		bonds_exist		=>	0,		# We can't currently remap interfaces when bonds are in use because MACs aren't displayed properly in 'ip addr'.
 		create_bonds		=>	0,		# Gets set to '1' if 4 NICs are found.
 		customer		=>	"Striker Dashboard",
@@ -714,9 +714,6 @@ my $conf = {
 				maxsize		=>	"100M",		# Rotates if bigger than this, regardless of frequency
 			}
 		},
-# 		mail_server		=>	"",
-# 		mail_user		=>	"",
-# 		mail_password		=>	"",
 		network_map_cache_read	=>	0,
 		reboot_needed		=>	0,
 		register_with_rhn	=>	0,
@@ -911,7 +908,7 @@ if (not $conf->{sys}{skip_network})
 # user has customizations that might get clobbered by a --gui install.
 if ($conf->{switches}{'run-rc-local'})
 {
-	my $shell_call = "sh /etc/rc.local";
+	my $shell_call = "sh ".$conf->{path}{rc_local};
 	logger($conf, $THIS_FILE, __LINE__, "Running: [$shell_call] on user request.", 1);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -924,7 +921,7 @@ if ($conf->{switches}{'run-rc-local'})
 }
 else
 {
-	logger($conf, $THIS_FILE, __LINE__, "User did not request invocation of /etc/rc.local.", 3);
+	logger($conf, $THIS_FILE, __LINE__, "User did not request invocation of ".$conf->{path}{rc_local}.".", 3);
 }
 
 # Warn the user to update their kickstart scripts if they're not using a
@@ -1021,6 +1018,9 @@ sub compile_network_drivers
 		# Get a list of the interfaces we have already. We'll use this when we're done to find the
 		# name of the new interface.
 		get_interface_list($conf, "old");
+		
+		# We've got the driver, so add the rc.local script.
+		write_driver_update_script($conf);
 		
 		# Is the driver already loaded?
 		my $driver_loaded = 0;
@@ -1199,6 +1199,18 @@ sub compile_network_drivers
 							}
 							close $file_handle;
 							
+							# Record this kernel version
+							$shell_call = $conf->{executable}{uname}." -r > ".$conf->{path}{last_kernel};
+							logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+							open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+							while(<$file_handle>)
+							{
+								chomp;
+								my $line = $_;
+								logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+							}
+							close $file_handle;
+							
 							# Write a skeleton config file that is set to DHCP 
 							# because often this interface is used as the IFN 
 							# and is needed to access the web, which is needed 
@@ -1245,6 +1257,124 @@ sub compile_network_drivers
 	return(0);
 }
 
+# This writes out a cheesy little bash script to check for and automatically recompile the ASIX drivers when
+# the kernel changes. (DKMS isn't in base RHEL...)
+sub write_driver_update_script
+{
+	my ($conf) = @_;
+	
+	my $driver_directory = "/var/www/html/".$conf->{pxe}{centos}{short_name}."/x86_64/img/Tools/ASIX";
+	if ($conf->{sys}{is_rhel})
+	{
+		$driver_directory = "/var/www/html/".$conf->{pxe}{rhel}{short_name}."/x86_64/img/Tools/ASIX";
+	}
+	my $script = "
+#!/bin/bash
+# This is a dirty little program to recompile the Siig (ASIX-based) USB3 to Gbit
+# ehternet adapter often used with NUC-based Striker dashboards when the kernel
+# version changes. It will be replaced by a proper program later (hopefully).
+
+DATADIR=\"".$conf->{directory}{striker_config}."\";
+DATAFILE=\"".$conf->{directory}{striker_config}."/".$conf->{path}{last_kernel}."\";
+ASIXDRIVER=\"".$driver_directory."/".$conf->{sys}{asix_driver}.".zip\";
+ASIXDIRECTORY=\"/tmp/".$conf->{sys}{asix_driver}."/\";
+RECOMPILE=0;
+THISFILE=\$(basename \"\$0\");
+
+logger -t \$THISFILE \"Checking if the ASIX driver needs to be recompiled...\"
+if [ -e \"\$DATADIR\" ];
+then
+    logger -t \$THISFILE \"Data directory exists, proceeding to check kernel version.\"
+    if [ -e \"\$DATAFILE\" ];
+    then
+        logger -t \$THISFILE \"Data file exists, comparing kernel version.\"
+        OLDVERSION=\$(cat \$DATAFILE)
+        CURRENTVERSION=\$(uname -r)
+        logger -t \$THISFILE \"Old version was: [\$OLDVERSION], new version is: [\$CURRENTVERSION].\"
+        if [ \$OLDVERSION == \$CURRENTVERSION ];
+        then
+            logger -t \$THISFILE \"Kernel version is the same. No need to recompile.\"
+        else
+            logger -t \$THISFILE \"Kernel version is different, recompiling.\"
+            RECOMPILE=1;
+        fi
+    else
+        logger -t \$THISFILE \"Data file does not exist. Will create it and recompile.\"
+        RECOMPILE=1;
+        uname -r > \$DATAFILE
+    fi
+else
+    logger -t \$THISFILE \"Data directorty: [\$DATADIR] doesn't exist, not checking drivers.\"
+fi
+
+if [ \$RECOMPILE -eq \"1\" ];
+then
+    logger -t \$THISFILE \"Recompiling now...\"
+    ASIXFOUND=\$(lsusb | grep -q AX881; echo \$?)
+    if [ \$ASIXFOUND -eq \"0\" ];
+    then
+        logger -t \$THISFILE \"ASIX adapter found.\"
+        if [ -e \$ASIXDRIVER ];
+        then
+            logger -t \$THISFILE \"Driver found, extracting.\"
+            unzip -f \$ASIXDRIVER -d /tmp/ >> /var/log/messages
+            if [ -e \"\${ASIXDIRECTORY}/Makefile\" ];
+            then
+                logger -t \$THISFILE \"Drivers extracted, compiling now.\"
+                make --directory=\$ASIXDIRECTORY >> /var/log/messages
+                make install --directory=\$ASIXDIRECTORY >> /var/log/messages
+                modprobe ax88179_178a >> /var/log/messages
+                logger -t \$THISFILE \"Restarting the network now.\"
+                /etc/init.d/network restart >> /var/log/messages
+                logger -t \$THISFILE \"Updating the last seen kernel version\"
+                uname -r > \$DATAFILE
+                logger -t \$THISFILE \"Done!\"
+            else
+                logger -t \$THISFILE \"Failed to extract the drivers. Unable to proceed.\"
+            fi
+        else
+            logger -t \$THISFILE \"Driver not found. Expected it to be in: [\$ASIXDRIVER]. Unable to proceed.\"
+        fi
+    else
+        logger -t \$THISFILE \"ASIX adapter not found.\"
+    fi
+fi
+";
+	# Write it out now.
+	my $shell_call = $conf->{executable}{'striker-update-drivers'};
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open (my $file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+	print $file_handle $script;
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "- Database server security configured.", 1);
+	
+	# Make it executable.
+	$shell_call = $conf->{executable}{'chmod'}." 755 ".$conf->{executable}{'striker-update-drivers'};
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+	}
+	close $file_handle;
+	
+	# Now add it to rc.local
+	$shell_call = $conf->{executable}{echo}." ".$conf->{executable}{'striker-update-drivers'}." >> ".$conf->{path}{rc_local};
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
 # This function finds the unconfigured interface and sets it up as DHCP and tries to get a lease.
 sub setup_new_interface
 {
@@ -1271,12 +1401,12 @@ sub setup_new_interface
 	logger($conf, $THIS_FILE, __LINE__, "new_interface: [$new_interface]", 3);
 	if ($new_interface)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "Found a new interface: [$new_interface], creating a base DHCP config, if needed.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Found a new interface: [$new_interface], creating a base DHCP config, if needed.", 1);
 		my $config_file = "/etc/sysconfig/network-scripts/ifcfg-".$new_interface;
 		logger($conf, $THIS_FILE, __LINE__, "config_file: [$config_file]", 3);
 		if (-e $config_file)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "The new interface file already has a config file.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- The new interface file already has a config file.", 1);
 		}
 		else
 		{
@@ -1292,11 +1422,11 @@ ONBOOT=\"yes\"
 			open (my $file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
 			print $file_handle $new_config;
 			close $file_handle;
-			logger($conf, $THIS_FILE, __LINE__, "- Database server security configured.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- Temporary interface config written.", 1);
 			
 			# Call it up.
-			logger($conf, $THIS_FILE, __LINE__, "Starting the new interface: [$new_interface].", 1);
-			logger($conf, $THIS_FILE, __LINE__, "This might take a minute if there are no DHCP servers on its network.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- Starting the new interface: [$new_interface].", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- This might take a minute if there are no DHCP servers on its network.", 1);
 			$shell_call = $conf->{executable}{ifup}." ".$new_interface;
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -1312,7 +1442,7 @@ ONBOOT=\"yes\"
 	else
 	{
 		# Warn, but proceed.
-		logger($conf, $THIS_FILE, __LINE__, "Did not find a new interface.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Did not find a new interface.", 1);
 	}
 	
 	return(0);
@@ -1323,7 +1453,7 @@ sub get_interface_list
 {
 	my ($conf, $key) = @_;
 	
-	logger($conf, $THIS_FILE, __LINE__, "Storing the current list of interfaces in the: [$key] hash key.", 2);
+	logger($conf, $THIS_FILE, __LINE__, "Storing the current list of interfaces in the: [$key] hash key.", 3);
 	my $shell_call = $conf->{executable}{ip}." addr";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -2047,16 +2177,16 @@ sub write_udev_striker_usb
 	logger($conf, $THIS_FILE, __LINE__, "Writing the new udev rules file: [$conf->{path}{udev_striker_usb}]", 1);
 	open (my $file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
-	print $file_handle '
+	print $file_handle "
 # This triggers the insert and eject scripts to mount and unmount USB drives on
 # remote servers when a USB storage device is plugged into a managed port. Both
-# scripts will simple exit if /etc/striker/striker.conf has the value
+# scripts will simple exit if ".$conf->{directory}{striker_config}."/striker.conf has the value
 # remote-usb::enable_remote_usb_mount = 0
 
-ACTION=="add", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker/striker-usb-insert"
+ACTION==\"add\", KERNEL==\"sd*[!0-9]\", RUN+=\"".$conf->{directory}{striker_tools}."/striker-usb-insert\"
 
-ACTION=="remove", KERNEL=="sd*[!0-9]", RUN+="/sbin/striker/striker-usb-remove"
-';
+ACTION==\"remove\", KERNEL==\"sd*[!0-9]\", RUN+=\"".$conf->{directory}{striker_tools}."/striker-usb-remove\"
+";
 	close $file_handle;
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
@@ -2496,7 +2626,7 @@ sub setup_striker
 		else
 		{
 			# Call 'tools/striker-configure-vmm'.
-			my $shell_call = "/sbin/striker/striker-configure-vmm --enable";
+			my $shell_call = $conf->{directory}{striker_tools}."/striker-configure-vmm --enable";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
@@ -2569,7 +2699,7 @@ sub compile_c_wrappers
 		logger($conf, $THIS_FILE, __LINE__, "- Compiling: [$wrapper]", 1);
 		my $c_file   = $conf->{setuid}{$wrapper}{c_file};
 		my $out_file = $conf->{setuid}{$wrapper}{out_file};
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - c_file: [$c_file], out_file: [$out_file]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "c_file: [$c_file], out_file: [$out_file]", 3);
 		
 		# Unlink the existing output file, if it exists.
 		if (-e $out_file)
@@ -2580,7 +2710,7 @@ sub compile_c_wrappers
 		
 		# Compile
 		my $shell_call = "$conf->{path}{gcc} -o $out_file $c_file";
-		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", );
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -7355,8 +7485,7 @@ sub write_udev_persistent_net
 	return(0);
 }
 
-# This backs up the udev (if it exists) and network files before making any
-# actual changes to the system.
+# This backs up the udev (if it exists) and network files before making any actual changes to the system.
 sub backup_original_files
 {
 	my ($conf) = @_;
@@ -7428,6 +7557,26 @@ sub backup_original_files
 		}
 	}
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
+	
+	# Backup rc.local
+	logger($conf, $THIS_FILE, __LINE__, "- Backing up: [$conf->{path}{rc_local}]", 1);
+	if (-e "$conf->{path}{backups}/rc.local")
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Previous backup exists, skipping.", 1);
+	}
+	else
+	{
+		# Backup 'rc.local'.
+		if (-e $conf->{path}{rc_local})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- It exists, backing it up.", 1);
+			backup_file($conf, $conf->{path}{rc_local});
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Doesn't exist, skipping.", 1);
+		}
+	}
 	
 	return(0);
 }
