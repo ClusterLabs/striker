@@ -1533,6 +1533,14 @@ sub check_for_drbd_metadata
 			device => $device, 
 			type   => $type, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# These variables will be used in the 'message_0433' string.
+		$an->data->{drive_signature_found}{device} = $device;
+		$an->data->{drive_signature_found}{type}   = $type;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "drive_signature_found::device", value1 => $an->data->{drive_signature_found}{device},
+			name2 => "drive_signature_found::type",   value2 => $an->data->{drive_signature_found}{type},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
@@ -8122,7 +8130,7 @@ sub do_node_reboot
 			sleep 3;
 		}
 		
-		# Now loop for $an->data->{sys}{reboot_timeout} seconds waiting to see if the node recovers.
+		# Now loop for 'sys::reboot_timeout' seconds waiting to see if the node recovers.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "has_shutdown", value1 => $has_shutdown,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -12599,8 +12607,8 @@ sub reboot_nodes
 		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { message => $message }});
 	}
 	
-	# I do this sequentially for now, so that if one fails, the other should still be up and hopefully 
-	# provide a route into the lost one for debugging.
+	# We do this sequentially, so that if one fails, the other should still be up and hopefully provide a
+	# route into the lost one for debugging.
 	my $ok         = 1;
 	my ($node1_rc) = $an->InstallManifest->do_node_reboot({
 			node       => $node1, 
@@ -12612,6 +12620,16 @@ sub reboot_nodes
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node1_rc", value1 => $node1_rc,
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Update 'cgi::anvil_node1_current_ip' if the reboot was good.
+	if ($node1_rc eq "0")
+	{
+		$an->data->{cgi}{anvil_node1_current_ip} = $an->data->{cgi}{anvil_node1_bcn_ip};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_node1_current_ip", value1 => $an->data->{cgi}{anvil_node1_current_ip},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	my $node2_rc = 255;
 	if ((not $node1_rc) or ($node1_rc eq "1") or ($node1_rc eq "5"))
 	{
@@ -12622,6 +12640,18 @@ sub reboot_nodes
 				password   => $an->data->{sys}{anvil}{node2}{password},
 				new_bcn_ip => $an->data->{cgi}{anvil_node2_bcn_ip},
 			});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node1_rc", value1 => $node1_rc,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Update 'cgi::anvil_node2_current_ip' if the reboot was good.
+		if ($node2_rc eq "0")
+		{
+			$an->data->{cgi}{anvil_node2_current_ip} = $an->data->{cgi}{anvil_node2_bcn_ip};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::anvil_node2_current_ip", value1 => $an->data->{cgi}{anvil_node2_current_ip},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	# Return codes:
 	# 0 = Node was rebooted successfully.

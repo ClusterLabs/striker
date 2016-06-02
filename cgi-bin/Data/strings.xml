@@ -35,12 +35,12 @@
 		<key name="button_0028">Graceful Shut Down</key>
 		<key name="button_0029">Boot Up</key>
 		<key name="button_0030">Delete</key>
-		<key name="button_0031">Join #!string!brand_0004!#</key>
+		<key name="button_0031">Join #!string!brand_0003!#</key>
 		<key name="button_0032">Withdraw</key>
 		<key name="button_0033">Power Off</key>
 		<key name="button_0034">Power On</key>
 		<key name="button_0035">Power On Both</key>
-		<key name="button_0036">Start #!string!brand_0004!#</key>
+		<key name="button_0036">Start #!string!brand_0003!#</key>
 		<key name="button_0037">Fence Node</key>
 		<key name="button_0038">Clear Foreign State</key>
 		<key name="button_0039">Push to #!string!brand_0003!#</key>
@@ -65,7 +65,7 @@
 		<key name="button_0058">Disable #!string!button_0056!#</key>
 		<key name="button_0059">Alert Settings</key>
 		<key name="button_0060">Install Manifests</key>
-		<key name="button_0061">Add a New #!string!brand_0004!#</key>
+		<key name="button_0061">Add a New #!string!brand_0003!#</key>
 		<key name="button_0062">Cold-Stop #!string!brand_0003!#</key>
 		<key name="button_0063">Restart</key>
 		<key name="button_0064">Create</key>
@@ -356,7 +356,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0138"><![CDATA[The node(s) will now be registered with RHN.<br />This process can take a minute or two, so please be patient.]]></key>
 		<key name="explain_0139"><![CDATA[If you have custom or local repositories for installing programs on the #!string!brand_0003!# nodes, you can define them here.<br />This can be one or more URL to the repository file (ie: <span class="fixed_width"><a href="https://alteeve.ca/repo/el6/an.repo" target="_new">https://alteeve.ca/repo/el6/an.repo</a></span>).<br />Use a comma without spaces to specify two or more repositories.<br />]]></key>
 		<key name="explain_0140"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be a valid <a href="https://en.wikipedia.org/wiki/Uniform_resource_locator" target="_new">URL</a>.<br />]]></key>
-		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now.<br />If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="highlight_detail">#!conf!sys::reboot_timeout!# seconds</span> to successfully reboot.<br />If either node fails to reboot in this period of time, the install will abort.<br />If this happens, the other node should be accessible and may provide a way to resolve the problem.]]></key>
+		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now. If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="highlight_detail">#!conf!sys::reboot_timeout!# seconds</span> to successfully reboot.<br />If either node fails to reboot in this period of time, the install will abort.]]></key>
 		<key name="explain_0142"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty if the field "<span class="highlight_good_bold"">#!variable!dependent_field!#</span>" is set.]]></key>
 		<key name="explain_0143"><![CDATA[In a two-PDU environment, then both must be defined. In a four PDU environment, at least two must be defined.]]></key>
 		<key name="explain_0144"><![CDATA[<span class="">#!variable!node!#</span> is set to use an outlet on "<span class="highlight_good_bold"">#!variable!field!#</span>", but that PDU doesn't have a name and IP set.]]></key>
@@ -383,7 +383,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0165"><![CDATA[The IP address of the second power transfer switch.<br />If you don't have two PTSes, or your PTSes do not have network cards, you can leave this blank.]]></key>
 		<key name="explain_0166">Add, edit and remove alert log files.</key>
 		<key name="explain_0167">Useful for air-gapped systems with periodic log retrieval.</key>
-		<key name="explain_0168">Create, load or run #!string!brand_0004!# installation manifests.</key>
+		<key name="explain_0168">Create, load or run #!string!brand_0003!# installation manifests.</key>
 		<key name="explain_0169">Disables the ability to build nodes and dashboards.</key>
 		<key name="explain_0170">Enables the ability to network-boot and build nodes and dashboards.</key>
 		<key name="explain_0171">Create a backup of this #!string!brand_0020!# or restore from an old backup.</key>
@@ -531,7 +531,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0014">Mail Server User</key>
 		<key name="row_0015">Alert Recipient</key>
 		<key name="row_0016">Mail Server Port</key>
-		<key name="row_0017">Add a New #!string!brand_0004!#</key>
+		<key name="row_0017">Add a New #!string!brand_0003!#</key>
 		<key name="row_0018">Sanity Checks Passed!</key>
 		<key name="row_0019">Done!</key>
 		<key name="row_0020">Problems Found</key>
@@ -1447,7 +1447,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0040"><![CDATA[No route to: <span class="highlight_detail">#!variable!node!#</span>.<br />Is the machine in the process of booting up or powering off?<br />Is this dashboard server on the same network?]]></key>
 		<key name="message_0041"><![CDATA[Timed out while waiting for a reply from <span class="highlight_detail">#!variable!node!#</span>.<br />Is the machine booting up?<br />If so, please wait a minute or two and try again.]]></key>
 		<key name="message_0042"><![CDATA[Unknown error while connecting to <span class="highlight_detail">#!variable!node!#</span>: [<span class="highlight_detail">#!variable!error!#</span>]]]></key>
-		<key name="message_0043">Unable to log in. Please check the password for this #!string!brand_0004!#.</key>
+		<key name="message_0043">Unable to log in. Please check the password for this #!string!brand_0003!#.</key>
 		<key name="message_0044"><![CDATA[One of more of the storage daemons are running on <span class="fixed_width">#!variable!node!#</span> while the #!string!brand_0003!#'s cluster is down.<br />#!string!brand_0011!#]]></key>
 		<key name="message_0045"><![CDATA[The logical volume <span class="fixed_width">#!variable!lv!#</span> on node <span class="fixed_width">#!variable!node!#</span> is inactive!<br />Please <a href="#!string!brand_0012!#" target="_new">contact support</a>, or if you are comfortable, active the LV as soon as possible.]]></key>
 		<key name="message_0046"><![CDATA[There was a problem when scanning the storage. The nodes report different sizes and/or volume groups for the logical volume <span class="fixed_width">#!variable!lv!#</span>. Saw sizes <span class="fixed_width">#!variable!size!#</span> vs. <span class="fixed_width">#!variable!bytes!#</span> and the backing volume group is <span class="fixed_width">#!variable!vg_1!#</span> vs. <span class="fixed_width">#!variable!vg_2!#</span>.]]></key>
@@ -1511,7 +1511,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0098"><![CDATA[#!string!message_0068!#<br />I was about to add a server to the #!string!brand_0003!# but I don't have the new server's name. This is likely a software error.<br />#!string!brand_0011!#]]></key>
 		<key name="message_0099"><![CDATA[Saved successfully as <span class="fixed_width">#!variable!definition!#</span>.]]></key>
 		<key name="message_0100"><![CDATA[I tried to record the definition file and the command should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.]]></key>
-		<key name="message_0101"><![CDATA[To ensure only the #!string!brand_0004!# can start the server, the <span class="fixed_width">libvirtd</span> definition will now be removed.]]></key>
+		<key name="message_0101"><![CDATA[To ensure only the #!string!brand_0003!# can start the server, the <span class="fixed_width">libvirtd</span> definition will now be removed.]]></key>
 		<key name="message_0102"><![CDATA[Successfully removed the <span class="fixed_width">libvirtd</span> definition.]]></key>
 		<key name="message_0103"><![CDATA[I tried to remove the <span class="fixed_width">libvirtd</span> definition, which should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!virsh_exit_code!#</span> was received.<br />#!string!message_0104!#]]></key>
 		<key name="message_0104"><![CDATA[This is a non-fatal error. Proceeding.]]></key>
@@ -1704,10 +1704,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0283">Config directory exists</key>
 		<key name="message_0284">Backup successful</key>
 		<key name="message_0285">Backup failed or not possible</key>
-		<key name="message_0286"><![CDATA[The #!string!brand_0004!# has been rebuilt successfully!<br />
-			It is already in your #!string!brand_0002!# dashboard, so you're all set!<br />
-			<a href="#!variable!url!#">Click here</a> to start using your #!string!brand_0003!#.
-			]]></key>
+		<key name="message_0286"><![CDATA[The #!string!brand_0003!# has been rebuilt successfully!<br />It is already in your #!string!brand_0002!# dashboard, so you're all set!<br /><a href="#!variable!url!#">Click here</a> to start using your #!string!brand_0003!#.]]></key>
 		<key name="message_0287">View or upate the system configuration for this #!string!brand_0002!#.</key>
 		<key name="message_0288">I will now download:</key>
 		<key name="message_0289">From the website:</key>
@@ -1764,9 +1761,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0340"><![CDATA[After trying to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />a check was made and the file was deemed to be corrupt. The original file was restored from backup file: [<span class="fixed_width">#!variable!backup_file!#</span>], which was created just before the new file was written.]]></key>
 		<key name="message_0341"><![CDATA[I was asked to uptade the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears that I don't have the original definition file's contents.]]></key>
 		<key name="message_0342">The definition file needs to be updated to switch the Server's graphics to VNC.</key>
-		<key name="message_0343">Add an existing #!string!brand_0004!# to this #!string!brand_0002!# dashboard.</key>
+		<key name="message_0343">Add an existing #!string!brand_0003!# to this #!string!brand_0002!# dashboard.</key>
 		<key name="message_0344">Backup this #!string!brand_0002!#'s configuration or load a saved configuration file.</key>
-		<key name="message_0345">Create, load or run an installation manifest for new or replacement #!string!brand_0004!# node(s).</key>
+		<key name="message_0345">Create, load or run an installation manifest for new or replacement #!string!brand_0003!# node(s).</key>
 		<key name="message_0346"><![CDATA[For #!string!brand_0003!# "<span class="code">#!variable!anvil!#</span>" created on <span class="highlight_ready">#!variable!date!#</span> at <span class="highlight_ready">#!variable!time!#</span>.]]></key>
 		<key name="message_0347"><![CDATA[Are you sure you want to delete the: <span class="code"><span class="highlight_ready">#!variable!file!#</span></span> file?]]></key>
 		<key name="message_0348"><![CDATA[Failed to delete the manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].<br />It does not appear to exist. Did someone else delete it already?]]></key>
@@ -1823,9 +1820,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0399"><![CDATA[Resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>] is diskless.<br />]]></key>
 		<key name="message_0400"><![CDATA[Failed to attach the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
 		<key name="message_0401"><![CDATA[Failed to connect the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />]]></key>
-		<key name="message_0402"><![CDATA[The #!string!brand_0004!# has been built successfully!<br />The next step is to <a href="#!variable!url!#">add it</a> to your #!string!brand_0002!# dashboard!]]></key>
+		<key name="message_0402"><![CDATA[The #!string!brand_0003!# has been built successfully!<br />The next step is to <a href="#!variable!url!#">add it</a> to your #!string!brand_0002!# dashboard!]]></key>
 		<key name="message_0403"><![CDATA[<br />The initial scan of: [<span class="highlight_detail">#!variable!device!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>],<br />which is the backing device for resource: [<span class="highlight_detail">#!variable!resource!#</span>], showed it to be a <span class="highlight_detail">drbd</span> device.<br />However, the drbd program doesn't recognize it and would not use it.<br />This can happen if you are rebuilding a node that previously used drbd.<br />To prevent accidental data loss, the installer will exit now.<br /><br />If you want to clear it, log into the node and run:<br />[<span class="highlight_detail">drbdadm create-md #!variable!resource!#</span>].<br /><span class="highlight_dangerous">Warning!</span> - That command will destroy any data on that partition!<br /><br />]]></key>
-		<key name="message_0404"><![CDATA[There was a problem building your #!string!brand_0004!#. Sorry about that.<br />Please correct the problems and try to run the install again.<br />If there are no useful messages above, please check #!data!log::file!#.<br />#!string!brand_0014!#]]></key>
+		<key name="message_0404"><![CDATA[There was a problem building your #!string!brand_0003!#. Sorry about that.<br />Please correct the problems and try to run the install again.<br />If there are no useful messages above, please check <span class="code">#!data!log::file!#</span>.<br />#!string!brand_0014!#]]></key>
 		<key name="message_0405"><![CDATA[This #!string!brand_0002!# dashboard is not configured to be an <a href="https://alteeve.ca/w/Anvil!_m2_Tutorial#Do_we_want_to_be_an_Anvil.21_node_install_target.3F" target="_new">#!string!button_0056!#</a>.]]></key>
 		<key name="message_0406"><![CDATA[The "#!string!button_0056!#" service is currently running.]]></key>
 		<key name="message_0407"><![CDATA[The "#!string!button_0056!#" service is currently stopped.]]></key>
@@ -1854,7 +1851,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0430"><![CDATA[Powering down: [<span class="highlight_detail">#!variable!node!#</span>]...]]></key>
 		<key name="message_0431"><![CDATA[A newly created partition is not aligned properly.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>],<br />start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>].<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].<br />The #!string!brand_0003!# will work, but performance will be sub-optimal.<br />Correcting the partition alignment is advised!<br>#!string!brand_0014!#]]></key>
 		<key name="message_0432"><![CDATA[If you think the problem is now resolved, you can try re-running the install.]]></key>
-		<key name="message_0433"><![CDATA[If you a node was part of an #!string!brand_0003!# before, it might be seeing<br />the old <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Clustered_Logical_Volume_Management" target="_new">LVM</a> signature from the previous install. There is no safe way to determine<br />if this is the case, or if this partition contains real data. So for safety, the<br />install will now abort. If you are sure that there is no data on the partition, you<br />can wipe any data using the 'dd' command. To do this, you need to log into the<br />node(s) and run:<br /><br /><span class="code">dd if=/dev/zero of=/dev/X bs=4M count=1000</span><br /><br />Where '/dev/X' is replaced by the device in the error(s) above.<br /><span class="highlight_dangerous_bold">BE WARNED!</span><br />The above command, if misused, can destroy all data on the node!<br />]]></key>
+		<key name="message_0433"><![CDATA[If this node was part of an #!string!brand_0003!# before, it might be seeing the old <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Clustered_Logical_Volume_Management" target="_new">LVM</a><br />signature from the previous install. There is no safe way to determine if this is<br />the case, or if this partition contains real data. So for safety, the install will now abort.<br />If you are sure that there is no data on the partition, you can wipe any<br />data using the 'dd' command. To do this, you need to log into the node(s) and run:<br /><br /><span class="code">dd if=/dev/zero of=#!data!drive_signature_found::device!# bs=4M count=1000</span><br /><br />The signature found was: [<span class="code">#!data!drive_signature_found::type!#</span>].<br /><br /><span class="highlight_dangerous_bold">BE WARNED!</span><br /><br />The above command, if misused, can destroy all data on the node!<br />]]></key>
 		<key name="message_0434"><![CDATA[It looked like the server install should have started, but it wasn't found when checked.]]></key>
 		<key name="message_0435"><![CDATA[The "#!string!button_0056!#" function is not available.]]></key>
 		<key name="message_0436"><![CDATA[Power-down initiated. The node should offline in a few moments.<br /><span class="highlight_warning_bold">All devices powered by your UPS(es) will lose power shortly</span>!<br />This likely includes this #!string!brand_0002!#.<br />The UPS(es) will restore power after their configured "sleep time", usually five minutes.<br />You can monitor this by examining the LCD panel on the UPSes (if equipped).If the dashboards are running #!string!brand_0015!# with the 'nodemonitor' scan agent,<br />and if the dashboards are configured to power on when AC is restored,<br />your #!string!brand_0003!# should boot shortly there after.<br />If the nodes are using the #!string!brand_0016!# tool,<br />then your server(s) should come online automatically.]]></key>
@@ -1872,7 +1869,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0448"><![CDATA[The host's SSH fingerprint has changed!<br />It would be a security risk to proceed.<br />If you rebuilt the node, on this dashboard,<br />edit: [<span class="highlight_detail">#!variable!bad_file!#</span>]<br />and delete line: [#<span class="highlight_detail">#!variable!bad_line!#</span>].]]></key>
 		<key name="message_0449"><![CDATA[Merged our configuration with: [<span class="highlight_detail">#!variable!peer!#</span>]<br />Setup Virtual Machine Manager (if it is installed)]]>.</key>
 		<key name="message_0450"><![CDATA[There was a problem connecting the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />Please check the logs for details on the problem.<br />]]></key>
-		<key name="message_0451"><![CDATA[The #!string!brand_0004!#: [<span class="highlight_detail">#!variable!anvil!#</span>] was deleted.]]></key>
+		<key name="message_0451"><![CDATA[The #!string!brand_0003!#: [<span class="highlight_detail">#!variable!anvil!#</span>] was deleted.]]></key>
 		<key name="message_0452">seconds after:</key> <!-- This is used between the 'boot delay' and 'boot after' select box. -->
 		<key name="message_0453"><![CDATA[The: [<span class="highlight_detail">#!variable!smtp!#</span>] SMTP server has been deleted.]]></key>
 		<key name="message_0454"><![CDATA[Are you certain that you want to delete: [<span class="highlight_detail">#!variable!target!#</span>] notification target?]]></key>
