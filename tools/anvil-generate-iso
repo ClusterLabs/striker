@@ -3068,6 +3068,7 @@ sub get_package_list
 		"glibc.x86_64",
 		"glusterfs.x86_64",
 		"glusterfs-api.x86_64",
+		"glusterfs-client-xlators.x86_64",
 		"glusterfs-libs.x86_64",
 		"glx-utils.x86_64",
 		"gmp.x86_64",
@@ -3527,6 +3528,7 @@ sub get_package_list
 		"python-iniparse.noarch",
 		"python-libs.x86_64",
 		"python-lxml.x86_64",
+		"python-magic.x86_64",
 		"python-pcp.x86_64",
 		"python-pycurl.x86_64",
 		"python-suds.noarch",
@@ -3732,9 +3734,7 @@ sub get_package_list
 	
 	# These are packages specific to one source
 	$conf->{sys}{packages}{rhel} = [
-		"glusterfs-client-xlators.x86_64",	# Added in 6.8
 		"python-gudev.x86_64",					# python-gudev-147.1-4.el6_0.1.x86_64.rpm
-		"python-magic.x86_64",			# added in 6.8
 		"python-rhsm.x86_64",					# python-rhsm-1.14.3-1.el6.x86_64.rpm
 		"redhat-indexhtml.noarch",				# redhat-indexhtml-6-6.el6.noarch.rpm
 		"redhat-release-server.x86_64",				# redhat-release-server-6Server-6.7.0.3.el6.x86_64.rpm

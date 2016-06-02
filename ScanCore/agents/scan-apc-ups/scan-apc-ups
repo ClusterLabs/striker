@@ -908,8 +908,8 @@ sub find_changes
 						alert_message_key	=>	"scan_apc_ups_note_0014",
 						alert_message_variables	=>	{
 							ups_name		=>	$new_apc_ups_name,
-							new_value		=>	$new_apc_ups_temperature_units eq "F" ? "tools_suffix_0013" : "tools_suffix_0011",
-							old_value		=>	$old_apc_ups_temperature_units eq "F" ? "tools_suffix_0013" : "tools_suffix_0011",
+							new_value		=>	$new_apc_ups_temperature_units eq "F" ? "#!string!tools_suffix_0013!#" : "#!string!tools_suffix_0011!#",
+							old_value		=>	$old_apc_ups_temperature_units eq "F" ? "#!string!tools_suffix_0013!#" : "#!string!tools_suffix_0011!#",
 						},
 					});
 				}
