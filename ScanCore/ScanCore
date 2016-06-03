@@ -2544,6 +2544,22 @@ WHERE
 				my $notify_language = $an->data->{notififactions}{$recipient_notify_uuid}{notify_language};
 				my $notify_level    = $an->data->{notififactions}{$recipient_notify_uuid}{notify_level};
 				my $notify_units    = $an->data->{notififactions}{$recipient_notify_uuid}{notify_units};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+					name1 => "notify_name",     value1 => $notify_name,
+					name2 => "notify_target",   value2 => $notify_target,
+					name3 => "notify_language", value3 => $notify_language,
+					name4 => "notify_level",    value4 => $notify_level,
+					name5 => "notify_units",    value5 => $notify_units,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# See if this notification target has a custom level for this Anvil!.
+				if ($recipient_notify_level =~ /^\d+$/)
+				{
+					$notify_level = $recipient_notify_level;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "notify_level", value1 => $notify_level,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 				
 				# Is this an email recipient?
 				if ($an->Validate->is_email({email => $notify_target}))
@@ -2601,8 +2617,14 @@ sub send_email
 	
 	# The 'subject' will hold the highest alert seen and be used to generate a proper email subject prior
 	# to dispatching the email proper.
-	my $subject  = 5;
-	my $body     = "";
+	# debug    = 5
+	# info     = 4
+	# notice   = 3
+	# warning  = 2
+	# critical = 1
+	# ignore   = 0
+	my $subject = 5;
+	my $body    = "";
 	
 	# Convert the user's log level to a numeric number for easier comparison.
 	$level = $an->Alert->convert_level_name_to_number({level => $level});
@@ -2827,7 +2849,7 @@ sub send_email
 sub record_alert_to_file
 {
 	my ($an, $file, $name, $level, $language, $units) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "send_email" }, message_key => "an_variables_0005", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "record_alert_to_file" }, message_key => "an_variables_0005", message_variables => { 
 		name1 => "file",     value1 => $file, 
 		name2 => "name",     value2 => $name, 
 		name3 => "level",    value3 => $level, 

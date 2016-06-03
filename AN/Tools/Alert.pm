@@ -247,6 +247,10 @@ sub convert_level_name_to_number
 	{
 		$level = 1;
 	}
+	elsif ($level eq "ignore")
+	{
+		$level = 0;
+	}
 	
 	return ($level);
 }

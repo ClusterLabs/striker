@@ -1147,8 +1147,18 @@ sub peer_hostname
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "peer_hostname" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $peer_hostname = "";
-	my $hostname      = $parameter->{node} ? $parameter->{node} : $an->hostname();
-	#print "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n";
+	my $hostname      = $parameter->{node} ? $parameter->{node} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "hostname", value1 => $hostname, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ((not $hostname) or ($hostname eq "local"))
+	{
+		$hostname = $an->hostname();
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "hostname", value1 => $hostname, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# If I've parsed the active Anvil! data, use that. Otherwise read in cluster.conf.
 	my $nodes = [];
@@ -1156,21 +1166,31 @@ sub peer_hostname
 	{
 		push @{$nodes}, $an->data->{sys}{anvil}{node1}{name};
 		push @{$nodes}, $an->data->{sys}{anvil}{node2}{name}; 
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::anvil::node1::name", value1 => $an->data->{sys}{anvil}{node1}{name}, 
+			name2 => "sys::anvil::node2::name", value2 => $an->data->{sys}{anvil}{node2}{name}, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		$an->Cman->_read_cluster_conf();
 		foreach my $index1 (@{$an->data->{cman_config}{data}{clusternodes}})
 		{
-			#print "$THIS_FILE ".__LINE__."; index1: [$index1]\n";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "index1", value1 => $index1, 
+			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $key (sort {$a cmp $b} keys %{$index1})
 			{
-				#print "$THIS_FILE ".__LINE__."; key: [$key]\n";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "key", value1 => $key, 
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($key eq "clusternode")
 				{
 					foreach my $node (sort {$a cmp $b} keys %{$index1->{$key}})
 					{
-						#print "$THIS_FILE ".__LINE__."; node: [$node]\n";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "node", value1 => $node, 
+						}, file => $THIS_FILE, line => __LINE__});
 						push @{$nodes}, $node;
 					}
 				}
@@ -1181,29 +1201,39 @@ sub peer_hostname
 	my $found_myself = 0;
 	foreach my $node (sort {$a cmp $b} @{$nodes})
 	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",     value1 => $node, 
+			name2 => "hostname", value2 => $hostname, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($node eq $hostname)
 		{
 			$found_myself = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "found_myself", value1 => $found_myself, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			$peer_hostname = $node;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "peer_hostname", value1 => $peer_hostname, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# Only trust the peer hostname if I found myself.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "found_myself", value1 => $found_myself, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($found_myself)
 	{
-		if ($peer_hostname)
-		{
-			# Yay!
-			#print "$THIS_FILE ".__LINE__."; peer_hostname: [$peer_hostname]\n";
-		}
-		else
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_hostname", value1 => $peer_hostname, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $peer_hostname)
 		{
 			# Found myself, but not my peer.
 			$an->Alert->error({fatal => 1, title_key => "error_title_0025", message_key => "error_message_0045", message_variables => { file => $an->data->{path}{cman_config} }, code => 42, file => "$THIS_FILE", line => __LINE__});
-			# Return nothing in case the user is blocking fatal errors.
 			return ("");
 		}
 	}
@@ -1211,11 +1241,12 @@ sub peer_hostname
 	{
 		# I didn't find myself, so I can't trust the peer was found or is accurate.
 		$an->Alert->error({fatal => 1, title_key => "error_title_0025", message_key => "error_message_0046", message_variables => { file => $an->data->{path}{cman_config} }, code => 46, file => "$THIS_FILE", line => __LINE__});
-		
-		# Return nothing in case the user is blocking fatal errors.
 		return ("");
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "peer_hostname", value1 => $peer_hostname, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($peer_hostname);
 }
 
