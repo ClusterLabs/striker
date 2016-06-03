@@ -282,7 +282,7 @@ sub find_changes
 				
 				# Have I seen this sensor before?
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}", value1 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}, 
+					name1 => "ref(sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name})", value1 => ref($an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}), 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (ref($an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}))
 				{
@@ -356,7 +356,7 @@ WHERE
 						# or below tolerances.
 						my $level       = "info";
 						my $title_key   = "an_alert_title_0002";
-						my $message_key = "scan_ipmitool_message_0003";
+						my $message_key = "scan_ipmitool_message_0013";
 						
 						# If this is a temperature, see if we need to 
 						# trigger an alarm and set/clear the 'temperature'
@@ -374,24 +374,45 @@ WHERE
 								name4 => "old_ipmitool_value_sensor_value", value4 => $old_ipmitool_value_sensor_value, 
 							}, file => $THIS_FILE, line => __LINE__});
 							($level, $title_key, $message_key) = process_temperature_change($an, $machine, $ipmitool_sensor_name);
+							$an->Alert->register_alert({
+								alert_level		=>	$level, 
+								alert_agent_name	=>	"$THIS_FILE",
+								alert_title_key		=>	$title_key,
+								alert_message_key	=>	$message_key,
+								alert_message_variables	=>	{
+									sensor_name		=>	$sensor_name,
+									new_sensor_value	=>	$new_sensor_value,
+									new_sensor_status	=>	$new_ipmitool_sensor_status,
+									new_high_critical	=>	$new_ipmitool_sensor_high_critical eq "NULL" ? "--" : $new_ipmitool_sensor_high_critical,
+									new_low_critical	=>	$new_ipmitool_sensor_low_critical  eq "NULL" ? "--" : $new_ipmitool_sensor_low_critical,
+									new_high_warning	=>	$new_ipmitool_sensor_high_warning  eq "NULL" ? "--" : $new_ipmitool_sensor_high_warning,
+									new_low_warning		=>	$new_ipmitool_sensor_low_warning   eq "NULL" ? "--" : $new_ipmitool_sensor_low_warning,
+									old_sensor_value	=>	$old_sensor_value, 
+									old_sensor_status	=>	$old_ipmitool_sensor_status,
+									old_high_critical	=>	$old_ipmitool_sensor_high_critical eq "NULL" ? "--" : $old_ipmitool_sensor_high_critical,
+									old_low_critical	=>	$old_ipmitool_sensor_low_critical  eq "NULL" ? "--" : $old_ipmitool_sensor_low_critical,
+									old_high_warning	=>	$old_ipmitool_sensor_high_warning  eq "NULL" ? "--" : $old_ipmitool_sensor_high_warning,
+									old_low_warning		=>	$old_ipmitool_sensor_low_warning   eq "NULL" ? "--" : $old_ipmitool_sensor_low_warning,
+								},
+							});
 						}
 						else
 						{
 							# TODO: Add the checks of variables against
 							#       the high/low warning/critical 
 							#       thresholds here.
+							$an->Alert->register_alert({
+								alert_level		=>	$level, 
+								alert_agent_name	=>	"$THIS_FILE",
+								alert_title_key		=>	$title_key,
+								alert_message_key	=>	$message_key,
+								alert_message_variables	=>	{
+									sensor_name		=>	$sensor_name,
+									new_sensor_value	=>	$new_sensor_value,
+									old_sensor_value	=>	$old_sensor_value
+								},
+							});
 						}
-						$an->Alert->register_alert({
-							alert_level		=>	$level, 
-							alert_agent_name	=>	"$THIS_FILE",
-							alert_title_key		=>	$title_key,
-							alert_message_key	=>	$message_key,
-							alert_message_variables	=>	{
-								sensor_name		=>	$sensor_name,
-								new_sensor_value	=>	$new_sensor_value,
-								old_sensor_value	=>	$old_sensor_value
-							},
-						});
 					}
 					else
 					{
@@ -553,9 +574,8 @@ INSERT INTO
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
 					
-					# TODO: Use the following variable/value pairs to have the
-					#       sensor name and value translated/converted to 
-					#       imperial as needed.
+					# TODO: Use the following variable/value pairs to have the sensor 
+					#       name and value translated/converted to imperial as needed.
 					my $sensor_name  = "name=$ipmitool_sensor_name:units=$new_ipmitool_sensor_units";
 					my $sensor_value = "value=$new_ipmitool_value_sensor_value:units=$new_ipmitool_sensor_units";
 					$an->Alert->register_alert({
@@ -1129,12 +1149,11 @@ sub process_temperature_change
 		name2 => "ipmitool_sensor_name", value2 => $ipmitool_sensor_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# This is a repeat of some variables set before this function was 
-	# called, but setting them here again saves passing in a pile of 
-	# variables.
+	# This is a repeat of some variables set before this function was called, but setting them here again
+	# saves passing in a pile of variables.
 	my $level       = "info";
 	my $title_key   = "an_alert_title_0002";
-	my $message_key = "scan_ipmitool_message_0003";
+	my $message_key = "scan_ipmitool_message_0012";
 	
 	# New values
 	my $new_ipmitool_value_sensor_value   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value};
@@ -2205,18 +2224,28 @@ sub query_ipmi_targets
 	{
 		my $ipmitool_command = $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmitool_command};
 		my $ipmi_password    = $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmi_password};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "machine",          value1 => $machine,
 			name2 => "ipmitool_command", value2 => $ipmitool_command,
-			name3 => "ipmi_password",    value3 => $ipmi_password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "ipmi_password", value1 => $ipmi_password, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Write the password to a temp file.
-		my $temp_file  = "/tmp/scan-ipmitool";
-		my $shell_call = $temp_file;
-		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 0, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-		print $file_handle $ipmi_password;
-		close $file_handle;
+		# If there is a password, write it to a temp file.
+		my $temp_file  = "";
+		if ($ipmi_password)
+		{
+			# Write the password to a temp file.
+			   $temp_file  = "/tmp/scan-ipmitool";
+			my $shell_call = $temp_file;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 0, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			print $file_handle $ipmi_password;
+			close $file_handle;
+		}
 		
 		# Time the call.
 		my $read_start_time = time;
@@ -2225,25 +2254,26 @@ sub query_ipmi_targets
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Call!
-		$shell_call = "$ipmitool_command -f $temp_file sensor list all 2>&1 |";
+		my $shell_call = "$ipmitool_command sensor list all";
+		if ($ipmi_password)
+		{
+			$shell_call = "$ipmitool_command -f $temp_file sensor list all";
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => ">> line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
 			   $line =~ s/^\s+//;
 			   $line =~ s/\s+$//;
 			   $line =~ s/\s+\|/|/g;
 			   $line =~ s/\|\s+/|/g;
 			   $line =~ s/na//g;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< line", value1 => $line, 
+				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Catch errors:
@@ -2435,14 +2465,52 @@ sub find_ipmi_targets
 		#if ($power_check_command =~ /-T (.*?) /) { $ipmitool_command .= " - $1"; }	# Wait X seconds after on/off operation (Default Value: 2)
 		
 		$an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command} = $power_check_command;
-		$an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command}      = $ipmitool_command;
-		$an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmi_password}         = $ipmi_password;
+		$an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command}    = $ipmitool_command;
+		$an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmi_password}       = $ipmi_password;
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
 			name1 => "scan-ipmitool::machine::${node_name}::power_check_command", value1 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command},
 			name2 => "scan-ipmitool::machine::${node_name}::ipmitool_command",    value2 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command},
 			name3 => "scan-ipmitool::machine::${node_name}::ipmi_password",       value3 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmi_password}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
+	
+	# Do I have local IPMI access?
+	my $shell_call = $an->data->{path}{ipmitool}." chassis power status; ".$an->data->{path}{echo}." rc:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /rc:(\d+)/)
+		{
+			my $rc = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "rc", value1 => $rc, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($rc eq "0")
+			{
+				# We're good.
+				   $ipmi_targets++;
+				my $node_name                                                             = $an->hostname();
+				   $an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command} = "";
+				   $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command}    = $an->data->{path}{ipmitool};
+				   $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmi_password}       = "";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "scan-ipmitool::machine::${node_name}::power_check_command", value1 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command},
+					name2 => "scan-ipmitool::machine::${node_name}::ipmitool_command",    value2 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command},
+					name3 => "scan-ipmitool::machine::${node_name}::ipmi_password",       value3 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmi_password}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	close $file_handle;
 	
 	return($ipmi_targets);
 }

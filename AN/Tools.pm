@@ -669,6 +669,7 @@ sub _set_paths
 
 	# Directories
 	$an->data->{path}{alert_emails}       = "/var/log/alert_emails";
+	$an->data->{path}{alert_files}        = "/var/log";
 	$an->data->{path}{fence_agents}       = "/usr/sbin";
 	$an->data->{path}{initd}              = "/etc/init.d";
 	$an->data->{path}{shared}             = "/shared";

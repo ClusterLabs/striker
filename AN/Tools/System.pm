@@ -56,7 +56,7 @@ sub daemon_boot_config
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "daemon_boot_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "daemon_boot_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if (not $parameter->{daemon})
 	{
@@ -69,7 +69,7 @@ sub daemon_boot_config
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "daemon", value1 => $daemon, 
 		name2 => "set",    value2 => $set, 
 		name3 => "target", value3 => $target, 
@@ -105,7 +105,7 @@ sub daemon_boot_config
 	if ($target)
 	{
 		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -134,7 +134,7 @@ sub daemon_boot_config
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -149,7 +149,7 @@ sub daemon_boot_config
 				5 => $6,
 				6 => $7,
 			};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "state->0", value1 => $state->{0}, 
 				name2 => "state->1", value2 => $state->{1}, 
 				name3 => "state->2", value3 => $state->{2}, 
@@ -161,7 +161,7 @@ sub daemon_boot_config
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($state);
@@ -173,6 +173,7 @@ sub delayed_run
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delayed_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Get the target
 	my $command  = $parameter->{command};
@@ -180,7 +181,7 @@ sub delayed_run
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "local";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : 22;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "command", value1 => $command, 
 		name2 => "delay",   value2 => $delay, 
 		name3 => "target",  value3 => $target, 
@@ -199,7 +200,7 @@ sub delayed_run
 		port     => $port,
 		password => $password, 
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "token", value1 => $token, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -209,7 +210,7 @@ sub delayed_run
 		$token  =  $an->Get->uuid();
 		$output =  $an->data->{path}{'anvil-jobs-output'};
 		$output =~ s/#!token!#/$token/;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "token",  value1 => $token, 
 			name2 => "output", value2 => $output, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -219,7 +220,7 @@ sub delayed_run
 		my $run_time =  $time + $delay;
 		my $job_line =  "$run_time:".$token.":$command";
 		   $job_line =~ s/'/\'/g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "time",     value1 => $time, 
 			name2 => "run_time", value2 => $run_time, 
 			name3 => "job_line", value3 => $job_line, 
@@ -233,115 +234,7 @@ sub delayed_run
 		if ((not $target) or ($target eq "local") or ($target eq $an->hostname) or ($target eq $an->short_hostname))
 		{
 			# Local call.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "shell_call", value1 => $shell_call, 
-			}, file => $THIS_FILE, line => __LINE__});
-			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				push @{$return}, $line;
-			}
-			close $file_handle;
-		}
-		else
-		{
-			# Remote call
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "target",     value1 => $target,
-				name2 => "port",       value2 => $port,
-				name3 => "shell_call", value3 => $shell_call,
-			}, file => $THIS_FILE, line => __LINE__});
-			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$target,
-				port		=>	$port, 
-				password	=>	$password,
-				ssh_fh		=>	"",
-				'close'		=>	0,
-				shell_call	=>	$shell_call,
-			});
-		}
-		foreach my $line (@{$return})
-		{
-			next if not $line;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$problem .= "$line\n";
-		}
-	}
-	
-	# Make sure we didn't hit an error
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "output", value1 => $output,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($problem)
-	{
-		$token = "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "token", value1 => $token,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# This method doesn't wait. We'll return the token and let the caller decide whether to wait or not.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "token",   value1 => $token,
-		name2 => "output",  value2 => $output,
-		name3 => "problem", value3 => $problem,
-	}, file => $THIS_FILE, line => __LINE__});
-	return($token, $output, $problem);
-}
-
-### TODO: Convert this to take each target's IP, Port and Password separately, as we do with 
-###       'synchronous_command_run()'.
-# This runs a command on both nodes (or local and remote), but it does it in serial not synchronously.
-sub dual_command_run
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Get the target
-	my $command = $parameter->{command} ? $parameter->{command} : "";
-	my $delay   = $parameter->{delay}   ? $parameter->{delay}   : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "command",        value1 => $command, 
-		name2 => "delay",          value2 => $delay, 
-		name3 => "hostname",       value3 => $an->hostname,
-		name4 => "short_hostname", value4 => $an->short_hostname, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Well store the output of both machines here.
-	my $output     = {};
-	my $shell_call = $command;
-	foreach my $node_key ("node1", "node2")
-	{
-		my $node     = $an->data->{sys}{anvil}{$node_key}{name};
-		my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
-		my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
-		my $password = $an->data->{sys}{anvil}{$node_key}{use_password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "node",   value1 => $node, 
-			name2 => "target", value2 => $target, 
-			name3 => "port",   value3 => $port, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-			name1 => "password", value1 => $password, 
-		}, file => $THIS_FILE, line => __LINE__});
-		# This will contain the output seen for both nodes
-		   $output->{$node} = "";
-		my $return          = [];
-		
-		# If the node name is 'local', we'll run locally.
-		if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
-		{
-			# Local call.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -360,7 +253,116 @@ sub dual_command_run
 		else
 		{
 			# Remote call
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "port",       value2 => $port,
+				name3 => "shell_call", value3 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+		}
+		foreach my $line (@{$return})
+		{
+			next if not $line;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$problem .= "$line\n";
+		}
+	}
+	
+	# Make sure we didn't hit an error
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "output", value1 => $output,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($problem)
+	{
+		$token = "";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "token", value1 => $token,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# This method doesn't wait. We'll return the token and let the caller decide whether to wait or not.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "token",   value1 => $token,
+		name2 => "output",  value2 => $output,
+		name3 => "problem", value3 => $problem,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($token, $output, $problem);
+}
+
+### TODO: Convert this to take each target's IP, Port and Password separately, as we do with 
+###       'synchronous_command_run()'.
+# This runs a command on both nodes (or local and remote), but it does it in serial not synchronously.
+sub dual_command_run
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "dual_command_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Get the target
+	my $command = $parameter->{command} ? $parameter->{command} : "";
+	my $delay   = $parameter->{delay}   ? $parameter->{delay}   : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "command",        value1 => $command, 
+		name2 => "delay",          value2 => $delay, 
+		name3 => "hostname",       value3 => $an->hostname,
+		name4 => "short_hostname", value4 => $an->short_hostname, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Well store the output of both machines here.
+	my $output     = {};
+	my $shell_call = $command;
+	foreach my $node_key ("node1", "node2")
+	{
+		my $node     = $an->data->{sys}{anvil}{$node_key}{name};
+		my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
+		my $password = $an->data->{sys}{anvil}{$node_key}{use_password};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "node",   value1 => $node, 
+			name2 => "target", value2 => $target, 
+			name3 => "port",   value3 => $port, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		# This will contain the output seen for both nodes
+		   $output->{$node} = "";
+		my $return          = [];
+		
+		# If the node name is 'local', we'll run locally.
+		if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
+		{
+			# Local call.
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$return}, $line;
+			}
+			close $file_handle;
+		}
+		else
+		{
+			# Remote call
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "target",     value1 => $target,
 				name2 => "shell_call", value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -395,12 +397,12 @@ sub poweroff
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "poweroff" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "poweroff" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target, 
 		name2 => "port",   value2 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -418,7 +420,7 @@ sub poweroff
 		print "poweroff: $target\n";
 		
 		### Remote calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -436,7 +438,7 @@ sub poweroff
 		print "poweroff: $target\n";
 		
 		### Local calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -451,7 +453,7 @@ sub poweroff
 	my $output = "";
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		$output .= "$line\n";
@@ -467,11 +469,12 @@ sub synchronous_command_run
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "synchronous_command_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Get the target
 	my $command = $parameter->{command} ? $parameter->{command} : "";
 	my $delay   = $parameter->{delay}   ? $parameter->{delay}   : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "command",        value1 => $command, 
 		name2 => "delay",          value2 => $delay, 
 		name3 => "hostname",       value3 => $an->hostname,
@@ -492,7 +495,7 @@ sub synchronous_command_run
 		my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
 		my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
 		my $password = $an->data->{sys}{anvil}{$node_key}{use_password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "node",   value1 => $node, 
 			name2 => "target", value2 => $target, 
 			name3 => "port",   value3 => $port, 
@@ -509,7 +512,7 @@ sub synchronous_command_run
 			port     => $port,
 			password => $password, 
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "token", value1 => $token, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -519,7 +522,7 @@ sub synchronous_command_run
 			$an->data->{node}{$node}{token}  = $token;
 			$an->data->{node}{$node}{output} = $an->data->{path}{'anvil-jobs-output'};
 			$an->data->{node}{$node}{output} =~ s/#!token!#/$token/;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "node::${node}::token",  value1 => $an->data->{node}{$node}{token}, 
 				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -531,7 +534,7 @@ sub synchronous_command_run
 			$an->data->{node}{$node}{token}  = $token;
 			$an->data->{node}{$node}{output} = $an->data->{path}{'anvil-jobs-output'};
 			$an->data->{node}{$node}{output} =~ s/#!token!#/$token/;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "node::${node}::token",  value1 => $an->data->{node}{$node}{token}, 
 				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -541,7 +544,7 @@ sub synchronous_command_run
 			my $run_time =  $time + $delay;
 			my $job_line =  "$run_time:".$an->data->{node}{$node}{token}.":$command";
 			   $job_line =~ s/'/\'/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "time",     value1 => $time, 
 				name2 => "run_time", value2 => $run_time, 
 				name3 => "job_line", value3 => $job_line, 
@@ -556,7 +559,7 @@ sub synchronous_command_run
 			if (($target eq "local") or ($target eq $an->hostname) or ($target eq $an->short_hostname))
 			{
 				# Local call.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -564,7 +567,7 @@ sub synchronous_command_run
 				{
 					chomp;
 					my $line = $_;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
@@ -576,7 +579,7 @@ sub synchronous_command_run
 			{
 				# Remote call
 				my $port = $an->data->{node}{$node}{port} ? $an->data->{node}{$node}{port} : "";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "target",     value1 => $target,
 					name2 => "port",       value2 => $port,
 					name3 => "shell_call", value3 => $shell_call,
@@ -591,7 +594,7 @@ sub synchronous_command_run
 			foreach my $line (@{$return})
 			{
 				next if not $line;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -601,14 +604,14 @@ sub synchronous_command_run
 	# Make sure we didn't hit an error
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node1}::output", value1 => $an->data->{node}{$node1}{output},
 		name2 => "node::${node2}::output", value2 => $an->data->{node}{$node2}{output},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $an->data->{node}{$node1}{output}) or (not $an->data->{node}{$node2}{output}))
 	{
 		$waiting = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "waiting", value1 => $waiting,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -620,7 +623,7 @@ sub synchronous_command_run
 	
 	my $current_time = time;
 	my $timeout      = $current_time + $delay + 120;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "current_time", value1 => $current_time,
 		name2 => "timeout",      value2 => $timeout,
 		name3 => "waiting",      value3 => $waiting,
@@ -634,7 +637,7 @@ sub synchronous_command_run
 			my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
 			my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
 			my $password = $an->data->{sys}{anvil}{$node_key}{use_password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "node",   value1 => $node, 
 				name2 => "target", value2 => $target, 
 				name3 => "port",   value3 => $port, 
@@ -661,7 +664,7 @@ fi
 			if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
 			{
 				# Local call.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -680,7 +683,7 @@ fi
 			else
 			{
 				# Remote call
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "target",     value1 => $target,
 					name2 => "shell_call", value2 => $shell_call,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -693,7 +696,7 @@ fi
 			}
 			foreach my $line (@{$return})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "target", value1 => $target,
 					name2 => "line",   value2 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -701,7 +704,7 @@ fi
 				if ($line =~ /No output yet/)
 				{
 					# We have to wait more.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "target",  value1 => $target,
 						name2 => "waiting", value2 => $waiting,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -714,7 +717,7 @@ fi
 					if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
 					{
 						# Local call.
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "shell_call", value1 => $shell_call, 
 						}, file => $THIS_FILE, line => __LINE__});
 						open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -722,7 +725,7 @@ fi
 						{
 							chomp;
 							my $line = $_;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "line", value1 => $line, 
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -731,7 +734,7 @@ fi
 					else
 					{
 						# Remote call
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "target",     value1 => $target,
 							name2 => "shell_call", value2 => $shell_call,
 						}, file => $THIS_FILE, line => __LINE__});
@@ -743,7 +746,7 @@ fi
 						});
 						foreach my $line (@{$return})
 						{
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "target", value1 => $target,
 								name2 => "line",   value2 => $line, 
 							}, file => $THIS_FILE, line => __LINE__});
@@ -768,7 +771,7 @@ fi
 		}
 		
 		# See if I still have an output file. If not, we're done.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "node::${node1}::output", value1 => $an->data->{node}{$node1}{output},
 			name2 => "node::${node2}::output", value2 => $an->data->{node}{$node2}{output},
 			name3 => "waiting",                value3 => $waiting,
@@ -776,7 +779,7 @@ fi
 		if ((not $an->data->{node}{$node1}{output}) && (not $an->data->{node}{$node2}{output}))
 		{
 			$waiting = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "waiting", value1 => $waiting,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -791,7 +794,7 @@ fi
 		if ($waiting)
 		{
 			sleep 10;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "time",    value1 => time,
 				name2 => "timeout", value2 => $timeout,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -814,6 +817,7 @@ sub _avoid_duplicate_delayed_runs
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_avoid_duplicate_delayed_runs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Get the target
 	my $token    = "";
@@ -828,7 +832,7 @@ sub _avoid_duplicate_delayed_runs
 	if (($target eq "local") or ($target eq $an->hostname) or ($target eq $an->short_hostname))
 	{
 		# Local call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -836,7 +840,7 @@ sub _avoid_duplicate_delayed_runs
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -847,7 +851,7 @@ sub _avoid_duplicate_delayed_runs
 	else
 	{
 		# Remote call
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "port",       value2 => $port,
 			name3 => "shell_call", value3 => $shell_call,
@@ -863,7 +867,7 @@ sub _avoid_duplicate_delayed_runs
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^(\d+):(.*?):(.*)$/)
@@ -871,7 +875,7 @@ sub _avoid_duplicate_delayed_runs
 			my $this_runtime = $1;
 			my $this_token   = $2;
 			my $this_command = $3;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "this_runtime", value1 => $this_runtime, 
 				name2 => "this_token",   value2 => $this_token, 
 				name3 => "this_command", value3 => $this_command, 
@@ -881,14 +885,14 @@ sub _avoid_duplicate_delayed_runs
 			{
 				# Steal this token!
 				$token = $this_token;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "token", value1 => $token, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "token", value1 => $token, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($token);

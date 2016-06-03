@@ -756,6 +756,8 @@ sub read_cache
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	### TODO: Read in the nodes' etc_hosts cache and find their UPSes.
+	
 	# This will be stuck onto the start of fence agents that don't have a full path.
 	my $fence_path = $an->data->{path}{fence_agents};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -774,14 +776,7 @@ sub read_cache
 	}
 	foreach my $hash_ref (@{$node_cache})
 	{
-		# Ignore any data cache by other nodes.
-		my $node_cache_host_uuid = $hash_ref->{node_cache_host_uuid}; 
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "sys::host_uuid",       value1 => $an->data->{sys}{host_uuid}, 
-			name2 => "node_cache_host_uuid", value2 => $node_cache_host_uuid, 
-		}, file => $THIS_FILE, line => __LINE__});
-		next if $node_cache_host_uuid ne $an->data->{sys}{host_uuid};
-		
+		# Match the cache owner to a cache name.
 		my $node_cache_node_uuid = $hash_ref->{node_cache_node_uuid};
 		my $node_cache_name      = $hash_ref->{node_cache_name};
 		my $node_cache_data      = $hash_ref->{node_cache_data};
@@ -789,7 +784,7 @@ sub read_cache
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "node_cache_node_uuid", value1 => $node_cache_node_uuid, 
 			name2 => "node_cache_name",      value2 => $node_cache_name, 
-			name3 => "node_cache_data",      value3 => $node_cache_name, 
+			name3 => "node_cache_data",      value3 => $node_cache_data, 
 			name4 => "node_name",            value4 => $node_name, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2449,7 +2444,7 @@ WHERE
 		my $alert_message_key       = $row->[5]; 
 		my $alert_message_variables = $row->[6]; 
 		my $modified_date           = $row->[7]; 
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "alert_uuid",              value1 => $alert_uuid, 
 			name2 => "alert_agent_name",        value2 => $alert_agent_name, 
 			name3 => "alert_level",             value3 => $alert_level, 
@@ -2469,7 +2464,7 @@ WHERE
 			alert_message_variables => $alert_message_variables,
 			modified_date           => $modified_date
 		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 			name1 => "db::alerts::agent_name::${alert_agent_name}::alert_uuid::${alert_uuid}::alert_level",             value1 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_uuid}{$alert_uuid}{alert_level},
 			name2 => "db::alerts::agent_name::${alert_agent_name}::alert_uuid::${alert_uuid}::alert_title_key",         value2 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_uuid}{$alert_uuid}{alert_title_key},
 			name3 => "db::alerts::agent_name::${alert_agent_name}::alert_uuid::${alert_uuid}::alert_title_variables",   value3 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_uuid}{$alert_uuid}{alert_title_variables},
@@ -2544,16 +2539,17 @@ WHERE
 				my $notify_language = $an->data->{notififactions}{$recipient_notify_uuid}{notify_language};
 				my $notify_level    = $an->data->{notififactions}{$recipient_notify_uuid}{notify_level};
 				my $notify_units    = $an->data->{notififactions}{$recipient_notify_uuid}{notify_units};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-					name1 => "notify_name",     value1 => $notify_name,
-					name2 => "notify_target",   value2 => $notify_target,
-					name3 => "notify_language", value3 => $notify_language,
-					name4 => "notify_level",    value4 => $notify_level,
-					name5 => "notify_units",    value5 => $notify_units,
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+					name1 => "notify_name",            value1 => $notify_name,
+					name2 => "notify_target",          value2 => $notify_target,
+					name3 => "notify_language",        value3 => $notify_language,
+					name4 => "notify_level",           value4 => $notify_level,
+					name5 => "notify_units",           value5 => $notify_units,
+					name6 => "recipient_notify_level", value6 => $recipient_notify_level,
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# See if this notification target has a custom level for this Anvil!.
-				if ($recipient_notify_level =~ /^\d+$/)
+				if ($recipient_notify_level)
 				{
 					$notify_level = $recipient_notify_level;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2858,6 +2854,12 @@ sub record_alert_to_file
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $messages = "";
+	
+	# Prepend the alert file path.
+	$file = $an->data->{path}{alert_files}."/$file";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "file", value1 => $file, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Convert the user's log level to a numeric number for easier comparison.
 	$level = $an->Alert->convert_level_name_to_number({level => $level});

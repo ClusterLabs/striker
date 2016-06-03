@@ -153,6 +153,10 @@ The new sensor: [#!variable!sensor_name!#] has been found.
   - Low warning:   [#!variable!low_warning!#]
   - Low critical:  [#!variable!low_critical!#]
 		</key>
+		<key name="scan_ipmitool_message_0013">
+The sensor: [#!variable!sensor_name!#] has changed.
+- [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+		</key>
 		
 		<!-- Sensor message titles -->
 		<key name="scan_ipmitool_title_0001">New sensor found on: [#!variable!machine!#]</key>

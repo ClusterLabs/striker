@@ -1733,6 +1733,7 @@ sub delete_notify
 	my $notify_data     = $an->Get->notify_data({uuid => $an->data->{cgi}{notify_uuid}});
 	my $notice_message = "";
 	
+	### TODO: This isn't working when an email and a file alert exist for the same Anvil!.
 	# Send the queries as an array
 	my $queries = [];
 	push @{$queries}, "

@@ -1144,7 +1144,7 @@ sub peer_hostname
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "peer_hostname" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "peer_hostname" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $peer_hostname = "";
 	my $hostname      = $parameter->{node} ? $parameter->{node} : "";
@@ -1244,7 +1244,7 @@ sub peer_hostname
 		return ("");
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "peer_hostname", value1 => $peer_hostname, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($peer_hostname);
