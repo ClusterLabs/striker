@@ -62,6 +62,7 @@ sub build_select
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "build_select" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Required
 	my $name     = $parameter->{name};
@@ -183,8 +184,9 @@ sub check_all_cgi
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_all_cgi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Web->get_cgi({variables => [
+	my $cgi = [
 		"adapter",
 		"anvil",
 		"anvil_bcn_ethtool_opts",
@@ -438,7 +440,15 @@ sub check_all_cgi
 		"vg_list",
 		"vm",
 		"vm_ram",
-	]});
+	];
+	# When saving notifications, the user can select a specific alert level per configured Anvil!. This 
+	# adds the potential CGI variables to the array.
+	my $anvil_data = $an->ScanCore->get_anvils();
+	foreach my $hash_ref (@{$anvil_data})
+	{
+		push @{$cgi}, "notify_anvil_".$hash_ref->{anvil_uuid};
+	}
+	$an->Web->get_cgi({variables => $cgi});
 	
 	return (0);
 }
@@ -449,6 +459,7 @@ sub initialize_http
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "initialize_http" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print "Content-type: text/html; charset=utf-8\n\n";
 	
@@ -461,6 +472,7 @@ sub get_cgi
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_cgi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure we have an array reference of variables to read.
 	my $variables = ref($parameter->{variables}) eq "ARRAY" ? $parameter->{variables} : "";
@@ -618,6 +630,7 @@ sub more_info_link
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "more_info_link" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# TODO: Error if this is not set.
 	my $url  = $parameter->{url} ? $parameter->{url} : "";
@@ -650,6 +663,7 @@ sub no_db_access
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "no_db_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Move these to 'common.html' once the clean-up is done.
 	# Put together the frame of the page.
@@ -687,6 +701,7 @@ sub parse_text_line
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_text_line" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $line = $parameter->{line} ? $parameter->{line} : "";
 	
@@ -718,6 +733,7 @@ sub template
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "template" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure we got a file and template name.
 	if (not $parameter->{file})

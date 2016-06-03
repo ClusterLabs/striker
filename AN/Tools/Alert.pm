@@ -75,10 +75,8 @@ sub check_alert_sent
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
-	$self->_set_error;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_alert_sent" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will get set to '1' if an alert is added or removed.
 	my $set = 0;
@@ -222,12 +220,10 @@ AND
 # This converts a level name to a number for easier comparison.
 sub convert_level_name_to_number
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
-	$self->_set_error;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "convert_level_name_to_number" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $level = $parameter->{level} ? $parameter->{level} : ""; # This should error.
 	
@@ -258,12 +254,10 @@ sub convert_level_name_to_number
 # This converts an alert level number to a name.
 sub convert_level_number_to_name
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
-	$self->_set_error;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "convert_level_number_to_name" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $level = $parameter->{level} ? $parameter->{level} : ""; # This should error.
 	
@@ -301,10 +295,8 @@ sub error
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	$self->_set_error;
-	my $an = $self->parent;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "error" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Setup default values
 	my ($fatal, $title_key, $title_variables, $message_key, $message_variables, $code, $file, $line);
@@ -409,8 +401,8 @@ sub error
 	#print "$THIS_FILE ".__LINE__."; error: [$error]\n";
 	
 	# Set the internal error flags
-	$self->_set_error($error);
-	$self->_set_error_code($code);
+	$an->Alert->_set_error($error);
+	$an->Alert->_set_error_code($code);
 	
 	# Append "exiting" to the error string if it is fatal.
 	if ($fatal)
@@ -424,12 +416,12 @@ sub error
 	
 	# Don't actually die, but do print the error, if fatal errors have been globally disabled (as is done
 	# in the tests).
-	#if (($fatal) && (not $self->no_fatal_errors))
+	#if (($fatal) && (not $an->Alert->no_fatal_errors))
 	if ($fatal)
 	{
 		#$error =~ s/\n/<br \/>\n/g;
-		print "$error\n" if not $self->no_fatal_errors;
-		$self->_nice_exit($code);
+		print "$error\n" if not $an->Alert->no_fatal_errors;
+		$an->Alert->_nice_exit($code);
 	}
 	
 	return ($code);
@@ -438,27 +430,27 @@ sub error
 # This un/sets the prevention of errors being fatal.
 sub no_fatal_errors
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "no_fatal_errors" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Have to check if defined because '0' is valid.
 	if (defined $parameter->{set})
 	{
-		$self->{NO_FATAL_ERRORS} = $parameter->{set} if (($parameter->{set} == 0) || ($parameter->{set} == 1));
+		$an->Alert->{NO_FATAL_ERRORS} = $parameter->{set} if (($parameter->{set} == 0) || ($parameter->{set} == 1));
 	}
 	
-	return ($self->{NO_FATAL_ERRORS});
+	return ($an->Alert->{NO_FATAL_ERRORS});
 }
 
 # This registers an alert with ScanCore
 sub register_alert
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
-	$self->_set_error;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "register_alert" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $alert_agent_name        = $parameter->{alert_agent_name}        ? $parameter->{alert_agent_name}        : die "$THIS_FILE ".__LINE__." 'alert_agent_name' parameter not passed to AN::Tools::Alert->register_alert()\n";
 	my $alert_level             = $parameter->{alert_level}             ? $parameter->{alert_level}             : "warning";	# Not being set by the agent should be treated as a bug.
@@ -599,16 +591,18 @@ INSERT INTO
 # implemented).
 sub silence_warnings
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "silence_warnings" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Have to check if defined because '0' is valid.
 	if (defined $parameter->{set})
 	{
-		$self->{SILENCE_WARNINGS} = $parameter->{set} if (($parameter->{set} == 0) || ($parameter->{set} == 1));
+		$an->Alert->{SILENCE_WARNINGS} = $parameter->{set} if (($parameter->{set} == 0) || ($parameter->{set} == 1));
 	}
 	
-	return ($self->{SILENCE_WARNINGS});
+	return ($an->Alert->{SILENCE_WARNINGS});
 }
 
 # Later, this will support all the translation and logging methods. For now, just print the warning and 
@@ -618,11 +612,13 @@ sub warning
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "warning" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	### TODO: Finish this, disabled for now.
 	return(1);
 	
 	# Clear any prior errors.
-	$self->_set_error;
+	$an->Alert->_set_error;
 	
 	# Setup default values
 	my $title_key         = $parameter->{title_key}         ? $parameter->{title_key}         : "";
@@ -743,14 +739,16 @@ sub warning
 sub _error_code
 {
 	my $self = shift;
-	return $self->{ERROR_CODE};
+	my $an   = $self->parent;
+	return $an->Alert->{ERROR_CODE};
 }
 
 # This returns an error message if one is set.
 sub _error_string
 {
 	my $self = shift;
-	return $self->{ERROR_STRING};
+	my $an   = $self->parent;
+	return $an->Alert->{ERROR_STRING};
 }
 
 # This will handle cleanup prior to exit.
@@ -768,20 +766,21 @@ sub _set_error
 {
 	my $self  = shift;
 	my $error = shift;
+	my $an    = $self->parent;
 	
 	# This is a bit of a cheat, but it saves a call when a method calls
 	# this just to clear the error message.
 	if ($error)
 	{
-		$self->{ERROR_STRING} = $error;
+		$an->Alert->{ERROR_STRING} = $error;
 	}
 	else
 	{
-		$self->{ERROR_STRING} = "";
-		$self->{ERROR_CODE}   = 0;
+		$an->Alert->{ERROR_STRING} = "";
+		$an->Alert->{ERROR_CODE}   = 0;
 	}
 	
-	return $self->{ERROR_STRING};
+	return $an->Alert->{ERROR_STRING};
 }
 
 # This simply sets the error code method. Calling this method with an empty
@@ -790,10 +789,11 @@ sub _set_error_code
 {
 	my $self  = shift;
 	my $error = shift;
+	my $an    = $self->parent;
 	
-	$self->{ERROR_CODE} = $error ? $error : "";
+	$an->Alert->{ERROR_CODE} = $error ? $error : "";
 	
-	return $self->{ERROR_CODE};
+	return $an->Alert->{ERROR_CODE};
 }
 
 1;

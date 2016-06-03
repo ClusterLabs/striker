@@ -2470,7 +2470,7 @@ sub recipient_data
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "recipient_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $return         = {};
+	my $return         = [];
 	my $anvil_uuid     = $parameter->{anvil_uuid}  ? $parameter->{anvil_uuid}  : "";
 	my $notify_uuid    = $parameter->{notify_uuid} ? $parameter->{notify_uuid} : "";
 	my $recipient_uuid = $parameter->{uuid}        ? $parameter->{uuid}        : "";
@@ -2492,7 +2492,7 @@ SELECT
     recipient_uuid, 
     recipient_anvil_uuid, 
     recipient_notify_uuid, 
-    recipient_log_level, 
+    recipient_notify_level, 
     recipient_note, 
     modified_date 
 FROM 
@@ -2513,7 +2513,7 @@ WHERE
 	}
 	$query .= "
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2525,25 +2525,25 @@ WHERE
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
 	{
-		my $recipient_uuid        = $row->[0];
-		my $recipient_anvil_uuid  = $row->[1];
-		my $recipient_notify_uuid = $row->[2];
-		my $recipient_log_level   = $row->[3] ? $row->[3] : "NULL";
-		my $recipient_note        = $row->[4] ? $row->[4] : "NULL";
-		my $modified_date         = $row->[5];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-			name1 => "recipient_uuid",        value1 => $recipient_uuid, 
-			name2 => "recipient_anvil_uuid",  value2 => $recipient_anvil_uuid, 
-			name3 => "recipient_notify_uuid", value3 => $recipient_notify_uuid, 
-			name4 => "recipient_log_level",   value4 => $recipient_log_level, 
-			name5 => "recipient_note",        value5 => $recipient_note, 
-			name6 => "modified_date",         value6 => $modified_date, 
+		my $recipient_uuid         = $row->[0];
+		my $recipient_anvil_uuid   = $row->[1];
+		my $recipient_notify_uuid  = $row->[2];
+		my $recipient_notify_level = $row->[3] ? $row->[3] : "NULL";
+		my $recipient_note         = $row->[4] ? $row->[4] : "NULL";
+		my $modified_date          = $row->[5];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "recipient_uuid",         value1 => $recipient_uuid, 
+			name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid, 
+			name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid, 
+			name4 => "recipient_notify_level", value4 => $recipient_notify_level, 
+			name5 => "recipient_note",         value5 => $recipient_note, 
+			name6 => "modified_date",          value6 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
-		$return = {
+		push @{$return}, {
 			recipient_uuid		=>	$recipient_uuid,
 			recipient_anvil_uuid	=>	$recipient_anvil_uuid, 
 			recipient_notify_uuid	=>	$recipient_notify_uuid, 
-			recipient_log_level	=>	$recipient_log_level, 
+			recipient_notify_level	=>	$recipient_notify_level, 
 			recipient_note		=>	$recipient_note, 
 			modified_date		=>	$modified_date, 
 		};

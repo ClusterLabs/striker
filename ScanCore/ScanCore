@@ -1141,8 +1141,8 @@ ORDER BY
 			name4 => "scancore::disable::boot_nodes", value4 => $an->data->{scancore}{disable}{boot_nodes}
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# If 'host_stop_reason' is 'clean', don't boot. Otherwise, if the power and 
-		# temperature is good, try to boot the node!
+		# If 'host_stop_reason' is 'clean', don't boot. Otherwise, if the power and temperature is 
+		# good, try to boot the node!
 		if ($host_stop_reason eq "clean")
 		{
 			# Leave it off.
@@ -2658,6 +2658,10 @@ sub send_email
 			# The conversion of C to F is handled in translate_sensor_{name,value}() functions.
 			my $title   = get_string_from_double_bang($an, $language, $alert_title_key, $alert_title_variables, $units);
 			my $message = get_string_from_double_bang($an, $language, $alert_message_key, $alert_message_variables, $units);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "level",       value1 => $level, 
+				name2 => "alert_level", value2 => $alert_level, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($level >= $alert_level)
 			{
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -2680,6 +2684,12 @@ sub send_email
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
+	}
+	
+	# If there is no message body, we're done.
+	if (not $body)
+	{
+		return(0);
 	}
 	
 	# Generate the email body.

@@ -34,7 +34,7 @@ This email was *not* sent by #!string!scancore_brand_0003!#. If you do not know 
 
 If you need any assistance, please feel free to contact #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) and we will do our best to assist.
 		</key>
-		<key name="scancore_email_0004">There has been a state change on #!variable!hostname!#</key>
+		<key name="scancore_email_0004">There is a message from #!variable!hostname!#</key>
 		<key name="scancore_email_0005">
 #!variable!title!#:
   #!variable!message!#

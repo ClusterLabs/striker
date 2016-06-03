@@ -77,7 +77,7 @@ sub get_anvils
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_anvils" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_anvils" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -146,7 +146,7 @@ sub get_hosts
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -303,7 +303,7 @@ sub get_nodes
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -537,7 +537,7 @@ sub get_owners
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_owners" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_owners" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -682,7 +682,7 @@ SELECT
 FROM 
     recipients
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -701,7 +701,7 @@ FROM
 		my $recipient_notify_level = $row->[3];
 		my $recipient_note         = $row->[4] ? $row->[4] : "";
 		my $modified_date          = $row->[5];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 			name1 => "recipient_uuid",         value1 => $recipient_uuid, 
 			name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid, 
 			name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid, 
@@ -823,7 +823,7 @@ sub get_smtp
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_smtp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_smtp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -867,7 +867,7 @@ FROM
 		my $smtp_alt_port       = defined $row->[9]  ? $row->[9]  : ""; 
 		my $smtp_note           = defined $row->[10] ? $row->[10] : "";
 		my $modified_date       = $row->[11];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 			name1  => "smtp_uuid",           value1  => $smtp_uuid, 
 			name2  => "smtp_server",         value2  => $smtp_server, 
 			name3  => "smtp_port",           value3  => $smtp_port, 
@@ -2493,7 +2493,7 @@ sub parse_anvil_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_anvil_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_anvil_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_data = $an->ScanCore->get_anvils();
 	my $host_data  = $an->ScanCore->get_hosts();
@@ -2603,7 +2603,7 @@ sub parse_anvil_data
 		$an->data->{db}{smtp}{$smtp_uuid}{helo_domain}    = $hash_ref->{smtp_helo_domain};
 		$an->data->{db}{smtp}{$smtp_uuid}{password}       = $hash_ref->{smtp_password};
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "db::smtp::${smtp_uuid}::server",         value1 => $an->data->{db}{smtp}{$smtp_uuid}{server}, 
 			name2 => "db::smtp::${smtp_uuid}::port",           value2 => $an->data->{db}{smtp}{$smtp_uuid}{port}, 
 			name3 => "db::smtp::${smtp_uuid}::alt_server",     value3 => $an->data->{db}{smtp}{$smtp_uuid}{alt_server}, 
@@ -2777,7 +2777,7 @@ sub parse_anvil_data
 				$an->data->{anvils}{$anvil_uuid}{smtp}{authentication} = $an->data->{db}{smtp}{$smtp_uuid}{authentication};
 				$an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain}    = $an->data->{db}{smtp}{$smtp_uuid}{helo_domain};
 				$an->data->{anvils}{$anvil_uuid}{smtp}{password}       = $an->data->{db}{smtp}{$smtp_uuid}{password};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 					name1 => "anvils::${anvil_uuid}::smtp::server",         value1 => $an->data->{anvils}{$anvil_uuid}{smtp}{server}, 
 					name2 => "anvils::${anvil_uuid}::smtp::port",           value2 => $an->data->{anvils}{$anvil_uuid}{smtp}{port}, 
 					name3 => "anvils::${anvil_uuid}::smtp::alt_server",     value3 => $an->data->{anvils}{$anvil_uuid}{smtp}{alt_server}, 

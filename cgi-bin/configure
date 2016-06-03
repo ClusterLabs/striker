@@ -126,6 +126,28 @@ sub load_notify_form
 				$an->data->{cgi}{notify_level}    = $hash_ref->{notify_level};
 				$an->data->{cgi}{notify_units}    = $hash_ref->{notify_units};
 				$an->data->{cgi}{notify_note}     = $hash_ref->{notify_note};
+				
+				# Load the 'cgi::notify_anvil_<uuid>' values.
+				my $recipient_data = $an->Get->recipient_data({notify_uuid => $uuid});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "recipient_data", value1 => $recipient_data,
+				}, file => $THIS_FILE, line => __LINE__});
+				next if not $recipient_data;
+				foreach my $hash_ref (@{$recipient_data})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "hash_ref->recipient_notify_uuid", value1 => $hash_ref->{recipient_notify_uuid},
+						name2 => "cgi::notify_uuid",                value2 => $an->data->{cgi}{notify_uuid},
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($hash_ref->{recipient_notify_uuid} eq $an->data->{cgi}{notify_uuid})
+					{
+						my $notify_anvil_key                   = "notify_anvil_".$hash_ref->{recipient_anvil_uuid};
+						   $an->data->{cgi}{$notify_anvil_key} = $hash_ref->{recipient_notify_level};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "cgi::${notify_anvil_key}", value1 => $an->data->{cgi}{$notify_anvil_key},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
 				last;
 			}
 		}
@@ -140,6 +162,18 @@ sub load_notify_form
 		$an->data->{cgi}{notify_level}    = "";
 		$an->data->{cgi}{notify_units}    = "";
 		$an->data->{cgi}{notify_note}     = "";
+		
+		# Wipe out the 'notify_anvil_<uuid>' CGI variables
+		foreach my $key (sort {$a cmp $b} keys %{$an->data->{cgi}})
+		{
+			if ($key =~ /^notify_anvil_/)
+			{
+				$an->data->{cgi}{$key} = "";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "cgi::$key", value1 => $an->data->{cgi}{$key},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
 	
 	return(0);
@@ -1089,7 +1123,6 @@ sub save_notify
 	{
 		my $anvil_uuid = $hash_ref->{anvil_uuid};
 		my $notify_key = "notify_anvil_".$anvil_uuid;
-		$an->Web->get_cgi({variables => [$notify_key] });
 		if ($an->data->{cgi}{$notify_key})
 		{
 			# For now, the only reason 'note' is used is to mark a recipient being deleted.
@@ -4261,8 +4294,8 @@ sub notify_menu
 			my $anvil_description = $hash_ref->{anvil_description};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "cgi::anvil_uuid",        value1 => $an->data->{cgi}{anvil_uuid},
-				name1 => "cgi::anvil_name",        value1 => $an->data->{cgi}{anvil_name},
-				name2 => "cgi::anvil_description", value2 => $an->data->{cgi}{anvil_description},
+				name2 => "cgi::anvil_name",        value2 => $an->data->{cgi}{anvil_name},
+				name3 => "cgi::anvil_description", value3 => $an->data->{cgi}{anvil_description},
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if (not $break_printed)
@@ -4282,8 +4315,13 @@ sub notify_menu
 				}, no_comment => 1});
 			
 			# Build the select for the notification level (with a "don't notify") option.
+			my $notify_anvil_key = "notify_anvil_".$anvil_uuid;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::${notify_anvil_key}", value1 => $an->data->{cgi}{$notify_anvil_key},
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			my $notify_level_select = $an->Web->build_select({
-				name     => "notify_anvil_".$anvil_uuid, 
+				name     => $notify_anvil_key, 
 				options  => [
 					"ignore#!##!string!alert_level_0006!#",
 					"debug#!##!string!alert_level_0001!#",
@@ -4294,7 +4332,7 @@ sub notify_menu
 				], 
 				blank    => 0,
 				'sort'   => 0,
-				selected => $an->data->{cgi}{notify_level},
+				selected => $an->data->{cgi}{$notify_anvil_key},
 				width    => ($width + 10),
 			});
 			
