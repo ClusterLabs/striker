@@ -101,11 +101,10 @@ my $an = AN::Tools->new({data =>
 			log_level			=>	1,
 			log_language			=>	"en_CA",
 			log_db_transactions		=>	0,
-			# It will be marked as 'clear' when the temperature
-			# drops this many °C below the critical temperature.
+			# It will be marked as 'clear' when the temperature drops this many °C below the 
+			# critical temperature.
 			machine				=>	{},
-			# These are used when no other limits are set for a
-			# given sensor.
+			# These are used when no other limits are set for a given sensor.
 			thresholds			=>	{
 				'default'			=>	{
 					high_warning			=>	50,
@@ -113,17 +112,16 @@ my $an = AN::Tools->new({data =>
 					low_warning			=>	5,
 					low_critical			=>	0,
 					jump				=>	5,
-					### TODO: Some sensors define their
-					###       hysteresis which we can read 
+					### TODO: Some sensors define their hysteresis which we can read 
 					###       using: 
 					###       ipmitool ... sensor get "Ambient"
 					buffer				=>	2,
 				},
-				# If the user wants to assign manual values for
-				# a given sensor, they can do so by creating an
-				# entry hear where the key is the IPMI-returned
-				# sensor name.
+				# If the user wants to assign manual values for a given sensor, they can do 
+				# so by creating an entry hear where the key is the IPMI-returned sensor 
+				# name.
 				#ie:
+				# ===========================================================================
 				#'Ambient'			=>	{
 				#	high_warning			=>	50,
 				#	high_critical			=>	55,
@@ -133,6 +131,33 @@ my $an = AN::Tools->new({data =>
 				#	buffer				=>	2,
 				#	weight				=>	1,
 				#},
+				# ===========================================================================
+				# CPUs tend to jump around wildly under sudden load, so we extend their jump
+				# range so we don't get spurious warnings all the time.
+				'CPU1'				=>	{
+					jump				=>	10,
+				},
+				'CPU2'				=>	{
+					jump				=>	10,
+				},
+				'CPU3'				=>	{
+					jump				=>	10,
+				},
+				'CPU4'				=>	{
+					jump				=>	10,
+				},
+				'CPU5'				=>	{
+					jump				=>	10,
+				},
+				'CPU6'				=>	{
+					jump				=>	10,
+				},
+				'CPU7'				=>	{
+					jump				=>	10,
+				},
+				'CPU8'				=>	{
+					jump				=>	10,
+				},
 			},
 			# TODO: Remove this and have Striker pull the list of thermal sensors read in the 
 			#       last $timestamp.
@@ -193,8 +218,7 @@ if (not $an->DB->verify_host_uuid())
 # Query IPMI targets. Unreachable targets will simply be ignored.
 query_ipmi_targets($an);
 
-# Do the loading of the schemas and copying data from more up to date DBs if
-# the DB was loaded.
+# Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
 prep_databases($an);
 
 # Look to see if any databases need to be updated.
@@ -210,9 +234,9 @@ $an->DB->update_time({file => $THIS_FILE});
 nice_exit($an);
 
 
-###############################################################################
-# Functions                                                                   #
-###############################################################################
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
 
 # Change to a user-requested log level.
 sub adjust_log_level
@@ -241,8 +265,8 @@ sub adjust_log_level
 	return(0);
 }
 
-# This reads in the last scan data from one of the databases and compares it
-# against the just-read data. If anything changed, register an alert.
+# This reads in the last scan data from one of the databases and compares it against the just-read data. If 
+# anything changed, register an alert.
 sub find_changes
 {
 	my ($an) = @_;
@@ -475,8 +499,8 @@ AND
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
 						
-						# If this is a status change, set a 'warning'
-						# level alert unless the change is to/from 'ns'.
+						# If this is a status change, set a 'warning' level alert 
+						# unless the change is to/from 'ns'.
 						my $level       = "notice";
 						my $title_key   = "an_alert_title_0003";
 						my $message_key = "scan_ipmitool_message_0012";
@@ -511,8 +535,8 @@ AND
 						});
 					}
 					
-					# Delete the old key so that I can check to see
-					# what sensors vanished.
+					# Delete the old key so that I can check to see what sensors 
+					# vanished.
 					delete $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name};
 				}
 				else
@@ -703,11 +727,9 @@ INSERT INTO
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
 				
-				# We need to let ScanCore translate the sensor
-				# data into a string for each user and their
-				# prefered language and units. As such, we're
-				# going to use a couple special variable 
-				# strings for this.
+				# We need to let ScanCore translate the sensor data into a string for each 
+				# user and their prefered language and units. As such, we're going to use a 
+				# couple special variable strings for this.
 				my $sensor_name  = "name=$ipmitool_sensor_name:units=$new_ipmitool_sensor_units";
 				my $sensor_value = "value=$new_ipmitool_value_sensor_value:units=$new_ipmitool_sensor_units";
 				
@@ -749,8 +771,7 @@ INSERT INTO
 	return(0);
 }
 
-# This takes the temperature sensors and feeds them into the 'temperature'
-# table, deleting stale entries as needed.
+# This takes the temperature sensors and feeds them into the 'temperature' table, deleting stale entries as needed.
 sub process_temperature
 {
 	my ($an, $machine) = @_;
@@ -758,8 +779,8 @@ sub process_temperature
 		name1 => "machine", value1 => $machine, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# First, read in all existing entries. We'll compare and UPDATE or
-	# INSERT as needed and DELETE any stale entries.
+	# First, read in all existing entries. We'll compare and UPDATE or INSERT as needed and DELETE any 
+	# stale entries.
 	my $query = "
 SELECT 
     temperature_uuid, 
@@ -862,8 +883,8 @@ WHERE
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# We still want this value, so delete it from the hash
-			# so it doesn't get deleted in the next step.
+			# We still want this value, so delete it from the hash so it doesn't get deleted in 
+			# the next step.
 			delete $an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name};
 		}
 		else
@@ -904,8 +925,7 @@ INSERT INTO
 		}
 	}
 
-	# Now, if any undeleted old entries remain, delete them from the
-	# database.
+	# Now, if any undeleted old entries remain, delete them from the database.
 	foreach my $ipmitool_sensor_name (sort {$a cmp $b} keys %{$an->data->{old}{$machine}{temperature}})
 	{
 		my $old_temperature_celsius = $an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius};
@@ -1105,12 +1125,10 @@ sub log_abnormal_temperatures
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# When the dashboard scans a node, it needs to know about the Ambient
-	# and Systemboard temperatures in order to device whether the node is 
-	# safe too boot back up or not. So if this machine is a dashboard, log
-	# the 'Ambient' and 'Systemboard' temperatures (or whatever the user
-	# defined) as 'good', if they're not already in the 
-	# 'new::temperature::x' hash.
+	# When the dashboard scans a node, it needs to know about the Ambient and Systemboard temperatures in
+	# order to device whether the node is safe too boot back up or not. So if this machine is a 
+	# dashboard, log the 'Ambient' and 'Systemboard' temperatures (or whatever the user defined) as 
+	# 'good', if they're not already in the 'new::temperature::x' hash.
 	my $i_am_a = $an->Get->what_am_i();
 	foreach my $sensor (split/,/, $an->data->{'scan-ipmitool'}{offline_sensor_list})
 	{
@@ -1275,8 +1293,7 @@ sub process_temperature_change
 		name8 => "buffer",               value8 => $buffer,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Now, has the value climbed, fallen or stayed the same? Pretend it's
-	# rising if it's a new sensor.
+	# Now, has the value climbed, fallen or stayed the same? Pretend it's rising if it's a new sensor.
 	if (($new_ipmitool_value_sensor_value > $old_ipmitool_value_sensor_value) || (not $old_ipmitool_value_sensor_value))
 	{
 		### Rising.
@@ -1296,8 +1313,7 @@ sub process_temperature_change
 		# what.
 		if ($new_ipmitool_value_sensor_value > $high_critical)
 		{
-			# We've gone critical. If it was previously 'warning',
-			# clear them.
+			# We've gone critical. If it was previously 'warning', clear them.
 			foreach my $type ("temperature_high_warning", "temperature_low_warning", "temperature_low_critical")
 			{
 				$an->Alert->check_alert_sent({
@@ -1318,13 +1334,11 @@ sub process_temperature_change
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
 			
-			# If set, alert the user and register with
-			# 'temperature'.
+			# If set, alert the user and register with 'temperature'.
 			if ($set)
 			{
-				# This is the first time we climbed. Send
-				# an alert and then register the entry in
-				# the database's 'temperature' table.
+				# This is the first time we climbed. Send an alert and then register the 
+				# entry in the database's 'temperature' table.
 				$level       = "critical";
 				$title_key   = "an_alert_title_0005";
 				$message_key = "scan_ipmitool_message_0004";
@@ -1332,8 +1346,8 @@ sub process_temperature_change
 		}
 		elsif ($new_ipmitool_value_sensor_value > $high_warning)
 		{
-			# The temp is rising, so the 'high_critical' should not
-			# be set, but check/clear it anyway to be safe.
+			# The temp is rising, so the 'high_critical' should not be set, but check/clear it 
+			# anyway to be safe.
 			$an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
@@ -1350,8 +1364,7 @@ sub process_temperature_change
 			});
 			if ($set)
 			{
-				# Tell the user that the temperature is
-				# rising.
+				# Tell the user that the temperature is rising.
 				$level       = "warning";
 				$title_key   = "an_alert_title_0005";
 				$message_key = "scan_ipmitool_message_0005";
@@ -1359,8 +1372,8 @@ sub process_temperature_change
 		}
 		elsif ($new_ipmitool_value_sensor_value > ($low_warning + $buffer))
 		{
-			# If there was a 'low_warning' or 'low_critical', clear
-			# it and tell the user that we're OK now.
+			# If there was a 'low_warning' or 'low_critical', clear it and tell the user that 
+			# we're OK now.
 			my $clear_critical = $an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
@@ -1377,11 +1390,9 @@ sub process_temperature_change
 			});
 			if (($clear_critical) or ($clear_warning))
 			{
-				# Tell the user we're OK again. Whether this 
-				# is a 'critical' or 'warning' level alert
-				# depends on what it was before. We want people
-				# who only get critical alerts to know we're OK
-				# if they got the critical alarm.
+				# Tell the user we're OK again. Whether this is a 'critical' or 'warning' 
+				# level alert depends on what it was before. We want people who only get 
+				# critical alerts to know we're OK if they got the critical alarm.
 				$level       = $clear_critical ? "critical" : "warning";
 				$title_key   = "an_alert_title_0006";
 				$message_key = "scan_ipmitool_message_0006";
@@ -1416,8 +1427,7 @@ sub process_temperature_change
 			my $delta = ($new_ipmitool_value_sensor_value - $old_ipmitool_value_sensor_value);
 			if ($delta > $jump)
 			{
-				# Temperature jumped. This is a stand-alone
-				# 'warning' level alarm.
+				# Temperature jumped. This is a stand-alone 'warning' level alarm.
 				my $sensor_name      = "name=$ipmitool_sensor_name:units=C";
 				my $new_sensor_value = "value=$new_ipmitool_value_sensor_value:units=C";
 				my $old_sensor_value = "value=$old_ipmitool_value_sensor_value:units=C";
@@ -1472,13 +1482,11 @@ sub process_temperature_change
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
 			
-			# If set, alert the user and register with
-			# 'temperature'.
+			# If set, alert the user and register with 'temperature'.
 			if ($set)
 			{
-				# This is the first time we climbed. Send
-				# an alert and then register the entry in
-				# the database's 'temperature' table.
+				# This is the first time we climbed. Send an alert and then register the 
+				# entry in the database's 'temperature' table.
 				$level       = "critical";
 				$title_key   = "an_alert_title_0005";
 				$message_key = "scan_ipmitool_message_0008";
@@ -1486,8 +1494,8 @@ sub process_temperature_change
 		}
 		elsif ($new_ipmitool_value_sensor_value < $low_warning)
 		{
-			# The temp is dropping, so the 'low_critical' should
-			# not be set, but check/clear it anyway to be safe.
+			# The temp is dropping, so the 'low_critical' should not be set, but check/clear it 
+			# anyway to be safe.
 			$an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
@@ -1504,8 +1512,7 @@ sub process_temperature_change
 			});
 			if ($set)
 			{
-				# Tell the user that the temperature is
-				# rising.
+				# Tell the user that the temperature is rising.
 				$level       = "warning";
 				$title_key   = "an_alert_title_0005";
 				$message_key = "scan_ipmitool_message_0009";
@@ -1513,8 +1520,8 @@ sub process_temperature_change
 		}
 		elsif ($new_ipmitool_value_sensor_value < ($high_warning - $buffer))
 		{
-			# If there was a 'high_warning' or 'high_critical', clear
-			# it and tell the user that we're OK now.
+			# If there was a 'high_warning' or 'high_critical', clear it and tell the user that 
+			# we're OK now.
 			my $clear_critical = $an->Alert->check_alert_sent({
 				type			=>	"clear",
 				alert_sent_by		=>	$THIS_FILE,
@@ -1531,11 +1538,9 @@ sub process_temperature_change
 			});
 			if (($clear_critical) or ($clear_warning))
 			{
-				# Tell the user we're OK again. Whether this 
-				# is a 'critical' or 'warning' level alert
-				# depends on what it was before. We want people
-				# who only get critical alerts to know we're OK
-				# if they got the critical alarm.
+				# Tell the user we're OK again. Whether this is a 'critical' or 'warning' 
+				# level alert depends on what it was before. We want people who only get 
+				# critical alerts to know we're OK if they got the critical alarm.
 				$level       = $clear_critical ? "critical" : "warning";
 				$title_key   = "an_alert_title_0006";
 				$message_key = "scan_ipmitool_message_0006";
@@ -1651,9 +1656,8 @@ AND
 	return($count);
 }
 
-# This looks at each DB's 'updated' table entry to see if any tables are 
-# behind. If any are, it will update the tables based on the time the last
-# entry was made for a given host.
+# This looks at each DB's 'updated' table entry to see if any tables are behind. If any are, it will update 
+# the tables based on the time the last entry was made for a given host.
 sub update_db
 {
 	my ($an) = @_;
@@ -1734,8 +1738,7 @@ AND
 	}
 	
 	### NOTE: Sort '$b cmp $a' on the modified date.
-	# Now, loop through each record from the unified table and see if it 
-	# needs to be added to any DBs.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{ipmitool_value}{modified_date}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1822,9 +1825,9 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'ipmitool_value_ipmitool_uuid' before, so it's just a question
-					# of whether the entry for the current timestamp exists in the 
-					# history schema.
+					# We've seen this 'ipmitool_value_ipmitool_uuid' before, so it's just
+					# a question of whether the entry for the current timestamp exists in
+					# the history schema.
 					if (not $an->data->{db_data}{$id}{ipmitool_value}{modified_date}{$modified_date}{ipmitool_value_ipmitool_uuid}{$ipmitool_value_ipmitool_uuid})
 					{
 						# It doesn't, INSERT it.
@@ -1976,8 +1979,7 @@ WHERE
 	}
 	
 	### NOTE: Sort '$b cmp $a' on the modified date.
-	# Now, loop through each record from the unified table and see if it 
-	# needs to be added to any DBs.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{ipmitool}{modified_date}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2103,9 +2105,9 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'ipmitool_uuid' before, so it's just a question
-					# of whether the entry for the current timestamp exists in the 
-					# history schema.
+					# We've seen this 'ipmitool_uuid' before, so it's just a question of 
+					# whether the entry for the current timestamp exists in the history 
+					# schema.
 					if (not $an->data->{db_data}{$id}{ipmitool}{modified_date}{$modified_date}{ipmitool_uuid}{$ipmitool_uuid})
 					{
 						# It doesn't, INSERT it.
@@ -2167,9 +2169,8 @@ INSERT INTO
 	return(0);
 }
 
-# This checks to see if this agent's databases tables exist and, if not, load
-# the schema. If the schema gets loaded, we'll check other databases for
-# older information and load it.
+# This checks to see if this agent's databases tables exist and, if not, load the schema. If the schema gets
+# loaded, we'll check other databases for older information and load it.
 sub prep_databases
 {
 	my ($an) = @_;

@@ -5817,13 +5817,17 @@ sub _display_watchdog_panel
 		name3 => "node2_name", value3 => $node2_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	### NOTE: We used to try and use a node to cancel the countdown, but we're not doing that anymore 
+	###       because it is possible they'll roll over and reset the counters before they shut down. So
+	###       instead. we'll always use our local copy *provided* we can contact all of the UPSes on each
+	###       node.
+	
 	my $note             = $parameter->{note} ? $parameter->{note} : "";
 	my $expire_time      = time + $an->data->{sys}{actime_timeout};
 	my $power_cycle_link = "?anvil_uuid=$anvil_uuid&expire=$expire_time&task=cold_stop&subtask=power_cycle";
 	my $power_off_link   = "?anvil_uuid=$anvil_uuid&expire=$expire_time&task=cold_stop&subtask=power_off";
 	my $watchdog_panel   = "";
 	my $use_node         = "";
-	my $enable           = 0;
 	my $target           = "";
 	my $port             = "";
 	my $password         = "";
@@ -5833,121 +5837,150 @@ sub _display_watchdog_panel
 		name3 => "power_cycle_link", value3 => $power_cycle_link,
 		name4 => "power_off_link",   value4 => $power_off_link,
 	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $node_key ("node1", "node2")
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "sys::anvil::${node_key}::online", value1 => $an->data->{sys}{anvil}{$node_key}{online},
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{sys}{anvil}{$node_key}{online})
-		{
-			$use_node = $node_key;
-			$target   = $an->data->{sys}{anvil}{$use_node}{use_ip};
-			$port     = $an->data->{sys}{anvil}{$use_node}{use_port};
-			$password = $an->data->{sys}{anvil}{$use_node}{password};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "use_node", value1 => $use_node,
-				name2 => "target",   value2 => $target,
-				name3 => "port",     value3 => $port,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-				name1 => "password", value1 => $password,
-			}, file => $THIS_FILE, line => __LINE__});
-			last;
-		}
-	}
 	
 	### TODO: If not 'use_node', use our local copy of the watchdog script if we can reach the UPSes.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "tools::anvil-kick-apc-ups::enabled", value1 => $an->data->{tools}{'anvil-kick-apc-ups'}{enabled},
-		name2 => "use_node",                           value2 => $use_node,
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($use_node)
+	
+	my $upses   = {};
+	my $enabled = $an->data->{tools}{'anvil-kick-apc-ups'}{enabled};
+	if ($enabled)
 	{
-		# Check that 'anvil-kick-apc-ups' exists.
-		my $shell_call = "
-if \$(".$an->data->{path}{nodes}{'grep'}." -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' ".$an->data->{path}{nodes}{striker_config}.");
-then 
-    ".$an->data->{path}{echo}." enabled; 
-else 
-    ".$an->data->{path}{echo}." disabled;
-fi";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "shell_call", value2 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port,
-			password	=>	$password,
-			shell_call	=>	$shell_call,
-		});
-		foreach my $line (@{$return})
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($line eq "enabled")
-			{
-				$enable = 1;
-			}
-		}
-		
+		# Make sure we can communicate with both/all the UPSes. Read the 'etc_hosts' cache for each 
+		# node and build a list of UPSes we'll call.
+		my $query = "
+SELECT 
+    c.host_name, 
+    d.node_cache_data 
+FROM 
+    nodes a, 
+    anvils b, 
+    hosts c, 
+    nodes_cache d 
+WHERE 
+    a.node_anvil_uuid = b.anvil_uuid 
+AND 
+    a.node_host_uuid = c.host_uuid 
+AND 
+    a.node_uuid = d.node_cache_node_uuid
+AND 
+    d.node_cache_name = 'etc_hosts'
+AND 
+    b.anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "enable", value1 => $enable,
+			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($enable)
-		{
-			# It exists, load the template
-			$watchdog_panel = $an->Web->template({file => "server.html", template => "watchdog_panel", replace => { 
-					power_cycle	=>	$power_cycle_link,
-					power_off	=>	$power_off_link,
-				}});
-			$watchdog_panel =~ s/\n$//;
-		}
-	}
-	else
-	{
-		# Anvil! is down, try to use our own copy.
-		my $shell_call = "
-if \$(".$an->data->{path}{'grep'}." -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' ".$an->data->{path}{striker_config}.");
-then 
-    ".$an->data->{path}{echo}." enabled; 
-else 
-    ".$an->data->{path}{echo}." disabled;
-fi
-";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-		while(<$file_handle>)
+		foreach my $row (@{$results})
 		{
-			chomp;
-			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line,
+			my $host_name       = $row->[0];
+			my $node_cache_data = $row->[1];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "host_name",       value1 => $host_name, 
+				name2 => "node_cache_data", value2 => $node_cache_data, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($line eq "enabled")
+			foreach my $line (split/\n/, $node_cache_data)
 			{
-				$enable = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /ups/)
+				{
+					my ($ip, $name) = ($line =~ /(\d+\.\d+\.\d+\.\d+)\s+(.*)$/);
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "ip",   value1 => $ip, 
+						name2 => "name", value2 => $name, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# I only care about one domain name
+					$name =~ s/\s.*$//;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "name", value1 => $name, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if (not exists $upses->{$ip})
+					{
+						$upses->{$ip}{name} = $name;
+						$upses->{$ip}{ping} = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "upses->${ip}::name", value1 => $upses->{$ip}{name}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
 			}
 		}
-		close $file_handle;
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "enable", value1 => $enable,
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($enable)
+		# See if we can access all the UPSes we found.
+		my $all_available = 1;
+		foreach my $ip (sort {$a cmp $b} keys %{$upses})
 		{
-			# It exists, load the template
+			$upses->{$ip}{ping} = $an->Check->ping({ping => $ip});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "upses->${ip}::name", value1 => $upses->{$ip}{name}, 
+				name2 => "upses->${ip}::ping", value2 => $upses->{$ip}{ping}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# 0 == Pinged, 1 == Failed
+			if ($upses->{$ip}{ping})
+			{
+				$all_available = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "all_available", value1 => $all_available, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# It exists, load the template. Which template will depend on whether we have access to all 
+		# the UPSes or not.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "all_available", value1 => $all_available, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($all_available)
+		{
 			$power_cycle_link .= "&note=$note";
 			$power_off_link   .= "&note=$note";
 			$watchdog_panel   =  $an->Web->template({file => "server.html", template => "watchdog_panel", replace => { 
 					power_cycle	=>	$power_cycle_link,
 					power_off	=>	$power_off_link,
 				}});
+			$watchdog_panel =~ s/\n$//;
+		}
+		else
+		{
+			# Tell the user that we've disabled this because one or more UPSes are not 
+			# accessible.
+			my $ups_list = "";
+			foreach my $ip (sort {$a cmp $b} keys %{$upses})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "upses->${ip}::name", value1 => $upses->{$ip}{name}, 
+					name2 => "upses->${ip}::ping", value2 => $upses->{$ip}{ping}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $say_access = "<span class=\"highlight_good\">".$an->String->get({key => "state_0022"})."</span>";
+				if ($upses->{$ip}{ping})
+				{
+					# No access
+					$say_access = "<span class=\"highlight_bad\">".$an->String->get({key => "state_0004"})."</span>";
+				}
+				
+				$ups_list .= $an->Web->template({file => "server.html", template => "watchdog_panel-lost-access-ups-entry", replace => { 
+					name	=>	$upses->{$ip}{name},
+					ip	=>	$ip,
+					access	=>	$say_access,
+				}});
+			}
+			
+			$watchdog_panel =  $an->Web->template({file => "server.html", template => "watchdog_panel-lost-access", replace => { ups_access_list => $ups_list }});
 			$watchdog_panel =~ s/\n$//;
 		}
 	}

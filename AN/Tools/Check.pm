@@ -754,8 +754,6 @@ sub ping
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	$an->Alert->_set_error;
 	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "ping" }, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $parameter->{ping})
@@ -788,10 +786,13 @@ sub ping
 	if ($payload)
 	{
 		$payload -= 28;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "payload", value1 => $payload, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Build the call
-	my $shell_call = $an->data->{path}{'ping'}." -n $ping -c 1";
+	my $shell_call = $an->data->{path}{'ping'}." -W 1 -n $ping -c 1";
 	if (not $fragment)
 	{
 		$shell_call .= " -M do";
