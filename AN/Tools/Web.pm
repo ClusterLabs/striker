@@ -496,8 +496,9 @@ sub get_cgi
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# I auto-select the 'anvil' variable if only one is checked. Because of this, I don't want
-		# to overwrite the empty CGI value. This prevents that.
-		if (($variable eq "anvil_uuid") && ($an->data->{cgi}{anvil_uuid}))
+		# to overwrite the empty CGI value. This prevents that. Note that sometimes the 'anvil_uuid'
+		# passed in will be 'NULL'. In those cases, we overwrite the selected UUID.
+		if (($variable eq "anvil_uuid") && ($cgi->param($variable) ne "NULL") && ($an->data->{cgi}{anvil_uuid}))
 		{
 			$an->data->{sys}{cgi_string} .= "$variable=".$an->data->{cgi}{$variable}."&";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {

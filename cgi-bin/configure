@@ -200,6 +200,11 @@ sub load_owner_form
 				$an->data->{cgi}{owner_uuid} = $hash_ref->{owner_uuid};
 				$an->data->{cgi}{owner_name} = $hash_ref->{owner_name};
 				$an->data->{cgi}{owner_note} = $hash_ref->{owner_note};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "cgi::owner_uuid", value1 => $an->data->{cgi}{owner_uuid},
+					name2 => "cgi::owner_name", value2 => $an->data->{cgi}{owner_name},
+					name3 => "cgi::owner_note", value3 => $an->data->{cgi}{owner_note},
+				}, file => $THIS_FILE, line => __LINE__});
 				last;
 			}
 		}
@@ -210,6 +215,11 @@ sub load_owner_form
 		$an->data->{cgi}{owner_uuid} = "";
 		$an->data->{cgi}{owner_name} = "";
 		$an->data->{cgi}{owner_note} = "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "cgi::owner_uuid", value1 => $an->data->{cgi}{owner_uuid},
+			name2 => "cgi::owner_name", value2 => $an->data->{cgi}{owner_name},
+			name3 => "cgi::owner_note", value3 => $an->data->{cgi}{owner_note},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -235,6 +245,19 @@ sub load_smtp_form
 	$an->data->{cgi}{smtp_note}           = "";
 	$an->data->{cgi}{smtp_alt_server}     = "";
 	$an->data->{cgi}{smtp_alt_port}       = "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+		name1  => "cgi::smtp_uuid",           value1  => $an->data->{cgi}{smtp_uuid},
+		name2  => "cgi::smtp_authentication", value2  => $an->data->{cgi}{smtp_authentication},
+		name3  => "cgi::smtp_helo_domain",    value3  => $an->data->{cgi}{smtp_helo_domain},
+		name4  => "cgi::smtp_password",       value4  => $an->data->{cgi}{smtp_password},
+		name5  => "cgi::smtp_port",           value5  => $an->data->{cgi}{smtp_port},
+		name6  => "cgi::smtp_security",       value6  => $an->data->{cgi}{smtp_security},
+		name7  => "cgi::smtp_server",         value7  => $an->data->{cgi}{smtp_server},
+		name8  => "cgi::smtp_username",       value8  => $an->data->{cgi}{smtp_username},
+		name9  => "cgi::smtp_note",           value9  => $an->data->{cgi}{smtp_note},
+		name10 => "cgi::smtp_alt_server",     value10 => $an->data->{cgi}{smtp_alt_server},
+		name11 => "cgi::smtp_alt_port",       value11 => $an->data->{cgi}{smtp_alt_port},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($uuid)
 	{
 		foreach my $hash_ref (@{$smtp})
@@ -459,6 +482,21 @@ sub load_node_form
 		$an->data->{cgi}{node1_ifn}         = "";
 		$an->data->{cgi}{node1_host_name}   = "";
 		$an->data->{cgi}{node1_password}    = ""; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			name1  => "cgi::node1_access",      value1  => $an->data->{cgi}{node1_access},
+			name2  => "cgi::node1_anvil_uuid",  value2  => $an->data->{cgi}{node1_anvil_uuid},
+			name3  => "cgi::node1_host_uuid",   value3  => $an->data->{cgi}{node1_host_uuid},
+			name4  => "cgi::node1_note",        value4  => $an->data->{cgi}{node1_note},
+			name5  => "cgi::node1_remote_ip",   value5  => $an->data->{cgi}{node1_remote_ip},
+			name6  => "cgi::node1_remote_port", value6  => $an->data->{cgi}{node1_remote_port},
+			name7  => "cgi::node1_uuid",        value7  => $an->data->{cgi}{node1_uuid},
+			name8  => "cgi::node1_bcn",         value8  => $an->data->{cgi}{node1_bcn},
+			name9  => "cgi::node1_sn",          value9  => $an->data->{cgi}{node1_sn},
+			name10 => "cgi::node1_ifn",         value10 => $an->data->{cgi}{node1_ifn},
+			name11 => "cgi::node1_host_name",   value11 => $an->data->{cgi}{node1_host_name},
+			name12 => "cgi::node1_password",    value12 => $an->data->{cgi}{node1_password},
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		# Node 2
 		$an->data->{cgi}{node2_access}      = ""; 
 		$an->data->{cgi}{node2_anvil_uuid}  = ""; 
@@ -472,6 +510,20 @@ sub load_node_form
 		$an->data->{cgi}{node2_ifn}         = "";
 		$an->data->{cgi}{node2_host_name}   = "";
 		$an->data->{cgi}{node2_password}    = ""; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			name1  => "cgi::node2_access",      value1  => $an->data->{cgi}{node2_access},
+			name2  => "cgi::node2_anvil_uuid",  value2  => $an->data->{cgi}{node2_anvil_uuid},
+			name3  => "cgi::node2_host_uuid",   value3  => $an->data->{cgi}{node2_host_uuid},
+			name4  => "cgi::node2_note",        value4  => $an->data->{cgi}{node2_note},
+			name5  => "cgi::node2_remote_ip",   value5  => $an->data->{cgi}{node2_remote_ip},
+			name6  => "cgi::node2_remote_port", value6  => $an->data->{cgi}{node2_remote_port},
+			name7  => "cgi::node2_uuid",        value7  => $an->data->{cgi}{node2_uuid},
+			name8  => "cgi::node2_bcn",         value8  => $an->data->{cgi}{node2_bcn},
+			name9  => "cgi::node2_sn",          value9  => $an->data->{cgi}{node2_sn},
+			name10 => "cgi::node2_ifn",         value10 => $an->data->{cgi}{node2_ifn},
+			name11 => "cgi::node2_host_name",   value11 => $an->data->{cgi}{node2_host_name},
+			name12 => "cgi::node2_password",    value12 => $an->data->{cgi}{node2_password},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -1733,7 +1785,6 @@ sub delete_notify
 	my $notify_data     = $an->Get->notify_data({uuid => $an->data->{cgi}{notify_uuid}});
 	my $notice_message = "";
 	
-	### TODO: This isn't working when an email and a file alert exist for the same Anvil!.
 	# Send the queries as an array
 	my $queries = [];
 	push @{$queries}, "
@@ -1754,15 +1805,15 @@ WHERE
 ;";
 	push @{$queries}, "
 DELETE FROM  
-    notifications 
-WHERE 
-    notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
-;";
-	push @{$queries}, "
-DELETE FROM  
     recipients 
 WHERE 
     recipient_notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    notifications 
+WHERE 
+    notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
 ;";
 	
 	# Log the queries
@@ -5098,6 +5149,9 @@ sub anvil_menu
 		{
 			# Baleted!
 			$notice_message = delete_anvil($an);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "notice_message", value1 => $notice_message,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -5105,6 +5159,9 @@ sub anvil_menu
 			$notice_message = confirm_action($an, "delete_anvil");
 			$refresh_link =~ s/anvil_uuid=.*?&/&/;
 			$refresh_link =~ s/anvil_uuid=.*//;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "notice_message", value1 => $notice_message,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Clear the commands from the refresh link.
@@ -5130,7 +5187,7 @@ sub anvil_menu
 	{
 		# Save, if something changed.
 		($notice_message, $error_fields) = save_anvil_form($an);
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
 		$refresh_link =~ s/save=.*?&/&/;
@@ -5147,12 +5204,11 @@ sub anvil_menu
 	# Tease out the data for this form if we're loading an anvil_uuid
 	if ($an->data->{cgi}{load_anvil})
 	{
-		if ($an->data->{cgi}{anvil_uuid})
+		if ($an->Validate->is_uuid({uuid => $an->data->{cgi}{anvil_uuid}}))
 		{
-			($notice_message, $error_fields) = load_anvil_form($an, $anvils, $owners, $smtp, $nodes);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "notice_message", value1 => $notice_message,
-			}, file => $THIS_FILE, line => __LINE__});
+			# Not sure why I checked the output, load_anvil_form() doesn't return anything
+			#($notice_message, $error_fields) = load_anvil_form($an, $anvils, $owners, $smtp, $nodes);
+			load_anvil_form($an, $anvils, $owners, $smtp, $nodes);
 		}
 		else
 		{
@@ -5163,6 +5219,14 @@ sub anvil_menu
 			$an->data->{cgi}{anvil_description} = "";
 			$an->data->{cgi}{anvil_note}        = "";
 			$an->data->{cgi}{anvil_password}    = "";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "cgi::anvil_owner_uuid",  value1 => $an->data->{cgi}{anvil_owner_uuid},
+				name2 => "cgi::anvil_smtp_uuid",   value2 => $an->data->{cgi}{anvil_smtp_uuid},
+				name3 => "cgi::anvil_name",        value3 => $an->data->{cgi}{anvil_name},
+				name4 => "cgi::anvil_description", value4 => $an->data->{cgi}{anvil_description},
+				name5 => "cgi::anvil_note",        value5 => $an->data->{cgi}{anvil_note},
+				name6 => "cgi::anvil_password",    value6 => $an->data->{cgi}{anvil_password},
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Reload the other forms with no UUID to blank them out.
 			load_owner_form($an, $owners, "");
@@ -5223,6 +5287,10 @@ sub anvil_menu
 			selected => $an->data->{cgi}{anvil_uuid},
 			width    => ($width + 10),
 		});
+		
+		# anvil_uuid gets set on load, so I don't see it as blank when 'Load' is pressed with no 
+		# selected Anvil!. To work around this, we set the blank entry to have a value of "NULL".
+		$anvil_select =~ s/value=""/value="NULL"/g;
 	}
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
 			column1_class	=>	"",
