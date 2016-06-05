@@ -207,14 +207,14 @@ adjust_log_level($an);
 
 print $an->String->get({key => "scan_apc_ups_message_0001"})."\n";
 
-# Find the UPSes.
-find_upses($an);
-
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 $an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => {
 	connections	=>	$connections,
 }, file => $THIS_FILE, line => __LINE__});
+
+# Find the UPSes.
+find_upses($an);
 
 # Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
 # running ScanCore, it won't be.
@@ -226,9 +226,6 @@ if (not $an->DB->verify_host_uuid())
 	}, code => 255, file => "$THIS_FILE", line => __LINE__});
 }
 
-# Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
-prep_databases($an);
-
 # Gather details on UPSes. Returns '1' if no UPSes were found.
 if (gather_ups_data($an))
 {
@@ -236,6 +233,9 @@ if (gather_ups_data($an))
 	$an->Log->entry({log_level => 2, message_key => "scan_apc_ups_message_0003", file => $THIS_FILE, line => __LINE__});
 	nice_exit($an, 1);
 }
+
+# Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
+prep_databases($an);
 
 # Look to see if any databases need to be updated.
 update_db($an);
@@ -1047,12 +1047,12 @@ AND
 						name2 => "old_apc_ups_battery_replacement_date", value2 => $old_apc_ups_battery_replacement_date, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					# This is a 'notice' level alert because the administrator will most
+					# This is a 'info' level alert because the administrator will most
 					# likely already know about it.
 					$an->Alert->register_alert({
-						alert_level		=>	"notice", 
+						alert_level		=>	"info", 
 						alert_agent_name	=>	"$THIS_FILE",
-						alert_title_key		=>	"an_alert_title_0003",
+						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_apc_ups_note_0018",
 						alert_message_variables	=>	{
 							ups_name		=>	$new_apc_ups_name,
@@ -4187,8 +4187,10 @@ sub gather_ups_data
 	my $no_ups_found = 1;
 	foreach my $ups_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-ups'}{ups}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		my $ups_ip = $an->data->{'scan-apc-ups'}{ups}{$ups_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "ups_name", value1 => $ups_name,
+			name2 => "ups_ip",   value2 => $ups_ip,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# This is a visual break in the logs. Useful when printing all the OID queries.
@@ -4197,12 +4199,15 @@ sub gather_ups_data
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Can I ping it?
-		$an->data->{ups}{$ups_name}{ip} = $an->data->{'scan-apc-ups'}{ups}{$ups_name};
+		$an->data->{ups}{$ups_name}{ip} = $ups_ip;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::ip", value1 => $an->data->{ups}{$ups_name}{ip}, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		### TODO: Set 'apc_ups_health' to '99' when comms are lost.
-		if ($an->Check->ping({ping => $ups_name}))
+		
+		# This returns '0' if it was pingable, '1' if not.
+		if ($an->Check->ping({ping => $ups_ip}))
 		{
 			# Nope :(
 			$an->data->{ups}{$ups_name}{model} = "#!no_connection!#";
@@ -4855,7 +4860,7 @@ sub find_upses
 	else
 	{
 		# Read in /etc/hosts and look for anything with 'ups' in the name.
-		my $shell_call = "</etc/hosts";
+		my $shell_call = "<".$an->data->{path}{etc_hosts};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4910,6 +4915,49 @@ sub find_upses
 			}
 		}
 		close $file_handle;
+		
+		# If I am a dashboard, read in the cache files for the UPSes that nodes know about and see if
+		# we can ping them. If we can, we'll scan them. This will be important for dashboards to 
+		# determine if/when it is safe to boot a node.
+		my $host_type = $an->Get->what_am_i();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "host_type", value1 => $host_type, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($host_type eq "dashboard")
+		{
+			# Loop through all Anvil! systems.
+			my $all_upses  = {};
+			my $anvil_data = $an->ScanCore->get_anvils();
+			foreach my $hash_ref (@{$anvil_data})
+			{
+				my $anvil_uuid = $hash_ref->{anvil_uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "anvil_uuid", value1 => $anvil_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my ($upses) = $an->Get->node_upses({
+						anvil_uuid => $anvil_uuid,
+						node_name  => "both",
+					});
+				
+				# Record 
+				foreach my $ip (sort {$a cmp $b} keys %{$upses})
+				{
+					my $ups_name = $upses->{$ip}{name};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "ups_name", value1 => $ups_name, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if (not exists $an->data->{'scan-apc-ups'}{ups}{$ups_name})
+					{
+						$an->data->{'scan-apc-ups'}{ups}{$ups_name} = $ip;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "scan-apc-ups::ups::$ups_name", value1 => $an->data->{'scan-apc-ups'}{ups}{$ups_name}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+		}
 	}
 	
 	# Here is what I found;

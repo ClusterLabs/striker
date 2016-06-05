@@ -248,7 +248,7 @@ The load percentage on the UPS: [#!variable!ups_name!#] has changed:
 - [#!variable!old_value!#%] -> [#!variable!new_value!#%]
 		</key>
 		<key name="scan_apc_ups_note_0050">
-The UPS: [#!variable!ups_name!#] is now running on batteries:
+The UPS: [#!variable!ups_name!#] is now running on batteries. Its time on batteries has changed to:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
 		</key>
 		<key name="scan_apc_ups_note_0051">

@@ -5843,82 +5843,13 @@ sub _display_watchdog_panel
 		name1 => "tools::anvil-kick-apc-ups::enabled", value1 => $an->data->{tools}{'anvil-kick-apc-ups'}{enabled},
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $upses   = {};
 	my $enabled = $an->data->{tools}{'anvil-kick-apc-ups'}{enabled};
 	if ($enabled)
 	{
-		# Make sure we can communicate with both/all the UPSes. Read the 'etc_hosts' cache for each 
-		# node and build a list of UPSes we'll call.
-		my $query = "
-SELECT 
-    c.host_name, 
-    d.node_cache_data 
-FROM 
-    nodes a, 
-    anvils b, 
-    hosts c, 
-    nodes_cache d 
-WHERE 
-    a.node_anvil_uuid = b.anvil_uuid 
-AND 
-    a.node_host_uuid = c.host_uuid 
-AND 
-    a.node_uuid = d.node_cache_node_uuid
-AND 
-    d.node_cache_name = 'etc_hosts'
-AND 
-    b.anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
-;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-		my $count   = @{$results};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "results", value1 => $results, 
-			name2 => "count",   value2 => $count
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $row (@{$results})
-		{
-			my $host_name       = $row->[0];
-			my $node_cache_data = $row->[1];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "host_name",       value1 => $host_name, 
-				name2 => "node_cache_data", value2 => $node_cache_data, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			foreach my $line (split/\n/, $node_cache_data)
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				if ($line =~ /ups/)
-				{
-					my ($ip, $name) = ($line =~ /(\d+\.\d+\.\d+\.\d+)\s+(.*)$/);
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-						name1 => "ip",   value1 => $ip, 
-						name2 => "name", value2 => $name, 
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					# I only care about one domain name
-					$name =~ s/\s.*$//;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "name", value1 => $name, 
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					if (not exists $upses->{$ip})
-					{
-						$upses->{$ip}{name} = $name;
-						$upses->{$ip}{ping} = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "upses->${ip}::name", value1 => $upses->{$ip}{name}, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-				}
-			}
-		}
+		my ($upses) = $an->Get->node_upses({
+				anvil_uuid => $an->data->{cgi}{anvil_uuid},
+				node_name  => "both",
+			});
 		
 		# See if we can access all the UPSes we found.
 		my $all_available = 1;
@@ -5939,12 +5870,12 @@ AND
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
-		
-		# It exists, load the template. Which template will depend on whether we have access to all 
-		# the UPSes or not.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "all_available", value1 => $all_available, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# It exists, load the template. Which template will depend on whether we have access to all 
+		# the UPSes or not.
 		if ($all_available)
 		{
 			$power_cycle_link .= "&note=$note";
@@ -9138,7 +9069,7 @@ sub _parse_cluster_conf
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "node::${this_node}::fence_method::${in_method}::device::${device_count}::command", value1 => $an->data->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command},
 						}, file => $THIS_FILE, line => __LINE__});
-						if (($agent eq "fence_ipmilan") || ($agent eq "fence_virsh"))
+						if (($agent eq "fence_ipmilan") or ($agent eq "fence_virsh"))
 						{
 							$an->data->{node}{$this_node}{info}{power_check_command} = $command;
 							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

@@ -81,6 +81,7 @@ my $an = AN::Tools->new({data =>
 			},
 			disable			=>	{
 				boot_nodes		=>	0,
+				load_shedding		=>	0,
 				power_shutdown		=>	0,
 				thermal_shutdown	=>	0,
 			},
@@ -98,9 +99,13 @@ my $an = AN::Tools->new({data =>
 			# will be invoked.
 			minimum_ups_runtime	=>	600,
 			minimum_safe_charge	=>	45,
+			power			=>	{
+				load_shed_delay		=>	300,
+			},
 			temperature		=>	{
 				# This is the weight given to each thermal sensor by default.
 				default_sensor_weight	=>	1,
+				load_shed_delay		=>	120,
 				# The sum of the critical temperature weights must exceed this value to cause
 				# a shut down.
 				shutdown_limit		=>	5,
@@ -825,7 +830,7 @@ sub read_cache
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			$an->data->{cache}{$node_name}{info}{$node_cache_name} = $node_cache_name;
+			$an->data->{cache}{$node_name}{info}{$node_cache_name} = $node_cache_data;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "cache::${node_name}::info::${node_cache_name}", value1 => $an->data->{cache}{$node_name}{info}{$node_cache_name}
 			}, file => $THIS_FILE, line => __LINE__});
@@ -961,18 +966,22 @@ sub do_post_scan_dashboard_tasks
 	# Now read in all the nodes we know about.
 	my $query = "
 SELECT 
-    host_uuid, 
-    host_name, 
-    host_emergency_stop, 
-    host_stop_reason, 
-    host_health, 
-    round(extract(epoch from modified_date)) 
+    a.host_uuid, 
+    a.host_name, 
+    a.host_emergency_stop, 
+    a.host_stop_reason, 
+    a.host_health, 
+    round(extract(epoch from a.modified_date)), 
+    b.node_uuid 
 FROM 
-    hosts 
+    hosts a, 
+    nodes b 
 WHERE 
-    host_type = 'node' 
+    a.host_uuid = b.node_host_uuid 
+AND 
+    a.host_type = 'node' 
 ORDER BY 
-    host_name ASC
+    a.host_name ASC
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -992,28 +1001,29 @@ ORDER BY
 		my $host_stop_reason    = $row->[3] ? $row->[3] : "";
 		my $host_health         = $row->[4] ? $row->[4] : "";
 		my $unix_modified_date  = $row->[5];
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0006", message_variables => {
+		my $node_uuid           = $row->[6];
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0007", message_variables => {
 			name1 => "host_uuid",           value1 => $host_uuid, 
 			name2 => "host_name",           value2 => $host_name, 
 			name3 => "host_emergency_stop", value3 => $host_emergency_stop, 
 			name4 => "host_stop_reason",    value4 => $host_stop_reason, 
 			name5 => "host_health",         value5 => $host_health, 
 			name6 => "unix_modified_date",  value6 => $unix_modified_date, 
+			name7 => "node_uuid",           value7 => $node_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Is the node online?
 		# - Node states:
-		# 0 - The fence device is reachable and the port is in the on state.
-		# 1 - The fence device could not be reached.
-		# 2 - The fence device is reachable and the port is in the off state.
-		my $state = check_node_power_state($an, $host_name, $host_uuid);
+		# on      - The fence device is reachable and the port is in the on state.
+		# unknown - The fence device could not be reached.
+		# off     - The fence device is reachable and the port is in the off state.
+		my $state = $an->ScanCore->target_power({target => $node_uuid});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "state", value1 => $state, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		### TODO: Use the secondary fence method if the primary fence method fails.
 		# Nothing to do if we can't reach the node
-		if ($state eq "1")
+		if ($state eq "unknown")
 		{
 			$an->Log->entry({log_level => 1, message_key => "scancore_log_0084", message_variables => {
 				node => $host_name, 
@@ -1024,7 +1034,7 @@ ORDER BY
 		# If it's on, clear its 'host_emergency_stop' and 'host_stop_reason', if set. The exception
 		# being when the 'host_stop_reason' is a time stamp or if it's 'clean' and less than two 
 		# minutes old.
-		if ($state eq "0")
+		if ($state eq "on")
 		{
 			# Before we do anything else, see if the node's DLM is hung, if enabled by the user.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1053,7 +1063,7 @@ ORDER BY
 						$an->Log->entry({log_level => 0, title_key => "tools_title_0002", message_key => "scancore_log_0087", message_variables => {
 							node => $host_name,
 						}, file => $THIS_FILE, line => __LINE__});
-						reboot_node($an, $host_name, $host_uuid);
+						reboot_node($an, $host_name, $host_uuid, $node_uuid);
 					}
 				}
 			}
@@ -1169,7 +1179,13 @@ ORDER BY
 				$an->Log->entry({log_level => 1, message_key => "scancore_log_0067", message_variables => {
 					node => $host_name, 
 				}, file => $THIS_FILE, line => __LINE__});
-				boot_node($an, $host_name, $host_uuid);
+				my $state = $an->ScanCore->target_power({
+						target => $node_uuid,
+						task   => "on",
+					});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "state", value1 => $state, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -1188,7 +1204,13 @@ ORDER BY
 		elsif (($power_is_safe) && ($temperature_is_safe) && ($my_temperature_is_ok))
 		{
 			# Okie!
-			boot_node($an, $host_name, $host_uuid);
+			my $state = $an->ScanCore->target_power({
+					target => $node_uuid, 
+					task   => "on",
+				});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "state", value1 => $state, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -1233,183 +1255,47 @@ WHERE
 	return(0);
 }
 
-# This checks to see if the node is up or down.
-sub check_node_power_state
-{
-	my ($an, $node, $host_uuid) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_power_state" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "node",      value1 => "$node", 
-		name2 => "host_uuid", value2 => "$host_uuid",
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Do I have the node's 'power_check_command'?
-	my $node_state = 1;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "cache::${node}::info::power_check_command", value1 => $an->data->{cache}{$node}{info}{power_check_command}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{cache}{$node}{info}{power_check_command})
-	{
-		# OK, we can check, so lets do so.
-		my $shell_call = $an->data->{cache}{$node}{info}{power_check_command}." -o status; echo rc:\$? 2>&1 |";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($line =~ /^rc:(\d+)$/)
-			{
-				# The return code is defined here: 
-				# https://fedorahosted.org/cluster/wiki/FenceAgentAPI#agent_ops
-				# 
-				# 0 - The fence device is reachable and the port is in the on state.
-				# 1 - The fence device could not be reached.
-				# 2 - The fence device is reachable and the port is in the off state.
-				$node_state = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "node_state", value1 => $node_state,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-		close $file_handle;
-	}
-	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "node_state", value1 => $node_state,
-	}, file => $THIS_FILE, line => __LINE__});
-	return($node_state);
-}
-
 # This reboots a node (ie: that may be hung)
 sub reboot_node
 {
-	my ($an, $host_name, $host_uuid) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "reboot_node" }, message_key => "an_variables_0002", message_variables => { 
+	my ($an, $host_name, $host_uuid, $node_uuid) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "reboot_node" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "host_name", value1 => $host_name, 
 		name2 => "host_uuid", value2 => $host_uuid,
+		name3 => "node_uuid", value3 => $node_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This shouldn't be called unless we confirmed the node is off, so no need to check again, just boot.
-	my $rebooted   = 0;
-	my $shell_call = $an->data->{cache}{$host_name}{info}{power_check_command}." -o reboot; echo rc:\$?";
+	my $rebooted = 0;
+	my $state    = $an->ScanCore->target_power({
+			target => $node_uuid,
+			task   => "off",
+		});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
+		name1 => "state", value1 => $state, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-	while(<$file_handle>)
+	
+	if ($state eq "off")
 	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
+		# Shutdown, at least, worked.
+		$rebooted = 1;
+		$an->Log->entry({log_level => 0, title_key => "tools_title_0002", message_key => "scancore_log_0088", message_variables => {
+			node => $host_name,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /^rc:(\d+)$/)
-		{
-			my $rc = $1;
-			# 0 if the off portion was successful
-			# 1 if the off portion was unsuccessful.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "rc", value1 => $rc, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($rc eq "0")
-			{
-				# Shutdown, at least, worked.
-				$rebooted = 1;
-				$an->Log->entry({log_level => 0, title_key => "tools_title_0002", message_key => "scancore_log_0088", message_variables => {
-					node => $host_name,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
-	
-	if ($rebooted)
-	{
-		# Make sure it came back up.
-		my $state = check_node_power_state($an, $host_name, $host_uuid);
+		$state = $an->ScanCore->target_power({
+				target => $node_uuid,
+				task   => "on",
+			});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "state", value1 => $state, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($state eq "2")
-		{
-			# It didn't come up, try again.
-			boot_node($an, $host_name, $host_uuid);
-		}
 	}
 	
-	return(0);
-}
-
-# This is called when the environment is safe enough to boot a node that was put into emergency-stop. If the
-# cache file gave us the power_check_command and we can reach the node's IPMI, we'll boot it.
-sub boot_node
-{
-	my ($an, $node, $host_uuid) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "boot_node" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "node",      value1 => "$node", 
-		name2 => "host_uuid", value2 => "$host_uuid",
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# This shouldn't be called unless we confirmed the node is off, so no need to check again, just boot.
-	my $shell_call = $an->data->{cache}{$node}{info}{power_check_command}." -o on; echo rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
+		name1 => "state", value1 => $state, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	die "$THIS_FILE ".__LINE__."; I was about to boot $node, but exiting during debug.\n";
-	
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /^rc:(\d+)$/)
-		{
-			my $rc = $1;
-			# 0 - The operation was successful
-			# 1 - Not successful or verification could not be performed. This includes inability
-			#     to contact the fence device at any point. 
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "rc", value1 => $rc, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($rc eq "0")
-			{
-				# Booted!
-				$an->Log->entry({log_level => 1, message_key => "scancore_log_0059", message_variables => {
-					node => $node,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Clear the 'emergency_stop' flag.
-				$an->Log->entry({log_level => 1, message_key => "scancore_log_0086", message_variables => {
-					node => $node, 
-				}, file => $THIS_FILE, line => __LINE__});
-				clear_node_stop($an, $host_uuid);
-			}
-			else
-			{
-				# Maybe not booted.
-				$an->Log->entry({log_level => 1, message_key => "scancore_log_0060", message_variables => {
-					node		=>	$node,
-					shell_call	=>	$shell_call, 
-					rc		=>	$rc
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
-	close $file_handle;
-	
-	return(0);
+	return($state);
 }
 
 ### TODO: Let the user set a minimum percentage based on 1 powered UPS and a separate one (that can be lower)
@@ -1810,6 +1696,12 @@ sub do_post_scan_node_tasks
 		name2 => "short_hostname", value2 => $short_hostname, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Values are:
+	# 1 = At least one of the UPSes has power
+	# 2 = Neither do but the hold-up time of at least one is above minimum
+	# 3 = Both are on batteries and below the minimum hold-up time 
+	# 4 = Both are on batteries and have been long enough to trigger load shedding (and load shedding 
+	#     is not disabled)
 	my ($node_power_ok) = check_node_power($an);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_power_ok", value1 => $node_power_ok,
@@ -1820,14 +1712,10 @@ sub do_post_scan_node_tasks
 		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Enable load shedding where, if the power is out for > 2 minutes and/or if the temperature
-	###       has climbed into warning on both nodes for > 2 minutes. The logic on how to do this is in
-	###       'anvil-safe-stop --load-shed'.
-	
 	# OK, if both are '1', make sure our health is set to 'OK'. If either returned '2', make sure our 
 	# health is set to 'Warning'. If either returned '3', set the health to 'Critical' and set the hosts
 	#  -> host_emergency_stop to TRUE and then call 'anvil-safe-stop --local'.
-	if (($node_power_ok eq "3") || ($node_temperature_ok eq "3"))
+	if (($node_power_ok eq "3") or ($node_temperature_ok eq "3"))
 	{
 		# Set the health to 'Critical'.
 		$an->ScanCore->host_state({set => "critical"});
@@ -1967,12 +1855,37 @@ WHERE
 			});
 		}
 	}
+	elsif (($node_power_ok eq "4") || ($node_temperature_ok eq "4"))
+	{
+		# Load shed! Tell the user.
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scancore_warning_0026",
+		});
+		
+		# Send the email, because we might be about to die.
+		process_alerts($an, 0);
+		
+		# Now call the load shedding.
+		my $shell_call = $an->data->{path}{'anvil-safe-stop'}." --shed-load --reason power_loss";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
 	elsif (($node_power_ok eq "2") || ($node_temperature_ok eq "2"))
 	{
-		### TODO: Load shed checks go here, just need to check how long ago we went into 'warning' 
-		###       and verify that both UPSes/enough temperature sensors went bad to trigger a 
-		###       shutdown (same criteria for 'shutdown' applies to load shed).
-		
 		### We're sick
 		# Set the health to 'Warning'.
 		$an->ScanCore->host_state({set => "warning"});
@@ -2040,7 +1953,7 @@ WHERE
 		}
 	}
 	
-	### Log the state, if needed.
+	### Log the state, if needed. Note that load shedding is handled in 'anvil-safe-stop', not here.
 	# Power
 	if ($node_power_ok eq "3")
 	{
@@ -2051,7 +1964,7 @@ WHERE
 			$an->data->{sys}{reported}{power_is_warning}  = 0;
 		}
 	}
-	elsif ($node_power_ok eq "2")
+	elsif (($node_power_ok eq "2") or ($node_power_ok eq "4"))
 	{
 		if (not $an->data->{sys}{reported}{power_is_warning})
 		{
@@ -2081,7 +1994,7 @@ WHERE
 			$an->data->{sys}{reported}{temperature_is_warning}  = 0;
 		}
 	}
-	elsif ($node_temperature_ok eq "2")
+	elsif (($node_temperature_ok eq "2") or ($node_temperature_ok eq "4"))
 	{
 		if (not $an->data->{sys}{reported}{temperature_is_warning})
 		{
@@ -2229,8 +2142,9 @@ AND
 }
 
 # This pulls the data on the UPSes associated with this node and returns '1' if at least one of the UPSes has
-# power, '2' if neither do but the hold-up time of at least one is above minimum and '3' if both are on 
-# batteries and below the minimum hold-up time.
+# power, '2' if neither do but the hold-up time of at least one is above minimum, '3' if both are on 
+# batteries and below the minimum hold-up time and '4' if both are on batteries and have been long enough to
+# trigger load shedding.
 sub check_node_power
 {
 	my ($an) = @_;
@@ -2248,10 +2162,11 @@ sub check_node_power
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# First, see if my UPSes have input power. If not:
-	# * See which has the longest hold-up time. If one of them is above the
-	#   minimum hold-up time, set our health to '2/warning'.
-	# * If the strongest is too low, set our health to '3/critical' and
-	#   shut down.
+	# * See which has the longest hold-up time. If one of them is above the minimum hold-up time, set our
+	#   health to '2/warning'.
+	# * If the power is out to both and we're in warning, check to see if we've been in a warning state
+	#   long enough to trigger load shedding. If so, we'll set our health to '4/load shed'.
+	# * If the strongest is too low, set our health to '3/critical' and shut down.
 	my $query = "
 SELECT 
     power_ups_name, 
@@ -2328,8 +2243,8 @@ WHERE
 	}
 	$results = "";
 	
-	# Now, if no UPS has input power, see if the highest holdup time 
-	# exceeds the minimum required to avoid a shut down.
+	# Now, if no UPS has input power, see if the highest holdup time exceeds the minimum required to 
+	# avoid a shut down.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "a_ups_has_input", value1 => $a_ups_has_input,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2344,10 +2259,13 @@ WHERE
 	{
 		# No input power from mains...
 		$node_power_ok = 2;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "node_power_ok",       value1 => $node_power_ok,
-			name2 => "minimum_ups_runtime", value2 => $minimum_ups_runtime, 
-			name3 => "highest_holdup_time", value3 => $highest_holdup_time, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "node_power_ok",                    value1 => $node_power_ok,
+			name2 => "minimum_ups_runtime",              value2 => $minimum_ups_runtime, 
+			name3 => "highest_holdup_time",              value3 => $highest_holdup_time, 
+			name4 => "scancore::disable::load_shedding", value4 => $an->data->{scancore}{disable}{load_shedding}, 
+			name5 => "sys::anvil::node1::online",        value5 => $an->data->{sys}{anvil}{node1}{online}, 
+			name6 => "sys::anvil::node2::online",        value6 => $an->data->{sys}{anvil}{node2}{online}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Log the time remaining. I know this might get noisey, but it could be very helpful to an
@@ -2357,6 +2275,20 @@ WHERE
 			minimum_ups_runtime => $minimum_ups_runtime,
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		# Are both nodes up?
+		my $both_nodes_online = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "both_nodes_online", value1 => $both_nodes_online,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ((not $an->data->{sys}{anvil}{node1}{online}) or (not $an->data->{sys}{anvil}{node2}{online}))
+		{
+			# Disable load shedding because our peer is dead.
+			$both_nodes_online = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "both_nodes_online", value1 => $both_nodes_online,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
 		if ($minimum_ups_runtime >= $highest_holdup_time)
 		{
 			# Time to go zzz
@@ -2365,8 +2297,109 @@ WHERE
 				name1 => "node_power_ok", value1 => $node_power_ok,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		elsif ((not $an->data->{scancore}{disable}{load_shedding}) && ($both_nodes_online))
+		{
+			# WARNING: We can't use 'quote' to protect the 'scancore::power::load_shed_delay' 
+			#          value so we must check that it is set and purely digits. '0' is OK, it 
+			#          just means that we'll shed-load without delay.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "scancore::power::load_shed_delay", value1 => $an->data->{scancore}{power}{load_shed_delay},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($an->data->{scancore}{power}{load_shed_delay} eq "")
+			{
+				$an->data->{scancore}{power}{load_shed_delay} = 300;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scancore::power::load_shed_delay", value1 => $an->data->{scancore}{power}{load_shed_delay},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($an->data->{scancore}{power}{load_shed_delay} =~ /\D/)
+			{
+				$an->data->{scancore}{power}{load_shed_delay} = 300;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scancore::power::load_shed_delay", value1 => $an->data->{scancore}{power}{load_shed_delay},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Is it time to load-shed? No results == No.
+			my $shed_load = 1;
+			my $query     = "
+SELECT 
+    power_on_battery, 
+    modified_date 
+FROM 
+    history.power 
+WHERE 
+    power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+AND 
+    modified_date > (SELECT current_timestamp - interval '".$an->data->{scancore}{power}{load_shed_delay}." seconds') 
+ORDER BY 
+    modified_date DESC;
+";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+			my $count   = @{$results};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "results", value1 => $results, 
+				name2 => "count",   value2 => $count,
+			}, file => $THIS_FILE, line => __LINE__});
+			### TODO: There should be about 5+ entries (7~9 usually) if things have been running 
+			###       normally. It might be worth NOT deciding to shed load unless we've got >5
+			###       results... Something to think about and decide on later. For now, we'll not
+			###       check the results count.
+			if ($count < 1)
+			{
+				$shed_load = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shed_load", value1 => $shed_load, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# We will disable shed load if any of these results show 'power_on_battery' 
+				# as 'TRUE'.
+				foreach my $row (@{$results})
+				{
+					# One or more records were found.
+					my $power_on_battery = $row->[0]; 
+					my $modified_date    = $row->[1]; 
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "power_on_battery", value1 => $power_on_battery, 
+						name2 => "modified_date",    value2 => $modified_date, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if ($power_on_battery eq "0")
+					{
+						# Nope.
+						$shed_load = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "shed_load", value1 => $shed_load, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shed_load", value1 => $shed_load, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($shed_load)
+			{
+				$node_power_ok = 4;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node_power_ok", value1 => $node_power_ok, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
 	
+	# Returns;
+	# 1 = At least one of the UPSes has power
+	# 2 = Neither do but the hold-up time of at least one is above minimum
+	# 3 = Both are on batteries and below the minimum hold-up time 
+	# 4 = Both are on batteries and have been long enough to trigger load shedding (and load shedding 
+	#     is not disabled)
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_power_ok", value1 => $node_power_ok,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2957,16 +2990,16 @@ sub check_email_configuration
 	my $reconfigure = 0;
 	
 	# Checking to see of the email relay file needs to be created or updated.
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0034", message_variables => {
 		postfix_relay_file => $an->data->{path}{postfix_relay_file}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $an->data->{path}{postfix_relay_file})
 	{
 		# It exists, reading it.
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0035", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0035", file => $THIS_FILE, line => __LINE__});
 		my $alt_server_found = 0;
 		my $shell_call       = $an->data->{path}{postfix_relay_file};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -2974,7 +3007,7 @@ sub check_email_configuration
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /^\[(.*?)\]:(\d+)\s(.*?):(.*)$/)
@@ -2983,7 +3016,7 @@ sub check_email_configuration
 				my $port     = $2;
 				my $username = $3;
 				my $password = $4;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 					name1 => "server",                     value1 => $server, 
 					name2 => "sys::anvil::smtp::server",   value2 => $an->data->{sys}{anvil}{smtp}{server},
 					name3 => "port",                       value3 => $port, 
@@ -3008,7 +3041,7 @@ sub check_email_configuration
 				else
 				{
 					# No change
-					$an->Log->entry({log_level => 2, message_key => "scancore_log_0047", file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 3, message_key => "scancore_log_0047", file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			
@@ -3051,8 +3084,8 @@ sub check_email_configuration
 	}
 	else
 	{
-		# Relay file doesn't exist at all, so this might be an upgrade.
-		# As such, check that the programs we need are installed.
+		# Relay file doesn't exist at all, so this might be an upgrade. As such, check that the 
+		# programs we need are installed.
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0037", file => $THIS_FILE, line => __LINE__});
 		$reconfigure = 1;
 	}
@@ -3071,7 +3104,7 @@ sub check_email_configuration
 	### TODO: Re: issue #80 - Add support for alternate/no security.
 	# Read it in
 	my $shell_call = $an->data->{path}{postfix_main};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -3086,7 +3119,7 @@ sub check_email_configuration
 		{
 			$smtp_server = $1;
 			$smtp_port   = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "smtp_server", value1 => $smtp_server, 
 				name2 => "smtp_port",   value2 => $smtp_port, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3096,7 +3129,7 @@ sub check_email_configuration
 		{
 			$smtp_alt_server = $1;
 			$smtp_alt_port   = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "smtp_alt_server", value1 => $smtp_alt_server, 
 				name2 => "smtp_alt_port",   value2 => $smtp_alt_port, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3105,7 +3138,7 @@ sub check_email_configuration
 	close $file_handle;
 	
 	# Something changed?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 		name1 => "smtp_server",                  value1 => $smtp_server, 
 		name2 => "sys::anvil::smtp::server",     value2 => $an->data->{sys}{anvil}{smtp}{server},
 		name3 => "smtp_port",                    value3 => $smtp_port, 
@@ -3127,7 +3160,7 @@ sub check_email_configuration
 	}
 	
 	# (Re)write the relay file now, if needed.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "reconfigure", value1 => $reconfigure, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($reconfigure)
@@ -3163,7 +3196,8 @@ sub check_email_configuration
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			### This can contain a password, so log level is 4.
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3179,13 +3213,13 @@ sub check_email_configuration
 		if (not -e $backup_file)
 		{
 			# Backup the original.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0034", message_variables => {
 				source      => $an->data->{path}{postfix_main},
 				destination =>  $backup_file,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $shell_call = $an->data->{path}{cp}." --archive --no-clobber --verbose ".$an->data->{path}{postfix_main}." $backup_file";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -3193,7 +3227,7 @@ sub check_email_configuration
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3202,7 +3236,7 @@ sub check_email_configuration
 		else
 		{
 			# Already backed up
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0040", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0040", file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Now update the postfix main.cf file by reading it in and replacing the variables we want to
@@ -3213,7 +3247,7 @@ sub check_email_configuration
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$shell_call = $an->data->{path}{postfix_main};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -3266,13 +3300,13 @@ sub check_email_configuration
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Record the config in the main log
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "postfix_main", value1 => $postfix_main, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the actual write...
 		$shell_call = $an->data->{path}{postfix_main};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -3298,12 +3332,12 @@ sub check_email_configuration
 	}
 	
 	# Make sure the mail alerts directory exists and create it if not.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "path::alert_emails", value1 => $an->data->{path}{alert_emails}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $an->data->{path}{alert_emails})
 	{
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0055", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0055", message_variables => {
 			email_directory => $an->data->{path}{alert_emails}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -8085,17 +8119,12 @@ sub add_hostname_to_databases
 		###       or dashboard by analyzing it's hostname. We
 		###       will make this smarter later.
 		my $host_name = $an->hostname;
-		my $host_type = "node";
+		my $host_type = $an->Get->what_am_i();
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "sys::hostname", value1 => $an->hostname, 
 			name2 => "host_name",     value2 => $host_name, 
 			name3 => "host_type",     value3 => $host_type
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		if (($host_name =~ /striker/) || ($host_name =~ /dashboard/))
-		{
-			$host_type = "dashboard";
-		}
 		$an->data->{scancore}{i_am_a} = $host_type;
 		
 		# Add this host to the DB
@@ -8381,14 +8410,13 @@ AND
 	return(0);
 }
 
-# This reads the 'results table' and looks for bad conditions
+# This will read the 'results table' and looks for bad conditions, eventually.
 sub analyze_results
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "analyze_results" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Read in the 'alerts' table, using $an->data->{sys}{scan_time} as the
-	# time to select after. 
+	# Read in the 'alerts' table, using $an->data->{sys}{scan_time} as the time to select after. 
 	
 	return(0);
 }

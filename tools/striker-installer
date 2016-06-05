@@ -678,6 +678,8 @@ my $conf = {
 		ntp			=>	"", # <ip[,ip]>
 		'p'			=>	"", # <start_ip:end_ip>
 		'peer-dashboard'	=>	"", # <hostname=x,bcn_ip=y>
+# 		'r'			=>	"", # <repo>
+# 		'rhel-iso'		=>	"", # <'none', 'dvd', local path or URL>
 		rhn			=>	"", # <user:password>
 		'router-mode'		=>	"",
 		'run-rc-local'		=>	"",
@@ -788,6 +790,11 @@ if (($< != 0) && ($> != 0))
 
 # Make sure we got what we needed from the command line.
 get_switches($conf);
+if (($conf->{switches}{h}) or ($conf->{switches}{help}) or ($conf->{switches}{'?'}))
+{
+	print_usage($conf);
+	exit(0);
+}
 if (not $conf->{sys}{switch_count})
 {
 	print_usage($conf);
@@ -7711,11 +7718,6 @@ sub sanity_check_switches
 
 	# The network is a little tricker
 	logger($conf, $THIS_FILE, __LINE__, "\nSanity-checking command line switches:", 1);
-	if (($conf->{switches}{h}) or ($conf->{switches}{help}) or ($conf->{switches}{'?'}))
-	{
-		print_usage($conf);
-		exit(0);
-	}
 	if (($conf->{switches}{b}) && ($conf->{switches}{i}))
 	{
 		# Both defined, sanity check them.

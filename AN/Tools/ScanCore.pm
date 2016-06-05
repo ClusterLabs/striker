@@ -4201,6 +4201,11 @@ sub read_cache
 	my $target = $parameter->{target} ? $parameter->{target} : "";
 	my $type   = $parameter->{type}   ? $parameter->{type}   : "";
 	my $source = $parameter->{source} ? $parameter->{source} : $an->data->{sys}{host_uuid};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "type",   value2 => $type, 
+		name3 => "source", value3 => $source, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -4226,14 +4231,14 @@ AND
 ;";
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $data = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "data", value1 => $data, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
 	return($data);
 }
 
@@ -4657,8 +4662,12 @@ sub target_power
 	
 	my $task   = $parameter->{task}   ? $parameter->{task}   : "status";
 	my $target = $parameter->{target} ? $parameter->{target} : "";
-	my $state  = "unknown";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "task",   value1 => $task, 
+		name2 => "target", value2 => $target, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $state  = "unknown";
 	if (($task ne "status") && ($task ne "on") && ($task ne "off"))
 	{
 		# Bad task.
@@ -4699,62 +4708,94 @@ sub target_power
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($power_check)
 	{
-		# Convert the '-a X' to an IP address, if needed.
-		my $target = ($power_check =~ /-a\s(.*?)\s/)[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "target", value1 => $target,
-		}, file => $THIS_FILE, line => __LINE__});
-		if (not $an->Validate->is_ipv4({ip => $target}))
+		# If there are multiple methods, loop through them
+# 0:ipmi: fence_ipmilan -a 10.20.71.2 -l admin -p "Initial1" -o #!action!#;1:pdu: fence_apc_snmp -a an-pdu01.alteeve.ca -n 2 -o #!action!#; fence_apc_snmp -a an-pdu02.alteeve.ca -n 2 -o #!action!#; fence_apc_snmp -a an-pdu01.alteeve.ca -n 2 -o #!action!#; fence_apc_snmp -a an-pdu02.alteeve.ca -n 2 -o #!action!#;]
+		my $methods       = {};
+		my $method_number = "";
+		my $method_name   = "";
+		foreach my $method (split/;/, $power_check)
 		{
-			my $ip = $an->Get->ip({host => $target});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "ip", value1 => $ip,
+				name1 => "method", value1 => $method, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($ip)
+			# I can't trust PDUs because their response is based on outlet states.
+			next if $method =~ /fence_apc/;
+			next if $method =~ /fence_raritan/;
+			
+			# I should only have one method left, fence_ipmilan or fence_virsh.
+			if ($method =~ /^(\d+):(\w+): (fence_.*)$/)
 			{
+				$method_number = $1;
+				$method_name   = $2;
+				$power_check   = $3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "method_number", value1 => $method_number, 
+					name2 => "method_name",   value2 => $method_name, 
+					name3 => "power_check",   value3 => $power_check, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Convert the '-a X' to an IP address, if needed.
+			my $target = ($power_check =~ /-a\s(.*?)\s/)[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target,
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $an->Validate->is_ipv4({ip => $target}))
+			{
+				my $ip = $an->Get->ip({host => $target});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => ">> power_check", value1 => $power_check,
+					name1 => "ip", value1 => $ip,
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				$power_check =~ s/$target/$ip/;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< power_check", value1 => $power_check,
-				}, file => $THIS_FILE, line => __LINE__});
+				if ($ip)
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => ">> power_check", value1 => $power_check,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$power_check =~ s/$target/$ip/;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "<< power_check", value1 => $power_check,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
-		}
-		
-		$power_check =~ s/#!action!#/$task/;
-		$power_check =~ s/^.*fence_/fence_/;
-		
-		my $shell_call = $power_check;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
+			
+			$power_check =~ s/#!action!#/$task/;
+			$power_check =~ s/^.*fence_/fence_/;
+			
+			my $shell_call = $power_check;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line,
+				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($line =~ / On$/i)
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
 			{
-				$state = "on";
+				chomp;
+				my $line = $_;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "state", value1 => $state,
+					name1 => "line", value1 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ / On$/i)
+				{
+					$state = "on";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "state", value1 => $state,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($line =~ / Off$/i)
+				{
+					$state = "off";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "state", value1 => $state,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
-			if ($line =~ / Off$/i)
-			{
-				$state = "off";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "state", value1 => $state,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
+			close $file_handle;
+			
+			# Exit the loop if I got a state.
+			last if $state ne "unknown";
 		}
-		close $file_handle;
 	}
 	else
 	{

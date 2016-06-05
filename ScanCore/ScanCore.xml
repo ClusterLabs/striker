@@ -209,6 +209,11 @@ Warning: If the peer goes critical, it will not migrate to this node and instead
 		<key name="scancore_warning_0023">Failed to read the amount of RAM is being used by: [#!variable!program_name!#]. To be safe, the program will exit at the end of this sweep.</key>
 		<key name="scancore_warning_0024">Exiting because of errors. The reason(s) will be logged above.</key>
 		<key name="scancore_warning_0025">The 'scancore::dashboard::dlm_hung_timeout' variable is set to: [#!variable!value!#] but it appears to contain a non-digit character. Please set this to be a whole number representing the number of seconds #!string!scancore_brand_0001!# on a #!string!brand_0002!# dashboard should wait for 'clustat' to return before giving up and fencing the node.</key>
+		<key name="scancore_warning_0026">
+The UPSes feeding this node have been running on batteries for more than: [#!data!scancore::power::load_shed_delay!#] seconds.
+To extend battery runtime, one of the nodes will now be withdrawn and shutdown.
+Which node will shutdown will be determined momentarily.
+		</key>
 		
 		<!-- Cleared warnings. -->
 		<key name="scancore_cleared_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
