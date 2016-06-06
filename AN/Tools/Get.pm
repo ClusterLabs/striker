@@ -4378,10 +4378,13 @@ sub what_am_i
 	{
 		my $host_name = $an->hostname;
 		   $i_am_a    = "node";
-		if (($host_name =~ /striker/) || ($host_name =~ /dashboard/))
+		if ($host_name =~ /striker/)
 		{
 			$i_am_a = "dashboard";
 		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "i_am_a", value1 => $i_am_a, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
@@ -4396,8 +4399,22 @@ sub what_am_i
 		$i_am_a = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1  => "i_am_a", value1 => $i_am_a
+			name1  => "i_am_a", value1 => $i_am_a, 
 		}, file => $THIS_FILE, line => __LINE__});
+	
+		# If I didn't get a result from the DB, revert to parsing the host name
+		if (not $i_am_a)
+		{
+			my $host_name = $an->hostname;
+			   $i_am_a    = "node";
+			if ($host_name =~ /striker/)
+			{
+				$i_am_a = "dashboard";
+			}
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "i_am_a", value1 => $i_am_a, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
