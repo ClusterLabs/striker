@@ -2,6 +2,8 @@
 #
 # This generates the kickstart files for the RHEL and CentOS ISOs used by the Anvil! HA Platform m2.
 # 
+# TODO: Adapt this to run from anvil-generate-iso so that users can further customize their installs.
+# 
 
 use strict;
 use warnings;
@@ -150,7 +152,7 @@ my $conf = {
 		ifn_netmask	=>	"16",
 		keyboard	=>	"us",
 		language	=>	"en_CA.UTF-8",
-		os_version	=>	"6.7",
+		os_version	=>	"6.8",
 		output_dir	=>	"/data0/ISO/Anvil-m2/",
 		password	=>	"Initial1",	# User and 'root'.
 		prefix		=>	"an",

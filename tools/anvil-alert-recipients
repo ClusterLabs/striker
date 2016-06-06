@@ -9,6 +9,7 @@
 # https://alteeve.ca
 # 
 # BUG:
+# - No longer works now that the data is in ScanCore, update.
 # - It reports 'metric' when the user requested imperial.
 # 
 # Exit Codes:
@@ -64,6 +65,8 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
 # We don't use switches yet, but there is no harm in checking.
 $an->Get->switches();
+
+# Read in the alert recipients now.
 
 # Parse the alert recipients now.
 foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})

@@ -36,7 +36,7 @@ my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
-	        $running_directory =~ s/^\./$ENV{PWD}/;
+	$running_directory =~ s/^\./$ENV{PWD}/;
 }
 
 my $an = AN::Tools->new({data => {
@@ -52,6 +52,7 @@ my $an = AN::Tools->new({data => {
 		},
 		path		=>	{
 			log_file	=>	"/var/log/striker.log",
+			shorewall_conf	=>	"/etc/shorewall/shorewall.conf",
 			striker_config	=>	"/etc/striker/striker.conf",
 			striker_strings	=>	"/sbin/striker/Data/strings.xml",
 		},
@@ -60,6 +61,7 @@ my $an = AN::Tools->new({data => {
 			language	=>	"en_CA",
 			log_language	=>	"en_CA",
 			log_level	=>	2,
+			shorewall_enabled =>	0,
 		},
 	},
 });
@@ -74,8 +76,8 @@ $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 
 # Print the usage, if requested.
-if (($an->data->{switches}{h})   || 
-    ($an->data->{switches}{'?'}) ||
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or 
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
@@ -98,7 +100,10 @@ if (($< != 0) && ($> != 0))
 	exit($return_code);
 }
 
-# First, see if it's currently enabled or disabled.
+# First, see if shorewall is enabled. If it's not, then we only toggle dhcpd.
+check_shorewall($an);
+
+# Now, see if it's currently enabled or disabled.
 # 0 == stopped
 # 1 == running
 # 2 == unknown/not installed
@@ -199,69 +204,72 @@ sub disable_install_target
 		# dhcpd Stopped.
 		$an->Log->entry({log_level => 1, message_key => "smit_message_0008", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
 		
-		# Stop shorewall
-		$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if (($an->data->{daemons}{shorewall} eq "3") or ($an->data->{daemons}{shorewall} eq "4"))
+		if ($an->data->{sys}{shorewall_enabled})
 		{
-			# Shorewall stopped
-			$an->Log->entry({log_level => 1, message_key => "smit_message_0008", message_variables => { daemon => "shorewall" }, file => $THIS_FILE, line => __LINE__});
-			
-			# Start iptables
-			$an->data->{daemons}{shorewall} = set_daemon($an, "iptables", "start");
+			# Stop shorewall
+			$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "daemons::start", value1 => $an->data->{daemons}{start}, 
+				name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($an->data->{daemons}{iptables} eq "0")
+			if (($an->data->{daemons}{shorewall} eq "3") or ($an->data->{daemons}{shorewall} eq "4"))
 			{
-				# Success!
-				$an->Log->entry({log_level => 1, message_key => "smit_message_0007", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
+				# Shorewall stopped
+				$an->Log->entry({log_level => 1, message_key => "smit_message_0008", message_variables => { daemon => "shorewall" }, file => $THIS_FILE, line => __LINE__});
+				
+				# Start iptables
+				$an->data->{daemons}{shorewall} = set_daemon($an, "iptables", "start");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "daemons::start", value1 => $an->data->{daemons}{start}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($an->data->{daemons}{iptables} eq "0")
+				{
+					# Success!
+					$an->Log->entry({log_level => 1, message_key => "smit_message_0007", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# iptables failed to start.
+					$an->Log->entry({log_level => 0, message_key => "smit_error_0003", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
+					print $an->String->get({key => "smit_error_0003"}, message_variables => { daemon => "iptables" })."\n";
+					
+					# Roll back...
+					$an->data->{daemons}{dhcpd}     = set_daemon($an, "iptables",  "stop");
+					$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
+					$an->data->{daemons}{iptables}  = set_daemon($an, "dhcpd",     "start");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "daemons::iptables",  value1 => $an->data->{daemons}{iptables}, 
+						name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
+						name3 => "daemons::dhcpd",     value3 => $an->data->{daemons}{dhcpd}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Exit
+					my $return_code = 9;
+					print "rc:$return_code\n";
+					exit($return_code);
+				}
 			}
 			else
 			{
-				# iptables failed to start.
-				$an->Log->entry({log_level => 0, message_key => "smit_error_0003", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
-				print $an->String->get({key => "smit_error_0003"}, message_variables => { daemon => "iptables" })."\n";
+				# Failed to stop shorewall
+				$an->Log->entry({log_level => 0, message_key => "smit_error_0004", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
+				print $an->String->get({key => "smit_error_0004"}, message_variables => { daemon => "iptables" })."\n";
 				
-				# Roll back...
-				$an->data->{daemons}{dhcpd}     = set_daemon($an, "iptables",  "stop");
+				# Call a 'start' to try and restore
 				$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
-				$an->data->{daemons}{iptables}  = set_daemon($an, "dhcpd",     "start");
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "daemons::iptables",  value1 => $an->data->{daemons}{iptables}, 
-					name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
-					name3 => "daemons::dhcpd",     value3 => $an->data->{daemons}{dhcpd}, 
+				$an->data->{daemons}{dhcpd}     = set_daemon($an, "dhcpd", "start");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
+					name2 => "daemons::dhcpd",    value2 => $an->data->{daemons}{dhcpd}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Exit
-				my $return_code = 9;
+				my $return_code = 8;
 				print "rc:$return_code\n";
 				exit($return_code);
+				
 			}
-		}
-		else
-		{
-			# Failed to stop shorewall
-			$an->Log->entry({log_level => 0, message_key => "smit_error_0004", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
-			print $an->String->get({key => "smit_error_0004"}, message_variables => { daemon => "iptables" })."\n";
-			
-			# Call a 'start' to try and restore
-			$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
-			$an->data->{daemons}{dhcpd}     = set_daemon($an, "dhcpd", "start");
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
-				name2 => "daemons::dhcpd",    value2 => $an->data->{daemons}{dhcpd}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Exit
-			my $return_code = 8;
-			print "rc:$return_code\n";
-			exit($return_code);
-			
 		}
 	}
 	else
@@ -292,100 +300,165 @@ sub enable_install_target
 	
 	### NOTE: We used to disable libvirtd, but there is no reason to do that now that 'striker-installer'
 	###       disables the NAT'ed bridge.
-	
-	# Stop iptables
-	$an->data->{daemons}{iptables} = set_daemon($an, "iptables", "stop");
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{daemons}{iptables} eq "3")
+	if ($an->data->{sys}{shorewall_enabled})
 	{
-		# iptables stopped.
-		$an->Log->entry({log_level => 1, message_key => "smit_message_0008", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
-		
-		# Now start shorewall
-		$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
+		# Stop iptables
+		$an->data->{daemons}{iptables} = set_daemon($an, "iptables", "stop");
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
+			name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($an->data->{daemons}{shorewall} eq "0")
+		if ($an->data->{daemons}{iptables} eq "3")
 		{
-			# Shorewall started
-			$an->Log->entry({log_level => 1, message_key => "smit_message_0007", message_variables => { daemon => "shorewall" }, file => $THIS_FILE, line => __LINE__});
+			# iptables stopped.
+			$an->Log->entry({log_level => 1, message_key => "smit_message_0008", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
 			
-			# now start dhcpd
-			$an->data->{daemons}{dhcpd} = set_daemon($an, "dhcpd", "start");
+			# Now start shorewall
+			$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
+				name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($an->data->{daemons}{dhcpd} eq "0")
+			if ($an->data->{daemons}{shorewall} eq "0")
 			{
-				# Success!
-				$an->Log->entry({log_level => 1, message_key => "smit_message_0007", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
+				# Shorewall started
+				$an->Log->entry({log_level => 1, message_key => "smit_message_0007", message_variables => { daemon => "shorewall" }, file => $THIS_FILE, line => __LINE__});
+				
+				# now start dhcpd
+				$an->data->{daemons}{dhcpd} = set_daemon($an, "dhcpd", "start");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($an->data->{daemons}{dhcpd} eq "0")
+				{
+					# Success!
+					$an->Log->entry({log_level => 1, message_key => "smit_message_0007", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# dhcpd failed to start.
+					$an->Log->entry({log_level => 0, message_key => "smit_error_0003", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
+					print $an->String->get({key => "smit_error_0003"}, message_variables => { daemon => "dhcpd" })."\n";
+					
+					# Roll back...
+					$an->data->{daemons}{dhcpd}     = set_daemon($an, "dhcpd",     "stop");
+					$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
+					$an->data->{daemons}{iptables}  = set_daemon($an, "iptables",  "start");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "daemons::dhcpd",     value1 => $an->data->{daemons}{dhcpd}, 
+						name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
+						name3 => "daemons::iptables",  value3 => $an->data->{daemons}{iptables}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Exit
+					my $return_code = 6;
+					print "rc:$return_code\n";
+					exit($return_code);
+				}
 			}
 			else
 			{
-				# dhcpd failed to start.
-				$an->Log->entry({log_level => 0, message_key => "smit_error_0003", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
-				print $an->String->get({key => "smit_error_0003"}, message_variables => { daemon => "dhcpd" })."\n";
+				# Failed to start shorewall.
+				$an->Log->entry({log_level => 0, message_key => "smit_error_0003", message_variables => { daemon => "shorewall" }, file => $THIS_FILE, line => __LINE__});
+				print $an->String->get({key => "smit_error_0003"}, message_variables => { daemon => "shorewall" })."\n";
 				
-				# Roll back...
-				$an->data->{daemons}{dhcpd}     = set_daemon($an, "dhcpd",     "stop");
+				# Call a 'stop' on shorewall and restart iptables.
 				$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
 				$an->data->{daemons}{iptables}  = set_daemon($an, "iptables",  "start");
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "daemons::dhcpd",     value1 => $an->data->{daemons}{dhcpd}, 
-					name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
-					name3 => "daemons::iptables",  value3 => $an->data->{daemons}{iptables}, 
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
+					name2 => "daemons::iptables",  value2 => $an->data->{daemons}{iptables}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Exit
-				my $return_code = 6;
+				my $return_code = 5;
 				print "rc:$return_code\n";
 				exit($return_code);
 			}
 		}
 		else
 		{
-			# Failed to start shorewall.
-			$an->Log->entry({log_level => 0, message_key => "smit_error_0003", message_variables => { daemon => "shorewall" }, file => $THIS_FILE, line => __LINE__});
-			print $an->String->get({key => "smit_error_0003"}, message_variables => { daemon => "shorewall" })."\n";
+			# iptables failed to stop. 
+			$an->Log->entry({log_level => 0, message_key => "smit_error_0004", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "smit_error_0004"}, message_variables => { daemon => "iptables" })."\n";
 			
-			# Call a 'stop' on shorewall and restart iptables.
-			$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
-			$an->data->{daemons}{iptables}  = set_daemon($an, "iptables",  "start");
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
-				name2 => "daemons::iptables",  value2 => $an->data->{daemons}{iptables}, 
+			# Call a 'start' to try and restore
+			$an->data->{daemons}{iptables} = set_daemon($an, "iptables", "start");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Exit
-			my $return_code = 5;
+			my $return_code = 4;
 			print "rc:$return_code\n";
 			exit($return_code);
 		}
 	}
 	else
 	{
-		# iptables failed to stop. 
-		$an->Log->entry({log_level => 0, message_key => "smit_error_0004", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "smit_error_0004"}, message_variables => { daemon => "iptables" })."\n";
-		
-		# Call a 'start' to try and restore
-		$an->data->{daemons}{iptables} = set_daemon($an, "iptables", "start");
+		# Only need to manage dhcpd.
+		$an->data->{daemons}{dhcpd} = set_daemon($an, "dhcpd", "start");
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
+			name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Exit
-		my $return_code = 4;
-		print "rc:$return_code\n";
-		exit($return_code);
+		if ($an->data->{daemons}{dhcpd} eq "0")
+		{
+			# Success!
+			$an->Log->entry({log_level => 1, message_key => "smit_message_0007", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# dhcpd failed to start.
+			$an->Log->entry({log_level => 0, message_key => "smit_error_0003", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "smit_error_0003"}, message_variables => { daemon => "dhcpd" })."\n";
+			
+			# Exit
+			my $return_code = 6;
+			print "rc:$return_code\n";
+			exit($return_code);
+		}
 	}
 	
 	return(0);
+}
+
+# This reads the shorewall.conf file and returns '0' if shorewall is disabled and '1' if it is enabled.
+sub check_shorewall
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->data->{sys}{shorewall_enabled} = 0;
+	
+	# Read in the file.
+	my $shell_call = $an->data->{path}{shorewall_conf};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^STARTUP_ENABLED=Yes/i)
+		{
+			$an->data->{sys}{shorewall_enabled} = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::shorewall_enabled", value1 => $an->data->{sys}{shorewall_enabled}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::shorewall_enabled", value1 => $an->data->{sys}{shorewall_enabled}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($an->data->{sys}{shorewall_enabled});
 }
 
 # This checks to see if the install target is currently enabled or disabled.
@@ -394,28 +467,32 @@ sub check_status
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	
 	### Daemons;
 	# all - 127 == not found
 	# iptables  - 0 == running, 3 == stopped  (will return '0' when shorewall is running, so check shorewall and set to '0' when shorewall is on)
 	# dhcpd     - 0 == running, 3 == stopped
 	# shorewall - 0 == running, 3 == stopped, 4 == stopped (hasn't run)
-	$an->data->{daemons}{iptables}  = check_daemon($an, "iptables");
-	$an->data->{daemons}{shorewall} = check_daemon($an, "shorewall");
-	$an->data->{daemons}{dhcpd}     = check_daemon($an, "dhcpd");
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "daemons::iptables",  value1 => $an->data->{daemons}{iptables}, 
-		name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
-		name3 => "daemons::dhcpd",     value3 => $an->data->{daemons}{dhcpd}, 
+	$an->data->{daemons}{dhcpd} = check_daemon($an, "dhcpd");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	# If shorewall is enabled (rc:0), set iptables to '3')
-	if ($an->data->{daemons}{shorewall})
+	if ($an->data->{sys}{shorewall_enabled})
 	{
-		$an->data->{daemons}{iptables} = 3;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
+		$an->data->{daemons}{iptables}  = check_daemon($an, "iptables");
+		$an->data->{daemons}{shorewall} = check_daemon($an, "shorewall");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "daemons::iptables",  value1 => $an->data->{daemons}{iptables}, 
+			name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If shorewall is enabled (rc:0), set iptables to '3')
+		if ($an->data->{daemons}{shorewall})
+		{
+			$an->data->{daemons}{iptables} = 3;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
 	# For now, the only thing I care about is 'dhcpd' status for reporting running/not running.

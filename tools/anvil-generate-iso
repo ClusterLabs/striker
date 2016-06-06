@@ -40,7 +40,7 @@ my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
-	        $running_directory =~ s/^\./$ENV{PWD}/;
+	$running_directory =~ s/^\./$ENV{PWD}/;
 }
 
 my $conf = {
@@ -302,9 +302,6 @@ find_executables($conf);
 
 # Prepare the current date and time for later use in mkisofs.
 get_date($conf);
-
-# Possibly useful later
-#foreach my $key (sort {$a cmp $b} keys %ENV) { print "$key\t->\t[$ENV{$key}]\n"; } exit;
  
 # Ask the user to ACK third party tools
 agree_to_terms($conf);
@@ -1659,6 +1656,11 @@ sub copy_files_from_git
 	my $os_type          = $conf->{sys}{os_type};
 	my $distro_directory = $conf->{path}{git}{$os_type};
 	my $git_iso_source   = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{git_iso}."/".$distro_directory."/".$conf->{path}{git}{suffix};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::source_directory: [".$conf->{path}{iso}{source_directory}."]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::striker: ........ [".$conf->{path}{iso}{striker}."]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::git_iso: ........ [".$conf->{path}{iso}{git_iso}."]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - distro_directory: .......... [$distro_directory]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::suffix: ......... [".$conf->{path}{iso}{suffix}."]\n" if $conf->{sys}{debug} >= 2;
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - git_iso_source: [$git_iso_source]\n" if $conf->{sys}{debug} >= 2;
 	
 	# isolinux
@@ -1667,6 +1669,7 @@ sub copy_files_from_git
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory], path::iso::git_copy::${directory}::target: [$conf->{path}{iso}{git_copy}{$directory}{target}]\n" if $conf->{sys}{debug} >= 2;
 		my $source = $git_iso_source."/".$directory;
 		my $target = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{git_copy}{$directory}{target});
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
 		   $source =~ s/\/\/+/\//g;
 		   #$target =~ s/\/\/+/\//g;
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
@@ -2264,8 +2267,8 @@ sub setup_build_environment
 	wipe_repodata($conf);
 	
 	# Assemble the final ISO name
-	my $os_type = $conf->{sys}{os_type};
-	$conf->{path}{iso}{file_name} = "Anvil_".$conf->{sys}{name}{mark}."_".$conf->{sys}{name}{$os_type}."_".$conf->{sys}{name}{release};
+	my $os_type                      = $conf->{sys}{os_type};
+	   $conf->{path}{iso}{file_name} = "Anvil_".$conf->{sys}{name}{mark}."_".$conf->{sys}{name}{$os_type}."_".$conf->{sys}{name}{release};
 	if ($conf->{sys}{name}{suffix})
 	{
 		$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{suffix};
@@ -2537,6 +2540,9 @@ sub prep_source
 			chomp;
 			my $line = $_;
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::source_file: [".$conf->{source}{$iso}{source_file}."]\n" if $conf->{sys}{debug} >= 2;
+			
+			die if not defined $conf->{source}{$iso}{source_file};
 			
 			if ($line =~ /^\/.*?\/\Q$conf->{source}{$iso}{source_file}\E on (.*?) /)
 			{
@@ -2711,6 +2717,15 @@ sub validate_source
 	{
 		foreach my $source (split/,/, $conf->{switches}{source})
 		{
+			if ($source !~ /\//)
+			{
+				# The source is in this directory, so prepend to get the full path.
+				$source = $running_directory."/".$source;
+			}
+			elsif ($source =~ /^\.\//)
+			{
+				$source =~ s/^\./$running_directory/;;
+			}
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
 			push @{$conf->{sys}{source}{iso}}, $source;
 		}
