@@ -80,6 +80,20 @@ if (not $an->data->{tools}{'striker-push-ssh'}{enabled})
 	exit(1);
 }
 
+# Can I connect to a database?
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	name1 => "connections", value1 => $connections, 
+}, file => $THIS_FILE, line => __LINE__});
+if (not $connections)
+{
+	# Nope, warn the user.
+	print $an->String->get({key => "scv_warning_0003"})."\n";
+	$an->Log->entry({log_level => 1, message_key => "scv_warning_0003", file => $THIS_FILE, line => __LINE__});
+	
+	exit(0);
+}
+
 # Now determine what local users exist.
 $an->data->{sys}{local_users} = $an->Get->local_users();
 my $local_user_count          = @{$an->data->{sys}{local_users}};
@@ -90,52 +104,36 @@ if (not $local_user_count)
 	exit(0);
 }
 
-# Loop through all configured Anvil! systems
-my $anvils = $an->ScanCore->get_anvils();
-foreach my $hash_ref (@{$anvils})
+# Find the login details
+my $anvil_data = $an->ScanCore->parse_anvil_data();
+foreach my $anvil_uuid (keys %{$an->data->{anvils}})
 {
-	# Log that we're looking for the login credentials to the defined node.
-	$an->Log->entry({log_level => 2, message_key => "sps_log_0002", message_variables => { anvil => $anvil_name }, file => $THIS_FILE, line => __LINE__});
-
-	# Find the login details
-	my $anvil_data = $an->ScanCore->parse_anvil_data();
-	foreach my $anvil_uuid (keys %{$an->data->{anvils}})
-	{
-		if ($an->data->{anvils}{$anvil_uuid}{name} eq $an->data->{switches}{anvil})
-		{
-			# Found it.
-			$an->data->{anvil}{uuid}     = $anvil_uuid;
-			$an->data->{anvil}{node1}    = $an->data->{anvils}{$anvil_uuid}{node1}{name};
-			$an->data->{anvil}{node2}    = $an->data->{anvils}{$anvil_uuid}{node2}{name};
-			$an->data->{anvil}{password} = $an->data->{anvils}{$anvil_uuid}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-				name1 => "anvil::id",       value1 => $an->data->{anvil}{id}, 
-				name2 => "anvil::node1",    value2 => $an->data->{anvil}{node1}, 
-				name3 => "anvil::node2",    value3 => $an->data->{anvil}{node2}, 
-				name4 => "anvil::password", value4 => $an->data->{anvil}{password}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-
-	# If I didn't find an Anvil!, exit.
-	if ($an->data->{anvil}{uuid})
-	{
-		# Woot!
-		$an->Log->entry({log_level => 2, message_key => "sps_log_0003", message_variables => { anvil => $an->data->{switches}{anvil} }, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Well foo. 
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sps_error_0002", message_variables => { anvil => $an->data->{switches}{anvil} }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	}
-
+	$an->data->{anvil}{uuid}     = $anvil_uuid;
+	$an->data->{anvil}{name}     = $an->data->{anvils}{$anvil_uuid}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil::uuid", value1 => $an->data->{anvil}{uuid}, 
+		name2 => "anvil::name", value2 => $an->data->{anvil}{name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "sps_log_0002", message_variables => { anvil => $an->data->{anvil}{name} }, file => $THIS_FILE, line => __LINE__});
+	$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+	
+	# Short-scan node 1 and 2
+	$an->Striker->scan_node({
+		uuid       => $an->data->{sys}{anvil}{node1}{uuid},
+		short_scan => 1,
+	});
+	$an->Striker->scan_node({
+		uuid       => $an->data->{sys}{anvil}{node2}{uuid},
+		short_scan => 1,
+	});
+	
 	# If I am still alive, loop through the list of users, get their local RSA key (generating it as needed) and
 	# then add it to each target node.
 	foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
 	{
-		### TODO: When moving to the new module methods, we'll need to process the general success/failure as
-		###       it won't report per-user failures.
-		#push_ssh_keys($an, $user);
+		# Push the keys to whichever nodes are online.
+		push_ssh_keys($an, $user);
 	}
 }
 
@@ -166,23 +164,40 @@ sub push_ssh_keys
 	{
 		### TODO: Update this to use the new access methods.
 		# OK, loop through the nodes.
-		foreach my $node ($an->data->{anvil}{node1}, $an->data->{anvil}{node2})
+		foreach my $node_key ("node1", "node2")
 		{
 			# First, is it up?
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "node", value1 => $node, 
+			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+			my $online    = $an->data->{sys}{anvil}{$node_key}{online};
+			my $use_ip    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+			my $use_port  = $an->data->{sys}{anvil}{$node_key}{use_port};
+			my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "node_name", value1 => $node_name, 
+				name2 => "online",    value2 => $online, 
+				name3 => "use_ip",    value3 => $use_ip, 
+				name4 => "use_port",  value4 => $use_port, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($an->Check->ping({ping => $node, count => 3}))
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (not $an->data->{sys}{anvil}{$node_key}{online})
 			{
 				# Failed to reach it.
-				$an->Alert->warning({message_key => "sps_warning_0003", message_variables => {
-					node	=>	$node,
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->warning({message_key => "sps_warning_0003", message_variables => { node => $node_name }, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
 			
+			# Insert/update the use_ip and hostname into our local /etc/hosts file. This will 
+			# allow us to store the fingerprint by the node's name.
+			update_hosts($an, $node_name, $use_ip);
+			
 			# Make sure I've got the remote machine's RSA fingerprint recorded.
-			$an->Remote->add_target_to_known_hosts({user => $user, target => $node});
+			$an->Remote->add_target_to_known_hosts({
+				user   => $user, 
+				target => $node_name,
+			});
 			
 			# If I'm still here, I can reach the node so it's time to add they key.
 			# 0 == Existed
@@ -190,8 +205,9 @@ sub push_ssh_keys
 			# 2 == Added successfully
 			my $return = $an->Remote->add_rsa_key_to_target({
 				user      => "root",
-				target    => $node,
-				password  => $an->data->{anvil}{password},
+				target    => $node_name,
+				port      => $use_port,
+				password  => $password,
 				key       => $key, 
 				key_owner => $owner,
 			});
@@ -199,6 +215,112 @@ sub push_ssh_keys
 				name1 => "return", value1 => $return, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+	}
+	
+	return(0);
+}
+
+# Read in /etc/hosts and insert the host name (or update the existing entry if it's changed).
+sub update_hosts
+{
+	my ($an, $node_name, $use_ip) = @_;
+	
+	my $insert     = 1;
+	my $new_hosts  = "";
+	my $shell_call = $an->data->{path}{etc_hosts};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)?/)
+		{
+			my $ip    = $1;
+			my $names = $2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ip",    value1 => $ip, 
+				name2 => "names", value2 => $names, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			foreach my $name (split/ /, $names)
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "name", value1 => $name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($name eq $node_name)
+				{
+					# Found it.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "ip",     value1 => $ip, 
+						name2 => "use_ip", value2 => $use_ip, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($ip eq $use_ip)
+					{
+						# Match, no need to update
+						$insert = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "insert", value1 => $insert, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					else
+					{
+						# IP has changed, so we'll remove out name from this line and
+						# insert.
+						$line =~ s/$node_name//;
+						$line =~ s/  / /g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+		}
+		
+		$new_hosts .= "$line\n";
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "insert", value1 => $insert, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($insert)
+	{
+		# (re)Add the name and IP.
+		$new_hosts .= "$use_ip	$node_name\n";
+		
+		# Create a backup.
+		my ($date)      = $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
+		my $destination = $an->data->{path}{striker_backups}."/hosts.$date";
+		my $shell_call  = $an->data->{path}{cp}." -f ".$an->data->{path}{etc_hosts}." $destination";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# Write it out.
+		$shell_call = $an->data->{path}{etc_hosts};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		print $file_handle $new_hosts;
+		close $file_handle;
 	}
 	
 	return(0);

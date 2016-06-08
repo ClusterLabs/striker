@@ -63,21 +63,24 @@ sub add_rsa_key_to_target
 	# We don't try to divine the user, so we need to called to tell us who we're dealing with.
 	my $user            = $parameter->{user};
 	my $target          = $parameter->{target};
+	my $port            = $parameter->{port} ? $parameter->{port} : 22;
 	my $key             = $parameter->{key};
 	my $key_owner       = $parameter->{key_owner};
 	my $password        = $parameter->{password};
 	my $users_home      = $an->Get->users_home({user => $user});
 	my $authorized_keys = "$users_home/.ssh/authorized_keys";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 		name1 => "user",            value1 => $user, 
 		name2 => "target",          value2 => $target, 
-		name3 => "key",             value3 => $key, 
-		name4 => "key_owner",       value4 => $key_owner, 
-		name5 => "password",        value5 => $password, 
-		name6 => "users_home",      value6 => $users_home, 
-		name7 => "authorized_keys", value7 => $authorized_keys,
+		name3 => "port",            value3 => $port, 
+		name4 => "key",             value4 => $key, 
+		name5 => "key_owner",       value5 => $key_owner, 
+		name6 => "password",        value6 => $password, 
+		name7 => "users_home",      value7 => $users_home, 
+		name8 => "authorized_keys", value8 => $authorized_keys,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	### TODO: WTF is this? I'm ssh'ing into the machine to ssh into itself to check the key?!
 	# First, is the key already there?
 	my $return_code = 0;
 	my $shell_call  = $an->data->{path}{ssh}." $user\@$target \"".$an->data->{path}{'grep'}." -q 'ssh-rsa $key ' $authorized_keys; ".$an->data->{path}{echo}." rc:\\\$?\"";
@@ -86,8 +89,8 @@ sub add_rsa_key_to_target
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$target,
-		password	=>	$an->data->{anvil}{password},
-		ssh_fh		=>	"",
+		port		=>	$port,
+		password	=>	$password,
 		'close'		=>	1,
 		shell_call	=>	$shell_call,
 	});
@@ -114,8 +117,8 @@ sub add_rsa_key_to_target
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$target,
+					port		=>	$port,
 					password	=>	$password,
-					ssh_fh		=>	"",
 					'close'		=>	0,
 					shell_call	=>	$shell_call,
 				});
@@ -135,8 +138,8 @@ sub add_rsa_key_to_target
 				}, file => $THIS_FILE, line => __LINE__});
 				($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$target,
+					port		=>	$port,
 					password	=>	$password,
-					ssh_fh		=>	$ssh_fh,
 					'close'		=>	1,
 					shell_call	=>	$shell_call,
 				});
@@ -244,7 +247,7 @@ sub add_target_to_known_hosts
 			# Successfully added!
 			$an->Log->entry({log_level => 2, message_key => "notice_message_0009", message_variables => {
 				target => $target, 
-				user => $user, 
+				user   => $user, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
@@ -252,7 +255,7 @@ sub add_target_to_known_hosts
 			# Failed to add. :(
 			$an->Alert->warning({message_key => "warning_title_0007", message_variables => {
 				target => $target, 
-				user => $user, 
+				user   => $user, 
 			}, file => $THIS_FILE, line => __LINE__});
 			return(1);
 		}

@@ -67,7 +67,7 @@ Details:
 ====
 		</key>
 		<key name="scan_server_message_0005">Will not be started</key>
-		<key name="scan_server_message_0006">The server: [#!variable!server!#]'s definition file has changed:
+		<key name="scan_server_message_0006">The server: [#!variable!old!#]'s name has changed to: [#!variable!new!#]:
 
 Definition:
 ====
@@ -76,14 +76,14 @@ Definition:
 		</key>
 		<key name="scan_server_message_0007">The server: [#!variable!server!#]'s definition file has changed:
 
-New:
-====
-#!variable!new!#
-====
-
 Difference:
 ====
 #!variable!diff!#
+====
+
+New:
+====
+#!variable!new!#
 ====
 		</key>
 		<key name="scan_server_message_0008">The server: [#!variable!server!#]'s host has changed:

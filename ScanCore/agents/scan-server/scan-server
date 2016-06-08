@@ -133,7 +133,7 @@ if (not $an->DB->verify_host_uuid())
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
 	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
 		uuid => $an->data->{sys}{host_uuid},
-	}, code => 255, file => "$THIS_FILE", line => __LINE__});
+	}, code => 255, file => $THIS_FILE, line => __LINE__});
 }
 
 # Look for changes.
@@ -408,7 +408,7 @@ sub scan_servers
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "shell_call", value1 => $shell_call,
 						}, file => $THIS_FILE, line => __LINE__});
-						open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+						open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
 						while(<$file_handle>)
 						{
 							chomp;
@@ -585,41 +585,12 @@ sub find_changes
 				name7 => "old_server_definition", value7 => $old_server_definition, 
 				name8 => "new_server_definition", value8 => $new_server_definition, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if (($new_server_name       ne $old_server_name) || 
-			    ($new_server_host       ne $old_server_host) || 
-			    ($new_server_state      ne $old_server_state) || 
+			if (($new_server_name       ne $old_server_name)  or 
+			    ($new_server_host       ne $old_server_host)  or 
+			    ($new_server_state      ne $old_server_state) or 
 			    ($new_server_definition ne $old_server_definition))
 			{
 				# Something has changed.
-				if ($new_server_name ne $old_server_name)
-				{
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-						name1 => "old_server_name", value1 => $old_server_name, 
-						name2 => "new_server_name", value2 => $new_server_name, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				if ($new_server_host ne $old_server_host)
-				{
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-						name1 => "old_server_host", value1 => $old_server_host, 
-						name2 => "new_server_host", value2 => $new_server_host, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				if ($new_server_state ne $old_server_state)
-				{
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-						name1 => "old_server_state", value1 => $old_server_state, 
-						name2 => "new_server_state", value2 => $new_server_state, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				if ($new_server_definition ne $old_server_definition)
-				{
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-						name1 => "old_server_definition", value1 => $old_server_definition, 
-						name2 => "new_server_definition", value2 => $new_server_definition, 
-						name3 => "diff",                  value3 => diff \$old_server_definition, \$new_server_definition, { STYLE => 'Unified' },
-					}, file => $THIS_FILE, line => __LINE__});
-				}
 				my $query = "
 UPDATE 
     servers 
@@ -633,7 +604,7 @@ WHERE
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -642,10 +613,15 @@ WHERE
 				# The server name?
 				if ($new_server_name ne $old_server_name)
 				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_server_name", value1 => $old_server_name, 
+						name2 => "new_server_name", value2 => $new_server_name, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					# This should be a rare event, so it in a notice-level alert.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_server_message_0006",
 						alert_message_variables	=>	{
@@ -657,10 +633,15 @@ WHERE
 				# The current host?
 				if ($new_server_host ne $old_server_host)
 				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_server_host", value1 => $old_server_host, 
+						name2 => "new_server_host", value2 => $new_server_host, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					# New host, this is a worthy alert so it is note level
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_server_message_0008",
 						alert_message_variables	=>	{
@@ -673,10 +654,15 @@ WHERE
 				# The current state?
 				if ($new_server_state ne $old_server_state)
 				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_server_state", value1 => $old_server_state, 
+						name2 => "new_server_state", value2 => $new_server_state, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					# State changes are a little more important.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_server_message_0010",
 						alert_message_variables	=>	{
@@ -708,11 +694,17 @@ WHERE
 				# The definition file?
 				if ($new_server_definition ne $old_server_definition)
 				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "old_server_definition", value1 => $old_server_definition, 
+						name2 => "new_server_definition", value2 => $new_server_definition, 
+						name3 => "diff",                  value3 => diff \$old_server_definition, \$new_server_definition, { STYLE => 'Unified' },
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					# This will happen whenever the virsh ID changes, disks are 
 					# inserted/ejected, etc. So it's a notice-level event.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_server_message_0007",
 						alert_message_variables	=>	{
@@ -811,7 +803,7 @@ INSERT INTO
 			}
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_title_key		=>	"scan_server_message_0003",
 				alert_title_variables	=>	{
 					name			=>	$server_name,

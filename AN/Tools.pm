@@ -678,6 +678,7 @@ sub _set_paths
 	$an->data->{path}{shared_files}       = "/shared/files";
 	$an->data->{path}{shared_privision}   = "/shared/provision";
 	$an->data->{path}{skins}              = "/var/www/html/skins";
+	$an->data->{path}{striker_backups}    = "/root/anvil";
 	$an->data->{path}{striker_tools}      = "/sbin/striker";
 	$an->data->{path}{yum_repos}          = "/etc/yum.repos.d";
 	
@@ -692,6 +693,7 @@ sub _set_paths
 	$an->data->{path}{'anvil-safe-start'}          = "/sbin/striker/anvil-safe-start";
 	$an->data->{path}{'anvil-safe-stop'}           = "/sbin/striker/anvil-safe-stop";
 	$an->data->{path}{'anvil-stop-server'}         = "/sbin/striker/anvil-stop-server";
+	$an->data->{path}{'striker-push-ssh'}          = "/sbin/striker/striker-push-ssh";
 	$an->data->{path}{ScanCore}                    = "/sbin/striker/ScanCore/ScanCore";
 	
 	# setuid tools

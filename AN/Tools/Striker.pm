@@ -6,6 +6,7 @@ package AN::Tools::Striker;
 use strict;
 use warnings;
 use Data::Dumper;
+use Text::Diff;
 
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Striker.pm";
@@ -95,6 +96,7 @@ my $THIS_FILE = "Striker.pm";
 # _stop_server
 # _update_network_driver
 # _update_server_definition
+# _update_server_definition_in_db
 # _verify_server_config
 # _withdraw_node
 
@@ -190,7 +192,7 @@ sub load_anvil
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Did the user specify an anvil_uuid?
-	my $anvil_uuid = $an->data->{parameter}{anvil_uuid} ? $an->data->{parameter}{anvil_uuid} : "";
+	my $anvil_uuid = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -640,14 +642,6 @@ sub scan_anvil
 				message	=>	"#!string!message_0029!#",
 			}});
 		}
-		### NOTE: I think we can remove this safely now.
-# 		else
-# 		{
-# 			print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
-# 				anvil	=>	$an->data->{sys}{anvil}{name},
-# 				message	=>	"#!string!message_0028!#",
-# 			}});
-# 		}
 	}
 
 	return(0);
@@ -661,9 +655,11 @@ sub scan_node
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{uuid};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "node_uuid", value1 => $node_uuid,
+	my $node_uuid  = $parameter->{uuid};
+	my $short_scan = defined $parameter->{short_scan} ? $parameter->{short_scan} : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_uuid",  value1 => $node_uuid,
+		name2 => "short_scan", value2 => $short_scan,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $node_uuid)
 	{
@@ -926,6 +922,12 @@ sub scan_node
 				$an->data->{node}{$node_name}{daemon}{$daemon}{exit_code} = "";
 			}
 		}
+	}
+	
+	# If I was asked to do a short scan, return here.
+	if ($short_scan)
+	{
+		return(0);
 	}
 	
 	# set daemon states to 'Unknown'.
@@ -2097,7 +2099,7 @@ sub _archive_file
 	
 	# Setup some variable
 	my ($directory, $file_name) =  ($file =~ /^(.*)\/(.*?)$/);
-	my ($date)                  =  $an->Get->date_and_time({split_date_time => 0});
+	my ($date)                  =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
 	my $destination             =  $an->data->{path}{shared_archive}."/$file_name.$date";
 	   $destination             =~ s/ /_/;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
@@ -7845,6 +7847,53 @@ sub _manage_server
 		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# If I've been asked to insert a disc, do so now.
+	my $do_insert    = 0;
+	my $insert_media = "";
+	my $insert_drive = "";
+	foreach my $key (split/,/, $an->data->{cgi}{device_keys})
+	{
+		next if not $key;
+		next if not $an->data->{cgi}{$key};
+		my $device_key   = $key;
+		   $insert_drive = ($key =~ /media_(.*)/)[0];
+		my $insert_key   = "insert_${insert_drive}";
+		if ($an->data->{cgi}{$insert_key})
+		{
+			$do_insert    = 1;
+			$insert_media = $an->data->{cgi}{$device_key};
+		}
+	}
+	
+	### TODO: Merge insert and eject into one function.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "do_insert",    value1 => $do_insert,
+		name2 => "insert_drive", value2 => $insert_drive,
+		name3 => "insert_media", value3 => $insert_media,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($do_insert)
+	{
+		$an->Striker->_server_insert_media({
+			target            => $target,
+			port              => $port,
+			password          => $password,
+			insert_media      => $insert_media, 
+			insert_drive      => $insert_drive,
+			server_is_running => $server_is_running,
+		});
+	}
+	
+	# If I've been asked to eject a disc, do so now.
+	if ($an->data->{cgi}{'do'} eq "eject")
+	{
+		$an->Striker->_server_eject_media({
+			target            => $target,
+			port              => $port,
+			password          => $password,
+			server_is_running => $server_is_running,
+		});
+	}
+	
 	# Find the list of bootable devices and present them in a selection box. Also pull out the server's
 	# UUID.
 	my $boot_select = "<select name=\"boot_device\" style=\"width: 165px;\">";
@@ -8019,53 +8068,6 @@ sub _manage_server
 	if ($an->data->{cgi}{change})
 	{
 		$an->Striker->_change_server({node_name => $node_name});
-	}
-	
-	# If I've been asked to insert a disc, do so now.
-	my $do_insert    = 0;
-	my $insert_media = "";
-	my $insert_drive = "";
-	foreach my $key (split/,/, $an->data->{cgi}{device_keys})
-	{
-		next if not $key;
-		next if not $an->data->{cgi}{$key};
-		my $device_key   = $key;
-		   $insert_drive = ($key =~ /media_(.*)/)[0];
-		my $insert_key   = "insert_${insert_drive}";
-		if ($an->data->{cgi}{$insert_key})
-		{
-			$do_insert    = 1;
-			$insert_media = $an->data->{cgi}{$device_key};
-		}
-	}
-	
-	### TODO: Merge insert and eject into one function.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "do_insert",    value1 => $do_insert,
-		name2 => "insert_drive", value2 => $insert_drive,
-		name3 => "insert_media", value3 => $insert_media,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($do_insert)
-	{
-		$an->Striker->_server_insert_media({
-			target            => $target,
-			port              => $port,
-			password          => $password,
-			insert_media      => $insert_media, 
-			insert_drive      => $insert_drive,
-			server_is_running => $server_is_running,
-		});
-	}
-	
-	# If I've been asked to eject a disc, do so now.
-	if ($an->data->{cgi}{'do'} eq "eject")
-	{
-		$an->Striker->_server_eject_media({
-			target            => $target,
-			port              => $port,
-			password          => $password,
-			server_is_running => $server_is_running,
-		});
 	}
 	
 	# Get the list of files on the /shared/files/ directory.
@@ -12622,7 +12624,7 @@ sub _server_eject_media
 	my $target            = $parameter->{target}            ? $parameter->{target}            : "";
 	my $port              = $parameter->{port}              ? $parameter->{port}              : "";
 	my $password          = $parameter->{password}          ? $parameter->{password}          : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 		name1 => "anvil_uuid",        value1 => $anvil_uuid, 
 		name2 => "anvil_name",        value2 => $anvil_name, 
 		name3 => "server",            value3 => $server, 
@@ -12727,6 +12729,7 @@ sub _server_eject_media
 		my $this_media     = "";
 		my $this_device    = "";
 		my $new_definition = "";
+		my $server_uuid    = "";
 		my $shell_call     = $an->data->{path}{cat}." $definition_file";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
@@ -12740,7 +12743,7 @@ sub _server_eject_media
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -12748,6 +12751,10 @@ sub _server_eject_media
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /<uuid>(.*?)<\/uuid>/)
+			{
+				$server_uuid = $1;
+			}
 			if (($line =~ /type='file'/) && ($line =~ /device='cdrom'/))
 			{
 				# Found an optical disk (DVD/CD).
@@ -12807,7 +12814,7 @@ sub _server_eject_media
 		# Write the new definition file.
 		print $an->Web->template({file => "server.html", template => "saving-server-config"});
 		$shell_call = $an->data->{path}{echo}." \"$new_definition\" > $definition_file && ".$an->data->{path}{'chmod'}." 644 $definition_file";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -12826,7 +12833,18 @@ sub _server_eject_media
 			print $an->Web->template({file => "common.html", template => "shell-call-output", replace => { line => $line }});
 		}
 		print $an->Web->template({file => "server.html", template => "eject-media-footer"});
-
+		
+		# Update the server's definition file in the database, if it actually changed, and register 
+		# an alert.
+		if ($an->Validate->is_uuid({uuid => $server_uuid}))
+		{
+			$an->Striker->_update_server_definition_in_db({
+				server_name    => $server,
+				server_uuid    => $server_uuid, 
+				new_definition => $new_definition
+			});
+		}
+		
 		# Lastly, copy the new definition to the stored XML for this server.
 		  $an->data->{server}{$server}{xml}  = [];
 		@{$an->data->{server}{$server}{xml}} = split/\n/, $new_definition;
@@ -12958,6 +12976,7 @@ sub _server_insert_media
 		# The server isn't running. Directly re-write the XML file. 
 		my $message = $an->String->get({key => "message_0070", variables => { server => $server }});
 		print $an->Web->template({file => "server.html", template => "insert-media-server-off", replace => { message => $message }});
+		my $server_uuid    = "";
 		my $new_definition = "";
 		my $shell_call     = $an->data->{path}{cat}." $definition_file";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -12972,10 +12991,14 @@ sub _server_insert_media
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
+			if ($line =~ /<uuid>(.*?)<\/uuid>/)
+			{
+				$server_uuid = $1;
+			}
 			if ($line =~ /dev='(.*?)'/)
 			{
 				my $this_device = $1;
@@ -13019,6 +13042,17 @@ sub _server_insert_media
 			print $an->Web->template({file => "common.html", template => "shell-call-output", replace => { line => $line }});
 		}
 		print $an->Web->template({file => "server.html", template => "insert-media-footer"});
+		
+		# Update the server's definition file in the database, if it actually changed, and register 
+		# an alert.
+		if ($an->Validate->is_uuid({uuid => $server_uuid}))
+		{
+			$an->Striker->_update_server_definition_in_db({
+				server_name    => $server,
+				server_uuid    => $server_uuid, 
+				new_definition => $new_definition
+			});
+		}
 		
 		# Lastly, copy the new definition to the stored XML for this server.
 		  $an->data->{server}{$server}{xml}  = [];	# this is probably redundant
@@ -13232,11 +13266,11 @@ sub _update_network_driver
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_update_network_driver" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $new_xml = $parameter->{xml} ? $parameter->{xml} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "new_xml", value1 => $new_xml,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "sys::server::bcn_nic_driver", value1 => $an->data->{sys}{server}{bcn_nic_driver},
 		name2 => "sys::server::sn_nic_driver",  value2 => $an->data->{sys}{server}{sn_nic_driver},
 		name3 => "sys::server::ifn_nic_driver", value3 => $an->data->{sys}{server}{ifn_nic_driver},
@@ -13255,13 +13289,13 @@ sub _update_network_driver
 	my $this_driver  = "";
 	foreach my $line (@new_server_xml)
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /<interface type='bridge'>/)
 		{
 			$in_interface = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "in_interface", value1 => $in_interface,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -13270,14 +13304,14 @@ sub _update_network_driver
 			if ($line =~ /<source bridge='(.*?)_bridge1'\/>/)
 			{
 				$this_network = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "this_network", value1 => $this_network,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /<driver name='(.*?)'\/>/)
 			{
 				$this_driver = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "this_driver", value1 => $this_driver,
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -13285,24 +13319,24 @@ sub _update_network_driver
 				if ($this_network)
 				{
 					my $key = $this_network."_nic_driver";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "key",               value1 => $key,
 						name2 => "sys::server::$key", value2 => $an->data->{sys}{server}{$key},
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{sys}{server}{$key})
 					{
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "this_driver",       value1 => $this_driver,
 							name2 => "sys::server::$key", value2 => $an->data->{sys}{server}{$key},
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($this_driver ne $an->data->{sys}{server}{$key})
 						{
 							# Change the driver
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => ">> line", value1 => $line,
 							}, file => $THIS_FILE, line => __LINE__});
 							$line =~ s/driver name='.*?'/driver name='$an->data->{sys}{server}{$key}'/;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "<< line", value1 => $line,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -13310,7 +13344,7 @@ sub _update_network_driver
 					else
 					{
 						# Delete the driver
-						$an->Log->entry({log_level => 2, message_key => "log_0234", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "log_0234", message_variables => {
 							line => $line, 
 						}, file => $THIS_FILE, line => __LINE__});
 						next;
@@ -13320,13 +13354,13 @@ sub _update_network_driver
 			if ($line =~ /<\/interface>/)
 			{
 				# Insert the driver, if needed.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "this_driver", value1 => $this_driver,
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $this_driver)
 				{
 					my $key = $this_network."_nic_driver";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "key",               value1 => $key,
 						name2 => "sys::server::$key", value2 => $an->data->{sys}{server}{$key},
 					}, file => $THIS_FILE, line => __LINE__});
@@ -13334,7 +13368,7 @@ sub _update_network_driver
 					{
 						# Insert it
 						$new_xml .= "      <driver name='$an->data->{sys}{server}{$key}'/>\n";
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "sys::server::$key", value1 => $an->data->{sys}{server}{$key}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -13343,7 +13377,7 @@ sub _update_network_driver
 				$in_interface = 0;
 				$this_network = "";
 				$this_driver  = "";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "in_interface", value1 => $in_interface,
 					name2 => "this_network", value2 => $this_network,
 					name3 => "this_driver",  value3 => $this_driver,
@@ -13383,6 +13417,7 @@ sub _update_server_definition
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $server_uuid    = "";
 	my $new_definition = "";
 	my $shell_call     = $an->data->{path}{virsh}." dumpxml $server";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -13405,6 +13440,10 @@ sub _update_server_definition
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$new_definition .= "$line\n";
+		if ($line =~ /<uuid>(.*?)<\/uuid>/)
+		{
+			$server_uuid = $1;
+		}
 	}
 	
 	# See if I need to insert or edit any network interface driver elements.
@@ -13435,6 +13474,84 @@ sub _update_server_definition
 	foreach my $line (split/\n/, $new_definition)
 	{
 		push @{$an->data->{server}{$server}{xml}}, $line;
+	}
+	
+	# Read in the old definition from the database and, if it has changed, update the definition file 
+	# and register an alert.
+	if ($an->Validate->is_uuid({uuid => $server_uuid}))
+	{
+		$an->Striker->_update_server_definition_in_db({
+			server_name    => $server,
+			server_uuid    => $server_uuid, 
+			new_definition => $new_definition
+		});
+	}
+	
+	return(0);
+}
+
+# This updates the server definition in the ScanCore database, if it has changed, and triggers an alert.
+sub _update_server_definition_in_db
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_update_server_definition_in_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+
+	my $server_name    = $parameter->{server_name}    ? $parameter->{server_name}    : "";
+	my $server_uuid    = $parameter->{server_uuid}    ? $parameter->{server_uuid}    : "";
+	my $new_definition = $parameter->{new_definition} ? $parameter->{new_definition} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "server_name",    value1 => $server_name, 
+		name2 => "server_uuid",    value2 => $server_uuid, 
+		name3 => "new_definition", value3 => $new_definition, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $query = "
+SELECT 
+    server_definition 
+FROM 
+    servers 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+	my $old_definition = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$old_definition = "" if not defined $old_definition;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "old_definition", value1 => $old_definition, 
+		name2 => "new_definition", value2 => $new_definition, 
+		name3 => "diff",           value3 => diff \$old_definition, \$new_definition, { STYLE => 'Unified' },
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (($old_definition) && ($old_definition ne $new_definition))
+	{
+		# This will happen whenever the virsh ID changes, disks are inserted/ejected, etc. So it's a
+		# notice-level event. It won't be sent until one of the nodes scan though.
+		$an->Alert->register_alert({
+			alert_level		=>	"notice", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0003",
+			alert_message_key	=>	"scan_server_message_0007",
+			alert_message_variables	=>	{
+				server			=>	$server_name, 
+				new			=>	$new_definition,
+				diff			=>	diff \$old_definition, \$new_definition, { STYLE => 'Unified' },
+			},
+		});
+		
+		my $query = "
+UPDATE 
+    servers 
+SET 
+    server_definition = ".$an->data->{sys}{use_db_fh}->quote($new_definition).", 
+    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    server_uuid       = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);

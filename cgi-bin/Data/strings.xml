@@ -2301,10 +2301,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 
 DESCRIPTION
 
-This program sets up passwordless SSH to the nodes associated with the given
-'--anvil X' switch. This is designed to allow Virtual Machine Manager the 
-ability to access servers on the nodes without repeated request to enter the
-nodes' password.
+This program sets up passwordless SSH to the accessible nodes in all known 
+Anvil! systems configured in the dashboard's ScanCore database. This is 
+designed to allow Virtual Machine Manager the ability to access servers on the
+nodes without repeated request to enter the nodes' password.
 
 == USE OF THIS FEATURE POSES A SECURITY RISK! ==
 
@@ -2312,14 +2312,6 @@ Please see the comments in #!data!path::striker_config!# -> tools::striker-push-
 
 
 SWITCHES
-
- --anvil
- 
-	This is the name of the #!string!brand_0004!# to use. The associated
-	nodes are found by reading #!data!path::striker_config!#.
-	
-	The nodes are then configured to accept all local users ssh access 
-	without a password.
  
  -h, -?, --help
 
@@ -2337,7 +2329,7 @@ SUPPORT
 		<!-- log entries -->
 		<key name="sps_log_0001">#!variable!this_file!# has started.</key>
 		<key name="sps_log_0002">Looking for the login details for: [#!variable!anvil!#] #!string!brand_0004!#.</key>
-		<key name="sps_log_0003">Gathered the login credentials for the: [#!variable!anvil!#] #!string!brand_0004!#.</key>
+		<key name="sps_log_0003">...free...</key>
 		<key name="sps_log_0004">No local users were found, so there is nothing to do.</key>
 		<key name="sps_log_0005">Please be patient! Generating an RSA key now. This can take time depending on how large the key is and how long it takes to collect entropy...</key>
 		<key name="sps_log_0006">successfully generated an RSA key for the user: [#!variable!user!#].</key>
@@ -2553,6 +2545,7 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
+		<key name="scv_message_0016">Setting up passwordless SSH to the nodes (which will do nothing if that feature is disabled).</key>
 		
 		<!-- warning messages -->
 		<key name="scv_warning_0001">Failed to disable #!variable!this_file!#! Please set 'tools::striker-configure-vmm::enabled = 0' manually.</key>

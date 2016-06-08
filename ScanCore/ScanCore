@@ -2447,7 +2447,7 @@ sub process_alerts
 {
 	my ($an, $first_run) = @_;
 	$first_run = 0 if not defined $first_run;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_alerts", }, message_key => "tools_log_0003", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_alerts", }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "first_run", value1 => $first_run
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2467,7 +2467,7 @@ FROM
 WHERE 
     alert_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
@@ -2489,7 +2489,7 @@ WHERE
 			name5 => "alert_title_variables",   value5 => $alert_title_variables, 
 			name6 => "alert_message_key",       value6 => $alert_message_key, 
 			name7 => "alert_message_variables", value7 => $alert_message_variables, 
-			name8 => "modified_date",           value8 => $alert_message_variables, 
+			name8 => "modified_date",           value8 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Sometimes alerts are sent by modules. In those cases, ignore them.
@@ -3385,29 +3385,34 @@ sub get_string_from_double_bang
 		{
 			$i++;
 			die "$THIS_FILE ".__LINE__."; Exiting on infinite loop parsing pairs out of: [$variables]\n" if $i > 1000;
-			my $pair      =  ($variables =~ /(!!.*?!!)/)[0];
-			   $variables =~ s/\Q$pair\E//;
+			
+			my $pair      =  ($variables =~ /(!!.*?!!)/s)[0];
+			   $variables =~ s/\Q$pair\E//s;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "i",         value1 => $i, 
 				name2 => "pair",      value2 => $pair, 
 				name3 => "variables", value3 => $variables, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next if not $pair;
+			
 			my $variable = "";
 			my $value    = "";
 			if ($pair =~ /^!!(.*?)!!!$/s)
 			{
 				# No value, this is OK.
 				($variable) = ($pair =~ /^!!(.*?)!(.*?)!!$/s);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "variable", value1 => $variable, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($pair =~ /^!!(.*?)!(.*?)!!$/s)
 			{
 				($variable, $value) = ($pair =~ /^!!(.*?)!(.*?)!!$/s);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "variable", value1 => $variable, 
-				name2 => "value",    value2 => $value, 
-			}, file => $THIS_FILE, line => __LINE__});
 			die "$THIS_FILE ".__LINE__."; No variable parsed from: [$pair]\n" if not defined $variable;
 			
 			# If the value is one of the special sensor name or value strings, translate it.

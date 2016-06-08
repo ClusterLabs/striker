@@ -221,7 +221,7 @@ if (not $connections)
 	exit(0);
 }
 
-# Exit if virtual manager manager configuration disabled in striker.conf.
+# Exit if virtual machine manager configuration is disabled in striker.conf.
 if ($an->data->{tools}{'striker-configure-vmm'}{enabled})
 {
 	# Add ourself to GDM's PreSession script, if needed.
@@ -292,6 +292,24 @@ foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
 	$an->Log->entry({log_level => 3, message_key => "scv_message_0010", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 	setup_virtual_machine_manager_config($an, $user);
 }
+
+# Call 'striker-push-ssh'
+print $an->String->get({key => "scv_message_0016"})."\n";
+my $shell_call = $an->data->{path}{'striker-push-ssh'};
+$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	name1 => "shell_call", value1 => $shell_call, 
+}, file => $THIS_FILE, line => __LINE__});
+open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+while(<$file_handle>)
+{
+	chomp;
+	my $line = $_;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "line", value1 => $line,
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+}
+close $file_handle;
+
 print $an->String->get({key => "scv_message_0011"})."\n";
 
 exit(0);
@@ -322,6 +340,9 @@ then
 else 
     echo disabled;
 fi";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
 	while(<$file_handle>)
 	{
@@ -383,6 +404,9 @@ sub manage_gdm_presession
 	my $entry_exists = 0;
 	my $path         = $an->data->{path}{gdm_presession};
 	my $shell_call   = $path;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
 	while(<$file_handle>)
 	{
@@ -429,6 +453,9 @@ sub manage_gdm_presession
 		
 		# Write the new version out.
 		my $shell_call = $path;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		print $file_handle $raw_file;
 		close $file_handle;
