@@ -8602,9 +8602,9 @@ SWITCHES
  --run-rc-local
 
 	In some cases, some users have customizations in /etc/rc.local that can
-	be clobbered by the --gui install. Using this switch causes the
-	installer to call 'sh /etc/rc.local' just prior to the end of the
-	install process.
+	be clobbered by the GUI install. Using this switch causes the installer
+	to call 'sh /etc/rc.local' just prior to the end of the install 
+	process.
 
  -u <user:password>
 
@@ -8815,6 +8815,7 @@ sub select_nics
 		logger($conf, $THIS_FILE, __LINE__, "say_nic: [$say_nic]", 3);
 		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
 		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
+		$conf->{cache}{nic}{name}{$nic} = "" if not defined $conf->{cache}{nic}{name}{$nic};
 		logger($conf, $THIS_FILE, __LINE__, "nic::name::$nic: [$conf->{nic}{name}{$nic}], cache::nic::name::$nic: [$conf->{cache}{nic}{name}{$nic}]", 3);
 		my $this_mac = $conf->{cache}{nic}{name}{$nic} ? $conf->{cache}{nic}{name}{$nic} : $conf->{nic}{name}{$nic};
 		logger($conf, $THIS_FILE, __LINE__, "this_mac: [$this_mac]", 3);

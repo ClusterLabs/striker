@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2016-02-28 19:58:49
+# Built:   2016-06-06 21:18:37
 # Target:  Network Install (PXE)
 # OS:      CentOS
 # Machine: Anvil! Node #02
@@ -59,8 +59,83 @@ reboot
 # This is a very minimal installation. It is just enough to get the nodes ready
 # for the Stage-2 'Install Manifest' run from the Striker dashboard.
 %packages
-@core
-@server-policy
+# We clobber the groups XML repodata, so we specify the packages directly.
+# Core - mandatory
+acl
+attr
+audit
+basesystem
+bash
+coreutils
+cpio
+cronie
+dhclient
+e2fsprogs
+filesystem
+glibc
+initscripts
+iproute
+iptables
+iptables-ipv6
+iputils
+kbd
+ncurses
+openssh-server
+passwd
+policycoreutils
+procps
+redhat-support-tool
+rhnsd
+rootfiles
+rpm
+rsyslog
+selinux-policy-targeted
+setup
+shadow-utils
+subscription-manager
+sudo
+util-linux-ng
+vim-minimal
+yum
+yum-rhn-plugin
+
+# Core - Default
+aic94xx-firmware
+atmel-firmware
+b43-openfwwf
+bfa-firmware
+efibootmgr
+grub
+ipw2100-firmware
+ipw2200-firmware
+ivtv-firmware
+iwl100-firmware
+iwl1000-firmware
+iwl3945-firmware
+iwl4965-firmware
+iwl5000-firmware
+iwl5150-firmware
+iwl6000-firmware
+iwl6000g2a-firmware
+iwl6050-firmware
+kernel-firmware
+kexec-tools
+libertas-usb8388-firmware
+postfix
+ql2100-firmware
+ql2200-firmware
+ql23xx-firmware
+ql2400-firmware
+ql2500-firmware
+rt61pci-firmware
+rt73usb-firmware
+xorg-x11-drv-ati-firmware
+zd1211-firmware
+
+# Core - Optional
+dracut-network
+
+# Others - Common to nodes and dashboards
 -kdump
 alteeve-repo
 gpm

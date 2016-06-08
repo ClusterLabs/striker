@@ -31,7 +31,7 @@ my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
-	        $running_directory =~ s/^\./$ENV{PWD}/;
+	$running_directory =~ s/^\./$ENV{PWD}/;
 }
 
 my $an = AN::Tools->new({data => {
@@ -70,15 +70,7 @@ if (($an->data->{switches}{h})   or
 }
 
 # Log our startup
-$an->Log->entry({log_level => 3, message_key => "sps_log_0001", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
-
-# Exit if no Anvil! defined.
-if (not $an->data->{switches}{anvil})
-{
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sps_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
-}
+$an->Log->entry({log_level => 3, message_key => "sps_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 # Exit if we've been disabled in the config file.
 if (not $an->data->{tools}{'striker-push-ssh'}{enabled})
@@ -86,47 +78,6 @@ if (not $an->data->{tools}{'striker-push-ssh'}{enabled})
 	$an->Log->entry({log_level => 2, message_key => "sps_log_0013", file => $THIS_FILE, line => __LINE__});
 	print $an->String->get({key => "sps_log_0013"})."\n";
 	exit(1);
-}
-
-# Log that we're looking for the login credentials to the defined node.
-$an->Log->entry({log_level => 2, message_key => "sps_log_0002", message_variables => {
-	anvil	=>	$an->data->{switches}{anvil},
-}, file => $THIS_FILE, line => __LINE__});
-
-# Find the login details
-my $anvil_data = $an->ScanCore->parse_anvil_data();
-foreach my $anvil_uuid (keys %{$an->data->{anvils}})
-{
-	if ($an->data->{anvils}{$anvil_uuid}{name} eq $an->data->{switches}{anvil})
-	{
-		# Found it.
-		$an->data->{anvil}{uuid}     = $anvil_uuid;
-		$an->data->{anvil}{node1}    = $an->data->{anvils}{$anvil_uuid}{node1}{name};
-		$an->data->{anvil}{node2}    = $an->data->{anvils}{$anvil_uuid}{node2}{name};
-		$an->data->{anvil}{password} = $an->data->{anvils}{$anvil_uuid}{password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-			name1 => "anvil::id",       value1 => $an->data->{anvil}{id}, 
-			name2 => "anvil::node1",    value2 => $an->data->{anvil}{node1}, 
-			name3 => "anvil::node2",    value3 => $an->data->{anvil}{node2}, 
-			name4 => "anvil::password", value4 => $an->data->{anvil}{password}, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-}
-
-# If I didn't find an Anvil!, exit.
-if ($an->data->{anvil}{uuid})
-{
-	# Woot!
-	$an->Log->entry({log_level => 2, message_key => "sps_log_0003", message_variables => {
-		anvil	=>	$an->data->{switches}{anvil}, 
-	}, file => $THIS_FILE, line => __LINE__});
-}
-else
-{
-	# Well foo. 
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sps_error_0002", message_variables => {
-		anvil	=>	$an->data->{switches}{anvil},
-	}, code => 2, file => "$THIS_FILE", line => __LINE__});
 }
 
 # Now determine what local users exist.
@@ -139,13 +90,53 @@ if (not $local_user_count)
 	exit(0);
 }
 
-# If I am still alive, loop through the list of users, get their local RSA key (generating it as needed) and
-# then add it to each target node.
-foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
+# Loop through all configured Anvil! systems
+my $anvils = $an->ScanCore->get_anvils();
+foreach my $hash_ref (@{$anvils})
 {
-	### TODO: When moving to the new module methods, we'll need to process the general success/failure as
-	###       it won't report per-user failures.
-	push_ssh_keys($an, $user);
+	# Log that we're looking for the login credentials to the defined node.
+	$an->Log->entry({log_level => 2, message_key => "sps_log_0002", message_variables => { anvil => $anvil_name }, file => $THIS_FILE, line => __LINE__});
+
+	# Find the login details
+	my $anvil_data = $an->ScanCore->parse_anvil_data();
+	foreach my $anvil_uuid (keys %{$an->data->{anvils}})
+	{
+		if ($an->data->{anvils}{$anvil_uuid}{name} eq $an->data->{switches}{anvil})
+		{
+			# Found it.
+			$an->data->{anvil}{uuid}     = $anvil_uuid;
+			$an->data->{anvil}{node1}    = $an->data->{anvils}{$anvil_uuid}{node1}{name};
+			$an->data->{anvil}{node2}    = $an->data->{anvils}{$anvil_uuid}{node2}{name};
+			$an->data->{anvil}{password} = $an->data->{anvils}{$anvil_uuid}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "anvil::id",       value1 => $an->data->{anvil}{id}, 
+				name2 => "anvil::node1",    value2 => $an->data->{anvil}{node1}, 
+				name3 => "anvil::node2",    value3 => $an->data->{anvil}{node2}, 
+				name4 => "anvil::password", value4 => $an->data->{anvil}{password}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+
+	# If I didn't find an Anvil!, exit.
+	if ($an->data->{anvil}{uuid})
+	{
+		# Woot!
+		$an->Log->entry({log_level => 2, message_key => "sps_log_0003", message_variables => { anvil => $an->data->{switches}{anvil} }, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Well foo. 
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sps_error_0002", message_variables => { anvil => $an->data->{switches}{anvil} }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	}
+
+	# If I am still alive, loop through the list of users, get their local RSA key (generating it as needed) and
+	# then add it to each target node.
+	foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
+	{
+		### TODO: When moving to the new module methods, we'll need to process the general success/failure as
+		###       it won't report per-user failures.
+		#push_ssh_keys($an, $user);
+	}
 }
 
 exit(0);
@@ -173,6 +164,7 @@ sub push_ssh_keys
 	# If I read the key, push it to the nodes now.
 	if ($key)
 	{
+		### TODO: Update this to use the new access methods.
 		# OK, loop through the nodes.
 		foreach my $node ($an->data->{anvil}{node1}, $an->data->{anvil}{node2})
 		{

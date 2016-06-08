@@ -437,7 +437,7 @@ fi
 if grep -q sda /proc/partitions;
 then
 	echo \"Please be patient! Zero'ing out the first 100 GiB of /dev/\${DRIVE}...\"
-	dd if=/dev/zero of=/dev/\${DRIVE} bs=4M count=25000
+	dd if=/dev/zero of=/dev/\${DRIVE} bs=1G count=100
 fi
 
 ### Make sure we always create a GPT disk (https://access.redhat.com/solutions/55652)
@@ -593,17 +593,14 @@ cat > /root/example_striker-installer.txt << EOF
 # and the help will be displayed.
 # 
 ./striker-installer \\\\
- -c \"$company_name\" \\\\
- -n \"${prefix}-striker0${number}.$domain\" \\\\
- -e \"$admin_user\@$domain:$password\" \\\\
- -m mail.$domain:587 \\\\
- -u \"$admin_user:$password\" \\\\
- -i $my_ifn_ip/$ifn_netmask,dg=$ifn_gateway,dns1=$ifn_dns1,dns2=$ifn_dns2 \\\\
  -b $my_bcn_ip/$bcn_netmask \\\\
- -p $dhcp_range \\\\
+ -i $my_ifn_ip/$ifn_netmask,dg=$ifn_gateway,dns1=$ifn_dns1,dns2=$ifn_dns2 \\\\
+ -n \"${prefix}-striker0${number}.$domain\" \\\\
+ -c \"$company_name\" \\\\
+ -u \"$admin_user:$password\" \\\\
  --peer-dashboard hostname=${prefix}-striker0${peer_number}.$domain,bcn_ip=$peer_ip \\\\
  --router-mode \\\\
- --gui \\\\
+ -p $dhcp_range \\\\
 ";
 		# Use '--rhn' on RHEL only.
 		if ($distro eq "rhel")
