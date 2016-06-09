@@ -12133,7 +12133,7 @@ sub populate_known_hosts_on_node
 		# existing keys are removed if found.
 		next if not $name;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "checking/adding fingerprint for", value1 => $name,
+			name1 => "name", value1 => $name,
 		}, file => $THIS_FILE, line => __LINE__});
 		my $try_again  = 0;
 		my $shell_call = "

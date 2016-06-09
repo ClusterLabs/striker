@@ -21,7 +21,7 @@
 # 1  = Failed to unmount a device.
 # 2  = Failed to create the local mount point.
 # 3  = Local mount point is in use.
-# 4  = Local mount point is a file.
+# 4  = NOTE: No longer fatal, just a warning - Local mount point is a file.
 # 5  = Unable to find a free mount point on the remote system.
 # 6  = Unable to create the remote mount point
 # 7  = Remote machine does not have 'nfs-utils' installed.
@@ -527,7 +527,7 @@ sub format_device
 	}
 	
 	# Put together our format call
-	my $mkfs_call = "$conf->{path}{mkfs} -t $conf->{'remote-usb'}{luks}{use_filesystem} $device";
+	my $mkfs_call = "$conf->{path}{mkfs} -O ^has_journal -t $conf->{'remote-usb'}{luks}{use_filesystem} $device";
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote-usb::luks::use_filesystem: [$conf->{'remote-usb'}{luks}{use_filesystem}], remote-usb::luks::fs_label: [$conf->{'remote-usb'}{luks}{fs_label}]");
 	if ($conf->{'remote-usb'}{luks}{fs_label})
 	{
@@ -992,9 +992,10 @@ fi;";
 			opendir(DIR, $local_mount) or die "Failed to open the directory: [$local_mount], error was: $!\n";
 			while (my $file = readdir(DIR))
 			{
+				# Changed by client request because of issues with rapid insert/ejects.
 				next if (($file eq ".") or ($file eq ".."));
-				logger($conf, $THIS_FILE, __LINE__, "Found a file: [$local_mount/$file], the mount point is not empty. Unable to proceed.");
-				exit(4);
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning] - Found a file: [$local_mount/$file], the mount point is not empty.");
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning]   Proceeding with mount, but any existing mount or data will be hidden.");
 			}
 			
 			# Finally, mount the FS.

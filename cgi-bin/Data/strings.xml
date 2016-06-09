@@ -1566,8 +1566,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0145"><![CDATA[<span class="fixed_width">#!variable!node_name!#</span> will leave the #!string!brand_0003!#.]]></key>
 		<key name="message_0146">Once withdrawn, it will no longer be able to run or recover any servers until it rejoins the #!string!brand_0003!#.</key>
 		<key name="message_0147"><![CDATA[This will attempt to join the node <span class="fixed_width">#!variable!node_name!#</span> to the #!string!brand_0003!#.]]></key>
-		<key name="message_0148">This is usually a safe action.</key>
-		<key name="message_0149">If, for any reason, this node can't connect to it's peer, the peer node could be fenced (forcibly shut off).</key>
+		<key name="message_0148"><![CDATA[The peer does not appear to be an #!string!brand_0003!# member.<br />Proceedinging will likely cause the peer node to be fenced (rebooted).]]></key>
+		<key name="message_0149"><![CDATA[One (or more) of the networks between the nodes appears to be down.<br />Proceedinging might cause problems, please check for problems first.]]></key>
 		<key name="message_0150"><![CDATA[This will attempt to join both nodes of the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="message_0151"><![CDATA[The #!string!brand_0003!# node <span class="fixed_width">#!variable!node_name!#</span> is about to be <span class="highlight_dangerous">forcibly powered off</span>!]]></key>
 		<key name="message_0152">This will effectively press and hold your node's power button until the system is forced to power down.</key>

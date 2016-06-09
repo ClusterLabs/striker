@@ -11,6 +11,7 @@ my $THIS_FILE = "striker-usb-remove";
 # Exit codes:
 # 0  = Normal exit.
 # 1  = Failed to unmount a stale mount point.
+# 2  = Was about to recursively remove a mount point that wasn't under '/mnt'.
 
 my $conf = inititialize_configuration();
 read_configuration($conf);
@@ -281,7 +282,7 @@ sub cleanup_remote
 		}
 		my $shell_call = "
 echo 'Unmounting: [$mount].'
-umount $mount
+umount -lf $mount
 sync
 df -hP
 ";
@@ -306,9 +307,15 @@ df -hP
 			}
 		}
 		
+		# Before doing an 'rm -rf', make sure $mount is sane,
+		if ($mount !~ /^\/mnt\//)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - About to recursively remove: [$mount], which isn't under '/mnt'!");
+			exit(2);
+		}
 		$shell_call = "
 echo 'Removing empty mount point: [$mount].'
-rmdir $mount
+rm -rf $mount
 if [ -e '$mount' ]
 then
     echo 'failed to remove old mount point.'

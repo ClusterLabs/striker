@@ -29,6 +29,7 @@ my $THIS_FILE = "Striker.pm";
 # _check_lv
 # _check_node_daemons
 # _check_node_readiness
+# _check_peer_access
 # _cold_stop_anvil
 # _confirm_cold_stop_anvil
 # _confirm_delete_server
@@ -3026,12 +3027,139 @@ sub _check_node_readiness
 		}
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "server",        value1 => $server,
+		name1 => "server",    value1 => $server,
 		name2 => "node_name", value2 => $node_name,
 		name3 => "ready",     value3 => $ready,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return ($ready);
+}
+
+# This simply checks that the peer can be accessed on all three networks. Returns '1' if all are available,
+# '0' otherwise. This also returns '1' if 'cman' is running on the peer, '0' if not (or not found).
+sub _check_peer_access
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_check_peer_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Do a quick scan to get details about the nodes
+	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
+	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
+	
+	# The node name passed in CGI is the node we're going to join to the Anvil!. So that is the machine
+	# we will log into and from there, test access to the peer.
+	my $node_name     = $an->data->{cgi}{node_name};
+	my $node_key      = $an->data->{sys}{node_name}{$node_name}{node_key};
+	my $peer_key      = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
+	my $target        = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port          = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password      = $an->data->{sys}{anvil}{$node_key}{password};
+	my $peer_bcn_ip   = $an->data->{sys}{anvil}{$peer_key}{bcn_ip};
+	my $peer_sn_ip    = $an->data->{sys}{anvil}{$peer_key}{sn_ip};
+	my $peer_ifn_ip   = $an->data->{sys}{anvil}{$peer_key}{ifn_ip};
+	my $peer_password = $an->data->{sys}{anvil}{$peer_key}{ifn_ip};
+	my $peer_target   = $an->data->{sys}{anvil}{$peer_key}{use_ip};
+	my $peer_port     = $an->data->{sys}{anvil}{$peer_key}{use_port};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		name1  => "node_name",   value1  => $node_name,
+		name2  => "node_key",    value2  => $node_key,
+		name3  => "peer_key",    value3  => $peer_key,
+		name4  => "target",      value4  => $target,
+		name5  => "port",        value5  => $port,
+		name6  => "peer_bcn_ip", value6  => $peer_bcn_ip,
+		name7  => "peer_sn_ip",  value7  => $peer_sn_ip,
+		name8  => "peer_ifn_ip", value8  => $peer_ifn_ip,
+		name9  => "peer_target", value9  => $peer_target,
+		name10 => "peer_port",   value10 => $peer_port,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+		name1 => "password",      value1 => $password,
+		name2 => "peer_password", value2 => $peer_password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $peer_access  = 1;
+	foreach my $peer_ip ($peer_bcn_ip, $peer_sn_ip, $peer_ifn_ip)
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_ip", value1 => $peer_ip,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# We need to use '-o StrictHostKeyChecking=no' because the installer doesn't populate 
+		# known_hosts for the IPs (and even if it did, this would fail if/when the user changed the
+		# IP(s). In m3, we'll setup a mechanism to change IP addresses that handles this properly.
+		my $success    = 0;
+		my $shell_call = $an->data->{path}{ssh}." -o StrictHostKeyChecking=no root\@".$peer_ip." \"".$an->data->{path}{echo}." 1\"";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line eq "1")
+			{
+				$success = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "success", value1 => $success, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		$peer_access = 0 if not $success;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_access", value1 => $peer_access, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# If I have access, check cman's state.
+	my $peer_cman_up = 0;
+	my $shell_call   = $an->data->{path}{initd}."/cman status; ".$an->data->{path}{echo}." rc:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$peer_target,
+		port		=>	$peer_port, 
+		password	=>	$peer_password,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line eq "rc:0")
+		{
+			$peer_cman_up = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "peer_cman_up", value1 => $peer_cman_up, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "peer_access",  value1 => $peer_access,
+		name2 => "peer_cman_up", value2 => $peer_cman_up,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "peer_access",  value1 => $peer_access,
+		name2 => "peer_cman_up", value2 => $peer_cman_up,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($peer_access, $peer_cman_up);
 }
 
 ### TODO: Make this handle a case where load-shedding fails if neither node can be stopped because both nodes
@@ -3601,10 +3729,12 @@ sub _confirm_join_anvil
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_join_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Ask the user to confirm
-	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
-	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{cgi}{node_name};
+	# Ask the user to confirm. This happens either because the peer node is not running cman or because 
+	# (one of) the peer's network links didn't work.
+	my $anvil_uuid     = $an->data->{cgi}{anvil_uuid};
+	my $anvil_name     = $an->data->{sys}{anvil}{name};
+	my $node_name      = $an->data->{cgi}{node_name};
+	my $confirm_reason = $parameter->{confirm_reason} ? $parameter->{confirm_reason} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
@@ -3619,6 +3749,7 @@ sub _confirm_join_anvil
 	print $an->Web->template({file => "server.html", template => "confirm-join-anvil", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
+		reason		=>	$confirm_reason, 
 		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 
@@ -7493,7 +7624,7 @@ sub _header
 	return (0);
 }
 
-# This sttempts to shut down a VM on a target node.
+# This attempts to join a node to an Anvil!.
 sub _join_anvil
 {
 	my $self      = shift;
@@ -11776,6 +11907,46 @@ sub _process_task
 	}
 	elsif ($an->data->{cgi}{task} eq "join_anvil")
 	{
+		# If the peer is accessible on all three networks and if cman is running on the peer, don't
+		# ask for confirmation.
+		my $confirm_reason = "";
+		if (not $an->data->{cgi}{confirm})
+		{
+			my ($peer_access, $peer_cman_up) = $an->Striker->_check_peer_access();
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "peer_access",  value1 => $peer_access, 
+				name2 => "peer_cman_up", value2 => $peer_cman_up,
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($peer_access) && ($peer_cman_up))
+			{
+				$an->data->{cgi}{confirm} = "true";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "cgi::confirm", value1 => $an->data->{cgi}{confirm}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ((not $peer_access) && (not $peer_cman_up))
+			{
+				$confirm_reason = "#!string!message_0148!#<br />#!string!message_0149!#";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "confirm_reason", value1 => $confirm_reason, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif (not $peer_access)
+			{
+				$confirm_reason = "#!string!message_0149!#";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "confirm_reason", value1 => $confirm_reason, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif (not $peer_cman_up)
+			{
+				$confirm_reason = "#!string!message_0148!#";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "confirm_reason", value1 => $confirm_reason, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
@@ -11783,7 +11954,7 @@ sub _process_task
 		}
 		else
 		{
-			$an->Striker->_confirm_join_anvil();
+			$an->Striker->_confirm_join_anvil({confirm_reason => $confirm_reason});
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "dual_join")
