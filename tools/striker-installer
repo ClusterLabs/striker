@@ -209,6 +209,7 @@ my $conf = {
 			dhcp				=>	0,
 			expect				=>	0, 
 			'fence-agents'			=>	0,
+			gcalctool			=>	0,
 			gcc				=>	0,
 			'gcc-c++'			=>	0,
 			httpd				=>	0,
@@ -224,6 +225,7 @@ my $conf = {
 			mod_ssl				=>	0,
 			mtr				=>	0,
 			'mtr-gtk'			=>	0,
+			nano				=>	0,
 			'ntfs-3g'			=>	0, 
 			ntfsprogs			=>	0,
 			# NFS packages used for remote usb function.

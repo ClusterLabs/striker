@@ -86,12 +86,12 @@ $an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_v
 # OK, shut down.
 if ($connections)
 {
-	my $stop_reason   = $an->data->{switches}{reason} ? $an->data->{switches}{reason} : "clean";
-	my ($stop_return) = $an->Cman->stop_server({
+	my $stop_reason = $an->data->{switches}{reason} ? $an->data->{switches}{reason} : "clean";
+	my $stop_return = $an->Cman->stop_server({
 			server => $an->data->{switches}{server},
 			reason => $stop_reason,
 		});
-	foreach my $line (@{$stop_return})
+	foreach my $line (split/\n/, $stop_return)
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,

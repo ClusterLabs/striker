@@ -8080,45 +8080,25 @@ sub do_node_reboot
 			else
 			{
 				# Log in and see if the uptime is short.
-				my $uptime     = 99999999;
-				my $shell_call = $an->data->{path}{nodes}{cat}." /proc/uptime";
+				my $uptime = $an->System->get_uptime({
+						target		=>	$target,
+						port		=>	$port, 
+						password	=>	$password,
+					});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "target",     value1 => $target,
-					name2 => "shell_call", value2 => $shell_call,
+					name1 => "uptime",     value1 => $uptime, 
+					name2 => "uptime_max", value2 => $uptime_max, 
 				}, file => $THIS_FILE, line => __LINE__});
-				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-					target		=>	$target,
-					port		=>	$port, 
-					password	=>	$password,
-					shell_call	=>	$shell_call,
-				});
-				foreach my $line (@{$return})
+				if ($uptime < $uptime_max)
 				{
+					# We rebooted and missed it.
+					$has_shutdown = 1;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line, 
+						name1 => "has_shutdown", value1 => $has_shutdown, 
 					}, file => $THIS_FILE, line => __LINE__});
-					
-					if ($line =~ /^(\d+)\./)
-					{
-						$uptime = $1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "uptime", value1 => $uptime, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "uptime",     value1 => $uptime, 
-						name2 => "uptime_max", value2 => $uptime_max, 
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($uptime < $uptime_max)
-					{
-						# We rebooted and missed it.
-						$has_shutdown = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "has_shutdown", value1 => $has_shutdown, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
 				}
 			}
+			
 			if (time > $timeout)
 			{
 				$return_code = 4;

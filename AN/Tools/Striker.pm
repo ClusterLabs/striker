@@ -1090,11 +1090,12 @@ sub scan_servers
 			}
 			$an->data->{server}{$server}{say_node1} = "--";
 			$an->data->{server}{$server}{say_node2} = "--";
+			
 			my $say_error = $an->String->get({key => "message_0271", variables => { 
 					server	=>	$server,
 					url	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=add_server&name=$server&node_name=$host_node&state=$server_state",
 				}});
-			$an->Striker->_error({message => $say_error, fatal => 0});
+			print $an->Web->template({file => "common.html", template => "error-table", replace => { message => $say_error }});
 			next;
 		}
 		
@@ -5615,8 +5616,14 @@ sub _display_server_state_and_controls
 	{
 		# Break the name out of the hash key.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "server", value1 => $server,
+			name1 => "server::${server}::host", value1 => $an->data->{server}{$server}{host},
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If the server has not yet been added to the Anvil!, skip it.
+		if (not $an->data->{server}{$server}{host})
+		{
+			next;
+		}
 		
 		# Use the node's short name for the buttons.
 		my $say_start_target     =  $an->data->{server}{$server}{boot_target} ? $an->data->{server}{$server}{boot_target} : "--";
@@ -8694,6 +8701,29 @@ sub _parse_anvil_safe_start
 		if (($line =~ /\[running\]/i) or ($line =~ /\[queued\]/i))
 		{
 			$an->data->{node}{$node_name}{'anvil-safe-start'} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node_name}::anvil-safe-start", value1 => $an->data->{node}{$node_name}{'anvil-safe-start'},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# TODO: This is a dirty fix and we should feel dirty. It shouldn't return 'running' or 'queued' when
+	#       it runs via crontab.
+	# Check the uptime. If it is > 10 minutes, don't show this.
+	if ($an->data->{node}{$node_name}{'anvil-safe-start'})
+	{
+		my $uptime = $an->System->get_uptime({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+			});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "uptime", value1 => $uptime,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($uptime > 600)
+		{
+			$an->data->{node}{$node_name}{'anvil-safe-start'} = 0;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node::${node_name}::anvil-safe-start", value1 => $an->data->{node}{$node_name}{'anvil-safe-start'},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -12204,6 +12234,15 @@ sub _provision_server
 		$provision .= " \\\\\n";
 	}
 	$provision .= "  --graphics spice \\\\\n";
+	
+	# TODO: (2016-06-08) There is a bug with provisioning Win7 and Win2008 servers with spice graphics.
+	#       So until it is resolved, we will drop them to use more basic video. See:
+	#       http://serverfault.com/questions/776406/windows-7-setup-hangs-at-starting-windows-using-proxmox-4-2
+	if (($an->data->{cgi}{os_variant} eq "win7") or (($an->data->{cgi}{os_variant} eq "win2k8") && ($an->data->{new_server}{install_iso} !~ /12/)))
+	{
+		$provision .= "  --video cirrus \\\\\n";
+	}
+	
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
 	# for why we're using '--noautoconsole --wait -1'.
 	$provision .= "  --noautoconsole --wait -1 > /var/log/an-install_".$an->data->{new_server}{name}.".log &\n";
