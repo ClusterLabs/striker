@@ -61,11 +61,6 @@ my $an = AN::Tools->new({data =>
 	{
 		path		=>	{
 			agents_directory	=>	"$running_directory/agents",
-			# This is the path to Striker's cache directory. It is
-			# used by striker dashboards when they want to reboot a
-			# node that is in emergency-stop and the environment is
-			# safe again.
-			node_cache		=>	"/var/www/home/cache", 
 			scancore_strings	=>	"$running_directory/ScanCore.xml",
 			scancore_sql		=>	"$running_directory/ScanCore.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
@@ -73,8 +68,7 @@ my $an = AN::Tools->new({data =>
 		},
 		# Things set here are meant to be overwritable by the user in striker.conf.
 		scancore			=>	{
-			# Set to '1' to add the footer warning that the email
-			# did not come from alteeve.ca
+			# Set to '1' to add the footer warning that the email did not come from alteeve.ca.
 			append_email_footer	=>	0,
 			dashboard		=>	{
 				dlm_hung_timeout	=>	0,
@@ -340,8 +334,8 @@ while(1)
 	}
 	else
 	{
-		# Failed to connect to any database. This isn't fatal though...
-		# Send an alert email if we haven't already, sleep.
+		# Failed to connect to any database. This isn't fatal though... Send an alert email if we 
+		# haven't already, sleep.
 		print "$THIS_FILE ".__LINE__."; get: [scancore_message_0002]\n";
 		print $an->String->get({
 			key		=>	"scancore_message_0002",
@@ -355,8 +349,7 @@ while(1)
 	# Check for and process alerts
 	process_alerts($an, 0);
 	
-	# Do the end-of-scan checks to see if we need to power off, boot
-	# others, set/alter health flags, etc.
+	# Do the end-of-scan checks to see if we need to power off, boot others, set/alter health flags, etc.
 	do_post_scan_checks($an);
 	
 	# Record the time
@@ -718,7 +711,7 @@ sub do_post_scan_checks
 	# What we do here strongly depends on whether we're a node or a dashboard. 
 	# 
 	# If we're a node, we will withdraw and shut down if the UPS power is depleted past a certain point
-	# or if temperatures go outside acceptible ranges. If any sensor diviates, we set our "sick" flag and
+	# or if temperatures go outside acceptible ranges. If any sensor deviates, we set our "sick" flag and
 	# ensure it's clear if we're A-OK.
 	# 
 	# If this is a dashboard, we never shutdown. Instead, we will watch the nodes configured in our 
@@ -1025,9 +1018,7 @@ ORDER BY
 		# Nothing to do if we can't reach the node
 		if ($state eq "unknown")
 		{
-			$an->Log->entry({log_level => 1, message_key => "scancore_log_0084", message_variables => {
-				node => $host_name, 
-			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0084", message_variables => { node => $host_name }, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
 		
@@ -1707,7 +1698,7 @@ sub do_post_scan_node_tasks
 		name1 => "node_power_ok", value1 => $node_power_ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my ($node_temperature_ok) = check_node_temperature($an);
+	my ($node_temperature_ok) = check_local_temperature_health($an);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1856,14 +1847,21 @@ WHERE
 			});
 		}
 	}
-	elsif (($node_power_ok eq "4") || ($node_temperature_ok eq "4"))
+	elsif (($node_power_ok eq "4") or ($node_temperature_ok eq "4"))
 	{
-		# Load shed! Tell the user.
+		# Which message?
+		my $message_key = "scancore_warning_0026";
+		if ($node_temperature_ok eq "4")
+		{
+			$message_key = "scancore_warning_0027";
+		}
+		
+		# Power-triggered load shed! Tell the user.
 		$an->Alert->register_alert({
 			alert_level		=>	"warning", 
 			alert_agent_name	=>	$THIS_FILE,
 			alert_title_key		=>	"an_alert_title_0004",
-			alert_message_key	=>	"scancore_warning_0026",
+			alert_message_key	=>	$message_key,
 		});
 		
 		# Send the email, because we might be about to die.
@@ -1885,7 +1883,7 @@ WHERE
 		}
 		close $file_handle;
 	}
-	elsif (($node_power_ok eq "2") || ($node_temperature_ok eq "2"))
+	elsif (($node_power_ok eq "2") or ($node_temperature_ok eq "2"))
 	{
 		### We're sick
 		# Set the health to 'Warning'.
@@ -1976,7 +1974,7 @@ WHERE
 	}
 	else
 	{
-		if (($an->data->{sys}{reported}{power_is_critical}) || ($an->data->{sys}{reported}{power_is_warning}))
+		if (($an->data->{sys}{reported}{power_is_critical}) or ($an->data->{sys}{reported}{power_is_warning}))
 		{
 			# Clear
 			$an->Log->entry({log_level => 1, message_key => "scancore_log_0081", file => $THIS_FILE, line => __LINE__});
@@ -2006,7 +2004,7 @@ WHERE
 	}
 	else
 	{
-		if (($an->data->{sys}{reported}{temperature_is_critical}) || ($an->data->{sys}{reported}{temperature_is_warning}))
+		if (($an->data->{sys}{reported}{temperature_is_critical}) or ($an->data->{sys}{reported}{temperature_is_warning}))
 		{
 			# Clear
 			$an->Log->entry({log_level => 1, message_key => "scancore_log_0082", file => $THIS_FILE, line => __LINE__});
@@ -2018,19 +2016,24 @@ WHERE
 	return(0);
 }
 
+### NOTE: Thos is only called by nodes.
 # This pulls the data on the various temperature sensors. If all are within acceptible ranges, '1' will be 
 # returned. If any are in warning or critical state, '2' will be returned. If enough are critical to trigger 
-# power-down, '3' will be returned.
-sub check_node_temperature
+# power-down, '3' will be returned. If enough are in warning and/or critical that, had they all been 
+# critical, load shedding would have been triggered, 'sys::node::<node_name>::thermal_load_shed' is set to 
+# '1'. If the peer is also set to '1' and both us and the peer have been set for more than 
+# 'scancore::temperature::load_shed_delay' seconds, '4' will be returned, triggering a load-shed.
+sub check_local_temperature_health
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_temperature" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_local_temperature_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# 1 == OK, 2 == Warning, 3 == Critical (should shut down)
-	my $node_temperature_ok   = 1;
-	my $default_sensor_weight = $an->data->{scancore}{temperature}{default_sensor_weight} ? $an->data->{scancore}{temperature}{default_sensor_weight} : 1;
-	my $shutdown_threshold    = $an->data->{scancore}{temperature}{shutdown_limit}        ? $an->data->{scancore}{temperature}{shutdown_limit}        : 5;
-	my $total_sensor_weight   = 0;
+	# 1 == OK, 2 == Warning, 3 == Critical (should shut down), 4 == Warning:load_shed (if peer is also).
+	my $node_temperature_ok        = 1;
+	my $default_sensor_weight      = $an->data->{scancore}{temperature}{default_sensor_weight} ? $an->data->{scancore}{temperature}{default_sensor_weight} : 1;
+	my $shutdown_threshold         = $an->data->{scancore}{temperature}{shutdown_limit}        ? $an->data->{scancore}{temperature}{shutdown_limit}        : 5;
+	my $total_sensor_weight        = 0;
+	my $critical_sensor_weight     = 0;
 	
 	# Read in the temperature values for this machine.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
@@ -2040,11 +2043,7 @@ sub check_node_temperature
 		name4 => "total_sensor_weight",   value4 => $total_sensor_weight,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Pull in all the thermal sensors for this host. If any are returned,
-	# 'node_temperature_ok' will get set to '2'. If any are critical, their
-	# weight will be added to 'total_sensor_weight'. If the final weight is
-	# higher than 'shutdown_threshold', 'node_temperature_ok' will get set
-	# to '3'.
+	# Pull in all the thermal sensors for this host.
 	my $query = "
 SELECT 
     temperature_agent_name, 
@@ -2053,7 +2052,7 @@ SELECT
 FROM 
     temperature 
 WHERE 
-    temperature_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+    temperature_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($an->hostname)."
 ;";
@@ -2074,6 +2073,16 @@ AND
 	if (not $sensor_count)
 	{
 		# No sensors are high, we're done.
+		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+			variable_name         => $thermal_load_shed_variable,
+			variable_value        => "0",
+			variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+			variable_source_table => "hosts", 
+			update_value_only     => 1,
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable_uuid", value1 => $variable_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
 		return($node_temperature_ok);
 	}
 	
@@ -2089,50 +2098,190 @@ AND
 			name3 => "temperature_state",       value3 => $temperature_state,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# If this is a sensor that is 'ok', skip it. Otherwise, we'll
-		# set the 'node_temperature_ok' to '2' (which may get set to
-		# '3' after these checks are done.
+		# If this is a sensor that is 'ok', skip it. Otherwise, we'll set the 'node_temperature_ok' 
+		# to '2' (which may get set to '3' after these checks are done.
 		next if $temperature_state eq "ok";
 		$node_temperature_ok = 2;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_temperature_ok", value1 => $node_temperature_ok,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# If it is critical, find this sensor's weight and add it to 
-		# the total.
+		# If it is critical, find this sensor's weight and add it to the total.
+		my $this_sensor_weight = $default_sensor_weight;
+		
+		# Get the weight of the sensor.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "this_sensor_weight",                                                        value1 => $this_sensor_weight,
+			name2 => "total_sensor_weight",                                                       value2 => $total_sensor_weight, 
+			name3 => "critical_sensor_weight",                                                    value3 => $critical_sensor_weight, 
+			name4 => "${temperature_agent_name}::thresholds::${temperature_sensor_name}::weight", value4 => $an->data->{$temperature_agent_name}{thresholds}{$temperature_sensor_name}{weight},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{$temperature_agent_name}{thresholds}{$temperature_sensor_name}{weight})
+		{
+			$critical_sensor_weight = $an->data->{$temperature_agent_name}{thresholds}{$temperature_sensor_name}{weight};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "critical_sensor_weight", value1 => $critical_sensor_weight,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
 		if ($temperature_state =~ /critical/)
 		{
-			# Get the weight of the sensor.
-			my $this_sensor_weight = $default_sensor_weight;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "total_sensor_weight",                                                       value1 => $total_sensor_weight, 
-				name2 => "this_sensor_weight",                                                        value2 => $this_sensor_weight,
-				name3 => "${temperature_agent_name}::thresholds::${temperature_sensor_name}::weight", value3 => $an->data->{$temperature_agent_name}{thresholds}{$temperature_sensor_name}{weight},
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($an->data->{$temperature_agent_name}{thresholds}{$temperature_sensor_name}{weight})
-			{
-				$this_sensor_weight = $an->data->{$temperature_agent_name}{thresholds}{$temperature_sensor_name}{weight};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "this_sensor_weight", value1 => $this_sensor_weight,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			
 			$total_sensor_weight += $this_sensor_weight;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "total_sensor_weight", value1 => $total_sensor_weight,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		
+		# If we have enough sensors in a warning (or critcial) state to cross the heuristics for 
+		# shutdown (had they all been critical), we will set our health to 'warning:load_shed' and
+		# return '4'. If our peer is also 'warning:load_shed', then we'll shed load.
+		$total_sensor_weight += $this_sensor_weight;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "total_sensor_weight", value1 => $total_sensor_weight,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "total_sensor_weight", value1 => $total_sensor_weight,
-		name2 => "shutdown_threshold",  value2 => $shutdown_threshold,
+	# If we've crossed the critical heauristic, we're dead. Otherwise, check to see if we're high enough
+	# to set the 'warning:load_shed'.
+	my $evaluate_load_shed = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "total_sensor_weight",    value1 => $total_sensor_weight,
+		name2 => "critical_sensor_weight", value2 => $critical_sensor_weight,
+		name3 => "shutdown_threshold",     value3 => $shutdown_threshold,
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($total_sensor_weight > $shutdown_threshold)
+	if ($critical_sensor_weight > $shutdown_threshold)
 	{
 		$node_temperature_ok = 3;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_temperature_ok", value1 => $node_temperature_ok,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($total_sensor_weight > $shutdown_threshold)
+	{
+		$evaluate_load_shed = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "evaluate_load_shed", value1 => $evaluate_load_shed,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Set the health to 'warning:load_shed'.
+		$an->ScanCore->host_state({set => "warning:load_shed"});
+	}
+	
+	# Set or clear the load_shed variable. If we need to set, also check the peer and see if we and they 
+	# have been in this high-warning state for long enough to trigger a laod shed.
+	if ($evaluate_load_shed)
+	{
+		# Set
+		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+			variable_name         => $thermal_load_shed_variable,
+			variable_value        => "1",
+			variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+			variable_source_table => "hosts", 
+			update_value_only     => 1,
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable_uuid", value1 => $variable_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Make sure both nodes are online. Otherwise, we'll not load shed anyway and might as well 
+		# stop here.
+		my $both_nodes_online = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "both_nodes_online", value1 => $both_nodes_online,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ((not $an->data->{sys}{anvil}{node1}{online}) or (not $an->data->{sys}{anvil}{node2}{online}))
+		{
+			# Disable load shedding because our peer is dead.
+			$both_nodes_online = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "both_nodes_online", value1 => $both_nodes_online,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# If both nodes are up and the user has not disabled load shedding, proceed.
+		if ((not $an->data->{scancore}{disable}{load_shedding}) && ($both_nodes_online))
+		{
+			# WARNING: We can't use 'quote' to protect the 'scancore::temperature::load_shed_delay' 
+			#          value so we must check that it is set and purely digits. '0' is OK, it 
+			#          just means that we'll shed-load without delay.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "scancore::temperature::load_shed_delay", value1 => $an->data->{scancore}{temperature}{load_shed_delay},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($an->data->{scancore}{temperature}{load_shed_delay} eq "")
+			{
+				$an->data->{scancore}{temperature}{load_shed_delay} = 300;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scancore::temperature::load_shed_delay", value1 => $an->data->{scancore}{temperature}{load_shed_delay},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($an->data->{scancore}{temperature}{load_shed_delay} =~ /\D/)
+			{
+				$an->data->{scancore}{temperature}{load_shed_delay} = 300;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scancore::temperature::load_shed_delay", value1 => $an->data->{scancore}{temperature}{load_shed_delay},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Now check to see if we and the peer are both in high enough warning long enough to 
+			# justify load shedding.
+			my $my_host_uuid = $an->data->{sys}{host_uuid};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "my_host_uuid", value1 => $my_host_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $peer_host_uuid = "";
+			my $peer_host_name = "";
+			foreach my $node_key ("node1", "node2")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "sys::anvil::${node_key}::uuid", value1 => $an->data->{sys}{anvil}{$node_key}{uuid},
+					name2 => "sys::host_uuid",                value2 => $an->data->{sys}{host_uuid},
+				}, file => $THIS_FILE, line => __LINE__});
+				next if $an->data->{sys}{anvil}{$node_key}{uuid} eq $an->data->{sys}{host_uuid};
+				
+				$peer_host_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+				$peer_host_name = $an->data->{sys}{anvil}{$node_key}{name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "peer_host_uuid", value1 => $peer_host_uuid,
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+			
+			# If I didn't find the peer's UUID, I Have a problem and I can not proceed.
+			if (not $peer_host_uuid)
+			{
+				$an->Log->entry({log_level => 0, title_key => "tools_title_0002", message_key => "scancore_warning_0028", file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Read all the times that the 'sys::node::<node_name>::
+				my $my_thermal_load_shed_variable   = "sys::node::".$an->hostname."::thermal_load_shed";
+				my $peer_thermal_load_shed_variable = "sys::node::".$peer_host_name."::thermal_load_shed";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "my_thermal_load_shed_variable",   value1 => $my_thermal_load_shed_variable,
+					name2 => "peer_thermal_load_shed_variable", value2 => $peer_thermal_load_shed_variable,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Check myself.
+				my $query = "";
+				
+				# Check my peer.
+				$query = "";
+			}
+		}
+	}
+	else
+	{
+		# Clear (if needed)
+		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+			variable_name         => $thermal_load_shed_variable,
+			variable_value        => "0",
+			variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+			variable_source_table => "hosts", 
+			update_value_only     => 1,
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable_uuid", value1 => $variable_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -3030,9 +3179,9 @@ sub check_email_configuration
 					name2 => "sys::anvil::smtp::password", value2 => $an->data->{sys}{anvil}{smtp}{password},
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				if (($server   ne $an->data->{sys}{anvil}{smtp}{server}) ||
-				    ($port     ne $an->data->{sys}{anvil}{smtp}{port}) ||
-				    ($username ne $an->data->{sys}{anvil}{smtp}{username}) ||
+				if (($server   ne $an->data->{sys}{anvil}{smtp}{server})   or
+				    ($port     ne $an->data->{sys}{anvil}{smtp}{port})     or
+				    ($username ne $an->data->{sys}{anvil}{smtp}{username}) or
 				    ($password ne $an->data->{sys}{anvil}{smtp}{password}))
 				{
 					# Changes made

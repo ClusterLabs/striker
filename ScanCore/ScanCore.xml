@@ -214,6 +214,14 @@ The UPSes feeding this node have been running on batteries for more than: [#!dat
 To extend battery runtime, one of the nodes will now be withdrawn and shutdown.
 Which node will shutdown will be determined momentarily.
 		</key>
+		<key name="scancore_warning_0027">
+Both nodes have multiple thermal sensors listed in either warning or critical levels. 
+This indicates a room-wide cooling failure. This has been the case for over: [#!data!scancore::temperature::load_shed_delay!#] seconds.
+
+To reduce thermal output and slow down how quickly the room is heating, 
+one of the nodes will now be withdrawn and shutdown. Which node will shutdown will be determined momentarily.
+		</key>
+		<key name="scancore_warning_0028">Failed to find the peer's host UUID. The local node's temperature is high enough across enough sensors to potentially trigger load shedding. In order to decide whether to initiate load shedding or not though, we need to check to see if the peer is also in the same state. Without the peer's UUID, this is not possible. For this reason, load shedding is disabled.</key>
 		
 		<!-- Cleared warnings. -->
 		<key name="scancore_cleared_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

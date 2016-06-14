@@ -2238,15 +2238,15 @@ sub insert_or_update_variables
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $variable_uuid         = $parameter->{variable_uuid}         ? $parameter->{variable_uuid}         : "";
-	my $variable_name         = $parameter->{variable_name}         ? $parameter->{variable_name}         : "";
-	my $variable_value        = $parameter->{variable_value}        ? $parameter->{variable_value}        : "NULL";
-	my $variable_default      = $parameter->{variable_default}      ? $parameter->{variable_default}      : "NULL";
-	my $variable_description  = $parameter->{variable_description}  ? $parameter->{variable_description}  : "NULL";
-	my $variable_section      = $parameter->{variable_section}      ? $parameter->{variable_section}      : "NULL";
-	my $variable_source_uuid  = $parameter->{variable_source_uuid}  ? $parameter->{variable_source_uuid}  : "NULL";
-	my $variable_source_table = $parameter->{variable_source_table} ? $parameter->{variable_source_table} : "NULL";
-	my $update_value_only     = $parameter->{update_value_only}     ? $parameter->{update_value_only}     : 1;
+	my $variable_uuid         = defined $parameter->{variable_uuid}         ? $parameter->{variable_uuid}         : "";
+	my $variable_name         = defined $parameter->{variable_name}         ? $parameter->{variable_name}         : "";
+	my $variable_value        = defined $parameter->{variable_value}        ? $parameter->{variable_value}        : "NULL";
+	my $variable_default      = defined $parameter->{variable_default}      ? $parameter->{variable_default}      : "NULL";
+	my $variable_description  = defined $parameter->{variable_description}  ? $parameter->{variable_description}  : "NULL";
+	my $variable_section      = defined $parameter->{variable_section}      ? $parameter->{variable_section}      : "NULL";
+	my $variable_source_uuid  = defined $parameter->{variable_source_uuid}  ? $parameter->{variable_source_uuid}  : "NULL";
+	my $variable_source_table = defined $parameter->{variable_source_table} ? $parameter->{variable_source_table} : "NULL";
+	my $update_value_only     = defined $parameter->{update_value_only}     ? $parameter->{update_value_only}     : 1;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 		name1 => "variable_uuid",         value1 => $variable_uuid, 
 		name2 => "variable_name",         value2 => $variable_name, 
