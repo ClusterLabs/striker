@@ -2029,18 +2029,20 @@ sub check_local_temperature_health
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_local_temperature_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# 1 == OK, 2 == Warning, 3 == Critical (should shut down), 4 == Warning:load_shed (if peer is also).
-	my $node_temperature_ok        = 1;
-	my $default_sensor_weight      = $an->data->{scancore}{temperature}{default_sensor_weight} ? $an->data->{scancore}{temperature}{default_sensor_weight} : 1;
-	my $shutdown_threshold         = $an->data->{scancore}{temperature}{shutdown_limit}        ? $an->data->{scancore}{temperature}{shutdown_limit}        : 5;
-	my $total_sensor_weight        = 0;
-	my $critical_sensor_weight     = 0;
+	my $node_temperature_ok           = 1;
+	my $default_sensor_weight         = $an->data->{scancore}{temperature}{default_sensor_weight} ? $an->data->{scancore}{temperature}{default_sensor_weight} : 1;
+	my $shutdown_threshold            = $an->data->{scancore}{temperature}{shutdown_limit}        ? $an->data->{scancore}{temperature}{shutdown_limit}        : 5;
+	my $total_sensor_weight           = 0;
+	my $critical_sensor_weight        = 0;
+	my $my_thermal_load_shed_variable = "sys::node::".$an->hostname."::thermal_load_shed";
 	
 	# Read in the temperature values for this machine.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "node_temperature_ok",   value1 => $node_temperature_ok,
-		name2 => "default_sensor_weight", value2 => $default_sensor_weight,
-		name3 => "shutdown_threshold",    value3 => $shutdown_threshold,
-		name4 => "total_sensor_weight",   value4 => $total_sensor_weight,
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "node_temperature_ok",           value1 => $node_temperature_ok,
+		name2 => "default_sensor_weight",         value2 => $default_sensor_weight,
+		name3 => "shutdown_threshold",            value3 => $shutdown_threshold,
+		name4 => "total_sensor_weight",           value4 => $total_sensor_weight,
+		name5 => "my_thermal_load_shed_variable", value5 => $my_thermal_load_shed_variable,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Pull in all the thermal sensors for this host.
@@ -2074,7 +2076,7 @@ AND
 	{
 		# No sensors are high, we're done.
 		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
-			variable_name         => $thermal_load_shed_variable,
+			variable_name         => $my_thermal_load_shed_variable,
 			variable_value        => "0",
 			variable_source_uuid  => $an->data->{sys}{host_uuid}, 
 			variable_source_table => "hosts", 
@@ -2172,8 +2174,9 @@ AND
 	if ($evaluate_load_shed)
 	{
 		# Set
+		my $shed_load     = 1;
 		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
-			variable_name         => $thermal_load_shed_variable,
+			variable_name         => $my_thermal_load_shed_variable,
 			variable_value        => "1",
 			variable_source_uuid  => $an->data->{sys}{host_uuid}, 
 			variable_source_table => "hosts", 
@@ -2254,27 +2257,151 @@ AND
 			}
 			else
 			{
-				# Read all the times that the 'sys::node::<node_name>::
-				my $my_thermal_load_shed_variable   = "sys::node::".$an->hostname."::thermal_load_shed";
+				### TODO: What happens if ScanCore runs on a node for the first time with 
+				###       enough hot sensors to trigger a load shed? (before the history 
+				###       table had any data)?
+				# Read the variable values for 'sys::node::<node_name>::thermal_load_shed' 
+				# within the load_shed_delay from the history table. If any are not '1', we
+				# won't shed load yet.
 				my $peer_thermal_load_shed_variable = "sys::node::".$peer_host_name."::thermal_load_shed";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "my_thermal_load_shed_variable",   value1 => $my_thermal_load_shed_variable,
-					name2 => "peer_thermal_load_shed_variable", value2 => $peer_thermal_load_shed_variable,
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "peer_thermal_load_shed_variable", value1 => $peer_thermal_load_shed_variable,
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Check myself.
-				my $query = "";
+				my $query = "
+SELECT 
+    variable_value, 
+    modified_date 
+FROM 
+    history.variables 
+WHERE 
+    variable_name         = ".$an->data->{sys}{use_db_fh}->quote($my_thermal_load_shed_variable)."
+AND 
+    variable_source_uuid  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    variable_source_table = ".$an->data->{sys}{use_db_fh}->quote("hosts")." 
+AND 
+    modified_date > (SELECT current_timestamp - interval '".$an->data->{scancore}{temperature}{load_shed_delay}." seconds') 
+";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
 				
-				# Check my peer.
-				$query = "";
+				my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+				my $count   = @{$results};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "results", value1 => $results, 
+					name2 => "count",   value2 => $count,
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($count < 1)
+				{
+					$shed_load = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "shed_load", value1 => $shed_load, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# We will disable shed load if any of these results are '0'.
+					foreach my $row (@{$results})
+					{
+						# One or more records were found.
+						my $therman_load_shed = $row->[0]; 
+						my $modified_date     = $row->[1]; 
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "therman_load_shed", value1 => $therman_load_shed, 
+							name2 => "modified_date",     value2 => $modified_date, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						if (not $therman_load_shed)
+						{
+							$shed_load = 0;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "shed_load", value1 => $shed_load, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+				}
+				
+				# Check my peer now, if I haven't already aborted the load shedding.
+				if ($shed_load)
+				{
+					my $query = "
+SELECT 
+    variable_value, 
+    modified_date 
+FROM 
+    history.variables 
+WHERE 
+    variable_name         = ".$an->data->{sys}{use_db_fh}->quote($peer_thermal_load_shed_variable)."
+AND 
+    variable_source_uuid  = ".$an->data->{sys}{use_db_fh}->quote($peer_host_uuid)." 
+AND 
+    variable_source_table = ".$an->data->{sys}{use_db_fh}->quote("hosts")." 
+AND 
+    modified_date > (SELECT current_timestamp - interval '".$an->data->{scancore}{temperature}{load_shed_delay}." seconds') 
+";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+					my $count   = @{$results};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "results", value1 => $results, 
+						name2 => "count",   value2 => $count,
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($count < 1)
+					{
+						$shed_load = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "shed_load", value1 => $shed_load, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					else
+					{
+						# We will disable shed load if any of these results are '0'.
+						foreach my $row (@{$results})
+						{
+							# One or more records were found.
+							my $therman_load_shed = $row->[0]; 
+							my $modified_date     = $row->[1]; 
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "therman_load_shed", value1 => $therman_load_shed, 
+								name2 => "modified_date",     value2 => $modified_date, 
+							}, file => $THIS_FILE, line => __LINE__});
+							
+							if (not $therman_load_shed)
+							{
+								$shed_load = 0;
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "shed_load", value1 => $shed_load, 
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+						}
+					}
+				}
 			}
+		}
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shed_load", value1 => $shed_load, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($shed_load)
+		{
+			# OK, we're clear for load shed.
+			$node_temperature_ok = 4;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_temperature_ok", value1 => $node_temperature_ok,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	else
 	{
 		# Clear (if needed)
 		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
-			variable_name         => $thermal_load_shed_variable,
+			variable_name         => $my_thermal_load_shed_variable,
 			variable_value        => "0",
 			variable_source_uuid  => $an->data->{sys}{host_uuid}, 
 			variable_source_table => "hosts", 
