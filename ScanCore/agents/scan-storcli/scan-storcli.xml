@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-This strings file is for the Avago RAID controller Scan Agent. Please be careful not to use names used by the 
+This strings file is for the LSI RAID controller Scan Agent. Please be careful not to use names used by the 
 main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'.
 -->
 <strings>
@@ -13,7 +13,7 @@ main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'
 		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the storcli Scan Agent.</key>
 		
 		<!-- Strings that can change by rebranding -->
-		<key name="scan_storcli_brand_0001">IPMI Scan Agent using the Avago 'storcli64' tool</key>
+		<key name="scan_storcli_brand_0001">Broadcom (LSI/Avago) RAID controller scan agent using the 'storcli64' tool</key>
 		
 		<!-- Log strings -->
 		<key name="scan_storcli_log_0001">Found: [#!variable!count!#] controller(s).</key>
@@ -28,7 +28,7 @@ main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'
 		<!-- Errors -->
 		<key name="scan_storcli_error_0001">The 'storcli64' program was not found at: [#!variable!path!#], exiting.</key>
 		<key name="scan_storcli_error_0002">The 'storcli64' program was found at: [#!variable!path!#], but it is not executable. exiting.</key>
-		<key name="scan_storcli_error_0003">No Avago-based RAID controllers were found, exiting.</key>
+		<key name="scan_storcli_error_0003">No LSI-based RAID controllers were found, exiting.</key>
 		<key name="scan_storcli_error_0004">Requested data from controller: [#!variable!requested_controller!#] but got data from: [#!variable!this_controller!#]. Exiting.</key>
 		<key name="scan_storcli_error_0005">Requested data from controller: [#!variable!controller!#] but got an unexpected status. Expected 'Success', but got: [#!variable!status!#]. Exiting.</key>
 		
@@ -54,7 +54,7 @@ DESCRIPTION
 This program is a "scan agent" for the ScanCore alert, monitoring and recovery
 tool for the Anvil! high-availabiltiy platform.
 
-It monitors health of Avago-based RAID controllers using the 'storcli64' command
+It monitors health of LSI-based RAID controllers using the 'storcli64' command
 line tool. 
 
 On Anvil! nodes, the thermal information returned by the controller, BBU/FBU 
