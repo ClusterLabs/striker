@@ -14,12 +14,19 @@
 # 3   - No LSI-based controllers found.
 # 4   - Got data from the wrong controller.
 # 5   - Unexpecte status when querying adapter
+# 6   - Failed to parse out the controller's serial number.
 # 
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
-# ToDo:
+# TODO:
 # - Check the cache policy and reset it to 'writeback' if the BBU/FBU is healthy and the cache changes to 
 #   write-through.
+# 
+# NOTE:
+# - BBU and Cachevault specs/temp ranges;
+#   45646-00B_Cache_Backup_Products_SAS_SATA_RAID_Controller_UserGd.pdf ->  Specifications for the BBU Models
+#   - BBU - Charge: 10 °C to 40 °C, Discharge: 10 °C to 55 °C
+#   - CV  - 0 °C to 55 °C
 # 
 
 # Use my modules.
@@ -61,6 +68,16 @@ my $an = AN::Tools->new({data =>
 			log_language		=>	"en_CA",
 			log_file		=>	"/var/log/ScanCore.log",
 			log_db_transactions	=>	0,
+			thresholds			=>	{
+				raid_on_chip			=>	{
+					high_warning			=>	98,
+					high_critical			=>	104,
+					low_warning			=>	5,
+					low_critical			=>	0,
+					jump				=>	8,
+					buffer				=>	3,
+				},
+			},
 		},
 		section			=>	{
 			controller			=>	{
@@ -139,9 +156,7 @@ $an->Log->entry({ log_level => 2, message_key => "notice_message_0013", message_
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
-		uuid => $an->data->{sys}{host_uuid},
-	}, code => 255, file => "$THIS_FILE", line => __LINE__});
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => "$THIS_FILE", line => __LINE__});
 }
 
 print $an->String->get({key => "scan_storcli_message_0001"})."\n";
@@ -209,10 +224,488 @@ sub gather_data
 			name2 => "adapter",    value2 => $adapter, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Read in basic and version data.
-		get_controller_info($an, $adapter);
+		# Read in controller data.
+		my $serial_number = get_controller_info($an, $adapter);
+		
+		# Read in cachevault (FBU) data (if it exists)
+		get_cachevault_data($an, $adapter, $serial_number);
+		
+		# Read in BBU data (if it exists)
+		get_bbu_data($an, $adapter);
 		
 		die "$THIS_FILE ".__LINE__."; testing\n";
+	}
+	
+	return(0);
+}
+
+# This looks for a BBU and, if it finds one, parses the output for it.
+sub get_bbu_data
+{
+	my ($an, $adapter, $serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_bbu_data", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter",       value1 => $adapter, 
+		name2 => "serial_number", value2 => $serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $bbu_serial_number = "";
+	my $bbu_data          = [];
+	my $shell_call        = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{bbu_data};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		last if $line =~ /$adapter Failed /i;
+		
+		if ($line =~ /^Serial Number\s+(\S.*)?/i)
+		{
+			$bbu_serial_number = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "bbu_serial_number", value1 => $bbu_serial_number, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		push @{$bbu_data}, $line;
+	}
+	close $file_handle;
+	
+	# If I didn't find a serial number, then I probably don't have an FBU.
+	return(0) if not $bbu_serial_number;
+	
+	# Record the controller the bbu is on.
+	$an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number} = $serial_number;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "bbu::serial_number::${bbu_serial_number}::host_controller_serial_number", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number},
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Still alive? Good, time to parse the most annoying output ever... >_<
+	my $split_point = 0;
+	my $start_break = 0;
+	my $end_break   = 0;
+	foreach my $line (@{$bbu_data})
+	{
+		next if not $line;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /Property(\s+)Value/)
+		{
+			$split_point = length($1) + 8;
+			$start_break = 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "split_point", value1 => $split_point, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		# See if I am entering or exiting a data chunk.
+		if (($line =~ /^--------/) && ($split_point))
+		{
+			if (not $start_break)
+			{
+				# Split point set, must be the start break
+				$start_break = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "start_break", value1 => $start_break, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			else
+			{
+				# Split point and start break set, must be end break.
+				$split_point = 0;
+				$start_break = 0;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "split_point", value1 => $split_point, 
+					name2 => "start_break", value2 => $start_break, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+		}
+		
+		# If I have a split point, break the string.
+		if ($split_point)
+		{
+			# Elegant? I think not!
+			my $value    =  substr $line, $split_point;
+			my $variable =  ($line =~ /^(.*?)\Q$value\E$/)[0];
+			   $variable =~ s/\s+$//;
+			#my ($variable, $value) = ($line =~ /^(.{$split_point})(.*)$/);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "variable", value1 => $variable, 
+				name2 => "value",    value2 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			next if not (($variable) or ($value));
+			
+			# Is this a temperature or something else we want to pre-process?
+			if ($value =~ /^(\d+) C$/i)
+			{
+				# Yup
+				$value = $1;
+				$an->data->{bbu}{serial_number}{$bbu_serial_number}{temperature}{$variable} = $value;
+			}
+			elsif ($value =~ /^(\d+) F$/i)
+			{
+				# Yup, but translate
+				$value = $an->Convert->convert_to_celsius({temperature => $1});
+				$an->data->{bbu}{serial_number}{$bbu_serial_number}{temperature}{$variable} = $value;
+			}
+			elsif ($value =~ /\d+d \((\d+) seconds\)$/i)
+			{
+				# This is a static time span (like the time between learn cycles.
+				$value = $1;
+				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $value." seconds";
+				
+				my $say_time = $an->Readable->time({'time' => $value});
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
+					name3 => "say_time", value3 => $say_time,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($value =~ /^(\d\d\d\d)\/(\d\d)\/(\d\d)\s+(\d\d:\d\d:\d\d)\s+\(\d+ seconds\)$/i)
+			{
+				### NOTE: The 'X seconds' seems to not change and be a useless number...
+				# This is a specific time in the future, properly formatted
+				my $say_date = $1." ".$2;
+				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $say_date;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
+					name3 => "say_date", value3 => $say_date,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($value =~ /^(\d\d)\/(\d\d)\/(\d\d\d\d)$/i)
+			{
+				# 'Murica! mm/dd/yyyy -> yyyy/mm/dd
+				my $say_date = $3."/".$2."/".$1;
+				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $say_date;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
+					name3 => "say_date", value3 => $say_date,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($value =~ /^(\d+) hour\(s\)$/i)
+			{
+				# 'Murica! mm/dd/yyyy -> yyyy/mm/dd
+				my $seconds = $1 * 3600;
+				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $seconds." seconds";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
+					name3 => "seconds",  value3 => $seconds,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Nope, normal variable.
+				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $value;
+			}
+		}
+	}
+	
+	# Some pretty debugging code.
+	foreach my $bbu_serial_number (keys %{$an->data->{bbu}{serial_number}})
+	{
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "bbu_serial_number", value1 => $bbu_serial_number,
+				name2 => "type",                     value2 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $longest_variable = 0;
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
+			{
+				next if $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable} eq "";
+				if (length($variable) > $longest_variable)
+				{
+					$longest_variable = length($variable);
+				}
+			}
+			
+			# Now loop again in alphabetical order printing in the dots as needed.
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
+			{
+				next if $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable} eq "";
+				my $difference   = $longest_variable - length($variable);
+				my $say_variable = $variable;
+				if ($difference == 0)
+				{
+					# Do nothing
+				}
+				elsif ($difference == 1) 
+				{
+					$say_variable .= " ";
+				}
+				elsif ($difference == 2) 
+				{
+					$say_variable .= "  ";
+				}
+				else
+				{
+					my $dots         =  $difference - 2;
+					   $say_variable .= " ";
+					for (1 .. $dots)
+					{
+						$say_variable .= ".";
+					}
+					$say_variable .= " ";
+				}
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "$say_variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return(0);
+}
+
+# This looks for a cachevault (flash-backup unit) and, if one is found, parses the output.
+sub get_cachevault_data
+{
+	my ($an, $adapter, $serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_cachevault_data", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter",       value1 => $adapter, 
+		name2 => "serial_number", value2 => $serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $cachevault_serial_number = "";
+	my $cachevault_data          = [];
+	my $shell_call               = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{cachevault_data};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		last if $line =~ /Cachevault doesn't exist/i;
+		
+		if ($line =~ /^Serial Number\s+(\S.*)?/i)
+		{
+			$cachevault_serial_number = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cachevault_serial_number", value1 => $cachevault_serial_number, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		push @{$cachevault_data}, $line;
+	}
+	close $file_handle;
+	
+	# If I didn't find a serial number, then I probably don't have an FBU.
+	return(0) if not $cachevault_serial_number;
+	
+	# Record the controller the cachevault is on.
+	$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{host_controller_serial_number} = $serial_number;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cachevault::serial_number::${cachevault_serial_number}::host_controller_serial_number", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{host_controller_serial_number},
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Still alive? Good, time to parse the most annoying output ever... >_<
+	my $split_point = 0;
+	my $start_break = 0;
+	my $end_break   = 0;
+	foreach my $line (@{$cachevault_data})
+	{
+		next if not $line;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /Property(\s+)Value/)
+		{
+			$split_point = length($1) + 8;
+			$start_break = 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "split_point", value1 => $split_point, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		# See if I am entering or exiting a data chunk.
+		if (($line =~ /^--------/) && ($split_point))
+		{
+			if (not $start_break)
+			{
+				# Split point set, must be the start break
+				$start_break = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "start_break", value1 => $start_break, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			else
+			{
+				# Split point and start break set, must be end break.
+				$split_point = 0;
+				$start_break = 0;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "split_point", value1 => $split_point, 
+					name2 => "start_break", value2 => $start_break, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+		}
+		
+		# If I have a split point, break the string.
+		if ($split_point)
+		{
+			# Elegant? I think not!
+			my $value    =  substr $line, $split_point;
+			my $variable =  ($line =~ /^(.*?)\Q$value\E$/)[0];
+			   $variable =~ s/\s+$//;
+			#my ($variable, $value) = ($line =~ /^(.{$split_point})(.*)$/);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "variable", value1 => $variable, 
+				name2 => "value",    value2 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			next if not (($variable) or ($value));
+			
+			# Is this a temperature or something else we want to pre-process?
+			if ($value =~ /^(\d+) C$/i)
+			{
+				# Yup
+				$value = $1;
+				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable} = $value;
+			}
+			elsif ($value =~ /^(\d+) F$/i)
+			{
+				# Yup, but translate
+				$value = $an->Convert->convert_to_celsius({temperature => $1});
+				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable} = $value;
+			}
+			elsif ($value =~ /\d+d \((\d+) seconds\)$/i)
+			{
+				# This is a static time span (like the time between learn cycles.
+				$value = $1;
+				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $value." seconds";
+				
+				my $say_time = $an->Readable->time({'time' => $value});
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
+					name3 => "say_time", value3 => $say_time,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($value =~ /^(\d\d\d\d)\/(\d\d)\/(\d\d)\s+(\d\d:\d\d:\d\d)\s+\(\d+ seconds\)$/i)
+			{
+				### NOTE: The 'X seconds' seems to not change and be a useless number...
+				# This is a specific time in the future, properly formatted
+				my $say_date = $1." ".$2;
+				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $say_date;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
+					name3 => "say_date", value3 => $say_date,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($value =~ /^(\d\d)\/(\d\d)\/(\d\d\d\d)$/i)
+			{
+				# 'Murica! mm/dd/yyyy -> yyyy/mm/dd
+				my $say_date = $3."/".$2."/".$1;
+				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $say_date;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
+					name3 => "say_date", value3 => $say_date,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($value =~ /^(\d+) hour\(s\)$/i)
+			{
+				# 'Murica! mm/dd/yyyy -> yyyy/mm/dd
+				my $seconds = $1 * 3600;
+				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $seconds." seconds";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
+					name3 => "seconds",  value3 => $seconds,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Nope, normal variable.
+				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $value;
+			}
+		}
+	}
+	
+	# Some pretty debugging code.
+	foreach my $cachevault_serial_number (keys %{$an->data->{cachevault}{serial_number}})
+	{
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "cachevault_serial_number", value1 => $cachevault_serial_number,
+				name2 => "type",                     value2 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $longest_variable = 0;
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}})
+			{
+				next if $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable} eq "";
+				if (length($variable) > $longest_variable)
+				{
+					$longest_variable = length($variable);
+				}
+			}
+			
+			# Now loop again in alphabetical order printing in the dots as needed.
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}})
+			{
+				next if $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable} eq "";
+				my $difference   = $longest_variable - length($variable);
+				my $say_variable = $variable;
+				if ($difference == 0)
+				{
+					# Do nothing
+				}
+				elsif ($difference == 1) 
+				{
+					$say_variable .= " ";
+				}
+				elsif ($difference == 2) 
+				{
+					$say_variable .= "  ";
+				}
+				else
+				{
+					my $dots         =  $difference - 2;
+					   $say_variable .= " ";
+					for (1 .. $dots)
+					{
+						$say_variable .= ".";
+					}
+					$say_variable .= " ";
+				}
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "$say_variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
 	
 	return(0);
@@ -222,11 +715,13 @@ sub gather_data
 sub get_controller_info
 {
 	my ($an, $adapter) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_supported_adapter_operations", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_controller_info", }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "adapter", value1 => $adapter, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $shell_call = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{controller_info};
+	my $serial_number   = "";
+	my $controller_data = [];
+	my $shell_call      = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{controller_info};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -244,118 +739,148 @@ sub get_controller_info
 		}, file => $THIS_FILE, line => __LINE__});
 		last if $line =~ /^TOPOLOGY:$/i;
 		
+		if ($line =~ /^Serial Number = (.*)?/i)
+		{
+			$serial_number = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "serial_number", value1 => $serial_number, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		push @{$controller_data}, $line;
+	}
+	close $file_handle;
+	
+	# If I found the serial number, then start parsing out the data.
+	if (not $serial_number)
+	{
+		# Error out.
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0006", message_variables => { adapter => $adapter }, code => 6, file => "$THIS_FILE", line => __LINE__});
+		exit(6);
+	}
+	
+	# If we're alive, we're ready to proceed.
+	foreach my $line (@{$controller_data})
+	{
 		if ($line =~ /^(.*?) = (.*)$/)
 		{
 			my $variable = $1;
 			my $value    = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "variable", value1 => $variable, 
 				name2 => "value",    value2 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($variable =~ /^Model$/i)
+			# If the variable has units, pull them out.
+			if ($variable =~ /\((\w+B)\)$/i)
 			{
-				$an->data->{adapter}{$adapter}{controller}{model} = $value;
+				my $units    =  $1;
+				   $variable =~ s/\($units\)//i;
+				   $variable =~ s/^\s+//;
+				   $variable =~ s/\s+$//;
+				my $size = $an->Readable->hr_to_bytes({size => $value, type => $units, base2 => 1 });
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+					name3 => "units",    value3 => $units, 
+					name4 => "size",     value4 => $size, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->data->{controller}{serial_number}{$serial_number}{variable}{$variable} = $size;
 			}
-			elsif ($variable =~ /^Serial Number$/i)
+			elsif ($variable =~ /\(Degree Celsius\)/i)
 			{
-				$an->data->{adapter}{$adapter}{controller}{serial_number} = $value;
+				$variable =~ s/\(Degree Celsius\)//i;
+				$variable =~ s/^\s+//;
+				$variable =~ s/\s+$//;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->data->{controller}{serial_number}{$serial_number}{temperature}{$variable} = $value;
 			}
-			elsif ($variable =~ /^Revision N/i)
+			elsif ($variable =~ /\(Degree Fahrenheit\)/i)
 			{
-				$an->data->{adapter}{$adapter}{controller}{revision_number} = $value;
-			}
-			elsif ($variable =~ /^Firmware Package Build$/i)
-			{
-				$an->data->{adapter}{$adapter}{controller}{firmware_package_number} = $value;
-			}
-			elsif ($variable =~ /^Firmware Version$/i)
-			{
-				$an->data->{adapter}{$adapter}{controller}{firmware_version} = $value;
-			}
-			elsif ($variable =~ /^Controller Status$/i)
-			{
-				$an->data->{adapter}{$adapter}{controller}{status} = $value;
-			}
-			elsif ($variable =~ /^Memory Correctable Errors$/i)
-			{
-				$an->data->{adapter}{$adapter}{controller}{memory_correctable_errors} = $value;
-			}
-			elsif ($variable =~ /^Memory Uncorrectable Errors$/i)
-			{
-				$an->data->{adapter}{$adapter}{controller}{memory_uncorrectable_errors} = $value;
-			}
-			elsif ($variable =~ /booted into safe mode/i)
-			{
-				$an->data->{adapter}{$adapter}{controller}{booted_into_safe_mode} = $value;
-			}
-			elsif ($variable =~ /^On Board Memory Size$/i)
-			{
-				$an->data->{adapter}{$adapter}{controller}{cache_size} = $value;
-			}
-			elsif ($variable =~ /^Size of CacheCade \((\w+B)\)$/i)
-			{
-				my $units = $1;
-				$an->data->{adapter}{$adapter}{controller}{cachecade_size} = $value." ".$units;
-			}
-			elsif ($variable =~ /^$/i)
-			{
-				$an->data->{adapter}{$adapter}{controller}{} = $value;
-			}
-			elsif ($variable =~ /^$/i)
-			{
-				$an->data->{adapter}{$adapter}{controller}{} = $value;
-			}
-			elsif ($variable =~ /^$/i)
-			{
-				$an->data->{adapter}{$adapter}{controller}{} = $value;
+				# Covert to °C
+				$variable =~ s/\(Degree Fahrenheit\)//i;
+				$variable =~ s/^\s+//;
+				$variable =~ s/\s+$//;
+				$value    =  $an->Convert->convert_to_celsius({temperature => $value});
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->data->{controller}{serial_number}{$serial_number}{temperature}{$variable} = $value;
 			}
 			else
 			{
 				# Catch-all
+				$an->data->{controller}{serial_number}{$serial_number}{variable}{$variable} = $value;
 			}
 		}
-=pod
-Current Size of CacheCade (GB) = 0
-Current Size of FW Cache (MB) = 821
-ROC temperature(Degree Celsius) = 63		<-- 
-
-Policies :
-========
-
-Flush Time(Default) = 4s
-Auto Rebuild = On
-Battery Warning = On
-Restore HotSpare on Insertion = Off
-Expose Enclosure Devices = On
-Maintain PD Fail History = On
-Reorder Host Requests = On
-Load Balance Mode = Auto
-Security Key Assigned = On
-Use drive activity for locate = Off
-
-Boot :
-====
-Stop BIOS on Error = Off
-Enable Ctrl-R = Yes
-Enable Web BIOS = No
-Enable PreBoot CLI = No
-Enable BIOS = Yes
-Allow Boot with Preserved Cache = Off
-
-Scheduled Tasks :
-===============
-Consistency Check Reoccurrence = 168 hrs
-Next Consistency check launch = 11/21/2015, 03:00:00
-Patrol Read Reoccurrence = 168 hrs
-Next Patrol Read launch = 11/21/2015, 03:00:00
-Battery learn Reoccurrence = 672 hrs
-Next Battery Learn = 11/18/2015, 18:00:00
-=cut
 	}
-	close $file_handle;
 	
-	return(0);
+	# Some pretty debugging code.
+	foreach my $serial_number (keys %{$an->data->{controller}{serial_number}})
+	{
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "serial_number", value1 => $serial_number,
+				name2 => "type",          value2 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $longest_variable = 0;
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
+			{
+				next if $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable} eq "";
+				if (length($variable) > $longest_variable)
+				{
+					$longest_variable = length($variable);
+				}
+			}
+			
+			# Now loop again in alphabetical order printing in the dots as needed.
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
+			{
+				next if $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable} eq "";
+				my $difference   = $longest_variable - length($variable);
+				my $say_variable = $variable;
+				if ($difference == 0)
+				{
+					# Do nothing
+				}
+				elsif ($difference == 1) 
+				{
+					$say_variable .= " ";
+				}
+				elsif ($difference == 2) 
+				{
+					$say_variable .= "  ";
+				}
+				else
+				{
+					my $dots         =  $difference - 2;
+					   $say_variable .= " ";
+					for (1 .. $dots)
+					{
+						$say_variable .= ".";
+					}
+					$say_variable .= " ";
+				}
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "$say_variable", value1 => $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "serial_number", value1 => $serial_number,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($serial_number);
 }
 
 # This does two things; It checks to see if storcli64 is installed (exits '1' if not, exits '2' if not 

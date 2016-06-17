@@ -423,11 +423,13 @@ sub hr_to_bytes
 	my $an        = $self->parent;
 	return undef if not defined $parameter;
 	
-	# Now see if the user passed the values in a hash reference or directly.
-	my $size =  $parameter->{size} ? $parameter->{size} : 0;
-	my $type =  $parameter->{type} ? $parameter->{type} : 0;
-	   $size =~ s/ //g;
-	   $type =~ s/ //g;
+	# Pick up the parameters.
+	my $base2  =  defined $parameter->{base2}  ? $parameter->{base2}  : 0;
+	my $base10 =  defined $parameter->{base10} ? $parameter->{base10} : 0;
+	my $size   =  defined $parameter->{size}   ? $parameter->{size}   : 0;
+	my $type   =  defined $parameter->{type}   ? $parameter->{type}   : 0;
+	   $size   =~ s/ //g;
+	   $type   =~ s/ //g;
 	
 	# Store and strip the sign
 	my $sign = "";
@@ -468,11 +470,21 @@ sub hr_to_bytes
 		return ($sign.$size);
 	}
 	
-	# If the "type" is "Xib", make sure we're running in Base2 notation. Conversly, if the type is "Xb",
-	# make sure that we're running in Base10 notation. In either case, shorten the 'type' to just the 
-	# first letter to make the next sanity check simpler.
+	# If the "type" is "Xib" or if '$base2' is set, make sure we're running in Base2 notation. Conversly,
+	# if the type is "Xb" or if '$base10' is set, make sure that we're running in Base10 notation. In 
+	# either case, shorten the 'type' to just the first letter to make the next sanity check simpler.
 	my $prior_base2 = $an->Readable->base2();
-	if ($type =~ /^(\w)ib$/)
+	if ($base2)
+	{
+		$an->Readable->base2(1);
+		$type = ($type =~ /^(\w)/)[0];
+	}
+	elsif ($base10)
+	{
+		$an->Readable->base2(0);
+		$type = ($type =~ /^(\w)/)[0];
+	}
+	elsif ($type =~ /^(\w)ib$/)
 	{
 		# Make sure we're running in Base2.
 		$type = $1;

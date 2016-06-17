@@ -12,6 +12,7 @@
 # 5  = We're SyncSource (or our peer is Diskless), so local shutdown is aborted.
 #
 # TODO:
+# - Abort the start if any interfaces are missing (ie: after a mobo was changed)
 # - Make this work without DB access
 # - Check if the node has anvil-kick-apc-ups enabled and stop it unless overridden by a switch.
 # - Add a '--script' option that prints parsable output about server migrations/shutdowns and so on so that

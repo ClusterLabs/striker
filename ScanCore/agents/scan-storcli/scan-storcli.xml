@@ -30,7 +30,8 @@ main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'
 		<key name="scan_storcli_error_0002">The 'storcli64' program was found at: [#!variable!path!#], but it is not executable. exiting.</key>
 		<key name="scan_storcli_error_0003">No LSI-based RAID controllers were found, exiting.</key>
 		<key name="scan_storcli_error_0004">Requested data from controller: [#!variable!requested_controller!#] but got data from: [#!variable!this_controller!#]. Exiting.</key>
-		<key name="scan_storcli_error_0005">Requested data from controller: [#!variable!controller!#] but got an unexpected status. Expected 'Success', but got: [#!variable!status!#]. Exiting.</key>
+		<key name="scan_storcli_error_0005">Requested data from adapter: [#!variable!adapter!#] but got an unexpected status. Expected 'Success', but got: [#!variable!status!#]. Exiting.</key>
+		<key name="scan_storcli_error_0006">Failed to find the serial number for the adapter: [#!variable!adapter!#]. Please check the output of '#!data!path::storcli64!# #!data!sys::arguments::controller_info!#' and look for the 'Serial Number = X' string. Exiting.</key>
 		
 		<!-- Storcli section names -->
 		<key name="scan_storcli_section_0001">Basic Information</key>
@@ -47,7 +48,7 @@ main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'
 		<!-- Storcli Agent-specific messages -->
 		<key name="scan_storcli_message_0001">Starting #!string!scan_storcli_brand_0001!#:</key>
 		<key name="scan_storcli_message_0002"><![CDATA[
- -=] IPMI Scan Agent
+ -=] Broadcom (LSI/Avago) RAID Controller Scan Agent
 
 DESCRIPTION
 
@@ -80,8 +81,6 @@ https://alteeve.ca/w/Support
 		]]></key>
 		<key name="scan_storcli_message_0003"></key>
 		
-		
-		<key name="scan_storcli_message_0003"></key>
 		<!-- Sensor message titles -->
 		<key name="scan_storcli_title_0001"></key>
 	</lang>
