@@ -59,9 +59,7 @@ sub access
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => { function => "access" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "access" }, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $parameter->{target})
 	{
@@ -72,7 +70,7 @@ sub access
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : 22;
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target, 
 		name2 => "port",   value2 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -82,7 +80,7 @@ sub access
 
 	my $access     = 0;
 	my $shell_call = $an->data->{path}{echo}." 1";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -94,20 +92,20 @@ sub access
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line eq "1")
 		{
 			$access = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "access", value1 => $access, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "access", value1 => $access, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($access);

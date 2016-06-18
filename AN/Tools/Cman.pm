@@ -59,7 +59,7 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
-### NOTE: For now, this requires being invoked on the node.
+### NOTE: This requires being invoked on the node.
 # This boots a server and tries to handle common errors. It will boot on the healthiest node if one host is
 # not ready (ie: The VM's backing storage is on a DRBD resource that is Inconsistent on one of the nodes).
 # Returns:
@@ -92,6 +92,15 @@ sub boot_server
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0059", code => 59, file => "$THIS_FILE", line => __LINE__});
 	}
 	
+	# Get this node's cluster name
+	my $anvil_data = $an->Get->local_anvil_details();
+	my $anvil_name = $anvil_data->{anvil_name};
+	my $anvil_uuid = $anvil_data->{anvil_uuid};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name, 
+		name2 => "anvil_uuid", value2 => $anvil_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	# Get a list of servers on the system.
 	my $server_found      = 0;
 	my $server_state      = "";
@@ -107,7 +116,7 @@ sub boot_server
 		{
 			$server_found = 1;
 			$server_state = $state->{$server_name};
-			$server_uuid  = $an->data->{server_name}{$server_name}{uuid};
+			$server_uuid  = $an->Get->server_uuid({server => $server_name, anvil => $anvil_uuid});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "server_found", value1 => $server_found, 
 				name2 => "server_state", value2 => $server_state, 
@@ -876,7 +885,6 @@ sub get_clustat_data
 			target		=>	$target,
 			port		=>	$port, 
 			password	=>	$password,
-			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
 	}

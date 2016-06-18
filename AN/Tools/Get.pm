@@ -1306,7 +1306,6 @@ sub local_anvil_details
 	my $xml  = XML::Simple->new();
 	my $data = $xml->XMLin($config_file, KeyAttr => {node => 'name'}, ForceArray => 1);
 	
-	### TODO: Detect whether this is reading in cluster.conf or cibadmin
 	my $return = {
 		local_node	=>	"",
 		peer_node	=>	"",
@@ -2865,48 +2864,39 @@ sub server_data
 		return("");
 	}
 	
-	# Get the server's UUID.
-	if ($server_uuid !~ /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
-	{
-		$server_uuid = $an->Get->server_uuid({
-			server => $server_name, 
-			anvil  => $anvil_uuid, 
-		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "server_uuid", value1 => $server_uuid, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($server_uuid !~ /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
-		{
-			# Bad or no UUID returned.
-			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0058", message_variables => { uuid => $server_uuid }, code => 58, file => "$THIS_FILE", line => __LINE__});
-		}
-	}
-	else
-	{
-		# Call this anyway as it will ensure we've got the definition XML file.
-		$an->Get->server_uuid({
-			server => $server_name, 
-			anvil  => $anvil_uuid, 
-		});
-	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "server_uuid", value1 => $server_uuid,
+	# Whether we have the server's UUID or not, call '$an->Get->server_uuid' to ensure the XML is loaded.
+	$server_uuid = $an->Get->server_uuid({
+		server => $server_name, 
+		anvil  => $anvil_uuid, 
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server_uuid", value1 => $server_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Check the server table now (if we have a database connection).
+	if (not $an->Validate->is_uuid({uuid => $server_uuid}))
+	{
+		# Bad or no UUID returned.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0058", message_variables => { uuid => $server_uuid }, code => 58, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# Check the server table now. Note that it is possible a valid server will not be in the DB yet.
+	$return->{name}                     = "";
+	$return->{stop_reason}              = "";
+	$return->{start_after}              = "";
+	$return->{start_delay}              = "";
+	$return->{note}                     = "";
+	$return->{host}                     = "";
+	$return->{'state'}                  = "";
+	$return->{definition}               = "";
+	$return->{migration_type}           = "";
+	$return->{pre_migration_script}     = "";
+	$return->{pre_migration_arguments}  = "";
+	$return->{post_migration_script}    = "";
+	$return->{post_migration_arguments} = "";
+	$return->{modified_date}            = "";
 	if ($server_uuid)
 	{
-		if (not $an->data->{sys}{read_db_id})
-		{
-			# Pick up the XML read by $an->Get->server_uuid()
-			$return->{definition} = $an->data->{server}{$server_name}{xml} ? $an->data->{server}{$server_name}{xml} : "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "return->definition", value1 => $return->{definition},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		else
-		{
-			my $query = "
+		my $query = "
 SELECT 
     server_name, 
     server_stop_reason, 
@@ -2927,98 +2917,98 @@ FROM
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "query", value1 => $query, 
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $server_name                     = $row->[0];
+			my $server_stop_reason              = $row->[1]  ? $row->[1]  : "";
+			my $server_start_after              = $row->[2]  ? $row->[2]  : "";
+			my $server_start_delay              = $row->[3];
+			my $server_note                     = $row->[4]  ? $row->[4]  : "";
+			my $server_host                     = $row->[5]  ? $row->[5]  : "";
+			my $server_state                    = $row->[6]  ? $row->[6]  : "";
+			my $server_definition               = $row->[7]  ? $row->[7]  : "";
+			my $server_migration_type           = $row->[8];
+			my $server_pre_migration_script     = $row->[9];
+			my $server_pre_migration_arguments  = $row->[10] ? $row->[10] : "";
+			my $server_post_migration_script    = $row->[11] ? $row->[11] : "";
+			my $server_post_migration_arguments = $row->[12] ? $row->[12] : "";
+			my $modified_date                   = $row->[13] ? $row->[13] : "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+				name1  => "server_name",                     value1  => $server_name, 
+				name2  => "server_stop_reason",              value2  => $server_stop_reason, 
+				name3  => "server_start_after",              value3  => $server_start_after, 
+				name4  => "server_start_delay",              value4  => $server_start_delay, 
+				name5  => "server_note",                     value5  => $server_note, 
+				name6  => "server_host",                     value6  => $server_host, 
+				name7  => "server_state",                    value7  => $server_state, 
+				name8  => "server_definition",               value8  => $server_definition, 
+				name9  => "server_migration_type",           value9  => $server_migration_type, 
+				name10 => "server_pre_migration_script",     value10 => $server_pre_migration_script, 
+				name11 => "server_pre_migration_arguments",  value11 => $server_pre_migration_arguments, 
+				name12 => "server_post_migration_script",    value12 => $server_post_migration_script, 
+				name13 => "server_post_migration_arguments", value13 => $server_post_migration_arguments, 
+				name14 => "modified_date",                   value14 => $modified_date, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-			my $count   = @{$results};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "results", value1 => $results, 
-				name2 => "count",   value2 => $count
+			# Push the values into the 'return' hash reference.
+			$return->{name}                     = $server_name;
+			$return->{stop_reason}              = $server_stop_reason;
+			$return->{start_after}              = $server_start_after;
+			$return->{start_delay}              = $server_start_delay;
+			$return->{note}                     = $server_note;
+			$return->{host}                     = $server_host;
+			$return->{'state'}                  = $server_state;
+			$return->{definition}               = $server_definition;
+			$return->{migration_type}           = $server_migration_type;
+			$return->{pre_migration_script}     = $server_pre_migration_script;
+			$return->{pre_migration_arguments}  = $server_pre_migration_arguments;
+			$return->{post_migration_script}    = $server_post_migration_script;
+			$return->{post_migration_arguments} = $server_post_migration_arguments;
+			$return->{modified_date}            = $modified_date;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+				name1  => "name",                     value1  => $return->{name}, 
+				name2  => "stop_reason",              value2  => $return->{stop_reason}, 
+				name3  => "start_after",              value3  => $return->{start_after}, 
+				name4  => "start_delay",              value4  => $return->{start_delay}, 
+				name5  => "note",                     value5  => $return->{note}, 
+				name6  => "host",                     value6  => $return->{host}, 
+				name7  => "state",                    value7  => $return->{'state'}, 
+				name8  => "definition",               value8  => $return->{definition}, 
+				name9  => "migration_type",           value9  => $return->{migration_type}, 
+				name10 => "pre_migration_script",     value10 => $return->{pre_migration_script}, 
+				name11 => "pre_migration_arguments",  value11 => $return->{pre_migration_arguments}, 
+				name12 => "post_migration_script",    value12 => $return->{post_migration_script}, 
+				name13 => "post_migration_arguments", value13 => $return->{post_migration_arguments}, 
+				name14 => "modified_date",            value14 => $return->{modified_date}, 
 			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $row (@{$results})
-			{
-				my $server_name                     = $row->[0];
-				my $server_stop_reason              = $row->[1]  ? $row->[1]  : "";
-				my $server_start_after              = $row->[2]  ? $row->[2]  : "";
-				my $server_start_delay              = $row->[3];
-				my $server_note                     = $row->[4]  ? $row->[4]  : "";
-				my $server_host                     = $row->[5]  ? $row->[5]  : "";
-				my $server_state                    = $row->[6]  ? $row->[6]  : "";
-				my $server_definition               = $row->[7]  ? $row->[7]  : "";
-				my $server_migration_type           = $row->[8];
-				my $server_pre_migration_script     = $row->[9];
-				my $server_pre_migration_arguments  = $row->[10] ? $row->[10] : "";
-				my $server_post_migration_script    = $row->[11] ? $row->[11] : "";
-				my $server_post_migration_arguments = $row->[12] ? $row->[12] : "";
-				my $modified_date                   = $row->[13] ? $row->[13] : "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
-					name1  => "server_name",                     value1  => $server_name, 
-					name2  => "server_stop_reason",              value2  => $server_stop_reason, 
-					name3  => "server_start_after",              value3  => $server_start_after, 
-					name4  => "server_start_delay",              value4  => $server_start_delay, 
-					name5  => "server_note",                     value5  => $server_note, 
-					name6  => "server_host",                     value6  => $server_host, 
-					name7  => "server_state",                    value7  => $server_state, 
-					name8  => "server_definition",               value8  => $server_definition, 
-					name9  => "server_migration_type",           value9  => $server_migration_type, 
-					name10 => "server_pre_migration_script",     value10 => $server_pre_migration_script, 
-					name11 => "server_pre_migration_arguments",  value11 => $server_pre_migration_arguments, 
-					name12 => "server_post_migration_script",    value12 => $server_post_migration_script, 
-					name13 => "server_post_migration_arguments", value13 => $server_post_migration_arguments, 
-					name14 => "modified_date",                   value14 => $modified_date, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Push the values into the 'return' hash reference.
-				$return->{uuid}                     = $server_uuid;
-				$return->{name}                     = $server_name;
-				$return->{stop_reason}              = $server_stop_reason;
-				$return->{start_after}              = $server_start_after;
-				$return->{start_delay}              = $server_start_delay;
-				$return->{note}                     = $server_note;
-				$return->{host}                     = $server_host;
-				$return->{'state'}                  = $server_state;
-				$return->{definition}               = $server_definition;
-				$return->{migration_type}           = $server_migration_type;
-				$return->{pre_migration_script}     = $server_pre_migration_script;
-				$return->{pre_migration_arguments}  = $server_pre_migration_arguments;
-				$return->{post_migration_script}    = $server_post_migration_script;
-				$return->{post_migration_arguments} = $server_post_migration_arguments;
-				$return->{modified_date}            = $modified_date;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
-					name1  => "uuid",                     value1  => $return->{uuid}, 
-					name2  => "name",                     value2  => $return->{name}, 
-					name3  => "stop_reason",              value3  => $return->{stop_reason}, 
-					name4  => "start_after",              value4  => $return->{start_after}, 
-					name5  => "start_delay",              value5  => $return->{start_delay}, 
-					name6  => "note",                     value6  => $return->{note}, 
-					name7  => "host",                     value7  => $return->{host}, 
-					name8  => "state",                    value8  => $return->{'state'}, 
-					name9  => "definition",               value9  => $return->{definition}, 
-					name10 => "migration_type",           value10 => $return->{migration_type}, 
-					name11 => "pre_migration_script",     value11 => $return->{pre_migration_script}, 
-					name12 => "pre_migration_arguments",  value12 => $return->{pre_migration_arguments}, 
-					name13 => "post_migration_script",    value13 => $return->{post_migration_script}, 
-					name14 => "post_migration_arguments", value14 => $return->{post_migration_arguments}, 
-					name15 => "modified_date",            value15 => $return->{modified_date}, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			
-			# If there were no results, fall back to the XML we got earlier.
-			if (not $return->{modified_date})
-			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "server_name", value1 => $server_name,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				$return->{definition} = $an->data->{server}{$server_name}{xml} ? $an->data->{server}{$server_name}{xml} : "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "return->definition", value1 => $return->{definition},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
 		}
 	}
+	
+	# Whether I got a result or not, if we got the XML from our '$an->Get->server_uuid()' call, use it as
+	# it might well be the XML from 'virsh dumpxml', which is always the most accurate.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "server::${server_name}::xml", value1 => $an->data->{server}{$server_name}{xml},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{server}{$server_name}{xml})
+	{
+		$return->{definition} = $an->data->{server}{$server_name}{xml};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "return->definition", value1 => $return->{definition},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Set the UUID to the passed in UUID.
+	$return->{uuid} = $server_uuid;
 	
 	# Now dig out the storage and network details.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -3027,10 +3017,10 @@ WHERE
 	if (not $return->{definition})
 	{
 		# Get the XML data from the definition file on the host directly.
-		
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0092", code => 92, file => "$THIS_FILE", line => __LINE__});
 		return("");
 	}
+	
 	my $xml  = XML::Simple->new();
 	my $data = $xml->XMLin($return->{definition}, KeyAttr => {}, ForceArray => 1);
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -3173,12 +3163,12 @@ sub server_uuid
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "server_uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $uuid = "";
-	my $server = $parameter->{server} ? $parameter->{server} : "";
-	my $anvil  = $parameter->{anvil}  ? $parameter->{anvil}  : "";
+	my $uuid       = "";
+	my $server     = $parameter->{server} ? $parameter->{server} : "";
+	my $anvil_uuid = $parameter->{anvil}  ? $parameter->{anvil}  : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "server", value1 => $server, 
-		name2 => "anvil",  value2 => $anvil, 
+		name1 => "server",     value1 => $server, 
+		name2 => "anvil_uuid", value2 => $anvil_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $server)
 	{
@@ -3187,87 +3177,219 @@ sub server_uuid
 		return("");
 	}
 	# If an anvil wasn't specified, see if one was set by cgi.
-	if ((not $anvil) && ($an->data->{cgi}{anvil_uuid}))
+	if (not $anvil_uuid)
 	{
-		$anvil = $an->data->{cgi}{anvil_uuid};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "anvil", value1 => $anvil, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{cgi}{anvil_uuid})
+		{
+			$anvil_uuid = $an->data->{cgi}{anvil_uuid};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_uuid", value1 => $anvil_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Was the Anvil! UUID set by an earlier load?
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($an->data->{sys}{anvil}{uuid})
+			{
+				# Yup.
+				$anvil_uuid = $an->data->{sys}{anvil}{uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "anvil_uuid", value1 => $anvil_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Note, try loading the Anvil! now.
+				$an->Striker->load_anvil();
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($an->data->{sys}{anvil}{uuid})
+				{
+					# Success!
+					$anvil_uuid = $an->data->{sys}{anvil}{uuid};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "anvil_uuid", value1 => $anvil_uuid, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+	}
+	
+	# Make sure I loaded the Anvil! node data.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::anvil::name", value1 => $an->data->{sys}{anvil}{name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $an->data->{sys}{anvil}{name}) && ($anvil_uuid))
+	{
+		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::anvil::node1::use_ip", value1 => $an->data->{sys}{anvil}{node1}{use_ip}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $an->data->{sys}{anvil}{node1}{use_ip})
+	{
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::anvil::node2::use_ip", value1 => $an->data->{sys}{anvil}{node2}{use_ip}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $an->data->{sys}{anvil}{node2}{use_ip})
+	{
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
+	}
+	
+	# Still missing data?
+	if ((not $an->data->{sys}{anvil}{node1}{uuid}) or (not $an->data->{sys}{anvil}{node2}{uuid}))
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0166", code => 166, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	### TODO: Finish this, but remember that this is likely being called from Striker so we can't assume
 	###       this hostname is part of an Anvil!. 
 	# Now check to see if the server is running on one of the nodes.
-	my $node1           = "";
-	my $node2           = "";
-	my $anvil_password  = "";
-	if ($anvil)
-	{
-		# Assume this machine is a striker dashboard.
-		my $return         = $an->Get->remote_anvil_details({anvil => $anvil});
-		   $node1          = $return->{node1};
-		   $node2          = $return->{node2};
-		   $anvil_password = $return->{anvil_password};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "node1", value1 => $node1, 
-			name2 => "node2", value2 => $node2, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-			name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Assume this machine is in an Anvil! and find the peer.
-		my $return = $an->Get->local_anvil_details({
-			hostname_full	=>	$an->hostname,
-			hostname_short	=>	$an->short_hostname,
-			config_file	=>	$an->data->{path}{cman_config},
-		});
-		   $node1          = $return->{local_node};
-		   $node2          = $return->{peer_node};
-		   $anvil          = $return->{anvil_name};
-		   $anvil_password = $return->{anvil_password};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "node1", value1 => $node1, 
-			name2 => "node2", value2 => $node2, 
-			name3 => "anvil", value3 => $anvil, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-			name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Now look on each machine for the server.
+	my $node1_name     = $an->data->{sys}{anvil}{node1}{name};
+	my $node1_use_ip   = $an->data->{sys}{anvil}{node1}{use_ip};
+	my $node1_port     = $an->data->{sys}{anvil}{node1}{port};
+	my $node1_online   = $an->data->{sys}{anvil}{node1}{online};
+	my $node1_password = $an->data->{sys}{anvil}{node1}{password};
+	my $node2_name     = $an->data->{sys}{anvil}{node2}{name};
+	my $node2_use_ip   = $an->data->{sys}{anvil}{node2}{use_ip};
+	my $node2_port     = $an->data->{sys}{anvil}{node2}{port};
+	my $node2_online   = $an->data->{sys}{anvil}{node2}{online};
+	my $node2_password = $an->data->{sys}{anvil}{node2}{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		name1 => "node1_name",   value1 => $node1_name, 
+		name2 => "node1_online", value2 => $node1_online, 
+		name3 => "node1_use_ip", value3 => $node1_use_ip, 
+		name4 => "node1_port",   value4 => $node1_port, 
+		name5 => "node2_name",   value5 => $node2_name, 
+		name6 => "node2_online", value6 => $node2_online, 
+		name7 => "node2_use_ip", value7 => $node2_use_ip, 
+		name8 => "node2_port",   value8 => $node2_port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1_password", value1 => $node1_password, 
+		name2 => "node2_password", value2 => $node2_password, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# How I make the call to node1 depends on whether it is local or not. Node 2 will always be a remote call.
 	my $server_found = 0;
 	
-	# Try node 1. This will check for a running server first and, if it's not found, check 
-	# /server/definitions/${server}.xml.
-	my $xml = $an->Get->server_xml({
-		server   => $server, 
-		target   => $node1, 
-		password => $anvil_password, 
-	});
-	
-	# If I don't have XML yet, try node 2.
-	if (not $xml)
+	# Call clustat to see if the server is running on one of the nodes. If it is, use that node first to
+	# get the XML.
+	my $target   = "";
+	my $port     = "";
+	my $password = "";
+	if ($node1_online)
 	{
-		$xml = $an->Get->server_xml({
-			server   => $server, 
-			target   => $node2, 
-			password => $anvil_password, 
-		});
+		$target   = $node1_use_ip;
+		$port     = $node1_port;
+		$password = $node1_password;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "target", value1 => $target, 
+			name2 => "port",   value2 => $port, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($node2_online)
+	{
+		$target   = $node2_use_ip;
+		$port     = $node2_port;
+		$password = $node2_password;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "target", value1 => $target, 
+			name2 => "port",   value2 => $port, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# If I still don't have XML, try to see if we have it in the database.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "length(xml)",     value1 => length($xml), 
-		name2 => "sys::read_db_id", value2 => $an->data->{sys}{read_db_id}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $xml) && ($an->data->{sys}{read_db_id}))
+	# Was one of the nodes online? If so, find the current host, if any. 
+	my $xml = "";
+	if ($target)
 	{
+		# See if the server is running. If so, read the XML from 'virsh dumpxml'
+		my $clustat_data = $an->Cman->get_clustat_data({
+				target   => $target,
+				port     => $port,
+				password => $password,
+			});
+		my $state = $clustat_data->{server}{$server}{status};
+		my $host  = $clustat_data->{server}{$server}{host};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "state", value1 => $state, 
+			name2 => "host",  value2 => $host, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($host eq $node1_name)
+		{
+			$xml = $an->Get->server_xml({
+				server   => $server, 
+				target   => $node1_name, 
+				port     => $node1_port, 
+				password => $node1_password, 
+			});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "xml", value1 => $xml, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($host eq $node2_name)
+		{
+			$xml = $an->Get->server_xml({
+				server   => $server, 
+				target   => $node2_name, 
+				port     => $node2_port, 
+				password => $node2_password, 
+			});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "xml", value1 => $xml, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($node1_online)
+		{
+			# Read the XML from /shared/definitions.
+			$xml = $an->Get->server_xml({
+				server   => $server, 
+				target   => $node1_name, 
+				port     => $node1_port, 
+				password => $node1_password, 
+			});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "xml", value1 => $xml, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($node2_online)
+		{
+			# Read the XML from /shared/definitions.
+			$xml = $an->Get->server_xml({
+				server   => $server, 
+				target   => $node2_name, 
+				port     => $node2_port, 
+				password => $node2_password, 
+			});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "xml", value1 => $xml, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	else
+	{
+		# Not online, so try to read the XML from the database.
 		my $query = "
 SELECT 
     server_definition 
@@ -3279,43 +3401,42 @@ WHERE
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		$xml = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "length(xml)", value1 => length($xml), 
+			name1 => "xml", value1 => $xml, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# If I still don't have XML, then I am out of ideas...
+	$an->data->{server}{$server}{uuid} = "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "length(xml)", value1 => length($xml), 
+		name1 => "xml", value1 => $xml, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($xml)
 	{
+		$an->data->{server}{$server}{xml} = $xml;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "server::${server}::xml", value1 => $an->data->{server}{$server}{xml}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		# Dig out the UUID.
 		foreach my $line (split/\n/, $xml)
 		{
 			if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
 			{
-				$uuid = $1;
+				$an->data->{server}{$server}{uuid} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "uuid", value1 => $uuid, 
+					name1 => "server::${server}::uuid", value1 => $an->data->{server}{$server}{uuid}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
-		
-		# Store the XML in a system variable.
-		$an->data->{server}{$server}{uuid} = $uuid if not $an->data->{server}{$server}{uuid};
-		$an->data->{server}{$server}{xml}  = $xml  if not $an->data->{server}{$server}{xml};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "server::${server}::uuid", value1 => $an->data->{server}{$server}{uuid}, 
-			name2 => "server::${server}::xml",  value2 => $an->data->{server}{$server}{xml}, 
-		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "uuid", value1 => $uuid, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server::${server}::uuid", value1 => $an->data->{server}{$server}{uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	return($uuid);
+	return($an->data->{server}{$server}{uuid});
 }
 
 # This looks for a running server on the node (or locally if 'remote => 0' and returns the XML and a single 
@@ -3327,7 +3448,13 @@ sub server_xml
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "server_xml" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $server   = $parameter->{server};
+	my $server = $parameter->{server};
+	if (not $server)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0167", code => 167, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
@@ -3346,14 +3473,13 @@ sub server_xml
 	{
 		# It is remote. Note that the node might not be accessible.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $target,
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$target,
+			port		=>	$port,
 			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
 		foreach my $line (@{$return})
@@ -3388,16 +3514,15 @@ sub server_xml
 		if ($server_found)
 		{
 			# Found it here, read in it's XML.
-			my $shell_call = "virsh dumpxml $server";
+			my $shell_call = $an->data->{path}{virsh}." dumpxml $server";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "shell_call", value1 => $shell_call,
-				name2 => "target",     value2 => $target,
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$target,
+				port		=>	$port,
 				password	=>	$password,
-				ssh_fh		=>	"",
-				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
 			foreach my $line (@{$return})
@@ -3431,14 +3556,13 @@ then
 fi
 ";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "shell_call", value1 => $shell_call,
-				name2 => "target",     value2 => $target,
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$target,
+				port		=>	$port,
 				password	=>	$password,
-				ssh_fh		=>	"",
-				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
 			foreach my $line (@{$return})
@@ -4304,7 +4428,7 @@ sub uuid
 		{
 			chomp;
 			$uuid = lc($_);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "uuid", value1 => $uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 			last;

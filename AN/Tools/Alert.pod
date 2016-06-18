@@ -900,7 +900,13 @@ The 'AN::Tools::Web' module's 'insert_or_update_variables()' method was called w
 
 The 'AN::Tools::Web' module's 'read_variables()' method was called without passing in an variable name.
 
+=head2 C<166>
 
+The 'AN::Tools::Get' module's 'server_uuid()' method was unable to gather the UUIDs of the Anvil! nodes.
+
+=head2 C<167>
+
+The 'AN::Tools::Get' module's 'server_xml()' method was called without a server name being passed.
 
 =head1 SEE ALSO
 

@@ -66,9 +66,7 @@ if (($an->data->{switches}{h})   or
 }
 
 # Log our startup
-$an->Log->entry({log_level => 3, message_key => "abs_log_0001", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 3, message_key => "abs_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 # Exit if no Anvil! defined.
 if (not $an->data->{switches}{server})
@@ -79,16 +77,14 @@ if (not $an->data->{switches}{server})
 
 # Connect to the databases.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => {
-	connections => $connections,
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
 
 # OK, boot.
 if ($connections)
 {
 	my ($booted, $boot_return) = $an->Cman->boot_server({server => $an->data->{switches}{server}});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "booted",      value1 => $booted, 
+		name1 => "booted", value1 => $booted, 
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (@{$boot_return})
 	{
