@@ -1015,10 +1015,8 @@ sub get_clustat_data
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			$details->{service}{$service} = {
-				host   => $host,
-				status => $status,
-			};
+			$details->{service}{$service}{host}   = $host;
+			$details->{service}{$service}{status} = $status;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "details->service::${service}::host",   value1 => $details->{service}{$service}{host}, 
 				name2 => "details->service::${service}::status", value2 => $details->{service}{$service}{status}, 
@@ -1056,10 +1054,8 @@ sub get_clustat_data
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			$details->{server}{$server} = {
-				host   => $host,
-				status => $status,
-			};
+			$details->{server}{$server}{host}   = $host;
+			$details->{server}{$server}{status} = $status;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "details->server::${server}::host",   value1 => $details->{server}{$server}{host}, 
 				name2 => "details->server::${server}::status", value2 => $details->{server}{$server}{status}, 
@@ -1070,6 +1066,7 @@ sub get_clustat_data
 	return($details);
 }
 
+### TODO: Why does this exist? It's a lesser duplicate of what 'get_clustat_data()' does already. Remove this.
 # This returns an array reference of the servers found on this Anvil!
 sub get_cluster_server_list
 {

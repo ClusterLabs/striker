@@ -251,7 +251,7 @@ sub load_anvil
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->Validate->is_uuid({uuid => $anvil_uuid}))
@@ -317,7 +317,7 @@ sub load_anvil
 	
 	foreach my $node_key ("node1", "node2")
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "node_key",   value1 => $node_key, 
 			name2 => "anvil_uuid", value2 => $anvil_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});

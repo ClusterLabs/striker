@@ -3262,6 +3262,51 @@ SUPPORT
 
                                                           #!string!brand_0001!#
 ]]>
+		
+		<!-- Anvil! server summary-->
+		<!-- logs -->
+		<key name="asvs_log_0001">#!variable!this_file!# has started.</key>
+		
+		<!-- messages -->
+		<key name="asvs_message_0001"><![CDATA[
+ -=] Server Summary
+
+DESCRIPTION
+
+This program loops through all configured Anvil! system and reports on the
+servers hosted on that Anvil! system. Optionally, a single Anvil! name can be
+passed if you want to see the current servers that specific system.
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+ --anvil <anvil>
+
+	This option allows you to specify the Anvil! you want to query. This
+	can either be the Anvil! name or its UUID.
+
+
+EXAMPLE
+
+Get a list of all servers on all configured Anvil! systems.
+
+ ./anvil-server-summary
+ 
+Restict the list of servers to the 'an-anvil-05' Anvil!.
+
+ ./anvil-server-summary --anvil an-anvil-05
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
 		</key>
 	</lang>
 
