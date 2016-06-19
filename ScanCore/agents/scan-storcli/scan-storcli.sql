@@ -1,350 +1,425 @@
 -- This is the database schema for the 'storcli Scan Agent'.
 
--- Data here comes from the 'Basics' section of 'storcli64 /cX show all'
-CREATE TABLE storcli_adapter (
+-- ------------------------------------------------------------------------------------------------------- --
+-- Adapter                                                                                                 --
+-- ------------------------------------------------------------------------------------------------------- --
+
+-- Here is the basic adapter information. All connected devices will reference back to this table's 
+-- 'storcli_adapter_serial_number' column.
+CREATE TABLE storcli_adapters (
 	storcli_adapter_uuid			uuid				primary key,
 	storcli_adapter_host_uuid		uuid				not null,
 	storcli_adapter_model			text				not null,
 	storcli_adapter_serial_number		text				not null,	-- This is the core identifier
-	storcli_adapter_pci_address		text,
+	storcli_adapter_alarm_state		text				not null,
+	storcli_adapter_cache_size		numeric				not null,	-- "On Board Memory Size"
+	storcli_adapter_roc_temperature		numeric				not null,	-- ROC == Raid on Chip, the controllers ASIC/CPU
 	modified_date				timestamp with time zone	not null,
 	
 	FOREIGN KEY(storcli_host_uuid) REFERENCES hosts(host_uuid)
 );
-ALTER TABLE storcli_adapter OWNER TO #!variable!user!#;
+ALTER TABLE storcli_adapters OWNER TO #!variable!user!#;
 
-CREATE TABLE history.storcli_adapter (
+CREATE TABLE history.storcli_adapters (
 	history_id				bigserial,
-	storcli_adapter_uuid			uuid				primary key,
-	storcli_adapter_host_uuid		uuid				not null,
-	storcli_adapter_model			text				not null,
-	storcli_adapter_serial_number		text				not null,	-- This is the core identifier
-	storcli_adapter_pci_address		text,
-	modified_date				timestamp with time zone	not null
+	storcli_adapter_uuid			uuid,
+	storcli_adapter_host_uuid		uuid,
+	storcli_adapter_model			text,
+	storcli_adapter_serial_number		text,
+	storcli_adapter_alarm_state		text,
+	storcli_adapter_cache_size		numeric,
+	storcli_adapter_roc_temperature		numeric,
+	modified_date				timestamp with time zone
 );
-ALTER TABLE history.storcli_adapter OWNER TO #!variable!user!#;
+ALTER TABLE history.storcli_adapters OWNER TO #!variable!user!#;
 
-CREATE FUNCTION history_storcli_adapter() RETURNS trigger
+CREATE FUNCTION history_storcli_adapters() RETURNS trigger
 AS $$
 DECLARE
-	history_storcli_adapter RECORD;
+	history_storcli_adapters RECORD;
 BEGIN
-	SELECT INTO history_storcli_adapter * FROM storcli_adapter WHERE storcli_adapter_uuid=new.storcli_adapter_uuid;
-	INSERT INTO history.storcli_adapter
+	SELECT INTO history_storcli_adapters * FROM storcli_adapters WHERE storcli_adapter_uuid=new.storcli_adapter_uuid;
+	INSERT INTO history.storcli_adapters
 		(storcli_adapter_uuid, 
 		 storcli_adapter_host_uuid, 
 		 storcli_adapter_model, 
 		 storcli_adapter_serial_number, 
-		 storcli_adapter_pci_address, 
+		 storcli_adapter_alarm_state, 
+		 storcli_adapter_roc_temperature, 
+		 storcli_adapter_cache_size, 
 		 modified_date)
 	VALUES
 		(history_storcli_adapter.storcli_adapter_uuid,
 		 history_storcli_adapter.storcli_adapter_host_uuid,
 		 history_storcli_adapter.storcli_adapter_model, 
 		 history_storcli_adapter.storcli_adapter_serial_number, 
-		 history_storcli_adapter.storcli_adapter_pci_address, 
+		 history_storcli_adapter.storcli_adapter_alarm_state, 
+		 history_storcli_adapter.storcli_adapter_roc_temperature, 
+		 history_storcli_adapter.storcli_adapter_cache_size, 
 		 history_storcli_adapter.modified_date);
 	RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_storcli_adapter() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_storcli_adapters() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_storcli_adapter
-	AFTER INSERT OR UPDATE ON storcli_adapter
-	FOR EACH ROW EXECUTE PROCEDURE history_storcli_adapter();
+CREATE TRIGGER trigger_storcli_adapters
+	AFTER INSERT OR UPDATE ON storcli_adapters
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_adapters();
 
 
--- This stores the data from the 'Version' section of 'storcli64 /cX show all'.
-CREATE TABLE storcli_version (
-	storcli_version_uuid			uuid				primary key,
-	storcli_version_storcli_adapter_uuid	uuid				not null,
-	storcli_version_package_build		text, 
-	storcli_version_firmware_version	text,
-	storcli_version_cpld_version		text, 
-	storcli_version_bios_version		text, 
-	storcli_version_webbios_version		text, 
-	storcli_version_ctrl_r_version		text, 
-	storcli_version_preboot_cli_version	text, 
-	storcli_version_nvdata_version		text, 
-	storcli_version_boot_block_version	text, 
-	storcli_version_bootloader_version	text, 
-	storcli_version_driver_name		text, 
-	storcli_version_driver_version		text, 
+-- This stores various variables found for a given controller but not explicitely checked for.
+CREATE TABLE storcli_adapter_variables (
+	storcli_adapter_variable_uuid		uuid				primary key,
+	storcli_adapter_variable_adapter_uuid	uuid				not null,
+	storcli_adapter_is_temperature		boolean				not null	default FALSE,
+	storcli_adapter_variable_name		text				not null,
+	storcli_adapter_variable_value		text,
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_version_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+	FOREIGN KEY(storcli_adapter_variable_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
 );
-ALTER TABLE storcli_version OWNER TO #!variable!user!#;
+ALTER TABLE storcli_adapter_variables OWNER TO #!variable!user!#;
 
-CREATE TABLE history.storcli_version (
+CREATE TABLE history.storcli_adapter_variables (
 	history_id				bigserial,
-	storcli_version_uuid			uuid				primary key,
-	storcli_version_storcli_adapter_uuid	uuid				not null,
-	storcli_version_package_build		text, 
-	storcli_version_firmware_version	text, 
-	storcli_version_cpld_version		text, 
-	storcli_version_bios_version		text, 
-	storcli_version_webbios_version		text, 
-	storcli_version_ctrl_r_version		text, 
-	storcli_version_preboot_cli_version	text, 
-	storcli_version_nvdata_version		text, 
-	storcli_version_boot_block_version	text, 
-	storcli_version_bootloader_version	text, 
-	storcli_version_driver_name		text, 
-	storcli_version_driver_version		text, 
-	modified_date				timestamp with time zone	not null
+	storcli_adapter_variable_uuid		uuid,
+	storcli_adapter_variable_adapter_uuid	uuid,
+	storcli_adapter_is_temperature		boolean,
+	storcli_adapter_variable_name		text,
+	storcli_adapter_variable_value		text,
+	modified_date				timestamp with time zone
 );
-ALTER TABLE history.storcli_version OWNER TO #!variable!user!#;
+ALTER TABLE history.storcli_adapter_variables OWNER TO #!variable!user!#;
 
-CREATE FUNCTION history_storcli_version() RETURNS trigger
+CREATE FUNCTION history_storcli_adapter_variables() RETURNS trigger
 AS $$
 DECLARE
-	history_storcli_version RECORD;
+	history_storcli_adapter_variables RECORD;
 BEGIN
-	SELECT INTO history_storcli_version * FROM storcli_version WHERE storcli_version_uuid=new.storcli_version_uuid;
-	INSERT INTO history.storcli_version
-		(storcli_version_uuid, 
-		 storcli_version_storcli_adapter_uuid, 
-		 storcli_version_package_build, 
-		 storcli_version_firmware_version, 
-		 storcli_version_cpld_version, 
-		 storcli_version_bios_version, 
-		 storcli_version_webbios_version, 
-		 storcli_version_ctrl_r_version, 
-		 storcli_version_preboot_cli_version, 
-		 storcli_version_nvdata_version, 
-		 storcli_version_boot_block_version, 
-		 storcli_version_bootloader_version, 
-		 storcli_version_driver_name, 
-		 storcli_version_driver_version, 
+	SELECT INTO history_storcli_adapter_variables * FROM storcli_adapter_variables WHERE storcli_adapter_variable_uuid=new.storcli_adapter_variable_uuid;
+	INSERT INTO history.storcli_adapter_variables
+		(storcli_adapter_variable_uuid, 
+		 storcli_adapter_variable_adapter_uuid,
+		 storcli_adapter_is_temperature,
+		 storcli_adapter_variable_name,
+		 storcli_adapter_variable_value,
 		 modified_date)
 	VALUES
-		(history_storcli_version.storcli_version_uuid, 
-		 history_storcli_version.storcli_version_storcli_adapter_uuid, 
-		 history_storcli_version.storcli_version_package_build, 
-		 history_storcli_version.storcli_version_firmware_version, 
-		 history_storcli_version.storcli_version_cpld_version, 
-		 history_storcli_version.storcli_version_bios_version, 
-		 history_storcli_version.storcli_version_webbios_version, 
-		 history_storcli_version.storcli_version_ctrl_r_version, 
-		 history_storcli_version.storcli_version_preboot_cli_version, 
-		 history_storcli_version.storcli_version_nvdata_version, 
-		 history_storcli_version.storcli_version_boot_block_version, 
-		 history_storcli_version.storcli_version_bootloader_version, 
-		 history_storcli_version.storcli_version_driver_name, 
-		 history_storcli_version.storcli_version_driver_version, 
-		 history_storcli_version.modified_date);
+		(history_storcli_adapter_variables.storcli_adapter_variable_uuid,
+		 history_storcli_adapter_variables.storcli_adapter_variable_adapter_uuid,
+		 history_storcli_adapter_variables.storcli_adapter_is_temperature,
+		 history_storcli_adapter_variables.storcli_adapter_variable_name,
+		 history_storcli_adapter_variables.storcli_adapter_variable_value,
+		 history_storcli_adapter_variables.modified_date);
 	RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_storcli_version() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_storcli_adapter_variables() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_storcli_version
-	AFTER INSERT OR UPDATE ON storcli_version
-	FOR EACH ROW EXECUTE PROCEDURE history_storcli_version();
-
-
--- This stores the data from the 'Status' section of 'storcli64 /cX show all'.
-CREATE TABLE storcli_status (
-	storcli_status_uuid				uuid				primary key,
-	storcli_status_storcli_adapter_uuid		uuid				not null,
-	storcli_status_function_number			text,
-	storcli_status_memory_correctable_errors	text,
-	storcli_status_memory_uncorrectable_errors	text,
-	storcli_status_ecc_bucket_count			text,
-	storcli_status_any_offline_vd_cache_preserved	text,
-	storcli_status_bbu_status			text,
-	storcli_status_lock_key_assigned		text,
-	storcli_status_failed_to_get_lock_key_on_bootup	text,
-	storcli_status_controller_booted_into_safe_mode	text,
-	modified_date					timestamp with time zone	not null,
-	
-	FOREIGN KEY(storcli_status_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
-);
-ALTER TABLE storcli_status OWNER TO #!variable!user!#;
-
-CREATE TABLE history.storcli_status (
-	history_id					bigserial,
-	storcli_status_uuid				uuid				primary key,
-	storcli_status_storcli_adapter_uuid		uuid				not null,
-	storcli_status_function_number			text,
-	storcli_status_memory_correctable_errors	text,
-	storcli_status_memory_uncorrectable_errors	text,
-	storcli_status_ecc_bucket_count			text,
-	storcli_status_any_offline_vd_cache_preserved	text,
-	storcli_status_bbu_status			text,
-	storcli_status_lock_key_assigned		text,
-	storcli_status_failed_to_get_lock_key_on_bootup	text,
-	storcli_status_controller_booted_into_safe_mode	text,
-	modified_date					timestamp with time zone	not null
-);
-ALTER TABLE history.storcli_status OWNER TO #!variable!user!#;
-
-CREATE FUNCTION history_storcli_status() RETURNS trigger
-AS $$
-DECLARE
-	history_storcli_status RECORD;
-BEGIN
-	SELECT INTO history_storcli_status * FROM storcli_status WHERE storcli_status_uuid=new.storcli_status_uuid;
-	INSERT INTO history.storcli_status
-		(storcli_status_uuid, 
-		 storcli_status_storcli_adapter_uuid, 
-		 storcli_status_function_number, 
-		 storcli_status_memory_correctable_errors, 
-		 storcli_status_memory_uncorrectable_errors, 
-		 storcli_status_ecc_bucket_count, 
-		 storcli_status_any_offline_vd_cache_preserved, 
-		 storcli_status_bbu_status, 
-		 storcli_status_lock_key_assigned, 
-		 storcli_status_failed_to_get_lock_key_on_bootup, 
-		 storcli_status_controller_booted_into_safe_mode, 
-		 modified_date)
-	VALUES
-		(history_storcli_status.storcli_status_uuid, 
-		 history_storcli_status.storcli_status_storcli_adapter_uuid, 
-		 history_storcli_status.storcli_status_function_number, 
-		 history_storcli_status.storcli_status_memory_correctable_errors, 
-		 history_storcli_status.storcli_status_memory_uncorrectable_errors, 
-		 history_storcli_status.storcli_status_ecc_bucket_count, 
-		 history_storcli_status.storcli_status_any_offline_vd_cache_preserved, 
-		 history_storcli_status.storcli_status_bbu_status, 
-		 history_storcli_status.storcli_status_lock_key_assigned, 
-		 history_storcli_status.storcli_status_failed_to_get_lock_key_on_bootup, 
-		 history_storcli_status.storcli_status_controller_booted_into_safe_mode, 
-		 history_storcli_status.modified_date);
-	RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
-ALTER FUNCTION history_storcli_status() OWNER TO #!variable!user!#;
-
-CREATE TRIGGER trigger_storcli_status
-	AFTER INSERT OR UPDATE ON storcli_status
-	FOR EACH ROW EXECUTE PROCEDURE history_storcli_status();
-
--- This stores the data from the 'Status' section of 'storcli64 /cX show all'.
-CREATE TABLE storcli_supported_adapter_operations (
-	storcli_status_uuid				uuid				primary key,
-	storcli_status_storcli_adapter_uuid		uuid				not null,
-
-	modified_date					timestamp with time zone	not null,
-	
-	FOREIGN KEY(storcli_status_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
-);
-ALTER TABLE storcli_supported_adapter_operations OWNER TO #!variable!user!#;
-
-CREATE TABLE history.storcli_supported_adapter_operations (
-	history_id					bigserial,
-	storcli_status_uuid				uuid				primary key,
-	storcli_status_storcli_adapter_uuid		uuid				not null,
-
-	modified_date					timestamp with time zone	not null
-);
-ALTER TABLE history.storcli_status OWNER TO #!variable!user!#;
-
-CREATE FUNCTION history_storcli_status() RETURNS trigger
-AS $$
-DECLARE
-	history_storcli_status RECORD;
-BEGIN
-	SELECT INTO history_storcli_status * FROM storcli_status WHERE storcli_status_uuid=new.storcli_status_uuid;
-	INSERT INTO history.storcli_status
-		(storcli_status_uuid, 
-		 storcli_status_storcli_adapter_uuid, 
-		 storcli_status_function_number, 
-		 storcli_status_memory_correctable_errors, 
-		 storcli_status_memory_uncorrectable_errors, 
-		 storcli_status_ecc_bucket_count, 
-		 storcli_status_any_offline_vd_cache_preserved, 
-		 storcli_status_bbu_status, 
-		 storcli_status_lock_key_assigned, 
-		 storcli_status_failed_to_get_lock_key_on_bootup, 
-		 storcli_status_controller_booted_into_safe_mode, 
-		 modified_date)
-	VALUES
-		(history_storcli_status.storcli_status_uuid, 
-		 history_storcli_status.storcli_status_storcli_adapter_uuid, 
-		 history_storcli_status.storcli_status_function_number, 
-		 history_storcli_status.storcli_status_memory_correctable_errors, 
-		 history_storcli_status.storcli_status_memory_uncorrectable_errors, 
-		 history_storcli_status.storcli_status_ecc_bucket_count, 
-		 history_storcli_status.storcli_status_any_offline_vd_cache_preserved, 
-		 history_storcli_status.storcli_status_bbu_status, 
-		 history_storcli_status.storcli_status_lock_key_assigned, 
-		 history_storcli_status.storcli_status_failed_to_get_lock_key_on_bootup, 
-		 history_storcli_status.storcli_status_controller_booted_into_safe_mode, 
-		 history_storcli_status.modified_date);
-	RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
-ALTER FUNCTION history_storcli_status() OWNER TO #!variable!user!#;
-
-CREATE TRIGGER trigger_storcli_status
-	AFTER INSERT OR UPDATE ON storcli_status
-	FOR EACH ROW EXECUTE PROCEDURE history_storcli_status();
-
-
-
-
-
+CREATE TRIGGER trigger_storcli_adapter_variables
+	AFTER INSERT OR UPDATE ON storcli_adapter_variables
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_adapter_variables();
 
 
 -- ------------------------------------------------------------------------------------------------------- --
--- This stores the plethora of values we read but don't explicitely parse (yet).                           --
+-- Cachevault                                                                                              --
 -- ------------------------------------------------------------------------------------------------------- --
-CREATE TABLE storcli_miscellaneous (
-	storcli_misc_uuid			uuid				primary key,
-	storcli_misc_storcli_adapter_uuid	uuid				not null,
-	storcli_misc_section			text				not null,
-	storcli_misc_varible_name		text				not null,
-	storcli_misc_value			text,
+
+-- This records the basic information about the cachevault (FBU) unit.
+CREATE TABLE storcli_cachevaults (
+	storcli_cachevault_uuid			uuid				primary key,
+	storcli_cachevault_adapter_uuid		uuid				not null,
+	storcli_cachevault_state		text,
+	storcli_cachevault_design_capacity	text,
+	storcli_cachevault_capacitance		text,
+	storcli_cachevault_pack_energy		text,
+	storcli_cachevault_replacement_needed	text,
+	storcli_cachevault_next_relearn		text,
+	storcli_cachevault_type			text,
+	storcli_cachevault_manufacture_date	text,
+	storcli_cachevault_temperature		numeric,
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_misc_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+	FOREIGN KEY(storcli_cachevault_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
 );
-ALTER TABLE storcli_miscellaneous OWNER TO #!variable!user!#;
+ALTER TABLE storcli_cachevaults OWNER TO #!variable!user!#;
 
-CREATE TABLE history.storcli_miscellaneous (
+CREATE TABLE history.storcli_cachevaults (
 	history_id				bigserial,
-	storcli_misc_uuid			uuid				primary key,
-	storcli_misc_storcli_adapter_uuid	uuid				not null,
-	storcli_misc_section			text				not null,
-	storcli_misc_varible_name		text				not null,
-	storcli_misc_value			text,
-	modified_date				timestamp with time zone	not null
+	storcli_cachevault_uuid			uuid,
+	storcli_cachevault_adapter_uuid		uuid,
+	storcli_cachevault_state		text,
+	storcli_cachevault_design_capacity	text,
+	storcli_cachevault_capacitance		text,
+	storcli_cachevault_pack_energy		text,
+	storcli_cachevault_replacement_needed	text,
+	storcli_cachevault_next_relearn		text,
+	storcli_cachevault_type			text,
+	storcli_cachevault_manufacture_date	text,
+	storcli_cachevault_temperature		numeric,
+	modified_date				timestamp with time zone
 );
-ALTER TABLE history.storcli_miscellaneous OWNER TO #!variable!user!#;
+ALTER TABLE history.storcli_cachevaults OWNER TO #!variable!user!#;
 
-CREATE FUNCTION history_storcli_miscellaneous() RETURNS trigger
+CREATE FUNCTION history_storcli_cachevaults() RETURNS trigger
 AS $$
 DECLARE
-	history_storcli_adapter RECORD;
+	history_storcli_cachevaults RECORD;
 BEGIN
-	SELECT INTO history_storcli_misc * FROM storcli_miscellaneous WHERE storcli_adapter_uuid=new.storcli_adapter_uuid;
-	INSERT INTO history.storcli_miscellaneous
-		(storcli_misc_uuid, 
-		 storcli_misc_storcli_adapter_uuid, 
-		 storcli_misc_section, 
-		 storcli_misc_varible_name, 
-		 storcli_misc_value, 
+	SELECT INTO history_storcli_cachevaults * FROM storcli_cachevaults WHERE storcli_cachevault_uuid=new.storcli_cachevault_uuid;
+	INSERT INTO history.storcli_cachevaults
+		(storcli_cachevault_uuid, 
+		 storcli_cachevault_adapter_uuid, 
+		 storcli_cachevault_state, 
+		 storcli_cachevault_design_capacity, 
+		 storcli_cachevault_capacitance, 
+		 storcli_cachevault_pack_energy, 
+		 storcli_cachevault_replacement_needed, 
+		 storcli_cachevault_next_relearn, 
+		 storcli_cachevault_type, 
+		 storcli_cachevault_manufacture_date, 
+		 storcli_cachevault_temperature, 
 		 modified_date)
 	VALUES
-		(history_storcli_misc.storcli_misc_uuid, 
-		 history_storcli_misc.storcli_misc_storcli_adapter_uuid, 
-		 history_storcli_misc.storcli_misc_section, 
-		 history_storcli_misc.storcli_misc_varible_name, 
-		 history_storcli_misc.storcli_misc_value, 
-		 history_storcli_misc.modified_date);
+		(history_storcli_cachevault.storcli_cachevault_uuid,
+		 history_storcli_cachevault.storcli_cachevault_adapter_uuid, 
+		 history_storcli_cachevault.storcli_cachevault_state, 
+		 history_storcli_cachevault.storcli_cachevault_design_capacity, 
+		 history_storcli_cachevault.storcli_cachevault_capacitance, 
+		 history_storcli_cachevault.storcli_cachevault_pack_energy, 
+		 history_storcli_cachevault.storcli_cachevault_replacement_needed, 
+		 history_storcli_cachevault.storcli_cachevault_next_relearn, 
+		 history_storcli_cachevault.storcli_cachevault_type, 
+		 history_storcli_cachevault.storcli_cachevault_manufacture_date, 
+		 history_storcli_cachevault.storcli_cachevault_temperature, 
+		 history_storcli_cachevault.modified_date);
 	RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_storcli_adapter() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_storcli_cachevaults() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_storcli_miscellaneous
-	AFTER INSERT OR UPDATE ON storcli_miscellaneous
-	FOR EACH ROW EXECUTE PROCEDURE history_storcli_miscellaneous();
+CREATE TRIGGER trigger_storcli_cachevaults
+	AFTER INSERT OR UPDATE ON storcli_cachevaults
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_cachevaults();
+
+
+-- This stores various variables found for a given controller but not explicitely checked for.
+CREATE TABLE storcli_cachevault_variables (
+	storcli_cachevault_variable_uuid		uuid				primary key,
+	storcli_cachevault_variable_cachevault_uuid	uuid				not null,
+	storcli_cachevault_is_temperature		boolean				not null	default FALSE,
+	storcli_cachevault_variable_name		text				not null,
+	storcli_cachevault_variable_value		text,
+	modified_date					timestamp with time zone	not null,
+	
+	FOREIGN KEY(storcli_cachevault_variable_cachevault_uuid) REFERENCES storcli_cachevault(storcli_cachevault_uuid)
+);
+ALTER TABLE storcli_cachevault_variables OWNER TO #!variable!user!#;
+
+CREATE TABLE history.storcli_cachevault_variables (
+	history_id					bigserial,
+	storcli_cachevault_variable_uuid		uuid,
+	storcli_cachevault_variable_cachevault_uuid	uuid,
+	storcli_cachevault_is_temperature		boolean,
+	storcli_cachevault_variable_name		text,
+	storcli_cachevault_variable_value		text,
+	modified_date					timestamp with time zone
+);
+ALTER TABLE history.storcli_cachevault_variables OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_cachevault_variables() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_cachevault_variables RECORD;
+BEGIN
+	SELECT INTO history_storcli_cachevault_variables * FROM storcli_cachevault_variables WHERE storcli_cachevault_variable_uuid=new.storcli_cachevault_variable_uuid;
+	INSERT INTO history.storcli_cachevault_variables
+		(storcli_cachevault_variable_uuid, 
+		 storcli_cachevault_variable_cachevault_uuid,
+		 storcli_cachevault_is_temperature,
+		 storcli_cachevault_variable_name,
+		 storcli_cachevault_variable_value,
+		 modified_date)
+	VALUES
+		(history_storcli_cachevault_variables.storcli_cachevault_variable_uuid,
+		 history_storcli_cachevault_variables.storcli_cachevault_variable_cachevault_uuid,
+		 history_storcli_cachevault_variables.storcli_cachevault_is_temperature,
+		 history_storcli_cachevault_variables.storcli_cachevault_variable_name,
+		 history_storcli_cachevault_variables.storcli_cachevault_variable_value,
+		 history_storcli_cachevault_variables.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_cachevault_variables() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_cachevault_variables
+	AFTER INSERT OR UPDATE ON storcli_cachevault_variables
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_cachevault_variables();
+
+
+-- ------------------------------------------------------------------------------------------------------- --
+-- Battery Backup Units                                                                                    --
+-- ------------------------------------------------------------------------------------------------------- --
+
+-- This records the basic information about the cachevault (FBU) unit.
+CREATE TABLE storcli_bbus (
+	storcli_bbu_uuid			uuid				primary key,
+	storcli_bbu_adapter_uuid		uuid				not null,
+	storcli_bbu_type			text,						-- "Type"
+	storcli_bbu_model			text,						-- "Manufacture Name"
+	storcli_bbu_state			text,						-- "Battery State"
+	storcli_bbu_manufacture_date		text,						-- "Date of Manufacture"
+	storcli_bbu_absolute_state_of_charge	text,						-- "Absolute state of charge"
+	storcli_bbu_cycle_count			numeric,					-- "Cycle Count"
+	storcli_bbu_design_capacity		text,						-- "Design Capacity"
+	storcli_bbu_current_maximum_capacity	text,						-- "Full Charge Capacity"
+	storcli_bbu_charged			text,						-- "Fully Charged"
+	storcli_bbu_learning			text,						-- "Learn Cycle Active"
+	storcli_bbu_next_relearn		text,						-- "Next Learn time"
+	storcli_bbu_over_charged		text,						-- "Over Charged"
+	storcli_bbu_over_temperature		text,						-- "Over Temperature"
+	storcli_bbu_replacement_needed		text,						-- "Pack is about to fail & should be replaced"
+	storcli_bbu_temperature			numeric,					-- "Temperature"
+	modified_date				timestamp with time zone	not null,
+	
+	FOREIGN KEY(storcli_bbu_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
+ALTER TABLE storcli_bbus OWNER TO #!variable!user!#;
+
+CREATE TABLE history.storcli_bbus (
+	history_id				bigserial,
+	storcli_bbu_uuid			uuid,
+	storcli_bbu_adapter_uuid		uuid,
+	storcli_bbu_type			text,
+	storcli_bbu_model			text,
+	storcli_bbu_state			text,
+	storcli_bbu_manufacture_date		text,
+	storcli_bbu_absolute_state_of_charge	text,
+	storcli_bbu_cycle_count			numeric,
+	storcli_bbu_design_capacity		text,
+	storcli_bbu_current_maximum_capacity	text,
+	storcli_bbu_charged			text,
+	storcli_bbu_learning			text,
+	storcli_bbu_next_relearn		text,
+	storcli_bbu_over_charged		text,
+	storcli_bbu_over_temperature		text,
+	storcli_bbu_replacement_needed		text,
+	storcli_bbu_temperature			numeric,
+	modified_date				timestamp with time zone
+);
+ALTER TABLE history.storcli_bbus OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_bbus() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_bbus RECORD;
+BEGIN
+	SELECT INTO history_storcli_bbus * FROM storcli_bbus WHERE storcli_bbu_uuid=new.storcli_bbu_uuid;
+	INSERT INTO history.storcli_bbus
+		(storcli_bbu_uuid, 
+		 storcli_bbu_adapter_uuid, 
+		 storcli_bbu_type, 
+		 storcli_bbu_model, 
+		 storcli_bbu_state, 
+		 storcli_bbu_manufacture_date, 
+		 storcli_bbu_absolute_state_of_charge, 
+		 storcli_bbu_cycle_count, 
+		 storcli_bbu_design_capacity, 
+		 storcli_bbu_current_maximum_capacity, 
+		 storcli_bbu_charged, 
+		 storcli_bbu_learning, 
+		 storcli_bbu_next_relearn, 
+		 storcli_bbu_over_charged, 
+		 storcli_bbu_over_temperature, 
+		 storcli_bbu_replacement_needed, 
+		 storcli_bbu_temperature, 
+		 modified_date)
+	VALUES
+		(history_storcli_bbu.storcli_bbu_uuid,
+		 history_storcli_bbu.storcli_bbu_adapter_uuid, 
+		 history_storcli_bbu.storcli_bbu_type, 
+		 history_storcli_bbu.storcli_bbu_model, 
+		 history_storcli_bbu.storcli_bbu_state, 
+		 history_storcli_bbu.storcli_bbu_manufacture_date, 
+		 history_storcli_bbu.storcli_bbu_absolute_state_of_charge, 
+		 history_storcli_bbu.storcli_bbu_cycle_count, 
+		 history_storcli_bbu.storcli_bbu_design_capacity, 
+		 history_storcli_bbu.storcli_bbu_current_maximum_capacity, 
+		 history_storcli_bbu.storcli_bbu_charged, 
+		 history_storcli_bbu.storcli_bbu_learning, 
+		 history_storcli_bbu.storcli_bbu_next_relearn, 
+		 history_storcli_bbu.storcli_bbu_over_charged, 
+		 history_storcli_bbu.storcli_bbu_over_temperature, 
+		 history_storcli_bbu.storcli_bbu_replacement_needed, 
+		 history_storcli_bbu.storcli_bbu_temperature, 
+		 history_storcli_bbu.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_bbus() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_bbus
+	AFTER INSERT OR UPDATE ON storcli_bbus
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_bbus();
+
+
+-- This stores various variables found for a given controller but not explicitely checked for.
+CREATE TABLE storcli_bbu_variables (
+	storcli_bbu_variable_uuid		uuid				primary key,
+	storcli_bbu_variable_bbu_uuid		uuid				not null,
+	storcli_bbu_is_temperature		boolean				not null	default FALSE,
+	storcli_bbu_variable_name		text				not null,
+	storcli_bbu_variable_value		text,
+	modified_date				timestamp with time zone	not null,
+	
+	FOREIGN KEY(storcli_bbu_variable_bbu_uuid) REFERENCES storcli_bbu(storcli_bbu_uuid)
+);
+ALTER TABLE storcli_bbu_variables OWNER TO #!variable!user!#;
+
+CREATE TABLE history.storcli_bbu_variables (
+	history_id					bigserial,
+	storcli_bbu_variable_uuid		uuid,
+	storcli_bbu_variable_bbu_uuid		uuid,
+	storcli_bbu_is_temperature		boolean,
+	storcli_bbu_variable_name		text,
+	storcli_bbu_variable_value		text,
+	modified_date					timestamp with time zone
+);
+ALTER TABLE history.storcli_bbu_variables OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_bbu_variables() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_bbu_variables RECORD;
+BEGIN
+	SELECT INTO history_storcli_bbu_variables * FROM storcli_bbu_variables WHERE storcli_bbu_variable_uuid=new.storcli_bbu_variable_uuid;
+	INSERT INTO history.storcli_bbu_variables
+		(storcli_bbu_variable_uuid, 
+		 storcli_bbu_variable_bbu_uuid,
+		 storcli_bbu_is_temperature,
+		 storcli_bbu_variable_name,
+		 storcli_bbu_variable_value,
+		 modified_date)
+	VALUES
+		(history_storcli_bbu_variables.storcli_bbu_variable_uuid,
+		 history_storcli_bbu_variables.storcli_bbu_variable_bbu_uuid,
+		 history_storcli_bbu_variables.storcli_bbu_is_temperature,
+		 history_storcli_bbu_variables.storcli_bbu_variable_name,
+		 history_storcli_bbu_variables.storcli_bbu_variable_value,
+		 history_storcli_bbu_variables.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_bbu_variables() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_bbu_variables
+	AFTER INSERT OR UPDATE ON storcli_bbu_variables
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_bbu_variables();
+
 

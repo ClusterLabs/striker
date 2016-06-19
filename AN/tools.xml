@@ -568,7 +568,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_title_0009">Illegal Argument</key>
 		<key name="error_title_0010">Invalid Character in Argument</key>
 		<key name="error_title_0011">Illegal value in '#!variable!method!#'</key>
-		<key name="error_title_0012">'AN::Tools::Readable->hr_to_bytes()' was not able to parse a valid size type</key>
+		<key name="error_title_0012">Bad input data</key>
 		<key name="error_title_0013">'AN::Tools' tried to load the '#!variable!module!#' module but it does not seem to be available</key>
 		<!-- These shouldn't be titles... -->
 		<key name="error_title_0014">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
@@ -765,6 +765,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0165"><![CDATA[The 'AN::Tools::Web' module's 'read_variables()' method was called without passing in an variable name.]]></key>
 		<key name="error_message_0166"><![CDATA[The 'AN::Tools::Get' module's 'server_uuid()' method was unable to gather the UUIDs of the Anvil! nodes.]]></key>
 		<key name="error_message_0167"><![CDATA[The 'AN::Tools::Get' module's 'server_xml()' method was called without a server name being passed.]]></key>
+		<key name="error_message_0168"><![CDATA[The 'AN::Tools::Readable' module's 'hr_to_bytes()' method was called with the value: [#!variable!value!#] which we split into the size: [#!variable!size!#] and type: [#!variable!type!#]. The type appears to be invalid.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

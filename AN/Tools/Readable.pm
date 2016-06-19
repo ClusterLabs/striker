@@ -82,6 +82,7 @@ sub bytes_to_hr
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "bytes_to_hr" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now see if the user passed the values in a hash reference or directly.
 	my $size = $parameter->{'bytes'} ? $parameter->{'bytes'}  : 0;
@@ -380,6 +381,7 @@ sub comma
 	my $self   = shift;
 	my $number = shift;
 	my $an     = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "comma" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Return if nothing passed.
 	return undef if not defined $number;
@@ -421,6 +423,7 @@ sub hr_to_bytes
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "hr_to_bytes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	return undef if not defined $parameter;
 	
 	# Pick up the parameters.
@@ -428,6 +431,7 @@ sub hr_to_bytes
 	my $base10 =  defined $parameter->{base10} ? $parameter->{base10} : 0;
 	my $size   =  defined $parameter->{size}   ? $parameter->{size}   : 0;
 	my $type   =  defined $parameter->{type}   ? $parameter->{type}   : 0;
+	my $value  =  $size;
 	   $size   =~ s/ //g;
 	   $type   =~ s/ //g;
 	
@@ -510,7 +514,13 @@ sub hr_to_bytes
 	elsif (($type ne "t") && ($type ne "g") && ($type ne "m") && ($type ne "k"))
 	{
 		# If we're here, we didn't match one of the large sizes or any of the other sizes, so die.
-		$an->Alert->error({fatal => 1, title_key => "error_title_0012", message_key => "", message_variables => { size => $size, type => $type }, code => 10, file => $THIS_FILE, line => __LINE__});
+
+		$an->Alert->error({fatal => 1, title_key => "error_title_0012", message_key => "error_message_0168", message_variables => { 
+			value => $value,
+			size  => $size, 
+			type  => $type,
+		}, code => 168, file => $THIS_FILE, line => __LINE__});
+		
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
@@ -561,6 +571,7 @@ sub time
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "time" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	return undef if not defined $parameter;
 	
 	# Now see if the user passed the values in a hash reference or directly.

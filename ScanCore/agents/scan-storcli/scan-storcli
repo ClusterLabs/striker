@@ -79,41 +79,21 @@ my $an = AN::Tools->new({data =>
 				},
 			},
 		},
-		section			=>	{
-			controller			=>	{
-				in_header			=>	1,
-				in_basics			=>	0,
-				in_version			=>	0,
-				in_bus				=>	0,
-				in_pending_images_in_flash	=>	0,
-				in_status			=>	0,
-				in_supported_adapter_operations	=>	0,
-				in_supported_pd_operations	=>	0,
-				in_supported_vd_operations	=>	0,
-				in_advanced_software_option	=>	0,
-				in_hardware_config		=>	0,
-				in_policies			=>	0,
-				in_policies_table		=>	0,
-				in_boot				=>	0,
-				in_high_availability		=>	0,
-				in_defaults			=>	0,
-				in_capabilities			=>	0,
-				in_scheduled_tasks		=>	0,
-				in_topology			=>	0,
-				in_virtual_disk_list		=>	0,
-				in_physical_disk_list		=>	0,
-				in_cachevault_info		=>	0,
-			},
-		},
 		sys			=>	{
 			sql			=>	[],
 			arguments		=>	{
 				adapter_count		=>	"show ctrlcount",
+				alarm_state		=>	"show alarm",
 				# BBU battery or FBU capacitor bank info.
+				bgi_rate		=>	"show bgirate",
 				bbu_data		=>	"/bbu show all",
+				cc_rate			=>	"show ccrate",
 				cachevault_data		=>	"/cv show all",
 				controller_info		=>	"show all", 
 				physical_disk_data	=>	"/eall /sall show all",
+				performance_mode	=>	"show perfmode",
+				pr_rate			=>	"show prrate",
+				rebuild_rate		=>	"show rebuildrate",
 				virtual_disk_data	=>	"/vall show all",
 			},
 			adapter_count		=>	0,
@@ -238,250 +218,79 @@ sub gather_data
 		get_physical_disk_data($an, $adapter, $serial_number);
 	}
 	
-	# Some pretty debugging code.
-	foreach my $virtual_disk (sort {$a cmp $b} keys %{$an->data->{virtual_disk}})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "virtual_disk", value1 => $virtual_disk,
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "drive_group", value1 => $drive_group,
-			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $type ("variable", "temperature")
-			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "type", value1 => $type,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				my $longest_variable = 0;
-				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type}})
-				{
-					next if $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type}{$variable} eq "";
-					if (length($variable) > $longest_variable)
-					{
-						$longest_variable = length($variable);
-					}
-				}
-				
-				# Now loop again in alphabetical order printing in the dots as needed.
-				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type}})
-				{
-					#next if $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type}{$variable} eq "";
-					my $difference   = $longest_variable - length($variable);
-					my $say_variable = $variable;
-					if ($difference == 0)
-					{
-						# Do nothing
-					}
-					elsif ($difference == 1) 
-					{
-						$say_variable .= " ";
-					}
-					elsif ($difference == 2) 
-					{
-						$say_variable .= "  ";
-					}
-					else
-					{
-						my $dots         =  $difference - 2;
-						$say_variable .= " ";
-						for (1 .. $dots)
-						{
-							$say_variable .= ".";
-						}
-						$say_variable .= " ";
-					}
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "$say_variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type}{$variable},
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "---------------------------------------", value1 => "---------------------------------------",
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "serial_number", value1 => $serial_number,
-			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}})
-			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "drive_group", value1 => $drive_group,
-				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}})
-				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "enclosure_id", value1 => $enclosure_id,
-					}, file => $THIS_FILE, line => __LINE__});
-					foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
-					{
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "slot_number", value1 => $slot_number,
-						}, file => $THIS_FILE, line => __LINE__});
-						
-						foreach my $type ("variable", "temperature")
-						{
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-								name1 => "type", value1 => $type,
-							}, file => $THIS_FILE, line => __LINE__});
-						
-							my $longest_variable = 0;
-							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}})
-							{
-								next if $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable} eq "";
-								if (length($variable) > $longest_variable)
-								{
-									$longest_variable = length($variable);
-								}
-							}
-						
-							# Now loop again in alphabetical order printing in the dots as needed.
-							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}})
-							{
-								#next if $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable} eq "";
-								my $difference   = $longest_variable - length($variable);
-								my $say_variable = $variable;
-								if ($difference == 0)
-								{
-									# Do nothing
-								}
-								elsif ($difference == 1) 
-								{
-									$say_variable .= " ";
-								}
-								elsif ($difference == 2) 
-								{
-									$say_variable .= "  ";
-								}
-								else
-								{
-									my $dots         =  $difference - 2;
-									$say_variable .= " ";
-									for (1 .. $dots)
-									{
-										$say_variable .= ".";
-									}
-									$say_variable .= " ";
-								}
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-									name1 => "$say_variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable},
-								}, file => $THIS_FILE, line => __LINE__});
-							}
-						}
-						
-						# Print the sas address stuff
-						foreach my $sas_port (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}})
-						{
-							my $longest_variable = 0;
-							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}})
-							{
-								next if $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{$variable} eq "";
-								if (length($variable) > $longest_variable)
-								{
-									$longest_variable = length($variable);
-								}
-							}
-						
-							# Now loop again in alphabetical order printing in the dots as needed.
-							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}})
-							{
-								#next if $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{$variable} eq "";
-								my $difference   = $longest_variable - length($variable);
-								my $say_variable = $variable;
-								if ($difference == 0)
-								{
-									# Do nothing
-								}
-								elsif ($difference == 1) 
-								{
-									$say_variable .= " ";
-								}
-								elsif ($difference == 2) 
-								{
-									$say_variable .= "  ";
-								}
-								else
-								{
-									my $dots         =  $difference - 2;
-									$say_variable .= " ";
-									for (1 .. $dots)
-									{
-										$say_variable .= ".";
-									}
-									$say_variable .= " ";
-								}
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-									name1 => "$say_variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{$variable},
-								}, file => $THIS_FILE, line => __LINE__});
-							}
-						}
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "---------------------------------------", value1 => "---------------------------------------",
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-				}
-			}
-		}
-		
-		# Show the base variables.
-		my $longest_variable = 0;
-		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{variable}})
-		{
-			next if $an->data->{virtual_disk}{$virtual_disk}{variable} eq "";
-			if (length($variable) > $longest_variable)
-			{
-				$longest_variable = length($variable);
-			}
-		}
-	
-		# Now loop again in alphabetical order printing in the dots as needed.
-		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{variable}})
-		{
-			#next if $an->data->{virtual_disk}{$virtual_disk}{variable}{$variable} eq "";
-			my $difference   = $longest_variable - length($variable);
-			my $say_variable = $variable;
-			if ($difference == 0)
-			{
-				# Do nothing
-			}
-			elsif ($difference == 1) 
-			{
-				$say_variable .= " ";
-			}
-			elsif ($difference == 2) 
-			{
-				$say_variable .= "  ";
-			}
-			else
-			{
-				my $dots         =  $difference - 2;
-				$say_variable .= " ";
-				for (1 .. $dots)
-				{
-					$say_variable .= ".";
-				}
-				$say_variable .= " ";
-			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "$say_variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{variable}{$variable},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "---------------------------------------", value1 => "---------------------------------------",
-		}, file => $THIS_FILE, line => __LINE__});
-	}
+	# Sort and prepare the data for insertion into the database.
+	sort_and_prepare_data($an);
 	
 	die "$THIS_FILE ".__LINE__."; testing\n";
 	
 	return(0);
 }
 
-
+# Sort and prepare the data for insertion into the database.
+sub sort_and_prepare_data
+{
+	my ($an) = @_;
+	
+	# First, sort the controllers.
+	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
+	{
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "serial_number", value1 => $serial_number,
+				name2 => "type",          value2 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->aligned_entries({
+				log_level => 3, 
+				file      => $THIS_FILE,
+				line      => __LINE__,
+				prefix    => "$serial_number - $type",
+				hash_ref  => $an->data->{controller}{serial_number}{$serial_number}{$type},
+			});
+		}
+	}
+	
+	# Now Cachevault (FBUs)
+	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
+	{
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "cachevault_serial_number", value1 => $cachevault_serial_number,
+				name2 => "type",                     value2 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->aligned_entries({
+				log_level => 3, 
+				file      => $THIS_FILE,
+				line      => __LINE__,
+				prefix    => "$cachevault_serial_number - $type",
+				hash_ref  => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type},
+			});
+		}
+	}
+	
+	# Now BBUs
+	foreach my $bbu_serial_number (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}})
+	{
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "bbu_serial_number", value1 => $bbu_serial_number,
+				name2 => "type",              value2 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->aligned_entries({
+				log_level => 2, 
+				file      => $THIS_FILE,
+				line      => __LINE__,
+				prefix    => "$bbu_serial_number - $type",
+				hash_ref  => $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type},
+			});
+		}
+	}
+	
+	
+	return(0);
+}
 
 # This looks for physical disks on the controller.
 sub get_physical_disk_data
@@ -502,7 +311,7 @@ sub get_physical_disk_data
 	my $sector_size      = 0;
 	my $sector_variables = [];
 	my $shell_call       = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{physical_disk_data};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -1586,7 +1395,7 @@ sub get_bbu_data
 	my $bbu_serial_number = "";
 	my $bbu_data          = [];
 	my $shell_call        = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{bbu_data};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -1693,6 +1502,16 @@ sub get_bbu_data
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Because LSI is either evil or amazingly incompetent, we have the variable
+				# "Absolute State of charge" listed twice, but once with 'State' and the 
+				# other with 'state' (capital versus small 'S'). We fix it because it's the
+				# same data and we don't want two records, so the second copy will now just
+				# overwrite the first one.
+				if ($variable eq "Absolute State of charge")
+				{
+					$variable = "Absolute state of charge";
+				}
 			}
 			
 			# Is this a temperature or something else we want to pre-process?
@@ -1701,18 +1520,27 @@ sub get_bbu_data
 				# Yup
 				$value = $1;
 				$an->data->{bbu}{serial_number}{$bbu_serial_number}{temperature}{$variable} = $value;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d+) F$/i)
 			{
 				# Yup, but translate
 				$value = $an->Convert->convert_to_celsius({temperature => $1});
 				$an->data->{bbu}{serial_number}{$bbu_serial_number}{temperature}{$variable} = $value;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /\d+d \((\d+) seconds\)$/i)
 			{
 				# This is a static time span (like the time between learn cycles.
 				$value = $1;
 				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $value." seconds";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
+				}, file => $THIS_FILE, line => __LINE__});
 				
 				my $say_time = $an->Readable->time({'time' => $value});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -1725,12 +1553,10 @@ sub get_bbu_data
 			{
 				### NOTE: The 'X seconds' seems to not change and be a useless number...
 				# This is a specific time in the future, properly formatted
-				my $say_date = $1." ".$2;
+				my $say_date = "$1/$2/$3, $4";
 				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $say_date;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "variable", value1 => $variable,
-					name2 => "value",    value2 => $value,
-					name3 => "say_date", value3 => $say_date,
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d\d)\/(\d\d)\/(\d\d\d\d)$/i)
@@ -1738,10 +1564,8 @@ sub get_bbu_data
 				# 'Murica! mm/dd/yyyy -> yyyy/mm/dd
 				my $say_date = $3."/".$2."/".$1;
 				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $say_date;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "variable", value1 => $variable,
-					name2 => "value",    value2 => $value,
-					name3 => "say_date", value3 => $say_date,
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d+) hour\(s\)$/i)
@@ -1749,70 +1573,16 @@ sub get_bbu_data
 				# 'Murica! mm/dd/yyyy -> yyyy/mm/dd
 				my $seconds = $1 * 3600;
 				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $seconds." seconds";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "variable", value1 => $variable,
-					name2 => "value",    value2 => $value,
-					name3 => "seconds",  value3 => $seconds,
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				# Nope, normal variable.
 				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $value;
-			}
-		}
-	}
-	
-	# Some pretty debugging code.
-	foreach my $bbu_serial_number (keys %{$an->data->{bbu}{serial_number}})
-	{
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "bbu_serial_number", value1 => $bbu_serial_number,
-				name2 => "type",                     value2 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			my $longest_variable = 0;
-			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
-			{
-				next if $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable} eq "";
-				if (length($variable) > $longest_variable)
-				{
-					$longest_variable = length($variable);
-				}
-			}
-			
-			# Now loop again in alphabetical order printing in the dots as needed.
-			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
-			{
-				#next if $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable} eq "";
-				my $difference   = $longest_variable - length($variable);
-				my $say_variable = $variable;
-				if ($difference == 0)
-				{
-					# Do nothing
-				}
-				elsif ($difference == 1) 
-				{
-					$say_variable .= " ";
-				}
-				elsif ($difference == 2) 
-				{
-					$say_variable .= "  ";
-				}
-				else
-				{
-					my $dots         =  $difference - 2;
-					   $say_variable .= " ";
-					for (1 .. $dots)
-					{
-						$say_variable .= ".";
-					}
-					$say_variable .= " ";
-				}
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "$say_variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable},
+					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -1947,12 +1717,18 @@ sub get_cachevault_data
 				# Yup
 				$value = $1;
 				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable} = $value;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "cachevault:serial_number::${cachevault_serial_number}::temperature::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d+) F$/i)
 			{
 				# Yup, but translate
 				$value = $an->Convert->convert_to_celsius({temperature => $1});
 				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable} = $value;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "cachevault:serial_number::${cachevault_serial_number}::temperature::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /\d+d \((\d+) seconds\)$/i)
 			{
@@ -1971,7 +1747,8 @@ sub get_cachevault_data
 			{
 				### NOTE: The 'X seconds' seems to not change and be a useless number...
 				# This is a specific time in the future, properly formatted
-				my $say_date = $1." ".$2;
+				# yyyy/mm/dd -> 
+				my $say_date = "$1/$2/$3, $4";
 				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $say_date;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "variable", value1 => $variable,
@@ -2005,59 +1782,8 @@ sub get_cachevault_data
 			{
 				# Nope, normal variable.
 				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $value;
-			}
-		}
-	}
-	
-	# Some pretty debugging code.
-	foreach my $cachevault_serial_number (keys %{$an->data->{cachevault}{serial_number}})
-	{
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "cachevault_serial_number", value1 => $cachevault_serial_number,
-				name2 => "type",                     value2 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			my $longest_variable = 0;
-			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}})
-			{
-				next if $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable} eq "";
-				if (length($variable) > $longest_variable)
-				{
-					$longest_variable = length($variable);
-				}
-			}
-			
-			# Now loop again in alphabetical order printing in the dots as needed.
-			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}})
-			{
-				my $difference   = $longest_variable - length($variable);
-				my $say_variable = $variable;
-				if ($difference == 0)
-				{
-					# Do nothing
-				}
-				elsif ($difference == 1) 
-				{
-					$say_variable .= " ";
-				}
-				elsif ($difference == 2) 
-				{
-					$say_variable .= "  ";
-				}
-				else
-				{
-					my $dots         =  $difference - 2;
-					   $say_variable .= " ";
-					for (1 .. $dots)
-					{
-						$say_variable .= ".";
-					}
-					$say_variable .= " ";
-				}
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "$say_variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable},
+					name1 => "cachevault:serial_number::${cachevault_serial_number}::temperature::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -2074,9 +1800,18 @@ sub get_controller_info
 		name1 => "adapter", value1 => $adapter, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $serial_number   = "";
-	my $controller_data = [];
-	my $shell_call      = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{controller_info};
+	my $in_header           = 1;
+	my $in_basics           = 0;
+	my $in_supported_ops    = 0;
+	my $in_supported_pd_ops = 0;
+	my $in_supported_vd_ops = 0;
+	my $in_hardware_config  = 0;
+	my $in_capabilities     = 0;
+	my $in_policies         = 0;
+	my $in_defaults         = 0;
+	my $serial_number       = "";
+	my $controller_data     = [];
+	my $shell_call          = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{controller_info};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2085,28 +1820,397 @@ sub get_controller_info
 	{
 		chomp;
 		my $line =  $_;
-			$line =~ s/\r//;
-			$line =~ s/^\s+//;
-			$line =~ s/\s+$//;
-			$line =~ s/\s+:/:/;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		next if not $line;
 		last if $line =~ /^TOPOLOGY:$/i;
 		
 		if ($line =~ /^Serial Number = (.*)?/i)
 		{
 			$serial_number = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "serial_number", value1 => $serial_number, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
+		
+		### LSI reuses the save variable names in different sections. This tries to catch and rename 
+		### them
+		# Ignore stuff in the header
+		if ($line =~ /^Basics/)
+		{
+			$in_header = 0;
+			$in_basics = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "in_header", value1 => $in_header, 
+				name2 => "in_basics", value2 => $in_basics, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($in_basics)
+		{
+			if ($line =~ /^Version/)
+			{
+				$in_basics = 0;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_basics", value1 => $in_basics, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		elsif ($line =~ /^Controller\s+=/)
+		{
+			# This is the header data, which we don't care about.
+			next;
+		}
+		if ($in_header)
+		{
+			next;
+		}
+		
+		# Mangle supported adapter operation variables.
+		if ($line =~ /^Supported Adapter Operations/)
+		{
+			$in_supported_ops = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_supported_ops", value1 => $in_supported_ops, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($in_supported_ops)
+		{
+			if ($line =~ /^Supported PD Operations/)
+			{
+				$in_supported_ops    = 0;
+				$in_supported_pd_ops = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "in_supported_ops",    value1 => $in_supported_ops, 
+					name2 => "in_supported_pd_ops", value2 => $in_supported_pd_ops, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			if ($line =~ /^BBU /)
+			{
+				$line =~ s/^BBU /BBU Supported /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Rebuild Rate /)
+			{
+				$line =~ s/^Rebuild Rate /Configurable Rebuild Rate /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^CC Rate /)
+			{
+				$line =~ s/^CC Rate /Configurable Consistency Check Rate /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^BGI Rate /)
+			{
+				$line =~ s/^BGI Rate /Configurable background Initialization Rate /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Reconstruct Rate /)
+			{
+				$line =~ s/^Reconstruct Rate /Configurable Reconstruct Rate /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Patrol Read Rate /)
+			{
+				$line =~ s/^Patrol Read Rate /Configurable Patrol Read Rate /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Alarm Control /)
+			{
+				$line =~ s/^Alarm Control /Configurable Alarm Control /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Spanning /)
+			{
+				$line =~ s/^Spanning /Spanning Supported /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /Hot Spare /)
+			{
+				$line =~ s/Hot Spare /Hot Spare Supported /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Foreign Config Import /)
+			{
+				$line =~ s/^Foreign Config Import /Foreign Config Import Supported /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Self Diagnostic /)
+			{
+				$line =~ s/^Self Diagnostic /Self Diagnostic Supported /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Abort CC on Error /)
+			{
+				$line =~ s/^Abort CC on Error /Configurable Abort CC on Error /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Block SSD Write Disk Cache Change /)
+			{
+				$line =~ s/^Block SSD Write Disk Cache Change /Configurable Block SSD Write Disk Cache Change /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Mangle supported adapter physical disk operation variables.
+		if ($in_supported_pd_ops)
+		{
+			if ($line =~ /^Supported VD Operations/)
+			{
+				$in_supported_pd_ops = 0;
+				$in_supported_vd_ops = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "in_supported_pd_ops", value1 => $in_supported_pd_ops, 
+					name2 => "in_supported_vd_ops", value2 => $in_supported_vd_ops, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Deny Locate /)
+			{
+				$line =~ s/^Deny Locate /Deny Physical Disk Locate /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Read Policy /)
+			{
+				$line =~ s/^Read Policy /Physical Disk Read Policy /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Write Policy /)
+			{
+				$line =~ s/^Write Policy /Physical Disk Write Policy /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Mangle supported adapter virtual disk operation variables.
+		if ($in_supported_vd_ops)
+		{
+			if ($line =~ /^Advanced Software Option/)
+			{
+				$in_supported_vd_ops = 0;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_supported_vd_ops", value1 => $in_supported_vd_ops, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Deny Locate /)
+			{
+				$line =~ s/^Deny Locate /Deny Virtual Disk Locate /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Read Policy /)
+			{
+				$line =~ s/^Read Policy /Virtual Disk Read Policy /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Write Policy /)
+			{
+				$line =~ s/^Write Policy /Virtual Disk Write Policy /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Mangle hardware config variables.
+		if ($line =~ /^HwCfg/)
+		{
+			$in_hardware_config = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_hardware_config", value1 => $in_hardware_config, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($in_hardware_config)
+		{
+			if ($line =~ /^Policies/)
+			{
+				$in_hardware_config  = 0;
+				$in_policies         = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "in_hardware_config", value1 => $in_hardware_config, 
+					name2 => "in_policies",        value2 => $in_policies, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^BBU /)
+			{
+				$line =~ s/^BBU /BBU Connected /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Mangle policy variables.
+		if ($in_policies)
+		{
+			if ($line =~ /^Boot/)
+			{
+				$in_policies = 0;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_policies", value1 => $in_policies, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Disable Online Controller Reset /)
+			{
+				$line =~ s/^Disable Online Controller Reset /Disable Online Controller Reset Policy /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Expose Enclosure Devices /)
+			{
+				$line =~ s/^Expose Enclosure Devices /Expose Enclosure Devices Policy /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Maintain PD Fail History /)
+			{
+				$line =~ s/^Maintain PD Fail History /Maintain PD Fail History Policy /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Mangle defaults variables
+		if ($line =~ /^Defaults/)
+		{
+			$in_defaults = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_defaults", value1 => $in_defaults, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($in_defaults)
+		{
+			if ($line =~ /^Capabilities/)
+			{
+				$in_defaults     = 0;
+				$in_capabilities = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "in_defaults",     value1 => $in_defaults, 
+					name2 => "in_capabilities", value2 => $in_capabilities, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Disable Online Controller Reset /)
+			{
+				$line =~ s/^Disable Online Controller Reset /Disable Online Controller Reset Default /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Expose Enclosure Devices /)
+			{
+				$line =~ s/^Expose Enclosure Devices /Expose Enclosure Devices Default /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Maintain PD Fail History /)
+			{
+				$line =~ s/^Maintain PD Fail History /Maintain PD Fail History Default /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Mangle capability variables.
+		if ($in_capabilities)
+		{
+			if ($line =~ /^Scheduled Tasks/)
+			{
+				$in_capabilities = 0;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_capabilities", value1 => $in_capabilities, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /^Boot Volume Supported /)
+			{
+				$line =~ s/^Boot Volume Supported /Boot Volume Capable /;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# And randomly sticking things together...
+		$line =~ s/BatteryFRU/Battery FRU/;
+		$line =~ s/ChipRevision/Chip Revision/;
+		$line =~ s/DisableHII/Disable HII/;
+		$line =~ s/EnableCrashDump/Enable Crash-Dump/;
+		$line =~ s/EnableLDBBM/Enable LDBBM/;
+		
+		# They love their weird short forms
+		$line =~ s/Ctrl/Controller/;
+		$line =~ s/Mfg/Manufacture/;
+		$line =~ s/ VD/ Virtual Disk/;
+		$line =~ s/ PD/ Physical Disk/;
+		$line =~ s/ PI/ Protection Information/;
+		$line =~ s/ CC/ Consistency Check/;
+		$line =~ s/ BGI/ Background Initialization/;
+		$line =~ s/ LD/ Logical Device/;
+		$line =~ s/ FW/ Firmware/;
+		$line =~ s/ HII/ Human Interface Infrastructure/;
+		
+		# Standardize some random strings with the same meaning
+		$line =~ s/Id /ID /;
+		$line =~ s/ NA/ N\/A/;
+		$line =~ s/Bios/BIOS/;
+		
+		# And randomly using sentances...
+		$line =~ s/A rollback operation is in progress/Roll-back operation in progress/;
+		$line =~ s/must be rebooted to complete security operation/Reboot Required for Security Operation/;
+		$line =~ s/Maximum number of direct attached drives to spin up in 1 min/Maximum DAS drives spun-up per minute/;
+		
+		# And things that break variables when they change
+		$line =~ s/\(Default\)//;
+		
 		push @{$controller_data}, $line;
 	}
 	close $file_handle;
 	
-	# If I found the serial number, then start parsing out the data.
+	# If I didn't find a serial number, something went wrong.
 	if (not $serial_number)
 	{
 		# Error out.
@@ -2114,10 +2218,191 @@ sub get_controller_info
 		exit(6);
 	}
 	
+	# Get the current alarm state.
+	$shell_call = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{alarm_state};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^Alarm\s+(.*)$/i)
+		{
+			my $state = $1;
+			   $line  = "Alarm State = $state";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$controller_data}, $line;
+		}
+	}
+	close $file_handle;
+	
+	# Get the rebuild rate
+	$shell_call = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{rebuild_rate};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^Rebuildrate\s+(\d+)%$/i)
+		{
+			my $rate = $1;
+			   $line = "Rebuild Rate % = $rate";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$controller_data}, $line;
+		}
+	}
+	close $file_handle;
+	
+	# Get the background initialization rate
+	$shell_call = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{bgi_rate};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^BGI Rate\s+(\d+)%$/i)
+		{
+			my $rate = $1;
+			   $line = "Background Initialization Rate % = $rate";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$controller_data}, $line;
+		}
+	}
+	close $file_handle;
+	
+	# Get the consistency check rate
+	$shell_call = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{cc_rate};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^CC Rate\s+(\d+)%$/i)
+		{
+			my $rate = $1;
+			   $line = "Consistency Check Rate % = $rate";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$controller_data}, $line;
+		}
+	}
+	close $file_handle;
+	
+	# Get the patrol read rate
+	$shell_call = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{pr_rate};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^Patrol Read Rate\s+(\d+)%$/i)
+		{
+			my $rate = $1;
+			   $line = "Patrol Read Rate % = $rate";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$controller_data}, $line;
+		}
+	}
+	close $file_handle;
+	
+	# Get the performance mode
+	$shell_call = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{performance_mode};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^Perf Mode\s+(.*)$/i)
+		{
+			my $mode = $1;
+			   $line = "Performance Mode = $mode";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$controller_data}, $line;
+		}
+	}
+	close $file_handle;
+	
 	# If we're alive, we're ready to proceed.
 	foreach my $line (@{$controller_data})
 	{
-		if ($line =~ /^(.*?) = (.*)$/)
+		my $type = "variable";
+		if ($line =~ /^(.*?)\s+=\s+(.*)$/)
 		{
 			my $variable = $1;
 			my $value    = $2;
@@ -2140,20 +2425,18 @@ sub get_controller_info
 					name3 => "units",    value3 => $units, 
 					name4 => "size",     value4 => $size, 
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				$an->data->{controller}{serial_number}{$serial_number}{variable}{$variable} = $size;
 			}
 			elsif ($variable =~ /\(Degree Celsius\)/i)
 			{
 				$variable =~ s/\(Degree Celsius\)//i;
 				$variable =~ s/^\s+//;
 				$variable =~ s/\s+$//;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$type     = "temperature";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
+					name3 => "type",     value3 => $type, 
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				$an->data->{controller}{serial_number}{$serial_number}{temperature}{$variable} = $value;
 			}
 			elsif ($variable =~ /\(Degree Fahrenheit\)/i)
 			{
@@ -2162,73 +2445,83 @@ sub get_controller_info
 				$variable =~ s/^\s+//;
 				$variable =~ s/\s+$//;
 				$value    =  $an->Convert->convert_to_celsius({temperature => $value});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$type     = "temperature";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
+					name3 => "type",     value3 => $type, 
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				$an->data->{controller}{serial_number}{$serial_number}{temperature}{$variable} = $value;
-			}
-			else
-			{
-				# Catch-all
-				$an->data->{controller}{serial_number}{$serial_number}{variable}{$variable} = $value;
-			}
-		}
-	}
-	
-	# Some pretty debugging code.
-	foreach my $serial_number (keys %{$an->data->{controller}{serial_number}})
-	{
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "serial_number", value1 => $serial_number,
-				name2 => "type",          value2 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			my $longest_variable = 0;
-			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
-			{
-				next if $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable} eq "";
-				if (length($variable) > $longest_variable)
-				{
-					$longest_variable = length($variable);
-				}
 			}
 			
-			# Now loop again in alphabetical order printing in the dots as needed.
-			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
+			# Convert some values.
+			if ($value =~ /(\d\d)\/(\d\d)\/(\d\d\d\d), (\d\d:\d\d:\d\d)/)
 			{
-				next if $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable} eq "";
-				my $difference   = $longest_variable - length($variable);
-				my $say_variable = $variable;
-				if ($difference == 0)
-				{
-					# Do nothing
-				}
-				elsif ($difference == 1) 
-				{
-					$say_variable .= " ";
-				}
-				elsif ($difference == 2) 
-				{
-					$say_variable .= "  ";
-				}
-				else
-				{
-					my $dots         =  $difference - 2;
-					   $say_variable .= " ";
-					for (1 .. $dots)
-					{
-						$say_variable .= ".";
-					}
-					$say_variable .= " ";
-				}
+				# mm/dd/yyyy -> yyyy/mm/dd
+				$value = "$3/$1/$2, $4";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "$say_variable", value1 => $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable},
+					name1 => "value", value1 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			if ($value =~ /(\d+) hrs/)
+			{
+				$value = "$1 hours";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "value", value1 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /\(hrs\)/)
+			{
+				$value =~ s/\(hrs\)/\(hours\)/;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "value", value1 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if (($value =~ /^(\d+\s*[A-Za-z]+B)$/i) or ($value =~ /^(\d+\.\d+\s*[A-Za-z]+B)$/i))
+			{
+				my $size  = $1;
+				   $value = $an->Readable->hr_to_bytes({base2 => 1, size => $size});
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "size",  value1 => $size, 
+					name2 => "value", value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^00\/00\/00$/i)
+			{
+				$value = "N/A";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "value", value1 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			if ($value =~ /^AWB$/i)
+			{
+				$value = "Always Write-Back";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "value", value1 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^WB$/i)
+			{
+				$value = "Write-Back";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "value", value1 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^WT$/i)
+			{
+				$value = "Write-Through";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "value", value1 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Store it
+			if (exists $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable})
+			{
+				# Conflict! This is a dirty way to keep them separate
+				$variable .= " 2";
+			}
+			$an->data->{controller}{serial_number}{$serial_number}{$type}{$variable} = $value;
 		}
 	}
 	

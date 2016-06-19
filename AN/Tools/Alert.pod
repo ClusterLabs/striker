@@ -908,6 +908,10 @@ The 'AN::Tools::Get' module's 'server_uuid()' method was unable to gather the UU
 
 The 'AN::Tools::Get' module's 'server_xml()' method was called without a server name being passed.
 
+=head2 C<168>
+
+The 'AN::Tools::Readable' module's 'hr_to_bytes()' method was called with a value that the human readable size could not be determined from.
+
 =head1 SEE ALSO
 
 Other modules in the AN::Tools suite:

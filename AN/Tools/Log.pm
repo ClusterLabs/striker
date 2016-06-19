@@ -53,6 +53,76 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
+### NOTE: This does NOT look to see if a value is a hash or array reference. 
+# This takes a hash reference and prints multiple 'variable: [value]' entries all aligned for easier log
+# reading.
+sub aligned_entries
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $hash_ref  = $parameter->{hash_ref}  ? $parameter->{hash_ref}  : "";
+	my $log_level = $parameter->{log_level} ? $parameter->{log_level} : 0;
+	my $file      = $parameter->{file}      ? $parameter->{file}      : $THIS_FILE;
+	my $line      = $parameter->{line}      ? $parameter->{line}      : __LINE__;
+	my $prefix    = $parameter->{prefix}    ? $parameter->{prefix}    : "";
+	
+	# Return if the log level is too high or if we weren't passed in a hash reference.
+	return(1) if $log_level > $an->Log->level;
+	return(2) if not ref($hash_ref) eq "HASH";
+	
+	my $longest_variable = 0;
+	foreach my $variable (sort {$a cmp $b} keys %{$hash_ref})
+	{
+		next if $hash_ref->{$variable} eq "";
+		if (length($variable) > $longest_variable)
+		{
+			$longest_variable = length($variable);
+		}
+	}
+	
+	# Now loop again in alphabetical order printing in the dots as needed.
+	foreach my $variable (sort {$a cmp $b} keys %{$hash_ref})
+	{
+		next if $hash_ref->{$variable} eq "";
+		my $difference   = $longest_variable - length($variable);
+		my $say_variable = $variable;
+		if ($prefix)
+		{
+			$say_variable = $prefix." - ".$variable;
+		}
+		if ($difference == 0)
+		{
+			# Do nothing
+		}
+		elsif ($difference == 1) 
+		{
+			$say_variable .= " ";
+		}
+		elsif ($difference == 2) 
+		{
+			$say_variable .= "  ";
+		}
+		else
+		{
+			my $dots         =  $difference - 2;
+			   $say_variable .= " ";
+			for (1 .. $dots)
+			{
+				$say_variable .= ".";
+			}
+			$say_variable .= " ";
+		}
+		$an->Log->entry({log_level => $log_level, message_key => "an_variables_0001", message_variables => {
+			name1 => "$say_variable", value1 => $hash_ref->{$variable},
+		}, file => $file, line => $line});
+	}
+	
+	return(0);
+}
+
 # This, when set, causes DB transactions to be logged.
 sub db_transactions
 {
