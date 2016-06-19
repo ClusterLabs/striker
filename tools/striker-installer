@@ -245,6 +245,7 @@ my $conf = {
 			'perl-libwww-perl'		=>	0,
 			'perl-Net-SSH2'			=>	0,
 			'perl-Net-SSLeay'		=>	0,
+			'perl-Net-Telnet'		=>	0,
 			'perl-Mail-RFC822-Address'	=>	0, 
 			'perl-TermReadKey'		=>	0,
 			'perl-Test-Simple'		=>	0,

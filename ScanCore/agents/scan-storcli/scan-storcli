@@ -227,13 +227,922 @@ sub gather_data
 		# Read in controller data.
 		my $serial_number = get_controller_info($an, $adapter);
 		
-		# Read in cachevault (FBU) data (if it exists)
+		# Read in cachevault (FBU) data (if it exists).
 		get_cachevault_data($an, $adapter, $serial_number);
 		
-		# Read in BBU data (if it exists)
-		get_bbu_data($an, $adapter);
+		# Read in BBU data (if it exists).
+		get_bbu_data($an, $adapter, $serial_number);
+		
+		# Read in virtual disk information.
+		get_virtual_disk_data($an, $adapter, $serial_number);
+		
+		# Read in the physical disk information.
+		get_physical_disk_data($an, $adapter, $serial_number);
 		
 		die "$THIS_FILE ".__LINE__."; testing\n";
+	}
+	
+	return(0);
+}
+
+
+
+# This looks for physical disks on the controller.
+sub get_physical_disk_data
+{
+	my ($an, $adapter, $serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_physical_disk_data", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter",       value1 => $adapter, 
+		name2 => "serial_number", value2 => $serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $virtual_disk = "";
+	my $in_overview  = 0;
+	my $in_pd_list   = 0;
+	my $start_break  = 0;
+	my $shell_call   = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{physical_disk_data};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
+		next if not $line;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This looks for virtual disks on the controller.
+sub get_virtual_disk_data
+{
+	my ($an, $adapter, $serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_virtual_disk_data", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter",       value1 => $adapter, 
+		name2 => "serial_number", value2 => $serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $virtual_disk = "";
+	my $in_overview  = 0;
+	my $in_pd_list   = 0;
+	my $in_vd_data   = 0;
+	my $start_break  = 0;
+	my $shell_call   = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{virtual_disk_data};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\r//;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:/:/;
+		next if not $line;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /\/c$adapter\/v(\d+):/)
+		{
+			$virtual_disk = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "virtual_disk", value1 => $virtual_disk, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /PDs for VD (\d+) :/)
+		{
+			$virtual_disk = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "virtual_disk", value1 => $virtual_disk, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /VD(\d+) Properties/)
+		{
+			$virtual_disk = $1;
+			$in_vd_data   = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "virtual_disk", value1 => $virtual_disk, 
+				name2 => "in_vd_data",   value2 => $in_vd_data, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		next if $virtual_disk eq "";
+		
+		# See if I am entering or exiting the overview chunk.
+		if ($line =~ /^DG\/VD/)
+		{
+			$in_overview = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_overview", value1 => $in_overview, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		if (($line =~ /^--------/) && ($in_overview))
+		{
+			if (not $start_break)
+			{
+				# Split point set, must be the start break
+				$start_break = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "start_break", value1 => $start_break, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			else
+			{
+				# Split point and start break set, must be end break.
+				$in_overview = 0;
+				$start_break = 0;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "in_overview", value1 => $in_overview, 
+					name2 => "start_break", value2 => $start_break, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+		}
+		if ($in_overview)
+		{
+			process_vg_overview_data($an, $line, $serial_number);
+		}
+		
+		# See if I am entering or exiting the physical drive chunk.
+		if ($line =~ /^EID:Slt/)
+		{
+			$in_pd_list = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_pd_list", value1 => $in_pd_list, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		if (($line =~ /^--------/) && ($in_pd_list))
+		{
+			if (not $start_break)
+			{
+				# Split point set, must be the start break
+				$start_break = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "start_break", value1 => $start_break, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			else
+			{
+				# Split point and start break set, must be end break.
+				$in_pd_list  = 0;
+				$start_break = 0;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "in_pd_list", value1 => $in_pd_list, 
+					name2 => "start_break", value2 => $start_break, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+		}
+		if ($in_pd_list)
+		{
+			process_vg_pd_list_data($an, $line, $virtual_disk, $serial_number);
+		}
+		
+		if ($in_vd_data)
+		{
+			if ($line =~ /^(.*?) = (.*)$/)
+			{
+				my $variable = $1;
+				my $value    = $2;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Convert some formatting.
+				if ($value =~ /^(\d.*B)$/)
+				{
+					# Convert to bytes
+					$value = $an->Readable->hr_to_bytes({base2 => 1, size => $value});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "value", value1 => $value, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($value =~ /^(\d\d)-(\d\d)-(\d\d\d\d)$/)
+				{
+					# Convert dd-mm-yyyy to yyyy/mm/dd
+					$value = $3."/".$2."/".$1;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "value", value1 => $value, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($value =~ /^(\d\d):(\d\d):(\d\d) (\wM)$/)
+				{
+					# Convert AM/PM -> 24h
+					my $hour   = $1;
+					my $minute = $2;
+					my $second = $3;
+					my $suffix = $4;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+						name1 => "hour",   value1 => $hour, 
+						name2 => "minute", value2 => $minute, 
+						name3 => "second", value3 => $second, 
+						name4 => "suffix", value4 => $suffix, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($suffix eq "PM")
+					{
+						$hour += 12;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "hour", value1 => $hour, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					$value = "$hour:$minute:$second";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "value", value1 => $value, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				$an->data->{virtual_disk}{$virtual_disk}{variable}{$variable} = $value;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::${virtual_disk}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{variable}{$variable}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	close $file_handle;
+	
+	# Some pretty debugging code.
+	foreach my $virtual_disk (sort {$a cmp $b} keys %{$an->data->{virtual_disk}})
+	{
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "virtual_disk", value1 => $virtual_disk,
+				name2 => "drive_group",  value2 => $drive_group,
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $longest_variable = 0;
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type}})
+				{
+					next if $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type}{$variable} eq "";
+					if (length($variable) > $longest_variable)
+					{
+						$longest_variable = length($variable);
+					}
+				}
+				
+				# Now loop again in alphabetical order printing in the dots as needed.
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type}})
+				{
+					#next if $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type}{$variable} eq "";
+					my $difference   = $longest_variable - length($variable);
+					my $say_variable = $variable;
+					if ($difference == 0)
+					{
+						# Do nothing
+					}
+					elsif ($difference == 1) 
+					{
+						$say_variable .= " ";
+					}
+					elsif ($difference == 2) 
+					{
+						$say_variable .= "  ";
+					}
+					else
+					{
+						my $dots         =  $difference - 2;
+						$say_variable .= " ";
+						for (1 .. $dots)
+						{
+							$say_variable .= ".";
+						}
+						$say_variable .= " ";
+					}
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "$say_variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type}{$variable},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}})
+			{
+				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
+				{
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "enclosure_id", value1 => $enclosure_id,
+						name2 => "slot_number",  value2 => $slot_number,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					my $longest_variable = 0;
+					foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
+					{
+						next if $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} eq "";
+						if (length($variable) > $longest_variable)
+						{
+							$longest_variable = length($variable);
+						}
+					}
+				
+					# Now loop again in alphabetical order printing in the dots as needed.
+					foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
+					{
+						#next if $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} eq "";
+						my $difference   = $longest_variable - length($variable);
+						my $say_variable = $variable;
+						if ($difference == 0)
+						{
+							# Do nothing
+						}
+						elsif ($difference == 1) 
+						{
+							$say_variable .= " ";
+						}
+						elsif ($difference == 2) 
+						{
+							$say_variable .= "  ";
+						}
+						else
+						{
+							my $dots         =  $difference - 2;
+							$say_variable .= " ";
+							for (1 .. $dots)
+							{
+								$say_variable .= ".";
+							}
+							$say_variable .= " ";
+						}
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "$say_variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+		}
+		
+		# Show the base variables.
+		my $longest_variable = 0;
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{variable}})
+		{
+			next if $an->data->{virtual_disk}{$virtual_disk}{variable} eq "";
+			if (length($variable) > $longest_variable)
+			{
+				$longest_variable = length($variable);
+			}
+		}
+	
+		# Now loop again in alphabetical order printing in the dots as needed.
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{variable}})
+		{
+			#next if $an->data->{virtual_disk}{$virtual_disk}{variable}{$variable} eq "";
+			my $difference   = $longest_variable - length($variable);
+			my $say_variable = $variable;
+			if ($difference == 0)
+			{
+				# Do nothing
+			}
+			elsif ($difference == 1) 
+			{
+				$say_variable .= " ";
+			}
+			elsif ($difference == 2) 
+			{
+				$say_variable .= "  ";
+			}
+			else
+			{
+				my $dots         =  $difference - 2;
+				$say_variable .= " ";
+				for (1 .. $dots)
+				{
+					$say_variable .= ".";
+				}
+				$say_variable .= " ";
+			}
+			$an->Log->entry({log_level => 5, message_key => "an_variables_0001", message_variables => {
+				name1 => "$say_variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{variable}{$variable},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+# This parses a virtual disk's physical disk overview line
+sub process_vg_pd_list_data
+{
+	my ($an, $line, $virtual_disk, $serial_number) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_vg_pd_list_data", }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "line",          value1 => $line, 
+		name1 => "virtual_disk",  value1 => $virtual_disk, 
+		name2 => "serial_number", value2 => $serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### Sector size is either '512B' or '4 KB'
+	#               EID:Slt       DID     State   DG      Size       Intf  Med     SED     PI      SeSz     Model      Sp
+	#               252:0         9       Onln    0       136.218 GB SAS   HDD     N       N       512B     MK1401GRRB U
+	if ($line =~ /^(\d+):(\d+)\s+(\d+)\s+(.*?)\s+(\d+)\s+(.*?B)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?B)\s+(.*?)\s+(.*)$/)
+	{
+		my $enclosure_id          = $1;
+		my $slot_number           = $2;
+		my $device_id             = $3;
+		my $state                 = $4;
+		my $drive_group           = $5;
+		my $drive_size            = $6;
+		my $interface             = $7;
+		my $drive_media           = $8;
+		my $self_encrypting_drive = $9;
+		my $protection_info       = $10;
+		my $sector_size           = $11;
+		my $drive_model           = $12;
+		my $spun_up               = $13;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+			name1  => "enclosure_id",          value1  => $enclosure_id, 
+			name2  => "slot_number",           value2  => $slot_number, 
+			name3  => "device_id",             value3  => $device_id, 
+			name4  => "state",                 value4  => $state, 
+			name5  => "drive_group",           value5  => $drive_group, 
+			name6  => "drive_size",            value6  => $drive_size, 
+			name7  => "interface",             value7  => $interface, 
+			name8  => "drive_media",           value8  => $drive_media, 
+			name9  => "self_encrypting_drive", value9  => $self_encrypting_drive, 
+			name10 => "protection_info",       value10 => $protection_info, 
+			name11 => "sector_size",           value11 => $sector_size, 
+			name12 => "drive_model",           value12 => $drive_model, 
+			name13 => "spun_up",               value13 => $spun_up, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Convert the sector and drive sizes into bytes. The controller uses 'xB' but uses base2 values.
+		$sector_size = $an->Readable->hr_to_bytes({base2 => 1, size => $sector_size});
+		$drive_size  = $an->Readable->hr_to_bytes({base2 => 1, size => $drive_size});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "sector_size", value1 => $sector_size, 
+			name2 => "drive_size",  value2 => $drive_size, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		### Long hashes are long... x_x
+		# Store the data (we'll convert it in a minute.
+		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}             = $device_id;
+		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}               = $state;
+		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}            = $drive_size;
+		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}             = $interface;
+		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}           = $drive_media;
+		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive} = $self_encrypting_drive;
+		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}       = $protection_info;
+		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}           = $sector_size;
+		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}           = $drive_model;
+		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}               = $spun_up;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			name1  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::device_id",             value1  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}, 
+			name2  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::state",                 value2  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}, 
+			name3  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size",            value3  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
+			name4  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::interface",             value4  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}, 
+			name5  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_media",           value5  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}, 
+			name6  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::self_encrypting_drive", value6  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive}, 
+			name7  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::protection_info",       value7  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}, 
+			name8  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::sector_size",           value8  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}, 
+			name9  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_model",           value9  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}, 
+			name10 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::spun_up",               value10 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		### WARNING: The strings we set here will be parsed later, so don't change them without also 
+		###          changing where they're checked for elsewhere in this agent.
+		### NOTE: We don't use a function for this because the glossary for the block of data is 
+		###       specific for the table above (it would appear).
+		# Translate the weird short form to useable strings
+		foreach my $key (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
+		{
+			my $value = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => ">> virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($value =~ /^DHS$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Dedicated Hot Spare";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^UGood$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured Good";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^GHS$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Global Hotspare";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^UBad$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured Bad";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^Onln$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Online";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^Offln$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Offline";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^U$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Spun Up";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^D$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Spun Down";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^T$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Transition";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^F$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Foreign";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^UGUnsp$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unsupported";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^UGShld$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured shielded";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^HSPShld$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Hotspare shielded";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^CFShld$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Configured shielded";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^Cpybck$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Copyback";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^CBShld$/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Copyback Shielded";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	else
+	{
+		# Unparsed line
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "? line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+# This parses a virtual disk overview line
+sub process_vg_overview_data
+{
+	my ($an, $line, $serial_number) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_vg_overview_data", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "line",          value1 => $line, 
+		name2 => "serial_number", value2 => $serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $drive_group                 = "";
+	my $virtual_disk                = "";
+	my $raid_type                   = "";
+	my $array_state                 = "";
+	my $access                      = "";
+	my $consistent                  = "";
+	my $cache                       = "";
+	my $cachecade                   = "";
+	my $scheduled_consistency_check = "";
+	my $array_size                  = "";
+	my $name                        = "";
+	# Get the line when there is no name
+	#	        0   / 0      RAID5   Optl    RW      Yes     NRWBD   -       OFF     953.531 GB
+	if ($line =~ /^(\d+)\/(\d+)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*? \wB)$/i)
+	{
+		$drive_group                 = $1;
+		$virtual_disk                = $2;
+		$raid_type                   = $3;
+		$array_state                 = $4;
+		$access                      = $5;
+		$consistent                  = $6;
+		$cache                       = $7;
+		$cachecade                   = $8;
+		$scheduled_consistency_check = $9;
+		$array_size                  = $10;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			name1  => "drive_group",                 value1  => $drive_group, 
+			name2  => "virtual_disk",                value2  => $virtual_disk, 
+			name3  => "raid_type",                   value3  => $raid_type, 
+			name4  => "array_state",                 value4  => $array_state, 
+			name5  => "access",                      value5  => $access, 
+			name6  => "consistent",                  value6  => $consistent, 
+			name7  => "cache",                       value7  => $cache, 
+			name8  => "cachecade",                   value8  => $cachecade, 
+			name9  => "scheduled_consistency_check", value9  => $scheduled_consistency_check, 
+			name10 => "array_size",                  value10 => $array_size, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	# Get the line when there is a name
+	elsif ($line =~ /^(d+)\/(d+)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*? \wB)\s+(.*)$/)
+	{
+		$drive_group                 = $1;
+		$virtual_disk                = $2;
+		$raid_type                   = $3;
+		$array_state                 = $4;
+		$access                      = $5;
+		$consistent                  = $6;
+		$cache                       = $7;
+		$cachecade                   = $8;
+		$scheduled_consistency_check = $9;
+		$array_size                  = $10;
+		$name                        = $11;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+			name1  => "drive_group",                 value1  => $drive_group, 
+			name2  => "virtual_disk",                value2  => $virtual_disk, 
+			name3  => "raid_type",                   value3  => $raid_type, 
+			name4  => "array_state",                 value4  => $array_state, 
+			name5  => "access",                      value5  => $access, 
+			name6  => "consistent",                  value6  => $consistent, 
+			name7  => "cache",                       value7  => $cache, 
+			name8  => "cachecade",                   value8  => $cachecade, 
+			name9  => "scheduled_consistency_check", value9  => $scheduled_consistency_check, 
+			name10 => "array_size",                  value10 => $array_size, 
+			name11 => "name",                        value11 => $name, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Unmatched line...
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "? line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		next;
+	}
+	
+	# Convert the array size into bytes. The controller uses 'xB' but uses base2 values.
+	$array_size = $an->Readable->hr_to_bytes({base2 => 1, size => $array_size});
+	
+	# Store the data.
+	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{on_controller}               = $serial_number;
+	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{raid_type}                   = $raid_type;
+	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{array_state}                 = $array_state;
+	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{access}                      = $access;
+	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{consistent}                  = $consistent;
+	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{cache}                       = $cache;
+	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{cachecade}                   = $cachecade;
+	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{scheduled_consistency_check} = $scheduled_consistency_check;
+	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{array_size}                  = $array_size;
+	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{name}                        = $name;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+		name1  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::on_controller",               value1  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{on_controller}, 
+		name2  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::raid_type",                   value2  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{raid_type}, 
+		name3  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::array_state",                 value3  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{array_state}, 
+		name4  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::access",                      value4  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{access}, 
+		name5  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::consistent",                  value5  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{consistent}, 
+		name6  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::cache",                       value6  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{cache}, 
+		name7  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::cachecade",                   value7  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{cachecade}, 
+		name8  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::scheduled_consistency_check", value8  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{scheduled_consistency_check}, 
+		name9  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::array_size",                  value9  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{array_size}, 
+		name10 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::name",                        value10 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### WARNING: The strings we set here will be parsed later, so don't change them without also changing
+	###          where they're checked for elsewhere in this agent.
+	### NOTE: We don't use a function for this because the glossary for the block of data is specific for
+	###       the table above (it would appear).
+	# Translate the weird short form to useable strings
+	foreach my $key (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => ">> virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} eq "-")
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "No";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^Cac$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "CacheCade";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^Rec$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Recovery";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^OfLn$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "OffLine";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^Pdgd$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Partially Degraded";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^dgrd$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Degraded";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^Optl$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Optimal";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^RO$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Read Only";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^RW$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Read Write";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^HD$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Hidden";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^TRANS$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Transport Ready";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^B$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Blocked";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^Consist$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Consistent";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^sCC$/i)
+		{
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Scheduled Check Consistency";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Because they hate programmers, the cache is a combination of a few of the 
+		# above strings.
+		if ($key eq "cache")
+		{
+			my $cache = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "cache", value1 => $cache, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Prep some blanks
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{read_cache}  = "";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache} = "";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{disk_cache}  = "";
+			
+			# Read cache
+			if ($cache =~ /NR/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{read_cache} = "No Read-Ahead";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::read_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{read_cache}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($cache =~ /R/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{read_cache} = "Always Read-Ahead";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::read_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{read_cache}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Write cache
+			if ($cache =~ /AWB/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache} = "Always Write-Back";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::write_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($cache =~ /WB/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache} = "Write-Back";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::write_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($cache =~ /WT/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache} = "Write-Through";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::write_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Disk cache
+			if ($cache =~ /C/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{disk_cache} = "Cached IO";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::disk_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{disk_cache}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($cache =~ /D/i)
+			{
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{disk_cache} = "Direct IO";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::disk_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{disk_cache}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
 	
 	return(0);
@@ -338,16 +1247,27 @@ sub get_bbu_data
 		if ($split_point)
 		{
 			# Elegant? I think not!
-			my $value    =  substr $line, $split_point;
-			my $variable =  ($line =~ /^(.*?)\Q$value\E$/)[0];
-			   $variable =~ s/\s+$//;
-			#my ($variable, $value) = ($line =~ /^(.{$split_point})(.*)$/);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "variable", value1 => $variable, 
-				name2 => "value",    value2 => $value, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			next if not (($variable) or ($value));
+			my $variable = "";
+			my $value    = "";
+			if ($split_point >= length($line))
+			{
+				# Variable with no value
+				$variable =  $line;
+				$variable =~ s/\s+$//;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				($variable, $value) = ($line =~ /^(.{$split_point})(.*)$/);
+				$variable =~ s/\s+$//;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
 			# Is this a temperature or something else we want to pre-process?
 			if ($value =~ /^(\d+) C$/i)
@@ -422,7 +1342,7 @@ sub get_bbu_data
 	{
 		foreach my $type ("variable", "temperature")
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "bbu_serial_number", value1 => $bbu_serial_number,
 				name2 => "type",                     value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -440,7 +1360,7 @@ sub get_bbu_data
 			# Now loop again in alphabetical order printing in the dots as needed.
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
 			{
-				next if $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable} eq "";
+				#next if $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable} eq "";
 				my $difference   = $longest_variable - length($variable);
 				my $say_variable = $variable;
 				if ($difference == 0)
@@ -465,7 +1385,7 @@ sub get_bbu_data
 					}
 					$say_variable .= " ";
 				}
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "$say_variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -521,7 +1441,7 @@ sub get_cachevault_data
 	
 	# Record the controller the cachevault is on.
 	$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{host_controller_serial_number} = $serial_number;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cachevault::serial_number::${cachevault_serial_number}::host_controller_serial_number", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{host_controller_serial_number},
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -573,17 +1493,27 @@ sub get_cachevault_data
 		# If I have a split point, break the string.
 		if ($split_point)
 		{
-			# Elegant? I think not!
-			my $value    =  substr $line, $split_point;
-			my $variable =  ($line =~ /^(.*?)\Q$value\E$/)[0];
-			   $variable =~ s/\s+$//;
-			#my ($variable, $value) = ($line =~ /^(.{$split_point})(.*)$/);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "variable", value1 => $variable, 
-				name2 => "value",    value2 => $value, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			next if not (($variable) or ($value));
+			my $variable = "";
+			my $value    = "";
+			if ($split_point >= length($line))
+			{
+				# Variable with no value
+				$variable =  $line;
+				$variable =~ s/\s+$//;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				($variable, $value) = ($line =~ /^(.{$split_point})(.*)$/);
+				$variable =~ s/\s+$//;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
 			# Is this a temperature or something else we want to pre-process?
 			if ($value =~ /^(\d+) C$/i)
@@ -658,7 +1588,7 @@ sub get_cachevault_data
 	{
 		foreach my $type ("variable", "temperature")
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "cachevault_serial_number", value1 => $cachevault_serial_number,
 				name2 => "type",                     value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -676,7 +1606,6 @@ sub get_cachevault_data
 			# Now loop again in alphabetical order printing in the dots as needed.
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}})
 			{
-				next if $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable} eq "";
 				my $difference   = $longest_variable - length($variable);
 				my $say_variable = $variable;
 				if ($difference == 0)
@@ -701,7 +1630,7 @@ sub get_cachevault_data
 					}
 					$say_variable .= " ";
 				}
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "$say_variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable},
 				}, file => $THIS_FILE, line => __LINE__});
 			}

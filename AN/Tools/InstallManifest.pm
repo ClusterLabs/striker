@@ -13369,6 +13369,7 @@ sub run_new_install_manifest
 		'perl-Text-Diff'		=>	0,
 		'perl-Time-HiRes'		=>	0,
 		'perl-Net-SSH2'			=>	0,
+		'perl-Net-Telnet'		=>	0,
 		'perl-Mail-RFC822-Address'	=>	0,
 		'perl-Sys-Virt'			=>	0,
 		'perl-XML-Simple'		=>	0,
