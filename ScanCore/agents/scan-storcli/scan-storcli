@@ -29,6 +29,9 @@
 #   - CV  - 0 °C to 55 °C
 # 
 
+# Disable this for now.
+exit(0);
+
 # Use my modules.
 use strict;
 use warnings;

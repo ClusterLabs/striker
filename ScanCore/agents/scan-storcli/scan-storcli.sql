@@ -382,13 +382,13 @@ CREATE TABLE storcli_bbu_variables (
 ALTER TABLE storcli_bbu_variables OWNER TO #!variable!user!#;
 
 CREATE TABLE history.storcli_bbu_variables (
-	history_id					bigserial,
+	history_id				bigserial,
 	storcli_bbu_variable_uuid		uuid,
 	storcli_bbu_variable_bbu_uuid		uuid,
 	storcli_bbu_is_temperature		boolean,
 	storcli_bbu_variable_name		text,
 	storcli_bbu_variable_value		text,
-	modified_date					timestamp with time zone
+	modified_date				timestamp with time zone
 );
 ALTER TABLE history.storcli_bbu_variables OWNER TO #!variable!user!#;
 
