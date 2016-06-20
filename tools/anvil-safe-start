@@ -771,6 +771,10 @@ sub start_the_cluster
 	# First, check and start cman.
 	start_daemons($an, "cman", 1);
 	
+	### NOTE: We start clvmd right away because of 'https://github.com/ClusterLabs/striker/issues/89'.
+	# First, check and start cman.
+	start_daemons($an, "clvmd", 1);
+	
 	# Now start drbd manually.
 	start_drbd($an);
 	
@@ -963,6 +967,7 @@ sub start_clvmd
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_clvmd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	### NOTE: This should already be started, but we're leaving the call here just in case.
 	# First, check and start cman.
 	start_daemons($an, "clvmd", 0);
 	

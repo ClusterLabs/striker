@@ -4826,7 +4826,7 @@ sub _display_drbd_details
 				$say_n1_ds  = $an->data->{drbd}{$res}{node}{$node1}{disk_state}       if $an->data->{drbd}{$res}{node}{$node1}{disk_state};
 				if (($an->data->{drbd}{$res}{node}{$node1}{disk_state} eq "Inconsistent") && ($an->data->{drbd}{$res}{node}{$node1}{resync_percent} =~ /^\d/))
 				{
-					$say_n1_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">($an->data->{drbd}{$res}{node}{$node1}{resync_percent}%)</span>";
+					$say_n1_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">(".$an->data->{drbd}{$res}{node}{$node1}{resync_percent}."%)</span>";
 				}
 			}
 			else
@@ -5636,10 +5636,10 @@ sub _display_server_details
 			# Get the network arrays built.
 			foreach my $current_bridge (sort {$a cmp $b} keys %{$an->data->{server}{$server}{details}{bridge}})
 			{
-				push @bridge, $current_bridge;
-				push @device, $an->data->{server}{$server}{details}{bridge}{$current_bridge}{device};
-				push @mac,    uc($an->data->{server}{$server}{details}{bridge}{$current_bridge}{mac});
-				push @type,   $an->data->{server}{$server}{details}{bridge}{$current_bridge}{type};
+				push @bridge, $current_bridge                                                         ? $current_bridge                                                         : "--";
+				push @device, $an->data->{server}{$server}{details}{bridge}{$current_bridge}{device}  ? $an->data->{server}{$server}{details}{bridge}{$current_bridge}{device}  : "--";
+				push @mac,    $an->data->{server}{$server}{details}{bridge}{$current_bridge}{mac}     ? uc($an->data->{server}{$server}{details}{bridge}{$current_bridge}{mac}) : "--";
+				push @type,   $an->data->{server}{$server}{details}{bridge}{$current_bridge}{type}    ? $an->data->{server}{$server}{details}{bridge}{$current_bridge}{type}    : "--";
 			}
 			
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -5651,8 +5651,8 @@ sub _display_server_details
 				$say_host     =~ s/\..*//;
 				$say_net_host =  $an->Web->template({file => "server.html", template => "display-server-details-network-entry", replace => { 
 						host	=>	$say_host,
-						bridge	=>	$bridge[0],
-						device	=>	$device[0],
+						bridge	=>	$bridge[0] ? $bridge[0] : "--",
+						device	=>	$device[0] ? $device[0] : "--",
 					}});
 			}
 		}
@@ -5723,8 +5723,8 @@ sub _display_server_details
 						   $say_host     =~ s/\..*//;
 						   $say_net_host =  $an->Web->template({file => "server.html", template => "display-server-details-entra-nics", replace => { 
 								say_host	=>	$say_host,
-								bridge		=>	$bridge[$i],
-								device		=>	$device[$i],
+								bridge		=>	$bridge[$i] ? $bridge[$i] : "--",
+								device		=>	$device[$i] ? $device[$i] : "--",
 							}});
 					}
 					$say_network = "$say_net_host <span class=\"highlight_detail\">$type[$i]</span> / <span class=\"highlight_detail\">$mac[$i]</span>";
