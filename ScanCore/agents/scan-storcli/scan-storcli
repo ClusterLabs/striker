@@ -291,6 +291,89 @@ sub sort_and_prepare_data
 		}
 	}
 	
+	# Now the virtual disks. Note that '9999' is a fake VD used for physical drives not in any actual 
+	# VDs.
+	foreach my $virtual_disk (sort {$a cmp $b} keys %{$an->data->{virtual_disk}})
+	{
+		my $serial_number = $an->data->{virtual_disk}{$virtual_disk}{variable}{on_controller};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "virtual_disk",  value1 => $virtual_disk,
+			name2 => "serial_number", value2 => $serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "type", value1 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->aligned_entries({
+				log_level => 2, 
+				file      => $THIS_FILE,
+				line      => __LINE__,
+				prefix    => "VD $virtual_disk - $type",
+				hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{$type},
+			});
+		}
+		
+		### NOTE: This uses the physical disks to get the drive groups because the 
+		###       'virtual_disk::${virtual_disk}::drive_group' hash only contains actual drive 
+		###       groups, not the special '9999' one.
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "drive_group", value1 => $drive_group,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $say_drive_group  = $drive_group  eq "9999" ? "--" : $drive_group;
+			my $say_virtual_disk = $virtual_disk eq "9999" ? "--" : $virtual_disk;
+			
+			# Show the basic drive group data
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->aligned_entries({
+					log_level => 2, 
+					file      => $THIS_FILE,
+					line      => __LINE__,
+					prefix    => "VD $say_virtual_disk, DG $say_drive_group - $type",
+					hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type},
+				});
+			}
+			
+			# And show the drives in this group.
+			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "enclosure_id", value1 => $enclosure_id,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
+				{
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "slot_number", value1 => $slot_number,
+					}, file => $THIS_FILE, line => __LINE__});
+					foreach my $type ("variable", "temperature")
+					{
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "type", value1 => $type,
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->aligned_entries({
+							log_level => 2, 
+							file      => $THIS_FILE,
+							line      => __LINE__,
+							prefix    => "VD $say_virtual_disk, DG $say_drive_group, EID $enclosure_id, Slot $slot_number - $type",
+							hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
+						});
+					}
+				}
+			}
+		}
+		
+		# '0'    => 'on_controller' => 'SV53540086' => 'physical_disk' => 'drive_group' => '0'    => 'enclosure_id' => '13' => 'slot_number' => '11' => 'variable' => {}
+		# '9999' => 'on_controller' => 'SV53540086' => 'physical_disk' => 'drive_group' => '9999' => 'enclosure_id' => '13' => 'slot_number' => '22' => 'variable' => {}
+	}
+	
+	#print Dumper $an->data->{virtual_disk};
 	
 	return(0);
 }
@@ -314,7 +397,7 @@ sub get_physical_disk_data
 	my $sector_size      = 0;
 	my $sector_variables = [];
 	my $shell_call       = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{physical_disk_data};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -336,6 +419,7 @@ sub get_physical_disk_data
 		{
 			$enclosure_id    = $1;
 			$slot_number     = $2;
+			#$slot_number     = sprintf("%02d", $slot_number);
 			$in_drive_header = 1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "enclosure_id",    value1 => $enclosure_id, 
@@ -348,6 +432,7 @@ sub get_physical_disk_data
 		{
 			$enclosure_id    = $1;
 			$slot_number     = $2;
+			#$slot_number     = sprintf("%02d", $slot_number);
 			$in_drive_header = 0;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "enclosure_id",    value1 => $enclosure_id, 
@@ -385,15 +470,47 @@ sub get_physical_disk_data
 					name1 => "in_port_status", value1 => $in_port_status, 
 					name2 => "start_break",    value2 => $start_break, 
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				### NOTE: So far as I can tell, there is only ever two SAS ports on hard 
+				###       drives. The way the system parses them handles N-number of ports,
+				###       though. For now, we'll squeeze these into the top layer variables
+				###       to save having to have another table to process.
+				my $sas_port_0_port_status = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{port_status};
+				my $sas_port_0_link_speed  = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{link_speed};
+				my $sas_port_0_sas_address = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{sas_address};
+				my $sas_port_1_port_status = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{port_status};
+				my $sas_port_1_link_speed  = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{link_speed};
+				my $sas_port_1_sas_address = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{sas_address};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+					name1 => "sas_port_0_port_status", value1 => $sas_port_0_port_status, 
+					name2 => "sas_port_0_link_speed",  value2 => $sas_port_0_link_speed, 
+					name3 => "sas_port_0_sas_address", value3 => $sas_port_0_sas_address, 
+					name4 => "sas_port_1_port_status", value4 => $sas_port_1_port_status, 
+					name5 => "sas_port_1_link_speed",  value5 => $sas_port_1_link_speed, 
+					name6 => "sas_port_1_sas_address", value6 => $sas_port_1_sas_address, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_port_status} = $sas_port_0_port_status;
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_link_speed}  = $sas_port_0_link_speed;
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_sas_address} = $sas_port_0_sas_address;
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_port_status} = $sas_port_1_port_status;
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_link_speed}  = $sas_port_1_link_speed;
+				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_sas_address} = $sas_port_1_sas_address;
 				next;
 			}
 		}
+		# We stop processing a give drive when we see 'Inquiry Data'.
 		if ($line =~ /^Inquiry Data =/)
 		{
 			# Process and variables that need their size calculated from sectors to bytes.
 			# These are always variables.
 			foreach my $variable (sort {$a cmp $b} @{$sector_variables})
 			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next if not $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
+
 				my $value = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable, 
@@ -447,12 +564,21 @@ sub get_physical_disk_data
 		next if not $enclosure_id;
 		
 		# If I am in the drive header, look for this drive's "Drive Group".
-		if (($in_drive_header) && ($line =~ /^$enclosure_id:$slot_number\s+\d+\s+.*?\s+(\d+)\s+/))
+		if (($in_drive_header) && ($line =~ /^$enclosure_id:$slot_number\s+\d+\s+.*?\s+(.*?)\s+/))
 		{
 			$drive_group = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "drive_group", value1 => $drive_group, 
+				name2 => "line",        value2 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($drive_group eq "-")
+			{
+				$drive_group = 9999 ;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "drive_group", value1 => $drive_group, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
 			# Find the virtual disk this drive is connected to, if any.
 			foreach my $this_virtual_disk (sort {$a cmp $b} keys %{$an->data->{virtual_disk}})
@@ -507,7 +633,8 @@ sub get_physical_disk_data
 			next;
 		}
 		
-		# If I have a 'variable = value' pair split and parse.
+		### If I have a 'variable = value' pair split and parse.
+		# The 'Drive position' isn't set for drives not in an array/drive group.
 		if ($line =~ /^Drive position = DriveGroup:(\d+), Span:(\d+), Row:(\d+)/i)
 		{
 			my $this_drive_group = $1;
@@ -554,6 +681,8 @@ sub get_physical_disk_data
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
+		
+		# Split and process all 'variable = value' lines we've not already handled.
 		if ($line =~ /^(.*?)\s+=\s+(.*)$/)
 		{
 			my $variable = $1;
@@ -623,10 +752,10 @@ sub get_physical_disk_data
 				# Mark this for sector size calculation later.
 				push @{$sector_variables}, $variable;
 			}
-			if ($value =~ /^(\d.*?B)$/)
+			if (($value =~ /^(\d+\s*[A-Za-z]+B)$/i) or ($value =~ /^(\d+\.\d+\s*[A-Za-z]+B)$/i))
 			{
 				my $size  = $1;
-				my $value = $an->Readable->hr_to_bytes({base2 => 1, size => $size});
+				    $value = $an->Readable->hr_to_bytes({base2 => 1, size => $size});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "size",  value1 => $size, 
 					name2 => "value", value2 => $value, 
@@ -641,7 +770,7 @@ sub get_physical_disk_data
 					name2 => "type",  value2 => $type, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			if ($value =~ /^(\d.*?)C$/i)
+			if (($value =~ /^(\d+)C$/i) or ($value =~ /^(\d+\.\d+)C$/i))
 			{
 				$value = $1;
 				$type  = "temperature";
@@ -650,7 +779,7 @@ sub get_physical_disk_data
 					name2 => "type",  value2 => $type, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			if ($value =~ /^(\d.*?)F$/i)
+			if (($value =~ /^(\d+)F$/i) or ($value =~ /^(\d+\.\d+)F$/i))
 			{
 				$value = $an->Convert->convert_to_celsius({temperature => $1});
 				$type  = "temperature";
@@ -713,10 +842,20 @@ sub get_virtual_disk_data
 		
 		if ($line =~ /\/c$adapter\/v(\d+):/)
 		{
-			$virtual_disk = $1;
+			$virtual_disk                                                     = $1;
+			$an->data->{virtual_disk}{$virtual_disk}{variable}{on_controller} = $serial_number;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk", value1 => $virtual_disk, 
+				name1 => "virtual_disk::${virtual_disk}::variable::on_controller", value1 => $an->data->{virtual_disk}{$virtual_disk}{variable}{on_controller}, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We set the VD '9999' to the same SN so that we can find unallocated disks later.
+			if (not $an->data->{virtual_disk}{9999}{variable}{on_controller})
+			{
+				$an->data->{virtual_disk}{9999}{variable}{on_controller} = $serial_number;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::9999::variable::on_controller", value1 => $an->data->{virtual_disk}{9999}{variable}{on_controller}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 		if ($line =~ /PDs for VD (\d+) :/)
 		{
@@ -823,7 +962,7 @@ sub get_virtual_disk_data
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Convert some formatting.
-				if ($value =~ /^(\d.*B)$/)
+				if (($value =~ /^(\d+\s*[A-Za-z]+B)$/i) or ($value =~ /^(\d+\.\d+\s*[A-Za-z]+B)$/i))
 				{
 					# Convert to bytes
 					$value = $an->Readable->hr_to_bytes({base2 => 1, size => $value});
@@ -890,7 +1029,7 @@ sub process_vg_pd_list_data
 	### Sector size is either '512B' or '4 KB'
 	#               EID:Slt       DID     State   DG      Size       Intf  Med     SED     PI      SeSz     Model      Sp
 	#               252:0         9       Onln    0       136.218 GB SAS   HDD     N       N       512B     MK1401GRRB U
-	if ($line =~ /^(\d+):(\d+)\s+(\d+)\s+(.*?)\s+(\d+)\s+(.*?B)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?B)\s+(.*?)\s+(.*)$/)
+	if ($line =~ /^(\d+):(\d+)\s+(\d+)\s+(.*?)\s+(.*?)\s+(.*?B)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?B)\s+(.*?)\s+(.*)$/)
 	{
 		my $enclosure_id          = $1;
 		my $slot_number           = $2;
@@ -905,6 +1044,8 @@ sub process_vg_pd_list_data
 		my $sector_size           = $11;
 		my $drive_model           = $12;
 		my $spun_up               = $13;
+		#   $slot_number           = sprintf("%02d", $slot_number);
+		   $drive_group           = 9999 if $drive_group eq "-";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 			name1  => "enclosure_id",          value1  => $enclosure_id, 
 			name2  => "slot_number",           value2  => $slot_number, 

@@ -423,3 +423,296 @@ CREATE TRIGGER trigger_storcli_bbu_variables
 	FOR EACH ROW EXECUTE PROCEDURE history_storcli_bbu_variables();
 
 
+-- ------------------------------------------------------------------------------------------------------- --
+-- Virtual Drives                                                                                          --
+-- ------------------------------------------------------------------------------------------------------- --
+
+-- This records the basic virtual drives. These contain one or more drive groups to form an array
+CREATE TABLE storcli_virtual_drives (
+	storcli_virtual_drive_uuid		uuid				primary key,
+	storcli_virtual_drive_adapter_uuid	uuid				not null,
+	storcli_virtual_drive_creation_date	text,						-- "Creation Date" and "Creation Time"
+	storcli_virtual_drive_data_protection	text,						-- "Data Protection"
+	storcli_virtual_drive_disk_cache_policy	text,						-- "Disk Cache Policy"
+	storcli_virtual_drive_emulation_type	text,						-- "Emulation type"
+	storcli_virtual_drive_encryption	text,						-- "Encryption"
+	storcli_virtual_drive_blocks		numeric,					-- "Number of Blocks"
+	storcli_virtual_drive_strip_size	numeric,					-- "Strip Size"
+	storcli_virtual_drive_drives_per_span	numeric,					-- "Number of Drives Per Span"
+	storcli_virtual_drive_span_depth	numeric,					-- "Span Depth"
+	storcli_virtual_drive_scsi_naa_id	text,						-- "SCSI NAA Id" - https://en.wikipedia.org/wiki/ISCSI#Addressing
+	modified_date				timestamp with time zone	not null,
+	
+	FOREIGN KEY(storcli_virtual_drive_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
+ALTER TABLE storcli_virtual_drives OWNER TO #!variable!user!#;
+
+CREATE TABLE history.storcli_virtual_drives (
+	history_id				bigserial,
+	storcli_virtual_drive_uuid		uuid,
+	storcli_virtual_drive_adapter_uuid	uuid,
+	storcli_virtual_drive_creation_date	text,
+	storcli_virtual_drive_data_protection	text,
+	storcli_virtual_drive_disk_cache_policy	text,
+	storcli_virtual_drive_emulation_type	text,
+	storcli_virtual_drive_encryption	text,
+	storcli_virtual_drive_blocks		numeric,
+	storcli_virtual_drive_strip_size	numeric,
+	storcli_virtual_drive_drives_per_span	numeric,
+	storcli_virtual_drive_span_depth	numeric,
+	storcli_virtual_drive_scsi_naa_id	text,
+	modified_date				timestamp with time zone
+);
+ALTER TABLE history.storcli_virtual_drives OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_virtual_drives() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_virtual_drives RECORD;
+BEGIN
+	SELECT INTO history_storcli_virtual_drives * FROM storcli_virtual_drives WHERE storcli_virtual_drive_uuid=new.storcli_virtual_drive_uuid;
+	INSERT INTO history.storcli_virtual_drives
+		(storcli_virtual_drive_uuid, 
+		 storcli_virtual_drive_adapter_uuid, 
+		 storcli_virtual_drive_creation_date, 
+		 storcli_virtual_drive_data_protection, 
+		 storcli_virtual_drive_disk_cache_policy, 
+		 storcli_virtual_drive_emulation_type, 
+		 storcli_virtual_drive_encryption, 
+		 storcli_virtual_drive_blocks, 
+		 storcli_virtual_drive_strip_size, 
+		 storcli_virtual_drive_drives_per_span, 
+		 storcli_virtual_drive_span_depth, 
+		 storcli_virtual_drive_scsi_naa_id, 
+		 modified_date)
+	VALUES
+		(history_storcli_virtual_drive.storcli_virtual_drive_uuid,
+		 history_storcli_virtual_drive.storcli_virtual_drive_adapter_uuid, 
+		 history_storcli_virtual_drive.storcli_virtual_drive_creation_date, 
+		 history_storcli_virtual_drive.storcli_virtual_drive_data_protection, 
+		 history_storcli_virtual_drive.storcli_virtual_drive_disk_cache_policy, 
+		 history_storcli_virtual_drive.storcli_virtual_drive_emulation_type, 
+		 history_storcli_virtual_drive.storcli_virtual_drive_encryption, 
+		 history_storcli_virtual_drive.storcli_virtual_drive_blocks, 
+		 history_storcli_virtual_drive.storcli_virtual_drive_strip_size, 
+		 history_storcli_virtual_drive.storcli_virtual_drive_drives_per_span, 
+		 history_storcli_virtual_drive.storcli_virtual_drive_span_depth, 
+		 history_storcli_virtual_drive.storcli_virtual_drive_scsi_naa_id, 
+		 history_storcli_virtual_drive.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_virtual_drives() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_virtual_drives
+	AFTER INSERT OR UPDATE ON storcli_virtual_drives
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_virtual_drives();
+
+
+-- NOTE: There is likely never going to be a temperature here, but there is no harm in having the toggle
+-- This stores various variables found for a given virtual disk but not explicitely checked for.
+CREATE TABLE storcli_virtual_drive_variables (
+	storcli_virtual_drive_variable_uuid			uuid				primary key,
+	storcli_virtual_drive_variable_virtual_drive_uuid	uuid				not null,
+	storcli_virtual_drive_is_temperature			boolean				not null	default FALSE,
+	storcli_virtual_drive_variable_name			text				not null,
+	storcli_virtual_drive_variable_value			text,
+	modified_date						timestamp with time zone	not null,
+	
+	FOREIGN KEY(storcli_virtual_drive_variable_virtual_drive_uuid) REFERENCES storcli_virtual_drive(storcli_virtual_drive_uuid)
+);
+ALTER TABLE storcli_virtual_drive_variables OWNER TO #!variable!user!#;
+
+CREATE TABLE history.storcli_virtual_drive_variables (
+	history_id						bigserial,
+	storcli_virtual_drive_variable_uuid			uuid,
+	storcli_virtual_drive_variable_virtual_drive_uuid	uuid,
+	storcli_virtual_drive_is_temperature			boolean,
+	storcli_virtual_drive_variable_name			text,
+	storcli_virtual_drive_variable_value			text,
+	modified_date						timestamp with time zone
+);
+ALTER TABLE history.storcli_virtual_drive_variables OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_virtual_drive_variables() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_virtual_drive_variables RECORD;
+BEGIN
+	SELECT INTO history_storcli_virtual_drive_variables * FROM storcli_virtual_drive_variables WHERE storcli_virtual_drive_variable_uuid=new.storcli_virtual_drive_variable_uuid;
+	INSERT INTO history.storcli_virtual_drive_variables
+		(storcli_virtual_drive_variable_uuid, 
+		 storcli_virtual_drive_variable_virtual_drive_uuid,
+		 storcli_virtual_drive_is_temperature,
+		 storcli_virtual_drive_variable_name,
+		 storcli_virtual_drive_variable_value,
+		 modified_date)
+	VALUES
+		(history_storcli_virtual_drive_variables.storcli_virtual_drive_variable_uuid,
+		 history_storcli_virtual_drive_variables.storcli_virtual_drive_variable_virtual_drive_uuid,
+		 history_storcli_virtual_drive_variables.storcli_virtual_drive_is_temperature,
+		 history_storcli_virtual_drive_variables.storcli_virtual_drive_variable_name,
+		 history_storcli_virtual_drive_variables.storcli_virtual_drive_variable_value,
+		 history_storcli_virtual_drive_variables.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_virtual_drive_variables() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_virtual_drive_variables
+	AFTER INSERT OR UPDATE ON storcli_virtual_drive_variables
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_virtual_drive_variables();
+
+
+
+
+-- ------------------------------------------------------------------------------------------------------- --
+-- Drive Groups                                                                                            --
+-- ------------------------------------------------------------------------------------------------------- --
+
+-- This records the basic drive group information.
+CREATE TABLE storcli_drive_groups (
+	storcli_drive_group_uuid		uuid				primary key,
+	storcli_drive_group_virtual_drive_uuid	uuid,
+	storcli_drive_group_access		text,						-- "access"
+	storcli_drive_group_array_size		text,						-- "array_state"
+	storcli_drive_group_array_state		text,						-- "array_state"
+	storcli_drive_group_cache		text,						-- "cache"
+	storcli_drive_group_cachecade		text,						-- "cachecade"
+	storcli_drive_group_consistent		text,						-- "consistent"
+	storcli_drive_group_disk_cache		text,						-- "disk_cache"
+	storcli_drive_group_raid_type		text,						-- "raid_type"
+	storcli_drive_group_read_cache		text,						-- "read_cache"
+	storcli_drive_group_scheduled_cc	text,						-- "scheduled_consistency_check"
+	storcli_drive_group_write_cache		text,						-- "write_cache"
+	modified_date				timestamp with time zone	not null,
+	
+	FOREIGN KEY(storcli_drive_group_virtual_drive_uuid) REFERENCES storcli_virtual_drives(storcli_virtual_drive_uuid),
+);
+ALTER TABLE storcli_drive_groups OWNER TO #!variable!user!#;
+
+CREATE TABLE history.storcli_drive_groups (
+	history_id				bigserial,
+	storcli_drive_group_uuid		uuid,
+	storcli_drive_group_virtual_drive_uuid	uuid,
+	storcli_drive_group_access		text,
+	storcli_drive_group_array_size		text,
+	storcli_drive_group_array_state		text,
+	storcli_drive_group_cache		text,
+	storcli_drive_group_cachecade		text,
+	storcli_drive_group_consistent		text,
+	storcli_drive_group_disk_cache		text,
+	storcli_drive_group_raid_type		text,
+	storcli_drive_group_read_cache		text,
+	storcli_drive_group_scheduled_cc	text,
+	storcli_drive_group_write_cache		text,
+	modified_date				timestamp with time zone
+);
+ALTER TABLE history.storcli_drive_groups OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_drive_groups() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_drive_groups RECORD;
+BEGIN
+	SELECT INTO history_storcli_drive_groups * FROM storcli_drive_groups WHERE storcli_drive_group_uuid=new.storcli_drive_group_uuid;
+	INSERT INTO history.storcli_drive_groups
+		(storcli_drive_group_uuid, 
+		 storcli_drive_group_virtual_drive_uuid, 
+		 storcli_drive_group_access, 
+		 storcli_drive_group_array_size, 
+		 storcli_drive_group_array_state, 
+		 storcli_drive_group_cache, 
+		 storcli_drive_group_cachecade, 
+		 storcli_drive_group_consistent, 
+		 storcli_drive_group_disk_cache, 
+		 storcli_drive_group_raid_type, 
+		 storcli_drive_group_read_cache, 
+		 storcli_drive_group_scheduled_cc, 
+		 storcli_drive_group_write_cache, 
+		 modified_date)
+	VALUES
+		(history_storcli_drive_group.storcli_drive_group_uuid,
+		 history_storcli_drive_group.storcli_drive_group_virtual_drive_uuid, 
+		 history_storcli_drive_group.storcli_drive_group_access, 
+		 history_storcli_drive_group.storcli_drive_group_array_size, 
+		 history_storcli_drive_group.storcli_drive_group_array_state, 
+		 history_storcli_drive_group.storcli_drive_group_cache, 
+		 history_storcli_drive_group.storcli_drive_group_cachecade, 
+		 history_storcli_drive_group.storcli_drive_group_consistent, 
+		 history_storcli_drive_group.storcli_drive_group_disk_cache, 
+		 history_storcli_drive_group.storcli_drive_group_raid_type, 
+		 history_storcli_drive_group.storcli_drive_group_read_cache, 
+		 history_storcli_drive_group.storcli_drive_group_scheduled_cc, 
+		 history_storcli_drive_group.storcli_drive_group_write_cache, 
+		 history_storcli_drive_group.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_drive_groups() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_drive_groups
+	AFTER INSERT OR UPDATE ON storcli_drive_groups
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_drive_groups();
+
+
+-- NOTE: There is likely not needed, but it could be useful in a pinch if LSI changes the formatting to 
+--       add/remove stuff.
+-- This stores various variables found for a given virtual disk but not explicitely checked for.
+CREATE TABLE storcli_drive_group_variables (
+	storcli_drive_group_variable_uuid		uuid				primary key,
+	storcli_drive_group_variable_drive_group_uuid	uuid				not null,
+	storcli_drive_group_is_temperature		boolean				not null	default FALSE,
+	storcli_drive_group_variable_name		text				not null,
+	storcli_drive_group_variable_value		text,
+	modified_date					timestamp with time zone	not null,
+	
+	FOREIGN KEY(storcli_drive_group_variable_drive_group_uuid) REFERENCES storcli_drive_group(storcli_drive_group_uuid)
+);
+ALTER TABLE storcli_drive_group_variables OWNER TO #!variable!user!#;
+
+CREATE TABLE history.storcli_drive_group_variables (
+	history_id					bigserial,
+	storcli_drive_group_variable_uuid		uuid,
+	storcli_drive_group_variable_drive_group_uuid	uuid,
+	storcli_drive_group_is_temperature		boolean,
+	storcli_drive_group_variable_name		text,
+	storcli_drive_group_variable_value		text,
+	modified_date					timestamp with time zone
+);
+ALTER TABLE history.storcli_drive_group_variables OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_drive_group_variables() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_drive_group_variables RECORD;
+BEGIN
+	SELECT INTO history_storcli_drive_group_variables * FROM storcli_drive_group_variables WHERE storcli_drive_group_variable_uuid=new.storcli_drive_group_variable_uuid;
+	INSERT INTO history.storcli_drive_group_variables
+		(storcli_drive_group_variable_uuid, 
+		 storcli_drive_group_variable_drive_group_uuid,
+		 storcli_drive_group_is_temperature,
+		 storcli_drive_group_variable_name,
+		 storcli_drive_group_variable_value,
+		 modified_date)
+	VALUES
+		(history_storcli_drive_group_variables.storcli_drive_group_variable_uuid,
+		 history_storcli_drive_group_variables.storcli_drive_group_variable_drive_group_uuid,
+		 history_storcli_drive_group_variables.storcli_drive_group_is_temperature,
+		 history_storcli_drive_group_variables.storcli_drive_group_variable_name,
+		 history_storcli_drive_group_variables.storcli_drive_group_variable_value,
+		 history_storcli_drive_group_variables.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_drive_group_variables() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_drive_group_variables
+	AFTER INSERT OR UPDATE ON storcli_drive_group_variables
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_drive_group_variables();
+
+
