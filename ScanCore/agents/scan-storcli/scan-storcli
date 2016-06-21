@@ -30,7 +30,7 @@
 # 
 
 # Disable this for now.
-#exit(0);
+exit(0);
 
 # Use my modules.
 use strict;
@@ -244,7 +244,7 @@ sub sort_and_prepare_data
 				name2 => "type",          value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 3, 
+				log_level => 2, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "$serial_number - $type",
@@ -263,7 +263,7 @@ sub sort_and_prepare_data
 				name2 => "type",                     value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 3, 
+				log_level => 2, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "$cachevault_serial_number - $type",
@@ -567,7 +567,7 @@ sub get_physical_disk_data
 		if (($in_drive_header) && ($line =~ /^$enclosure_id:$slot_number\s+\d+\s+.*?\s+(.*?)\s+/))
 		{
 			$drive_group = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "drive_group", value1 => $drive_group, 
 				name2 => "line",        value2 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -575,7 +575,7 @@ sub get_physical_disk_data
 			if ($drive_group eq "-")
 			{
 				$drive_group = 9999 ;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "drive_group", value1 => $drive_group, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -583,20 +583,20 @@ sub get_physical_disk_data
 			# Find the virtual disk this drive is connected to, if any.
 			foreach my $this_virtual_disk (sort {$a cmp $b} keys %{$an->data->{virtual_disk}})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "virtual_disk::${this_virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size", value1 => $an->data->{virtual_disk}{$this_virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($an->data->{virtual_disk}{$this_virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size})
 				{
 					# Found it.
 					$virtual_disk = $this_virtual_disk;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "virtual_disk", value1 => $virtual_disk, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
 				}
 			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "virtual_disk", value1 => $virtual_disk, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
@@ -732,6 +732,14 @@ sub get_physical_disk_data
 					name2 => "sector_size", value2 => $sector_size, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			if ($variable =~ / EKM/i)
+			{
+				# De-TLA it
+				$variable =~ s/ EKM/ External Key Management/;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "variable", value1 => $variable, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
 			# Process some values.
 			if ($value =~ /^(\d.*?B) \[(0x.*?) Sectors\]/)
@@ -791,6 +799,13 @@ sub get_physical_disk_data
 			if ($value =~ /^(\d.*?)Gb\/s$/)
 			{
 				$value = $1." Gbps";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "value", value1 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value eq "NA")
+			{
+				$value = "N/A";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "value", value1 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1046,6 +1061,8 @@ sub process_vg_pd_list_data
 		my $spun_up               = $13;
 		#   $slot_number           = sprintf("%02d", $slot_number);
 		   $drive_group           = 9999 if $drive_group eq "-";
+		   $protection_info       = $protection_info       =~ /n/i ? "No" : "Yes";
+		   $self_encrypting_drive = $self_encrypting_drive =~ /n/i ? "No" : "Yes";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 			name1  => "enclosure_id",          value1  => $enclosure_id, 
 			name2  => "slot_number",           value2  => $slot_number, 
