@@ -3280,17 +3280,29 @@ sub parse_install_manifest
 				{
 					if ($c eq "disk")
 					{
-						my $disk_barrier = $a->{$b}->[0]->{$c}->[0]->{'disk-barrier'};
-						my $disk_flushes = $a->{$b}->[0]->{$c}->[0]->{'disk-flushes'};
-						my $md_flushes   = $a->{$b}->[0]->{$c}->[0]->{'md-flushes'};
+						my $disk_barrier  = $a->{$b}->[0]->{$c}->[0]->{'disk-barrier'};
+						my $disk_flushes  = $a->{$b}->[0]->{$c}->[0]->{'disk-flushes'};
+						my $md_flushes    = $a->{$b}->[0]->{$c}->[0]->{'md-flushes'};
+						my $c_plan_ahead  = $a->{$b}->[0]->{$c}->[0]->{'c-plan-ahead'};
+						my $c_max_rate    = $a->{$b}->[0]->{$c}->[0]->{'c-max-rate'};
+						my $c_min_rate    = $a->{$b}->[0]->{$c}->[0]->{'c-min-rate'};
+						my $c_fill_target = $a->{$b}->[0]->{$c}->[0]->{'c-fill-target'};
 						
-						$an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-barrier'} = defined $disk_barrier ? $disk_barrier : "";
-						$an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-flushes'} = defined $disk_flushes ? $disk_flushes : "";
-						$an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'md-flushes'}   = defined $md_flushes   ? $md_flushes   : "";
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-							name1 => "install_manifest::${uuid}::common::drbd::disk::disk-barrier", value1 => $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-barrier'},
-							name2 => "install_manifest::${uuid}::common::drbd::disk::disk-flushes", value2 => $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-flushes'},
-							name3 => "install_manifest::${uuid}::common::drbd::disk::md-flushes",   value3 => $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'md-flushes'},
+						$an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-barrier'}  = defined $disk_barrier  ? $disk_barrier  : "";
+						$an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-flushes'}  = defined $disk_flushes  ? $disk_flushes  : "";
+						$an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'md-flushes'}    = defined $md_flushes    ? $md_flushes    : "";
+						$an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-plan-ahead'}  = defined $c_plan_ahead  ? $c_plan_ahead  : "";
+						$an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-max-rate'}    = defined $c_max_rate    ? $c_max_rate    : "";
+						$an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-min-rate'}    = defined $c_min_rate    ? $c_min_rate    : "";
+						$an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-fill-target'} = defined $c_fill_target ? $c_fill_target : "";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+							name1 => "install_manifest::${uuid}::common::drbd::disk::disk-barrier",  value1 => $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-barrier'},
+							name2 => "install_manifest::${uuid}::common::drbd::disk::disk-flushes",  value2 => $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-flushes'},
+							name3 => "install_manifest::${uuid}::common::drbd::disk::md-flushes",    value3 => $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'md-flushes'},
+							name4 => "install_manifest::${uuid}::common::drbd::disk::c-plan-ahead",  value4 => $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-plan-ahead'},
+							name5 => "install_manifest::${uuid}::common::drbd::disk::c-max-rate",    value5 => $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-max-rate'},
+							name6 => "install_manifest::${uuid}::common::drbd::disk::c-min-rate",    value6 => $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-min-rate'},
+							name7 => "install_manifest::${uuid}::common::drbd::disk::c-fill-target", value7 => $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-fill-target'},
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					elsif ($c eq "options")
@@ -3635,21 +3647,29 @@ sub parse_install_manifest
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# DRBD variables
-	$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-barrier'}    ? $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-barrier'}    : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'};
-	$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-flushes'}    ? $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-flushes'}    : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'};
-	$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'md-flushes'}      ? $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'md-flushes'}      : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'};
-	$an->data->{cgi}{'anvil_drbd_options_cpu-mask'}  = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{options}{'cpu-mask'}     ? $an->data->{install_manifest}{$uuid}{common}{drbd}{options}{'cpu-mask'}     : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'};
-	$an->data->{cgi}{'anvil_drbd_net_max-buffers'}   = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'max-buffers'}      ? $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'max-buffers'}      : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'};
-	$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}   = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'sndbuf-size'}      ? $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'sndbuf-size'}      : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'};
-	$an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'rcvbuf-size'}      ? $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'rcvbuf-size'}      : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
-		name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
-		name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
-		name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
-		name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
-		name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
-		name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
-		name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+	$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'}  = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-barrier'}  ? $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-barrier'}  : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'};
+	$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'}  = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-flushes'}  ? $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'disk-flushes'}  : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'};
+	$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}    = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'md-flushes'}    ? $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'md-flushes'}    : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'};
+	$an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'}  = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-plan-ahead'}  ? $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-plan-ahead'}  : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-plan-ahead'};
+	$an->data->{cgi}{'anvil_drbd_disk_c-max-rate'}    = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-max-rate'}    ? $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-max-rate'}    : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-max-rate'};
+	$an->data->{cgi}{'anvil_drbd_disk_c-min-rate'}    = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-min-rate'}    ? $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-min-rate'}    : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-min-rate'};
+	$an->data->{cgi}{'anvil_drbd_disk_c-fill-target'} = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-fill-target'} ? $an->data->{install_manifest}{$uuid}{common}{drbd}{disk}{'c-fill-target'} : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-fill-target'};
+	$an->data->{cgi}{'anvil_drbd_options_cpu-mask'}   = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{options}{'cpu-mask'}   ? $an->data->{install_manifest}{$uuid}{common}{drbd}{options}{'cpu-mask'}   : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'};
+	$an->data->{cgi}{'anvil_drbd_net_max-buffers'}    = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'max-buffers'}    ? $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'max-buffers'}    : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'};
+	$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}    = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'sndbuf-size'}    ? $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'sndbuf-size'}    : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'};
+	$an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}    = defined $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'rcvbuf-size'}    ? $an->data->{install_manifest}{$uuid}{common}{drbd}{net}{'rcvbuf-size'}    : $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+		name1  => "cgi::anvil_drbd_disk_disk-barrier",  value1  => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
+		name2  => "cgi::anvil_drbd_disk_disk-flushes",  value2  => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
+		name3  => "cgi::anvil_drbd_disk_md-flushes",    value3  => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
+		name4  => "cgi::anvil_drbd_disk_c-plan-ahead",  value4  => $an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'},
+		name5  => "cgi::anvil_drbd_disk_c-max-rate",    value5  => $an->data->{cgi}{'anvil_drbd_disk_c-max-rate'},
+		name6  => "cgi::anvil_drbd_disk_c-min-rate",    value6  => $an->data->{cgi}{'anvil_drbd_disk_c-min-rate'},
+		name7  => "cgi::anvil_drbd_disk_c-fill-target", value7  => $an->data->{cgi}{'anvil_drbd_disk_c-fill-target'},
+		name8  => "cgi::anvil_drbd_options_cpu-mask",   value8  => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
+		name9  => "cgi::anvil_drbd_net_max-buffers",    value9  => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
+		name10 => "cgi::anvil_drbd_net_sndbuf-size",    value10 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
+		name11 => "cgi::anvil_drbd_net_rcvbuf-size",    value11 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### Foundation Pack
@@ -4380,15 +4400,21 @@ sub save_install_manifest
 		my $node2_ipmi_netmask = $an->Get->netmask_from_ip({ip => $an->data->{cgi}{anvil_node2_ipmi_ip}});
 		
 		### Setup the DRBD lines.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
-			name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
-			name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
-			name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
-			name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
-			name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
-			name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
-			name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+			name1  => "cgi::anvil_drbd_disk_disk-barrier",  value1  => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
+			name2  => "cgi::anvil_drbd_disk_disk-flushes",  value2  => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
+			name3  => "cgi::anvil_drbd_disk_md-flushes",    value3  => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
+			name4  => "cgi::anvil_drbd_disk_c-plan-ahead",  value4  => $an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'},
+			name5  => "cgi::anvil_drbd_disk_c-max-rate",    value5  => $an->data->{cgi}{'anvil_drbd_disk_c-max-rate'},
+			name6  => "cgi::anvil_drbd_disk_c-min-rate",    value6  => $an->data->{cgi}{'anvil_drbd_disk_c-min-rate'},
+			name7  => "cgi::anvil_drbd_disk_c-fill-target", value7  => $an->data->{cgi}{'anvil_drbd_disk_c-fill-target'},
+			name8  => "cgi::anvil_drbd_options_cpu-mask",   value8  => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
+			name9  => "cgi::anvil_drbd_net_max-buffers",    value9  => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
+			name10 => "cgi::anvil_drbd_net_sndbuf-size",    value10 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
+			name11 => "cgi::anvil_drbd_net_rcvbuf-size",    value11 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		### TODO: Should we check/override bad c-* entries?
 		
 		# Standardize
 		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =  lc($an->data->{cgi}{'anvil_drbd_disk_disk-barrier'});
@@ -4513,7 +4539,7 @@ Striker Version: ".$an->data->{sys}{version}."
 			<fence order=\"ipmi,pdu\" post_join_delay=\"90\" delay=\"15\" delay_node=\"".$an->data->{cgi}{anvil_node1_name}."\" />
 		</cluster>
 		<drbd>
-			<disk disk-barrier=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'}."\" disk-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'}."\" md-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}."\" />
+			<disk disk-barrier=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'}."\" disk-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'}."\" md-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}."\" c-plan-ahead =\"".$an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'}."\" c-max-rate =\"".$an->data->{cgi}{'anvil_drbd_disk_c-max-rate'}."\" c-min-rate =\"".$an->data->{cgi}{'anvil_drbd_disk_c-min-rate'}."\" c-fill-target =\"".$an->data->{cgi}{'anvil_drbd_disk_c-fill-target'}."\" />
 			<options cpu-mask=\"".$an->data->{cgi}{'anvil_drbd_options_cpu-mask'}."\" />
 			<net max-buffers=\"".$an->data->{cgi}{'anvil_drbd_net_max-buffers'}."\" sndbuf-size=\"".$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}."\" rcvbuf-size=\"".$an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}."\" />
 		</drbd>

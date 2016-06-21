@@ -51,14 +51,6 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 my $time = time;
 
 my $an = AN::Tools->new({data => {
-		'anvil-safe-start' =>	{
-			drbd		=>	{
-				boost_speed	=>	80,
-				max_wait_time	=>	300,
-				resync_delay	=>	15,
-			},
-			log_db_transactions	=>	0,
-		},
 		path		=>	{
 			cluster_conf		=>	"/etc/cluster/cluster.conf", 
 			log_file		=>	"/var/log/striker.log",
@@ -97,15 +89,27 @@ my $an = AN::Tools->new({data => {
 			peer_node		=>	"",
 			program_name		=>	$program_name,
 			# These are only used if the user sets an invalid value in striker.conf
-			resync_boost_speed	=>	80,
-			resync_max_wait_time	=>	300,
-			resync_delay		=>	15,
+			resync			=>	{
+				boost_speed		=>	80,
+				max_wait_time		=>	300,
+				delay			=>	15,
+				always_boost		=>	0,
+			},
 			single_node_start	=>	{
 				boot_frequency		=>	86400,
 				boot_delay		=>	300,
 				enabled			=>	0,
 				ran			=>	0,
 			},
+		},
+		'anvil-safe-start' =>	{
+			drbd		=>	{
+				boost_speed	=>	80,
+				max_wait_time	=>	300,
+				resync_delay	=>	15,
+				always_boost	=>	0,
+			},
+			log_db_transactions	=>	0,
 		},
 	},
 });
@@ -1577,18 +1581,20 @@ sub start_drbd
 		{
 			# Something isn't UpToDate, so lets see what we can do.
 			my $sync_eta = $local_resource->{sync_eta};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 				name1 => "sync_eta",                              value1 => $sync_eta, 
 				name2 => "anvil-safe-start::drbd::boost_speed",   value2 => $an->data->{'anvil-safe-start'}{drbd}{boost_speed}, 
 				name3 => "anvil-safe-start::drbd::max_wait_time", value3 => $an->data->{'anvil-safe-start'}{drbd}{max_wait_time}, 
 				name4 => "anvil-safe-start::drbd::resync_delay",  value4 => $an->data->{'anvil-safe-start'}{drbd}{resync_delay}, 
-				name5 => "sys::resync_boost_speed",               value5 => $an->data->{sys}{resync_boost_speed}, 
-				name6 => "sys::resync_max_wait_time",             value6 => $an->data->{sys}{resync_max_wait_time}, 
-				name7 => "sys::resync_delay",                     value7 => $an->data->{sys}{resync_delay}, 
+				name5 => "anvil-safe-start::drbd::always_boost",  value5 => $an->data->{'anvil-safe-start'}{drbd}{always_boost}, 
+				name6 => "sys::resync::boost_speed",              value6 => $an->data->{sys}{resync}{boost_speed}, 
+				name7 => "sys::resync::max_wait_time",            value7 => $an->data->{sys}{resync}{max_wait_time}, 
+				name8 => "sys::resync::delay",                    value8 => $an->data->{sys}{resync}{delay}, 
+				name9 => "sys::resync::always_boost",             value9 => $an->data->{sys}{resync}{always_boost}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($an->data->{'anvil-safe-start'}{drbd}{boost_speed} !~ /^\d+$/)
 			{
-				$an->data->{'anvil-safe-start'}{drbd}{boost_speed} = $an->data->{sys}{resync_boost_speed};
+				$an->data->{'anvil-safe-start'}{drbd}{boost_speed} = $an->data->{sys}{resync}{boost_speed};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "anvil-safe-start::drbd::boost_speed", value1 => $an->data->{'anvil-safe-start'}{drbd}{boost_speed}, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1603,27 +1609,29 @@ sub start_drbd
 			}
 			elsif ($an->data->{'anvil-safe-start'}{drbd}{max_wait_time} !~ /^\d+$/)
 			{
-				$an->data->{'anvil-safe-start'}{drbd}{max_wait_time} = $an->data->{sys}{resync_max_wait_time};
+				$an->data->{'anvil-safe-start'}{drbd}{max_wait_time} = $an->data->{sys}{resync}{max_wait_time};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "anvil-safe-start::drbd::max_wait_time", value1 => $an->data->{'anvil-safe-start'}{drbd}{max_wait_time}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($an->data->{'anvil-safe-start'}{drbd}{resync_delay} !~ /^\d+$/)
 			{
-				$an->data->{'anvil-safe-start'}{drbd}{resync_delay} = $an->data->{sys}{resync_delay};
+				$an->data->{'anvil-safe-start'}{drbd}{resync_delay} = $an->data->{sys}{resync}{delay};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "anvil-safe-start::drbd::resync_delay", value1 => $an->data->{'anvil-safe-start'}{drbd}{resync_delay}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# If the sync ETA is > 'anvil-safe-start::drbd::max_wait_time' seconds, get the SN sync speed 
+			# If the sync ETA is > 'anvil-safe-start::drbd::max_wait_time' seconds, or if 
+			# 'always_boost' is set, boost the sync speed.
 			my $wait_for_sync = 1;
 			my $sync_boosted  = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "wait_for_sync", value1 => $wait_for_sync, 
-				name2 => "sync_boosted",  value2 => $sync_boosted, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "wait_for_sync",                        value1 => $wait_for_sync, 
+				name2 => "sync_boosted",                         value2 => $sync_boosted, 
+				name3 => "anvil-safe-start::drbd::always_boost", value3 => $an->data->{'anvil-safe-start'}{drbd}{always_boost}, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($sync_eta > $an->data->{'anvil-safe-start'}{drbd}{max_wait_time})
+			if (($sync_eta > $an->data->{'anvil-safe-start'}{drbd}{max_wait_time}) or ($an->data->{'anvil-safe-start'}{drbd}{always_boost}))
 			{
 				# Boost the sync speed and then wait 15 seconds and check again to see what 
 				# the ETA becomes.

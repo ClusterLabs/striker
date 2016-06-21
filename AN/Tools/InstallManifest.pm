@@ -9433,7 +9433,40 @@ common {
 		# disk-drain md-flushes resync-rate resync-after al-extents
 		# c-plan-ahead c-delay-target c-fill-target c-max-rate
 		# c-min-rate disk-timeout
-		fencing resource-and-stonith;\n";
+		fencing resource-and-stonith;
+		
+		### Set a somewhat more aggressive resync rate. See: 
+		### - https://blogs.linbit.com/p/443/drbd-sync-rate-controller-2/
+		### Also, from Matt Kereczman of LINBIT (in #drbd on 2016-06-20);
+		# For rtt < 50ms, you may want to reduce c-plan-ahead to 10 or 7 (or even 5), and use 
+		# 'c-fill-target' 1M to 10M; For rtt >= 100ms, c-plan-ahead 20 is usually a good choice 
+		# already. Use c-fill-target = c-max-rate * rtt (rounded up to multiple of 100ms) c-min-rate:
+		# pick whatever you think is acceptable without impacting performance c-max-rate: theoretical
+		# limit of your hardware. For rtt in the range of 50ms <= rtt < 100ms, you can see which 
+		# gives better results.
+		# 
+		# For 1 Gbps with fast storage/low latency;
+		# - For two machines sitting next to each other connected via 1Gbe crossover, I would set: 
+		#   c-plan-ahead 7; c-fill-target 1M; c-min-rate 30M; c-max-rate 110M;
+		#   
+		# For the same, but on 10 Gbps
+		# - c-plan-ahead 7; c-fill-target 1M; c-min-rate 300M; c-max-rate 1000M;
+		# 
+		# In both cases, manually test different 'c-fill-target' rates on a per-deployement basis.
+		
+		# variable sync speed; 0 = disabled, 5+ = enabled (the number is x*0.1s and should be at 
+		# least 10x RTT on the SN). 20 is the recommended default, under 5 is useless.
+		c-plan-ahead ".$an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'}.";
+		
+		# This should be ~100% of maximum supported speed.
+		c-max-rate ".$an->data->{cgi}{'anvil_drbd_disk_c-max-rate'}.";
+		
+		# Set a target (but not guaranteed) minimum resync rate.
+		c-min-rate ".$an->data->{cgi}{'anvil_drbd_disk_c-min-rate'}.";
+		
+		# This is how much data you want to have in-flight (on the wire). 
+		c-fill-target ".$an->data->{cgi}{'anvil_drbd_disk_c-fill-target'}.";
+		\n";
 	if ($an->data->{cgi}{'anvil_drbd_disk_disk-barrier'})
 	{
 		$an->data->{drbd}{global_common} .= "		disk-barrier ".$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'}.";\n";
@@ -9477,7 +9510,10 @@ common {
 		# another and let a human decide which node to invalidate. Of 
 		after-sb-0pri discard-zero-changes;
 		after-sb-1pri discard-secondary;
-		after-sb-2pri disconnect;\n";
+		after-sb-2pri disconnect;
+		
+		### TODO: Experiment with 'max-buffers' of 20 ~ 40k.
+		\n";
 	if ($an->data->{cgi}{'anvil_drbd_net_max-buffers'})
 	{
 		$an->data->{drbd}{global_common} .= "		max-buffers ".$an->data->{cgi}{'anvil_drbd_net_max-buffers'}.";\n";
@@ -16357,6 +16393,10 @@ sub show_summary_manifest
 		'anvil_drbd_disk_disk-barrier'	=>	$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
 		'anvil_drbd_disk_disk-flushes'	=>	$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
 		'anvil_drbd_disk_md-flushes'	=>	$an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
+		'anvil_drbd_disk_c-plan-ahead'	=>	$an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'},
+		'anvil_drbd_disk_c-max-rate'	=>	$an->data->{cgi}{'anvil_drbd_disk_c-max-rate'},
+		'anvil_drbd_disk_c-min-rate'	=>	$an->data->{cgi}{'anvil_drbd_disk_c-min-rate'},
+		'anvil_drbd_disk_c-fill-target'	=>	$an->data->{cgi}{'anvil_drbd_disk_c-fill-target'},
 		'anvil_drbd_options_cpu-mask'	=>	$an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
 		'anvil_drbd_net_max-buffers'	=>	$an->data->{cgi}{'anvil_drbd_net_max-buffers'},
 		'anvil_drbd_net_sndbuf-size'	=>	$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},

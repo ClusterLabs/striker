@@ -2157,90 +2157,94 @@ sub manifests_menu
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::do", value1 => $an->data->{cgi}{'do'},
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->data->{form}{anvil_prefix_star}                   = "";
-	$an->data->{form}{anvil_sequence_star}                 = "";
-	$an->data->{form}{anvil_domain_star}                   = "";
-	$an->data->{form}{anvil_name_star}                     = "";
-	$an->data->{form}{anvil_password_star}                 = "";
-	$an->data->{form}{anvil_bcn_ethtool_opts_star}         = "";
-	$an->data->{form}{anvil_bcn_network_star}              = "";
-	$an->data->{form}{anvil_sn_ethtool_opts_star}          = "";
-	$an->data->{form}{anvil_sn_network_star}               = "";
-	$an->data->{form}{anvil_ifn_ethtool_opts_star}         = "";
-	$an->data->{form}{anvil_ifn_network_star}              = "";
-	$an->data->{form}{anvil_ifn_gateway_star}              = "";
-	$an->data->{form}{anvil_dns1_star}                     = "";
-	$an->data->{form}{anvil_dns2_star}                     = "";
-	$an->data->{form}{anvil_ntp1_star}                     = "";
-	$an->data->{form}{anvil_ntp2_star}                     = "";
-	$an->data->{form}{anvil_switch1_name_star}             = "";
-	$an->data->{form}{anvil_switch1_ip_star}               = "";
-	$an->data->{form}{anvil_switch2_name_star}             = "";
-	$an->data->{form}{anvil_switch2_ip_star}               = "";
-	$an->data->{form}{anvil_pdu1_name_star}                = "";
-	$an->data->{form}{anvil_pdu1_ip_star}                  = "";
-	$an->data->{form}{anvil_pdu1_agent_star}               = "";
-	$an->data->{form}{anvil_pdu2_name_star}                = "";
-	$an->data->{form}{anvil_pdu2_ip_star}                  = "";
-	$an->data->{form}{anvil_pdu2_agent_star}               = "";
-	$an->data->{form}{anvil_pdu3_name_star}                = "";
-	$an->data->{form}{anvil_pdu3_ip_star}                  = "";
-	$an->data->{form}{anvil_pdu3_agent_star}               = "";
-	$an->data->{form}{anvil_pdu4_name_star}                = "";
-	$an->data->{form}{anvil_pdu4_ip_star}                  = "";
-	$an->data->{form}{anvil_pdu4_agent_star}               = "";
-	$an->data->{form}{anvil_ups1_name_star}                = "";
-	$an->data->{form}{anvil_ups1_ip_star}                  = "";
-	$an->data->{form}{anvil_ups2_name_star}                = "";
-	$an->data->{form}{anvil_ups2_ip_star}                  = "";
-	$an->data->{form}{anvil_pts1_name_star}                = "";
-	$an->data->{form}{anvil_pts1_ip_star}                  = "";
-	$an->data->{form}{anvil_pts2_name_star}                = "";
-	$an->data->{form}{anvil_pts2_ip_star}                  = "";
-	$an->data->{form}{anvil_striker1_name_star}            = "";
-	$an->data->{form}{anvil_striker1_bcn_ip_star}          = "";
-	$an->data->{form}{anvil_striker1_ifn_ip_star}          = "";
-	$an->data->{form}{anvil_striker2_name_star}            = "";
-	$an->data->{form}{anvil_striker2_bcn_ip_star}          = "";
-	$an->data->{form}{anvil_striker2_ifn_ip_star}          = "";
-	$an->data->{form}{anvil_media_library_star}            = "";
-	$an->data->{form}{anvil_storage_pool1_star}            = "";
-	$an->data->{form}{anvil_repositories_star}             = "";
-	$an->data->{form}{anvil_node1_name_star}               = "";
-	$an->data->{form}{anvil_node1_bcn_ip_star}             = "";
-	$an->data->{form}{anvil_node1_ipmi_ip_star}            = "";
-	$an->data->{form}{anvil_node1_sn_ip_star}              = "";
-	$an->data->{form}{anvil_node1_ifn_ip_star}             = "";
-	$an->data->{form}{anvil_node1_pdu1_outlet_star}        = "";
-	$an->data->{form}{anvil_node1_pdu2_outlet_star}        = "";
-	$an->data->{form}{anvil_node1_pdu3_outlet_star}        = "";
-	$an->data->{form}{anvil_node1_pdu4_outlet_star}        = "";
-	$an->data->{form}{anvil_node2_name_star}               = "";
-	$an->data->{form}{anvil_node2_bcn_ip_star}             = "";
-	$an->data->{form}{anvil_node2_ipmi_ip_star}            = "";
-	$an->data->{form}{anvil_node2_sn_ip_star}              = "";
-	$an->data->{form}{anvil_node2_ifn_ip_star}             = "";
-	$an->data->{form}{anvil_node2_pdu1_outlet_star}        = "";
-	$an->data->{form}{anvil_node2_pdu2_outlet_star}        = "";
-	$an->data->{form}{anvil_node2_pdu3_outlet_star}        = "";
-	$an->data->{form}{anvil_node2_pdu4_outlet_star}        = "";
-	$an->data->{form}{anvil_open_vnc_ports_star}           = "";
-	$an->data->{form}{striker_user_star}                   = "";
-	$an->data->{form}{striker_database_star}               = "";
-	$an->data->{form}{anvil_striker1_user_star}            = "";
-	$an->data->{form}{anvil_striker1_password_star}        = "";
-	$an->data->{form}{anvil_striker1_database_star}        = "";
-	$an->data->{form}{anvil_striker2_user_star}            = "";
-	$an->data->{form}{anvil_striker2_password_star}        = "";
-	$an->data->{form}{anvil_striker2_database_star}        = "";
-	$an->data->{form}{anvil_mtu_size_star}                 = "";
-	$an->data->{form}{'anvil_drbd_disk_disk-barrier_star'} = "";
-	$an->data->{form}{'anvil_drbd_disk_disk-flushes_star'} = "";
-	$an->data->{form}{'anvil_drbd_disk_md-flushes_star'}   = "";
-	$an->data->{form}{'anvil_drbd_options_cpu-mask_star'}  = "";
-	$an->data->{form}{'anvil_drbd_net_max-buffers_star'}   = "";
-	$an->data->{form}{'anvil_drbd_net_sndbuf-size_star'}   = "";
-	$an->data->{form}{'anvil_drbd_net_rcvbuf-size_star'}   = "";
+	$an->data->{form}{anvil_prefix_star}                    = "";
+	$an->data->{form}{anvil_sequence_star}                  = "";
+	$an->data->{form}{anvil_domain_star}                    = "";
+	$an->data->{form}{anvil_name_star}                      = "";
+	$an->data->{form}{anvil_password_star}                  = "";
+	$an->data->{form}{anvil_bcn_ethtool_opts_star}          = "";
+	$an->data->{form}{anvil_bcn_network_star}               = "";
+	$an->data->{form}{anvil_sn_ethtool_opts_star}           = "";
+	$an->data->{form}{anvil_sn_network_star}                = "";
+	$an->data->{form}{anvil_ifn_ethtool_opts_star}          = "";
+	$an->data->{form}{anvil_ifn_network_star}               = "";
+	$an->data->{form}{anvil_ifn_gateway_star}               = "";
+	$an->data->{form}{anvil_dns1_star}                      = "";
+	$an->data->{form}{anvil_dns2_star}                      = "";
+	$an->data->{form}{anvil_ntp1_star}                      = "";
+	$an->data->{form}{anvil_ntp2_star}                      = "";
+	$an->data->{form}{anvil_switch1_name_star}              = "";
+	$an->data->{form}{anvil_switch1_ip_star}                = "";
+	$an->data->{form}{anvil_switch2_name_star}              = "";
+	$an->data->{form}{anvil_switch2_ip_star}                = "";
+	$an->data->{form}{anvil_pdu1_name_star}                 = "";
+	$an->data->{form}{anvil_pdu1_ip_star}                   = "";
+	$an->data->{form}{anvil_pdu1_agent_star}                = "";
+	$an->data->{form}{anvil_pdu2_name_star}                 = "";
+	$an->data->{form}{anvil_pdu2_ip_star}                   = "";
+	$an->data->{form}{anvil_pdu2_agent_star}                = "";
+	$an->data->{form}{anvil_pdu3_name_star}                 = "";
+	$an->data->{form}{anvil_pdu3_ip_star}                   = "";
+	$an->data->{form}{anvil_pdu3_agent_star}                = "";
+	$an->data->{form}{anvil_pdu4_name_star}                 = "";
+	$an->data->{form}{anvil_pdu4_ip_star}                   = "";
+	$an->data->{form}{anvil_pdu4_agent_star}                = "";
+	$an->data->{form}{anvil_ups1_name_star}                 = "";
+	$an->data->{form}{anvil_ups1_ip_star}                   = "";
+	$an->data->{form}{anvil_ups2_name_star}                 = "";
+	$an->data->{form}{anvil_ups2_ip_star}                   = "";
+	$an->data->{form}{anvil_pts1_name_star}                 = "";
+	$an->data->{form}{anvil_pts1_ip_star}                   = "";
+	$an->data->{form}{anvil_pts2_name_star}                 = "";
+	$an->data->{form}{anvil_pts2_ip_star}                   = "";
+	$an->data->{form}{anvil_striker1_name_star}             = "";
+	$an->data->{form}{anvil_striker1_bcn_ip_star}           = "";
+	$an->data->{form}{anvil_striker1_ifn_ip_star}           = "";
+	$an->data->{form}{anvil_striker2_name_star}             = "";
+	$an->data->{form}{anvil_striker2_bcn_ip_star}           = "";
+	$an->data->{form}{anvil_striker2_ifn_ip_star}           = "";
+	$an->data->{form}{anvil_media_library_star}             = "";
+	$an->data->{form}{anvil_storage_pool1_star}             = "";
+	$an->data->{form}{anvil_repositories_star}              = "";
+	$an->data->{form}{anvil_node1_name_star}                = "";
+	$an->data->{form}{anvil_node1_bcn_ip_star}              = "";
+	$an->data->{form}{anvil_node1_ipmi_ip_star}             = "";
+	$an->data->{form}{anvil_node1_sn_ip_star}               = "";
+	$an->data->{form}{anvil_node1_ifn_ip_star}              = "";
+	$an->data->{form}{anvil_node1_pdu1_outlet_star}         = "";
+	$an->data->{form}{anvil_node1_pdu2_outlet_star}         = "";
+	$an->data->{form}{anvil_node1_pdu3_outlet_star}         = "";
+	$an->data->{form}{anvil_node1_pdu4_outlet_star}         = "";
+	$an->data->{form}{anvil_node2_name_star}                = "";
+	$an->data->{form}{anvil_node2_bcn_ip_star}              = "";
+	$an->data->{form}{anvil_node2_ipmi_ip_star}             = "";
+	$an->data->{form}{anvil_node2_sn_ip_star}               = "";
+	$an->data->{form}{anvil_node2_ifn_ip_star}              = "";
+	$an->data->{form}{anvil_node2_pdu1_outlet_star}         = "";
+	$an->data->{form}{anvil_node2_pdu2_outlet_star}         = "";
+	$an->data->{form}{anvil_node2_pdu3_outlet_star}         = "";
+	$an->data->{form}{anvil_node2_pdu4_outlet_star}         = "";
+	$an->data->{form}{anvil_open_vnc_ports_star}            = "";
+	$an->data->{form}{striker_user_star}                    = "";
+	$an->data->{form}{striker_database_star}                = "";
+	$an->data->{form}{anvil_striker1_user_star}             = "";
+	$an->data->{form}{anvil_striker1_password_star}         = "";
+	$an->data->{form}{anvil_striker1_database_star}         = "";
+	$an->data->{form}{anvil_striker2_user_star}             = "";
+	$an->data->{form}{anvil_striker2_password_star}         = "";
+	$an->data->{form}{anvil_striker2_database_star}         = "";
+	$an->data->{form}{anvil_mtu_size_star}                  = "";
+	$an->data->{form}{'anvil_drbd_disk_disk-barrier_star'}  = "";
+	$an->data->{form}{'anvil_drbd_disk_disk-flushes_star'}  = "";
+	$an->data->{form}{'anvil_drbd_disk_md-flushes_star'}    = "";
+	$an->data->{form}{'anvil_drbd_options_cpu-mask_star'}   = "";
+	$an->data->{form}{'anvil_drbd_net_max-buffers_star'}    = "";
+	$an->data->{form}{'anvil_drbd_net_sndbuf-size_star'}    = "";
+	$an->data->{form}{'anvil_drbd_net_rcvbuf-size_star'}    = "";
+	$an->data->{form}{'anvil_drbd_disk_c-plan-ahead_star'}  = "";
+	$an->data->{form}{'anvil_drbd_disk_c-max-rate_star'}    = "";
+	$an->data->{form}{'anvil_drbd_disk_c-min-rate_star'}    = "";
+	$an->data->{form}{'anvil_drbd_disk_c-fill-target_star'} = "";
 	
 	# Delete it, if requested
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2559,13 +2563,17 @@ WHERE
 			if (not $an->data->{cgi}{anvil_repositories})       { $an->data->{cgi}{anvil_repositories}       = $an->data->{sys}{install_manifest}{'default'}{repositories}; }
 			
 			# DRBD variables
-			if (not $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'}) { $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'}; }
-			if (not $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'}) { $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'}; }
-			if (not $an->data->{cgi}{'anvil_drbd_disk_md-flushes'})   { $an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}; }
-			if (not $an->data->{cgi}{'anvil_drbd_options_cpu-mask'})  { $an->data->{cgi}{'anvil_drbd_options_cpu-mask'}  = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'}; }
-			if (not $an->data->{cgi}{'anvil_drbd_net_max-buffers'})   { $an->data->{cgi}{'anvil_drbd_net_max-buffers'}   = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}; }
-			if (not $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'})   { $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}; }
-			if (not $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'})   { $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}; }
+			if (not $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'})  { $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'}  = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'};  }
+			if (not $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'})  { $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'}  = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'};  }
+			if (not $an->data->{cgi}{'anvil_drbd_disk_md-flushes'})    { $an->data->{cgi}{'anvil_drbd_disk_md-flushes'}    = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'};    }
+			if (not $an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'})  { $an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'}  = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-plan-ahead'};  }
+			if (not $an->data->{cgi}{'anvil_drbd_disk_c-max-rate'})    { $an->data->{cgi}{'anvil_drbd_disk_c-max-rate'}    = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-max-rate'};    }
+			if (not $an->data->{cgi}{'anvil_drbd_disk_c-min-rate'})    { $an->data->{cgi}{'anvil_drbd_disk_c-min-rate'}    = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-min-rate'};    }
+			if (not $an->data->{cgi}{'anvil_drbd_disk_c-fill-target'}) { $an->data->{cgi}{'anvil_drbd_disk_c-fill-target'} = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-fill-target'}; }
+			if (not $an->data->{cgi}{'anvil_drbd_options_cpu-mask'})   { $an->data->{cgi}{'anvil_drbd_options_cpu-mask'}   = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'};   }
+			if (not $an->data->{cgi}{'anvil_drbd_net_max-buffers'})    { $an->data->{cgi}{'anvil_drbd_net_max-buffers'}    = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'};    }
+			if (not $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'})    { $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}    = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'};    }
+			if (not $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'})    { $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}    = $an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'};    }
 			
 			# Hidden fields for now.
 			if (not $an->data->{cgi}{anvil_cluster_name})       { $an->data->{cgi}{anvil_cluster_name}       = $an->data->{sys}{install_manifest}{'default'}{cluster_name}; }
@@ -3029,6 +3037,26 @@ WHERE
 			name		=>	"anvil_drbd_disk_md-flushes",
 			id		=>	"anvil_drbd_disk_md-flushes",
 			value		=>	$an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
+		}});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
+			name		=>	"anvil_drbd_disk_c-plan-ahead",
+			id		=>	"anvil_drbd_disk_c-plan-ahead",
+			value		=>	$an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'},
+		}});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
+			name		=>	"anvil_drbd_disk_c-max-rate",
+			id		=>	"anvil_drbd_disk_c-max-rate",
+			value		=>	$an->data->{cgi}{'anvil_drbd_disk_c-max-rate'},
+		}});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
+			name		=>	"anvil_drbd_disk_c-min-rate",
+			id		=>	"anvil_drbd_disk_c-min-rate",
+			value		=>	$an->data->{cgi}{'anvil_drbd_disk_c-min-rate'},
+		}});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
+			name		=>	"anvil_drbd_disk_c-fill-target",
+			id		=>	"anvil_drbd_disk_c-fill-target",
+			value		=>	$an->data->{cgi}{'anvil_drbd_disk_c-fill-target'},
 		}});
 		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 			name		=>	"anvil_drbd_options_cpu-mask",
@@ -6263,6 +6291,10 @@ sub _initialize_an
 					'anvil_drbd_disk_disk-barrier'	=>	"false", 
 					'anvil_drbd_disk_disk-flushes'	=>	"false", 
 					'anvil_drbd_disk_md-flushes'	=>	"false", 
+					'anvil_drbd_disk_c-plan-ahead'	=>	"7",
+					'anvil_drbd_disk_c-max-rate'	=>	"110M",
+					'anvil_drbd_disk_c-min-rate'	=>	"30M",
+					'anvil_drbd_disk_c-fill-target'	=>	"1M",
 					'anvil_drbd_options_cpu-mask'	=>	"", 
 					'anvil_drbd_net_max-buffers'	=>	"", 
 					'anvil_drbd_net_sndbuf-size'	=>	"", 
