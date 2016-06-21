@@ -30,7 +30,7 @@
 # 
 
 # Disable this for now.
-exit(0);
+#exit(0);
 
 # Use my modules.
 use strict;
@@ -314,17 +314,15 @@ sub sort_and_prepare_data
 			});
 		}
 		
-		### NOTE: This uses the physical disks to get the drive groups because the 
-		###       'virtual_disk::${virtual_disk}::drive_group' hash only contains actual drive 
-		###       groups, not the special '9999' one.
-		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}})
+		# Show the drive group and drives.
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}})
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "drive_group", value1 => $drive_group,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			my $say_drive_group  = $drive_group  eq "9999" ? "--" : $drive_group;
-			my $say_virtual_disk = $virtual_disk eq "9999" ? "--" : $virtual_disk;
+			my $say_drive_group  = $drive_group  eq "9999" ? "x" : $drive_group;
+			my $say_virtual_disk = $virtual_disk eq "9999" ? "x" : $virtual_disk;
 			
 			# Show the basic drive group data
 			foreach my $type ("variable", "temperature")
@@ -342,12 +340,12 @@ sub sort_and_prepare_data
 			}
 			
 			# And show the drives in this group.
-			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}})
+			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}})
 			{
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "enclosure_id", value1 => $enclosure_id,
 				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
+				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
 				{
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "slot_number", value1 => $slot_number,
@@ -362,18 +360,13 @@ sub sort_and_prepare_data
 							file      => $THIS_FILE,
 							line      => __LINE__,
 							prefix    => "VD $say_virtual_disk, DG $say_drive_group, EID $enclosure_id, Slot $slot_number - $type",
-							hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
+							hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
 						});
 					}
 				}
 			}
 		}
-		
-		# '0'    => 'on_controller' => 'SV53540086' => 'physical_disk' => 'drive_group' => '0'    => 'enclosure_id' => '13' => 'slot_number' => '11' => 'variable' => {}
-		# '9999' => 'on_controller' => 'SV53540086' => 'physical_disk' => 'drive_group' => '9999' => 'enclosure_id' => '13' => 'slot_number' => '22' => 'variable' => {}
 	}
-	
-	#print Dumper $an->data->{virtual_disk};
 	
 	return(0);
 }
@@ -475,12 +468,12 @@ sub get_physical_disk_data
 				###       drives. The way the system parses them handles N-number of ports,
 				###       though. For now, we'll squeeze these into the top layer variables
 				###       to save having to have another table to process.
-				my $sas_port_0_port_status = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{port_status};
-				my $sas_port_0_link_speed  = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{link_speed};
-				my $sas_port_0_sas_address = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{sas_address};
-				my $sas_port_1_port_status = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{port_status};
-				my $sas_port_1_link_speed  = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{link_speed};
-				my $sas_port_1_sas_address = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{sas_address};
+				my $sas_port_0_port_status = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{port_status};
+				my $sas_port_0_link_speed  = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{link_speed};
+				my $sas_port_0_sas_address = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{sas_address};
+				my $sas_port_1_port_status = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{port_status};
+				my $sas_port_1_link_speed  = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{link_speed};
+				my $sas_port_1_sas_address = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{sas_address};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 					name1 => "sas_port_0_port_status", value1 => $sas_port_0_port_status, 
 					name2 => "sas_port_0_link_speed",  value2 => $sas_port_0_link_speed, 
@@ -490,12 +483,12 @@ sub get_physical_disk_data
 					name6 => "sas_port_1_sas_address", value6 => $sas_port_1_sas_address, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_port_status} = $sas_port_0_port_status;
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_link_speed}  = $sas_port_0_link_speed;
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_sas_address} = $sas_port_0_sas_address;
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_port_status} = $sas_port_1_port_status;
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_link_speed}  = $sas_port_1_link_speed;
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_sas_address} = $sas_port_1_sas_address;
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_port_status} = $sas_port_0_port_status;
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_link_speed}  = $sas_port_0_link_speed;
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_sas_address} = $sas_port_0_sas_address;
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_port_status} = $sas_port_1_port_status;
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_link_speed}  = $sas_port_1_link_speed;
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_sas_address} = $sas_port_1_sas_address;
 				next;
 			}
 		}
@@ -507,11 +500,11 @@ sub get_physical_disk_data
 			foreach my $variable (sort {$a cmp $b} @{$sector_variables})
 			{
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				next if not $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
+				next if not $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
 
-				my $value = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
+				my $value = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
@@ -527,20 +520,27 @@ sub get_physical_disk_data
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($sector_size)
 					{
-						$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = ($sectors * $sector_size);
+						$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = ($sectors * $sector_size);
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+							name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					else
 					{
-						$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = $size;
+						$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = $size;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+							name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 			}
+			
+			# Record the drive as being on this controller.
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller} = $serial_number;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::on_controller", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			$virtual_disk     = 9999;
 			$drive_group      = 9999;
 			$enclosure_id     = "";
@@ -567,7 +567,7 @@ sub get_physical_disk_data
 		if (($in_drive_header) && ($line =~ /^$enclosure_id:$slot_number\s+\d+\s+.*?\s+(.*?)\s+/))
 		{
 			$drive_group = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "drive_group", value1 => $drive_group, 
 				name2 => "line",        value2 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -575,7 +575,7 @@ sub get_physical_disk_data
 			if ($drive_group eq "-")
 			{
 				$drive_group = 9999 ;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "drive_group", value1 => $drive_group, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -583,20 +583,20 @@ sub get_physical_disk_data
 			# Find the virtual disk this drive is connected to, if any.
 			foreach my $this_virtual_disk (sort {$a cmp $b} keys %{$an->data->{virtual_disk}})
 			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "this_virtual_disk", value1 => $this_virtual_disk, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_disk::${this_virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size", value1 => $an->data->{virtual_disk}{$this_virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if (exists $an->data->{virtual_disk}{$this_virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size})
+				if ($an->data->{virtual_disk}{$this_virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size})
 				{
 					# Found it.
 					$virtual_disk = $this_virtual_disk;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "virtual_disk", value1 => $virtual_disk, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
 				}
 			}
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "virtual_disk", value1 => $virtual_disk, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
@@ -616,19 +616,19 @@ sub get_physical_disk_data
 				name4 => "sas_address", value4 => $sas_address, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{port_status} = $port_status;
-			$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{link_speed}  = $link_speed;
-			$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{sas_address} = $sas_address;
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{port_status} = $port_status;
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{link_speed}  = $link_speed;
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{sas_address} = $sas_address;
 			# These are so flipping long that we print them as three separate log entries so that
 			# they're easier to read in the logs.
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::port_status", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{port_status}, 
+				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::port_status", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{port_status}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::link_speed",  value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{link_speed}, 
+				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::link_speed",  value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{link_speed}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::sas_address", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{sas_address}, 
+				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::sas_address", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{sas_address}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -668,16 +668,16 @@ sub get_physical_disk_data
 					name1 => "drive_group", value1 => $drive_group, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{span} = $span;
-			$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{row}  = $row;
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{span} = $span;
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{row}  = $row;
 			
 			# These are so flipping long that we print them as three separate log entries so that
 			# they're easier to read in the logs.
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::span", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{span}, 
+				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::span", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{span}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::row", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{row}, 
+				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::row", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{row}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -797,9 +797,9 @@ sub get_physical_disk_data
 			}
 			
 			# Finally, record.
-			$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable} = $value;
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable} = $value;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::${type}::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable}, 
+				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::${type}::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -1072,27 +1072,27 @@ sub process_vg_pd_list_data
 		
 		### Long hashes are long... x_x
 		# Store the data (we'll convert it in a minute.
-		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}             = $device_id;
-		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}               = $state;
-		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}            = $drive_size;
-		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}             = $interface;
-		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}           = $drive_media;
-		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive} = $self_encrypting_drive;
-		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}       = $protection_info;
-		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}           = $sector_size;
-		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}           = $drive_model;
-		$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}               = $spun_up;
+		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}             = $device_id;
+		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}               = $state;
+		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}            = $drive_size;
+		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}             = $interface;
+		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}           = $drive_media;
+		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive} = $self_encrypting_drive;
+		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}       = $protection_info;
+		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}           = $sector_size;
+		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}           = $drive_model;
+		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}               = $spun_up;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
-			name1  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::device_id",             value1  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}, 
-			name2  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::state",                 value2  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}, 
-			name3  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size",            value3  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
-			name4  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::interface",             value4  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}, 
-			name5  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_media",           value5  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}, 
-			name6  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::self_encrypting_drive", value6  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive}, 
-			name7  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::protection_info",       value7  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}, 
-			name8  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::sector_size",           value8  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}, 
-			name9  => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_model",           value9  => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}, 
-			name10 => "virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::spun_up",               value10 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}, 
+			name1  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::device_id",             value1  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}, 
+			name2  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::state",                 value2  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}, 
+			name3  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size",            value3  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
+			name4  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::interface",             value4  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}, 
+			name5  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_media",           value5  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}, 
+			name6  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::self_encrypting_drive", value6  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive}, 
+			name7  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::protection_info",       value7  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}, 
+			name8  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::sector_size",           value8  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}, 
+			name9  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_model",           value9  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}, 
+			name10 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::spun_up",               value10 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		### WARNING: The strings we set here will be parsed later, so don't change them without also 
@@ -1100,123 +1100,123 @@ sub process_vg_pd_list_data
 		### NOTE: We don't use a function for this because the glossary for the block of data is 
 		###       specific for the table above (it would appear).
 		# Translate the weird short form to useable strings
-		foreach my $key (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
+		foreach my $key (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
 		{
-			my $value = $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key};
+			my $value = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => ">> virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				name1 => ">> virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($value =~ /^DHS$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Dedicated Hot Spare";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Dedicated Hot Spare";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UGood$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured Good";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured Good";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^GHS$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Global Hotspare";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Global Hotspare";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UBad$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured Bad";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured Bad";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^Onln$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Online";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Online";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^Offln$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Offline";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Offline";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^U$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Spun Up";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Spun Up";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^D$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Spun Down";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Spun Down";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^T$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Transition";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Transition";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^F$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Foreign";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Foreign";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UGUnsp$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unsupported";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unsupported";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UGShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured shielded";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^HSPShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Hotspare shielded";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Hotspare shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^CFShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Configured shielded";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Configured shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^Cpybck$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Copyback";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Copyback";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^CBShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Copyback Shielded";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Copyback Shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::on_controller::${serial_number}::physical_disk::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{on_controller}{$serial_number}{physical_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
