@@ -125,9 +125,6 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 # Get the switches before printing anything in case the user is asking for help.
 $an->Get->switches();
 
-# Adjust the log level if requested.
-adjust_log_level($an);
-
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 $an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
@@ -149,42 +146,16 @@ find_lsi_controllers($an);
 # If we're still alive, start gathering data.
 gather_data($an);
 
-exit(0);
-
 
 # Clean up and go away.
 nice_exit($an);
 
+exit(0);
+
+
 #############################################################################################################
 # Function below                                                                                            #
 #############################################################################################################
-
-# Change to a user-requested log level.
-sub adjust_log_level
-{
-	my ($an) = @_;
-	if ($an->data->{switches}{v})
-	{
-		$an->data->{'scan-storcli'}{log_level} = 1;
-		$an->Log->level($an->data->{'scan-storcli'}{log_level});
-	}
-	elsif ($an->data->{switches}{vv})
-	{
-		$an->data->{'scan-storcli'}{log_level} = 2;
-		$an->Log->level($an->data->{'scan-storcli'}{log_level});
-	}
-	elsif ($an->data->{switches}{vvv})
-	{
-		$an->data->{'scan-storcli'}{log_level} = 3;
-		$an->Log->level($an->data->{'scan-storcli'}{log_level});
-	}
-	elsif ($an->data->{switches}{vvvv})
-	{
-		$an->data->{'scan-storcli'}{log_level} = 4;
-		$an->Log->level($an->data->{'scan-storcli'}{log_level});
-	}
-	return(0);
-}
 
 # This gathers the various data from the controller(s).
 sub gather_data
@@ -223,8 +194,6 @@ sub gather_data
 	
 	# Sort and prepare the data for insertion into the database.
 	sort_and_prepare_data($an);
-	
-	die "$THIS_FILE ".__LINE__."; testing\n";
 	
 	return(0);
 }

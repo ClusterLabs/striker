@@ -4111,6 +4111,9 @@ sub switches
 	{
 		$an->data->{switches}{raw} =~ s/^ //;
 	}
+
+	# Adjust the log level if requested.
+	$an->Log->adjust_log_level();
 	
 	return(0);
 }

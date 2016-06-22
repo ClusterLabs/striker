@@ -30,7 +30,8 @@
 # 8  = Time since last run was too short.
 # 
 # TODO
-# - Rewrite this whole mess... >_<
+# - Create a separate timer file per UPS
+# - Log when access to a UPS is lost.
 # 
 
 # Play safe!
@@ -40,6 +41,7 @@ use warnings;
 # IO::Handle is used for logging and communicating with the Raritan device via the snmp command line tools. 
 # Net::SNMP is not used to do availability issues with EL6.
 use IO::Handle;
+use Data::Dumper;
 
 # Catch signals for clean exits.
 $SIG{INT}  = \&_catch_sig;
@@ -65,12 +67,13 @@ my $conf = {
 		'grep'		=>	"/bin/grep",
 		hosts		=>	"/etc/hosts",
 		logger		=>	"/bin/logger",
+		ping		=>	"/bin/ping",
 		ps		=>	"/bin/ps",
 		sed		=>	"/bin/sed",
 		snmpget		=>	"/usr/bin/snmpget",
 		snmpset		=>	"/usr/bin/snmpset",
 		striker_config	=>	"/etc/striker/striker.conf",
-		timing		=>	"/tmp/${THIS_FILE}.timing",
+		timing		=>	"/tmp/${THIS_FILE}.timing",	# The name of the UPS will be appended to this file.
 	},
 	snmp		=>	{
 		model_number	=>	{
@@ -289,10 +292,10 @@ my $conf = {
 
 # No switches is OK, we'll try to detect UPSes via /etc/hosts.
 get_switches($conf);
-if (($conf->{switches}{h})   || 
-    ($conf->{switches}{'?'}) ||
-    ($conf->{switches}{help}) || 
-    (($conf->{switches}{sleep_time}) && ($conf->{switches}{sleep_time} =~ /\D/)) || 
+if (($conf->{switches}{h})    or 
+    ($conf->{switches}{'?'})  or
+    ($conf->{switches}{help}) or 
+    (($conf->{switches}{sleep_time})      && ($conf->{switches}{sleep_time} =~ /\D/)) or 
     (($conf->{switches}{power_off_delay}) && ($conf->{switches}{power_off_delay} =~ /\D/)))
 {
 	print_usage($conf);
@@ -378,7 +381,13 @@ elsif (not $conf->{tools}{'anvil-kick-apc-ups'}{enabled})
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Anvil! Kick APC UPS has been disabled, exiting.");
 	exit(0);
 }
-elsif ($conf->{sys}{apc}{ups}{kick_frequency})
+
+# Figure out what UPS(es) we're using.
+get_ups_ips($conf);
+
+# If the user is using timing, check that it's time to kick each UPS.
+logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::kick_frequency: [$conf->{sys}{apc}{ups}{kick_frequency}].");
+if ($conf->{sys}{apc}{ups}{kick_frequency})
 {
 	# We've not been forced and the user has asked for timed kicks. Read 'path::timing', if it exists. If
 	# it doesn't, create it with the current time. If it does, read the time in that file, subtract it 
@@ -386,14 +395,52 @@ elsif ($conf->{sys}{apc}{ups}{kick_frequency})
 	check_timing($conf);
 }
 
-# Figure out what UPS(es) we're using.
-get_ups_ips($conf);
-
 # We're ready to start.
 logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Kicking the following UPSes:");
 foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 {
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups]");
+	
+	# Can we ping it? Whether or not we'll kick it, we want to detect and log when access is lost. We'll
+	# do a single ping with a 1 second timeout.
+	my $pinged     = 0;
+	my $shell_call = $conf->{path}{'ping'}." -W 1 -n $ups -c 1";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		
+		if ($line =~ /(\d+) packets transmitted, (\d+) received/)
+		{
+			# This isn't really needed, but might help folks watching the logs.
+			my $pings_sent     = $1;
+			my $pings_received = $2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - pings_sent: [$pings_sent], pings_received: [$pings_received]");
+			if ($pings_received)
+			{
+				# Contact!
+				$pinged = 1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - pinged: [$pinged]");
+			}
+		}
+	}
+	close $file_handle;
+	if (not $pinged)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to ping the UPS: [$ups], skipping it.");
+		next;
+	}
+	
+	# If this UPS was processed too recently, skip it.
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
+	if (not $conf->{sys}{apc}{ups}{target}{$ups}{kick})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The UPS: [$ups] is not scheduled to be kicked on this pass, skipping it.");
+		next;
+	}
 	
 	# Report/record the current values
 	if (get_current_settings($conf, $ups, "old"))
@@ -455,7 +502,7 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 		else
 		{
 			# We're good.
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Watchdog timer is kicking the UPS: [$conf->{hosts}{by_ip}{$ups}->[0]] ($ups).");
+			logger($conf, $THIS_FILE, __LINE__, "- Watchdog timer is kicking the UPS: [$conf->{hosts}{by_ip}{$ups}->[0]] ($ups).");
 		
 			# Cancel a pending shut-off
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Cancelling any pending power off.");
@@ -538,7 +585,7 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 	}
 }
 
-logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Run complete.");
+logger($conf, $THIS_FILE, __LINE__, "- Run complete.");
 
 # Only set this to '1' for debugging.
 if ($conf->{sys}{connections})
@@ -608,17 +655,17 @@ sub energize_upses
 			}
 			elsif ($current_state_ups eq "5")
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The UPS is off in a timed sleep. It will be turned on now.");
+				logger($conf, $THIS_FILE, __LINE__, "- The UPS is off in a timed sleep. It will be turned on now.");
 				$power_on_ups = 1;
 			}
 			elsif ($current_state_ups eq "7")
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The UPS is off. It will be turned on now.");
+				logger($conf, $THIS_FILE, __LINE__, "- The UPS is off. It will be turned on now.");
 				$power_on_ups = 1;
 			}
 			elsif ($current_state_ups eq "8")
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The UPS: [$ups] is rebooting, We will wait until it is on.");
+				logger($conf, $THIS_FILE, __LINE__, "- The UPS: [$ups] is rebooting, We will wait until it is on.");
 				my $start_time = time;
 				my $wait       = 1;
 				while ($wait)
@@ -628,7 +675,7 @@ sub energize_upses
 					if ($current_state_ups ne "8")
 					{
 						# TODO: Make sure it's actually on.
-						logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The UPS: [$ups] is no longer reboot, proceding.");
+						logger($conf, $THIS_FILE, __LINE__, "- The UPS: [$ups] is no longer rebooting, proceeding.");
 						$wait = 0;
 					}
 					else
@@ -668,7 +715,7 @@ sub energize_upses
 				}
 				else
 				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups] powered on.");
+					logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups] powered on.");
 					# Give the UPS a moment to come up.
 					sleep 5;
 				}
@@ -798,47 +845,62 @@ sub check_timing
 	my ($conf) = @_;
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - check_timing();");
 	
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - path::timing: [$conf->{path}{timing}]");
-	my $last_run = 0;
-	if (-e $conf->{path}{timing})
+	foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 	{
-		my $shell_call = $conf->{path}{timing};
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
-		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
-		while (<$file_handle>)
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups].");
+		
+		# If this is set to 0, the UPS won't be kicked.
+		$conf->{sys}{apc}{ups}{target}{$ups}{kick} = 1;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
+		
+		my $last_run    = 0;
+		my $timing_file = $conf->{path}{timing}.".".$ups;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups], path::timing: [$conf->{path}{timing}], timing_file: [$timing_file].");
+		if (-e $timing_file)
 		{
-			chomp;
-			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-			if ($line =~ /^\d+$/)
+			my $shell_call = $timing_file;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+			open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+			while (<$file_handle>)
 			{
-				$last_run = $line;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - last_run: [$last_run]");
-				last;
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+				if ($line =~ /^\d+$/)
+				{
+					$last_run = $line;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - last_run: [$last_run]");
+					last;
+				}
+			}
+			close $file_handle;
+		}
+		
+		if ($last_run)
+		{
+			my $time_now              = time;
+			my $second_since_last_run = $time_now - $last_run;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - time_now: [$time_now], second_since_last_run: [$second_since_last_run], sys::apc::ups::kick_frequency: [$conf->{sys}{apc}{ups}{kick_frequency}]");
+			if ($second_since_last_run < $conf->{sys}{apc}{ups}{kick_frequency})
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The last kick of: [$ups] was too recent. The last run was: [$second_since_last_run] seconds ago and we need to wait at least: [$conf->{sys}{apc}{ups}{kick_frequency}] between runs.");
+				
+				$conf->{sys}{apc}{ups}{target}{$ups}{kick} = 0;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
 			}
 		}
-		close $file_handle;
-	}
-	
-	if ($last_run)
-	{
-		my $time_now              = time;
-		my $second_since_last_run = $time_now - $last_run;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - time_now: [$time_now], second_since_last_run: [$second_since_last_run], sys::apc::ups::kick_frequency: [$conf->{sys}{apc}{ups}{kick_frequency}]");
-		if ($second_since_last_run < $conf->{sys}{apc}{ups}{kick_frequency})
+		
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - timing_file: [$timing_file], sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
+		if ((not -e $timing_file) or ($conf->{sys}{apc}{ups}{target}{$ups}{kick}))
 		{
-			# We're out.
-			logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The last run was too recent. The last run was: [$second_since_last_run] seconds ago and we need to wait at least: [$conf->{sys}{apc}{ups}{kick_frequency}] between runs.");
-			exit(8);
+			# If we're going to proceed with the run for this UPS, update its timing file.
+			my $shell_call = $timing_file;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+			open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
+			print $file_handle time."\n";
+			close $file_handle;
 		}
 	}
-	
-	# Not dead? Write the new time out.
-	my $shell_call = $conf->{path}{timing};
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
-	open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
-	print $file_handle time."\n";
-	close $file_handle;
 	
 	return(0);
 }
@@ -863,11 +925,19 @@ sub cancel_countdown
 		}
 		else
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups] power-off cancelled.");
+			logger($conf, $THIS_FILE, __LINE__, " - UPS: [$ups] power-off cancelled.");
+			
+			# Unlink the timing file.
+			my $timing_file = $conf->{path}{timing}.".".$ups;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups], path::timing: [$conf->{path}{timing}], timing_file: [$timing_file].");
+			if (-e $timing_file)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Removing the timing file: [$timing_file]");
+				unlink $timing_file or die "Failed to unlink: [$timing_file]\n";;
+			}
 		}
 	}
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Done.");
-	logger($conf, $THIS_FILE, __LINE__, "[ Note ] - Anvil! Kick APC UPS watchdog timer cancelled. Cancel on the other node(s) if required!");
 	
 	return($ok);
 }
@@ -1274,7 +1344,7 @@ sub parse_hosts
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 		if ($line =~ /ups/)
 		{
 			# Oh looky looky!

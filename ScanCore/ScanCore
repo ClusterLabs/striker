@@ -165,9 +165,6 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 # See if the user is forcing the issue
 $an->Get->switches();
 
-# Adjust the log level if requested.
-adjust_log_level($an);
-
 # Help?
 if (($an->data->{switches}{h})   or 
     ($an->data->{switches}{'?'}) or
@@ -400,57 +397,6 @@ sub clear_shutdown_state
 	
 	# What is the current state?
 	
-	return(0);
-}
-
-# Change to a user-requested log level.
-sub adjust_log_level
-{
-	my ($an) = @_;
-	if ($an->data->{switches}{v})
-	{
-		$an->data->{scancore}{user_set_log_level} = "-v";
-		$an->data->{scancore}{log_level}          = 1;
-		$an->Log->level($an->data->{scancore}{log_level});
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
-			name1 => "scancore::user_set_log_level", value1 => $an->data->{scancore}{user_set_log_level}, 
-			name2 => "scancore::log_level",          value2 => $an->data->{scancore}{log_level}, 
-			name3 => "Log->level",                   value3 => $an->Log->level(),
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($an->data->{switches}{vv})
-	{
-		$an->data->{scancore}{user_set_log_level} = "-vv";
-		$an->data->{scancore}{log_level}          = 2;
-		$an->Log->level($an->data->{scancore}{log_level});
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
-			name1 => "scancore::user_set_log_level", value1 => $an->data->{scancore}{user_set_log_level}, 
-			name2 => "scancore::log_level",          value2 => $an->data->{scancore}{log_level}, 
-			name3 => "Log->level",                   value3 => $an->Log->level(),
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($an->data->{switches}{vvv})
-	{
-		$an->data->{scancore}{user_set_log_level} = "-vvv";
-		$an->data->{scancore}{log_level}          = 3;
-		$an->Log->level($an->data->{scancore}{log_level});
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
-			name1 => "scancore::user_set_log_level", value1 => $an->data->{scancore}{user_set_log_level}, 
-			name2 => "scancore::log_level",          value2 => $an->data->{scancore}{log_level}, 
-			name3 => "Log->level",                   value3 => $an->Log->level(),
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($an->data->{switches}{vvvv})
-	{
-		$an->data->{scancore}{user_set_log_level} = "-vvvv";
-		$an->data->{scancore}{log_level}          = 4;
-		$an->Log->level($an->data->{scancore}{log_level});
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
-			name1 => "scancore::user_set_log_level", value1 => $an->data->{scancore}{user_set_log_level}, 
-			name2 => "scancore::log_level",          value2 => $an->data->{scancore}{log_level}, 
-			name3 => "Log->level",                   value3 => $an->Log->level(),
-		}, file => $THIS_FILE, line => __LINE__});
-	}
 	return(0);
 }
 

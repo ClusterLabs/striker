@@ -10,6 +10,7 @@ our $VERSION  = "0.1.001";
 my $THIS_FILE = "Log.pm";
 
 ### Methods;
+# adjust_log_level
 # db_transactions
 # entry
 # level
@@ -53,6 +54,37 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
+# Change to a user-requested log level.
+sub adjust_log_level
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "adjust_log_level" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	if ($an->data->{switches}{v})
+	{
+		$an->data->{'scan-server'}{log_level} = 1;
+		$an->Log->level($an->data->{'scan-server'}{log_level});
+	}
+	elsif ($an->data->{switches}{vv})
+	{
+		$an->data->{'scan-server'}{log_level} = 2;
+		$an->Log->level($an->data->{'scan-server'}{log_level});
+	}
+	elsif ($an->data->{switches}{vvv})
+	{
+		$an->data->{'scan-server'}{log_level} = 3;
+		$an->Log->level($an->data->{'scan-server'}{log_level});
+	}
+	elsif ($an->data->{switches}{vvvv})
+	{
+		$an->data->{'scan-server'}{log_level} = 4;
+		$an->Log->level($an->data->{'scan-server'}{log_level});
+	}
+	return(0);
+}
+
 ### NOTE: This does NOT look to see if a value is a hash or array reference. 
 # This takes a hash reference and prints multiple 'variable: [value]' entries all aligned for easier log
 # reading.
@@ -61,7 +93,7 @@ sub aligned_entries
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "aligned_entries" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $hash_ref  = $parameter->{hash_ref}  ? $parameter->{hash_ref}  : "";
 	my $log_level = $parameter->{log_level} ? $parameter->{log_level} : 0;
