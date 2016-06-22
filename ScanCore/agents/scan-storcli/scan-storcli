@@ -30,7 +30,7 @@
 # 
 
 # Disable this for now.
-exit(0);
+#exit(0);
 
 # Use my modules.
 use strict;
@@ -208,18 +208,32 @@ sub sort_and_prepare_data
 	{
 		foreach my $type ("variable", "temperature")
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "serial_number", value1 => $serial_number,
 				name2 => "type",          value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 2, 
+				log_level => 3, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "$serial_number - $type",
 				hash_ref  => $an->data->{controller}{serial_number}{$serial_number}{$type},
 			});
 		}
+		
+		my $storcli_controller_uuid          = "";
+		my $storcli_controller_host_uuid     = $an->data->{sys}{host_uuid};
+		my $storcli_controller_serial_number = $serial_number;
+		my $storcli_controller_model         = $an->data->{controller}{serial_number}{$serial_number}{variable}{model};
+		my $storcli_controller_alarm_state   = $an->data->{controller}{serial_number}{$serial_number}{variable}{alarm_state};
+		my $storcli_controller_cache_size    = $an->data->{controller}{serial_number}{$serial_number}{variable}{on_board_memory_size};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "storcli_controller_host_uuid",     value1 => $storcli_controller_host_uuid,
+			name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number,
+			name3 => "storcli_controller_model",         value3 => $storcli_controller_model,
+			name4 => "storcli_controller_alarm_state",   value4 => $storcli_controller_alarm_state,
+			name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Now Cachevault (FBUs)
@@ -232,7 +246,7 @@ sub sort_and_prepare_data
 				name2 => "type",                     value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 2, 
+				log_level => 3, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "$cachevault_serial_number - $type",
@@ -709,6 +723,20 @@ sub get_physical_disk_data
 					name1 => "variable", value1 => $variable, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			if ($variable =~ /S\.M\.A\.R\.T\./i)
+			{
+				$variable =~ s/S\.M\.A\.R\.T\./SMART/;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "variable", value1 => $variable, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($variable =~ /S\.M\.A\.R\.T/i)
+			{
+				$variable =~ s/S\.M\.A\.R\.T/SMART/;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "variable", value1 => $variable, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
 			# Process some values.
 			if ($value =~ /^(\d.*?B) \[(0x.*?) Sectors\]/)
@@ -780,7 +808,13 @@ sub get_physical_disk_data
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# Finally, record.
+			# Record
+			$variable =  lc($variable);
+			$variable =~ s/ /_/g;
+			$variable =~ s/&/and/g;
+			$variable =~ s/\// or /g;
+			$variable =~ s/_%/_percent/g;
+			$variable =~ s/{_}+/_/g;
 			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable} = $value;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::${type}::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable}, 
@@ -940,6 +974,7 @@ sub get_virtual_disk_data
 			{
 				my $variable = $1;
 				my $value    = $2;
+				my $type     = "variable";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
@@ -988,9 +1023,16 @@ sub get_virtual_disk_data
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				
-				$an->data->{virtual_disk}{$virtual_disk}{variable}{$variable} = $value;
+				# Record
+				$variable =  lc($variable);
+				$variable =~ s/ /_/g;
+				$variable =~ s/&/and/g;
+				$variable =~ s/\// or /g;
+				$variable =~ s/_%/_percent/g;
+				$variable =~ s/{_}+/_/g;
+				$an->data->{virtual_disk}{$virtual_disk}{$type}{$variable} = $value;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{variable}{$variable}, 
+					name1 => "virtual_disk::${virtual_disk}::${type}::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{$type}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -1614,6 +1656,7 @@ sub get_bbu_data
 			# Elegant? I think not!
 			my $variable = "";
 			my $value    = "";
+			my $type     = "variable";
 			if ($split_point >= length($line))
 			{
 				# Variable with no value
@@ -1642,6 +1685,14 @@ sub get_bbu_data
 				{
 					$variable = "Absolute state of charge";
 				}
+				
+				# They use 'Temperature' twice; once for the temperature and once to show if
+				# it is OK or not. We'll avoid one clobbering the other by renaming the 
+				# status one.
+				if (($variable eq "Temperature") && ($value !~ /\d/))
+				{
+					$variable = "Temperature Status";
+				}
 			}
 			
 			# Is this a temperature or something else we want to pre-process?
@@ -1649,72 +1700,77 @@ sub get_bbu_data
 			{
 				# Yup
 				$value = $1;
-				$an->data->{bbu}{serial_number}{$bbu_serial_number}{temperature}{$variable} = $value;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
+				$type  = "temperature";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d+) F$/i)
 			{
 				# Yup, but translate
 				$value = $an->Convert->convert_to_celsius({temperature => $1});
-				$an->data->{bbu}{serial_number}{$bbu_serial_number}{temperature}{$variable} = $value;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
+				$type  = "temperature";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /\d+d \((\d+) seconds\)$/i)
 			{
 				# This is a static time span (like the time between learn cycles.
-				$value = $1;
-				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $value." seconds";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				my $say_time = $an->Readable->time({'time' => $value});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$value =  $1;
+				$value .= " seconds";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable,
 					name2 => "value",    value2 => $value,
-					name3 => "say_time", value3 => $say_time,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d\d\d\d)\/(\d\d)\/(\d\d)\s+(\d\d:\d\d:\d\d)\s+\(\d+ seconds\)$/i)
 			{
 				### NOTE: The 'X seconds' seems to not change and be a useless number...
 				# This is a specific time in the future, properly formatted
-				my $say_date = "$1/$2/$3, $4";
-				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $say_date;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
+				$value = "$1/$2/$3, $4";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d\d)\/(\d\d)\/(\d\d\d\d)$/i)
 			{
 				# 'Murica! mm/dd/yyyy -> yyyy/mm/dd
-				my $say_date = $3."/".$2."/".$1;
-				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $say_date;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
+				$value = $3."/".$2."/".$1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d+) hour\(s\)$/i)
 			{
 				# 'Murica! mm/dd/yyyy -> yyyy/mm/dd
-				my $seconds = $1 * 3600;
-				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $seconds." seconds";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
+				$value =  $1 * 3600;
+				$value .= " seconds";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			else
-			{
-				# Nope, normal variable.
-				$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable} = $value;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "bbu:serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
+			
+			# Record
+			$variable =  lc($variable);
+			$variable =~ s/ /_/g;
+			$variable =~ s/&/and/g;
+			$variable =~ s/\// or /g;
+			$variable =~ s/_%/_percent/g;
+			$variable =~ s/{_}+/_/g;
+			
+			# 'Auto-Learn' and 'Auto_Learn' are both used because screw consistency, right?
+			$variable =~ s/auto-learn/auto_learn/;
+			
+			$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable} = $value;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "bbu:serial_number::${bbu_serial_number}::${type}::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -1821,6 +1877,7 @@ sub get_cachevault_data
 		{
 			my $variable = "";
 			my $value    = "";
+			my $type     = "variable";
 			if ($split_point >= length($line))
 			{
 				# Variable with no value
@@ -1846,31 +1903,30 @@ sub get_cachevault_data
 			{
 				# Yup
 				$value = $1;
-				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable} = $value;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "cachevault:serial_number::${cachevault_serial_number}::temperature::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable}, 
+				$type  = "temperature";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d+) F$/i)
 			{
 				# Yup, but translate
 				$value = $an->Convert->convert_to_celsius({temperature => $1});
-				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable} = $value;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "cachevault:serial_number::${cachevault_serial_number}::temperature::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable}, 
+				$type  = "temperature";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /\d+d \((\d+) seconds\)$/i)
 			{
 				# This is a static time span (like the time between learn cycles.
-				$value = $1;
-				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $value." seconds";
-				
-				my $say_time = $an->Readable->time({'time' => $value});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$value =  $1;
+				$value .= " seconds";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable,
 					name2 => "value",    value2 => $value,
-					name3 => "say_time", value3 => $say_time,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d\d\d\d)\/(\d\d)\/(\d\d)\s+(\d\d:\d\d:\d\d)\s+\(\d+ seconds\)$/i)
@@ -1878,44 +1934,47 @@ sub get_cachevault_data
 				### NOTE: The 'X seconds' seems to not change and be a useless number...
 				# This is a specific time in the future, properly formatted
 				# yyyy/mm/dd -> 
-				my $say_date = "$1/$2/$3, $4";
-				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $say_date;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$value = "$1/$2/$3, $4";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable,
 					name2 => "value",    value2 => $value,
-					name3 => "say_date", value3 => $say_date,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d\d)\/(\d\d)\/(\d\d\d\d)$/i)
 			{
 				# 'Murica! mm/dd/yyyy -> yyyy/mm/dd
-				my $say_date = $3."/".$2."/".$1;
-				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $say_date;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$value = $3."/".$2."/".$1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable,
 					name2 => "value",    value2 => $value,
-					name3 => "say_date", value3 => $say_date,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($value =~ /^(\d+) hour\(s\)$/i)
 			{
 				# 'Murica! mm/dd/yyyy -> yyyy/mm/dd
-				my $seconds = $1 * 3600;
-				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $seconds." seconds";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$value =  $1 * 3600;
+				$value .= " seconds";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable,
 					name2 => "value",    value2 => $value,
-					name3 => "seconds",  value3 => $seconds,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			else
-			{
-				# Nope, normal variable.
-				$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable} = $value;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "cachevault:serial_number::${cachevault_serial_number}::temperature::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{temperature}{$variable}, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
+			
+			# Record
+			$variable =  lc($variable);
+			$variable =~ s/ /_/g;
+			$variable =~ s/&/and/g;
+			$variable =~ s/\// or /g;
+			$variable =~ s/_%/_percent/g;
+			$variable =~ s/{_}+/_/g;
+			
+			# 'Auto-Learn' and 'Auto_Learn' are both used because screw consistency, right?
+			$variable =~ s/auto-learn/auto_learn/;
+			
+			$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable} = $value;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "cachevault:serial_number::${cachevault_serial_number}::${type}::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -1930,6 +1989,8 @@ sub get_controller_info
 		name1 => "adapter", value1 => $adapter, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $in_raid_level_supported = 0;
+	my $multiline_value         = "";
 	my $in_header           = 1;
 	my $in_basics           = 0;
 	my $in_supported_ops    = 0;
@@ -1959,6 +2020,39 @@ sub get_controller_info
 		}, file => $THIS_FILE, line => __LINE__});
 		next if not $line;
 		last if $line =~ /^TOPOLOGY:$/i;
+		
+		# RAID Level Supported can be multi-line because $reasons.
+		if ($line eq /RAID Level Supported = (.*)$/)
+		{
+			$multiline_value         = $1;
+			$in_raid_level_supported = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "multiline_value",         value1 => $multiline_value, 
+				name2 => "in_raid_level_supported", value2 => $in_raid_level_supported, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($in_raid_level_supported)
+		{
+			if ($line =~ / = /)
+			{
+				# Found the next line, close up RAID Level Supported.
+				push @{$controller_data}, "RAID Level Supported = $multiline_value";
+				$multiline_value         = "";
+				$in_raid_level_supported = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "multiline_value",         value1 => $multiline_value, 
+					name2 => "in_raid_level_supported", value2 => $in_raid_level_supported, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				$multiline_value .= " $line";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "multiline_value", value1 => $multiline_value, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+		}
 		
 		if ($line =~ /^Serial Number = (.*)?/i)
 		{
@@ -2304,37 +2398,112 @@ sub get_controller_info
 			}
 		}
 		
-		# And randomly sticking things together...
+		# T10-PI (T10 working group, Protection Information) has three levels (Taken from the Seagate
+		# PDF listed below):
+		# Type 0 - Describes a drive that is not formatted with PI information bytes. This allows 
+		#          for legacy support in non-PI systems.
+		# Type 1 - Provides support of PI protection using 10- and 16-byte commands. The RDPROTECT
+		#          and WRTPROTECT bits allow for checking control through the CDB. Eight bytes of
+		#          Protection Information are transmitted at sector boundaries across the interface 
+		#          if RDPROTECT and WRTPROTECT bits are non-zero values. Type I does not allow the 
+		#          use of 32-byte commands.
+		# Type 2 - Provides checking control and additional expected fields within the 32-byte CDBs. 
+		#          Eight bytes of Protection Information are transmitted at sector boundaries across 
+		#          the interface if RDPROTECT and WRTPROTECT bits are non-zero values. Type II does 
+		#          allow the use of 10- and 16-byte commands with zero values in the RDPROTECT and 
+		#          WRTPROTECT fields. The drive will generate a dummy (for example, 0xFFFF) eight 
+		#          bytes of Protection Information in the media, but these eight bytes will not be 
+		#          transferred to the host during read.
+		# Type 3 - ? (GUARD tag, reference tag and app tag are combined)
+		#          - http://www.snia.org/sites/default/education/tutorials/2008/fall/storage/RichardVanderbilt_Why_Data_Integrity_rev2.pdf
+		#          Protection is enabled and the 32-byte commands are not valid. The Reference Tag is
+		#          not defined and may be used as an extension of the Application Tag. The drive will
+		#          not check the Reference Tag. 
+		#          - https://www.hgst.com/sites/default/files/resources/End-to-end_Data_Protection.pdf
+		#          Type 3 does not define the ref tag.
+		#          - http://lxr.free-electrons.com/source/block/t10-pi.c
+		#          
+		
+		# LSI loves to randomly sticking things together...
 		$line =~ s/BatteryFRU/Battery FRU/;
 		$line =~ s/ChipRevision/Chip Revision/;
 		$line =~ s/DisableHII/Disable HII/;
 		$line =~ s/EnableCrashDump/Enable Crash-Dump/;
 		$line =~ s/EnableLDBBM/Enable LDBBM/;
 		
-		# They love their weird short forms
-		$line =~ s/Ctrl/Controller/;
-		$line =~ s/Mfg/Manufacture/;
-		$line =~ s/ VD/ Virtual Disk/;
-		$line =~ s/ PD/ Physical Disk/;
-		$line =~ s/ PI/ Protection Information/;
-		$line =~ s/ CC/ Consistency Check/;
-		$line =~ s/ BGI/ Background Initialization/;
-		$line =~ s/ LD/ Logical Device/;
-		$line =~ s/ FW/ Firmware/;
-		$line =~ s/ HII/ Human Interface Infrastructure/;
+		### NOTE: ROC is RAID on Chip, which is what they call their controller's ASIC
+		# and they love their weird short forms
+		$line =~ s/Ctrl/Controller/i;
+		$line =~ s/Mfg/Manufacture/i;
+		$line =~ s/Cfg/Config/i;
+		$line =~ s/Perf /Performance /i;
+		$line =~ s/Ext /External /i;
+		$line =~ s/ VD/ Virtual Disk/i;
+		$line =~ s/ VDs/ Virtual Disks/i;
+		$line =~ s/VD /Virtual Disk /i;
+		$line =~ s/ PD/ Physical Disk/i;
+		$line =~ s/ PI/ Protection Information/i;
+		$line =~ s/ LDPI/ Logical Disk Protection Information/i;	# https://www.seagate.com/files/staticfiles/docs/pdf/whitepaper/safeguarding-data-from-corruption-technology-paper-tp621us.pdf
+		$line =~ s/ CC/ Consistency Check/i;
+		$line =~ s/ BGI/ Background Initialization/i;
+		$line =~ s/ BGI/ Background/i;
+		$line =~ s/ LD/ Logical Device/i;
+		$line =~ s/ FW/ Firmware/i;
+		$line =~ s/ HII/ Human Interface Infrastructure/i;
+		$line =~ s/ PFK/ Premium Feature Key/i;
+		$line =~ s/ WB/ Write-Back/i;
+		$line =~ s/SSC /Security Subsystem Class /i;		# https://en.wikipedia.org/wiki/Opal_Storage_Specification
+		$line =~ s/ SMP/ Serial Management Protocol/i;		# https://en.wikipedia.org/wiki/Serial_Attached_SCSI#Characteristics
+		$line =~ s/ STP/ Serial ATA Tunneling Protocol/i;	# https://en.wikipedia.org/wiki/Serial_Attached_SCSI#Characteristics
+		$line =~ s/Phys /Physical Layers /i;			# 12Gps MegaRAID SAS Software User Guide, March 14, 2016, 4.14.8, https://en.wikipedia.org/wiki/PHY_(chip)
+		$line =~ s/Phy /Physical Layer /i;			# 12Gps MegaRAID SAS Software User Guide, March 14, 2016, 4.14.8, https://en.wikipedia.org/wiki/PHY_(chip)
+		$line =~ s/ OCE/ Online Capacity Expansion/i;		# 12Gps MegaRAID SAS Software User Guide, March 14, 2016, 5.5.14 -> 5
+		$line =~ s/ RLM/ RAID Level Migration/i;		# 12Gps MegaRAID SAS Software User Guide, March 14, 2016, 5.5.14 -> 5
+		$line =~ s/ EKM/ External Key Management/i;
+		$line =~ s/ BBM/ Bad Block Management/i;
+		$line =~ s/ QD/ Queue Depth/i;
+		$line =~ s/NCQ/Native Command Queuing/i;		# https://en.wikipedia.org/wiki/Native_Command_Queuing
+		$line =~ s/ LDBBM/ Logical Disk Bad Block Management/i;
+		$line =~ s/TPM/Trusted Platform Module/i;		# https://en.wikipedia.org/wiki/Trusted_Platform_Module
+		$line =~ s/\(hrs\)/\(hours\)/i;
+		$line =~ s/ hrs/ hours/i;
+		$line =~ s/ZCR /Zero-Channel RAID/i;
+		$line =~ s/R1E /RAID 1E/i;
+		$line =~ s/R10/RAID 10/i;
+		$line =~ s/RAID(\d+)/RAID $1/gi;
+		$line =~ s/TTY /Terminal /i;
+		$line =~ s/CME /Continuous Media Error/i;
+		$line =~ s/SGE /Scatter-Gather Element/i;		# https://en.wikipedia.org/wiki/Vectored_I/O
 		
 		# Standardize some random strings with the same meaning
 		$line =~ s/Id /ID /;
 		$line =~ s/ NA/ N\/A/;
 		$line =~ s/Bios/BIOS/;
+		$line =~ s/S\.M\.A\.R\.T\./SMART/i;
+		$line =~ s/S\.M\.A\.R\.T/SMART/i;
 		
 		# And randomly using sentances...
-		$line =~ s/A rollback operation is in progress/Roll-back operation in progress/;
-		$line =~ s/must be rebooted to complete security operation/Reboot Required for Security Operation/;
-		$line =~ s/Maximum number of direct attached drives to spin up in 1 min/Maximum DAS drives spun-up per minute/;
+		$line =~ s/A rollback operation is in progress/Roll-back operation in progress/i;
+		$line =~ s/must be rebooted to complete security operation/Reboot Required for Security Operation/i;
+		$line =~ s/Maximum number of direct attached drives to spin up in 1 min/direct attached drives spun-up per minute/i;
 		
 		# And things that break variables when they change
 		$line =~ s/\(Default\)//;
+		$line =~ s/Sesmonitoring/SCSI Enclusure Service Monitoring/i;		# https://en.wikipedia.org/wiki/SES-2_Enclosure_Management
+		$line =~ s/SecurityonJBOD/Security on JBOD/i;
+		$line =~ s/ForceFlash/Force Flash/i;
+		$line =~ s/DisableImmediateIO/Disable Immediate IO/i;
+		$line =~ s/LargeIOSupport/Large IO Support/i;
+		$line =~ s/DrvActivityLEDSetting/Drive Activity LED Setting/i;
+		$line =~ s/FlushWriteVerify/Flush Write Verify/i;
+		$line =~ s/CPLDUpdate/Complex Programmable Logic Device Update/i;	# https://en.wikipedia.org/wiki/Complex_programmable_logic_device
+		$line =~ s/ForceTo512e/Force to 512e/i;					# 512-byte sector size emulation
+		$line =~ s/discardCacheDuringLDDelete/Discard Cache During Logical Disk Delete/;
+		$line =~ s/Breakmirror/Break Mirror/i;					# 12Gps MegaRAID SAS Software User Guide, March 14, 2016, 4.14.16
+		$line =~ s/Cachebypass/Cache Bypass/i;
+		$line =~ s/PolaritySplit/Polarity Split/i;
+		$line =~ s/EnableCrashDump/Enable Crash Dump/i;
+		$line =~ s/PowerSave/Power Save/i;
 		
 		push @{$controller_data}, $line;
 	}
@@ -2651,6 +2820,12 @@ sub get_controller_info
 				# Conflict! This is a dirty way to keep them separate
 				$variable .= " 2";
 			}
+			$variable =  lc($variable);
+			$variable =~ s/ /_/g;
+			$variable =~ s/&/and/g;
+			$variable =~ s/\// or /g;
+			$variable =~ s/_%/_percent/g;
+			$variable =~ s/{_}+/_/g;
 			$an->data->{controller}{serial_number}{$serial_number}{$type}{$variable} = $value;
 		}
 	}
