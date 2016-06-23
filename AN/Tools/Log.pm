@@ -62,26 +62,29 @@ sub adjust_log_level
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "adjust_log_level" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $key = $parameter->{key} ? $parameter->{key} : "sys";
+	
 	if ($an->data->{switches}{v})
 	{
-		$an->data->{'scan-server'}{log_level} = 1;
-		$an->Log->level($an->data->{'scan-server'}{log_level});
+		$an->data->{$key}{log_level} = 1;
+		$an->Log->level($an->data->{$key}{log_level});
 	}
 	elsif ($an->data->{switches}{vv})
 	{
-		$an->data->{'scan-server'}{log_level} = 2;
-		$an->Log->level($an->data->{'scan-server'}{log_level});
+		$an->data->{$key}{log_level} = 2;
+		$an->Log->level($an->data->{$key}{log_level});
 	}
 	elsif ($an->data->{switches}{vvv})
 	{
-		$an->data->{'scan-server'}{log_level} = 3;
-		$an->Log->level($an->data->{'scan-server'}{log_level});
+		$an->data->{$key}{log_level} = 3;
+		$an->Log->level($an->data->{$key}{log_level});
 	}
 	elsif ($an->data->{switches}{vvvv})
 	{
-		$an->data->{'scan-server'}{log_level} = 4;
-		$an->Log->level($an->data->{'scan-server'}{log_level});
+		$an->data->{$key}{log_level} = 4;
+		$an->Log->level($an->data->{$key}{log_level});
 	}
+	
 	return(0);
 }
 

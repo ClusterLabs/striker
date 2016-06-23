@@ -912,6 +912,22 @@ The 'AN::Tools::Get' module's 'server_xml()' method was called without a server 
 
 The 'AN::Tools::Readable' module's 'hr_to_bytes()' method was called with a value that the human readable size could not be determined from.
 
+=head2 C<169>
+
+The 'AN::Tools::Get' module's 'upses_under_node()' method was called without a node name or a node UUID.
+
+=head2 C<170>
+
+The 'AN::Tools::Get' module's 'upses_under_node()' method was called with a node name which wasn't found in the database.
+
+=head2 C<171>
+
+The 'AN::Tools::Get' module's 'upses()' method was called without an Anvil! UUID.
+
+=head2 C<172>
+
+The 'AN::Tools::Check' module's 'ping()' method was called without 'ping' being set.
+
 =head1 SEE ALSO
 
 Other modules in the AN::Tools suite:

@@ -12,6 +12,7 @@ our $VERSION  = "0.1.001";
 my $THIS_FILE = "Striker.pm";
 
 ### Methods;
+# access_all_upses
 # configure
 # configure_ssh_local
 # load_anvil
@@ -133,6 +134,59 @@ sub parent
 #############################################################################################################
 # Provided methods                                                                                          #
 #############################################################################################################
+
+# This finds all the UPSes under an Anvil! system and pings them. If all are accessible, it returns '1'. If
+# *any* can't be reached, it returns '0'. If no UPSes are found, it also returns '0'.
+sub access_all_upses
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "access_all_upses" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $ups_count = 0;
+	my $access    = 1;
+	my $upses     = $an->Get->upses({anvil_uuid => $an->data->{sys}{anvil}{uuid}});
+	foreach my $ip (sort {$a cmp $b} keys %{$upses})
+	{
+		$ups_count++;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "ip",        value1 => $ip,
+			name2 => "ups_count", value2 => $ups_count,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Can I ping the UPSes?
+		my $ping = $an->Check->ping({ping => $ip});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ping", value1 => $ping,
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $ping)
+		{
+			$access = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "access", value1 => $access,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# Set '0' if no UPSes were found.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ups_count", value1 => $ups_count,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $ups_count)
+	{
+		$access = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "access", value1 => $access,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "access", value1 => $access,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($access);
+}
+
 
 # This presents and manages the 'configure' component of Striker.
 sub configure
@@ -3209,8 +3263,8 @@ sub _cold_stop_anvil
 		my $say_title   = $an->String->get({key => "title_0184"});
 		my $say_message = $an->String->get({key => "message_0443", variables => { anvil => $anvil_name }});
 		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
-			title		=>	$say_title,
-			message		=>	$say_message,
+			title	=>	$say_title,
+			message	=>	$say_message,
 		}});
 		return(1);
 	}
@@ -3219,11 +3273,30 @@ sub _cold_stop_anvil
 	$an->Striker->scan_anvil();
 	
 	# Set the delay. This will set the hosts -> host_stop_reason to be time + sys::power_off_delay if we
-	# have a sub-task
+	# have a sub-task. We'll also check to see if the UPSes are still accessing. Even if 'note=no_abort',
+	# we can not proceed unless both/all UPSes are available
 	my $delay = 0;
 	if (($an->data->{cgi}{subtask} eq "power_cycle") or ($an->data->{cgi}{subtask} eq "power_off"))
 	{
 		$delay = 1;
+		
+		# If any UPSes are inaccessible, abort.
+		my $access = $an->Striker->access_all_upses({anvil_uuid => $an->data->{sys}{anvil}{uuid}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "access", value1 => $access,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (not $access)
+		{
+			# <sad sad sounds>
+			my $say_title   = $an->String->get({key => "title_0184"});
+			my $say_message = $an->String->get({key => "message_0487", variables => { anvil => $anvil_name }});
+			print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
+				title	=>	$say_title,
+				message	=>	$say_message,
+			}});
+			return(1);
+		}
 	}
 	
 	# If the system is already down, the user may be asking to power cycle/ power off the rack anyway.
@@ -6028,8 +6101,8 @@ sub _display_watchdog_panel
 				name2 => "upses->${ip}::ping", value2 => $upses->{$ip}{ping}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# 0 == Pinged, 1 == Failed
-			if ($upses->{$ip}{ping})
+			# 1 == Pinged, 0 == Failed
+			if (not $upses->{$ip}{ping})
 			{
 				$all_available = 0;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -6065,7 +6138,7 @@ sub _display_watchdog_panel
 					name2 => "upses->${ip}::ping", value2 => $upses->{$ip}{ping}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				my $say_access = "<span class=\"highlight_good\">".$an->String->get({key => "state_0022"})."</span>";
-				if ($upses->{$ip}{ping})
+				if (not $upses->{$ip}{ping})
 				{
 					# No access
 					$say_access = "<span class=\"highlight_bad\">".$an->String->get({key => "state_0004"})."</span>";
@@ -10716,7 +10789,7 @@ sub _parse_lvm_scan
 			my $size      = $3;
 			my $bytes     = $an->Readable->hr_to_bytes({size => $size });
 			my $vg        = ($lv =~ /^\/dev\/(.*?)\//)[0];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "node_name", value1 => $node_name,
 				name2 => "state",     value2 => $state,
 				name3 => "vg",        value3 => $vg,
@@ -10732,7 +10805,10 @@ sub _parse_lvm_scan
 					lv	=>	$lv,
 					node	=>	$node_name,
 				}});
-				print $an->Web->template({file => "main-page.html", template => "lv-inactive-error", replace => { replace => $message }});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "message", value1 => $message,
+				}, file => $THIS_FILE, line => __LINE__});
+				print $an->Web->template({file => "main-page.html", template => "lv-inactive-error", replace => { message => $message }});
 			}
 			
 			if (exists $an->data->{resources}{lv}{$lv})

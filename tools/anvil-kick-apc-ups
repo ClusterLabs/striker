@@ -30,8 +30,6 @@
 # 8  = Time since last run was too short.
 # 
 # TODO
-# - Create a separate timer file per UPS
-# - Log when access to a UPS is lost.
 # 
 
 # Play safe!
@@ -585,7 +583,7 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 	}
 }
 
-logger($conf, $THIS_FILE, __LINE__, "- Run complete.");
+logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Run complete.");
 
 # Only set this to '1' for debugging.
 if ($conf->{sys}{connections})

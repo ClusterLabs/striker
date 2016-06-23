@@ -766,6 +766,10 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0166"><![CDATA[The 'AN::Tools::Get' module's 'server_uuid()' method was unable to gather the UUIDs of the Anvil! nodes.]]></key>
 		<key name="error_message_0167"><![CDATA[The 'AN::Tools::Get' module's 'server_xml()' method was called without a server name being passed.]]></key>
 		<key name="error_message_0168"><![CDATA[The 'AN::Tools::Readable' module's 'hr_to_bytes()' method was called with the value: [#!variable!value!#] which we split into the size: [#!variable!size!#] and type: [#!variable!type!#]. The type appears to be invalid.]]></key>
+		<key name="error_message_0169"><![CDATA[The 'AN::Tools::Get' module's 'upses_under_node()' method was called without a node name or a node UUID.]]></key>
+		<key name="error_message_0170"><![CDATA[The 'AN::Tools::Get' module's 'upses_under_node()' method was called with the node name: [#!variable!node_name!#] which wasn't found in the database.]]></key>
+		<key name="error_message_0171"><![CDATA[The 'AN::Tools::Get' module's 'upses()' method was called without an Anvil! UUID.]]></key>
+		<key name="error_message_0172"><![CDATA[The 'AN::Tools::Check' module's 'ping()' method was called without 'ping' being set.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

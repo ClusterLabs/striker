@@ -56,8 +56,6 @@ my $an = AN::Tools->new({data => {
 			log_file		=>	"/var/log/striker.log",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
-			'anvil-safe-start'	=>	"/sbin/striker/anvil-safe-start",
-			'anvil-safe-start_link'	=>	"/etc/rc3.d/S99_anvil-safe-start",
 		},
 		switches	=>	{
 		},
@@ -477,7 +475,7 @@ FROM
 	# time because we don't know when they booted so, from a delay perspective, we will assume the worst.
 	foreach my $server_name (sort {$a cmp $b} keys %{$state})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "server_name",           value1 => $server_name, 
 			name2 => "state->{$server_name}", value2 => $state->{$server_name}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2177,7 +2175,7 @@ sub wait_for_access
 		my $sn_access  = 0;
 		my $ifn_access = 0;
 		
-		# Test access now. RC == 0; pinged. 1 == no response.
+		# Test access now. RC == 1; pinged. 0 == no response.
 		my $bcn_return_code = $an->Check->ping({ping => $peer_bcn});
 		my $sn_return_code  = $an->Check->ping({ping => $peer_sn});
 		my $ifn_return_code = $an->Check->ping({ping => $peer_ifn});
@@ -2187,7 +2185,7 @@ sub wait_for_access
 			name3 => "ifn_return_code", value3 => $ifn_return_code, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ((not $bcn_return_code) && (not $sn_return_code) && (not $ifn_return_code))
+		if (($bcn_return_code) && ($sn_return_code) && ($ifn_return_code))
 		{
 			# We're good!
 			$can_ping = 1;
@@ -2201,6 +2199,9 @@ sub wait_for_access
 			# that is non-zero, we'll set 'can_ping' to end the loop.
 			check_single_node_start($an, $peer_name, $waiting_started_at, $stop_waiting_at);
 			$can_ping = $an->data->{sys}{single_node_start}{ran};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "can_ping", value1 => $can_ping, 
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Something isn't responding, so sleep.
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0007", file => $THIS_FILE, line => __LINE__});
@@ -2559,7 +2560,7 @@ sub find_myself
 		name7 => "sys::anvil::${peer_key}::use_port", value7 => $an->data->{sys}{anvil}{$peer_key}{use_port}, 
 		name8 => "sys::anvil::${peer_key}::online",   value8 => $an->data->{sys}{anvil}{$peer_key}{online}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "sys::anvil::${node_key}::password", value1 => $an->data->{sys}{anvil}{$node_key}{password}, 
 		name2 => "sys::anvil::${peer_key}::password", value2 => $an->data->{sys}{anvil}{$peer_key}{password}, 
 	}, file => $THIS_FILE, line => __LINE__});

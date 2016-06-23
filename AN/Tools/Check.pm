@@ -745,8 +745,8 @@ sub kernel_module
 	return($state);
 }
 
-# This pings the target (hostname or IP) and if it can be reached, it returns '0'. If it can't be reached, it
-# returns '1'.
+# This pings the target (hostname or IP) and if it can be reached, it returns '1'. If it can't be reached, it
+# returns '0'.
 sub ping
 {
 	my $self      = shift;
@@ -756,8 +756,8 @@ sub ping
 	
 	if (not $parameter->{ping})
 	{
-		$an->Alert->warning({title_key => "warning_title_0004", message_key => "warning_title_0003", file => "$THIS_FILE", line => __LINE__});
-		return(2);
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0172", code => 172, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	# If we were passed a target, try pinging from it instead of locally
@@ -878,14 +878,13 @@ sub ping
 			}
 		}
 	}
-	my $return_code = $pinged ? 0 : 1;
 	
-	# 0 == Ping success
-	# 1 == Ping failed
+	# 0 == Ping failed
+	# 1 == Ping success
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "return_code", value1 => $return_code, 
+		name1 => "pinged", value1 => $pinged, 
 	}, file => $THIS_FILE, line => __LINE__});
-	return($return_code);
+	return($pinged);
 }
 
 

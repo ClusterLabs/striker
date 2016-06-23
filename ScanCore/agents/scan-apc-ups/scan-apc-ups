@@ -201,6 +201,7 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
 # Get the switches before printing anything in case the user is asking for help.
 $an->Get->switches();
+$an->Log->adjust_log_level({key => $THIS_FILE});
 
 print $an->String->get({key => "scan_apc_ups_message_0001"})."\n";
 
@@ -4176,8 +4177,8 @@ sub gather_ups_data
 		
 		### TODO: Set 'apc_ups_health' to '99' when comms are lost.
 		
-		# This returns '0' if it was pingable, '1' if not.
-		if ($an->Check->ping({ping => $ups_ip}))
+		# This returns '1' if it was pingable, '0' if not.
+		if (not $an->Check->ping({ping => $ups_ip}))
 		{
 			# Nope :(
 			$an->data->{ups}{$ups_name}{model} = "#!no_connection!#";

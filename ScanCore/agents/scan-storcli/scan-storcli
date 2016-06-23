@@ -124,6 +124,7 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
 # Get the switches before printing anything in case the user is asking for help.
 $an->Get->switches();
+$an->Log->adjust_log_level({key => $THIS_FILE});
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});

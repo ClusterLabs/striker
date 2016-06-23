@@ -95,6 +95,7 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
 # Get the switches before printing anything in case the user is asking for help.
 $an->Get->switches();
+$an->Log->adjust_log_level({key => $THIS_FILE});
 
 print $an->String->get({key => "scan_bond_message_0001"})."\n";
 

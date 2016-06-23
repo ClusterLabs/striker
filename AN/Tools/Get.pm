@@ -47,6 +47,8 @@ my $THIS_FILE = "Get.pm";
 # striker_peers
 # target_details
 # time_seperator
+# upses
+# upses_under_node
 # users_home
 # use_24h
 # uuid
@@ -2723,6 +2725,7 @@ sub rsa_public_key
 	if (not $user)
 	{
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0039", code => 33, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	my $key_size = $parameter->{key_size} ? $parameter->{key_size} : 8191;
@@ -2877,6 +2880,7 @@ sub server_data
 	{
 		# Bad or no UUID returned.
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0058", message_variables => { uuid => $server_uuid }, code => 58, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	# Check the server table now. Note that it is possible a valid server will not be in the DB yet.
@@ -4113,7 +4117,7 @@ sub switches
 	}
 
 	# Adjust the log level if requested.
-	$an->Log->adjust_log_level();
+	$an->Log->adjust_log_level({key => 'sys'});
 	
 	return(0);
 }
@@ -4340,7 +4344,167 @@ sub use_24h
 		}
 	}
 	
-	return $self->{USE_24H};
+	return($self->{USE_24H});
+}
+
+# This returns the UPSes power an Anvil! system.
+sub upses
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "users_home" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_uuid = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $anvil_uuid)
+	{
+		# Can't do anything.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0171", code => 171, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::anvil::node1::uuid", value1 => $an->data->{sys}{anvil}{node1}{uuid},
+		name2 => "sys::anvil::node2::uuid", value2 => $an->data->{sys}{anvil}{node2}{uuid},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $an->data->{sys}{anvil}{node1}{uuid}) or (not $an->data->{sys}{anvil}{node1}{uuid}))
+	{
+		# Do a quick load.
+		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
+	}
+	
+	my $node1_upses = $an->Get->upses_under_node({node_uuid => $an->data->{sys}{anvil}{node1}{uuid}});
+	my $node2_upses = $an->Get->upses_under_node({node_uuid => $an->data->{sys}{anvil}{node2}{uuid}});
+	my $upses       = {};
+	foreach my $ip (sort {$a cmp $b} keys %{$node1_upses})
+	{
+		my $names = $node1_upses->{$ip};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "ip",    value1 => $ip,
+			name2 => "names", value2 => $names,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$upses->{$ip} = 1 if not $upses->{$ip};
+	}
+	foreach my $ip (sort {$a cmp $b} keys %{$node2_upses})
+	{
+		my $names = $node1_upses->{$ip};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "ip",    value1 => $ip,
+			name2 => "names", value2 => $names,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$upses->{$ip} = 1 if not $upses->{$ip};
+	}
+	
+	return($upses);
+}
+
+# This takes a node's name or UUID and returns the UPSes powering it.
+sub upses_under_node
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "users_home" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $upses     = {};
+	my $node_name = $parameter->{node_name} ? $parameter->{node_name} : "";
+	my $node_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_name", value1 => $node_name, 
+		name2 => "node_uuid", value2 => $node_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ((not $node_uuid) && (not $node_name))
+	{
+		# Can't do anything.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0169", code => 169, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	elsif (not $node_uuid)
+	{
+		$node_uuid = $an->ScanCore->get_node_name_from_node_uuid({node_name => $node_name});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_uuid", value1 => $node_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Did I get a UUID?
+		if (not $node_uuid)
+		{
+			# Nien.
+			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0170", message_variables => { node_name => $node_name }, code => 170, file => "$THIS_FILE", line => __LINE__});
+			return("");
+		}
+	}
+	
+	# See if we can find the host in node's cache.
+	my $etc_hosts = $an->ScanCore->read_cache({
+			target => $node_uuid, 
+			type   => "etc_hosts",
+		});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "etc_hosts", value1 => $etc_hosts, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If we got data, loop through it
+	foreach my $line (split/\n/, $etc_hosts)
+	{
+		next if $line !~ /ups\d/;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
+		{
+			my $ip    =  $1;
+			my $names =  $2;
+			   $names =~ s/\s+/ /;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ip",    value1 => $ip, 
+				name2 => "names", value2 => $names, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Skip if the IP is invalid
+			next if not $an->Validate->is_ipv4({ip => $ip});
+			
+			# Loops through the name(s) 
+			foreach my $name (split/ /, $names)
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "name", value1 => $name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($name =~ /ups\d/)
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "upses->$ip", value1 => $upses->{$ip}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($upses->{$ip})
+					{
+						next if $upses->{$ip} =~ /$name/;
+						$upses->{$ip} .= ",".$name;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "upses->$ip", value1 => $upses->{$ip}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					else
+					{
+						$upses->{$ip} = $name;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "upses->$ip", value1 => $upses->{$ip}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+		}
+	}
+	
+	return($upses);
 }
 
 # This reads /etc/passwd to figure out the requested user's home directory.
@@ -4358,9 +4522,7 @@ sub users_home
 	if (not $user)
 	{
 		# No user? No bueno...
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0041", message_variables => {
-			user => $user, 
-		}, code => 38, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0041", message_variables => { user => $user }, code => 38, file => "$THIS_FILE", line => __LINE__});
 		return("");
 	}
 	
@@ -4390,9 +4552,8 @@ sub users_home
 	# Do I have the a user's $HOME now?
 	if (not $users_home)
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0040", message_variables => {
-			user => $user, 
-		}, code => 34, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0040", message_variables => { user => $user }, code => 34, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

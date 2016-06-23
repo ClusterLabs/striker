@@ -6469,12 +6469,12 @@ sub connect_to_node
 	# 2 = Couldn't ping.
 	my $rc = 2;
 	
-	# 0 == pinged, 1 == failed.
-	my $ping_rc = $an->Check->ping({ping => $target, count => 3});
+	# 1 == pinged, 0 == failed.
+	my $ping = $an->Check->ping({ping => $target, count => 3});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "ping_rc", value1 => $ping_rc, 
+		name1 => "ping", value1 => $ping, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($ping_rc eq "0")
+	if ($ping)
 	{
 		# Pingable! Can we log in?
 		$an->Log->entry({log_level => 2, message_key => "log_0162", message_variables => {
@@ -8065,9 +8065,9 @@ sub do_node_reboot
 		}, file => $THIS_FILE, line => __LINE__});
 		while (not $has_shutdown)
 		{
-			# 0 == pinged, 1 == failed.
-			my $ping_rc = $an->Check->ping({ping => $node, count => 3});
-			if ($ping_rc eq "1")
+			# 1 == pinged, 0 == failed.
+			my $ping = $an->Check->ping({ping => $node, count => 3});
+			if (not $ping)
 			{
 				# Switch the target
 				$has_shutdown = 1;
@@ -8293,35 +8293,27 @@ sub drbd_first_start
 	if (($node1_attach_rc eq "0") && ($node2_attach_rc eq "0"))
 	{
 		# Make sure we can ping the peer node over the SN
-		my ($node1_ping_rc) = $an->Check->ping({
+		my ($node1_ping) = $an->Check->ping({
 			ping		=>	$an->data->{cgi}{anvil_node2_sn_ip}, 
 			count		=>	3,
 			target		=>	$an->data->{sys}{anvil}{node1}{use_ip},
 			port		=>	$an->data->{sys}{anvil}{node1}{use_port}, 
 			password	=>	$an->data->{sys}{anvil}{node1}{password},
 		});
-		my ($node2_ping_rc) = $an->Check->ping({
+		my ($node2_ping) = $an->Check->ping({
 			ping		=>	$an->data->{cgi}{anvil_node1_sn_ip}, 
 			count		=>	3,
 			target		=>	$an->data->{sys}{anvil}{node2}{use_ip},
 			port		=>	$an->data->{sys}{anvil}{node2}{use_port}, 
 			password	=>	$an->data->{sys}{anvil}{node2}{password},
 		});
-		# 0 == Ping success
-		# 1 == Ping failed
+		# 1 == Ping success
+		# 0 == Ping failed
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node1_ping_rc", value1 => $node1_ping_rc,
-			name2 => "node2_ping_rc", value2 => $node2_ping_rc,
+			name1 => "node1_ping", value1 => $node1_ping,
+			name2 => "node2_ping", value2 => $node2_ping,
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		# We need 'ping success = 1', so flip the return code
-		$node1_ping_ok = $node1_ping_rc ? 0 : 1;
-		$node2_ping_ok = $node2_ping_rc ? 0 : 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node1_ping_ok", value1 => $node1_ping_ok,
-			name2 => "node2_ping_ok", value2 => $node2_ping_ok,
-		}, file => $THIS_FILE, line => __LINE__});
-		if (($node1_ping_ok) && ($node2_ping_ok))
+		if (($node1_ping) && ($node2_ping))
 		{
 			# Both nodes have both of their resources attached and are pingable on the SN, 
 			# Make sure they're not 'StandAlone' and, if so, tell them to connect.
@@ -16732,37 +16724,29 @@ sub start_cman
 	}, file => $THIS_FILE, line => __LINE__});
 
 	# First thing, make sure each node can talk to the other on the BCN.
-	my ($node1_ping_rc) = $an->Check->ping({
+	my ($node1_ping) = $an->Check->ping({
 		ping		=>	$an->data->{cgi}{anvil_node2_bcn_ip}, 
 		count		=>	3,
 		target		=>	$an->data->{sys}{anvil}{node1}{use_ip},
 		port		=>	$an->data->{sys}{anvil}{node1}{use_port}, 
 		password	=>	$an->data->{sys}{anvil}{node1}{password},
 	});
-	my ($node2_ping_rc) = $an->Check->ping({
+	my ($node2_ping) = $an->Check->ping({
 		ping		=>	$an->data->{cgi}{anvil_node1_bcn_ip}, 
 		count		=>	3,
 		target		=>	$an->data->{sys}{anvil}{node2}{use_ip},
 		port		=>	$an->data->{sys}{anvil}{node2}{use_port}, 
 		password	=>	$an->data->{sys}{anvil}{node2}{password},
 	});
-	# 0 == Ping success
-	# 1 == Ping failed
+	# 1 == Ping success
+	# 0 == Ping failed
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node1_ping_rc", value1 => $node1_ping_rc,
-		name2 => "node2_ping_rc", value2 => $node2_ping_rc,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# We need 'ping success = 1', so flip the return code
-	my $node1_ok = $node1_ping_rc ? 0 : 1;
-	my $node2_ok = $node2_ping_rc ? 0 : 1;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node1_ok", value1 => $node1_ok,
-		name2 => "node2_ok", value2 => $node2_ok,
+		name1 => "node1_ping", value1 => $node1_ping,
+		name2 => "node2_ping", value2 => $node2_ping,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# No sense proceeding if the nodes can't talk to each other.
-	if ((not $node1_ok) or (not $node2_ok))
+	if ((not $node1_ping) or (not $node2_ping))
 	{
 		# Both can ping the other on their BCN, so we can try to start cman now.
 		$node1_rc = 1;
@@ -17554,12 +17538,12 @@ sub test_internet_connection
 	# Default to no connection
 	$an->data->{node}{$node}{internet} = 0;
 	
-	# 0 == pingable, 1 == failed.
+	# 1 == pingable, 0 == failed.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
-	my $ping_rc = $an->Check->ping({
+	my $ping = $an->Check->ping({
 		ping		=>	"8.8.8.8", 
 		count		=>	3,
 		target		=>	$target,
@@ -17567,12 +17551,12 @@ sub test_internet_connection
 		password	=>	$password,
 	});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "ping_rc", value1 => $ping_rc,
+		name1 => "ping", value1 => $ping,
 	}, file => $THIS_FILE, line => __LINE__});
 	my $ok = 0;
-	if ($ping_rc eq "0")
+	if ($ping)
 	{
-		$ok = 1;
+		$ok                                = 1;
 		$an->data->{node}{$node}{internet} = 1;
 	}
 	

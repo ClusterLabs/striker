@@ -558,7 +558,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0040"><![CDATA[Error in <span class="fixed_width">hr_to_bytes()</span>]]></key>
 		<key name="row_0041">Connection Problem</key>
 		<key name="row_0042">Inaccesible</key>
-		<key name="row_0043">Inactive LV</key>
+		<key name="row_0043">Inactive Logical Volume</key>
 		<key name="row_0044">Warning</key>
 		<key name="row_0045">Unable to Proceed</key>
 		<key name="row_0046">Model</key>
@@ -1450,7 +1450,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0042"><![CDATA[Unknown error while connecting to <span class="highlight_detail">#!variable!node!#</span>: [<span class="highlight_detail">#!variable!error!#</span>]]]></key>
 		<key name="message_0043">Unable to log in. Please check the password for this #!string!brand_0003!#.</key>
 		<key name="message_0044"><![CDATA[One of more of the storage daemons are running on <span class="fixed_width">#!variable!node!#</span> while the #!string!brand_0003!#'s cluster is down.<br />#!string!brand_0011!#]]></key>
-		<key name="message_0045"><![CDATA[The logical volume <span class="fixed_width">#!variable!lv!#</span> on node <span class="fixed_width">#!variable!node!#</span> is inactive!<br />Please <a href="#!string!brand_0012!#" target="_new">contact support</a>, or if you are comfortable, active the LV as soon as possible.]]></key>
+		<key name="message_0045"><![CDATA[The logical volume <span class="fixed_width">#!variable!lv!#</span> on node <span class="highlight_detail">#!variable!node!#</span> is inactive.<br />The system will likely activate the LV shortly. If not, please <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
 		<key name="message_0046"><![CDATA[There was a problem when scanning the storage. The nodes report different sizes and/or volume groups for the logical volume <span class="fixed_width">#!variable!lv!#</span>. Saw sizes <span class="fixed_width">#!variable!size!#</span> vs. <span class="fixed_width">#!variable!bytes!#</span> and the backing volume group is <span class="fixed_width">#!variable!vg_1!#</span> vs. <span class="fixed_width">#!variable!vg_2!#</span>.]]></key>
 		<key name="message_0047"><![CDATA[I was asked to check the power staus of <span class="fixed_width">#!variable!node!#</span> via it's peer <span class="fixed_width">#!variable!peer!#</span>, but the power check command is empty.<br />This is likely a program error.]]></key>
 		<key name="message_0048"><![CDATA[I was trying to resolve the host name <span class="fixed_width">#!variable!target_host!#</span> but was unable to do so.<br />Is this a valid host name? If so, do you have an entry in DNS or in your <span class="fixed_width">/etc/hosts</span> file?]]></key>
@@ -1906,6 +1906,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0484"><![CDATA[No #!string!brand_0003!# configured yet, redirecting...]]></key>
 		<key name="message_0485"><![CDATA[The new: [<span class="highlight_detail">#!variable!anvil!#</span>] Anvil! system has been saved.<br /><a href="#!variable!manage_url!#">Click here</a> to start using it!]]></key>
 		<key name="message_0486"><![CDATA[The sending email server password must be set unless '<span class="highlight_detail">#!string!row_0303!#</span>' is set to '<span class="highlight_detail">#!string!select_0004!#</span>'.]]></key>
+		<key name="message_0487"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been aborted because one or more UPSes is not accessible.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

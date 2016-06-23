@@ -162,7 +162,7 @@ sub is_ipv4
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_ipv4" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_ipv4" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ip = $parameter->{ip} ? $parameter->{ip} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

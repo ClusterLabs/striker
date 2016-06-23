@@ -164,6 +164,7 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
 # See if the user is forcing the issue
 $an->Get->switches();
+$an->Log->adjust_log_level({key => $THIS_FILE});
 
 # Help?
 if (($an->data->{switches}{h})   or 

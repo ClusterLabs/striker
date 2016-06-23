@@ -531,7 +531,7 @@ sub format_device
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote-usb::luks::use_filesystem: [$conf->{'remote-usb'}{luks}{use_filesystem}], remote-usb::luks::fs_label: [$conf->{'remote-usb'}{luks}{fs_label}]");
 	if ($conf->{'remote-usb'}{luks}{fs_label})
 	{
-		$mkfs_call = "$conf->{path}{mkfs} -t $conf->{'remote-usb'}{luks}{use_filesystem} -L '$conf->{'remote-usb'}{luks}{fs_label}' $device";
+		$mkfs_call = "$conf->{path}{mkfs} -O ^has_journal -t $conf->{'remote-usb'}{luks}{use_filesystem} -L '$conf->{'remote-usb'}{luks}{fs_label}' $device";
 	}
 	my $fs    = "";
 	my $uuid  = "";

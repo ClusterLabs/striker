@@ -15,6 +15,7 @@ my $THIS_FILE = "ScanCore.pm";
 # get_hosts
 # get_manifests
 # get_migration_target
+# get_node_name_from_node_uuid
 # get_nodes
 # get_nodes_cache
 # get_notifications
@@ -295,6 +296,54 @@ AND
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return($target);
+}
+
+# This takes a node name, gets its host uuid and then looks up and returns its node_uuid 
+sub get_node_name_from_node_uuid
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_node_name_from_node_uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $node_uuid = "";
+	my $node_name = $parameter->{node_name} ? $parameter->{node_name} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_name", value1 => $node_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($node_name)
+	{
+		my $query = "
+SELECT 
+    node_uuid 
+FROM 
+    nodes 
+WHERE 
+    node_host_uuid = (
+        SELECT 
+            host_uuid 
+        FROM 
+            hosts 
+        WHERE 
+            host_name = ".$an->data->{sys}{use_db_fh}->quote($node_name)."
+        );
+";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$node_uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$node_uuid = "" if not $node_uuid;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_uuid", value1 => $node_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_uuid", value1 => $node_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($node_uuid);
 }
 
 # Get a list of Anvil! nodes as an array of hash references
