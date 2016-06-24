@@ -126,14 +126,16 @@ sub run_jobs
 		
 		if ($line =~ /^(\d+):(.*?):(.*)$/)
 		{
-			my $runtime = $1;
-			my $token   = $2;
-			my $command = $3;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-				name1 => "time",    value1 => $time, 
-				name2 => "runtime", value2 => $runtime, 
-				name3 => "token",   value3 => $token, 
-				name4 => "command", value4 => $command, 
+			my $runtime    = $1;
+			my $token      = $2;
+			my $command    = $3;
+			my $difference = $runtime - $time;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "time",       value1 => $time, 
+				name2 => "runtime",    value2 => $runtime, 
+				name3 => "difference", value3 => $difference, 
+				name4 => "token",      value4 => $token, 
+				name5 => "command",    value5 => $command, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($time >= $runtime)

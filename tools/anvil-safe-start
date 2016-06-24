@@ -504,7 +504,7 @@ FROM
 		foreach my $server_uuid (keys %{$an->data->{server_uuid}})
 		{
 			# Gather our thoughts...
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "server_uuid",                              value1 => $server_uuid, 
 				name2 => "server_uuid::${server_uuid}::processed",   value2 => $an->data->{server_uuid}{$server_uuid}{processed}, 
 				name3 => "server_uuid::${server_uuid}::name",        value3 => $an->data->{server_uuid}{$server_uuid}{name},
@@ -2162,10 +2162,12 @@ sub wait_for_access
 	# only wait for so long. This tracks when we started waiting.
 	my $waiting_started_at = time;
 	my $stop_waiting_at    = $waiting_started_at + $an->data->{sys}{single_node_start}{boot_delay};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	my $difference         = $stop_waiting_at - time;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "waiting_started_at", value1 => $waiting_started_at,
 		name2 => "stop_waiting_at",    value2 => $stop_waiting_at,
 		name3 => "time",               value3 => time,
+		name4 => "difference",         value4 => $difference,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $can_ping = 0;
@@ -2293,10 +2295,12 @@ sub check_single_node_start
 	
 	# Waited more that our boot delay and single node start is enabled, so see if we last saw the peer as
 	# offline and, if so, end the wait.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "time",                            value1 => time,
+	my $difference = $stop_waiting_at - time;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "sys::single_node_start::enabled", value1 => $an->data->{sys}{single_node_start}{enabled},
 		name2 => "stop_waiting_at",                 value2 => $stop_waiting_at,
-		name3 => "sys::single_node_start::enabled", value3 => $an->data->{sys}{single_node_start}{enabled},
+		name3 => "time",                            value3 => time,
+		name4 => "difference",                      value4 => $difference,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((time > $stop_waiting_at) && ($an->data->{sys}{single_node_start}{enabled}))
 	{
@@ -2465,11 +2469,12 @@ sub check_single_node_start
 				}
 				else
 				{
-					sleep 1;
+					sleep 10;
+					my $difference = $boot_after - time;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-						name1 => "time",               value1 => time,
-						name2 => "boot_after",         value2 => $boot_after,
-						name3 => "waited_long_enough", value3 => $waited_long_enough,
+						name1 => "time",       value1 => time,
+						name2 => "boot_after", value2 => $boot_after,
+						name3 => "difference", value3 => $difference,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
@@ -2525,7 +2530,11 @@ sub find_myself
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# I can't scan the Anvil! so instead I will need to setup some things manually.
+	# Do a quick scan of the nodes.
+	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
+	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
+	
+	# Now setup my access info.
 	my $node_name = $an->data->{sys}{local_node};
 	my $node_key  = $an->data->{sys}{node_name}{$node_name}{node_key};
 	my $peer_key  = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
@@ -2537,19 +2546,8 @@ sub find_myself
 		name4 => "peer_name", value4 => $peer_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Now setup my access info.
-	$an->data->{sys}{local_key}                  = $node_key;
-	$an->data->{sys}{peer_key}                   = $peer_key;
-	$an->data->{sys}{anvil}{$node_key}{name}     = $an->data->{sys}{local_node};
-	$an->data->{sys}{anvil}{$node_key}{use_ip}   = "local";
-	$an->data->{sys}{anvil}{$node_key}{use_port} = 22; 
-	$an->data->{sys}{anvil}{$node_key}{online}   = 1;
-	$an->data->{sys}{anvil}{$node_key}{password} = "";
-	$an->data->{sys}{anvil}{$peer_key}{name}     = $an->data->{sys}{peer_node};
-	$an->data->{sys}{anvil}{$peer_key}{use_ip}   = $an->data->{sys}{anvil}{$peer_key}{bcn_ip};
-	$an->data->{sys}{anvil}{$peer_key}{use_port} = 22; 
-	$an->data->{sys}{anvil}{$peer_key}{online}   = 1;
-	$an->data->{sys}{anvil}{$peer_key}{password} = $an->data->{sys}{anvil}{$peer_key}{password};
+	$an->data->{sys}{local_key} = $node_key;
+	$an->data->{sys}{peer_key}  = $peer_key;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 		name1 => "sys::anvil::${node_key}::name",     value1 => $an->data->{sys}{anvil}{$node_key}{name}, 
 		name2 => "sys::anvil::${node_key}::use_ip",   value2 => $an->data->{sys}{anvil}{$node_key}{use_ip}, 

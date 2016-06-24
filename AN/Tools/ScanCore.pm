@@ -4305,7 +4305,8 @@ AND
 	}, file => $THIS_FILE, line => __LINE__});
 	my $data = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	### WARNING: This can expose passwords. Only change the log level to actively debug.
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "data", value1 => $data, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($data);
@@ -4763,8 +4764,9 @@ sub target_power
 	}
 	
 	# Check the power state.
+	### WARNING: This exposes passwords. Only change the log level to actively debug.
 	my $power_check = $an->ScanCore->read_cache({target => $target, type => "power_check"});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "power_check", value1 => $power_check, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4772,25 +4774,25 @@ sub target_power
 	if (not $power_check)
 	{
 		$power_check = $an->ScanCore->read_cache({target => $target, type => "power_check", source => "any"});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "power_check", value1 => $power_check, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Now check, if we can.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "power_check", value1 => $power_check, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($power_check)
 	{
 		# If there are multiple methods, loop through them
-# 0:ipmi: fence_ipmilan -a 10.20.71.2 -l admin -p "Initial1" -o #!action!#;1:pdu: fence_apc_snmp -a an-pdu01.alteeve.ca -n 2 -o #!action!#; fence_apc_snmp -a an-pdu02.alteeve.ca -n 2 -o #!action!#; fence_apc_snmp -a an-pdu01.alteeve.ca -n 2 -o #!action!#; fence_apc_snmp -a an-pdu02.alteeve.ca -n 2 -o #!action!#;]
 		my $methods       = {};
 		my $method_number = "";
 		my $method_name   = "";
 		foreach my $method (split/;/, $power_check)
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			### WARNING: This exposes passwords. Only change the log level to actively debug.
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "method", value1 => $method, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -4804,10 +4806,12 @@ sub target_power
 				$method_number = $1;
 				$method_name   = $2;
 				$power_check   = $3;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "method_number", value1 => $method_number, 
 					name2 => "method_name",   value2 => $method_name, 
-					name3 => "power_check",   value3 => $power_check, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+					name1 => "power_check", value1 => $power_check, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
@@ -4825,12 +4829,12 @@ sub target_power
 				
 				if ($ip)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 						name1 => ">> power_check", value1 => $power_check,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$power_check =~ s/$target/$ip/;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 						name1 => "<< power_check", value1 => $power_check,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -4840,7 +4844,7 @@ sub target_power
 			$power_check =~ s/^.*fence_/fence_/;
 			
 			my $shell_call = $power_check;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});

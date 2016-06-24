@@ -1373,7 +1373,7 @@ WHERE
 							}
 							elsif ($set_peer_on)
 							{
-								### TODO: Should we clear 'sys::node::<peer>::last_booted_without'?
+								# Mark the server as last seen = on
 								my $variable_name = "sys::node::".$node."::last_seen";
 								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 									name1 => "variable_name", value1 => $variable_name, 
@@ -1384,6 +1384,25 @@ WHERE
 								my $variable_uuid = $an->ScanCore->insert_or_update_variables({
 									variable_name         => $variable_name,
 									variable_value        => "on",
+									variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+									variable_source_table => "hosts", 
+									update_value_only     => 1,
+								});
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "variable_uuid", value1 => $variable_uuid, 
+								}, file => $THIS_FILE, line => __LINE__});
+								
+								# And set the 'last_seen' to '0' (effectively disabling it.
+								$variable_name = "sys::node::".$node."::last_booted_without";
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "variable_name", value1 => $variable_name, 
+								}, file => $THIS_FILE, line => __LINE__});
+								
+								# We'll check/log the returned UUID, mainly 
+								# for debugging purposes.
+								$variable_uuid = $an->ScanCore->insert_or_update_variables({
+									variable_name         => $variable_name,
+									variable_value        => "0",
 									variable_source_uuid  => $an->data->{sys}{host_uuid}, 
 									variable_source_table => "hosts", 
 									update_value_only     => 1,

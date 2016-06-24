@@ -631,7 +631,7 @@ sub check_if_protected
 			chomp;
 			my $line = $_;
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-			if ($line =~ /unknown filesystem type '(.*?)'/)
+			if ($line =~ /unknown filesystem type '(.*?)'/i)
 			{
 				my $fs = $1;
 				logger($conf, $THIS_FILE, __LINE__, "Inserted device has the file system: [$fs] which this system can not mount. Unable to proceed.");

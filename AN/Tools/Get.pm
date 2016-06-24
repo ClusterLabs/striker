@@ -3260,8 +3260,6 @@ sub server_uuid
 		return("");
 	}
 	
-	### TODO: Finish this, but remember that this is likely being called from Striker so we can't assume
-	###       this hostname is part of an Anvil!. 
 	# Now check to see if the server is running on one of the nodes.
 	my $node1_name     = $an->data->{sys}{anvil}{node1}{name};
 	my $node1_use_ip   = $an->data->{sys}{anvil}{node1}{use_ip};
@@ -3301,7 +3299,7 @@ sub server_uuid
 		$target   = $node1_use_ip;
 		$port     = $node1_port;
 		$password = $node1_password;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target", value1 => $target, 
 			name2 => "port",   value2 => $port, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3314,7 +3312,7 @@ sub server_uuid
 		$target   = $node2_use_ip;
 		$port     = $node2_port;
 		$password = $node2_password;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target", value1 => $target, 
 			name2 => "port",   value2 => $port, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3325,6 +3323,9 @@ sub server_uuid
 	
 	# Was one of the nodes online? If so, find the current host, if any. 
 	my $xml = "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($target)
 	{
 		# See if the server is running. If so, read the XML from 'virsh dumpxml'

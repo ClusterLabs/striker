@@ -394,7 +394,7 @@ sub load_anvil
 		$an->data->{sys}{anvil}{$node_key}{online}         =  $an->data->{anvils}{$anvil_uuid}{$node_key}{online};
 		$an->data->{sys}{anvil}{$node_key}{power}          =  $an->data->{anvils}{$anvil_uuid}{$node_key}{power};
 		$an->data->{sys}{anvil}{$node_key}{host_uuid}      =  $an->data->{anvils}{$anvil_uuid}{$node_key}{host_uuid};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0018", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0018", message_variables => {
 			name1  => "sys::anvil::${node_key}::uuid",           value1  => $an->data->{sys}{anvil}{$node_key}{uuid}, 
 			name2  => "sys::anvil::${node_key}::name",           value2  => $an->data->{sys}{anvil}{$node_key}{name}, 
 			name3  => "sys::anvil::${node_key}::short_name",     value3  => $an->data->{sys}{anvil}{$node_key}{short_name}, 
@@ -748,22 +748,22 @@ sub scan_node
 	# First, see how to access the node.
 	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
 	my $node_key  = $node_uuid eq $an->data->{sys}{anvil}{node1}{uuid} ? "node1" : "node2";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node_name", value1 => $node_name, 
 		name2 => "node_key",  value2 => $node_key, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# See if I have a cached 'access' data.
-	my $access = $an->ScanCore->read_cache({target => $node_uuid, type => "access"});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "access", value1 => $access, 
+	my $cached_access = $an->ScanCore->read_cache({target => $node_uuid, type => "access"});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cached_access", value1 => $cached_access, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($access)
+	if ($cached_access)
 	{
 		# If this fails, we'll walk our various connections.
-		my $target = $access;
+		my $target = $cached_access;
 		my $port   = 22;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target", value1 => $target, 
 			name2 => "port",   value2 => $port, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -772,7 +772,7 @@ sub scan_node
 		{
 			$target = $1;
 			$port   = $2;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "target", value1 => $target, 
 				name2 => "port",   value2 => $port, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -783,7 +783,7 @@ sub scan_node
 				port     => $port,
 				password => $an->data->{sys}{anvil}{$node_key}{password},
 			});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "access", value1 => $access, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($access)
@@ -791,7 +791,7 @@ sub scan_node
 			$an->data->{sys}{anvil}{$node_key}{use_ip}   = $target;
 			$an->data->{sys}{anvil}{$node_key}{use_port} = $port; 
 			$an->data->{sys}{anvil}{$node_key}{online}   = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "sys::anvil::${node_key}::use_ip",   value1 => $an->data->{sys}{anvil}{$node_key}{use_ip}, 
 				name2 => "sys::anvil::${node_key}::use_port", value2 => $an->data->{sys}{anvil}{$node_key}{use_port}, 
 				name3 => "sys::anvil::${node_key}::online",   value3 => $an->data->{sys}{anvil}{$node_key}{online}, 
@@ -825,7 +825,7 @@ sub scan_node
 			$an->data->{sys}{anvil}{$node_key}{use_ip}   = $an->data->{sys}{anvil}{$node_key}{bcn_ip};
 			$an->data->{sys}{anvil}{$node_key}{use_port} = 22; 
 			$an->data->{sys}{anvil}{$node_key}{online}   = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "sys::anvil::${node_key}::use_ip",   value1 => $an->data->{sys}{anvil}{$node_key}{use_ip}, 
 				name2 => "sys::anvil::${node_key}::use_port", value2 => $an->data->{sys}{anvil}{$node_key}{use_port}, 
 				name3 => "sys::anvil::${node_key}::online",   value3 => $an->data->{sys}{anvil}{$node_key}{online}, 
@@ -848,7 +848,7 @@ sub scan_node
 				$an->data->{sys}{anvil}{$node_key}{use_ip}   = $an->data->{sys}{anvil}{$node_key}{ifn_ip};
 				$an->data->{sys}{anvil}{$node_key}{use_port} = 22; 
 				$an->data->{sys}{anvil}{$node_key}{online}   = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "sys::anvil::${node_key}::use_ip",   value1 => $an->data->{sys}{anvil}{$node_key}{use_ip}, 
 					name2 => "sys::anvil::${node_key}::use_port", value2 => $an->data->{sys}{anvil}{$node_key}{use_port}, 
 					name3 => "sys::anvil::${node_key}::online",   value3 => $an->data->{sys}{anvil}{$node_key}{online}, 
@@ -873,7 +873,7 @@ sub scan_node
 						$an->data->{sys}{anvil}{$node_key}{use_ip}   = $an->data->{sys}{anvil}{$node_key}{remote_ip};
 						$an->data->{sys}{anvil}{$node_key}{use_port} = $an->data->{sys}{anvil}{$node_key}{remote_port}; 
 						$an->data->{sys}{anvil}{$node_key}{online}   = 1;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 							name1 => "sys::anvil::${node_key}::use_ip",   value1 => $an->data->{sys}{anvil}{$node_key}{use_ip}, 
 							name2 => "sys::anvil::${node_key}::use_port", value2 => $an->data->{sys}{anvil}{$node_key}{use_port}, 
 							name3 => "sys::anvil::${node_key}::online",   value3 => $an->data->{sys}{anvil}{$node_key}{online}, 
@@ -884,7 +884,7 @@ sub scan_node
 						# No luck.
 						$an->data->{sys}{anvil}{$node_key}{online} = 0;
 						$an->data->{sys}{anvil}{$node_key}{power}  = $an->ScanCore->target_power({target => $node_uuid});
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "sys::anvil::${node_key}::power", value1 => $an->data->{sys}{anvil}{$node_key}{power}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -894,7 +894,7 @@ sub scan_node
 					# No luck.
 					$an->data->{sys}{anvil}{$node_key}{online} = 0;
 					$an->data->{sys}{anvil}{$node_key}{power}  = $an->ScanCore->target_power({target => $node_uuid});
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "sys::anvil::${node_key}::power", value1 => $an->data->{sys}{anvil}{$node_key}{power}, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -3454,6 +3454,9 @@ fi;
 					}
 					
 					$an->data->{sys}{anvil}{$node_key}{online} = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "sys::anvil::${node_key}::online", value1 => $an->data->{sys}{anvil}{$node_key}{online},
+					}, file => $THIS_FILE, line => __LINE__});
 					
 					$an->Log->entry({log_level => 2, message_key => "log_0250", message_variables => {
 						node  => $node_name, 
