@@ -741,9 +741,8 @@ INSERT INTO
 	return(0);
 }
 
-# This checks to see if this agent's databases tables exist and, if not, load
-# the schema. If the schema gets loaded, we'll check other databases for
-# older information and load it.
+# This checks to see if this agent's databases tables exist and, if not, load the schema. If the schema gets
+# loaded, we'll check other databases for older information and load it.
 sub prep_databases
 {
 	my ($an) = @_;

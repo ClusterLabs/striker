@@ -21,7 +21,7 @@ CREATE TABLE storcli_controllers (
 	storcli_controller_cache_size		numeric				not null,	-- "On Board Memory Size"
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_host_uuid) REFERENCES hosts(host_uuid)
+	FOREIGN KEY(storcli_controller_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE storcli_controllers OWNER TO #!variable!user!#;
 
@@ -82,7 +82,7 @@ CREATE TABLE storcli_controller_variables (
 	storcli_controller_variable_value		text,
 	modified_date					timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_controller_variable_controller_uuid) REFERENCES storcli_controller(storcli_controller_uuid)
+	FOREIGN KEY(storcli_controller_variable_controller_uuid) REFERENCES storcli_controllers(storcli_controller_uuid)
 );
 ALTER TABLE storcli_controller_variables OWNER TO #!variable!user!#;
 
@@ -143,7 +143,7 @@ CREATE TABLE storcli_cachevaults (
 	storcli_cachevault_manufacture_date	text,						-- "Date of Manufacture"
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_cachevault_controller_uuid) REFERENCES storcli_controller(storcli_controller_uuid)
+	FOREIGN KEY(storcli_cachevault_controller_uuid) REFERENCES storcli_controllers(storcli_controller_uuid)
 );
 ALTER TABLE storcli_cachevaults OWNER TO #!variable!user!#;
 
@@ -210,7 +210,7 @@ CREATE TABLE storcli_cachevault_variables (
 	storcli_cachevault_variable_value		text,
 	modified_date					timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_cachevault_variable_cachevault_uuid) REFERENCES storcli_cachevault(storcli_cachevault_uuid)
+	FOREIGN KEY(storcli_cachevault_variable_cachevault_uuid) REFERENCES storcli_cachevaults(storcli_cachevault_uuid)
 );
 ALTER TABLE storcli_cachevault_variables OWNER TO #!variable!user!#;
 
@@ -272,7 +272,7 @@ CREATE TABLE storcli_bbus (
 	storcli_bbu_replacement_needed		text,						-- "Pack is about to fail & should be replaced"
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_bbu_controller_uuid) REFERENCES storcli_controller(storcli_controller_uuid)
+	FOREIGN KEY(storcli_bbu_controller_uuid) REFERENCES storcli_controllers(storcli_controller_uuid)
 );
 ALTER TABLE storcli_bbus OWNER TO #!variable!user!#;
 
@@ -347,7 +347,7 @@ CREATE TABLE storcli_bbu_variables (
 	storcli_bbu_variable_value		text,
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_bbu_variable_bbu_uuid) REFERENCES storcli_bbu(storcli_bbu_uuid)
+	FOREIGN KEY(storcli_bbu_variable_bbu_uuid) REFERENCES storcli_bbus(storcli_bbu_uuid)
 );
 ALTER TABLE storcli_bbu_variables OWNER TO #!variable!user!#;
 
@@ -413,7 +413,7 @@ CREATE TABLE storcli_virtual_drives (
 	storcli_virtual_drive_scsi_naa_id	text,						-- "SCSI NAA Id" - https://en.wikipedia.org/wiki/ISCSI#Addressing
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_virtual_drive_controller_uuid) REFERENCES storcli_controller(storcli_controller_uuid)
+	FOREIGN KEY(storcli_virtual_drive_controller_uuid) REFERENCES storcli_controllers(storcli_controller_uuid)
 );
 ALTER TABLE storcli_virtual_drives OWNER TO #!variable!user!#;
 
@@ -490,7 +490,7 @@ CREATE TABLE storcli_virtual_drive_variables (
 	storcli_virtual_drive_variable_value			text,
 	modified_date						timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_virtual_drive_variable_virtual_drive_uuid) REFERENCES storcli_virtual_drive(storcli_virtual_drive_uuid)
+	FOREIGN KEY(storcli_virtual_drive_variable_virtual_drive_uuid) REFERENCES storcli_virtual_drives(storcli_virtual_drive_uuid)
 );
 ALTER TABLE storcli_virtual_drive_variables OWNER TO #!variable!user!#;
 
@@ -557,7 +557,7 @@ CREATE TABLE storcli_drive_groups (
 	storcli_drive_group_write_cache		text,						-- "write_cache"
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_drive_group_virtual_drive_uuid) REFERENCES storcli_virtual_drives(storcli_virtual_drive_uuid),
+	FOREIGN KEY(storcli_drive_group_virtual_drive_uuid) REFERENCES storcli_virtual_drives(storcli_virtual_drive_uuid)
 );
 ALTER TABLE storcli_drive_groups OWNER TO #!variable!user!#;
 
@@ -638,7 +638,7 @@ CREATE TABLE storcli_drive_group_variables (
 	storcli_drive_group_variable_value		text,
 	modified_date					timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_drive_group_variable_drive_group_uuid) REFERENCES storcli_drive_group(storcli_drive_group_uuid)
+	FOREIGN KEY(storcli_drive_group_variable_drive_group_uuid) REFERENCES storcli_drive_groups(storcli_drive_group_uuid)
 );
 ALTER TABLE storcli_drive_group_variables OWNER TO #!variable!user!#;
 
@@ -703,7 +703,7 @@ CREATE TABLE storcli_physical_drives (
 	storcli_physical_drive_self_encrypting_drive	text,						-- "self_encrypting_drive", "SED Capable"
 	modified_date					timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_physical_drive_controller_uuid) REFERENCES storcli_controller(storcli_controller_uuid)
+	FOREIGN KEY(storcli_physical_drive_controller_uuid) REFERENCES storcli_controllers(storcli_controller_uuid)
 );
 ALTER TABLE storcli_physical_drives OWNER TO #!variable!user!#;
 
@@ -796,7 +796,7 @@ CREATE TABLE storcli_physical_drive_variables (
 	storcli_physical_drive_variable_value			text,
 	modified_date						timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_physical_drive_variable_physical_drive_uuid) REFERENCES storcli_physical_drive(storcli_physical_drive_uuid)
+	FOREIGN KEY(storcli_physical_drive_variable_physical_drive_uuid) REFERENCES storcli_physical_drives(storcli_physical_drive_uuid)
 );
 ALTER TABLE storcli_physical_drive_variables OWNER TO #!variable!user!#;
 

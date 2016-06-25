@@ -956,7 +956,10 @@ ORDER BY
 		# on      - The fence device is reachable and the port is in the on state.
 		# unknown - The fence device could not be reached.
 		# off     - The fence device is reachable and the port is in the off state.
-		my $state = $an->ScanCore->target_power({target => $node_uuid});
+		my $state = $an->ScanCore->target_power({
+				target => $node_uuid, 
+				task   => "status",
+			});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "state", value1 => $state, 
 		}, file => $THIS_FILE, line => __LINE__});

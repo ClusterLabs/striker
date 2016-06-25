@@ -30,7 +30,7 @@
 # 
 
 # Disable this for now.
-#exit(0);
+exit(0);
 
 # Use my modules.
 use strict;
@@ -58,6 +58,7 @@ my $an = AN::Tools->new({data =>
 	{
 		path			=>	{
 			core_strings		=>	"$scancore_directory/ScanCore.xml",
+			sql			=>	"$running_directory/$THIS_FILE.sql",
 			# This stores this node's UUID. It is used to track all our sensor data in the 
 			# database. If you change this here, change it ScanCore, too.
 			striker_config		=>	"/etc/striker/striker.conf",
@@ -147,6 +148,14 @@ find_lsi_controllers($an);
 # If we're still alive, start gathering data.
 gather_data($an);
 
+# Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
+prep_databases($an);
+
+# Look to see if any databases need to be updated.
+#update_db($an);
+
+
+
 
 # Clean up and go away.
 nice_exit($an);
@@ -157,6 +166,55 @@ exit(0);
 #############################################################################################################
 # Function below                                                                                            #
 #############################################################################################################
+
+# This checks to see if this agent's databases tables exist and, if not, load the schema. If the schema gets
+# loaded, we'll check other databases for older information and load it.
+sub prep_databases
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Loop through the databases...
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='storcli_controllers' AND schemaname='public';";
+		#                     The actual query -----------------.        .------- Row 0
+		#                        Query this DB --.              |        |    .-- Columns 0
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Did we find the table?
+		if ($count < 1)
+		{
+			# Nope. Need to load the database schema.
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
+			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
+			
+			# Send an alert telling the user that we've initialized this database.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"notice_message_0002",
+				alert_message_variables	=>	{
+					name			=>	$an->data->{scancore}{db}{$id}{name},
+					host			=>	$an->data->{scancore}{db}{$id}{host},
+					agent			=>	$THIS_FILE,
+				},
+			});
+		}
+		else
+		{
+			# Table exists, schema load is not needed.
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
 
 # This gathers the various data from the controller(s).
 sub gather_data
