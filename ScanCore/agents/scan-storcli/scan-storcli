@@ -152,7 +152,7 @@ gather_data($an);
 prep_databases($an);
 
 # Look to see if any databases need to be updated.
-#update_db($an);
+update_db($an);
 
 
 
@@ -166,6 +166,1992 @@ exit(0);
 #############################################################################################################
 # Function below                                                                                            #
 #############################################################################################################
+
+# This looks at each DB's 'updated' table to see if any are behind. If any are, it will update the tables 
+# based on the time the last entry was made for a given host.
+sub update_db
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{db_resync_needed})
+	{
+		# Update Controllers and the various dangly bits hanging off them.
+		storcli_controllers($an);
+		
+		storcli_cachevaults($an);
+		storcli_bbus($an);
+		storcli_virtual_drives($an);
+		storcli_drive_groups($an);
+		storcli_physical_drives($an);
+		
+		storcli_variables($an);
+	}
+	
+	return(0);
+}
+
+# Update the 'storcli_physical_drives' table.
+sub storcli_physical_drives
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_physical_drives" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'storcli_physical_drives' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    storcli_physical_drive_uuid, 
+    storcli_physical_drive_controller_uuid, 
+    storcli_physical_drive_size, 
+    storcli_physical_drive_sector_size, 
+    storcli_physical_drive_vendor, 
+    storcli_physical_drive_model, 
+    storcli_physical_drive_serial_number, 
+    storcli_physical_drive_self_encrypting_drive, 
+    modified_date 
+FROM 
+    history.storcli_physical_drives
+WHERE
+    storcli_physical_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $storcli_physical_drive_uuid                  = $row->[0]; 
+			my $storcli_physical_drive_controller_uuid       = $row->[1];
+			my $storcli_physical_drive_size                  = defined $row->[2] ? $row->[2] : "";
+			my $storcli_physical_drive_sector_size           = defined $row->[3] ? $row->[3] : "";
+			my $storcli_physical_drive_vendor                = defined $row->[4] ? $row->[4] : "";
+			my $storcli_physical_drive_model                 = defined $row->[5] ? $row->[5] : "";
+			my $storcli_physical_drive_serial_number         = defined $row->[6] ? $row->[6] : "";
+			my $storcli_physical_drive_self_encrypting_drive = defined $row->[7] ? $row->[7] : "";
+			my $modified_date                                = $row->[8];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "storcli_physical_drive_uuid",                  value1 => $storcli_physical_drive_uuid, 
+				name2 => "storcli_physical_drive_controller_uuid",       value2 => $storcli_physical_drive_controller_uuid, 
+				name3 => "storcli_physical_drive_size",                  value3 => $storcli_physical_drive_size, 
+				name4 => "storcli_physical_drive_sector_size",           value4 => $storcli_physical_drive_sector_size, 
+				name5 => "storcli_physical_drive_vendor",                value5 => $storcli_physical_drive_vendor, 
+				name6 => "storcli_physical_drive_model",                 value6 => $storcli_physical_drive_model, 
+				name7 => "storcli_physical_drive_serial_number",         value7 => $storcli_physical_drive_serial_number, 
+				name8 => "storcli_physical_drive_self_encrypting_drive", value8 => $storcli_physical_drive_self_encrypting_drive, 
+				name9 => "modified_date",                                value9 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid} = {
+				storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
+				storcli_physical_drive_uuid			=>	$storcli_physical_drive_uuid, 
+				storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
+				storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
+				storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
+				storcli_physical_drive_vendor			=>	$storcli_physical_drive_vendor, 
+				storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
+				storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
+				storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
+			};
+			$an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid} = {
+				storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
+				storcli_physical_drive_uuid			=>	$storcli_physical_drive_uuid, 
+				storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
+				storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
+				storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
+				storcli_physical_drive_vendor			=>	$storcli_physical_drive_vendor, 
+				storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
+				storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
+				storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $storcli_physical_drive_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}})
+		{
+			my $storcli_physical_drive_controller_uuid   = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid};
+			my $storcli_physical_drive_size = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size};
+			my $storcli_physical_drive_sector_size = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size};
+			my $storcli_physical_drive_vendor = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
+			my $storcli_physical_drive_model = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
+			my $storcli_physical_drive_serial_number = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number};
+			my $storcli_physical_drive_self_encrypting_drive = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "storcli_physical_drive_uuid",                  value1 => $storcli_physical_drive_uuid, 
+				name2 => "storcli_physical_drive_controller_uuid",       value2 => $storcli_physical_drive_controller_uuid, 
+				name3 => "storcli_physical_drive_size",            	value3 => $storcli_physical_drive_size, 
+				name4 => "storcli_physical_drive_sector_size",           value4 => $storcli_physical_drive_sector_size, 
+				name5 => "storcli_physical_drive_vendor",          	value5 => $storcli_physical_drive_vendor, 
+				name6 => "storcli_physical_drive_model",           	value6 => $storcli_physical_drive_model, 
+				name7 => "storcli_physical_drive_serial_number",         value7 => $storcli_physical_drive_serial_number, 
+				name8 => "storcli_physical_drive_self_encrypting_drive", value8 => $storcli_physical_drive_self_encrypting_drive, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'storcli_physical_drive_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::storcli_physical_drives::modified_date::${modified_date}::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}", value1 => $an->data->{db_data}{$id}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# storcli_physical_drive_uuid from this host.
+							my $query = "
+UPDATE 
+    public.storcli_physical_drives
+SET
+    storcli_physical_drive_controller_uuid       = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_controller_uuid).", 
+    storcli_physical_drive_size                  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_size).", 
+    storcli_physical_drive_sector_size           = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_sector_size).", 
+    storcli_physical_drive_vendor                = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_vendor).", 
+    storcli_physical_drive_model                 = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_model).", 
+    storcli_physical_drive_serial_number         = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
+    storcli_physical_drive_self_encrypting_drive = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_self_encrypting_drive).", 
+    modified_date                                = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    storcli_physical_drive_uuid              = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.storcli_physical_drives
+(
+    storcli_physical_drive_uuid, 
+    storcli_physical_drive_host_uuid, 
+    storcli_physical_drive_controller_uuid, 
+    storcli_physical_drive_size, 
+    storcli_physical_drive_sector_size, 
+    storcli_physical_drive_vendor, 
+    storcli_physical_drive_model, 
+    storcli_physical_drive_serial_number, 
+    storcli_physical_drive_self_encrypting_drive, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_sector_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_vendor).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_self_encrypting_drive).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'storcli_physical_drive_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.storcli_physical_drives
+(
+    storcli_physical_drive_uuid, 
+    storcli_physical_drive_host_uuid, 
+    storcli_physical_drive_controller_uuid, 
+    storcli_physical_drive_size, 
+    storcli_physical_drive_sector_size, 
+    storcli_physical_drive_vendor, 
+    storcli_physical_drive_model, 
+    storcli_physical_drive_serial_number, 
+    storcli_physical_drive_self_encrypting_drive, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_sector_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_vendor).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_self_encrypting_drive).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen storcli_physical_drive_uuid?
+			} # foreach my $id 
+		} # foreach my $storcli_physical_drive_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'storcli_drive_groups' table.
+sub storcli_drive_groups
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_drive_groups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'storcli_drive_groups' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    storcli_drive_group_uuid, 
+    storcli_drive_group_virtual_drive_uuid, 
+    storcli_drive_group_access, 
+    storcli_drive_group_array_size, 
+    storcli_drive_group_array_state, 
+    storcli_drive_group_cache, 
+    storcli_drive_group_cachecade, 
+    storcli_drive_group_consistent, 
+    storcli_drive_group_disk_cache, 
+    storcli_drive_group_raid_type, 
+    storcli_drive_group_read_cache, 
+    storcli_drive_group_scheduled_cc, 
+    storcli_drive_group_write_cache, 
+    modified_date 
+FROM 
+    history.storcli_drive_groups
+WHERE
+    storcli_drive_group_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $storcli_drive_group_uuid               = $row->[0]; 
+			my $storcli_drive_group_virtual_drive_uuid = $row->[1];
+			my $storcli_drive_group_access             = defined $row->[2]  ? $row->[2]  : "";
+			my $storcli_drive_group_array_size         = defined $row->[3]  ? $row->[3]  : "";
+			my $storcli_drive_group_array_state        = defined $row->[4]  ? $row->[4]  : "";
+			my $storcli_drive_group_cache              = defined $row->[5]  ? $row->[5]  : "";
+			my $storcli_drive_group_cachecade          = defined $row->[6]  ? $row->[6]  : "";
+			my $storcli_drive_group_consistent         = defined $row->[7]  ? $row->[7]  : "";
+			my $storcli_drive_group_disk_cache         = defined $row->[8]  ? $row->[8]  : "";
+			my $storcli_drive_group_raid_type          = defined $row->[9]  ? $row->[9]  : "";
+			my $storcli_drive_group_read_cache         = defined $row->[10] ? $row->[10] : "";
+			my $storcli_drive_group_scheduled_cc       = defined $row->[11] ? $row->[11] : "";
+			my $storcli_drive_group_write_cache        = defined $row->[12] ? $row->[12] : "";
+			my $modified_date                          = $row->[13];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+				name1  => "storcli_drive_group_uuid",               value1  => $storcli_drive_group_uuid, 
+				name2  => "storcli_drive_group_virtual_drive_uuid", value2  => $storcli_drive_group_virtual_drive_uuid, 
+				name3  => "storcli_drive_group_access",             value3  => $storcli_drive_group_access, 
+				name4  => "storcli_drive_group_array_size",         value4  => $storcli_drive_group_array_size, 
+				name5  => "storcli_drive_group_array_state",        value5  => $storcli_drive_group_array_state, 
+				name6  => "storcli_drive_group_cache",              value6  => $storcli_drive_group_cache, 
+				name7  => "storcli_drive_group_cachecade",          value7  => $storcli_drive_group_cachecade, 
+				name8  => "storcli_drive_group_consistent",         value8  => $storcli_drive_group_consistent, 
+				name9  => "storcli_drive_group_disk_cache",         value9  => $storcli_drive_group_disk_cache, 
+				name10 => "storcli_drive_group_raid_type",          value10 => $storcli_drive_group_raid_type, 
+				name11 => "storcli_drive_group_read_cache",         value11 => $storcli_drive_group_read_cache, 
+				name12 => "storcli_drive_group_scheduled_cc",       value12 => $storcli_drive_group_scheduled_cc, 
+				name13 => "storcli_drive_group_write_cache",        value13 => $storcli_drive_group_write_cache, 
+				name14 => "modified_date",                          value14 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid} = {
+				storcli_drive_group_virtual_drive_uuid	=>	$storcli_drive_group_virtual_drive_uuid, 
+				storcli_drive_group_access		=>	$storcli_drive_group_access, 
+				storcli_drive_group_array_size		=>	$storcli_drive_group_array_size, 
+				storcli_drive_group_array_state		=>	$storcli_drive_group_array_state, 
+				storcli_drive_group_cache		=>	$storcli_drive_group_cache, 
+				storcli_drive_group_cachecade		=>	$storcli_drive_group_cachecade, 
+				storcli_drive_group_consistent		=>	$storcli_drive_group_consistent, 
+				storcli_drive_group_disk_cache		=>	$storcli_drive_group_disk_cache, 
+				storcli_drive_group_raid_type		=>	$storcli_drive_group_raid_type, 
+				storcli_drive_group_read_cache		=>	$storcli_drive_group_read_cache, 
+				storcli_drive_group_scheduled_cc	=>	$storcli_drive_group_scheduled_cc, 
+				storcli_drive_group_write_cache		=>	$storcli_drive_group_write_cache, 
+			};
+			$an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid} = {
+				storcli_drive_group_virtual_drive_uuid	=>	$storcli_drive_group_virtual_drive_uuid, 
+				storcli_drive_group_access		=>	$storcli_drive_group_access, 
+				storcli_drive_group_array_size		=>	$storcli_drive_group_array_size, 
+				storcli_drive_group_array_state		=>	$storcli_drive_group_array_state, 
+				storcli_drive_group_cache		=>	$storcli_drive_group_cache, 
+				storcli_drive_group_cachecade		=>	$storcli_drive_group_cachecade, 
+				storcli_drive_group_consistent		=>	$storcli_drive_group_consistent, 
+				storcli_drive_group_disk_cache		=>	$storcli_drive_group_disk_cache, 
+				storcli_drive_group_raid_type		=>	$storcli_drive_group_raid_type, 
+				storcli_drive_group_read_cache		=>	$storcli_drive_group_read_cache, 
+				storcli_drive_group_scheduled_cc	=>	$storcli_drive_group_scheduled_cc, 
+				storcli_drive_group_write_cache		=>	$storcli_drive_group_write_cache, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $storcli_drive_group_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}})
+		{
+			my $storcli_drive_group_virtual_drive_uuid = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_virtual_drive_uuid};
+			my $storcli_drive_group_access             = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_access};
+			my $storcli_drive_group_array_size         = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_array_size};
+			my $storcli_drive_group_array_state        = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_array_state};
+			my $storcli_drive_group_cache              = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_cache};
+			my $storcli_drive_group_cachecade          = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_cachecade};
+			my $storcli_drive_group_consistent         = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_consistent};
+			my $storcli_drive_group_disk_cache         = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_disk_cache};
+			my $storcli_drive_group_raid_type          = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_raid_type};
+			my $storcli_drive_group_read_cache         = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_read_cache};
+			my $storcli_drive_group_scheduled_cc       = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_scheduled_cc};
+			my $storcli_drive_group_write_cache        = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_write_cache};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+				name1  => "storcli_drive_group_uuid",               value1  => $storcli_drive_group_uuid, 
+				name2  => "storcli_drive_group_virtual_drive_uuid", value2  => $storcli_drive_group_virtual_drive_uuid, 
+				name3  => "storcli_drive_group_access",             value3  => $storcli_drive_group_access, 
+				name4  => "storcli_drive_group_array_size",         value4  => $storcli_drive_group_array_size, 
+				name5  => "storcli_drive_group_array_state",        value5  => $storcli_drive_group_array_state, 
+				name6  => "storcli_drive_group_cache",              value6  => $storcli_drive_group_cache, 
+				name7  => "storcli_drive_group_cachecade",          value7  => $storcli_drive_group_cachecade, 
+				name8  => "storcli_drive_group_consistent",         value8  => $storcli_drive_group_consistent, 
+				name9  => "storcli_drive_group_disk_cache",         value9  => $storcli_drive_group_disk_cache, 
+				name10 => "storcli_drive_group_raid_type",          value10 => $storcli_drive_group_raid_type, 
+				name11 => "storcli_drive_group_read_cache",         value11 => $storcli_drive_group_read_cache, 
+				name12 => "storcli_drive_group_scheduled_cc",       value12 => $storcli_drive_group_scheduled_cc, 
+				name13 => "storcli_drive_group_write_cache",        value13 => $storcli_drive_group_write_cache, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'storcli_drive_group_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::storcli_drive_groups::modified_date::${modified_date}::storcli_drive_group_uuid::${storcli_drive_group_uuid}", value1 => $an->data->{db_data}{$id}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# storcli_drive_group_uuid from this host.
+							my $query = "
+UPDATE 
+    public.storcli_drive_groups
+SET
+    storcli_drive_group_virtual_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_virtual_drive_uuid).", 
+    storcli_drive_group_access             = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_access).", 
+    storcli_drive_group_array_size         = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_array_size).", 
+    storcli_drive_group_array_state        = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_array_state).", 
+    storcli_drive_group_cache              = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_cache).", 
+    storcli_drive_group_cachecade          = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_cachecade).", 
+    storcli_drive_group_consistent         = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_consistent).", 
+    storcli_drive_group_disk_cache         = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_disk_cache).", 
+    storcli_drive_group_raid_type          = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_raid_type).", 
+    storcli_drive_group_read_cache         = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_read_cache).", 
+    storcli_drive_group_scheduled_cc       = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_scheduled_cc).", 
+    storcli_drive_group_write_cache        = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_write_cache).", 
+    modified_date                          = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    storcli_drive_group_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.storcli_drive_groups
+(
+    storcli_drive_group_uuid, 
+    storcli_drive_group_host_uuid, 
+    storcli_drive_group_virtual_drive_uuid, 
+    storcli_drive_group_access, 
+    storcli_drive_group_array_size, 
+    storcli_drive_group_array_state, 
+    storcli_drive_group_cache, 
+    storcli_drive_group_cachecade, 
+    storcli_drive_group_consistent, 
+    storcli_drive_group_disk_cache, 
+    storcli_drive_group_raid_type, 
+    storcli_drive_group_read_cache, 
+    storcli_drive_group_scheduled_cc, 
+    storcli_drive_group_write_cache, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_virtual_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_access).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_array_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_array_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_cachecade).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_consistent).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_disk_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_raid_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_read_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_scheduled_cc).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_write_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'storcli_drive_group_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.storcli_drive_groups
+(
+   storcli_drive_group_uuid, 
+    storcli_drive_group_host_uuid, 
+    storcli_drive_group_virtual_drive_uuid, 
+    storcli_drive_group_access, 
+    storcli_drive_group_array_size, 
+    storcli_drive_group_array_state, 
+    storcli_drive_group_cache, 
+    storcli_drive_group_cachecade, 
+    storcli_drive_group_consistent, 
+    storcli_drive_group_disk_cache, 
+    storcli_drive_group_raid_type, 
+    storcli_drive_group_read_cache, 
+    storcli_drive_group_scheduled_cc, 
+    storcli_drive_group_write_cache, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_virtual_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_access).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_array_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_array_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_cachecade).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_consistent).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_disk_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_raid_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_read_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_scheduled_cc).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_write_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen storcli_drive_group_uuid?
+			} # foreach my $id 
+		} # foreach my $storcli_drive_group_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'storcli_virtual_drives' table.
+sub storcli_virtual_drives
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_virtual_drives" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'storcli_virtual_drives' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    storcli_virtual_drive_uuid, 
+    storcli_virtual_drive_controller_uuid, 
+    storcli_virtual_drive_creation_date, 
+    storcli_virtual_drive_data_protection, 
+    storcli_virtual_drive_disk_cache_policy, 
+    storcli_virtual_drive_emulation_type, 
+    storcli_virtual_drive_encryption, 
+    storcli_virtual_drive_blocks, 
+    storcli_virtual_drive_strip_size, 
+    storcli_virtual_drive_drives_per_span, 
+    storcli_virtual_drive_span_depth, 
+    storcli_virtual_drive_scsi_naa_id, 
+    modified_date 
+FROM 
+    history.storcli_virtual_drives
+WHERE
+    storcli_virtual_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $storcli_virtual_drive_uuid              = $row->[0]; 
+			my $storcli_virtual_drive_controller_uuid   = $row->[1];
+			my $storcli_virtual_drive_creation_date     = defined $row->[2]  ? $row->[2]  : "";
+			my $storcli_virtual_drive_data_protection   = defined $row->[3]  ? $row->[3]  : "";
+			my $storcli_virtual_drive_disk_cache_policy = defined $row->[4]  ? $row->[4]  : "";
+			my $storcli_virtual_drive_emulation_type    = defined $row->[5]  ? $row->[5]  : "";
+			my $storcli_virtual_drive_encryption        = defined $row->[6]  ? $row->[6]  : "";
+			my $storcli_virtual_drive_blocks            = defined $row->[7]  ? $row->[7]  : "";
+			my $storcli_virtual_drive_strip_size        = defined $row->[8]  ? $row->[8]  : "";
+			my $storcli_virtual_drive_drives_per_span   = defined $row->[9]  ? $row->[9]  : "";
+			my $storcli_virtual_drive_span_depth        = defined $row->[10] ? $row->[10] : "";
+			my $storcli_virtual_drive_scsi_naa_id       = defined $row->[11] ? $row->[11] : "";
+			my $modified_date                           = $row->[12];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+				name1  => "storcli_virtual_drive_uuid",              value1  => $storcli_virtual_drive_uuid, 
+				name2  => "storcli_virtual_drive_controller_uuid",   value2  => $storcli_virtual_drive_controller_uuid, 
+				name3  => "storcli_virtual_drive_creation_date",     value3  => $storcli_virtual_drive_creation_date, 
+				name4  => "storcli_virtual_drive_data_protection",   value4  => $storcli_virtual_drive_data_protection, 
+				name5  => "storcli_virtual_drive_disk_cache_policy", value5  => $storcli_virtual_drive_disk_cache_policy, 
+				name6  => "storcli_virtual_drive_emulation_type",    value6  => $storcli_virtual_drive_emulation_type, 
+				name7  => "storcli_virtual_drive_encryption",        value7  => $storcli_virtual_drive_encryption, 
+				name8  => "storcli_virtual_drive_blocks",            value8  => $storcli_virtual_drive_blocks, 
+				name9  => "storcli_virtual_drive_strip_size",        value9  => $storcli_virtual_drive_strip_size, 
+				name10 => "storcli_virtual_drive_drives_per_span",   value10 => $storcli_virtual_drive_drives_per_span, 
+				name11 => "storcli_virtual_drive_span_depth",        value11 => $storcli_virtual_drive_span_depth, 
+				name12 => "storcli_virtual_drive_scsi_naa_id",       value12 => $storcli_virtual_drive_scsi_naa_id, 
+				name13 => "modified_date",                           value13 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid} = {
+				storcli_virtual_drive_controller_uuid	=>	$storcli_virtual_drive_controller_uuid, 
+				storcli_virtual_drive_creation_date	=>	$storcli_virtual_drive_creation_date, 
+				storcli_virtual_drive_data_protection	=>	$storcli_virtual_drive_data_protection, 
+				storcli_virtual_drive_disk_cache_policy	=>	$storcli_virtual_drive_disk_cache_policy, 
+				storcli_virtual_drive_emulation_type	=>	$storcli_virtual_drive_emulation_type, 
+				storcli_virtual_drive_encryption	=>	$storcli_virtual_drive_encryption, 
+				storcli_virtual_drive_blocks		=>	$storcli_virtual_drive_blocks, 
+				storcli_virtual_drive_strip_size	=>	$storcli_virtual_drive_strip_size, 
+				storcli_virtual_drive_drives_per_span	=>	$storcli_virtual_drive_drives_per_span, 
+				storcli_virtual_drive_span_depth	=>	$storcli_virtual_drive_span_depth, 
+				storcli_virtual_drive_scsi_naa_id	=>	$storcli_virtual_drive_scsi_naa_id, 
+			};
+			$an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid} = {
+				storcli_virtual_drive_controller_uuid	=>	$storcli_virtual_drive_controller_uuid, 
+				storcli_virtual_drive_creation_date	=>	$storcli_virtual_drive_creation_date, 
+				storcli_virtual_drive_data_protection	=>	$storcli_virtual_drive_data_protection, 
+				storcli_virtual_drive_disk_cache_policy	=>	$storcli_virtual_drive_disk_cache_policy, 
+				storcli_virtual_drive_emulation_type	=>	$storcli_virtual_drive_emulation_type, 
+				storcli_virtual_drive_encryption	=>	$storcli_virtual_drive_encryption, 
+				storcli_virtual_drive_blocks		=>	$storcli_virtual_drive_blocks, 
+				storcli_virtual_drive_strip_size	=>	$storcli_virtual_drive_strip_size, 
+				storcli_virtual_drive_drives_per_span	=>	$storcli_virtual_drive_drives_per_span, 
+				storcli_virtual_drive_span_depth	=>	$storcli_virtual_drive_span_depth, 
+				storcli_virtual_drive_scsi_naa_id	=>	$storcli_virtual_drive_scsi_naa_id, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $storcli_virtual_drive_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}})
+		{
+			my $storcli_virtual_drive_controller_uuid   = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_controller_uuid};
+			my $storcli_virtual_drive_creation_date     = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_creation_date};
+			my $storcli_virtual_drive_data_protection   = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_data_protection};
+			my $storcli_virtual_drive_disk_cache_policy = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_disk_cache_policy};
+			my $storcli_virtual_drive_emulation_type    = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_emulation_type};
+			my $storcli_virtual_drive_encryption        = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_encryption};
+			my $storcli_virtual_drive_blocks            = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_blocks};
+			my $storcli_virtual_drive_strip_size        = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_strip_size};
+			my $storcli_virtual_drive_drives_per_span   = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_drives_per_span};
+			my $storcli_virtual_drive_span_depth        = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_span_depth};
+			my $storcli_virtual_drive_scsi_naa_id       = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_scsi_naa_id};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+				name1  => "storcli_virtual_drive_uuid",              value1  => $storcli_virtual_drive_uuid, 
+				name2  => "storcli_virtual_drive_controller_uuid",   value2  => $storcli_virtual_drive_controller_uuid, 
+				name3  => "storcli_virtual_drive_creation_date",     value3  => $storcli_virtual_drive_creation_date, 
+				name4  => "storcli_virtual_drive_data_protection",   value4  => $storcli_virtual_drive_data_protection, 
+				name5  => "storcli_virtual_drive_disk_cache_policy", value5  => $storcli_virtual_drive_disk_cache_policy, 
+				name6  => "storcli_virtual_drive_emulation_type",    value6  => $storcli_virtual_drive_emulation_type, 
+				name7  => "storcli_virtual_drive_encryption",        value7  => $storcli_virtual_drive_encryption, 
+				name8  => "storcli_virtual_drive_blocks",            value8  => $storcli_virtual_drive_blocks, 
+				name9  => "storcli_virtual_drive_strip_size",        value9  => $storcli_virtual_drive_strip_size, 
+				name10 => "storcli_virtual_drive_drives_per_span",   value10 => $storcli_virtual_drive_drives_per_span, 
+				name11 => "storcli_virtual_drive_span_depth",        value11 => $storcli_virtual_drive_span_depth, 
+				name12 => "storcli_virtual_drive_scsi_naa_id",       value12 => $storcli_virtual_drive_scsi_naa_id, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'storcli_virtual_drive_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::storcli_virtual_drives::modified_date::${modified_date}::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}", value1 => $an->data->{db_data}{$id}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# storcli_virtual_drive_uuid from this host.
+							my $query = "
+UPDATE 
+    public.storcli_virtual_drives
+SET
+    storcli_virtual_drive_controller_uuid   = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_controller_uuid).", 
+    storcli_virtual_drive_creation_date     = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_creation_date).", 
+    storcli_virtual_drive_data_protection   = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_data_protection).", 
+    storcli_virtual_drive_disk_cache_policy = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_disk_cache_policy).", 
+    storcli_virtual_drive_emulation_type    = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_emulation_type).", 
+    storcli_virtual_drive_encryption        = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_encryption).", 
+    storcli_virtual_drive_blocks            = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_blocks).", 
+    storcli_virtual_drive_strip_size        = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_strip_size).", 
+    storcli_virtual_drive_drives_per_span   = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_drives_per_span).", 
+    storcli_virtual_drive_span_depth        = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_span_depth).", 
+    storcli_virtual_drive_scsi_naa_id       = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_scsi_naa_id).", 
+    modified_date                           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    storcli_virtual_drive_uuid              = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.storcli_virtual_drives
+(
+    storcli_virtual_drive_uuid, 
+    storcli_virtual_drive_host_uuid, 
+    storcli_virtual_drive_controller_uuid, 
+    storcli_virtual_drive_creation_date, 
+    storcli_virtual_drive_data_protection, 
+    storcli_virtual_drive_disk_cache_policy, 
+    storcli_virtual_drive_emulation_type, 
+    storcli_virtual_drive_encryption, 
+    storcli_virtual_drive_blocks, 
+    storcli_virtual_drive_strip_size, 
+    storcli_virtual_drive_drives_per_span, 
+    storcli_virtual_drive_span_depth, 
+    storcli_virtual_drive_scsi_naa_id, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_creation_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_data_protection).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_disk_cache_policy).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_emulation_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_encryption).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_blocks).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_strip_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_drives_per_span).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_span_depth).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_scsi_naa_id).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'storcli_virtual_drive_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.storcli_virtual_drives
+(
+    storcli_virtual_drive_uuid, 
+    storcli_virtual_drive_host_uuid, 
+    storcli_virtual_drive_controller_uuid, 
+    storcli_virtual_drive_creation_date, 
+    storcli_virtual_drive_data_protection, 
+    storcli_virtual_drive_disk_cache_policy, 
+    storcli_virtual_drive_emulation_type, 
+    storcli_virtual_drive_encryption, 
+    storcli_virtual_drive_blocks, 
+    storcli_virtual_drive_strip_size, 
+    storcli_virtual_drive_drives_per_span, 
+    storcli_virtual_drive_span_depth, 
+    storcli_virtual_drive_scsi_naa_id, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_creation_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_data_protection).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_disk_cache_policy).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_emulation_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_encryption).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_blocks).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_strip_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_drives_per_span).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_span_depth).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_scsi_naa_id).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen storcli_virtual_drive_uuid?
+			} # foreach my $id 
+		} # foreach my $storcli_virtual_drive_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'storcli_bbus' table.
+sub storcli_bbus
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_bbus" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'storcli_bbus' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    storcli_bbu_uuid, 
+    storcli_bbu_controller_uuid, 
+    storcli_bbu_type, 
+    storcli_bbu_model, 
+    storcli_bbu_state, 
+    storcli_bbu_manufacture_date, 
+    storcli_bbu_design_capacity, 
+    storcli_bbu_replacement_needed, 
+    modified_date 
+FROM 
+    history.storcli_bbus
+WHERE
+    storcli_bbu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $storcli_bbu_uuid               = $row->[0]; 
+			my $storcli_bbu_controller_uuid    = $row->[1];
+			my $storcli_bbu_type               = defined $row->[2] ? $row->[2] : "";
+			my $storcli_bbu_model              = defined $row->[3] ? $row->[3] : "";
+			my $storcli_bbu_state              = defined $row->[4] ? $row->[4] : "";
+			my $storcli_bbu_manufacture_date   = defined $row->[5] ? $row->[5] : "";
+			my $storcli_bbu_design_capacity    = defined $row->[6] ? $row->[6] : "";
+			my $storcli_bbu_replacement_needed = defined $row->[7] ? $row->[7] : "";
+			my $modified_date                  = $row->[8];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "storcli_bbu_uuid",               value1 => $storcli_bbu_uuid, 
+				name2 => "storcli_bbu_controller_uuid",    value2 => $storcli_bbu_controller_uuid, 
+				name3 => "storcli_bbu_type",               value3 => $storcli_bbu_type, 
+				name4 => "storcli_bbu_model",              value4 => $storcli_bbu_model, 
+				name5 => "storcli_bbu_state",              value5 => $storcli_bbu_state, 
+				name6 => "storcli_bbu_manufacture_date",   value6 => $storcli_bbu_manufacture_date, 
+				name7 => "storcli_bbu_design_capacity",    value7 => $storcli_bbu_design_capacity, 
+				name8 => "storcli_bbu_replacement_needed", value8 => $storcli_bbu_replacement_needed, 
+				name9 => "modified_date",                  value9 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid} = {
+				storcli_bbu_controller_uuid	=>	$storcli_bbu_controller_uuid, 
+				storcli_bbu_type		=>	$storcli_bbu_type, 
+				storcli_bbu_model		=>	$storcli_bbu_model, 
+				storcli_bbu_state		=>	$storcli_bbu_state, 
+				storcli_bbu_manufacture_date	=>	$storcli_bbu_manufacture_date, 
+				storcli_bbu_design_capacity	=>	$storcli_bbu_design_capacity, 
+				storcli_bbu_replacement_needed	=>	$storcli_bbu_replacement_needed, 
+			};
+			$an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid} = {
+				storcli_bbu_controller_uuid	=>	$storcli_bbu_controller_uuid, 
+				storcli_bbu_type		=>	$storcli_bbu_type, 
+				storcli_bbu_model		=>	$storcli_bbu_model, 
+				storcli_bbu_state		=>	$storcli_bbu_state, 
+				storcli_bbu_manufacture_date	=>	$storcli_bbu_manufacture_date, 
+				storcli_bbu_design_capacity	=>	$storcli_bbu_design_capacity, 
+				storcli_bbu_replacement_needed	=>	$storcli_bbu_replacement_needed, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_bbus}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $storcli_bbu_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}})
+		{
+			my $storcli_bbu_controller_uuid    = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_controller_uuid};
+			my $storcli_bbu_type               = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_type};
+			my $storcli_bbu_model              = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_model};
+			my $storcli_bbu_state              = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_state};
+			my $storcli_bbu_manufacture_date   = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_manufacture_date};
+			my $storcli_bbu_design_capacity    = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_design_capacity};
+			my $storcli_bbu_replacement_needed = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_replacement_needed};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "storcli_bbu_uuid",               value1 => $storcli_bbu_uuid, 
+				name2 => "storcli_bbu_controller_uuid",    value2 => $storcli_bbu_controller_uuid, 
+				name3 => "storcli_bbu_type",               value3 => $storcli_bbu_type, 
+				name4 => "storcli_bbu_model",              value4 => $storcli_bbu_model, 
+				name5 => "storcli_bbu_state",              value5 => $storcli_bbu_state, 
+				name6 => "storcli_bbu_manufacture_date",   value6 => $storcli_bbu_manufacture_date, 
+				name7 => "storcli_bbu_design_capacity",    value7 => $storcli_bbu_design_capacity, 
+				name8 => "storcli_bbu_replacement_needed", value8 => $storcli_bbu_replacement_needed, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'storcli_bbu_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::storcli_bbus::modified_date::${modified_date}::storcli_bbu_uuid::${storcli_bbu_uuid}", value1 => $an->data->{db_data}{$id}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# storcli_bbu_uuid from this host.
+							my $query = "
+UPDATE 
+    public.storcli_bbus
+SET
+    storcli_bbu_controller_uuid    = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_controller_uuid).", 
+    storcli_bbu_type               = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_type).", 
+    storcli_bbu_model              = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_model).", 
+    storcli_bbu_state              = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_state).", 
+    storcli_bbu_manufacture_date   = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_manufacture_date).", 
+    storcli_bbu_design_capacity    = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_design_capacity).", 
+    storcli_bbu_replacement_needed = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_replacement_needed).", 
+    modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    storcli_bbu_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.storcli_bbus
+(
+    storcli_bbu_uuid, 
+    storcli_bbu_host_uuid, 
+    storcli_bbu_controller_uuid, 
+    storcli_bbu_type, 
+    storcli_bbu_model, 
+    storcli_bbu_state, 
+    storcli_bbu_design_capacity, 
+    storcli_bbu_manufacture_date, 
+    storcli_bbu_replacement_needed, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_design_capacity).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_manufacture_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_replacement_needed).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'storcli_bbu_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.storcli_bbus
+(
+    storcli_bbu_uuid, 
+    storcli_bbu_host_uuid, 
+    storcli_bbu_controller_uuid, 
+    storcli_bbu_type, 
+    storcli_bbu_model, 
+    storcli_bbu_state, 
+    storcli_bbu_design_capacity, 
+    storcli_bbu_manufacture_date, 
+    storcli_bbu_replacement_needed, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_design_capacity).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_manufacture_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_replacement_needed).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen storcli_bbu_uuid?
+			} # foreach my $id 
+		} # foreach my $storcli_bbu_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'storcli_cachevaults' table.
+sub storcli_cachevaults
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_cachevaults" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'storcli_cachevaults' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    storcli_cachevault_uuid, 
+    storcli_cachevault_controller_uuid, 
+    storcli_cachevault_state, 
+    storcli_cachevault_design_capacity, 
+    storcli_cachevault_replacement_needed, 
+    storcli_cachevault_type, 
+    storcli_cachevault_manufacture_date, 
+    modified_date 
+FROM 
+    history.storcli_cachevaults
+WHERE
+    storcli_cachevault_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $storcli_cachevault_uuid               = $row->[0]; 
+			my $storcli_cachevault_controller_uuid    = $row->[1];
+			my $storcli_cachevault_state              = defined $row->[2] ? $row->[2] : "";
+			my $storcli_cachevault_design_capacity    = defined $row->[3] ? $row->[3] : "";
+			my $storcli_cachevault_replacement_needed = defined $row->[4] ? $row->[4] : "";
+			my $storcli_cachevault_type               = defined $row->[5] ? $row->[5] : "";
+			my $storcli_cachevault_manufacture_date   = defined $row->[6] ? $row->[6] : "";
+			my $modified_date                         = $row->[7];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "storcli_cachevault_uuid",               value1 => $storcli_cachevault_uuid, 
+				name2 => "storcli_cachevault_controller_uuid",    value2 => $storcli_cachevault_controller_uuid, 
+				name3 => "storcli_cachevault_state",              value3 => $storcli_cachevault_state, 
+				name4 => "storcli_cachevault_design_capacity",    value4 => $storcli_cachevault_design_capacity, 
+				name5 => "storcli_cachevault_replacement_needed", value5 => $storcli_cachevault_replacement_needed, 
+				name6 => "storcli_cachevault_type",               value6 => $storcli_cachevault_type, 
+				name7 => "storcli_cachevault_manufacture_date",   value7 => $storcli_cachevault_manufacture_date, 
+				name8 => "modified_date",                         value8 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid} = {
+				storcli_cachevault_controller_uuid	=>	$storcli_cachevault_controller_uuid, 
+				storcli_cachevault_state		=>	$storcli_cachevault_state, 
+				storcli_cachevault_design_capacity	=>	$storcli_cachevault_design_capacity, 
+				storcli_cachevault_replacement_needed	=>	$storcli_cachevault_replacement_needed, 
+				storcli_cachevault_type			=>	$storcli_cachevault_type, 
+				storcli_cachevault_manufacture_date	=>	$storcli_cachevault_manufacture_date, 
+			};
+			$an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid} = {
+				storcli_cachevault_controller_uuid	=>	$storcli_cachevault_controller_uuid, 
+				storcli_cachevault_state		=>	$storcli_cachevault_state, 
+				storcli_cachevault_design_capacity	=>	$storcli_cachevault_design_capacity, 
+				storcli_cachevault_replacement_needed	=>	$storcli_cachevault_replacement_needed, 
+				storcli_cachevault_type			=>	$storcli_cachevault_type, 
+				storcli_cachevault_manufacture_date	=>	$storcli_cachevault_manufacture_date, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $storcli_cachevault_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}})
+		{
+			my $storcli_cachevault_controller_uuid    = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_controller_uuid};
+			my $storcli_cachevault_state              = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_state};
+			my $storcli_cachevault_design_capacity    = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_design_capacity};
+			my $storcli_cachevault_replacement_needed = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_replacement_needed};
+			my $storcli_cachevault_type               = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_type};
+			my $storcli_cachevault_manufacture_date   = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_manufacture_date};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "storcli_cachevault_uuid",               value1 => $storcli_cachevault_uuid, 
+				name2 => "storcli_cachevault_controller_uuid",    value2 => $storcli_cachevault_controller_uuid, 
+				name3 => "storcli_cachevault_state",              value3 => $storcli_cachevault_state, 
+				name4 => "storcli_cachevault_design_capacity",    value4 => $storcli_cachevault_design_capacity, 
+				name5 => "storcli_cachevault_replacement_needed", value5 => $storcli_cachevault_replacement_needed, 
+				name6 => "storcli_cachevault_type",               value6 => $storcli_cachevault_type, 
+				name7 => "storcli_cachevault_manufacture_date",   value7 => $storcli_cachevault_manufacture_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'storcli_cachevault_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::storcli_cachevaults::modified_date::${modified_date}::storcli_cachevault_uuid::${storcli_cachevault_uuid}", value1 => $an->data->{db_data}{$id}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# storcli_cachevault_uuid from this host.
+							my $query = "
+UPDATE 
+    public.storcli_cachevaults
+SET
+    storcli_cachevault_controller_uuid    = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_controller_uuid).", 
+    storcli_cachevault_state              = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_state).", 
+    storcli_cachevault_design_capacity    = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_design_capacity).", 
+    storcli_cachevault_replacement_needed = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_replacement_needed).", 
+    storcli_cachevault_type               = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_type).", 
+    storcli_cachevault_manufacture_date   = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_manufacture_date).", 
+    modified_date                         = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    storcli_cachevault_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.storcli_cachevaults
+(
+    storcli_cachevault_uuid, 
+    storcli_cachevault_host_uuid, 
+    storcli_cachevault_controller_uuid, 
+    storcli_cachevault_state, 
+    storcli_cachevault_design_capacity, 
+    storcli_cachevault_replacement_needed, 
+    storcli_cachevault_type, 
+    storcli_cachevault_manufacture_date, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_design_capacity).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_replacement_needed).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_manufacture_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'storcli_cachevault_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.storcli_cachevaults
+(
+    storcli_cachevault_uuid, 
+    storcli_cachevault_host_uuid, 
+    storcli_cachevault_controller_uuid, 
+    storcli_cachevault_state, 
+    storcli_cachevault_design_capacity, 
+    storcli_cachevault_replacement_needed, 
+    storcli_cachevault_type, 
+    storcli_cachevault_manufacture_date, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_design_capacity).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_replacement_needed).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_manufacture_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen storcli_cachevault_uuid?
+			} # foreach my $id 
+		} # foreach my $storcli_cachevault_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'storcli_variables' table.
+sub storcli_variables
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'storcli_variables' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    storcli_variable_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+FROM 
+    history.storcli_variables
+WHERE
+    storcli_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $storcli_variable_uuid            = $row->[0]; 
+			my $storcli_variable_source_table    = $row->[1]; 
+			my $storcli_variable_source_uuid     = $row->[2]; 
+			my $storcli_variable_is_temperature  = $row->[3]; 
+			my $storcli_variable_name            = $row->[4]; 
+			my $storcli_variable_value           = defined $row->[5] ? $row->[5] : ""; 
+			my $modified_date                    = $row->[6];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "storcli_variable_uuid",           value1 => $storcli_variable_uuid, 
+				name2 => "storcli_variable_source_table",   value2 => $storcli_variable_source_table, 
+				name3 => "storcli_variable_source_uuid",    value3 => $storcli_variable_source_uuid, 
+				name4 => "storcli_variable_is_temperature", value4 => $storcli_variable_is_temperature, 
+				name5 => "storcli_variable_name",           value5 => $storcli_variable_name, 
+				name6 => "storcli_variable_value",          value6 => $storcli_variable_value, 
+				name7 => "modified_date",                   value7 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid} = {
+				storcli_variable_source_table	=>	$storcli_variable_source_table, 
+				storcli_variable_source_uuid	=>	$storcli_variable_source_uuid, 
+				storcli_variable_is_temperature	=>	$storcli_variable_is_temperature, 
+				storcli_variable_name		=>	$storcli_variable_name, 
+				storcli_variable_value		=>	$storcli_variable_value, 
+			};
+			$an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid} = {
+				storcli_variable_source_table	=>	$storcli_variable_source_table, 
+				storcli_variable_source_uuid	=>	$storcli_variable_source_uuid, 
+				storcli_variable_is_temperature	=>	$storcli_variable_is_temperature, 
+				storcli_variable_name		=>	$storcli_variable_name, 
+				storcli_variable_value		=>	$storcli_variable_value, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_variables}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $storcli_variable_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}})
+		{
+			my $storcli_variable_source_table   = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_source_table};
+			my $storcli_variable_source_uuid    = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_source_uuid};
+			my $storcli_variable_is_temperature = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_is_temperature};
+			my $storcli_variable_name           = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_name};
+			my $storcli_variable_value          = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_value};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "storcli_variable_uuid",           value1 => $storcli_variable_uuid, 
+				name2 => "storcli_variable_source_table",   value2 => $storcli_variable_source_table, 
+				name3 => "storcli_variable_source_uuid",    value3 => $storcli_variable_source_uuid, 
+				name4 => "storcli_variable_is_temperature", value4 => $storcli_variable_is_temperature, 
+				name5 => "storcli_variable_name",           value5 => $storcli_variable_name, 
+				name6 => "storcli_variable_value",          value6 => $storcli_variable_value, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'storcli_variable_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::storcli_variables::storcli_variable_uuid::${storcli_variable_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::storcli_variables::storcli_variable_uuid::${storcli_variable_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::storcli_variables::modified_date::${modified_date}::storcli_variable_uuid::${storcli_variable_uuid}", value1 => $an->data->{db_data}{$id}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# storcli_variable_uuid from this host.
+							my $query = "
+UPDATE 
+    public.storcli_variables
+SET
+    storcli_variable_source_table   = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_source_table).", 
+    storcli_variable_source_uuid    = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_source_uuid).", 
+    storcli_variable_is_temperature = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_is_temperature).", 
+    storcli_variable_name           = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_name).", 
+    storcli_variable_value          = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_value).", 
+    modified_date                   = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    storcli_variable_uuid           = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_source_table).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_source_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_is_temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'storcli_variable_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_source_table).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_source_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_is_temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen storcli_variable_uuid?
+			} # foreach my $id 
+		} # foreach my $storcli_variable_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'storcli_controllers' table.
+sub storcli_controllers
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'storcli_controllers' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    storcli_controller_uuid, 
+    storcli_controller_serial_number, 
+    storcli_controller_model, 
+    storcli_controller_alarm_state, 
+    storcli_controller_cache_size, 
+    modified_date 
+FROM 
+    history.storcli_controllers
+WHERE
+    storcli_controller_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $storcli_controller_uuid          = $row->[0]; 
+			my $storcli_controller_serial_number = $row->[1]; 
+			my $storcli_controller_model         = $row->[2]; 
+			my $storcli_controller_alarm_state   = $row->[3]; 
+			my $storcli_controller_cache_size    = $row->[4]; 
+			my $modified_date                    = $row->[5];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "storcli_controller_uuid",          value1 => $storcli_controller_uuid, 
+				name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number, 
+				name3 => "storcli_controller_model",         value3 => $storcli_controller_model, 
+				name4 => "storcli_controller_alarm_state",   value4 => $storcli_controller_alarm_state, 
+				name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size, 
+				name6 => "modified_date",                    value6 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid} = {
+				storcli_controller_serial_number	=>	$storcli_controller_serial_number, 
+				storcli_controller_model		=>	$storcli_controller_model, 
+				storcli_controller_alarm_state		=>	$storcli_controller_alarm_state, 
+				storcli_controller_cache_size		=>	$storcli_controller_cache_size, 
+			};
+			$an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid} = {
+				storcli_controller_serial_number	=>	$storcli_controller_serial_number, 
+				storcli_controller_model		=>	$storcli_controller_model, 
+				storcli_controller_alarm_state		=>	$storcli_controller_alarm_state, 
+				storcli_controller_cache_size		=>	$storcli_controller_cache_size, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_controllers}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $storcli_controller_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}})
+		{
+			my $storcli_controller_serial_number = $an->data->{db_data}{unified}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_serial_number};
+			my $storcli_controller_model = $an->data->{db_data}{unified}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_model};
+			my $storcli_controller_alarm_state = $an->data->{db_data}{unified}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_alarm_state};
+			my $storcli_controller_cache_size = $an->data->{db_data}{unified}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_cache_size};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "storcli_controller_uuid",          value1  => $storcli_controller_uuid, 
+				name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number, 
+				name3 => "storcli_controller_model",         value3 => $storcli_controller_model, 
+				name4 => "storcli_controller_alarm_state",   value4 => $storcli_controller_alarm_state, 
+				name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'storcli_controller_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::storcli_controllers::modified_date::${modified_date}::storcli_controller_uuid::${storcli_controller_uuid}", value1 => $an->data->{db_data}{$id}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.storcli_controllers
+SET
+    storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).", 
+    storcli_controller_serial_number = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_serial_number).", 
+    storcli_controller_model         = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_model).", 
+    storcli_controller_alarm_state   = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_alarm_state).", 
+    storcli_controller_cache_size    = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_cache_size).", 
+    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    storcli_controller_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.storcli_controllers
+(
+    storcli_controller_host_uuid, 
+    storcli_controller_uuid, 
+    storcli_controller_serial_number, 
+    storcli_controller_model, 
+    storcli_controller_alarm_state, 
+    storcli_controller_cache_size, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_alarm_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_cache_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'storcli_controller_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.storcli_controllers
+(
+    storcli_controller_host_uuid, 
+    storcli_controller_uuid, 
+    storcli_controller_serial_number, 
+    storcli_controller_model, 
+    storcli_controller_alarm_state, 
+    storcli_controller_cache_size, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).",
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_alarm_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_cache_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen storcli_controller_uuid?
+			} # foreach my $id 
+		} # foreach my $storcli_controller_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
 
 # This checks to see if this agent's databases tables exist and, if not, load the schema. If the schema gets
 # loaded, we'll check other databases for older information and load it.
@@ -2960,15 +4946,8 @@ sub find_lsi_controllers
 	}
 	else
 	{
-		print $an->String->get({
-			key		=>	"scan_storcli_error_0003",
-			variables	=>	{
-				path		=>	$an->data->{path}{storcli64},
-			},
-		})."\n";
-		$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0003", message_variables => {
-			path	=>	$an->data->{path}{storcli64},
-		}, file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "scan_storcli_error_0003", variables => { path => $an->data->{path}{storcli64} }})."\n";
+		$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0003", message_variables => { path => $an->data->{path}{storcli64} }, file => $THIS_FILE, line => __LINE__});
 		nice_exit($an, 3);
 	}
 	
