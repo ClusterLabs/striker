@@ -30,7 +30,7 @@
 # 
 
 # Disable this for now.
-exit(0);
+#exit(0);
 
 # Use my modules.
 use strict;
@@ -67,6 +67,24 @@ my $an = AN::Tools->new({data =>
 		},
 		# This is used so that the user can set the language in on striker.conf variable.
 		'scan-storcli'		=>	{
+			# This will keep track of devices with serial numbers so that it is easy to look up
+			# the UUID from the serial numbers and vice versa.
+			controllers		=>	{
+				by_serial		=>	{},
+				by_uuid			=>	{},
+			},
+			cachevaults		=>	{
+				by_serial		=>	{},
+				by_uuid			=>	{},
+			},
+			bbus		=>	{
+				by_serial		=>	{},
+				by_uuid			=>	{},
+			},
+			physical_drives	=>	{
+				by_serial		=>	{},
+				by_uuid			=>	{},
+			},
 			language		=>	"en_CA",
 			log_level		=>	1,
 			log_language		=>	"en_CA",
@@ -154,6 +172,9 @@ prep_databases($an);
 # Look to see if any databases need to be updated.
 update_db($an);
 
+# Look for changes.
+find_changes($an);
+
 
 
 
@@ -166,6 +187,480 @@ exit(0);
 #############################################################################################################
 # Function below                                                                                            #
 #############################################################################################################
+
+# This reads in the last scan data from one of the databases and compares it against the just-read data. If 
+# anything changed, register an alert.
+sub find_changes
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read in the old data. As we compare and UPDATE if needed, then we'll delete. If any are not found,
+	# then it must be new and will be INSERTed. Any old records left over will have vanished.
+	read_last_scan($an);
+	
+	# Look for new, changed or deleted controllers.
+	
+	# Now commit the changes.
+	commit_sql($an);
+	
+	return(0);
+}
+
+# This reads in the last scan's data.
+sub read_last_scan
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read in the controller(s)
+	my $query = "
+SELECT 
+    storcli_controller_uuid, 
+    storcli_controller_host_uuid, 
+    storcli_controller_serial_number, 
+    storcli_controller_model, 
+    storcli_controller_alarm_state, 
+    storcli_controller_cache_size 
+FROM 
+    storcli_controllers 
+WHERE 
+    storcli_controller_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $storcli_controller_uuid          = $row->[0]; 
+		my $storcli_controller_serial_number = $row->[1]; 
+		my $storcli_controller_model         = $row->[2]; 
+		my $storcli_controller_alarm_state   = $row->[3]; 
+		my $storcli_controller_cache_size    = $row->[4]; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "storcli_controller_uuid",          value1 => $storcli_controller_uuid, 
+			name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number, 
+			name3 => "storcli_controller_model",         value3 => $storcli_controller_model, 
+			name4 => "storcli_controller_alarm_state",   value4 => $storcli_controller_alarm_state, 
+			name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the information about this controllers
+		$an->data->{'scan-storcli'}{controllers}{by_serial}{$storcli_controller_serial_number} = $storcli_controller_uuid;
+		$an->data->{'scan-storcli'}{controllers}{by_uuid}{$storcli_controller_uuid}            = $storcli_controller_serial_number;
+		$an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid} = {
+			storcli_controller_serial_number	=>	$storcli_controller_serial_number, 
+			storcli_controller_model		=>	$storcli_controller_model, 
+			storcli_controller_alarm_state		=>	$storcli_controller_alarm_state, 
+			storcli_controller_cache_size		=>	$storcli_controller_cache_size, 
+		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_serial_number", value1 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_serial_number}, 
+			name2 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_model",         value2 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_model}, 
+			name3 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_alarm_state",   value3 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_alarm_state}, 
+			name4 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_cache_size",    value4 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_cache_size}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	undef $results;
+	
+	# Now load the cachevault data
+	$query = "
+SELECT 
+    storcli_cachevault_uuid, 
+    storcli_cachevault_controller_uuid, 
+    storcli_cachevault_serial_number, 
+    storcli_cachevault_state, 
+    storcli_cachevault_design_capacity, 
+    storcli_cachevault_replacement_needed, 
+    storcli_cachevault_type, 
+    storcli_cachevault_manufacture_date 
+FROM 
+    storcli_cachevaults
+WHERE
+    storcli_cachevault_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $storcli_cachevault_uuid               = $row->[0]; 
+		my $storcli_cachevault_controller_uuid    = $row->[1];
+		my $storcli_cachevault_serial_number      = $row->[2];
+		my $storcli_cachevault_state              = defined $row->[3] ? $row->[3] : "";
+		my $storcli_cachevault_design_capacity    = defined $row->[4] ? $row->[4] : "";
+		my $storcli_cachevault_replacement_needed = defined $row->[5] ? $row->[5] : "";
+		my $storcli_cachevault_type               = defined $row->[6] ? $row->[6] : "";
+		my $storcli_cachevault_manufacture_date   = defined $row->[7] ? $row->[7] : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "storcli_cachevault_uuid",               value1 => $storcli_cachevault_uuid, 
+			name2 => "storcli_cachevault_controller_uuid",    value2 => $storcli_cachevault_controller_uuid, 
+			name3 => "storcli_cachevault_serial_number",      value3 => $storcli_cachevault_serial_number, 
+			name3 => "storcli_cachevault_state",              value3 => $storcli_cachevault_state, 
+			name4 => "storcli_cachevault_design_capacity",    value4 => $storcli_cachevault_design_capacity, 
+			name5 => "storcli_cachevault_replacement_needed", value5 => $storcli_cachevault_replacement_needed, 
+			name6 => "storcli_cachevault_type",               value6 => $storcli_cachevault_type, 
+			name7 => "storcli_cachevault_manufacture_date",   value7 => $storcli_cachevault_manufacture_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the information about this cachevault
+		$an->data->{'scan-storcli'}{cachevaults}{by_serial}{$storcli_cachevault_serial_number} = $storcli_cachevault_uuid;
+		$an->data->{'scan-storcli'}{cachevaults}{by_uuid}{$storcli_cachevault_uuid}            = $storcli_cachevault_serial_number;
+		$an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid} = {
+			storcli_cachevault_controller_uuid	=>	$storcli_cachevault_controller_uuid, 
+			storcli_cachevault_serial_number	=>	$storcli_cachevault_serial_number, 
+			storcli_cachevault_state		=>	$storcli_cachevault_state, 
+			storcli_cachevault_design_capacity	=>	$storcli_cachevault_design_capacity, 
+			storcli_cachevault_replacement_needed	=>	$storcli_cachevault_replacement_needed, 
+			storcli_cachevault_type			=>	$storcli_cachevault_type, 
+			storcli_cachevault_manufacture_date	=>	$storcli_cachevault_manufacture_date, 
+		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			name1 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_controller_uuid",    value1 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_controller_uuid}, 
+			name2 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_serial_number",      value2 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_serial_number}, 
+			name3 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_state",              value3 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_state}, 
+			name4 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_design_capacity",    value4 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_design_capacity}, 
+			name5 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_replacement_needed", value5 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_replacement_needed}, 
+			name6 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_type",               value6 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_type}, 
+			name7 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_manufacture_date",   value7 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_manufacture_date}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	undef $results;
+	
+	# The BBU data...
+	$query = "
+SELECT 
+    storcli_bbu_uuid, 
+    storcli_bbu_controller_uuid, 
+    storcli_bbu_serial_number, 
+    storcli_bbu_type, 
+    storcli_bbu_model, 
+    storcli_bbu_state, 
+    storcli_bbu_manufacture_date, 
+    storcli_bbu_design_capacity, 
+    storcli_bbu_replacement_needed 
+FROM 
+    storcli_bbus
+WHERE
+    storcli_bbu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $storcli_bbu_uuid               = $row->[0]; 
+		my $storcli_bbu_controller_uuid    = $row->[1];
+		my $storcli_bbu_serial_number      = $row->[2];
+		my $storcli_bbu_type               = defined $row->[3] ? $row->[3] : "";
+		my $storcli_bbu_model              = defined $row->[4] ? $row->[4] : "";
+		my $storcli_bbu_state              = defined $row->[5] ? $row->[5] : "";
+		my $storcli_bbu_manufacture_date   = defined $row->[6] ? $row->[6] : "";
+		my $storcli_bbu_design_capacity    = defined $row->[7] ? $row->[7] : "";
+		my $storcli_bbu_replacement_needed = defined $row->[8] ? $row->[8] : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			name1 => "storcli_bbu_uuid",               value1 => $storcli_bbu_uuid, 
+			name2 => "storcli_bbu_controller_uuid",    value2 => $storcli_bbu_controller_uuid, 
+			name3 => "storcli_bbu_serial_number",      value3 => $storcli_bbu_serial_number, 
+			name4 => "storcli_bbu_type",               value4 => $storcli_bbu_type, 
+			name5 => "storcli_bbu_model",              value5 => $storcli_bbu_model, 
+			name6 => "storcli_bbu_state",              value6 => $storcli_bbu_state, 
+			name7 => "storcli_bbu_manufacture_date",   value7 => $storcli_bbu_manufacture_date, 
+			name8 => "storcli_bbu_design_capacity",    value8 => $storcli_bbu_design_capacity, 
+			name9 => "storcli_bbu_replacement_needed", value9 => $storcli_bbu_replacement_needed, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the information about this BBU
+		$an->data->{'scan-storcli'}{bbus}{by_serial}{$storcli_bbu_serial_number} = $storcli_bbu_controller_uuid;
+		$an->data->{'scan-storcli'}{bbus}{by_uuid}{$storcli_bbu_controller_uuid} = $storcli_bbu_serial_number;
+		$an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid} = {
+			storcli_bbu_controller_uuid	=>	$storcli_bbu_controller_uuid, 
+			storcli_bbu_serial_number	=>	$storcli_bbu_serial_number,
+			storcli_bbu_type		=>	$storcli_bbu_type, 
+			storcli_bbu_model		=>	$storcli_bbu_model, 
+			storcli_bbu_state		=>	$storcli_bbu_state, 
+			storcli_bbu_manufacture_date	=>	$storcli_bbu_manufacture_date, 
+			storcli_bbu_design_capacity	=>	$storcli_bbu_design_capacity, 
+			storcli_bbu_replacement_needed	=>	$storcli_bbu_replacement_needed, 
+		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_controller_uuid",    value1 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_controller_uuid}, 
+			name3 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_serial_number",      value2 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_serial_number}, 
+			name4 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_type",               value3 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_type}, 
+			name5 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_model",              value4 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_model}, 
+			name6 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_state",              value5 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_state}, 
+			name7 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_manufacture_date",   value6 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_manufacture_date}, 
+			name8 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_design_capacity",    value7 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_design_capacity}, 
+			name9 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_replacement_needed", value8 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_replacement_needed}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	undef $results;
+	
+	# The virtual drives data...
+	$query = "
+SELECT 
+    storcli_virtual_drive_uuid, 
+    storcli_virtual_drive_controller_uuid, 
+    storcli_virtual_drive_creation_date, 
+    storcli_virtual_drive_data_protection, 
+    storcli_virtual_drive_disk_cache_policy, 
+    storcli_virtual_drive_emulation_type, 
+    storcli_virtual_drive_encryption, 
+    storcli_virtual_drive_blocks, 
+    storcli_virtual_drive_strip_size, 
+    storcli_virtual_drive_drives_per_span, 
+    storcli_virtual_drive_span_depth, 
+    storcli_virtual_drive_scsi_naa_id 
+FROM 
+    storcli_virtual_drives
+WHERE
+    storcli_virtual_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $storcli_virtual_drive_uuid              = $row->[0]; 
+		my $storcli_virtual_drive_controller_uuid   = $row->[1];
+		my $storcli_virtual_drive_creation_date     = defined $row->[2]  ? $row->[2]  : "";
+		my $storcli_virtual_drive_data_protection   = defined $row->[3]  ? $row->[3]  : "";
+		my $storcli_virtual_drive_disk_cache_policy = defined $row->[4]  ? $row->[4]  : "";
+		my $storcli_virtual_drive_emulation_type    = defined $row->[5]  ? $row->[5]  : "";
+		my $storcli_virtual_drive_encryption        = defined $row->[6]  ? $row->[6]  : "";
+		my $storcli_virtual_drive_blocks            = defined $row->[7]  ? $row->[7]  : "";
+		my $storcli_virtual_drive_strip_size        = defined $row->[8]  ? $row->[8]  : "";
+		my $storcli_virtual_drive_drives_per_span   = defined $row->[9]  ? $row->[9]  : "";
+		my $storcli_virtual_drive_span_depth        = defined $row->[10] ? $row->[10] : "";
+		my $storcli_virtual_drive_scsi_naa_id       = defined $row->[11] ? $row->[11] : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			name1  => "storcli_virtual_drive_uuid",              value1  => $storcli_virtual_drive_uuid, 
+			name2  => "storcli_virtual_drive_controller_uuid",   value2  => $storcli_virtual_drive_controller_uuid, 
+			name3  => "storcli_virtual_drive_creation_date",     value3  => $storcli_virtual_drive_creation_date, 
+			name4  => "storcli_virtual_drive_data_protection",   value4  => $storcli_virtual_drive_data_protection, 
+			name5  => "storcli_virtual_drive_disk_cache_policy", value5  => $storcli_virtual_drive_disk_cache_policy, 
+			name6  => "storcli_virtual_drive_emulation_type",    value6  => $storcli_virtual_drive_emulation_type, 
+			name7  => "storcli_virtual_drive_encryption",        value7  => $storcli_virtual_drive_encryption, 
+			name8  => "storcli_virtual_drive_blocks",            value8  => $storcli_virtual_drive_blocks, 
+			name9  => "storcli_virtual_drive_strip_size",        value9  => $storcli_virtual_drive_strip_size, 
+			name10 => "storcli_virtual_drive_drives_per_span",   value10 => $storcli_virtual_drive_drives_per_span, 
+			name11 => "storcli_virtual_drive_span_depth",        value11 => $storcli_virtual_drive_span_depth, 
+			name12 => "storcli_virtual_drive_scsi_naa_id",       value12 => $storcli_virtual_drive_scsi_naa_id, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the drive group data. (Drive groups have no SN)
+		$an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid} = {
+			storcli_virtual_drive_controller_uuid	=>	$storcli_virtual_drive_controller_uuid, 
+			storcli_virtual_drive_creation_date	=>	$storcli_virtual_drive_creation_date, 
+			storcli_virtual_drive_data_protection	=>	$storcli_virtual_drive_data_protection, 
+			storcli_virtual_drive_disk_cache_policy	=>	$storcli_virtual_drive_disk_cache_policy, 
+			storcli_virtual_drive_emulation_type	=>	$storcli_virtual_drive_emulation_type, 
+			storcli_virtual_drive_encryption	=>	$storcli_virtual_drive_encryption, 
+			storcli_virtual_drive_blocks		=>	$storcli_virtual_drive_blocks, 
+			storcli_virtual_drive_strip_size	=>	$storcli_virtual_drive_strip_size, 
+			storcli_virtual_drive_drives_per_span	=>	$storcli_virtual_drive_drives_per_span, 
+			storcli_virtual_drive_span_depth	=>	$storcli_virtual_drive_span_depth, 
+			storcli_virtual_drive_scsi_naa_id	=>	$storcli_virtual_drive_scsi_naa_id, 
+		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			name1  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_controller_uuid",   value1  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_controller_uuid}, 
+			name2  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_creation_date",     value2  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_creation_date}, 
+			name3  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_data_protection",   value3  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_data_protection}, 
+			name4  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_disk_cache_policy", value4  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_disk_cache_policy}, 
+			name5  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_emulation_type",    value5  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_emulation_type}, 
+			name6  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_encryption",        value6  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_encryption}, 
+			name7  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_blocks",            value7  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_blocks}, 
+			name8  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_strip_size",        value8  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_strip_size}, 
+			name9  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_drives_per_span",   value9  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_drives_per_span}, 
+			name10 => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_span_depth",        value10 => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_span_depth}, 
+			name11 => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_scsi_naa_id",       value11 => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_scsi_naa_id}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	undef $results;
+	
+	# The drive group data...
+	$query = "
+SELECT 
+    storcli_drive_group_uuid, 
+    storcli_drive_group_virtual_drive_uuid, 
+    storcli_drive_group_access, 
+    storcli_drive_group_array_size, 
+    storcli_drive_group_array_state, 
+    storcli_drive_group_cache, 
+    storcli_drive_group_cachecade, 
+    storcli_drive_group_consistent, 
+    storcli_drive_group_disk_cache, 
+    storcli_drive_group_raid_type, 
+    storcli_drive_group_read_cache, 
+    storcli_drive_group_scheduled_cc, 
+    storcli_drive_group_write_cache 
+FROM 
+    storcli_drive_groups
+WHERE
+    storcli_drive_group_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $storcli_drive_group_uuid               = $row->[0]; 
+		my $storcli_drive_group_virtual_drive_uuid = $row->[1];
+		my $storcli_drive_group_access             = defined $row->[2]  ? $row->[2]  : "";
+		my $storcli_drive_group_array_size         = defined $row->[3]  ? $row->[3]  : "";
+		my $storcli_drive_group_array_state        = defined $row->[4]  ? $row->[4]  : "";
+		my $storcli_drive_group_cache              = defined $row->[5]  ? $row->[5]  : "";
+		my $storcli_drive_group_cachecade          = defined $row->[6]  ? $row->[6]  : "";
+		my $storcli_drive_group_consistent         = defined $row->[7]  ? $row->[7]  : "";
+		my $storcli_drive_group_disk_cache         = defined $row->[8]  ? $row->[8]  : "";
+		my $storcli_drive_group_raid_type          = defined $row->[9]  ? $row->[9]  : "";
+		my $storcli_drive_group_read_cache         = defined $row->[10] ? $row->[10] : "";
+		my $storcli_drive_group_scheduled_cc       = defined $row->[11] ? $row->[11] : "";
+		my $storcli_drive_group_write_cache        = defined $row->[12] ? $row->[12] : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+			name1  => "storcli_drive_group_uuid",               value1  => $storcli_drive_group_uuid, 
+			name2  => "storcli_drive_group_virtual_drive_uuid", value2  => $storcli_drive_group_virtual_drive_uuid, 
+			name3  => "storcli_drive_group_access",             value3  => $storcli_drive_group_access, 
+			name4  => "storcli_drive_group_array_size",         value4  => $storcli_drive_group_array_size, 
+			name5  => "storcli_drive_group_array_state",        value5  => $storcli_drive_group_array_state, 
+			name6  => "storcli_drive_group_cache",              value6  => $storcli_drive_group_cache, 
+			name7  => "storcli_drive_group_cachecade",          value7  => $storcli_drive_group_cachecade, 
+			name8  => "storcli_drive_group_consistent",         value8  => $storcli_drive_group_consistent, 
+			name9  => "storcli_drive_group_disk_cache",         value9  => $storcli_drive_group_disk_cache, 
+			name10 => "storcli_drive_group_raid_type",          value10 => $storcli_drive_group_raid_type, 
+			name11 => "storcli_drive_group_read_cache",         value11 => $storcli_drive_group_read_cache, 
+			name12 => "storcli_drive_group_scheduled_cc",       value12 => $storcli_drive_group_scheduled_cc, 
+			name13 => "storcli_drive_group_write_cache",        value13 => $storcli_drive_group_write_cache, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the drive group data. (Drive groups have no SN)
+		$an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid} = {
+			storcli_drive_group_virtual_drive_uuid	=>	$storcli_drive_group_virtual_drive_uuid, 
+			storcli_drive_group_access		=>	$storcli_drive_group_access, 
+			storcli_drive_group_array_size		=>	$storcli_drive_group_array_size, 
+			storcli_drive_group_array_state		=>	$storcli_drive_group_array_state, 
+			storcli_drive_group_cache		=>	$storcli_drive_group_cache, 
+			storcli_drive_group_cachecade		=>	$storcli_drive_group_cachecade, 
+			storcli_drive_group_consistent		=>	$storcli_drive_group_consistent, 
+			storcli_drive_group_disk_cache		=>	$storcli_drive_group_disk_cache, 
+			storcli_drive_group_raid_type		=>	$storcli_drive_group_raid_type, 
+			storcli_drive_group_read_cache		=>	$storcli_drive_group_read_cache, 
+			storcli_drive_group_scheduled_cc	=>	$storcli_drive_group_scheduled_cc, 
+			storcli_drive_group_write_cache		=>	$storcli_drive_group_write_cache, 
+		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			name1  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_virtual_drive_uuid", value1  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_virtual_drive_uuid}, 
+			name2  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_access",             value2  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_access}, 
+			name3  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_array_size",         value3  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_array_size}, 
+			name4  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_array_state",        value4  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_array_state}, 
+			name5  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_cache",              value5  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_cache}, 
+			name6  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_cachecade",          value6  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_cachecade}, 
+			name7  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_consistent",         value7  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_consistent}, 
+			name8  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_disk_cache",         value8  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_disk_cache}, 
+			name9  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_raid_type",          value9  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_raid_type}, 
+			name10 => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_read_cache",         value10 => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_read_cache}, 
+			name11 => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_scheduled_cc",       value11 => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_scheduled_cc}, 
+			name12 => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_write_cache",        value12 => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_write_cache}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	undef $results;
+	
+	# Lastly, the physical drives.
+	$query = "
+SELECT 
+    storcli_physical_drive_uuid, 
+    storcli_physical_drive_controller_uuid, 
+    storcli_physical_drive_size, 
+    storcli_physical_drive_sector_size, 
+    storcli_physical_drive_vendor, 
+    storcli_physical_drive_model, 
+    storcli_physical_drive_serial_number, 
+    storcli_physical_drive_self_encrypting_drive 
+FROM 
+    storcli_physical_drives
+WHERE
+    storcli_physical_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $storcli_physical_drive_uuid                  = $row->[0]; 
+		my $storcli_physical_drive_controller_uuid       = $row->[1];
+		my $storcli_physical_drive_size                  = defined $row->[2] ? $row->[2] : "";
+		my $storcli_physical_drive_sector_size           = defined $row->[3] ? $row->[3] : "";
+		my $storcli_physical_drive_vendor                = defined $row->[4] ? $row->[4] : "";
+		my $storcli_physical_drive_model                 = defined $row->[5] ? $row->[5] : "";
+		my $storcli_physical_drive_serial_number         = defined $row->[6] ? $row->[6] : "";
+		my $storcli_physical_drive_self_encrypting_drive = defined $row->[7] ? $row->[7] : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "storcli_physical_drive_uuid",                  value1 => $storcli_physical_drive_uuid, 
+			name2 => "storcli_physical_drive_controller_uuid",       value2 => $storcli_physical_drive_controller_uuid, 
+			name3 => "storcli_physical_drive_size",                  value3 => $storcli_physical_drive_size, 
+			name4 => "storcli_physical_drive_sector_size",           value4 => $storcli_physical_drive_sector_size, 
+			name5 => "storcli_physical_drive_vendor",                value5 => $storcli_physical_drive_vendor, 
+			name6 => "storcli_physical_drive_model",                 value6 => $storcli_physical_drive_model, 
+			name7 => "storcli_physical_drive_serial_number",         value7 => $storcli_physical_drive_serial_number, 
+			name8 => "storcli_physical_drive_self_encrypting_drive", value8 => $storcli_physical_drive_self_encrypting_drive, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the information about this physical drive
+		$an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number} = $storcli_physical_drive_uuid;
+		$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_serial_number;
+		$an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid} = {
+			storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
+			storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
+			storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
+			storcli_physical_drive_vendor			=>	$storcli_physical_drive_vendor, 
+			storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
+			storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
+			storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
+		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			name1 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_controller_uuid",       value1 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid}, 
+			name2 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_size",                  value2 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size}, 
+			name3 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_sector_size",           value3 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size}, 
+			name4 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_vendor",                value4 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor}, 
+			name5 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_model",                 value5 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model}, 
+			name6 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_serial_number",         value6 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number}, 
+			name7 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_self_encrypting_drive", value7 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	undef $results;
+	
+	# Return the number 
+	return(0);
+}
 
 # This looks at each DB's 'updated' table to see if any are behind. If any are, it will update the tables 
 # based on the time the last entry was made for a given host.
@@ -180,25 +675,23 @@ sub update_db
 	if ($an->data->{scancore}{db_resync_needed})
 	{
 		# Update Controllers and the various dangly bits hanging off them.
-		storcli_controllers($an);
-		
-		storcli_cachevaults($an);
-		storcli_bbus($an);
-		storcli_virtual_drives($an);
-		storcli_drive_groups($an);
-		storcli_physical_drives($an);
-		
-		storcli_variables($an);
+		update_db_controllers($an);
+		update_db_cachevaults($an);
+		update_db_bbus($an);
+		update_db_virtual_drives($an);
+		update_db_drive_groups($an);
+		update_db_physical_drives($an);
+		update_db_variables($an);
 	}
 	
 	return(0);
 }
 
 # Update the 'storcli_physical_drives' table.
-sub storcli_physical_drives
+sub update_db_physical_drives
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_physical_drives" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_physical_drives" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'storcli_physical_drives' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -473,10 +966,10 @@ INSERT INTO
 }
 
 # Update the 'storcli_drive_groups' table.
-sub storcli_drive_groups
+sub update_db_drive_groups
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_drive_groups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_drive_groups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'storcli_drive_groups' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -807,10 +1300,10 @@ INSERT INTO
 }
 
 # Update the 'storcli_virtual_drives' table.
-sub storcli_virtual_drives
+sub update_db_virtual_drives
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_virtual_drives" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_virtual_drives" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'storcli_virtual_drives' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -1129,10 +1622,10 @@ INSERT INTO
 }
 
 # Update the 'storcli_bbus' table.
-sub storcli_bbus
+sub update_db_bbus
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_bbus" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_bbus" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'storcli_bbus' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -1147,6 +1640,7 @@ sub storcli_bbus
 SELECT 
     storcli_bbu_uuid, 
     storcli_bbu_controller_uuid, 
+    storcli_bbu_serial_number, 
     storcli_bbu_type, 
     storcli_bbu_model, 
     storcli_bbu_state, 
@@ -1173,29 +1667,32 @@ WHERE
 		{
 			my $storcli_bbu_uuid               = $row->[0]; 
 			my $storcli_bbu_controller_uuid    = $row->[1];
-			my $storcli_bbu_type               = defined $row->[2] ? $row->[2] : "";
-			my $storcli_bbu_model              = defined $row->[3] ? $row->[3] : "";
-			my $storcli_bbu_state              = defined $row->[4] ? $row->[4] : "";
-			my $storcli_bbu_manufacture_date   = defined $row->[5] ? $row->[5] : "";
-			my $storcli_bbu_design_capacity    = defined $row->[6] ? $row->[6] : "";
-			my $storcli_bbu_replacement_needed = defined $row->[7] ? $row->[7] : "";
-			my $modified_date                  = $row->[8];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
-				name1 => "storcli_bbu_uuid",               value1 => $storcli_bbu_uuid, 
-				name2 => "storcli_bbu_controller_uuid",    value2 => $storcli_bbu_controller_uuid, 
-				name3 => "storcli_bbu_type",               value3 => $storcli_bbu_type, 
-				name4 => "storcli_bbu_model",              value4 => $storcli_bbu_model, 
-				name5 => "storcli_bbu_state",              value5 => $storcli_bbu_state, 
-				name6 => "storcli_bbu_manufacture_date",   value6 => $storcli_bbu_manufacture_date, 
-				name7 => "storcli_bbu_design_capacity",    value7 => $storcli_bbu_design_capacity, 
-				name8 => "storcli_bbu_replacement_needed", value8 => $storcli_bbu_replacement_needed, 
-				name9 => "modified_date",                  value9 => $modified_date
+			my $storcli_bbu_serial_number      = $row->[2];
+			my $storcli_bbu_type               = defined $row->[3] ? $row->[3] : "";
+			my $storcli_bbu_model              = defined $row->[4] ? $row->[4] : "";
+			my $storcli_bbu_state              = defined $row->[5] ? $row->[5] : "";
+			my $storcli_bbu_manufacture_date   = defined $row->[6] ? $row->[6] : "";
+			my $storcli_bbu_design_capacity    = defined $row->[7] ? $row->[7] : "";
+			my $storcli_bbu_replacement_needed = defined $row->[8] ? $row->[8] : "";
+			my $modified_date                  = $row->[9];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+				name1  => "storcli_bbu_uuid",               value1  => $storcli_bbu_uuid, 
+				name2  => "storcli_bbu_controller_uuid",    value2  => $storcli_bbu_controller_uuid, 
+				name3  => "storcli_bbu_serial_number",      value3  => $storcli_bbu_serial_number, 
+				name4  => "storcli_bbu_type",               value4  => $storcli_bbu_type, 
+				name5  => "storcli_bbu_model",              value5  => $storcli_bbu_model, 
+				name6  => "storcli_bbu_state",              value6  => $storcli_bbu_state, 
+				name7  => "storcli_bbu_manufacture_date",   value7  => $storcli_bbu_manufacture_date, 
+				name8  => "storcli_bbu_design_capacity",    value8  => $storcli_bbu_design_capacity, 
+				name9  => "storcli_bbu_replacement_needed", value9  => $storcli_bbu_replacement_needed, 
+				name10 => "modified_date",                  value10 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			### There can only be one entry per host, so we don't have a subhash.
 			# Record this in the unified and local hashes.
 			$an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid} = {
 				storcli_bbu_controller_uuid	=>	$storcli_bbu_controller_uuid, 
+				storcli_bbu_serial_number	=>	$storcli_bbu_serial_number,
 				storcli_bbu_type		=>	$storcli_bbu_type, 
 				storcli_bbu_model		=>	$storcli_bbu_model, 
 				storcli_bbu_state		=>	$storcli_bbu_state, 
@@ -1207,6 +1704,7 @@ WHERE
 			$an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{seen}     = 0;
 			$an->data->{db_data}{$id}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid} = {
 				storcli_bbu_controller_uuid	=>	$storcli_bbu_controller_uuid, 
+				storcli_bbu_serial_number	=>	$storcli_bbu_serial_number,
 				storcli_bbu_type		=>	$storcli_bbu_type, 
 				storcli_bbu_model		=>	$storcli_bbu_model, 
 				storcli_bbu_state		=>	$storcli_bbu_state, 
@@ -1228,21 +1726,23 @@ WHERE
 		foreach my $storcli_bbu_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}})
 		{
 			my $storcli_bbu_controller_uuid    = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_controller_uuid};
+			my $storcli_bbu_serial_number      = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_serial_number};
 			my $storcli_bbu_type               = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_type};
 			my $storcli_bbu_model              = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_model};
 			my $storcli_bbu_state              = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_state};
 			my $storcli_bbu_manufacture_date   = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_manufacture_date};
 			my $storcli_bbu_design_capacity    = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_design_capacity};
 			my $storcli_bbu_replacement_needed = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_replacement_needed};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 				name1 => "storcli_bbu_uuid",               value1 => $storcli_bbu_uuid, 
 				name2 => "storcli_bbu_controller_uuid",    value2 => $storcli_bbu_controller_uuid, 
-				name3 => "storcli_bbu_type",               value3 => $storcli_bbu_type, 
-				name4 => "storcli_bbu_model",              value4 => $storcli_bbu_model, 
-				name5 => "storcli_bbu_state",              value5 => $storcli_bbu_state, 
-				name6 => "storcli_bbu_manufacture_date",   value6 => $storcli_bbu_manufacture_date, 
-				name7 => "storcli_bbu_design_capacity",    value7 => $storcli_bbu_design_capacity, 
-				name8 => "storcli_bbu_replacement_needed", value8 => $storcli_bbu_replacement_needed, 
+				name3 => "storcli_bbu_serial_number",      value3 => $storcli_bbu_serial_number, 
+				name4 => "storcli_bbu_type",               value4 => $storcli_bbu_type, 
+				name5 => "storcli_bbu_model",              value5 => $storcli_bbu_model, 
+				name6 => "storcli_bbu_state",              value6 => $storcli_bbu_state, 
+				name7 => "storcli_bbu_manufacture_date",   value7 => $storcli_bbu_manufacture_date, 
+				name8 => "storcli_bbu_design_capacity",    value8 => $storcli_bbu_design_capacity, 
+				name9 => "storcli_bbu_replacement_needed", value9 => $storcli_bbu_replacement_needed, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -1283,6 +1783,7 @@ UPDATE
     public.storcli_bbus
 SET
     storcli_bbu_controller_uuid    = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_controller_uuid).", 
+    storcli_bbu_serial_number      = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_serial_number).", 
     storcli_bbu_type               = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_type).", 
     storcli_bbu_model              = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_model).", 
     storcli_bbu_state              = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_state).", 
@@ -1311,6 +1812,7 @@ INSERT INTO
     storcli_bbu_uuid, 
     storcli_bbu_host_uuid, 
     storcli_bbu_controller_uuid, 
+    storcli_bbu_serial_number, 
     storcli_bbu_type, 
     storcli_bbu_model, 
     storcli_bbu_state, 
@@ -1322,6 +1824,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_model).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_state).", 
@@ -1353,6 +1856,7 @@ INSERT INTO
     storcli_bbu_uuid, 
     storcli_bbu_host_uuid, 
     storcli_bbu_controller_uuid, 
+    storcli_bbu_serial_number, 
     storcli_bbu_type, 
     storcli_bbu_model, 
     storcli_bbu_state, 
@@ -1364,6 +1868,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_model).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_state).", 
@@ -1403,10 +1908,10 @@ INSERT INTO
 }
 
 # Update the 'storcli_cachevaults' table.
-sub storcli_cachevaults
+sub update_db_cachevaults
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_cachevaults" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_cachevaults" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'storcli_cachevaults' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -1421,6 +1926,7 @@ sub storcli_cachevaults
 SELECT 
     storcli_cachevault_uuid, 
     storcli_cachevault_controller_uuid, 
+    storcli_cachevault_serial_number, 
     storcli_cachevault_state, 
     storcli_cachevault_design_capacity, 
     storcli_cachevault_replacement_needed, 
@@ -1446,27 +1952,30 @@ WHERE
 		{
 			my $storcli_cachevault_uuid               = $row->[0]; 
 			my $storcli_cachevault_controller_uuid    = $row->[1];
-			my $storcli_cachevault_state              = defined $row->[2] ? $row->[2] : "";
-			my $storcli_cachevault_design_capacity    = defined $row->[3] ? $row->[3] : "";
-			my $storcli_cachevault_replacement_needed = defined $row->[4] ? $row->[4] : "";
-			my $storcli_cachevault_type               = defined $row->[5] ? $row->[5] : "";
-			my $storcli_cachevault_manufacture_date   = defined $row->[6] ? $row->[6] : "";
-			my $modified_date                         = $row->[7];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			my $storcli_cachevault_serial_number      = $row->[2]; 
+			my $storcli_cachevault_state              = defined $row->[3] ? $row->[3] : "";
+			my $storcli_cachevault_design_capacity    = defined $row->[4] ? $row->[4] : "";
+			my $storcli_cachevault_replacement_needed = defined $row->[5] ? $row->[5] : "";
+			my $storcli_cachevault_type               = defined $row->[6] ? $row->[6] : "";
+			my $storcli_cachevault_manufacture_date   = defined $row->[7] ? $row->[7] : "";
+			my $modified_date                         = $row->[8];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 				name1 => "storcli_cachevault_uuid",               value1 => $storcli_cachevault_uuid, 
 				name2 => "storcli_cachevault_controller_uuid",    value2 => $storcli_cachevault_controller_uuid, 
-				name3 => "storcli_cachevault_state",              value3 => $storcli_cachevault_state, 
-				name4 => "storcli_cachevault_design_capacity",    value4 => $storcli_cachevault_design_capacity, 
-				name5 => "storcli_cachevault_replacement_needed", value5 => $storcli_cachevault_replacement_needed, 
-				name6 => "storcli_cachevault_type",               value6 => $storcli_cachevault_type, 
-				name7 => "storcli_cachevault_manufacture_date",   value7 => $storcli_cachevault_manufacture_date, 
-				name8 => "modified_date",                         value8 => $modified_date
+				name3 => "storcli_cachevault_serial_number",      value3 => $storcli_cachevault_serial_number, 
+				name4 => "storcli_cachevault_state",              value4 => $storcli_cachevault_state, 
+				name5 => "storcli_cachevault_design_capacity",    value5 => $storcli_cachevault_design_capacity, 
+				name6 => "storcli_cachevault_replacement_needed", value6 => $storcli_cachevault_replacement_needed, 
+				name7 => "storcli_cachevault_type",               value7 => $storcli_cachevault_type, 
+				name8 => "storcli_cachevault_manufacture_date",   value8 => $storcli_cachevault_manufacture_date, 
+				name9 => "modified_date",                         value9 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			### There can only be one entry per host, so we don't have a subhash.
 			# Record this in the unified and local hashes.
 			$an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid} = {
 				storcli_cachevault_controller_uuid	=>	$storcli_cachevault_controller_uuid, 
+				storcli_cachevault_serial_number	=>	$storcli_cachevault_serial_number, 
 				storcli_cachevault_state		=>	$storcli_cachevault_state, 
 				storcli_cachevault_design_capacity	=>	$storcli_cachevault_design_capacity, 
 				storcli_cachevault_replacement_needed	=>	$storcli_cachevault_replacement_needed, 
@@ -1477,6 +1986,7 @@ WHERE
 			$an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{seen}     = 0;
 			$an->data->{db_data}{$id}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid} = {
 				storcli_cachevault_controller_uuid	=>	$storcli_cachevault_controller_uuid, 
+				storcli_cachevault_serial_number	=>	$storcli_cachevault_serial_number, 
 				storcli_cachevault_state		=>	$storcli_cachevault_state, 
 				storcli_cachevault_design_capacity	=>	$storcli_cachevault_design_capacity, 
 				storcli_cachevault_replacement_needed	=>	$storcli_cachevault_replacement_needed, 
@@ -1497,19 +2007,21 @@ WHERE
 		foreach my $storcli_cachevault_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}})
 		{
 			my $storcli_cachevault_controller_uuid    = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_controller_uuid};
+			my $storcli_cachevault_serial_number      = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_serial_number};
 			my $storcli_cachevault_state              = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_state};
 			my $storcli_cachevault_design_capacity    = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_design_capacity};
 			my $storcli_cachevault_replacement_needed = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_replacement_needed};
 			my $storcli_cachevault_type               = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_type};
 			my $storcli_cachevault_manufacture_date   = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_manufacture_date};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 				name1 => "storcli_cachevault_uuid",               value1 => $storcli_cachevault_uuid, 
 				name2 => "storcli_cachevault_controller_uuid",    value2 => $storcli_cachevault_controller_uuid, 
-				name3 => "storcli_cachevault_state",              value3 => $storcli_cachevault_state, 
-				name4 => "storcli_cachevault_design_capacity",    value4 => $storcli_cachevault_design_capacity, 
-				name5 => "storcli_cachevault_replacement_needed", value5 => $storcli_cachevault_replacement_needed, 
-				name6 => "storcli_cachevault_type",               value6 => $storcli_cachevault_type, 
-				name7 => "storcli_cachevault_manufacture_date",   value7 => $storcli_cachevault_manufacture_date, 
+				name3 => "storcli_cachevault_serial_number",      value3 => $storcli_cachevault_serial_number, 
+				name4 => "storcli_cachevault_state",              value4 => $storcli_cachevault_state, 
+				name5 => "storcli_cachevault_design_capacity",    value5 => $storcli_cachevault_design_capacity, 
+				name6 => "storcli_cachevault_replacement_needed", value6 => $storcli_cachevault_replacement_needed, 
+				name7 => "storcli_cachevault_type",               value7 => $storcli_cachevault_type, 
+				name8 => "storcli_cachevault_manufacture_date",   value8 => $storcli_cachevault_manufacture_date, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -1550,6 +2062,7 @@ UPDATE
     public.storcli_cachevaults
 SET
     storcli_cachevault_controller_uuid    = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_controller_uuid).", 
+    storcli_cachevault_serial_number      = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_serial_number).", 
     storcli_cachevault_state              = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_state).", 
     storcli_cachevault_design_capacity    = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_design_capacity).", 
     storcli_cachevault_replacement_needed = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_replacement_needed).", 
@@ -1577,6 +2090,7 @@ INSERT INTO
     storcli_cachevault_uuid, 
     storcli_cachevault_host_uuid, 
     storcli_cachevault_controller_uuid, 
+    storcli_cachevault_serial_number, 
     storcli_cachevault_state, 
     storcli_cachevault_design_capacity, 
     storcli_cachevault_replacement_needed, 
@@ -1587,6 +2101,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_state).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_design_capacity).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_replacement_needed).", 
@@ -1617,6 +2132,7 @@ INSERT INTO
     storcli_cachevault_uuid, 
     storcli_cachevault_host_uuid, 
     storcli_cachevault_controller_uuid, 
+    storcli_cachevault_serial_number, 
     storcli_cachevault_state, 
     storcli_cachevault_design_capacity, 
     storcli_cachevault_replacement_needed, 
@@ -1627,6 +2143,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_state).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_design_capacity).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_replacement_needed).", 
@@ -1665,10 +2182,10 @@ INSERT INTO
 }
 
 # Update the 'storcli_variables' table.
-sub storcli_variables
+sub update_db_variables
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'storcli_variables' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -1915,10 +2432,10 @@ INSERT INTO
 }
 
 # Update the 'storcli_controllers' table.
-sub storcli_controllers
+sub update_db_controllers
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "storcli_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'storcli_controllers' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})

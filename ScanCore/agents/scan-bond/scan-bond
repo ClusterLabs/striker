@@ -787,8 +787,8 @@ sub prep_databases
 	return(0);
 }
 
-# This reads in the last scan data from one of the databases and compares it
-# against the just-read data. If anything changed, register an alert.
+# This reads in the last scan data from one of the databases and compares it against the just-read data. If 
+# anything changed, register an alert.
 sub find_changes
 {
 	my ($an) = @_;

@@ -84,6 +84,7 @@ CREATE TABLE storcli_cachevaults (
 	storcli_cachevault_uuid			uuid				primary key,
 	storcli_cachevault_host_uuid		uuid				not null,
 	storcli_cachevault_controller_uuid	uuid				not null,
+	storcli_cachevault_serial_number	text				not null,	-- "Serial Number"
 	storcli_cachevault_state		text,						-- "State"
 	storcli_cachevault_design_capacity	text,						-- "Design Capacity"
 	storcli_cachevault_replacement_needed	text,						-- "Replacement required"
@@ -101,6 +102,7 @@ CREATE TABLE history.storcli_cachevaults (
 	storcli_cachevault_uuid			uuid,
 	storcli_cachevault_host_uuid		uuid,
 	storcli_cachevault_controller_uuid	uuid,
+	storcli_cachevault_serial_number	text,
 	storcli_cachevault_state		text,
 	storcli_cachevault_design_capacity	text,
 	storcli_cachevault_replacement_needed	text,
@@ -120,6 +122,7 @@ BEGIN
 		(storcli_cachevault_uuid, 
 		 storcli_cachevault_host_uuid,
 		 storcli_cachevault_controller_uuid, 
+		 storcli_cachevault_serial_number, 
 		 storcli_cachevault_state, 
 		 storcli_cachevault_design_capacity, 
 		 storcli_cachevault_replacement_needed, 
@@ -130,6 +133,7 @@ BEGIN
 		(history_storcli_cachevault.storcli_cachevault_uuid,
 		 history_storcli_cachevault.storcli_cachevault_host_uuid,
 		 history_storcli_cachevault.storcli_cachevault_controller_uuid, 
+		 history_storcli_cachevault.storcli_cachevault_serial_number, 
 		 history_storcli_cachevault.storcli_cachevault_state, 
 		 history_storcli_cachevault.storcli_cachevault_design_capacity, 
 		 history_storcli_cachevault.storcli_cachevault_replacement_needed, 
@@ -166,6 +170,7 @@ CREATE TABLE storcli_bbus (
 	storcli_bbu_uuid			uuid				primary key,
 	storcli_bbu_host_uuid			uuid				not null,
 	storcli_bbu_controller_uuid		uuid				not null,
+	storcli_bbu_serial_number		text				not null,	-- "Serial Number"
 	storcli_bbu_type			text,						-- "Type"
 	storcli_bbu_model			text,						-- "Manufacture Name"
 	storcli_bbu_state			text,						-- "Battery State"
@@ -184,6 +189,7 @@ CREATE TABLE history.storcli_bbus (
 	storcli_bbu_uuid			uuid,
 	storcli_bbu_host_uuid			uuid,
 	storcli_bbu_controller_uuid		uuid,
+	storcli_bbu_serial_number		text,
 	storcli_bbu_type			text,
 	storcli_bbu_model			text,
 	storcli_bbu_state			text,
@@ -204,6 +210,7 @@ BEGIN
 		(storcli_bbu_uuid, 
 		 storcli_bbu_host_uuid, 
 		 storcli_bbu_controller_uuid, 
+		 storcli_bbu_serial_number, 
 		 storcli_bbu_type, 
 		 storcli_bbu_model, 
 		 storcli_bbu_state, 
@@ -215,6 +222,7 @@ BEGIN
 		(history_storcli_bbu.storcli_bbu_uuid,
 		 history_storcli_bbu.storcli_bbu_host_uuid, 
 		 history_storcli_bbu.storcli_bbu_controller_uuid, 
+		 history_storcli_bbu.storcli_bbu_serial_number, 
 		 history_storcli_bbu.storcli_bbu_type, 
 		 history_storcli_bbu.storcli_bbu_model, 
 		 history_storcli_bbu.storcli_bbu_state, 
