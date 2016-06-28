@@ -374,10 +374,8 @@ sub remote_call
 	if (not $target)
 	{
 		# No target...
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0026", message_variables => {
-			method	=>	$THIS_MODULE."->remote_call()",
-			target	=>	$target, 
-		}});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0174", code => 174, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	# Break out the port, if needed.
@@ -386,14 +384,18 @@ sub remote_call
 	if ($target =~ /^(.*):(\d+)$/)
 	{
 		$target = $1;
-		$port = $2;
-		if (($port < 0) || ($port > 65536))
+		$port   = $2;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "target", value1 => $target,
+			name2 => "port",   value2 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($port < 0) or ($port > 65536))
 		{
-			# Variables for 'message_0373'.
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0025", message_variables => {
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0175", message_variables => {
 				target	=>	$target, 
 				port	=>	"$port",
-			}});
+			}, code => 175, file => "$THIS_FILE", line => __LINE__});
+			return("");
 		}
 	}
 	else
@@ -414,6 +416,26 @@ sub remote_call
 		}
 	}
 	
+	# If the target is a host name, convert it to an IP.
+	if (not $an->Validate->is_ipv4({ip => $target}))
+	{
+		my $new_target = $an->Get->ip_from_hostname({host_name => $target});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "new_target", value1 => $new_target, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($new_target)
+		{
+			$target = $new_target;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# No luck, this will probably fail.
+		}
+	}
+	
 	# These will be merged into a single 'output' array before returning.
 	my $stdout_output = [];
 	my $stderr_output = [];
@@ -427,6 +449,7 @@ sub remote_call
 			name2 => "target", value1 => $target, 
 			name3 => "port",   value1 => $port, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		$ssh_fh = Net::SSH2->new();
 		if (not $ssh_fh->connect($target, $port, Timeout => 10))
 		{
@@ -648,7 +671,7 @@ sub remote_call
 			}
 			if ($stderr)
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "stderr", value1 => $stderr, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$stderr_output}, $stderr;
@@ -678,7 +701,7 @@ sub remote_call
 		# For good measure, blank both variables.
 		$an->data->{target}{$target}{ssh_fh} = "";
 		$ssh_fh                              = "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "target::${target}::ssh_fh", value1 => $an->data->{target}{$target}{ssh_fh}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -699,11 +722,13 @@ sub wait_on_peer
 	{
 		# Throw an error and exit.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0096", code => 96, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	if (not $parameter->{target})
 	{
 		# Throw an error and exit.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0097", code => 97, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	my $program  = $parameter->{program}  ? $parameter->{program}  : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";

@@ -115,8 +115,17 @@ sub get
 		$an->Alert->error({fatal => 1, title_key => "error_title_0001", message_key => "error_message_0005", message_variables => { hash => $hash }, code => 15, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
+	
+	# When debugging bad strings, this can be set to the key you want to print the processing to STDOUT.
+	my $debug = 0;
+	if ($key eq "")
+	{
+		$debug = 1;
+		print "<pre>\n";
+	}
 
 	# Make sure that 'variables' is an array reference, if set.
+	print "$THIS_FILE ".__LINE__."; variables: [$variables]\n" if $debug;
 	if (($variables) && (ref($variables) ne "HASH"))
 	{
 		$an->Alert->error({fatal => 1, title_key => "error_title_0001", message_key => "error_message_0006", message_variables => { variables => $variables }, code => 16, file => $THIS_FILE, line => __LINE__});
@@ -138,6 +147,7 @@ sub get
 	}
 	
 	# Make sure that the request key is in the language hash.
+	print "$THIS_FILE ".__LINE__."; strings::lang::${language}::key::${key}::content: [".$hash->{strings}{lang}{$language}{key}{$key}{content}."]\n" if $debug;
 	if (not exists $hash->{strings}{lang}{$language}{key}{$key}{content})
 	{
 		print "$THIS_FILE ".__LINE__."; language: [$language], key: [$key], no string key.\n";
@@ -151,10 +161,12 @@ sub get
 	# Now pick out my actual string.
 	my $string =  $hash->{strings}{lang}{$language}{key}{$key}{content};
 	   $string =~ s/^\n//;
+	print "$THIS_FILE ".__LINE__."; string: [$string]\n" if $debug;
 	
 	# This clears off the new-line and trailing white-spaces caused by the indenting of the '</key>' 
 	# field in the words XML file when printing to the command line.
 	$string =~ s/\n(\s+)$//;
+	print "$THIS_FILE ".__LINE__."; string: [$string]\n" if $debug;
 	
 	# Make sure that if the string has '#!variable!x!#', that 'variables' is a hash reference. If it 
 	# isn't, it would trigger an infinite loop later. The one exception is '#!variable!*!#' which is used
@@ -175,12 +187,14 @@ sub get
 	}
 	
 	# Substitute in any variables if needed.
+	print "$THIS_FILE ".__LINE__."; variables: [$variables]\n" if $debug;
 	if (ref($variables) eq "HASH")
 	{
 		$string = $an->String->_insert_variables_into_string({
 			string		=>	$string,
 			variables	=>	$variables,
 		});
+		print "$THIS_FILE ".__LINE__."; string: [$string]\n" if $debug;
 	}
 	
 	# Process the just-read string.
@@ -190,6 +204,7 @@ sub get
 		  hash		=>	$hash,
 		  variables	=>	$variables,
 	});
+	print "$THIS_FILE ".__LINE__."; string: [$string]</pre>\n" if $debug;
 	
 	return ($string);
 }

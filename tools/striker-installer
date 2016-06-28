@@ -713,7 +713,7 @@ my $conf = {
 				frequency	=>	"weekly",	# daily, weekly, monthly, yearly
 				maxsize		=>	"100M",		# Rotates if bigger than this, regardless of frequency
 			},
-			'Scancore.log'	=>	{
+			'ScanCore.log'	=>	{
 				count		=>	5,		# Backups made before deletion.
 				frequency	=>	"weekly",	# daily, weekly, monthly, yearly
 				maxsize		=>	"100M",		# Rotates if bigger than this, regardless of frequency
@@ -7150,10 +7150,11 @@ sub update_hosts
 	}
 	
 	# Read in the hosts file and look for previous entries with our hostname.
-	my $new_hosts  = "";
-	my $hostname   = $conf->{sys}{hostname};
-	my $short_name = ($hostname =~ /^(.*?)\./)[0];
-	   $short_name = $hostname if not $short_name;
+	my $notice_added = 0;
+	my $new_hosts    = "";
+	my $hostname     = $conf->{sys}{hostname};
+	my $short_name   = ($hostname =~ /^(.*?)\./)[0];
+	   $short_name   = $hostname if not $short_name;
 	open (my $file_handle, "<", $conf->{path}{hosts}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{hosts}], the error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -7163,6 +7164,11 @@ sub update_hosts
 		next if $line =~ /$hostname/;
 		next if $line =~ /$short_name/;
 		
+		if ($line =~ /^# NOTE: /)
+		{
+			$notice_added = 1;
+		}
+		
 		if ($peer_hostname)
 		{
 			next if $line =~ /$peer_hostname/;
@@ -7171,6 +7177,15 @@ sub update_hosts
 		$new_hosts .= "$line\n";
 	}
 	close $file_handle;
+	
+	# Warn the user that the hosts file is not the primary place that host names are resolved from.
+	if (not $notice_added)
+	{
+		$new_hosts .= "# NOTE: Striker uses internal name resoltion primarily and falls back to\n";
+		$new_hosts .= "#       system-based name resolution only when internal resolution is not\n";
+		$new_hosts .= "#       possible.\n";
+		$updated   =  1;
+	}
 	
 	# Append our hostname if we have either the BCN or IFN IP.
 	my $updated = 0;

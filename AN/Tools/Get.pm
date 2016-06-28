@@ -20,6 +20,7 @@ my $THIS_FILE = "Get.pm";
 # drbd_data
 # install_target_state
 # ip
+# ip_from_hostname
 # local_anvil_details
 # local_users
 # lvm_data
@@ -1284,6 +1285,128 @@ sub ip
 	return ($ip);
 }
 
+# This tries to resolve a hostname using gethostip first and, if that fails, seeing the hostname matches a
+# known node name and, if so, returns it's ::use_ip value.
+sub ip_from_hostname
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "local_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $ip        = "";
+	my $host_name = $parameter->{host_name} ? $parameter->{host_name} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "host_name", value1 => $host_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $host_name)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0173", code => 173, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# First, is this one of the nodes?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::anvil::node1::name", value1 => $an->data->{sys}{anvil}{node1}{name}, 
+		name2 => "sys::anvil::node2::name", value2 => $an->data->{sys}{anvil}{node2}{name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($an->data->{sys}{anvil}{node1}{name}) && ($host_name eq $an->data->{sys}{anvil}{node1}{name}))
+	{
+		# If the 'use_ip' has been set, return that. Otherwise return the bcn_ip.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::anvil::node1::use_ip", value1 => $an->data->{sys}{anvil}{node1}{use_ip}, 
+			name2 => "sys::anvil::node1::bcn_ip", value2 => $an->data->{sys}{anvil}{node1}{bcn_ip}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{sys}{anvil}{node1}{use_ip})
+		{
+			$ip = $an->data->{sys}{anvil}{node1}{use_ip};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ip", value1 => $ip, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$ip = $an->data->{sys}{anvil}{node1}{bcn_ip};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ip", value1 => $ip, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	elsif (($an->data->{sys}{anvil}{node2}{name}) && ($host_name eq $an->data->{sys}{anvil}{node2}{name}))
+	{
+		# If the 'use_ip' has been set, return that. Otherwise return the bcn_ip.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::anvil::node2::use_ip", value1 => $an->data->{sys}{anvil}{node2}{use_ip}, 
+			name2 => "sys::anvil::node2::bcn_ip", value2 => $an->data->{sys}{anvil}{node2}{bcn_ip}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{sys}{anvil}{node2}{use_ip})
+		{
+			$ip = $an->data->{sys}{anvil}{node2}{use_ip};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ip", value1 => $ip, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$ip = $an->data->{sys}{anvil}{node2}{bcn_ip};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ip", value1 => $ip, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	else
+	{
+		my $node_data = $an->ScanCore->get_nodes();
+		foreach my $hash_ref (@{$node_data})
+		{
+			my $node_name = $hash_ref->{host_name};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_name", value1 => $node_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($node_name eq $host_name)
+			{
+				# Match! Return the BCN IP.
+				$ip = $hash_ref->{node_bcn};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "ip", value1 => $ip, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# If I still don't have an IP, try to resolve it locally.
+		if (not $ip)
+		{
+			# Try to resolve it using 'gethostip'.
+			my $shell_call = $an->data->{path}{gethostip}." -d $host_name";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($an->Validate->is_ipv4({ip => $line}))
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "ip", value1 => $ip, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			close $file_handle;
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ip", value1 => $ip, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($ip);
+}
+
 # This returns the peer node and anvil! name depending on the passed-in host name. This is called by nodes 
 # in an Anvil!.
 sub local_anvil_details
@@ -1402,7 +1525,7 @@ sub local_users
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "local_users" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $users = [];
-	my $shell_call = "/etc/passwd";
+	my $shell_call = $an->data->{path}{etc_passwd};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4570,13 +4693,13 @@ sub uuid
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Figure out why the heck I did this... Remove it, most likely.
 	# Set the 'uuidgen' path if set by the user.
 	$an->_uuidgen_path($parameter->{uuidgen_path}) if $parameter->{uuidgen_path};
 	my $get = $parameter->{get} ? $parameter->{get} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "get", value1 => $get, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4585,7 +4708,7 @@ sub uuid
 	if ($get eq "host_uuid")
 	{
 		my $shell_call = $an->data->{path}{host_uuid};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -4593,7 +4716,7 @@ sub uuid
 		{
 			chomp;
 			$uuid = lc($_);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "uuid", value1 => $uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
@@ -4604,19 +4727,19 @@ sub uuid
 	{
 		# Query the DB's hosts table to find a UUID matching the 'get' string (should be a host name)
 		my $query = "SELECT host_uuid FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($get).";";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		$uuid = "" if not $uuid;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "uuid", value1 => $uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		my $shell_call = $an->_uuidgen_path." -r";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -4633,20 +4756,18 @@ sub uuid
 	}
 	
 	# Did we get a sane value?
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "uuid", value1 => $uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($uuid =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
 	{
 		# Yup. Set the host UUID if that's what we read.
-		$an->data->{sys}{host_uuid} = $uuid if ((exists $parameter->{get}) && ($parameter->{get} eq "host_uuid"));
+		$an->data->{sys}{host_uuid} = $uuid if ($get eq "host_uuid");
 	}
 	else
 	{
 		# derp
-		$an->Log->entry({log_level => 0, message_key => "error_message_0023", message_variables => {
-			bad_uuid => $uuid, 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 0, message_key => "error_message_0023", message_variables => { bad_uuid => $uuid }, file => $THIS_FILE, line => __LINE__});
 		$uuid = "";
 	}
 	

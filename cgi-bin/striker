@@ -573,7 +573,7 @@ sub _initialize_an
 					frequency	=>	"weekly",	# daily, weekly, monthly, yearly
 					maxsize		=>	"100M",		# Rotates if bigger than this, regardless of frequency
 				},
-				'Scancore.log'	=>	{
+				'ScanCore.log'	=>	{
 					count		=>	5,		# Backups made before deletion.
 					frequency	=>	"weekly",	# daily, weekly, monthly, yearly
 					maxsize		=>	"100M",		# Rotates if bigger than this, regardless of frequency

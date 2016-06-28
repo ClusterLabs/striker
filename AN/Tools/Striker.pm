@@ -1070,7 +1070,7 @@ sub scan_servers
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "scan_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make it a little easier to print the name of each node
 	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
@@ -1083,7 +1083,7 @@ sub scan_servers
 	$an->data->{node}{$node2_name}{info}{host_name}       = $node2_name;
 	$an->data->{node}{$node2_name}{info}{short_host_name} = $an->data->{sys}{anvil}{node2}{short_name};
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "node1_name",                                 value1 => $node1_name,
 		name2 => "node::${node1_name}::info::short_host_name", value2 => $an->data->{node}{$node1_name}{info}{short_host_name},
 		name3 => "node::${node1_name}::info::host_name",       value3 => $an->data->{node}{$node1_name}{info}{host_name},
@@ -1117,21 +1117,21 @@ sub scan_servers
 		# 0 == Can't run
 		$an->data->{server}{$server}{say_node1}   = $an->data->{node}{$node1_name}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
 		$an->data->{server}{$server}{node1_ready} = 0;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "server::${server}::say_node1",                 value1 => $an->data->{server}{$server}{say_node1},
 			name2 => "node::${node1_name}::daemon::cman::exit_code", value2 => $an->data->{node}{$node1_name}{daemon}{cman}{exit_code},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$an->data->{server}{$server}{say_node2}   = $an->data->{node}{$node2_name}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
 		$an->data->{server}{$server}{node2_ready} = 0;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "server::${server}::say_node2",                 value1 => $an->data->{server}{$server}{say_node2},
 			name2 => "node::${node2_name}::daemon::cman::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{cman}{exit_code},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If a server's XML definition file is found but there is no host, the user probably forgot 
 		# to define it.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server::${server}::host", value1 => $an->data->{server}{$server}{host},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $an->data->{server}{$server}{host}) && (not $an->data->{sys}{ignore_missing_server}))
@@ -1148,7 +1148,7 @@ sub scan_servers
 					{
 						$server_state = $an->data->{server}{$server}{node}{$host_node}{virsh}{'state'};
 					}
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "server::${server}::node::${node_name}::virsh::${key}", value1 => $an->data->{server}{$server}{node}{$node_name}{virsh}{$key},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1165,7 +1165,7 @@ sub scan_servers
 		}
 		
 		$an->data->{server}{$server}{host} = "" if not defined $an->data->{server}{$server}{host};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "server::${server}::host", value1 => $an->data->{server}{$server}{host},
 			name2 => "short_node1",             value2 => $short_node1,
 			name3 => "short_node2",             value3 => $short_node2,
@@ -1188,7 +1188,7 @@ sub scan_servers
 			
 			# Disable Anvil! withdrawl of this node.
 			$an->data->{node}{$node1_name}{enable_withdraw} = 0;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "node::${node1_name}::enable_withdraw", value1 => $an->data->{node}{$node1_name}{enable_withdraw},
 				name2 => "server::${server}::node2_ready",       value2 => $an->data->{server}{$server}{node2_ready},
 				name3 => "server::${server}::can_migrate",       value3 => $an->data->{server}{$server}{can_migrate},
@@ -1213,7 +1213,7 @@ sub scan_servers
 			
 			# Disable withdrawl of this node.
 			$an->data->{node}{$node2_name}{enable_withdraw} = 0;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "node${node2_name}::enable_withdraw",  value1 => $an->data->{node}{$node2_name}{enable_withdraw},
 				name2 => "server::${server}::node2_ready::",    value2 => $an->data->{server}{$server}{node2_ready},
 				name3 => "server::${server}::can_migrate",      value3 => $an->data->{server}{$server}{can_migrate},
@@ -1225,13 +1225,13 @@ sub scan_servers
 			$an->data->{server}{$server}{can_stop}      = 0;
 			($an->data->{server}{$server}{node1_ready}) = $an->Striker->_check_node_readiness({server => $server, node => $node1_uuid});
 			($an->data->{server}{$server}{node2_ready}) = $an->Striker->_check_node_readiness({server => $server, node => $node2_uuid});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "server::${server}::node1_ready", value1 => $an->data->{server}{$server}{node1_ready},
 				name2 => "server::${server}::node2_ready", value2 => $an->data->{server}{$server}{node2_ready},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server::${server}::current_host", value1 => $an->data->{server}{$server}{current_host},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->data->{server}{$server}{boot_target} = "";
@@ -1272,7 +1272,7 @@ sub scan_servers
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -1281,7 +1281,7 @@ sub scan_servers
 		}
 		else
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "server::${server}::node1_ready", value1 => $an->data->{server}{$server}{node1_ready},
 				name2 => "server::${server}::node2_ready", value2 => $an->data->{server}{$server}{node2_ready},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1291,7 +1291,7 @@ sub scan_servers
 				# domain.
 				$an->data->{server}{$server}{boot_target} = $an->Striker->_find_preferred_host({server => $server});
 				$an->data->{server}{$server}{can_start}   = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "server::${server}::boot_target", value1 => $an->data->{server}{$server}{boot_target},
 					name2 => "server::${server}::can_start",   value2 => $an->data->{server}{$server}{can_start},
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1299,21 +1299,21 @@ sub scan_servers
 			elsif ($an->data->{server}{$server}{node1_ready})
 			{
 				$an->data->{server}{$server}{boot_target} = $node1_name;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "server::${server}::boot_target", value1 => $an->data->{server}{$server}{boot_target},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($an->data->{server}{$server}{node2_ready})
 			{
 				$an->data->{server}{$server}{boot_target} = $node2_name;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "server::${server}::boot_target", value1 => $an->data->{server}{$server}{boot_target},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				$an->data->{server}{$server}{can_start} = 0;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "server::${server}::can_start", value1 => $an->data->{server}{$server}{can_start},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -5860,14 +5860,14 @@ sub _display_server_state_and_controls
 		}
 		
 		# Use the node's short name for the buttons.
-		my $say_start_target     =  $an->data->{server}{$server}{boot_target} ? $an->data->{server}{$server}{boot_target} : "--";
-		   $say_start_target     =~ s/\..*?$//;
-		my $start_target_long    =  $node1_name =~ /$say_start_target/ ? $an->data->{node}{$node1_name}{info}{host_name} : $an->data->{node}{$node2_name}{info}{host_name};
-		my $start_target_name    =  $node1_name =~ /$say_start_target/ ? $node1_name : $node2_name;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "say_start_target",           value1 => $say_start_target,
+		my $say_start_target  =  $an->data->{server}{$server}{boot_target} ? $an->data->{server}{$server}{boot_target} : "--";
+		   $say_start_target  =~ s/\..*?$//;
+		my $start_target_long =  $node1_name =~ /$say_start_target/ ? $an->data->{node}{$node1_name}{info}{host_name} : $an->data->{node}{$node2_name}{info}{host_name};
+		my $start_target_name =  $node1_name =~ /$say_start_target/ ? $node1_name : $node2_name;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "say_start_target",               value1 => $say_start_target,
 			name2 => "server::${server}::boot_target", value2 => $an->data->{server}{$server}{boot_target},
-			name3 => "start_target_long",          value3 => $start_target_long,
+			name3 => "start_target_long",              value3 => $start_target_long,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $prefered_host =  $an->Striker->_find_preferred_host({server => $server});
@@ -5880,7 +5880,7 @@ sub _display_server_state_and_controls
 		{
 			my $on_host =  $an->data->{server}{$server}{host};
 			   $on_host =~ s/\..*$//;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "on_host",       value1 => $on_host,
 				name2 => "prefered_host", value2 => $prefered_host,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -5892,7 +5892,7 @@ sub _display_server_state_and_controls
 			{
 				$prefered_host = "<span class=\"highlight_warning\">$prefered_host</span>";
 			}
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "prefered_host", value1 => $prefered_host,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -6019,6 +6019,23 @@ sub _display_server_state_and_controls
 		{
 			my $say_server_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => $server }});
 			   $say_server_link            = $say_server_disabled_button;
+		}
+		
+		# If the state is 'failed', disable everything.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "server::${server}::state", value1 => $an->data->{server}{$server}{'state'},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{server}{$server}{'state'} eq "failed")
+		{
+			$say_server_link                        = $say_server_link." (<a href=\"#!string!url_0010!#\" target=\"_new\" class=\"highlight_bad\">#!string!state_0018!#</a>)";
+			$an->data->{server}{$server}{say_node1} = "<span class=\"highlight_bad\">--</span>";
+			$an->data->{server}{$server}{say_node2} = "<span class=\"highlight_bad\">--</span>";
+			$prefered_host                          = "<span class=\"highlight_bad\">#!string!state_0001!#</span>";
+			$start_button                           = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0029!#" }});
+			$migrate_button                         = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0024!#" }});
+			$stop_button                            = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0033!#" }});
+			$force_off_button                       = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0027!#" }});
+			$say_delete_button                      = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0030!#" }});
 		}
 		
 		$server_state_and_control_panel .= $an->Web->template({file => "server.html", template => "display-server-details-entry", replace => { 
@@ -9522,30 +9539,35 @@ sub _parse_clustat
 			{
 				my ($server, $host, $state) = split/ /, $line, 3;
 				$server =~ s/^vm://;
+				$host   =~ s/^\((.*?)\)$/$1/g;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "server", value1 => $server,
 					name2 => "host",   value2 => $host,
 					name3 => "state",  value3 => $state,
 				}, file => $THIS_FILE, line => __LINE__});
-				if (($state eq "disabled") || ($state eq "stopped"))
+				if (($state eq "disabled") or ($state eq "stopped"))
 				{
 					# Set host to 'none'.
 					$host = $an->String->get({key => "state_0002"});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "host", value1 => $host,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
-				if ($state eq "failed")
+				elsif ($state eq "failed")
 				{
 					# Don't do anything here now, it's possible the server is still 
 					# running. Set the host to 'Unknown' and let the user decide what to 
 					# do. This can happen if, for example, the XML file is temporarily
 					# removed or corrupted.
-					$host = $an->String->get({key => "state_0128", variables => { host => $host }});
+					$host = $an->String->get({key => "state_0001", variables => { host => $host }});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "host", value1 => $host,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				
 				# If the service is disabled, it will have '()' around the host name which I 
 				# need to remove.
-				$host =~ s/^\((.*?)\)$/$1/g;
-				
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "server", value1 => $server,
 					name2 => "host",   value2 => $host,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -9553,20 +9575,20 @@ sub _parse_clustat
 				$host                                 = "none" if not $host;
 				$an->data->{server}{$server}{host}    = $host;
 				$an->data->{server}{$server}{'state'} = $state;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "server::${server}::host",  value1 => $an->data->{server}{$server}{host},
 					name2 => "server::${server}::state", value2 => $an->data->{server}{$server}{'state'},
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Pick out who the peer node is.
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "host",                         value1 => $host,
 					name2 => "node::${node_name}::me::name", value2 => $an->data->{node}{$node_name}{me}{name},
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($host eq $an->data->{node}{$node_name}{me}{name})
 				{
 					$an->data->{server}{$server}{peer} = $an->data->{node}{$node_name}{peer}{name};
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "node_name",               value1 => $node_name,
 						name2 => "server::${server}::peer", value2 => $an->data->{server}{$server}{peer},
 					}, file => $THIS_FILE, line => __LINE__});
@@ -9574,7 +9596,7 @@ sub _parse_clustat
 				else
 				{
 					$an->data->{server}{$server}{peer} = $an->data->{node}{$node_name}{me}{name};
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "node_name",               value1 => $node_name,
 						name2 => "server::${server}::peer", value2 => $an->data->{server}{$server}{peer},
 					}, file => $THIS_FILE, line => __LINE__});
@@ -12231,16 +12253,22 @@ sub _process_task
 	}
 	elsif ($an->data->{cgi}{task} eq "display_health")
 	{
+		# I need to do a short scan of the node.
 		my $node_name  = $an->data->{cgi}{node_name};
 		my $node_key   = $an->data->{sys}{node_name}{$node_name}{node_key};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node_name", value1 => $node_name,
+			name2 => "node_key",  value2 => $node_key,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
+		
+		# Now I can gather the rest of the data.
 		my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 		my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 		my $password   = $an->data->{sys}{anvil}{$node_key}{password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-			name1 => "node_name", value1 => $node_name,
-			name2 => "node_key",  value2 => $node_key,
-			name3 => "target",    value3 => $target,
-			name4 => "port",      value4 => $port,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target", value1 => $target,
+			name2 => "port",   value2 => $port,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "password", value1 => $password,

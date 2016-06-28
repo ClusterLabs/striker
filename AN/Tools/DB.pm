@@ -525,7 +525,7 @@ sub do_db_query
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "parameter->{id}", value1 => $parameter->{id}, 
 	}, file => $THIS_FILE, line => __LINE__}) if $parameter->{id};
-	my $id     = $parameter->{id}     ? $parameter->{id}     : $an->data->{sys}{read_db_id};
+	my $id = $parameter->{id} ? $parameter->{id} : $an->data->{sys}{read_db_id};
 	
 	if (not $id)
 	{
@@ -568,12 +568,13 @@ sub do_db_query
 		db_error => $DBI::errstr, 
 	}, code => 2, file => "$THIS_FILE", line => __LINE__});
 	
+	### TODO: If a target DB becomes unavailable, call a disconnect and remove its ID from the list of DBs.
 	# Execute on the query
 	$DBreq->execute() or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
 					query    => $query, 
 					server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 					db_error => $DBI::errstr
-				}, code => 3, file => "$THIS_FILE", line => __LINE__});
+				}, code => 3, file => $THIS_FILE, line => __LINE__});
 	
 	# Return the array
 	return($DBreq->fetchall_arrayref());
@@ -674,12 +675,13 @@ sub do_db_write
 				}, code => 72, file => "$THIS_FILE", line => __LINE__});
 			}
 			
+			### TODO: If a target DB becomes unavailable, call a disconnect and remove its ID from the list of DBs.
 			# Do the do.
-			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
+			$an->data->{dbh}{$id}->do($query) or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
 								query    => $query, 
 								server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 								db_error => $DBI::errstr
-							}, code => 2, file => "$THIS_FILE", line => __LINE__});
+							}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Commit the changes.
@@ -1121,13 +1123,18 @@ sub initialize_db
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__});
 	
-	my $id = $parameter->{id} ? $parameter->{id} : "";
+	my $success = 1;
+	my $id      = $parameter->{id} ? $parameter->{id} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "id", value1 => $id
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I don't have an ID, die.
 	if (not $id)
 	{
+		### TODO: Why don't we use the usual ->error()
 		# what DB?
 		print $an->String->get({key => "tools_log_0021", variables => {
 			title		=>	$an->String->get({key => "tools_title_0003"}),
@@ -1136,15 +1143,8 @@ sub initialize_db
 		exit(67);
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "id", value1 => $id
-	}, file => $THIS_FILE, line => __LINE__});
-	
 	# Tell the user we need to initialize
 	$an->Log->entry({log_level => 1, title_key => "tools_title_0005", message_key => "tools_log_0020", message_variables => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__});
-	
-	my $success = 1;
 	
 	# Read in the SQL file and replace #!variable!name!# with the database owner name.
 	my $user = $an->data->{scancore}{db}{$id}{user};
@@ -1155,6 +1155,7 @@ sub initialize_db
 		# This is likely caused by running an agent directly on a system where ScanCore has never run
 		# before.
 		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0048", code => 48, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	# Create the read shell call.

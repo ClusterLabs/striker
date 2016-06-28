@@ -502,6 +502,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="url_0007"><![CDATA[https://alteeve.ca/w/IFN]]></key>
 		<key name="url_0008"><![CDATA[https://www.drbd.org/en/doc/users-guide-84/s-configure-sync-rate]]></key>
 		<key name="url_0009"><![CDATA[https://alteeve.ca/w/TLUG_Talk:_Storage_Technologies_and_Theory#Level_#!variable!raid_level!#]]></key>
+		<key name="url_0010"><![CDATA[https://alteeve.ca/w/Failed_Server]]></key>
 		
 		<!-- Fields used in <select ...> blocks. -->
 		<key name="select_0001">No Security</key>

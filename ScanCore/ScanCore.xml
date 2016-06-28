@@ -231,7 +231,7 @@ one of the nodes will now be withdrawn and shutdown. Which node will shutdown wi
 		<key name="scancore_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
 		<key name="scancore_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		<key name="scancore_error_0004">Failed to connect to any database, unable to proceed.</key>
-		<key name="scancore_error_0005">Not ID passed to the AN::Tools::DB->initialize_db() method.</key>
+		<key name="scancore_error_0005">No database ID passed to the AN::Tools::DB->initialize_db() method.</key>
 		<key name="scancore_error_0006">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		<key name="scancore_error_0007">No ID passed to the AN::Tools::DB->load_schema() method.</key>
 		<key name="scancore_error_0008">No schema file passed to the AN::Tools::DB->load_schema() method.</key>

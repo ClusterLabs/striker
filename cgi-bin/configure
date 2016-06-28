@@ -6441,6 +6441,18 @@ sub _initialize_an
 			},
 			log_language		=>	"en_CA",
 			log_level		=>	2,
+			logrotate	=>	{
+				'striker.log'	=>	{
+					count		=>	5,		# Backups made before deletion.
+					frequency	=>	"weekly",	# daily, weekly, monthly, yearly
+					maxsize		=>	"100M",		# Rotates if bigger than this, regardless of frequency
+				},
+				'ScanCore.log'	=>	{
+					count		=>	5,		# Backups made before deletion.
+					frequency	=>	"weekly",	# daily, weekly, monthly, yearly
+					maxsize		=>	"100M",		# Rotates if bigger than this, regardless of frequency
+				}
+			},
 			lvm_conf		=>	"",
 			lvm_filter		=>	"filter = [ \"a|/dev/drbd*|\", \"r/.*/\" ]",
 			# This allows for custom MTU sizes in an Install Manifest

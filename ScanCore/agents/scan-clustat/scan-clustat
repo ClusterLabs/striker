@@ -939,8 +939,8 @@ sub prep_databases
 	return(0);
 }
 
-# This reads in the last scan data from one of the databases and compares it
-# against the just-read data. If anything changed, register an alert.
+# This reads in the last scan data from one of the databases and compares it against the just-read data. If 
+# anything changed, register an alert.
 sub find_changes
 {
 	my ($an) = @_;
@@ -1462,8 +1462,7 @@ WHERE
 			}
 			else
 			{
-				### NOTE: I don't check the name as a name
-				###       change will look like a service
+				### NOTE: I don't check the name as a name change will look like a service
 				###       disappeared and a new one appeared.
 				# This record existed before, look for changes.
 				my $old_host   = $an->data->{clustat}{sql}{clustat_service}{$service}{clustat_service_host};
@@ -1523,6 +1522,9 @@ WHERE
 						# 
 						# disabled -> starting		= Booting
 						# stopped -> starting		= Booting
+						# stopping -> starting		= Rebooting
+						# ... -> started		= Rebooted
+						# ... -> stopped		= Stopped
 						# disabled -> ... -> started	= Booted
 						# stopped -> ... -> started	= Booted
 						# ... -> starting -> started	= Booted
@@ -1566,6 +1568,38 @@ WHERE
 							$variables         = {
 								service		=>	$service,
 								host		=>	$new_host
+							};
+						}
+						
+						# stopping -> starting		= Rebooting
+						elsif (($old_status =~ /stopping/i) &&
+						       ($new_status =~ /starting/i))
+						{
+							$say_alert_message = "scan_clustat_note_0018"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# ... -> started		= Rebooted
+						elsif (($old_status =~ /stopping/i) &&
+						       ($new_status =~ /started/i))
+						{
+							$say_alert_message = "scan_clustat_note_0023"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# ... -> stopped		= Stopped
+						elsif (($old_status =~ /stopping/i) &&
+						       ($new_status =~ /stopped/i))
+						{
+							$say_alert_message = "scan_clustat_note_0024"; 
+							$variables         = {
+								service		=>	$service,
 							};
 						}
 						

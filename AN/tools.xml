@@ -637,7 +637,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_message_0045"><![CDATA[The 'AN::Tools::Cman->peer_hostname()' method found the local hostname in the cman configuration file: [#!variable!file!#] but did not find a peer.]]></key>
 		<key name="error_message_0046"><![CDATA[The 'AN::Tools::Cman->peer_hostname()' method failed to find the local hostname in the cman configuration file: [#!variable!file!#]. Unable to determine which node is the peer.]]></key>
 		<key name="error_message_0047"><![CDATA[The 'AN::Tools::Get->ip()' method was called without the 'host' parameter.]]></key>
-		<key name="error_message_0048"><![CDATA[The 'AN::Tools::DB->initialize_db()' method was called but 'path::scancore_sql' wasn't set. This is usually caused by running a ScanCore agent without ever having run ScanCore itself. Please be sure to run ScanCore (at least once) on all configured dashboards.]]></key>
+		<key name="error_message_0048"><![CDATA[The 'AN::Tools::DB' module's 'initialize_db()' method was called but 'path::scancore_sql' wasn't set. This is usually caused by running a ScanCore agent without ever having run ScanCore itself. Please be sure to run ScanCore (at least once) on all configured dashboards.]]></key>
 		<key name="error_message_0049"><![CDATA[The 'AN::Tools::Get->server_uuid()' method was called but the 'server' value wasn't set.]]></key>
 		<key name="error_message_0050"><![CDATA[The 'AN::Tools::Get->remote_anvil_details()' method was called but the 'anvil' value wasn't set.]]></key>
 		<key name="error_message_0051"><![CDATA[The 'AN::Tools::Get->server_data()' method was called but the 'server' value wasn't set.]]></key>
@@ -770,6 +770,9 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0170"><![CDATA[The 'AN::Tools::Get' module's 'upses_under_node()' method was called with the node name: [#!variable!node_name!#] which wasn't found in the database.]]></key>
 		<key name="error_message_0171"><![CDATA[The 'AN::Tools::Get' module's 'upses()' method was called without an Anvil! UUID.]]></key>
 		<key name="error_message_0172"><![CDATA[The 'AN::Tools::Check' module's 'ping()' method was called without 'ping' being set.]]></key>
+		<key name="error_message_0173"><![CDATA[The 'AN::Tools::Get' module's 'ip_from_hostname()' method was called without a host name being set.]]></key>
+		<key name="error_message_0174"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' method was called without a target being set.]]></key>
+		<key name="error_message_0175"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' was asked to connecto to the target machine: [#!variable!target!#] on requested TCP port: [#!variable!port!#], but the port is invalid.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

@@ -2233,6 +2233,23 @@ sub wait_for_access
 			name1 => "sys::anvil::${peer_key}::use_ip", value1 => $an->data->{sys}{anvil}{$peer_key}{use_ip},
 			name2 => "shell_call",                      value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If I don't have a 'use_ip', scan the node.
+		if (not $an->data->{sys}{anvil}{$peer_key}{use_ip})
+		{
+			$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$peer_key}{uuid}, short_scan => 1});
+			
+			# If I still don't have a 'use_ip', sleep and loop.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::anvil::${peer_key}::use_ip", value1 => $an->data->{sys}{anvil}{$peer_key}{use_ip},
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $an->data->{sys}{anvil}{$peer_key}{use_ip})
+			{
+				sleep 5;
+				next;
+			}
+		}
+		
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
 			port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
