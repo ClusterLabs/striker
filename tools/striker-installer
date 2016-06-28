@@ -1439,7 +1439,7 @@ ONBOOT=\"yes\"
 			logger($conf, $THIS_FILE, __LINE__, "- This might take a minute if there are no DHCP servers on its network.", 1);
 			$shell_call = $conf->{executable}{ifup}." ".$new_interface;
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -7179,6 +7179,7 @@ sub update_hosts
 	close $file_handle;
 	
 	# Warn the user that the hosts file is not the primary place that host names are resolved from.
+	my $updated = 0;
 	if (not $notice_added)
 	{
 		$new_hosts .= "# NOTE: Striker uses internal name resoltion primarily and falls back to\n";
@@ -7188,7 +7189,6 @@ sub update_hosts
 	}
 	
 	# Append our hostname if we have either the BCN or IFN IP.
-	my $updated = 0;
 	if ($conf->{network}{bcn}{ip})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Using the BCN IP for the hostname: [$hostname]", 1);
