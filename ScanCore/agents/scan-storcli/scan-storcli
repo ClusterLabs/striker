@@ -37,8 +37,6 @@ use strict;
 use warnings;
 use AN::Tools;
 use Data::Dumper;
-#use Socket;
-#use utf8;
 #binmode STDOUT, 'encoding(utf8)';
 
 # Disable buffering.
@@ -188,6 +186,163 @@ exit(0);
 # Function below                                                                                            #
 #############################################################################################################
 
+# Sort and prepare the data for insertion into the database.
+sub sort_and_prepare_data
+{
+	my ($an) = @_;
+	
+	# First, sort the controllers.
+	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
+	{
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "serial_number", value1 => $serial_number,
+				name2 => "type",          value2 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->aligned_entries({
+				log_level => 2, 
+				file      => $THIS_FILE,
+				line      => __LINE__,
+				prefix    => "$serial_number - $type",
+				hash_ref  => $an->data->{controller}{serial_number}{$serial_number}{$type},
+			});
+		}
+		
+		my $storcli_controller_uuid          = "";
+		my $storcli_controller_host_uuid     = $an->data->{sys}{host_uuid};
+		my $storcli_controller_serial_number = $serial_number;
+		my $storcli_controller_model         = $an->data->{controller}{serial_number}{$serial_number}{variable}{model};
+		my $storcli_controller_alarm_state   = $an->data->{controller}{serial_number}{$serial_number}{variable}{alarm_state};
+		my $storcli_controller_cache_size    = $an->data->{controller}{serial_number}{$serial_number}{variable}{on_board_memory_size};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "storcli_controller_host_uuid",     value1 => $storcli_controller_host_uuid,
+			name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number,
+			name3 => "storcli_controller_model",         value3 => $storcli_controller_model,
+			name4 => "storcli_controller_alarm_state",   value4 => $storcli_controller_alarm_state,
+			name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	die "$THIS_FILE ".__LINE__."; testing...\n";
+	
+	# Now Cachevault (FBUs)
+	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
+	{
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "cachevault_serial_number", value1 => $cachevault_serial_number,
+				name2 => "type",                     value2 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->aligned_entries({
+				log_level => 3, 
+				file      => $THIS_FILE,
+				line      => __LINE__,
+				prefix    => "$cachevault_serial_number - $type",
+				hash_ref  => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type},
+			});
+		}
+	}
+	
+	# Now BBUs
+	foreach my $bbu_serial_number (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}})
+	{
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "bbu_serial_number", value1 => $bbu_serial_number,
+				name2 => "type",              value2 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->aligned_entries({
+				log_level => 2, 
+				file      => $THIS_FILE,
+				line      => __LINE__,
+				prefix    => "$bbu_serial_number - $type",
+				hash_ref  => $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type},
+			});
+		}
+	}
+	
+	# Now the virtual disks. Note that '9999' is a fake VD used for physical drives not in any actual 
+	# VDs.
+	foreach my $virtual_disk (sort {$a cmp $b} keys %{$an->data->{virtual_disk}})
+	{
+		my $serial_number = $an->data->{virtual_disk}{$virtual_disk}{variable}{on_controller};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "virtual_disk",  value1 => $virtual_disk,
+			name2 => "serial_number", value2 => $serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "type", value1 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->aligned_entries({
+				log_level => 2, 
+				file      => $THIS_FILE,
+				line      => __LINE__,
+				prefix    => "VD $virtual_disk - $type",
+				hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{$type},
+			});
+		}
+		
+		# Show the drive group and drives.
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "drive_group", value1 => $drive_group,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $say_drive_group  = $drive_group  eq "9999" ? "x" : $drive_group;
+			my $say_virtual_disk = $virtual_disk eq "9999" ? "x" : $virtual_disk;
+			
+			# Show the basic drive group data
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->aligned_entries({
+					log_level => 2, 
+					file      => $THIS_FILE,
+					line      => __LINE__,
+					prefix    => "VD $say_virtual_disk, DG $say_drive_group - $type",
+					hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type},
+				});
+			}
+			
+			# And show the drives in this group.
+			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "enclosure_id", value1 => $enclosure_id,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
+				{
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "slot_number", value1 => $slot_number,
+					}, file => $THIS_FILE, line => __LINE__});
+					foreach my $type ("variable", "temperature")
+					{
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "type", value1 => $type,
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->aligned_entries({
+							log_level => 2, 
+							file      => $THIS_FILE,
+							line      => __LINE__,
+							prefix    => "VD $say_virtual_disk, DG $say_drive_group, EID $enclosure_id, Slot $slot_number - $type",
+							hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
+						});
+					}
+				}
+			}
+		}
+	}
+	
+	return(0);
+}
+
 # This reads in the last scan data from one of the databases and compares it against the just-read data. If 
 # anything changed, register an alert.
 sub find_changes
@@ -199,7 +354,183 @@ sub find_changes
 	# then it must be new and will be INSERTed. Any old records left over will have vanished.
 	read_last_scan($an);
 	
+	die "$THIS_FILE ".__LINE__."; testing...\n";
+	
+	### NOTE: We will loop through each section of data we scanned, deleting records as we process them
+	###       that existed in the DB, and then marking as removed anything left in the databased data not
+	###       seen in this scan.
+	
 	# Look for new, changed or deleted controllers.
+	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "serial_number", value1 => $serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Is this controller in the database yet?
+		my $controller_uuid = "";
+		my $in_new          = 0;
+		my $changes         = 0;
+		if ($an->data->{'scan-storcli'}{controllers}{by_serial}{$serial_number})
+		{
+			# Yes!
+			$controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$serial_number};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "controller_uuid", value1 => $controller_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Look for changes.
+		}
+		else
+		{
+			# New controller, add all the details! \o/
+			$controller_uuid = $an->Get->uuid();
+			$in_new          = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "controller_uuid", value1 => $controller_uuid,
+				name2 => "in_new",          value2 => $in_new,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# These are the values for the main table. Anything else will go in the variables table.
+		my $new_model       = "";
+		my $new_alarm_state = "";
+		my $new_cache_size  = "";
+		my $source_table    = "storcli_controllers";
+		my $source_uuid     = $controller_uuid;
+		my $is_temperature  = "FALSE";
+		foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{variable}})
+		{
+			my $new_value = $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "key",       value1 => $key,
+				name2 => "new_value", value2 => $new_value,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($key eq "model")
+			{
+				# Store and delete the value
+				$new_model = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_model", value1 => $new_model,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			elsif ($key eq "alarm_state")
+			{
+				# Store and delete the value
+				$new_alarm_state = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_alarm_state", value1 => $new_alarm_state,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			elsif ($key eq "on_board_memory_size")
+			{
+				# Store and delete the value
+				$new_cache_size = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_cache_size", value1 => $new_cache_size,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			else
+			{
+				### TODO: Left off here.
+				# Normal variable
+				my $new_value    = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+				my $old_value    = "";
+				if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$source_table}{source_uuid}{$source_uuid}{variable}{$key}{storcli_variable_value})
+				{
+					$old_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$source_table}{source_uuid}{$source_uuid}{variable}{$key}{storcli_variable_value};
+				}
+# 			storcli_variable_uuid		=>	$storcli_variable_uuid, 
+# 			storcli_variable_is_temperature	=>	$storcli_variable_is_temperature, 
+# 			storcli_variable_value		=>	$storcli_variable_value, 
+			}
+		}
+		
+		# Set the temperature to TRUE.
+# 		$is_temperature = "TRUE";
+# 		foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{temperature}})
+# 		{
+# 			my $new_value = $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+# 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+# 				name1 => "key",       value1 => $key,
+# 				name2 => "new_value", value2 => $new_value,
+# 			}, file => $THIS_FILE, line => __LINE__});
+# 		}
+# 		
+# 		if ($is_new)
+# 		{
+# 			# INSERT the controller.
+# 			my $query           = "
+# INSERT INTO 
+#     storcli_controllers 
+# (
+#     storcli_controller_uuid, 
+#     storcli_controller_host_uuid, 
+#     storcli_controller_serial_number, 
+#     storcli_controller_model, 
+#     storcli_controller_alarm_state, 
+#     storcli_controller_cache_size, 
+#     modified_date
+# ) VALUES (
+#     ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+#     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+#     ".$an->data->{sys}{use_db_fh}->quote($serial_number).", 
+#     ".$an->data->{sys}{use_db_fh}->quote().", 
+#     ".$an->data->{sys}{use_db_fh}->quote().", 
+#     ".$an->data->{sys}{use_db_fh}->quote().", 
+#     ".$an->data->{sys}{use_db_fh}->quote().", 
+#     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+# );";
+# # 		storcli_controller_uuid			uuid				primary key,
+# # 		storcli_controller_host_uuid		uuid				not null,
+# # 		storcli_controller_serial_number	text				not null,	-- This is the core identifier
+# # 		storcli_controller_model		text				not null,	-- "Model"
+# # 		storcli_controller_alarm_state		text				not null,	-- "Alarm State"
+# # 		storcli_controller_cache_size		numeric				not null,	-- "On Board Memory Size"
+# 		}
+# 		elsif ($changes)
+# 		{
+# 			# UPDATE the controller.
+# 		}
+# 		
+# 		# Delete the controller key from 'sql'.
+# # 		delete 
+# 		
+# 		my $storcli_controller_uuid          = "";
+# 		my $storcli_controller_host_uuid     = $an->data->{sys}{host_uuid};
+# 		my $storcli_controller_serial_number = $serial_number;
+# 		my $storcli_controller_model         = $an->data->{controller}{serial_number}{$serial_number}{variable}{model};
+# 		my $storcli_controller_alarm_state   = $an->data->{controller}{serial_number}{$serial_number}{variable}{alarm_state};
+# 		my $storcli_controller_cache_size    = $an->data->{controller}{serial_number}{$serial_number}{variable}{on_board_memory_size};
+# 		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+# 			name1 => "storcli_controller_host_uuid",     value1 => $storcli_controller_host_uuid,
+# 			name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number,
+# 			name3 => "storcli_controller_model",         value3 => $storcli_controller_model,
+# 			name4 => "storcli_controller_alarm_state",   value4 => $storcli_controller_alarm_state,
+# 			name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size,
+# 		}, file => $THIS_FILE, line => __LINE__});
+# 		
+# 		
+# 		$an->data->{'scan-storcli'}{controllers}{by_serial}{$storcli_controller_serial_number} = $storcli_controller_uuid;
+# 		$an->data->{'scan-storcli'}{controllers}{by_uuid}{$storcli_controller_uuid}            = $storcli_controller_serial_number;
+# 		$an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid} = {
+# 			storcli_controller_serial_number	=>	$storcli_controller_serial_number, 
+# 			storcli_controller_model		=>	$storcli_controller_model, 
+# 			storcli_controller_alarm_state		=>	$storcli_controller_alarm_state, 
+# 			storcli_controller_cache_size		=>	$storcli_controller_cache_size, 
+# 		};
+# 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+# 			name1 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_serial_number", value1 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_serial_number}, 
+# 			name2 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_model",         value2 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_model}, 
+# 			name3 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_alarm_state",   value3 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_alarm_state}, 
+# 			name4 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_cache_size",    value4 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_cache_size}, 
+# 		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	
 	# Now commit the changes.
 	commit_sql($an);
@@ -589,7 +920,7 @@ WHERE
 	}
 	undef $results;
 	
-	# Lastly, the physical drives.
+	# And now, the physical drives.
 	$query = "
 SELECT 
     storcli_physical_drive_uuid, 
@@ -654,6 +985,65 @@ WHERE
 			name5 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_model",                 value5 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model}, 
 			name6 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_serial_number",         value6 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number}, 
 			name7 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_self_encrypting_drive", value7 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	undef $results;
+	
+	# Lastly, the variables.
+	$query = "
+SELECT 
+    storcli_variable_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value 
+FROM 
+    storcli_variables
+WHERE
+    storcli_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $storcli_variable_uuid            = $row->[0]; 
+		my $storcli_variable_source_table    = $row->[1]; 
+		my $storcli_variable_source_uuid     = $row->[2]; 
+		my $storcli_variable_is_temperature  = $row->[3]; 
+		my $storcli_variable_name            = $row->[4]; 
+		my $storcli_variable_value           = defined $row->[5] ? $row->[5] : ""; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "storcli_variable_uuid",           value1 => $storcli_variable_uuid, 
+			name2 => "storcli_variable_source_table",   value2 => $storcli_variable_source_table, 
+			name3 => "storcli_variable_source_uuid",    value3 => $storcli_variable_source_uuid, 
+			name4 => "storcli_variable_is_temperature", value4 => $storcli_variable_is_temperature, 
+			name5 => "storcli_variable_name",           value5 => $storcli_variable_name, 
+			name6 => "storcli_variable_value",          value6 => $storcli_variable_value, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# We store these differently for easier reference.
+		$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{variable}{$storcli_variable_name} = {
+			storcli_variable_uuid		=>	$storcli_variable_uuid, 
+			storcli_variable_is_temperature	=>	$storcli_variable_is_temperature, 
+			storcli_variable_value		=>	$storcli_variable_value, 
+		};
+		
+		# Entries are so long that we log the one per variable.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sql::storcli_variables::storcli_variable_uuid::source_table::${storcli_variable_source_table}::source_uuid::${storcli_variable_source_uuid}::variable::${storcli_variable_name}::storcli_variable_uuid",           value1 => $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{variable}{$storcli_variable_name}{storcli_variable_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sql::storcli_variables::storcli_variable_uuid::source_table::${storcli_variable_source_table}::source_uuid::${storcli_variable_source_uuid}::variable::${storcli_variable_name}::storcli_variable_is_temperature", value1 => $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{variable}{$storcli_variable_name}{storcli_variable_is_temperature}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sql::storcli_variables::storcli_variable_uuid::source_table::${storcli_variable_source_table}::source_uuid::${storcli_variable_source_uuid}::variable::${storcli_variable_name}::storcli_variable_value",          value1 => $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{variable}{$storcli_variable_name}{storcli_variable_value}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
@@ -2756,162 +3146,6 @@ sub gather_data
 	
 	# Sort and prepare the data for insertion into the database.
 	sort_and_prepare_data($an);
-	
-	return(0);
-}
-
-# Sort and prepare the data for insertion into the database.
-sub sort_and_prepare_data
-{
-	my ($an) = @_;
-	
-	# First, sort the controllers.
-	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
-	{
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "serial_number", value1 => $serial_number,
-				name2 => "type",          value2 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->aligned_entries({
-				log_level => 3, 
-				file      => $THIS_FILE,
-				line      => __LINE__,
-				prefix    => "$serial_number - $type",
-				hash_ref  => $an->data->{controller}{serial_number}{$serial_number}{$type},
-			});
-		}
-		
-		my $storcli_controller_uuid          = "";
-		my $storcli_controller_host_uuid     = $an->data->{sys}{host_uuid};
-		my $storcli_controller_serial_number = $serial_number;
-		my $storcli_controller_model         = $an->data->{controller}{serial_number}{$serial_number}{variable}{model};
-		my $storcli_controller_alarm_state   = $an->data->{controller}{serial_number}{$serial_number}{variable}{alarm_state};
-		my $storcli_controller_cache_size    = $an->data->{controller}{serial_number}{$serial_number}{variable}{on_board_memory_size};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-			name1 => "storcli_controller_host_uuid",     value1 => $storcli_controller_host_uuid,
-			name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number,
-			name3 => "storcli_controller_model",         value3 => $storcli_controller_model,
-			name4 => "storcli_controller_alarm_state",   value4 => $storcli_controller_alarm_state,
-			name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Now Cachevault (FBUs)
-	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
-	{
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "cachevault_serial_number", value1 => $cachevault_serial_number,
-				name2 => "type",                     value2 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->aligned_entries({
-				log_level => 3, 
-				file      => $THIS_FILE,
-				line      => __LINE__,
-				prefix    => "$cachevault_serial_number - $type",
-				hash_ref  => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type},
-			});
-		}
-	}
-	
-	# Now BBUs
-	foreach my $bbu_serial_number (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}})
-	{
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "bbu_serial_number", value1 => $bbu_serial_number,
-				name2 => "type",              value2 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->aligned_entries({
-				log_level => 2, 
-				file      => $THIS_FILE,
-				line      => __LINE__,
-				prefix    => "$bbu_serial_number - $type",
-				hash_ref  => $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type},
-			});
-		}
-	}
-	
-	# Now the virtual disks. Note that '9999' is a fake VD used for physical drives not in any actual 
-	# VDs.
-	foreach my $virtual_disk (sort {$a cmp $b} keys %{$an->data->{virtual_disk}})
-	{
-		my $serial_number = $an->data->{virtual_disk}{$virtual_disk}{variable}{on_controller};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "virtual_disk",  value1 => $virtual_disk,
-			name2 => "serial_number", value2 => $serial_number,
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "type", value1 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->aligned_entries({
-				log_level => 2, 
-				file      => $THIS_FILE,
-				line      => __LINE__,
-				prefix    => "VD $virtual_disk - $type",
-				hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{$type},
-			});
-		}
-		
-		# Show the drive group and drives.
-		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}})
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "drive_group", value1 => $drive_group,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			my $say_drive_group  = $drive_group  eq "9999" ? "x" : $drive_group;
-			my $say_virtual_disk = $virtual_disk eq "9999" ? "x" : $virtual_disk;
-			
-			# Show the basic drive group data
-			foreach my $type ("variable", "temperature")
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "type", value1 => $type,
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->aligned_entries({
-					log_level => 2, 
-					file      => $THIS_FILE,
-					line      => __LINE__,
-					prefix    => "VD $say_virtual_disk, DG $say_drive_group - $type",
-					hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type},
-				});
-			}
-			
-			# And show the drives in this group.
-			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}})
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "enclosure_id", value1 => $enclosure_id,
-				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
-				{
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "slot_number", value1 => $slot_number,
-					}, file => $THIS_FILE, line => __LINE__});
-					foreach my $type ("variable", "temperature")
-					{
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "type", value1 => $type,
-						}, file => $THIS_FILE, line => __LINE__});
-						$an->Log->aligned_entries({
-							log_level => 2, 
-							file      => $THIS_FILE,
-							line      => __LINE__,
-							prefix    => "VD $say_virtual_disk, DG $say_drive_group, EID $enclosure_id, Slot $slot_number - $type",
-							hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
-						});
-					}
-				}
-			}
-		}
-	}
 	
 	return(0);
 }

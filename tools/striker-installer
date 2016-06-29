@@ -115,6 +115,7 @@ my $conf = {
 			"ipmidetectd", 
 			"NetworkManager", 
 			"numad", 
+			"shorewall", 
 		],
 	},
 	directory	=>	{
@@ -7182,7 +7183,7 @@ sub update_hosts
 	my $updated = 0;
 	if (not $notice_added)
 	{
-		$new_hosts .= "# NOTE: Striker uses internal name resoltion primarily and falls back to\n";
+		$new_hosts .= "# NOTE: Striker uses internal name resolution primarily and falls back to\n";
 		$new_hosts .= "#       system-based name resolution only when internal resolution is not\n";
 		$new_hosts .= "#       possible.\n";
 		$updated   =  1;

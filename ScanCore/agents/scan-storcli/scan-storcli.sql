@@ -16,9 +16,9 @@ CREATE TABLE storcli_controllers (
 	storcli_controller_uuid			uuid				primary key,
 	storcli_controller_host_uuid		uuid				not null,
 	storcli_controller_serial_number	text				not null,	-- This is the core identifier
-	storcli_controller_model		text				not null,	-- "Model"
-	storcli_controller_alarm_state		text				not null,	-- "Alarm State"
-	storcli_controller_cache_size		numeric				not null,	-- "On Board Memory Size"
+	storcli_controller_model		text				not null,	-- "model"
+	storcli_controller_alarm_state		text				not null,	-- "alarm_state"
+	storcli_controller_cache_size		numeric				not null,	-- "on_board_memory_size"
 	modified_date				timestamp with time zone	not null,
 	
 	FOREIGN KEY(storcli_controller_host_uuid) REFERENCES hosts(host_uuid)
@@ -564,11 +564,11 @@ CREATE TABLE storcli_variables (
 ALTER TABLE storcli_variables OWNER TO #!variable!user!#;
 
 CREATE TABLE history.storcli_variables (
-	history_id					bigserial,
+	history_id			bigserial,
 	storcli_variable_uuid		uuid,
-	storcli_variable_host_uuid		uuid,
+	storcli_variable_host_uuid	uuid,
 	storcli_variable_source_table	uuid,
-	storcli_variable_source_uuid		uuid,
+	storcli_variable_source_uuid	uuid,
 	storcli_variable_is_temperature	boolean,
 	storcli_variable_name		text,
 	storcli_variable_value		text,

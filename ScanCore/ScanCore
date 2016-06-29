@@ -7049,7 +7049,7 @@ INSERT INTO
 INSERT INTO 
     history.temperature
 (
-    temperature_id, 
+    temperature_uuid, 
     temperature_agent_name, 
     temperature_host_uuid, 
     temperature_sensor_host, 
@@ -7059,7 +7059,7 @@ INSERT INTO
     temperature_is, 
     modified_date 
 ) VALUES (
-    (SELECT temperature_id FROM public.temperature WHERE temperature_uuid = ".$an->data->{sys}{use_db_fh}->quote($temperature_uuid)."), 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($temperature_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($temperature_sensor_host).", 
