@@ -871,7 +871,7 @@ CREATE TRIGGER trigger_temperature
 
 -- This stores information about the scan agents on this system
 CREATE TABLE agents (
-	agent_id		bigserial			primary key,
+	agent_uuid		uuid				primary key,
 	agent_host_uuid		uuid				not null,
 	agent_name		text				not null,			-- This is the name of the scan agent file name
 	agent_exit_code		int				not null,			-- This is the exit code from the last run
@@ -884,7 +884,7 @@ ALTER TABLE agents OWNER TO #!variable!user!#;
 
 CREATE TABLE history.agents (
 	history_id		bigserial,
-	agent_id		bigint				not null,
+	agent_uuid		uuid				not null,
 	agent_host_uuid		uuid				not null,
 	agent_name		text				not null,
 	agent_exit_code		int				not null,
@@ -898,16 +898,16 @@ AS $$
 DECLARE
 	history_agents RECORD;
 BEGIN
-	SELECT INTO history_agents * FROM agents WHERE agent_id = new.agent_id;
+	SELECT INTO history_agents * FROM agents WHERE agent_uuid = new.agent_uuid;
 	INSERT INTO history.agents
-		(agent_id,
+		(agent_uuid,
 		 agent_host_uuid,
 		 agent_name,
 		 agent_exit_code,
 		 agent_runtime,
 		 modified_date)
 	VALUES
-		(history_agents.agent_id,
+		(history_agents.agent_uuid,
 		 history_agents.agent_host_uuid,
 		 history_agents.agent_name,
 		 history_agents.agent_exit_code,

@@ -7240,7 +7240,7 @@ FROM
 			my $server_pre_migration_arguments  = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_pre_migration_arguments};
 			my $server_post_migration_script    = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_script};
 			my $server_post_migration_arguments = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_arguments};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_00014", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
 				name1  => "server_uuid",                     value1  => $server_uuid, 
 				name2  => "server_name",                     value2  => $server_name, 
 				name3  => "server_stop_reason",              value3  => $server_stop_reason, 
@@ -8134,6 +8134,7 @@ sub update_db_agents
 		# Read in the history schema
 		my $query = "
 SELECT 
+    agent_uuid, 
     agent_name, 
     agent_exit_code, 
     agent_runtime, 
@@ -8143,7 +8144,7 @@ FROM
 WHERE
     agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -8155,27 +8156,31 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $agent_name      = $row->[0];
-			my $agent_exit_code = $row->[1];
-			my $agent_runtime   = $row->[2];
-			my $modified_date   = $row->[3];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-				name1 => "agent_name",      value1 => $agent_name, 
-				name2 => "agent_exit_code", value2 => $agent_exit_code, 
-				name3 => "agent_runtime",   value3 => $agent_runtime, 
-				name4 => "modified_date",   value4 => $modified_date
+			my $agent_uuid      = $row->[0];
+			my $agent_name      = $row->[1];
+			my $agent_exit_code = $row->[2];
+			my $agent_runtime   = $row->[3];
+			my $modified_date   = $row->[4];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "agent_uuid",      value1 => $agent_uuid, 
+				name2 => "agent_name",      value2 => $agent_name, 
+				name3 => "agent_exit_code", value3 => $agent_exit_code, 
+				name4 => "agent_runtime",   value4 => $agent_runtime, 
+				name5 => "modified_date",   value5 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
-			$an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name} = {
-				agent_exit_code		=>	$agent_exit_code,
-				agent_runtime		=>	$agent_runtime,
+			$an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_uuid}{$agent_uuid} = {
+				agent_name	=>	$agent_name, 
+				agent_exit_code	=>	$agent_exit_code,
+				agent_runtime	=>	$agent_runtime,
 			};
-			$an->data->{db_data}{$id}{agents}{agent_name}{$agent_name}{'exists'} = 1;
-			$an->data->{db_data}{$id}{agents}{agent_name}{$agent_name}{seen}     = 0;
-			$an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name} = {
-				agent_exit_code		=>	$agent_exit_code,
-				agent_runtime		=>	$agent_runtime,
+			$an->data->{db_data}{$id}{agents}{agent_uuid}{$agent_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{agents}{agent_uuid}{$agent_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_uuid}{$agent_uuid} = {
+				agent_name	=>	$agent_name, 
+				agent_exit_code	=>	$agent_exit_code,
+				agent_runtime	=>	$agent_runtime,
 			};
 		}
 	}
@@ -8188,18 +8193,20 @@ WHERE
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_name}})
+		foreach my $agent_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_uuid}})
 		{
-			my $agent_exit_code = $an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name}{agent_exit_code};
-			my $agent_runtime   = $an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name}{agent_runtime};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "agent_name",      value1 => $agent_name, 
-				name2 => "agent_exit_code", value2 => $agent_exit_code, 
-				name3 => "agent_runtime",   value3 => $agent_runtime, 
+			my $agent_name      = $an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_uuid}{$agent_uuid}{agent_name};
+			my $agent_exit_code = $an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_uuid}{$agent_uuid}{agent_exit_code};
+			my $agent_runtime   = $an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_uuid}{$agent_uuid}{agent_runtime};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "agent_uuid",      value1 => $agent_uuid, 
+				name2 => "agent_name",      value2 => $agent_name, 
+				name3 => "agent_exit_code", value3 => $agent_exit_code, 
+				name4 => "agent_runtime",   value4 => $agent_runtime, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
-				# For each 'agent_name' we see;
+				# For each 'agent_uuid' we see;
 				# - Check if we've *seen* it before
 				#   |- If not; See if it *exists* in the public schema yet.
 				#   |  |- If so, check to see if the entry in the public schema is up to date.
@@ -8209,37 +8216,37 @@ WHERE
 				#      \- If not, _INSERT_ it into history schema.
 				#
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "db_data::${id}::agents::agent_name::${agent_name}::seen", value1 => $an->data->{db_data}{$id}{agents}{agent_name}{$agent_name}{seen}, 
+					name1 => "db_data::${id}::agents::agent_name::${agent_name}::seen", value1 => $an->data->{db_data}{$id}{agents}{agent_uuid}{$agent_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if (not $an->data->{db_data}{$id}{agents}{agent_name}{$agent_name}{seen})
+				if (not $an->data->{db_data}{$id}{agents}{agent_uuid}{$agent_uuid}{seen})
 				{
 					# Mark this record as now having been seen.
-					$an->data->{db_data}{$id}{agents}{agent_name}{$agent_name}{seen} = 1;
+					$an->data->{db_data}{$id}{agents}{agent_uuid}{$agent_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::agents::agent_name::${agent_name}::exists", value1 => $an->data->{db_data}{$id}{agents}{agent_name}{$agent_name}{'exists'}, 
+						name1 => "db_data::${id}::agents::agent_name::${agent_name}::exists", value1 => $an->data->{db_data}{$id}{agents}{agent_uuid}{$agent_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{agents}{agent_name}{$agent_name}{'exists'})
+					if ($an->data->{db_data}{$id}{agents}{agent_uuid}{$agent_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1  => "db_data::${id}::agents::modified_date::${modified_date}::agent_name::${agent_name}", value1 => $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name}, 
+							name1  => "db_data::${id}::agents::modified_date::${modified_date}::agent_name::${agent_name}", value1 => $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_uuid}{$agent_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name})
+						if (not $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_uuid}{$agent_uuid})
 						{
 							# No, so UPDATE it.
 							my $query = "
 UPDATE 
     public.agents
 SET
+    agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    agent_name      = ".$an->data->{sys}{use_db_fh}->quote($agent_name).", 
     agent_exit_code = ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
     agent_runtime   = ".$an->data->{sys}{use_db_fh}->quote($agent_runtime).", 
     modified_date   = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
-    agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    agent_name      = ".$an->data->{sys}{use_db_fh}->quote($agent_name)." 
+    agent_uuid      = ".$an->data->{sys}{use_db_fh}->quote($agent_uuid)." 
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
@@ -8257,12 +8264,14 @@ AND
 INSERT INTO 
     public.agents
 (
+    agent_uuid, 
     agent_host_uuid, 
     agent_name, 
     agent_exit_code, 
     agent_runtime, 
     modified_date 
 ) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($agent_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
@@ -8280,33 +8289,24 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'agent_name' before, so it's just a question
+					# We've seen this 'agent_uuid' before, so it's just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
-					if (not $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name})
+					if (not $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_uuid}{$agent_uuid})
 					{
 						# It doesn't, INSERT it.
 						my $query = "
 INSERT INTO 
     history.agents
 (
-    agent_id, 
+    agent_uuid, 
     agent_host_uuid, 
     agent_name, 
     agent_exit_code, 
     agent_runtime, 
     modified_date 
 ) VALUES (
-    (
-        SELECT 
-            agent_id 
-        FROM 
-            public.agents 
-        WHERE 
-            agent_name = ".$an->data->{sys}{use_db_fh}->quote($agent_name)."
-        AND
-            agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-    ), 
+    ".$an->data->{sys}{use_db_fh}->quote($agent_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
@@ -8794,7 +8794,7 @@ sub call_agents
 		# Record this run in the DB.
 		my $query = "
 SELECT 
-    COUNT(*) 
+    agent_uuid 
 FROM 
     agents 
 WHERE 
@@ -8802,26 +8802,31 @@ WHERE
 AND
     agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
-		my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+		
+		my $agent_uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+		   $agent_uuid = "" if not defined $agent_uuid;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "count", value1 => $count
+			name1 => "agent_uuid", value1 => $agent_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($count < 1)
+		if (not $agent_uuid)
 		{
 			# Add this agent to the DB
-			my $query = "
+			my $agent_uuid = $an->Get->uuid();
+			my $query      = "
 INSERT INTO 
     agents 
 (
+    agent_uuid, 
     agent_host_uuid, 
     agent_name, 
     agent_exit_code, 
     agent_runtime,
     modified_date
 ) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($agent_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_agent).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_rc).", 
@@ -8830,6 +8835,9 @@ INSERT INTO
 );
 ";
 			$query =~ s/'NULL'/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		}
 		else
@@ -8843,11 +8851,12 @@ SET
     agent_runtime   = ".$an->data->{sys}{use_db_fh}->quote($runtime).", 
     modified_date   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-AND
-    agent_name      = ".$an->data->{sys}{use_db_fh}->quote($say_agent)."
+    agent_uuid      = ".$an->data->{sys}{use_db_fh}->quote($agent_uuid)."
 ;";
 			$query =~ s/'NULL'/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		}
 	}
