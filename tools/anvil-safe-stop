@@ -132,6 +132,8 @@ if (not $connections)
 # Who am I and what Anvil! do I belong to?
 find_myself($an);
 
+### NOTE: Left off here... report our progress to STDOUT using string keys and don't call anvil-kick-apc-ups
+###       unless it is locally enabled.
 # Do the deed
 process_request($an);
 
@@ -188,6 +190,7 @@ sub shed_load
 	if (not $peer_access)
 	{
 		# We're done.
+		print $an->String->get({key => "assp_message_0005"})."\n";
 		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0002", message_variables => { peer => $an->data->{sys}{peer_node} }, code => 3, file => "$THIS_FILE", line => __LINE__});
 		exit(3);
 	}
@@ -195,6 +198,7 @@ sub shed_load
 	# Wait if we're node 2
 	if ($an->data->{sys}{i_am_node2})
 	{
+		print $an->String->get({key => "assp_message_0006"})."\n";
 		$an->Remote->wait_on_peer({
 			program  => $an->data->{sys}{program_name}, 
 			target   => $an->data->{sys}{peer_node}, 
@@ -220,8 +224,10 @@ sub shed_load
 	if ((not $local_rgmanager_state) && (not $peer_rgmanager_state))
 	{
 		# Neither node is in the cluster, so shut down node 2.
+		print $an->String->get({key => "assp_message_0007"})."\n";
 		if ($an->data->{sys}{i_am_node2})
 		{
+			# We're node 2, so we'll go down.
 			$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
@@ -229,7 +235,7 @@ sub shed_load
 		}
 		else
 		{
-			# Peer has more RAM in use by servers, so we'll shut down the local system.
+			# We're node 1, so the peer will go down.
 			$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
@@ -239,6 +245,7 @@ sub shed_load
 	elsif (not $local_rgmanager_state)
 	{
 		# I'm not in the cluster, so I will shut down.
+		print $an->String->get({key => "assp_message_0008", variables => { node => $an->hostname() }})."\n";
 		$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
@@ -247,6 +254,7 @@ sub shed_load
 	elsif (not $peer_rgmanager_state)
 	{
 		# The peer is not in the cluster, so I will shut it down.
+		print $an->String->get({key => "assp_message_0008", variables => { node => $an->data->{sys}{peer_node} }})."\n";
 		$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
@@ -297,6 +305,7 @@ sub shed_load
 		}
 		elsif ($an->data->{sys}{local_health} ne "ok")
 		{
+			print $an->String->get({key => "assp_message_0009", variables => { node => $an->data->{sys}{local_node} }})."\n";
 			$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
@@ -304,6 +313,7 @@ sub shed_load
 		}
 		elsif ($an->data->{sys}{peer_health} ne "ok")
 		{
+			print $an->String->get({key => "assp_message_0009", variables => { node => $an->data->{sys}{peer_node} }})."\n";
 			$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
@@ -361,7 +371,6 @@ sub shed_load
 			}
 		}
 		
-		# 
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "local_server_ram", value1 => $local_server_ram, 
 			name2 => "peer_server_ram",  value2 => $peer_server_ram, 
@@ -369,16 +378,27 @@ sub shed_load
 		if ((not $local_server_ram) && (not $peer_server_ram))
 		{
 			# Neither node has any servers, so that's no help...
+			print $an->String->get({key => "assp_message_0016"})."\n";
 			$an->Log->entry({log_level => 0, message_key => "assp_log_0004", file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($local_server_ram eq $peer_server_ram)
 		{
 			# Both have the same total amount of allocated RAM.
+			print $an->String->get({key => "assp_message_0011"})."\n";
 			$an->Log->entry({log_level => 0, message_key => "assp_log_0005", file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($local_server_ram > $peer_server_ram)
 		{
 			# Local has more RAM in use by servers, so we'll shut down the peer.
+			print $an->String->get({key => "assp_message_0010", variables => { 
+				node => $an->hostname(),
+				ram  => $an->Readable->bytes_to_hr({'bytes' => $local_server_ram })
+			}})."\n";
+			print $an->String->get({key => "assp_message_0010", variables => { 
+				node => $an->data->{sys}{peer_node},
+				ram  => $an->Readable->bytes_to_hr({'bytes' => $peer_server_ram }),
+			}})."\n";
+			print $an->String->get({key => "assp_message_0012", variables => { node => $an->data->{sys}{peer_node} }})."\n";
 			$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
@@ -387,6 +407,15 @@ sub shed_load
 		else
 		{
 			# Peer has more RAM in use by servers, so we'll shut down the local system.
+			print $an->String->get({key => "assp_message_0010", variables => { 
+				node => $an->hostname(),
+				ram  => $an->Readable->bytes_to_hr({'bytes' => $local_server_ram })
+			}})."\n";
+			print $an->String->get({key => "assp_message_0010", variables => { 
+				node => $an->data->{sys}{peer_node},
+				ram  => $an->Readable->bytes_to_hr({'bytes' => $peer_server_ram }),
+			}})."\n";
+			print $an->String->get({key => "assp_message_0012", variables => { node => $an->data->{sys}{local_node} }})."\n";
 			$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
@@ -399,6 +428,8 @@ sub shed_load
 	{
 		if ($an->data->{sys}{i_am_node2})
 		{
+			# We're node 2, so we will go down.
+			print $an->String->get({key => "assp_message_0013", variables => { node => $an->data->{sys}{local_node} }})."\n";
 			$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
@@ -406,7 +437,8 @@ sub shed_load
 		}
 		else
 		{
-			# Peer has more RAM in use by servers, so we'll shut down the local system.
+			# The peer is node 2, so it will go down.
+			print $an->String->get({key => "assp_message_0013", variables => { node => $an->data->{sys}{peer_node} }})."\n";
 			$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
@@ -424,7 +456,7 @@ sub shed_load
 sub check_drbd
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_request" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_drbd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If one node is Diskless, we're effectively sync source in that the diskless node relies on the 
 	# peer, so we'll treat it the same.
@@ -543,6 +575,7 @@ sub shutdown_node
 	if ($proceed)
 	{
 		# Stop rgmanager, then stop cman.
+		print $an->String->get({key => "assp_message_0014", variables => { node => $node }})."\n";
 		my ($return_code, $withdraw_output) = $an->Cman->withdraw_node({
 			target   => $node,
 			password => $an->data->{sys}{anvil_password}, 
@@ -558,6 +591,7 @@ sub shutdown_node
 		if ($return_code eq "0")
 		{
 			# We're done, power off.
+			print $an->String->get({key => "assp_message_0015", variables => { node => $node }})."\n";
 			$output .= $an->System->poweroff({
 				target   => $node,
 				password => $an->data->{sys}{anvil_password}, 
@@ -589,7 +623,7 @@ sub shutdown_node
 sub local_shut_down
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_request" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "local_shut_down" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Can we reach the peer?
 	my $peer_access = $an->Check->access({
@@ -784,7 +818,7 @@ sub local_shut_down
 sub do_migration
 {
 	my ($an, $server) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "shutdown_node" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_migration" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "server", value1 => $server, 
 	}, file => $THIS_FILE, line => __LINE__});
 
@@ -822,14 +856,25 @@ sub process_request
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_request" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Are we shutting down or shedding load?
-	if ($an->data->{switches}{'shed-load'})
+	# If 'cold-stop' is set, we'll basically do a 'shed-load' with a set reason and slightly different 
+	# messages to the user.
+	if ($an->data->{switches}{'cold-stop'})
 	{
+		print $an->String->get({key => "assp_message_0002"})."\n";
+		$an->data->{sys}{stop_reason} = "cold_stop";
+		shed_load($an);
+	}
+	elsif ($an->data->{switches}{'shed-load'})
+	{
+		# We're shedding load
+		print $an->String->get({key => "assp_message_0003"})."\n";
 		$an->data->{sys}{stop_reason} = "shed-load";
 		shed_load($an);
 	}
 	elsif ($an->data->{switches}{'local'})
 	{
+		# Local shutdown
+		print $an->String->get({key => "assp_message_0004", variables => { node => $an->hostname() }})."\n";
 		local_shut_down($an);
 	}
 	else

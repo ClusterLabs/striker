@@ -2725,6 +2725,8 @@ SUPPORT
 		<key name="asst_error_0010">The 'shared' cluster file system failed to mount on one or both nodes. Unable to proceed.</key>
 		<key name="asst_error_0011">Unable to locate this #!string!brand_0004!#'s password in #!data!path::striker_config!#. Has it been added?</key>
 		<key name="asst_error_0012">During single-node start, the 'cman' daemon was found to already be running which should not happen.</key>
+		<key name="asst_error_0013">While trying to start 'rgmanager', something went wrong. A recovery will now be attempted. If this doesn't work, this machine will crash itself on purpose in hopes that the peer is healthy and fences it.</key>
+		<key name="asst_error_0014">While trying to start 'rgmanager', something went wrong. It did not start properly and an earlier recovery attempt failed. This machine is going to suicide and the peer should fence and reboot in a clean state.</key>
 		
 		
 		<!-- anvil-safe-stop -->
@@ -2790,6 +2792,12 @@ will gracefully shut down servers running on it.
 
 SWITCHES
 
+ --cold-stop
+
+	This is basically '--shed-load --reason cold_stop'. It adjusts the 
+	output reported to the user but then uses the same logic as load 
+	shedding. Striker uses this during a "Cold Stop" operation to reuse 
+	the same logic to determine which node to shut down first.
 
  --local
 
@@ -2817,6 +2825,21 @@ SUPPORT
 
                                                           #!string!brand_0001!#
 		]]></key>
+		<key name="assp_message_0002">Cold-stop request started. Choosing the node to shut down first.</key>
+		<key name="assp_message_0003">Load shedding started. Will now select the best node to shut down.</key>
+		<key name="assp_message_0004">Shutting down: [#!variable!node!#].</key>
+		<key name="assp_message_0005">The peer is already off.</key>
+		<key name="assp_message_0006">Checking to see if node 1 is also running 'anvil-safe-stop'. If it is, we will wait.</key>
+		<key name="assp_message_0007">Neither node is an Anvil! member, so we will stop node 2.</key>
+		<key name="assp_message_0008">The node: [#!variable!node!#] is not an Anvil! member, so we will stop it.</key>
+		<key name="assp_message_0009">The node: [#!variable!node!#] is less healthy, so we will stop it.</key>
+		<key name="assp_message_0010">The servers on: [#!variable!node!#] are using: [#!variable!ram!#] RAM.</key>
+		<key name="assp_message_0011">The RAM used by servers on both nodes is the same.</key>
+		<key name="assp_message_0012">The RAM used by servers on: [#!variable!node!#] is less, so we will migrate them off and shut it down.</key>
+		<key name="assp_message_0013">No criteria helped select a node to stop, so we will stop node 2: [#!variable!node!#].</key>
+		<key name="assp_message_0014">Withdrawing: [#!variable!node!#] from the Anvil! now.</key>
+		<key name="assp_message_0015">Powering off: [#!variable!node!#] now.</key>
+		<key name="assp_message_0016">There are no servers running on either node.</key>
 		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->
 		<key name="anp_log_0001">#!variable!this_file!# has started.</key>

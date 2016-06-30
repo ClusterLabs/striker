@@ -84,6 +84,12 @@ my $an = AN::Tools->new({data => {
 					group			=>	"~",
 					mode			=>	"0700",
 				},
+				'07_details'	=>	{
+					path			=>	".gconf/apps/virt-manager/details",
+					owner			=>	"~",
+					group			=>	"~",
+					mode			=>	"0700",
+				},
 			},
 			files		=>	{
 				'01_%gconf.xml'		=>	{
@@ -148,6 +154,18 @@ my $an = AN::Tools->new({data => {
 	<entry name="network_traffic" mtime="'.$time.'" type="bool" value="true"/>
 	<entry name="disk_usage" mtime="'.$time.'" type="bool" value="true"/>
 </gconf>',
+				},
+				'06_%gconf.xml'		=>	{
+					path			=>	'.gconf/apps/virt-manager/details/%gconf.xml',
+					owner			=>	"~",
+					group			=>	"~",
+					mode			=>	"0600",
+					body			=>	
+'<?xml version="1.0"?>
+<gconf>
+	<entry name="show-toolbar" mtime="'.$time.'" type="bool" value="false"/>
+</gconf>
+',
 				},
 			},
 		},

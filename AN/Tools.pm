@@ -665,6 +665,7 @@ sub _set_paths
 	$an->data->{path}{proc_bonding} = "/proc/net/bonding";
 	$an->data->{path}{proc_drbd}    = "/proc/drbd";
 	$an->data->{path}{proc_meminfo} = "/proc/meminfo";
+	$an->data->{path}{proc_sysrq}   = "/proc/sysrq-trigger";
 	$an->data->{path}{proc_uptime}  = "/proc/uptime";
 	$an->data->{path}{proc_virbr0}  = "/proc/sys/net/ipv4/conf/virbr0";
 

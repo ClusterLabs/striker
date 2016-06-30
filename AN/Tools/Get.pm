@@ -4738,8 +4738,8 @@ sub uuid
 	}
 	else
 	{
-		my $shell_call = $an->_uuidgen_path." -r";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		my $shell_call = $an->data->{path}{uuidgen}." -r";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -4747,7 +4747,7 @@ sub uuid
 		{
 			chomp;
 			$uuid = lc($_);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "uuid", value1 => $uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
@@ -4756,7 +4756,7 @@ sub uuid
 	}
 	
 	# Did we get a sane value?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "uuid", value1 => $uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($uuid =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)

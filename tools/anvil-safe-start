@@ -804,9 +804,83 @@ sub wait_for_storage
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, loop locally watching clustat for the storage services.
-	my $storage_up = 0;
+	my $started_waiting        = time;
+	my $restart_rgmanager_time = $started_waiting + 120;
+	my $force_reset_time       = $started_waiting + 300;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "started_waiting",        value1 => $started_waiting, 
+		name2 => "restart_rgmanager_time", value2 => $restart_rgmanager_time, 
+		name3 => "force_reset_time",       value3 => $force_reset_time, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $storage_up       = 0;
 	until ($storage_up)
 	{
+		# If I've waited too long, clvmd might be hung. Try force-stopping clvmd and then restarting
+		# rgmanager.
+		if (time > $force_reset_time)
+		{
+			# Try to recover
+			$an->Log->entry({log_level => 0, message_key => "asst_error_0013", file => $THIS_FILE, line => __LINE__});
+			sleep 1;
+			
+			# Stop storage (clvmd is usually the culprit here) and then restart rgmanager. The 
+			# timeout is there to make sure this doesn't hang so that we can commit suicide if
+			# needed.
+			my $shell_call = "
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{initd}."/gfs2 stop; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{initd}."/clvmd stop; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{initd}."/drbd stop; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{initd}."/rgmanager stop; 
+".$an->data->{path}{timeout}." 15 ".$an->data->{path}{initd}."/rgmanager start; 
+";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			# Push the reset time out so that we don't trigger this again.
+			$force_reset_time += 300;
+		}
+		
+		if (time > $force_reset_time)
+		{
+			# Screw it, suicide.
+			$an->Log->entry({log_level => 0, message_key => "asst_error_0014", file => $THIS_FILE, line => __LINE__});
+			
+			# Sleep to make sure the log entry above makes it to disk
+			sleep 5;
+			
+			my $shell_call = $an->data->{path}{echo}." c > ".$an->data->{path}{proc_sysrq};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+		}
+		
 		# Call clustat;
 		my $storge_count = 0;
 		my $shell_call   = $an->data->{path}{clustat};

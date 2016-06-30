@@ -3403,15 +3403,15 @@ sub _cold_stop_anvil
 			
 			# If 'cancel_ups' is set, we will stop the UPS timer. 
 			my $shell_output = "";
-			my $shell_call   = $an->data->{path}{'anvil-safe-stop'}." --shed-load --reason cold_stop";
+			my $shell_call   = $an->data->{path}{'anvil-safe-stop'}." --cold-stop";
 			if ($cancel_ups)
 			{
 				$shell_call = "
 if [ -e '".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}."' ]
 then
-    ".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}." --cancel --force
+    ".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}." --cancel
 fi;
-".$an->data->{path}{'anvil-safe-stop'}." --shed-load --reason cold_stop";
+".$an->data->{path}{'anvil-safe-stop'}." --cold-stop";
 			}
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "target",     value1 => $target,
@@ -3513,7 +3513,7 @@ fi;
 					$shell_call = "
 if [ -e '".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}."' ]
 then
-    ".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}." --cancel --force
+    ".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}." --cancel
 fi;
 ".$an->data->{path}{'anvil-safe-stop'}." --local --reason cold_stop";
 				}
@@ -3529,8 +3529,18 @@ fi;
 				});
 				foreach my $line (@{$return})
 				{
-					$line = $an->Web->parse_text_line({line => $line});
-					$shell_output .= "$line<br />\n";
+					if ($line =~ /poweroff: (.*)$/)
+					{
+						my $node_name = $1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "node_name", value1 => $node_name,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					else
+					{
+						$line = $an->Web->parse_text_line({line => $line});
+						$shell_output .= "$line<br />\n";
+					}
 				}
 				$an->Striker->mark_node_as_clean_off({node_uuid => $node_uuid, delay => $delay});
 		
@@ -6112,31 +6122,12 @@ sub _display_watchdog_panel
 			});
 		
 		# See if we can access all the UPSes we found.
-		my $all_available = 1;
-		foreach my $ip (sort {$a cmp $b} keys %{$upses})
-		{
-			$upses->{$ip}{ping} = $an->Check->ping({ping => $ip});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "upses->${ip}::name", value1 => $upses->{$ip}{name}, 
-				name2 => "upses->${ip}::ping", value2 => $upses->{$ip}{ping}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# 1 == Pinged, 0 == Failed
-			if (not $upses->{$ip}{ping})
-			{
-				$all_available = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "all_available", value1 => $all_available, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
+		my $access = $an->Striker->access_all_upses({anvil_uuid => $an->data->{sys}{anvil}{uuid}});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "all_available", value1 => $all_available, 
+			name1 => "access", value1 => $access,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# It exists, load the template. Which template will depend on whether we have access to all 
-		# the UPSes or not.
-		if ($all_available)
+		if ($access)
 		{
 			$power_cycle_link .= "&note=$note";
 			$power_off_link   .= "&note=$note";
