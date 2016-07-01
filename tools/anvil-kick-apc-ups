@@ -181,14 +181,15 @@ my $conf = {
 		},
 		group1		=>	{
 			# Note; control is 12.3, status is 12.1
-			oid		=>	".1.3.6.1.4.1.318.1.1.1.12.3.2.1.3.1",
-# 			read_oid	=>	".1.3.6.1.4.1.318.1.1.1.12.3.2.1.3.1",
-# 			write_oid	=>	".1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.1",
+			read_oid	=>	".1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.1",
+			write_oid	=>	".1.3.6.1.4.1.318.1.1.1.12.3.2.1.3.1",
 			on_integer	=>	1,
 			off_integer	=>	2, 
 		},
 		group2		=>	{
-			oid		=>	".1.3.6.1.4.1.318.1.1.1.12.3.2.1.3.2",
+			# Note; control is 12.3, status is 12.1
+			read_oid	=>	".1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.2",
+			write_oid	=>	".1.3.6.1.4.1.318.1.1.1.12.3.2.1.3.2",
 			on_integer	=>	1,
 			off_integer	=>	2, 
 		},
@@ -387,7 +388,7 @@ get_ups_ips($conf);
 
 # If the user is using timing, check that it's time to kick each UPS.
 logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::kick_frequency: [$conf->{sys}{apc}{ups}{kick_frequency}].");
-if ($conf->{sys}{apc}{ups}{kick_frequency})
+if (($conf->{sys}{apc}{ups}{kick_frequency}) && (not $conf->{switches}{force}))
 {
 	# We've not been forced and the user has asked for timed kicks. Read 'path::timing', if it exists. If
 	# it doesn't, create it with the current time. If it does, read the time in that file, subtract it 
@@ -436,7 +437,7 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 	
 	# If this UPS was processed too recently, skip it.
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
-	if (not $conf->{sys}{apc}{ups}{target}{$ups}{kick})
+	if ((not $conf->{sys}{apc}{ups}{target}{$ups}{kick}) && (not $conf->{switches}{force}))
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The UPS: [$ups] is not scheduled to be kicked on this pass, skipping it.");
 		next;
@@ -487,13 +488,33 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 			my ($poweron_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweron_return: [$poweron_return]");
 			
-			# Energize group 1 / Main group
-			my ($group1_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group1}{oid}, $conf->{snmp}{group1}{on_integer});
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group1_on_return: [$group1_on_return]");
+			### The UPSes are not happy when you try to set '1' when the outlet group is already
+			### on, so we'll check first.
+			my ($group1_current_state) = read_oid_integer($conf, $ups, $conf->{snmp}{group1}{read_oid});
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group1_current_state: [$group1_current_state]");
+			if ($group1_current_state ne "1")
+			{
+				# Energize group 1 / Main group
+				my ($group1_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group1}{write_oid}, $conf->{snmp}{group1}{on_integer});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group1_on_return: [$group1_on_return]");
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Outlet group 1 (main group) is already on.");
+			}
 			
-			# Energize group2 / group 1
-			my ($group2_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group2}{oid}, $conf->{snmp}{group2}{on_integer});
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group2_on_return: [$group2_on_return]");
+			my ($group2_current_state) = read_oid_integer($conf, $ups, $conf->{snmp}{group2}{read_oid});
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group2_current_state: [$group2_current_state]");
+			if ($group2_current_state ne "1")
+			{
+				# Energize group2 / group 1
+				my ($group2_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group2}{write_oid}, $conf->{snmp}{group2}{on_integer});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group2_on_return: [$group2_on_return]");
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Outlet group 2 (or 'group 1' where 'group 1' is called 'main group') is already on.");
+			}
 		}
 		elsif ($current_state_ups eq "8")
 		{
@@ -509,12 +530,33 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 			my ($poweron_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweron_return: [$poweron_return]");
 			
-			# Explicitely call the groups on.
-			my ($group1_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group1}{oid}, $conf->{snmp}{group1}{on_integer});
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group1_on_return: [$group1_on_return]");
+			### The UPSes are not happy when you try to set '1' when the outlet group is already
+			### on, so we'll check first.
+			my ($group1_current_state) = read_oid_integer($conf, $ups, $conf->{snmp}{group1}{read_oid});
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group1_current_state: [$group1_current_state]");
+			if ($group1_current_state ne "1")
+			{
+				# Energize group 1 / Main group
+				my ($group1_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group1}{write_oid}, $conf->{snmp}{group1}{on_integer});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group1_on_return: [$group1_on_return]");
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Outlet group 1 (main group) is already on.");
+			}
 			
-			my ($group2_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group2}{oid}, $conf->{snmp}{group2}{on_integer});
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group2_on_return: [$group2_on_return]");
+			my ($group2_current_state) = read_oid_integer($conf, $ups, $conf->{snmp}{group2}{read_oid});
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group2_current_state: [$group2_current_state]");
+			if ($group2_current_state ne "1")
+			{
+				# Energize group2 / group 1
+				my ($group2_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group2}{write_oid}, $conf->{snmp}{group2}{on_integer});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group2_on_return: [$group2_on_return]");
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Outlet group 2 (or 'group 1' where 'group 1' is called 'main group') is already on.");
+			}
 			
 			if ($conf->{switches}{reboot})
 			{
@@ -531,12 +573,12 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ]   - Setting the shut down timer to: [$conf->{sys}{apc}{reboot}{power_off_delay}] seconds.");
 				my ($set_power_off_delay_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group1}{oid}, $conf->{sys}{apc}{reboot}{power_off_delay});
 				my ($set_power_off_delay_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group2}{oid}, $conf->{sys}{apc}{reboot}{power_off_delay});
-				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]");
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]");
 				
 				# Do the needful
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ]   - Initiating timed sleep.");
 				my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_ups}{oid}, $conf->{snmp}{sleep_ups}{off_integer});
-				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]");
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]");
 				
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - NOTE: Nodes will be rebooted when power is restored.\n");
 			}
@@ -724,7 +766,7 @@ sub energize_upses
 			# Now energize the outlet groups.
 			if ($current_state_group1 eq "2")
 			{
-				my ($group1_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group1}{oid}, $conf->{snmp}{group1}{on_integer});
+				my ($group1_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group1}{write_oid}, $conf->{snmp}{group1}{on_integer});
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group1_on_return: [$group1_on_return]");
 				if ($group1_on_return eq "1")
 				{
@@ -742,7 +784,7 @@ sub energize_upses
 			}
 			if ($current_state_group2 eq "2")
 			{
-				my ($group2_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group2}{oid}, $conf->{snmp}{group2}{on_integer});
+				my ($group2_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group2}{write_oid}, $conf->{snmp}{group2}{on_integer});
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group2_on_return: [$group2_on_return]");
 				if ($group2_on_return eq "1")
 				{

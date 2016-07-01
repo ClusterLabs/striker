@@ -3308,8 +3308,13 @@ sub _cold_stop_anvil
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{sys}{anvil}{node1}{online}) or ($an->data->{sys}{anvil}{node2}{online}))
 	{
-		my $say_title = $an->String->get({key => "title_0181", variables => { anvil => $anvil_name }});
-		print $an->Web->template({file => "server.html", template => "cold-stop-header", replace => { title => $say_title }});
+		my $timestamp   = $an->Get->date_and_time({split_date_time => 0});
+		my $say_title   = $an->String->get({key => "title_0181", variables => { anvil => $anvil_name }});
+		my $say_message = $an->String->get({key => "message_0488", variables => { timestamp => $timestamp }});
+		print $an->Web->template({file => "server.html", template => "cold-stop-header", replace => { 
+			title   => $say_title, 
+			message => $say_message, 
+		}});
 		
 		# Find a node to use to stop the servers.
 		my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
@@ -3384,7 +3389,10 @@ sub _cold_stop_anvil
 			}
 		}
 		
-		# Now, stop the nodes. If both nodes are up, we'll call '--load-shed' to invoke 
+		# Start the UPS timer here and abort if the timer doesn't start.
+		
+		
+		# Now, stop the nodes. If both nodes are up, we'll call '--cold-stop' to invoke 
 		# 'anvil-safe-stop's logic to determine which node should die first. We'll look for 
 		# 'poweroff: X' to determine which node went down.
 		if (($an->data->{sys}{anvil}{node1}{online}) && ($an->data->{sys}{anvil}{node2}{online}))
