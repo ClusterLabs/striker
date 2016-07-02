@@ -63,8 +63,6 @@ my $an = AN::Tools->new({data =>
 			agents_directory	=>	"$running_directory/agents",
 			scancore_strings	=>	"$running_directory/ScanCore.xml",
 			scancore_sql		=>	"$running_directory/ScanCore.sql",
-			striker_config		=>	"/etc/striker/striker.conf",
-			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 		},
 		# Things set here are meant to be overwritable by the user in striker.conf.
 		scancore			=>	{

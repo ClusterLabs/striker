@@ -656,6 +656,8 @@ sub _set_paths
 	$an->data->{path}{host_uuid}        = "/etc/striker/host.uuid";
 	$an->data->{path}{logrotate_config} = "/etc/logrotate.d/anvil";
 	$an->data->{path}{ssh_config}       = "/etc/ssh/ssh_config";
+	$an->data->{path}{striker_config}   = "/etc/striker/striker.conf";
+	$an->data->{path}{striker_strings}  = "/sbin/striker/Data/strings.xml",
 	$an->data->{path}{root_crontab}     = "/var/spool/cron/root";
 	
 	# This is a text file with '#!token!#' replaced with a job's UUID token when running Anvil! jobs from 'anvil-run-jobs'

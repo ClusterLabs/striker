@@ -30,7 +30,7 @@
 # 
 
 # Disable this for now.
-exit(0);
+#exit(0);
 
 # Use my modules.
 use strict;
@@ -57,10 +57,6 @@ my $an = AN::Tools->new({data =>
 		path			=>	{
 			core_strings		=>	"$scancore_directory/ScanCore.xml",
 			sql			=>	"$running_directory/$THIS_FILE.sql",
-			# This stores this node's UUID. It is used to track all our sensor data in the 
-			# database. If you change this here, change it ScanCore, too.
-			striker_config		=>	"/etc/striker/striker.conf",
-			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			strings			=>	"$running_directory/$THIS_FILE.xml",
 		},
 		# This is used so that the user can set the language in on striker.conf variable.
@@ -223,7 +219,7 @@ sub sort_and_prepare_data
 			name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	die "$THIS_FILE ".__LINE__."; testing...\n";
+	#die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	# Now Cachevault (FBUs)
 	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
@@ -354,8 +350,6 @@ sub find_changes
 	# then it must be new and will be INSERTed. Any old records left over will have vanished.
 	read_last_scan($an);
 	
-	die "$THIS_FILE ".__LINE__."; testing...\n";
-	
 	### NOTE: We will loop through each section of data we scanned, deleting records as we process them
 	###       that existed in the DB, and then marking as removed anything left in the databased data not
 	###       seen in this scan.
@@ -368,8 +362,9 @@ sub find_changes
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Is this controller in the database yet?
+		my $sql             = [];
 		my $controller_uuid = "";
-		my $in_new          = 0;
+		my $is_new          = 0;
 		my $changes         = 0;
 		if ($an->data->{'scan-storcli'}{controllers}{by_serial}{$serial_number})
 		{
@@ -378,21 +373,28 @@ sub find_changes
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "controller_uuid", value1 => $controller_uuid,
 			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Look for changes.
 		}
 		else
 		{
-			# New controller, add all the details! \o/
+			# No, this is a new controller. Create a new UUID for it.
 			$controller_uuid = $an->Get->uuid();
-			$in_new          = 1;
+			$is_new          = 1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "controller_uuid", value1 => $controller_uuid,
-				name2 => "in_new",          value2 => $in_new,
+				name2 => "is_new",          value2 => $is_new,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Add the keys for looking it up by UUID or serial number.
+			$an->data->{'scan-storcli'}{controllers}{by_serial}{$serial_number} = $controller_uuid;
+			$an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid} = $serial_number;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "scan-storcli::controllers::by_serial::$serial_number", value1 => $an->data->{'scan-storcli'}{controllers}{by_serial}{$serial_number},
+				name2 => "scan-storcli::controllers::by_uuid::$controller_uuid", value2 => $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		# These are the values for the main table. Anything else will go in the variables table.
+		# These are the values for the main table. Anything else will go in the variables table which
+		# will be processed after the controller.
 		my $new_model       = "";
 		my $new_alarm_state = "";
 		my $new_cache_size  = "";
@@ -401,10 +403,8 @@ sub find_changes
 		my $is_temperature  = "FALSE";
 		foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{variable}})
 		{
-			my $new_value = $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "key",       value1 => $key,
-				name2 => "new_value", value2 => $new_value,
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "key", value1 => $key,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($key eq "model")
@@ -434,102 +434,102 @@ sub find_changes
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
-			else
-			{
-				### TODO: Left off here.
-				# Normal variable
-				my $new_value    = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
-				my $old_value    = "";
-				if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$source_table}{source_uuid}{$source_uuid}{variable}{$key}{storcli_variable_value})
-				{
-					$old_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$source_table}{source_uuid}{$source_uuid}{variable}{$key}{storcli_variable_value};
-				}
-# 			storcli_variable_uuid		=>	$storcli_variable_uuid, 
-# 			storcli_variable_is_temperature	=>	$storcli_variable_is_temperature, 
-# 			storcli_variable_value		=>	$storcli_variable_value, 
-			}
 		}
 		
-		# Set the temperature to TRUE.
-# 		$is_temperature = "TRUE";
-# 		foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{temperature}})
-# 		{
-# 			my $new_value = $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
-# 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-# 				name1 => "key",       value1 => $key,
-# 				name2 => "new_value", value2 => $new_value,
-# 			}, file => $THIS_FILE, line => __LINE__});
-# 		}
-# 		
-# 		if ($is_new)
-# 		{
-# 			# INSERT the controller.
-# 			my $query           = "
-# INSERT INTO 
-#     storcli_controllers 
-# (
-#     storcli_controller_uuid, 
-#     storcli_controller_host_uuid, 
-#     storcli_controller_serial_number, 
-#     storcli_controller_model, 
-#     storcli_controller_alarm_state, 
-#     storcli_controller_cache_size, 
-#     modified_date
-# ) VALUES (
-#     ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
-#     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-#     ".$an->data->{sys}{use_db_fh}->quote($serial_number).", 
-#     ".$an->data->{sys}{use_db_fh}->quote().", 
-#     ".$an->data->{sys}{use_db_fh}->quote().", 
-#     ".$an->data->{sys}{use_db_fh}->quote().", 
-#     ".$an->data->{sys}{use_db_fh}->quote().", 
-#     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-# );";
-# # 		storcli_controller_uuid			uuid				primary key,
-# # 		storcli_controller_host_uuid		uuid				not null,
-# # 		storcli_controller_serial_number	text				not null,	-- This is the core identifier
-# # 		storcli_controller_model		text				not null,	-- "Model"
-# # 		storcli_controller_alarm_state		text				not null,	-- "Alarm State"
-# # 		storcli_controller_cache_size		numeric				not null,	-- "On Board Memory Size"
-# 		}
-# 		elsif ($changes)
-# 		{
-# 			# UPDATE the controller.
-# 		}
-# 		
-# 		# Delete the controller key from 'sql'.
-# # 		delete 
-# 		
-# 		my $storcli_controller_uuid          = "";
-# 		my $storcli_controller_host_uuid     = $an->data->{sys}{host_uuid};
-# 		my $storcli_controller_serial_number = $serial_number;
-# 		my $storcli_controller_model         = $an->data->{controller}{serial_number}{$serial_number}{variable}{model};
-# 		my $storcli_controller_alarm_state   = $an->data->{controller}{serial_number}{$serial_number}{variable}{alarm_state};
-# 		my $storcli_controller_cache_size    = $an->data->{controller}{serial_number}{$serial_number}{variable}{on_board_memory_size};
-# 		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-# 			name1 => "storcli_controller_host_uuid",     value1 => $storcli_controller_host_uuid,
-# 			name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number,
-# 			name3 => "storcli_controller_model",         value3 => $storcli_controller_model,
-# 			name4 => "storcli_controller_alarm_state",   value4 => $storcli_controller_alarm_state,
-# 			name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size,
-# 		}, file => $THIS_FILE, line => __LINE__});
-# 		
-# 		
-# 		$an->data->{'scan-storcli'}{controllers}{by_serial}{$storcli_controller_serial_number} = $storcli_controller_uuid;
-# 		$an->data->{'scan-storcli'}{controllers}{by_uuid}{$storcli_controller_uuid}            = $storcli_controller_serial_number;
-# 		$an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid} = {
-# 			storcli_controller_serial_number	=>	$storcli_controller_serial_number, 
-# 			storcli_controller_model		=>	$storcli_controller_model, 
-# 			storcli_controller_alarm_state		=>	$storcli_controller_alarm_state, 
-# 			storcli_controller_cache_size		=>	$storcli_controller_cache_size, 
-# 		};
-# 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-# 			name1 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_serial_number", value1 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_serial_number}, 
-# 			name2 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_model",         value2 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_model}, 
-# 			name3 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_alarm_state",   value3 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_alarm_state}, 
-# 			name4 => "sql::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::storcli_controller_cache_size",    value4 => $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_cache_size}, 
-# 		}, file => $THIS_FILE, line => __LINE__});
+		if ($is_new)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "serial_number",   value1 => $serial_number,
+				name2 => "new_model",       value2 => $new_model,
+				name3 => "new_alarm_state", value3 => $new_alarm_state,
+				name4 => "new_cache_size",  value4 => $new_cache_size,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# INSERT
+			my $query = "
+INSERT INTO 
+    storcli_controllers
+(
+    storcli_controller_host_uuid, 
+    storcli_controller_uuid, 
+    storcli_controller_serial_number, 
+    storcli_controller_model, 
+    storcli_controller_alarm_state, 
+    storcli_controller_cache_size, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_alarm_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_cache_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			# Now record the query in the array
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$sql}, $query;
+		}
+		else
+		{
+			### NOTE: The serial number should never change (a changed SN/controller should be 
+			###       picked up as a new controller), but we check/update just to be safe.
+			# Look for changes.
+			my $old_serial_number = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_serial_number};
+			my $old_model         = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_model};
+			my $old_alarm_state   = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_alarm_state};
+			my $old_cache_size    = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_cache_size};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "serial_number",     value1 => $serial_number,
+				name2 => "old_serial_number", value2 => $old_serial_number,
+				name3 => "new_model",         value3 => $new_model,
+				name4 => "old_model",         value4 => $old_model,
+				name5 => "new_alarm_state",   value5 => $new_alarm_state,
+				name6 => "old_alarm_state",   value6 => $old_alarm_state,
+				name7 => "new_cache_size",    value7 => $new_cache_size,
+				name8 => "old_cache_size",    value8 => $old_cache_size,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($serial_number   ne $old_serial_number) or 
+			    ($new_model       ne $old_model)         or 
+			    ($new_alarm_state ne $old_alarm_state)   or 
+			    ($new_cache_size  ne $old_cache_size))
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "changes", value1 => "----",
+				}, file => $THIS_FILE, line => __LINE__});
+				my $query = "
+UPDATE 
+    storcli_controllers
+SET 
+    storcli_controller_serial_number = ".$an->data->{sys}{use_db_fh}->quote($serial_number).", 
+    storcli_controller_model         = ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
+    storcli_controller_alarm_state   = ".$an->data->{sys}{use_db_fh}->quote($new_alarm_state).", 
+    storcli_controller_cache_size    = ".$an->data->{sys}{use_db_fh}->quote($new_cache_size).", 
+    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_controller_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid)." 
+;";
+				# Now record the query in the array
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$sql}, $query;
+			}
+			else
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "no changes", value1 => "----",
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
+	
+	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	
 	# Now commit the changes.
@@ -2952,7 +2952,6 @@ WHERE
 UPDATE 
     public.storcli_controllers
 SET
-    storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).", 
     storcli_controller_serial_number = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_serial_number).", 
     storcli_controller_model         = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_model).", 
     storcli_controller_alarm_state   = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_alarm_state).", 
