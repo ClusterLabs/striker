@@ -676,6 +676,8 @@ CREATE TABLE alerts (
 	alert_title_variables	text,								-- List of variables to substitute into the message key. Format is 'var1=val1 #!# var2 #!# val2 #!# ... #!# varN=valN'.
 	alert_message_key	text,								-- ScanCore will read in the agents <name>.xml words file and look for this message key
 	alert_message_variables	text,								-- List of variables to substitute into the message key. Format is 'var1=val1 #!# var2 #!# val2 #!# ... #!# varN=valN'.
+	alert_sort		text,								-- The alerts will sort on this column. It allows for an optional sorting of the messages in the alert.
+	alert_header		boolean						default TRUE,	-- This can be set to have the alert be printed with only the contents of the string, no headers.
 	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(alert_host_uuid) REFERENCES hosts(host_uuid)
@@ -692,6 +694,8 @@ CREATE TABLE history.alerts (
 	alert_title_variables	text,
 	alert_message_key	text,
 	alert_message_variables	text,
+	alert_sort		text,
+	alert_header		boolean,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.alerts OWNER TO #!variable!user!#;
@@ -711,6 +715,8 @@ BEGIN
 		 alert_title_variables,
 		 alert_message_key,
 		 alert_message_variables,
+		 alert_sort, 
+		 alert_header, 
 		 modified_date)
 	VALUES
 		(history_alerts.alert_uuid,
@@ -721,6 +727,8 @@ BEGIN
 		 history_alerts.alert_title_variables,
 		 history_alerts.alert_message_key,
 		 history_alerts.alert_message_variables,
+		 history_alerts.alert_sort, 
+		 history_alerts.alert_header, 
 		 history_alerts.modified_date);
 	RETURN NULL;
 END;
@@ -1082,7 +1090,7 @@ CREATE TRIGGER trigger_servers
 
 -- This stores information about the RAM used by ScanCore and it's agents.
 CREATE TABLE ram_used (
-	ram_used_id		bigserial,
+	ram_used_uuid		bigserial,
 	ram_used_host_uuid	uuid				not null,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
 	ram_used_bytes		numeric				not null,
@@ -1094,7 +1102,7 @@ ALTER TABLE ram_used OWNER TO #!variable!user!#;
 
 CREATE TABLE history.ram_used (
 	history_id		bigserial,
-	ram_used_id		bigint				not null,
+	ram_used_uuid		bigint				not null,
 	ram_used_host_uuid	uuid				not null,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
 	ram_used_bytes		numeric				not null,
@@ -1107,15 +1115,15 @@ AS $$
 DECLARE
 	history_ram_used RECORD;
 BEGIN
-	SELECT INTO history_ram_used * FROM ram_used WHERE ram_used_id = new.ram_used_id;
+	SELECT INTO history_ram_used * FROM ram_used WHERE ram_used_uuid = new.ram_used_uuid;
 	INSERT INTO history.ram_used
-		(ram_used_id,
+		(ram_used_uuid,
 		 ram_used_host_uuid,
 		 ram_used_by,
 		 ram_used_bytes,
 		 modified_date)
 	VALUES
-		(history_ram_used.ram_used_id,
+		(history_ram_used.ram_used_uuid,
 		 history_ram_used.ram_used_host_uuid,
 		 history_ram_used.ram_used_by,
 		 history_ram_used.ram_used_bytes,

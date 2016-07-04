@@ -89,6 +89,32 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_suffix_0024">#!variable!speed!# Mbps</key>	<!-- megabits per second. -->
 		<key name="tools_suffix_0025">#!variable!speed!# Gbps</key>	<!-- gigabits per second. -->
 		<key name="tools_suffix_0026">#!variable!speed!# Tbps</key>	<!-- terabits per second. -->
+		<key name="tools_suffix_0027">s</key>		<!-- Short suffix for 'seconds'. -->
+		<key name="tools_suffix_0028">m</key>		<!-- Short suffix for 'minutes'. -->
+		<key name="tools_suffix_0029">h</key>		<!-- Short suffix for 'hours'. -->
+		<key name="tools_suffix_0030">d</key>		<!-- Short suffix for 'days'. -->
+		<key name="tools_suffix_0031">w</key>		<!-- Short suffix for 'weeks'. -->
+		<key name="tools_suffix_0032">Seconds</key>	<!-- Long suffix for 'seconds'. -->
+		<key name="tools_suffix_0033">Minutes</key>	<!-- Long suffix for 'minutes'. -->
+		<key name="tools_suffix_0034">Hours</key>	<!-- Long suffix for 'hours'. -->
+		<key name="tools_suffix_0035">Days</key>	<!-- Long suffix for 'days'. -->
+		<key name="tools_suffix_0036">Weeks</key>	<!-- Long suffix for 'days'. -->
+		<key name="tools_suffix_0037">Second</key>
+		<key name="tools_suffix_0038">Seconds</key>
+		<key name="tools_suffix_0039">Minute</key>
+		<key name="tools_suffix_0040">Minutes</key>
+		<key name="tools_suffix_0041">Hour</key>
+		<key name="tools_suffix_0042">Hours</key>
+		<key name="tools_suffix_0043">Day</key>
+		<key name="tools_suffix_0044">Days</key>
+		<key name="tools_suffix_0045">Week</key>
+		<key name="tools_suffix_0046">Weeks</key>
+		<key name="tools_suffix_0047">Yes</key>		<!-- case-insensitive 'yes' -->
+		<key name="tools_suffix_0048">No</key>		<!-- case-insensitive 'no' -->
+		<key name="tools_suffix_0049">Enabled</key>	<!-- case-insensitive 'enabled' -->
+		<key name="tools_suffix_0050">Disabled</key>	<!-- case-insensitive 'disabled' -->
+		<key name="tools_suffix_0051">On</key>		<!-- case-insensitive 'on' -->
+		<key name="tools_suffix_0052">Off</key>		<!-- case-insensitive 'off' -->
 		
 		<!-- Default values -->
 		<key name="tools_default_0001">Debug</key>

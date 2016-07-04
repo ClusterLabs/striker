@@ -462,13 +462,23 @@ sub register_alert
 	my $alert_title_variables   = $parameter->{alert_title_variables}   ? $parameter->{alert_title_variables}   : "";
 	my $alert_message_key       = $parameter->{alert_message_key}       ? $parameter->{alert_message_key}       : die "$THIS_FILE ".__LINE__." 'alert_message_key' parameter not passed to AN::Tools::Alert->register_alert()\n";
 	my $alert_message_variables = $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+	my $alert_sort              = $parameter->{alert_sort}              ? $parameter->{alert_sort}              : 9999;
+	my $alert_header            = $parameter->{alert_header}            ? $parameter->{alert_header}            : 'TRUE';
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 		name1 => "alert_agent_name",        value1 => $alert_agent_name,
 		name2 => "alert_level",             value2 => $alert_level,
 		name3 => "alert_title_key",         value3 => $alert_title_key,
 		name4 => "alert_title_variables",   value4 => $alert_title_variables, 
 		name5 => "alert_message_key",       value5 => $alert_message_key, 
-		name6 => "alert_message_variables", value6 => $alert_message_variables
+		name6 => "alert_message_variables", value6 => $alert_message_variables, 
+		name7 => "alert_sort",              value7 => $alert_sort, 
+		name8 => "alert_header",            value8 => $alert_header, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# zero-pad sort numbers so that they sort properly.
+	$alert_sort = sprintf("%04d", $alert_sort);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "alert_sort", value1 => $alert_sort,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $title_variables = "";
@@ -569,6 +579,8 @@ INSERT INTO
     alert_title_variables, 
     alert_message_key, 
     alert_message_variables, 
+    alert_sort, 
+    alert_header, 
     modified_date
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
@@ -579,6 +591,8 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($title_variables).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_message_key).", 
     ".$an->data->{sys}{use_db_fh}->quote($message_variables).",
+    ".$an->data->{sys}{use_db_fh}->quote($alert_sort).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_header).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";

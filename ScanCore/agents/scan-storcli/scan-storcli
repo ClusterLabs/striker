@@ -445,6 +445,23 @@ sub find_changes
 				name4 => "new_cache_size",  value4 => $new_cache_size,
 			}, file => $THIS_FILE, line => __LINE__});
 			
+			### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
+			# Send an alert telling the user that we've found a new controller.
+			my $sort = 1;
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_sort		=>	$sort,	
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scan_storcli_note_0001",
+				alert_message_variables	=>	{
+					model			=>	$new_model,
+					serial_number		=>	$serial_number,
+					say_cache_size		=>	$an->Readable->bytes_to_hr({'bytes' => $new_cache_size}),
+					alarm_state		=>	$new_alarm_state,
+				},
+			});
+			
 			# INSERT
 			my $query = "
 INSERT INTO 
@@ -471,6 +488,101 @@ INSERT INTO
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$sql}, $query;
+			
+			### Process the rest of the variables now. 
+			# Variables
+			foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{variable}})
+			{
+				   $sort++; 
+				my $value = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "key",   value1 => $key,
+					name2 => "value", value2 => $value,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Send an alert telling the user that we've found a new controller.
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	"$THIS_FILE",
+					alert_sort		=>	$sort,
+					alert_header		=>	'FALSE',
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_storcli_note_0002",
+					alert_message_variables	=>	{
+						name			=>	$key,
+						value			=>	$value,
+					},
+				});
+				
+				# INSERT
+				my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_controllers', 
+    ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    FALSE, 
+    ".$an->data->{sys}{use_db_fh}->quote($key).", 
+    ".$an->data->{sys}{use_db_fh}->quote($value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+				# Now record the query in the array
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$sql}, $query;
+			}
+			
+			# Temperatures
+			foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{temperature}})
+			{
+				my $value = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "key",   value1 => $key,
+					name2 => "value", value2 => $value,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				### TODO: Process the temperature.
+				# INSERT
+				my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_controllers', 
+    ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    TRUE, 
+    ".$an->data->{sys}{use_db_fh}->quote($key).", 
+    ".$an->data->{sys}{use_db_fh}->quote($value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+				# Now record the query in the array
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$sql}, $query;
+			}
 		}
 		else
 		{
@@ -497,9 +609,6 @@ INSERT INTO
 			    ($new_alarm_state ne $old_alarm_state)   or 
 			    ($new_cache_size  ne $old_cache_size))
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "changes", value1 => "----",
-				}, file => $THIS_FILE, line => __LINE__});
 				my $query = "
 UPDATE 
     storcli_controllers
@@ -514,6 +623,7 @@ WHERE
 AND 
     storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid)." 
 ;";
+				
 				# Now record the query in the array
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
@@ -526,6 +636,8 @@ AND
 					name1 => "no changes", value1 => "----",
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			
+			# Now see if any other variables have changed, been added or disappeared.
 		}
 	}
 	
@@ -3503,7 +3615,7 @@ sub get_physical_disk_data
 			if ($variable =~ /^Sector Size$/i)
 			{
 				# Convert to bytes and record.
-				$value       = $an->Readable->hr_to_bytes({base2 => 1, size => $value});
+				$value       = $an->Readable->hr_to_bytes({base2 => 1, size => $value})." Bytes";
 				$sector_size = $value;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "value",       value1 => $value, 
@@ -3555,7 +3667,7 @@ sub get_physical_disk_data
 			if (($value =~ /^(\d+\s*[A-Za-z]+B)$/i) or ($value =~ /^(\d+\.\d+\s*[A-Za-z]+B)$/i))
 			{
 				my $size  = $1;
-				    $value = $an->Readable->hr_to_bytes({base2 => 1, size => $size});
+				    $value = $an->Readable->hr_to_bytes({base2 => 1, size => $size})." Bytes";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "size",  value1 => $size, 
 					name2 => "value", value2 => $value, 
@@ -3603,13 +3715,15 @@ sub get_physical_disk_data
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# Record
+			# Process/standardize the variable.
 			$variable =  lc($variable);
 			$variable =~ s/ /_/g;
 			$variable =~ s/&/and/g;
-			$variable =~ s/\// or /g;
+			$variable =~ s/\//_or_/g;
 			$variable =~ s/_%/_percent/g;
 			$variable =~ s/{_}+/_/g;
+			
+			# Record
 			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable} = $value;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::${type}::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable}, 
@@ -3779,7 +3893,7 @@ sub get_virtual_disk_data
 				if (($value =~ /^(\d+\s*[A-Za-z]+B)$/i) or ($value =~ /^(\d+\.\d+\s*[A-Za-z]+B)$/i))
 				{
 					# Convert to bytes
-					$value = $an->Readable->hr_to_bytes({base2 => 1, size => $value});
+					$value = $an->Readable->hr_to_bytes({base2 => 1, size => $value})." Bytes";
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "value", value1 => $value, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -3886,8 +4000,8 @@ sub process_vg_pd_list_data
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Convert the sector and drive sizes into bytes. The controller uses 'xB' but uses base2 values.
-		$sector_size = $an->Readable->hr_to_bytes({base2 => 1, size => $sector_size});
-		$drive_size  = $an->Readable->hr_to_bytes({base2 => 1, size => $drive_size});
+		$sector_size = $an->Readable->hr_to_bytes({base2 => 1, size => $sector_size})." Bytes";
+		$drive_size  = $an->Readable->hr_to_bytes({base2 => 1, size => $drive_size})." Bytes";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "sector_size", value1 => $sector_size, 
 			name2 => "drive_size",  value2 => $drive_size, 
@@ -4140,7 +4254,7 @@ sub process_vg_overview_data
 	}
 	
 	# Convert the array size into bytes. The controller uses 'xB' but uses base2 values.
-	$array_size = $an->Readable->hr_to_bytes({base2 => 1, size => $array_size});
+	$array_size = $an->Readable->hr_to_bytes({base2 => 1, size => $array_size})." Bytes";
 	
 	# Store the data.
 	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{on_controller}               = $serial_number;
@@ -5260,8 +5374,8 @@ sub get_controller_info
 		$line =~ s/NCQ/Native Command Queuing/i;		# https://en.wikipedia.org/wiki/Native_Command_Queuing
 		$line =~ s/ LDBBM/ Logical Disk Bad Block Management/i;
 		$line =~ s/TPM/Trusted Platform Module/i;		# https://en.wikipedia.org/wiki/Trusted_Platform_Module
-		$line =~ s/\(hrs\)/\(hours\)/i;
-		$line =~ s/ hrs/ hours/i;
+		$line =~ s/\(hrs\)/\(Hours\)/i;
+		$line =~ s/ hrs/ Hours/i;
 		$line =~ s/ZCR /Zero-Channel RAID/i;
 		$line =~ s/R1E /RAID 1E/i;
 		$line =~ s/R10/RAID 10/i;
@@ -5512,7 +5626,7 @@ sub get_controller_info
 				   $variable =~ s/\($units\)//i;
 				   $variable =~ s/^\s+//;
 				   $variable =~ s/\s+$//;
-				my $size = $an->Readable->hr_to_bytes({size => $value, type => $units, base2 => 1 });
+				my $size = $an->Readable->hr_to_bytes({size => $value, type => $units, base2 => 1 })." Bytes";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
@@ -5558,14 +5672,14 @@ sub get_controller_info
 			}
 			if ($value =~ /(\d+) hrs/)
 			{
-				$value = "$1 hours";
+				$value = "$1 Hours";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "value", value1 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /\(hrs\)/)
 			{
-				$value =~ s/\(hrs\)/\(hours\)/;
+				$value =~ s/\(hrs\)/\(Hours\)/;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "value", value1 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});

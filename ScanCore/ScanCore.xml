@@ -39,6 +39,7 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 #!variable!title!#:
   #!variable!message!#
 		</key>
+		<key name="scancore_email_0006">#!variable!message!#</key>
 		
 		<!-- Strings that can change by rebranding -->
 		<key name="scancore_brand_0001">ScanCore</key>

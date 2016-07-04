@@ -575,7 +575,15 @@ sub time
 	return undef if not defined $parameter;
 	
 	# Now see if the user passed the values in a hash reference or directly.
-	my $time = $parameter->{'time'} ? $parameter->{'time'} : 0;
+	my $time   = $parameter->{'time'} ? $parameter->{'time'} : 0;
+	my $suffix = $parameter->{suffix} ? $parameter->{suffix} : "short";
+	
+	# The suffix used for each unit of time will depend on the requested suffix type.
+	my $suffix_seconds = $suffix eq "long"? "tools_suffix_0032" : "tools_suffix_0027";
+	my $suffix_minutes = $suffix eq "long"? "tools_suffix_0033" : "tools_suffix_0028";
+	my $suffix_hours   = $suffix eq "long"? "tools_suffix_0034" : "tools_suffix_0029";
+	my $suffix_days    = $suffix eq "long"? "tools_suffix_0035" : "tools_suffix_0030";
+	my $suffix_weeks   = $suffix eq "long"? "tools_suffix_0036" : "tools_suffix_0031";
 	
 	# Exit if 'time' is not defined or set as '--'.
 	$parameter->{'time'} = "--" if not defined $parameter->{'time'};
@@ -590,8 +598,6 @@ sub time
 	{
 		($time, $float) = split/\./, $time, 2;
 	}
-	
-	### TODO: Change the suffixes to 'tools_suffix_XXXX'.
 	
 	# Die if either the 'time' or 'float' has a non-digit character in it.
 	if (($time =~ /\D/) or ($float =~ /\D/))
@@ -613,28 +619,28 @@ sub time
 	my $hr_time;
 	if ($seconds < 1)
 	{
-		$hr_time = $float ? "0.${float}s" : "0s";
+		$hr_time = $float ? "0.${float}s" : "0".$suffix_seconds;
 	}
 	else
 	{
 		$hr_time = sprintf("%01d", $seconds);
 		if ( $float > 0 )
 		{
-			$hr_time .= ".".$float."s";
+			$hr_time .= ".".$float.$suffix_seconds;
 		}
 		else
 		{
-			$hr_time.="s";
+			$hr_time .= $suffix_seconds;
 		}
 	}
 	if ( $rem_min > 0 )
 	{
-		$hr_time =~ s/ sec.$/s/;
-		$hr_time =  sprintf("%01d", $rem_min)."m $hr_time";
+		$hr_time =~ s/ sec.$/$suffix_seconds/;
+		$hr_time =  sprintf("%01d", $rem_min).$suffix_minutes." $hr_time";
 	}
 	elsif (($hours > 0) or ($days > 0) or ($weeks > 0))
 	{
-		$hr_time = "0m $hr_time";
+		$hr_time = "0".$suffix_minutes." ".$hr_time;
 	}
 	if ( $rem_hours > 0 )
 	{
@@ -642,20 +648,20 @@ sub time
 	}
 	elsif (($days > 0) or ($weeks > 0))
 	{
-		$hr_time = "0h $hr_time";
+		$hr_time = "0".$suffix_hours." ".$hr_time;
 	}
 	if ( $days > 0 )
 	{
-		$hr_time = sprintf("%01d", $rem_days)."d $hr_time";
+		$hr_time = sprintf("%01d", $rem_days).$suffix_days." ".$hr_time;
 	}
 	elsif ($weeks > 0)
 	{
-		$hr_time = "0d $hr_time";
+		$hr_time = "0".$suffix_days." ".$hr_time;
 	}
 	if ( $weeks > 0 )
 	{
 		$weeks   = $an->Readable->comma($weeks);
-		$hr_time = $weeks."w $hr_time";
+		$hr_time = $weeks.$suffix_weeks." ".$hr_time;
 	}
 	$hr_time = $sign ? $sign.$hr_time : $hr_time;
 	

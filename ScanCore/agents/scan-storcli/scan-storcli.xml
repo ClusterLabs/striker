@@ -19,8 +19,15 @@ main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'
 		<key name="scan_storcli_log_0001">Found: [#!variable!count!#] controller(s).</key>
 		
 		<!-- Notices -->
-		<key name="scan_storcli_note_0001"></key>
-		<key name="scan_storcli_note_0002"></key>
+		<key name="scan_storcli_note_0001">A new Broadcom (AVAGO/LSI) Storage controller has been found.
+- Model: ....... [#!variable!model!#]
+- Serial Number: [#!variable!serial_number!#]
+- Cache Size: .. [#!variable!say_cache_size!#]
+- Alarm State: . [#!variable!alarm_state!#]
+
+Other detected variables:
+</key>
+		<key name="scan_storcli_note_0002">- #!variable!name!#: [#!variable!value!#]</key>
 		
 		<!-- Warnings -->
 		<key name="scan_storcli_warning_0001">While processing data from adapter: [#!variable!adapter!#], which has the serial number: [#!variable!serial_number!#], the drive in virtual disk: [#!variable!virtual_disk!#] in the enclosure: [#!variable!enclosure_id!#] at slot number: [#!variable!slot_number!#] in span: [#!variable!span!#] at row: [#!variable!row!#] initially was found in drive group: [#!variable!old_drive_group!#] but the variable 'Drive position' reports it as being in drive group: [#!variable!new_drive_group!#]. This might be a program error in parsing the output of: [#!variable!shell_call!#]. Please report this error along with the output of that shell call so that we can improve this scan agent.</key>
@@ -80,6 +87,15 @@ https://alteeve.ca/w/Support
 							      Alteeve's Niche!
 		]]></key>
 		<key name="scan_storcli_message_0003"></key>
+		
+		<!-- This translates raw variable names into a given language's version of the same. -->
+		<key name="access_policy">Access Policy</key>
+		<key name="alarm">Alarm</key>
+		<key name="allow_boot_with_preserved_cache">Allow boot with preserved cache?</key>
+		<key name="allow_controller_encryption">Allow controller encryption?</key>
+		<key name="allow_mixed_redundancy_on_array">Allow mixed redundancy on an array?</key>
+		<key name="any_offline_virtual_disk_cache_preserved">Any offline VD cache preserved?</key>
+		<key name="at_least_one_premium_feature_key_exists_in_nvram">One or more premium features enabled?</key>
 		
 		<!-- Sensor message titles -->
 		<key name="scan_storcli_title_0001"></key>
