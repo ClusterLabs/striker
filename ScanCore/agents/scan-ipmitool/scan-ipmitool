@@ -243,7 +243,7 @@ nice_exit($an);
 sub find_changes
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Loop through each machine
 	foreach my $machine (sort {$a cmp $b} keys %{$an->data->{ipmi}})
@@ -748,7 +748,7 @@ INSERT INTO
 sub process_temperature
 {
 	my ($an, $machine) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_temperature", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_temperature" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "machine", value1 => $machine, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -950,7 +950,7 @@ AND
 sub log_abnormal_temperatures
 {
 	my ($an, $machine, $ipmitool_sensor_name) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "log_abnormal_temperatures", }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "log_abnormal_temperatures" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "machine",              value1 => $machine, 
 		name2 => "ipmitool_sensor_name", value2 => $ipmitool_sensor_name, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1135,7 +1135,7 @@ sub log_abnormal_temperatures
 sub process_temperature_change
 {
 	my ($an, $machine, $ipmitool_sensor_name) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_temperature_change", }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_temperature_change" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "machine",              value1 => $machine, 
 		name2 => "ipmitool_sensor_name", value2 => $ipmitool_sensor_name, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1554,7 +1554,7 @@ sub process_temperature_change
 sub read_last_scan
 {
 	my ($an, $machine) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "machine", value1 => "$machine" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1634,7 +1634,7 @@ AND
 sub update_db
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
@@ -1653,7 +1653,7 @@ sub update_db
 sub update_db_ipmitool_value
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_ipmitool_value", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_ipmitool_value" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'ipmitool_value' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -1859,7 +1859,7 @@ INSERT INTO
 sub update_db_ipmitool
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_ipmitool", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_ipmitool" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'ipmitool' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -2147,7 +2147,7 @@ INSERT INTO
 sub prep_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -2192,7 +2192,7 @@ sub prep_databases
 sub query_ipmi_targets
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "query_ipmi_targets", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "query_ipmi_targets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $machine (sort {$a cmp $b} keys %{$an->data->{'scan-ipmitool'}{machine}})
 	{
@@ -2373,7 +2373,7 @@ sub query_ipmi_targets
 sub find_ipmi_targets
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_ipmi_targets", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_ipmi_targets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will keep track of how many IPMI targets we find.
 	my $ipmi_targets = 0;
@@ -2493,7 +2493,7 @@ sub find_ipmi_targets
 sub commit_sql
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "commit_sql", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "commit_sql" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $count = @{$an->data->{sys}{sql}};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2513,7 +2513,7 @@ sub commit_sql
 sub nice_exit
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Close database connections
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -2528,7 +2528,7 @@ sub nice_exit
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print $an->String->get({key => "scan_ipmitool_message_0002"})."\n";
 

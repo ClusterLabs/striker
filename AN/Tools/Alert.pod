@@ -938,7 +938,11 @@ The 'AN::Tools::Remote' module's 'remote_call()' method was called without a tar
 
 =head2 C<175>
 
-The 'AN::Tools::Remote' module's 'remote_call()' was asked to connecto to a target machine on an invalid TCP port.
+The 'AN::Tools::Remote' module's 'remote_call()' method was asked to connecto to a target machine on an invalid TCP port.
+
+=head2 C<176>
+
+The 'AN::Tools::Striker' module's 'load_anvil()' method was called before ScanCore has run on both nodes. Please make sure that ScanCore is enabled and has run at least once.
 
 =head1 SEE ALSO
 

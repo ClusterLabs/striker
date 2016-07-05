@@ -264,6 +264,9 @@ sub load_anvil
 	# If we've already loaded this Anvil!, return now.
 	if ((defined $an->data->{sys}{anvil}{uuid}) && ($an->data->{sys}{anvil}{uuid} eq $anvil_uuid))
 	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid},
+		}, file => $THIS_FILE, line => __LINE__});
 		return(0);
 	}
 	
@@ -305,7 +308,7 @@ sub load_anvil
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->Validate->is_uuid({uuid => $anvil_uuid}))
@@ -326,6 +329,27 @@ sub load_anvil
 			# Valid UUID, but it doesn't match a known Anvil!.
 			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0104", message_variables => { uuid => $anvil_uuid }, code => 104, file => "$THIS_FILE", line => __LINE__});
 			return(1);
+		}
+	}
+	
+	# Last test; Do I know about my nodes? If this is the root user calling us, don't die (because it's 
+	# ScanCore).
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvils::${anvil_uuid}::node1::name", value1 => $an->data->{anvils}{$anvil_uuid}{node1}{name},
+		name2 => "anvils::${anvil_uuid}::node2::name", value2 => $an->data->{anvils}{$anvil_uuid}{node2}{name},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $an->data->{anvils}{$anvil_uuid}{node1}{name}) or (not $an->data->{anvils}{$anvil_uuid}{node2}{name}))
+	{
+		if (($>) or ($<))
+		{
+			# Remind the user to run ScanCore on the nodes.
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0176", code => 176, file => "$THIS_FILE", line => __LINE__});
+			return(1);
+		}
+		else
+		{
+			# Nothing more to do.
+			return("");
 		}
 	}
 	

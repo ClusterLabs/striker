@@ -66,22 +66,26 @@ sub adjust_log_level
 	
 	if ($an->data->{switches}{v})
 	{
-		$an->data->{$key}{log_level} = 1;
+		$an->data->{$key}{log_level}              = 1;
+		$an->data->{scancore}{user_set_log_level} = "-v";
 		$an->Log->level($an->data->{$key}{log_level});
 	}
 	elsif ($an->data->{switches}{vv})
 	{
-		$an->data->{$key}{log_level} = 2;
+		$an->data->{$key}{log_level}              = 2;
+		$an->data->{scancore}{user_set_log_level} = "-vv";
 		$an->Log->level($an->data->{$key}{log_level});
 	}
 	elsif ($an->data->{switches}{vvv})
 	{
-		$an->data->{$key}{log_level} = 3;
+		$an->data->{$key}{log_level}              = 3;
+		$an->data->{scancore}{user_set_log_level} = "-vvv";
 		$an->Log->level($an->data->{$key}{log_level});
 	}
 	elsif ($an->data->{switches}{vvvv})
 	{
-		$an->data->{$key}{log_level} = 4;
+		$an->data->{$key}{log_level}              = 4;
+		$an->data->{scancore}{user_set_log_level} = "-vvvv";
 		$an->Log->level($an->data->{$key}{log_level});
 	}
 	

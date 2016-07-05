@@ -52,13 +52,13 @@ BEGIN
 		 storcli_controller_cache_size, 
 		 modified_date)
 	VALUES
-		(history_storcli_controller.storcli_controller_uuid,
-		 history_storcli_controller.storcli_controller_host_uuid,
-		 history_storcli_controller.storcli_controller_serial_number, 
-		 history_storcli_controller.storcli_controller_model, 
-		 history_storcli_controller.storcli_controller_alarm_state, 
-		 history_storcli_controller.storcli_controller_cache_size, 
-		 history_storcli_controller.modified_date);
+		(history_storcli_controllers.storcli_controller_uuid,
+		 history_storcli_controllers.storcli_controller_host_uuid,
+		 history_storcli_controllers.storcli_controller_serial_number, 
+		 history_storcli_controllers.storcli_controller_model, 
+		 history_storcli_controllers.storcli_controller_alarm_state, 
+		 history_storcli_controllers.storcli_controller_cache_size, 
+		 history_storcli_controllers.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -551,15 +551,14 @@ CREATE TRIGGER trigger_storcli_physical_drives
 CREATE TABLE storcli_variables (
 	storcli_variable_uuid		uuid				primary key,
 	storcli_variable_host_uuid	uuid				not null,
-	storcli_variable_source_table	uuid				not null,
+	storcli_variable_source_table	text				not null,
 	storcli_variable_source_uuid	uuid				not null,
 	storcli_variable_is_temperature	boolean				not null	default FALSE,
 	storcli_variable_name		text				not null,
 	storcli_variable_value		text,
 	modified_date					timestamp with time zone	not null,
 	
-	FOREIGN KEY(storcli_variable_host_uuid) REFERENCES hosts(host_uuid),
-	FOREIGN KEY(storcli_variable_uuid) REFERENCES storcli_controllers(storcli_controller_uuid)
+	FOREIGN KEY(storcli_variable_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE storcli_variables OWNER TO #!variable!user!#;
 
@@ -567,7 +566,7 @@ CREATE TABLE history.storcli_variables (
 	history_id			bigserial,
 	storcli_variable_uuid		uuid,
 	storcli_variable_host_uuid	uuid,
-	storcli_variable_source_table	uuid,
+	storcli_variable_source_table	text,
 	storcli_variable_source_uuid	uuid,
 	storcli_variable_is_temperature	boolean,
 	storcli_variable_name		text,

@@ -229,9 +229,9 @@ if (not $connections)
 {
 	# Failed to connect to any database.
 	print $an->String->get({key => "scancore_message_0002", variables => {
-			title   => $an->String->get({key => "scancore_title_0003"}),
-			message => $an->String->get({key => "scancore_message_0004"}),
-		}})."\n";
+		title   => $an->String->get({key => "scancore_title_0003"}),
+		message => $an->String->get({key => "scancore_message_0004"}),
+	}})."\n";
 	
 	# TODO: Send an email.
 	
@@ -276,9 +276,10 @@ while(1)
 	my $start_time = time;
 	
 	# Re-read the configuration and words files.
-	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
-	$an->Storage->read_words({file => $an->data->{path}{scancore_strings}});
-	$an->Storage->read_words({file => $an->data->{path}{striker_strings}});
+	$an->Storage->read_conf   ({file => $an->data->{path}{striker_config}});
+	$an->Storage->read_words  ({file => $an->data->{path}{scancore_strings}});
+	$an->Storage->read_words  ({file => $an->data->{path}{striker_strings}});
+	$an->Log->adjust_log_level({key  => $THIS_FILE});
 	$an->data->{scancore}{enabled} = 1 if $an->data->{switches}{force};
 	load_agent_strings($an);
 
@@ -2694,6 +2695,7 @@ WHERE
     alert_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ORDER BY 
     alert_agent_name ASC, 
+    modified_date ASC, 
     alert_sort ASC 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2901,7 +2903,7 @@ sub send_email
 	
 	# Convert the user's log level to a numeric number for easier comparison.
 	$level = $an->Alert->convert_level_name_to_number({level => $level});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "level", value1 => $level, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2909,17 +2911,17 @@ sub send_email
 	my $lowest_level = 5;
 	foreach my $alert_agent_name (sort {$a cmp $b} keys %{$an->data->{db}{alerts}{agent_name}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "alert_agent_name", value1 => $alert_agent_name, 
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $alert_sort (sort {$a cmp $b} keys %{$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "alert_sort", value1 => $alert_sort, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $alert_uuid (keys %{$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "alert_uuid", value1 => $alert_uuid, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -2929,7 +2931,7 @@ sub send_email
 				my $alert_message_key       = $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_message_key};
 				my $alert_message_variables = $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_message_variables};
 				my $alert_header            = $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_header};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 					name1 => "alert_level",             value1 => $alert_level, 
 					name2 => "alert_title_key",         value2 => $alert_title_key, 
 					name3 => "alert_title_variables",   value3 => $alert_title_variables, 
@@ -2939,28 +2941,28 @@ sub send_email
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				$alert_level = $an->Alert->convert_level_name_to_number({level => $alert_level});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "alert_level",  value1 => $alert_level, 
 					name2 => "lowest_level", value2 => $lowest_level, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($alert_level < $lowest_level)
 				{
 					$lowest_level = $alert_level;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "lowest_level", value1 => $lowest_level, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				
 				# Record the alert level if it's higher than we saw before.
 				$subject = $alert_level if $subject > $alert_level;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "subject", value1 => $subject, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# The conversion of C to F is handled in translate_sensor_{name,value}() functions.
 				my $title   = get_string_from_double_bang($an, $language, $alert_title_key, $alert_title_variables, $units);
 				my $message = get_string_from_double_bang($an, $language, $alert_message_key, $alert_message_variables, $units);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "level",       value1 => $level, 
 					name2 => "alert_level", value2 => $alert_level, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2968,7 +2970,7 @@ sub send_email
 				{
 					if ($alert_header)
 					{
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "title",   value1 => $title, 
 							name2 => "message", value2 => $message, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2986,7 +2988,7 @@ sub send_email
 				else
 				{
 					# Ignored
-					$an->Log->entry({log_level => 2, message_key => "scancore_log_0050", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "scancore_log_0050", message_variables => {
 						user       => "$name <$email>",
 						alert_uuid => $alert_uuid, 
 						title      => $title,
@@ -3005,7 +3007,7 @@ sub send_email
 	
 	# Generate the email body.
 	my $subject_line = $an->String->get({language => $language, key => "scancore_email_0004", variables => { hostname => $an->hostname }});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "subject_line", value1 => $subject_line, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -3013,26 +3015,26 @@ sub send_email
 			level   => "#!string!an_alert_subject_".sprintf("%04d", $lowest_level)."!#",
 			subject => $subject_line,
 		}});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "say_subject", value1 => $say_subject, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# The footer is a generic message tell the user not to yell at us for spamming them. (hey, you laugh,
 	# but managers will get these emails...)
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::append_email_footer", value1 => $an->data->{scancore}{append_email_footer}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{append_email_footer})
 	{
 		$body .= $an->String->get({language => $language, key => "scancore_email_0003", variables => { hostname => $an->hostname }});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "body", value1 => $body, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Now assemble the message.
 	my $say_to = "$name <$email>";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "sys::anvil::smtp::username", value1 => $an->data->{sys}{anvil}{smtp}{username},
 		name2 => "say_to",                     value2 => $say_to, 
 		name3 => "say_subject",                value3 => $say_subject,
@@ -3044,7 +3046,7 @@ sub send_email
 			subject => $say_subject,
 			body    => $body,
 		}});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "email_body", value1 => $email_body,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -3054,32 +3056,32 @@ sub send_email
 	# Select a known_free email file name.
 	my $date_and_time =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
 	   $date_and_time =~ s/:/-/g;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "date_and_time", value1 => $date_and_time,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $email_file = $an->data->{path}{alert_emails}."/$date_and_time.1";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "email_file", value1 => $email_file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $file_ok = 0;
 	until ($file_ok)
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "email_file", value1 => $email_file, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (-e $email_file)
 		{
 			my ($file, $suffix) = ($email_file =~ /^(.*?)\.(\d+)$/);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "file",   value1 => $file,
 				name2 => "suffix", value2 => $suffix,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			$suffix++;
 			$email_file = "$file.$suffix";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "email_file", value1 => $email_file,
 			}, file => $THIS_FILE, line => __LINE__});
 			   
@@ -3094,7 +3096,7 @@ sub send_email
 		else
 		{
 			$file_ok = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "file_ok", value1 => $file_ok,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3102,7 +3104,7 @@ sub send_email
 	
 	# Write out the email file.
 	my $shell_call = $email_file;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -3110,10 +3112,10 @@ sub send_email
 	close $file_handle;
 	
 	# Now send the email.
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0049", message_variables => { file => $email_file }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0049", message_variables => { file => $email_file }, file => $THIS_FILE, line => __LINE__});
 	
 	$shell_call = $an->data->{path}{mailx}." -t < $email_file";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open ($file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -3121,7 +3123,7 @@ sub send_email
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -3146,30 +3148,30 @@ sub record_alert_to_file
 	
 	# Prepend the alert file path.
 	$file = $an->data->{path}{alert_files}."/$file";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "file", value1 => $file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Convert the user's log level to a numeric number for easier comparison.
 	$level = $an->Alert->convert_level_name_to_number({level => $level});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "level", value1 => $level, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Loop through all the alerts and prep the relevant ones to be written to the file.
 	foreach my $alert_agent_name (sort {$a cmp $b} keys %{$an->data->{db}{alerts}{agent_name}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "alert_agent_name", value1 => $alert_agent_name, 
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $alert_sort (sort {$a cmp $b} keys %{$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "alert_sort", value1 => $alert_sort, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $alert_uuid (keys %{$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "alert_uuid", value1 => $alert_uuid, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -3180,7 +3182,7 @@ sub record_alert_to_file
 				my $alert_message_variables = $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_message_variables};
 				my $modified_date           = $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{modified_date};
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 					name1 => "alert_level",             value1 => $alert_level, 
 					name2 => "alert_title_key",         value2 => $alert_title_key, 
 					name3 => "alert_title_variables",   value3 => $alert_title_variables, 
@@ -3190,7 +3192,7 @@ sub record_alert_to_file
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				$alert_level = $an->Alert->convert_level_name_to_number({level => $alert_level});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "alert_level", value1 => $alert_level, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -3207,12 +3209,12 @@ sub record_alert_to_file
 							title			=>	$title, 
 							message			=>	$message, 
 						}});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "string", value1 => $string, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$messages .= "$string\n";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "messages", value1 => $messages, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -3220,9 +3222,7 @@ sub record_alert_to_file
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0032", message_variables => {
-		file => $file, 
-	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0032", message_variables => { file => $file }, file => $THIS_FILE, line => __LINE__});
 	
 	# Append to the log file.
 	my $shell_call = ">>$file";
@@ -9007,7 +9007,7 @@ WHERE
 sub call_agents
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "call_agents" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "call_agents" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Loop through the agents directory and call each agent. Record how long it takes and note the exit 
 	# code, then record the run-data in the database.
@@ -9026,7 +9026,7 @@ sub call_agents
 		
 		# I call these sequentially to minimize the load on the host.
 		my $agent_rc   = "9999";
-		my $shell_call = "$agent; echo rc:\$?";
+		my $shell_call = "$agent; ".$an->data->{path}{echo}." rc:\$?";
 		if ($an->data->{scancore}{user_set_log_level})
 		{
 			$shell_call = "$agent ".$an->data->{scancore}{user_set_log_level}."; echo rc:\$?";
@@ -9059,8 +9059,8 @@ sub call_agents
 		# Note how long it took.
 		my $runtime   = time - $start_time;
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0020", message_variables => { 
-			agent	=>	$say_agent, 
-			runtime	=>	$runtime 
+			agent   => $say_agent, 
+			runtime => $runtime 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Record this run in the DB.

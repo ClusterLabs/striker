@@ -423,8 +423,16 @@ sub error
 	#if (($fatal) && (not $an->Alert->no_fatal_errors))
 	if ($fatal)
 	{
-		#$error =~ s/\n/<br \/>\n/g;
-		print "$error\n" if not $an->Alert->no_fatal_errors;
+		if ($ENV{'HTTP_REFERER'})
+		{
+			print "<pre>\n";
+			print "$error\n" if not $an->Alert->no_fatal_errors;
+			print "</pre>\n";
+		}
+		else
+		{
+			print "$error\n" if not $an->Alert->no_fatal_errors;
+		}
 		$an->Alert->_nice_exit($code);
 	}
 	
@@ -437,7 +445,7 @@ sub no_fatal_errors
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "no_fatal_errors" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "no_fatal_errors" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Have to check if defined because '0' is valid.
 	if (defined $parameter->{set})
