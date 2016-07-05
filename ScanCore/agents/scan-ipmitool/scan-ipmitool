@@ -18,6 +18,8 @@
 # - Detect a hung BMC by trying to talk to ourselves and, if that fails, send 'ipmitool bmc reset cold'. 
 #   Possibly try pinging the IPMI from the peer as it's not always possible to ping our own interface when
 #   the IPMI and eth device share the same physical connector.
+# - Update the string processing from the '!!x!name=a,value=b,units=c!!' method to the new method here:
+#   https://alteeve.ca/w/ScanCore#Unit_Parsing
 # 
 =pod
 

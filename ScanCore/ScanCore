@@ -265,8 +265,6 @@ $an->Log->entry({log_level => 1, message_key => "scancore_log_0066", file => $TH
 # alert above.
 process_alerts($an, 1);
 
-exit;
-
 # Run the agents we find.
 $an->Log->entry({log_level => 2, title_key => "scancore_title_0005", message_key => "scancore_log_0011", file => $THIS_FILE, line => __LINE__,});
 
