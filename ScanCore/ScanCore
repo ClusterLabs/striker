@@ -3723,7 +3723,7 @@ sub get_string_from_double_bang
 					name2 => "right_hand_side", value2 => $right_hand_side, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				my $returned = translate_units($an, $left_hand_side, $right_hand_side);
+				my $returned = translate_units($an, $left_hand_side, $right_hand_side, $units);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "returned", value1 => $returned, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -4142,11 +4142,13 @@ sub translate_strings
 # translate it. See: https://alteeve.ca/w/ScanCore#Unit_Parsing
 sub translate_units
 {
-	my ($an, $value, $units) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "translate_units" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "value", value1 => $value, 
-		name2 => "units", value2 => $units, 
+	my ($an, $value, $units, $user_units) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "translate_units" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "value",      value1 => $value, 
+		name2 => "units",      value2 => $units, 
+		name3 => "user_units", value3 => $user_units, 
 	}, file => $THIS_FILE, line => __LINE__});
+	$user_units = "metric" if not $user_units;
 	
 	my $return = "";
 	
@@ -4249,9 +4251,19 @@ sub translate_units
 	{
 		$return = $value." ".$an->String->get({key => "tools_suffix_0045"});
 	}
-	elsif ($units eq "Weeks")
+	elsif ($units eq "C")
 	{
-		$return = $value." ".$an->String->get({key => "tools_suffix_0046"});
+		# Temperature, convert to the user's desired units.
+		if ($user_units eq "metric")
+		{
+			# Leave as °C
+			$return = $value." ".$an->String->get({key => "tools_suffix_0010"});
+		}
+		else
+		{
+			# Convert to °F
+			$return = $an->Convert->convert_to_fahrenheit({temperature => $value})." ".$an->String->get({key => "tools_suffix_0012"});
+		}
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {

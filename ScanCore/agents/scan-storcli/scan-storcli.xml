@@ -31,6 +31,15 @@ Other detected variables:
 		
 		<!-- Warnings -->
 		<key name="scan_storcli_warning_0001">While processing data from adapter: [#!variable!adapter!#], which has the serial number: [#!variable!serial_number!#], the drive in virtual disk: [#!variable!virtual_disk!#] in the enclosure: [#!variable!enclosure_id!#] at slot number: [#!variable!slot_number!#] in span: [#!variable!span!#] at row: [#!variable!row!#] initially was found in drive group: [#!variable!old_drive_group!#] but the variable 'Drive position' reports it as being in drive group: [#!variable!new_drive_group!#]. This might be a program error in parsing the output of: [#!variable!shell_call!#]. Please report this error along with the output of that shell call so that we can improve this scan agent.</key>
+		<key name="scan_storcli_warning_0002">The RAID controller's properties have changed:
+- Model: ....... [#!variable!old_model!#] -> [#!variable!new_model!#]
+- Serial Number: [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+- Cache Size: .. [#!variable!old_say_cache_size!#] -> [#!variable!new_say_cache_size!#]
+- Alarm State: . [#!variable!old_alarm_state!#] -> [#!variable!new_alarm_state!#]
+</key>
+		<key name="scan_storcli_warning_0003">- Controller: [#!variable!controller!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0004">- Controller: [#!variable!controller!#]: New variable found; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0005">- Controller: [#!variable!controller!#]: Old variable lost; #!variable!name!#: [#!variable!old_value!#]</key>
 		
 		<!-- Errors -->
 		<key name="scan_storcli_error_0001">The 'storcli64' program was not found at: [#!variable!path!#], exiting.</key>
