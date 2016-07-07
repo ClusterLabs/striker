@@ -115,6 +115,14 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_suffix_0050">Disabled</key>	<!-- case-insensitive 'disabled' -->
 		<key name="tools_suffix_0051">On</key>		<!-- case-insensitive 'on' -->
 		<key name="tools_suffix_0052">Off</key>		<!-- case-insensitive 'off' -->
+		<key name="tools_suffix_0053">Optimal</key>
+		<key name="tools_suffix_0054">Partially Degraded</key>
+		<key name="tools_suffix_0055">Degraded</key>
+		<key name="tools_suffix_0056">No Pending Images</key>
+		<key name="tools_suffix_0057">Automatic</key>
+		<key name="tools_suffix_0058">Sectors</key>
+		<key name="tools_suffix_0059">Allowed</key>
+		<key name="tools_suffix_0060">Not Allowed</key>
 		
 		<!-- Default values -->
 		<key name="tools_default_0001">Debug</key>

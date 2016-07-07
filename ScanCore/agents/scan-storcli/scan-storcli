@@ -3714,12 +3714,7 @@ sub get_physical_disk_data
 			}
 			
 			# Process/standardize the variable.
-			$variable =  lc($variable);
-			$variable =~ s/ /_/g;
-			$variable =~ s/&/and/g;
-			$variable =~ s/\//_or_/g;
-			$variable =~ s/_%/_percent/g;
-			$variable =~ s/{_}+/_/g;
+			$variable = process_variable_name($an, $variable);
 			
 			# Record
 			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable} = $value;
@@ -3931,12 +3926,7 @@ sub get_virtual_disk_data
 				}
 				
 				# Record
-				$variable =  lc($variable);
-				$variable =~ s/ /_/g;
-				$variable =~ s/&/and/g;
-				$variable =~ s/\//_or_/g;
-				$variable =~ s/_%/_percent/g;
-				$variable =~ s/{_}+/_/g;
+				$variable = process_variable_name($an, $variable);
 				$an->data->{virtual_disk}{$virtual_disk}{$type}{$variable} = $value;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "virtual_disk::${virtual_disk}::${type}::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{$type}{$variable}, 
@@ -4663,12 +4653,7 @@ sub get_bbu_data
 			}
 			
 			# Record
-			$variable =  lc($variable);
-			$variable =~ s/ /_/g;
-			$variable =~ s/&/and/g;
-			$variable =~ s/\//_or_/g;
-			$variable =~ s/_%/_percent/g;
-			$variable =~ s/{_}+/_/g;
+			$variable = process_variable_name($an, $variable);
 			
 			# 'Auto-Learn' and 'Auto_Learn' are both used because screw consistency, right?
 			$variable =~ s/auto-learn/auto_learn/;
@@ -4866,12 +4851,7 @@ sub get_cachevault_data
 			}
 			
 			# Record
-			$variable =  lc($variable);
-			$variable =~ s/ /_/g;
-			$variable =~ s/&/and/g;
-			$variable =~ s/\//_or_/g;
-			$variable =~ s/_%/_percent/g;
-			$variable =~ s/{_}+/_/g;
+			$variable = process_variable_name($an, $variable);
 			
 			# 'Auto-Learn' and 'Auto_Learn' are both used because screw consistency, right?
 			$variable =~ s/auto-learn/auto_learn/;
@@ -5340,7 +5320,9 @@ sub get_controller_info
 		$line =~ s/ChipRevision/Chip Revision/;
 		$line =~ s/DisableHII/Disable HII/;
 		$line =~ s/EnableCrashDump/Enable Crash-Dump/;
-		$line =~ s/EnableLDBBM/Enable LDBBM/;
+		$line =~ s/EnableLDBBM/Enable LD_BBM/;
+		$line =~ s/elementcount/element_count/i;
+		$line =~ s/perio/per_io/i;
 		
 		### NOTE: ROC is RAID on Chip, which is what they call their controller's ASIC
 		# and they love their weird short forms
@@ -5663,6 +5645,84 @@ sub get_controller_info
 					name3 => "type",     value3 => $type, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			elsif ($variable =~ /\(hours\)/i)
+			{
+				# THis will get translated when generating an alert
+				$variable =~ s/\(hours\)//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/\s+/ /g;
+				$value    .= " Hours";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($variable =~ /\(hour\)/i)
+			{
+				# THis will get translated when generating an alert
+				$variable =~ s/\(min\)//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/\s+/ /g;
+				$value    .= " Hour";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($variable =~ /\(mins\)/i)
+			{
+				# THis will get translated when generating an alert
+				$variable =~ s/\(mins\)//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/\s+/ /g;
+				$value    .= " Minutes";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($variable =~ /\(min\)/i)
+			{
+				# THis will get translated when generating an alert
+				$variable =~ s/\(min\)//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/\s+/ /g;
+				$value    .= " Minute";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($variable =~ /\(secs\)/i)
+			{
+				# THis will get translated when generating an alert
+				$variable =~ s/\(secs\)//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/\s+/ /g;
+				$value    .= " Seconds";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($variable =~ /\(sec\)/i)
+			{
+				# THis will get translated when generating an alert
+				$variable =~ s/\(sec\)//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/^\s+//;
+				$variable =~ s/\s+/ /g;
+				$value    .= " Second";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
 			# Convert some values.
 			if ($value =~ /(\d\d)\/(\d\d)\/(\d\d\d\d), (\d\d:\d\d:\d\d)/)
@@ -5683,6 +5743,13 @@ sub get_controller_info
 			if ($value =~ /\(hrs\)/)
 			{
 				$value =~ s/\(hrs\)/\(Hours\)/;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "value", value1 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($value =~ /^(\d+)s/)
+			{
+				$value = $1." Seconds";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "value", value1 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -5725,6 +5792,13 @@ sub get_controller_info
 					name1 => "value", value1 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			if ($value =~ /^(\d+) sectors/i)
+			{
+				$value = $1." Sectors";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "value", value1 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
 			# Store it
 			if (exists $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable})
@@ -5732,12 +5806,8 @@ sub get_controller_info
 				# Conflict! This is a dirty way to keep them separate
 				$variable .= " 2";
 			}
-			$variable =  lc($variable);
-			$variable =~ s/ /_/g;
-			$variable =~ s/&/and/g;
-			$variable =~ s/\//_or_/g;
-			$variable =~ s/_%/_percent/g;
-			$variable =~ s/{_}+/_/g;
+			
+			$variable = process_variable_name($an, $variable);
 			$an->data->{controller}{serial_number}{$serial_number}{$type}{$variable} = $value;
 		}
 	}
@@ -5746,6 +5816,28 @@ sub get_controller_info
 		name1 => "serial_number", value1 => $serial_number,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($serial_number);
+}
+
+# This processes variable names to flatten them and remove spaces and special characters.
+sub process_variable_name
+{
+	my ($an, $variable) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_variable_name" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "variable", value1 => $variable, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$variable =  lc($variable);
+	$variable =~ s/ /_/g;
+	$variable =~ s/-/_/g;
+	$variable =~ s/&/and/g;
+	$variable =~ s/\//_or_/g;
+	$variable =~ s/_%/_percent/g;
+	$variable =~ s/{_}+/_/g;
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "variable", value1 => $variable, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($variable);
 }
 
 # This does two things; It checks to see if storcli64 is installed (exits '1' if not, exits '2' if not 

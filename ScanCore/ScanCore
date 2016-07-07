@@ -4125,6 +4125,35 @@ sub translate_strings
 	{
 		$return = $an->String->get({key => "tools_suffix_0052"});
 	}
+	### TODO: Add these to the wiki
+	elsif (lc($string) eq "optimal")
+	{
+		$return = $an->String->get({key => "tools_suffix_0053"});
+	}
+	elsif (lc($string) eq "partially degraded")
+	{
+		$return = $an->String->get({key => "tools_suffix_0054"});
+	}
+	elsif (lc($string) eq "degraded")
+	{
+		$return = $an->String->get({key => "tools_suffix_0055"});
+	}
+	elsif (lc($string) eq "no pending images")
+	{
+		$return = $an->String->get({key => "tools_suffix_0056"});
+	}
+	elsif ((lc($string) eq "auto") or (lc($string) eq "automatic"))
+	{
+		$return = $an->String->get({key => "tools_suffix_0057"});
+	}
+	elsif (lc($string) eq "allowed")
+	{
+		$return = $an->String->get({key => "tools_suffix_0059"});
+	}
+	elsif (lc($string) eq "not allowed")
+	{
+		$return = $an->String->get({key => "tools_suffix_0060"});
+	}
 # 	elsif (lc($string) eq "")
 # 	{
 # 		$return = $an->String->get({key => ""});
@@ -4264,6 +4293,11 @@ sub translate_units
 			# Convert to °F
 			$return = $an->Convert->convert_to_fahrenheit({temperature => $value})." ".$an->String->get({key => "tools_suffix_0012"});
 		}
+	}
+	### TODO: Add to wiki
+	elsif ($units eq "Sectors")
+	{
+		$return = $value." ".$an->String->get({key => "tools_suffix_0058"});
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
