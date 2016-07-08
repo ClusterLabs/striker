@@ -123,6 +123,10 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_suffix_0058">Sectors</key>
 		<key name="tools_suffix_0059">Allowed</key>
 		<key name="tools_suffix_0060">Not Allowed</key>
+		<key name="tools_suffix_0061">Present</key>
+		<key name="tools_suffix_0062">Absent</key>
+		<key name="tools_suffix_0063">Read Ahead</key>
+		<key name="tools_suffix_0064">No Read Ahead</key>
 		
 		<!-- Default values -->
 		<key name="tools_default_0001">Debug</key>

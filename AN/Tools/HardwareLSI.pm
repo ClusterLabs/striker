@@ -16,6 +16,7 @@ my $THIS_FILE = "HardwareLSI.pm";
 # _clear_foreign_state
 # _display_node_health
 # _get_missing_disks
+# _get_rebuild_progress
 # _get_storage_data
 # _make_disk_good
 # _make_disk_hot_spare
@@ -71,9 +72,9 @@ sub _add_disk_to_array
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_add_disk_to_array" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
@@ -159,10 +160,10 @@ sub _control_disk_id_led
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_header" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $action   = $parameter->{action}   ? $parameter->{action}   : "";
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $action   = defined $parameter->{action}   ? $parameter->{action}   : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "action", value1 => $action,
 		name2 => "target", value2 => $target,
@@ -251,9 +252,9 @@ sub _clear_foreign_state
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_clear_foreign_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
@@ -327,9 +328,9 @@ sub _display_node_health
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $node_name  = $an->data->{cgi}{node_name};
-	my $target     = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port       = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password   = $parameter->{password} ? $parameter->{password} : "";
+	my $target     = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port       = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password   = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
@@ -608,7 +609,11 @@ sub _display_node_health
 						}
 						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Rebuild")
 						{
-							my ($rebuild_percent, $time_to_complete) = lsi_control_get_rebuild_progress($an, "$this_enclosure_device_id:$this_slot_number", $this_adapter);
+							### TODO: Fix this 
+							my ($rebuild_percent, $time_to_complete) = $an->HardwareLSI->_get_rebuild_progress({
+									disk_address => "$this_enclosure_device_id:$this_slot_number",
+									adapter      => $this_adapter
+								});
 							$disk_state_class = "highlight_warning";
 							$say_disk_action  = $an->String->get({key => "lsi_0042", variables => { 
 									rebuild_percent		=>	$rebuild_percent,
@@ -785,11 +790,11 @@ sub _get_missing_disks
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_get_missing_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $this_adapter      = $parameter->{adapter}      ? $parameter->{adapter} : "";
-	my $this_logical_disk = $parameter->{logical_disk} ? $parameter->{logical_disk} : "";
-	my $target            = $parameter->{target}       ? $parameter->{target}   : "";
-	my $port              = $parameter->{port}         ? $parameter->{port}     : "";
-	my $password          = $parameter->{password}     ? $parameter->{password} : "";
+	my $this_adapter      = defined $parameter->{adapter}      ? $parameter->{adapter}      : "";
+	my $this_logical_disk = defined $parameter->{logical_disk} ? $parameter->{logical_disk} : "";
+	my $target            = defined $parameter->{target}       ? $parameter->{target}       : "";
+	my $port              = defined $parameter->{port}         ? $parameter->{port}         : "";
+	my $password          = defined $parameter->{password}     ? $parameter->{password}     : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "this_adapter",      value1 => $this_adapter,
 		name2 => "this_logical_disk", value2 => $this_logical_disk,
@@ -827,10 +832,71 @@ sub _get_missing_disks
 			   $minimum_size *= 1048576;	# Now it should be in bytes
 			$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row} = $minimum_size;
 		}
+		elsif ($line =~ /No Missing Drive/i)
+		{
+			# 
+		}
 	}
 	
 	return(0);
 }
+
+# This gets the rebuild status of a drive
+sub _get_rebuild_progress
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_get_rebuild_progress" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $adapter      = defined $parameter->{adapter}      ? $parameter->{adapter}      : "";
+	my $disk_address = defined $parameter->{disk_address} ? $parameter->{disk_address} : "";
+	my $target       = defined $parameter->{target}       ? $parameter->{target}       : "";
+	my $port         = defined $parameter->{port}         ? $parameter->{port}         : "";
+	my $password     = defined $parameter->{password}     ? $parameter->{password}     : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "adapter",      value1 => $adapter,
+		name2 => "disk_address", value2 => $disk_address,
+		name3 => "target",       value3 => $target,
+		name4 => "port",         value4 => $port,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $rebuild_percent  = "";
+	my $time_to_complete = "";
+	my $shell_call       = $an->data->{storage}{is}{lsi}." PDRbld ShowProg PhysDrv [$disk_address] a$adapter";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		next if not $line;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /completed (\d+)% in (.*?)\./i)
+		{
+			$rebuild_percent  = $1;
+			$time_to_complete = $2;
+		}
+	}
+	
+	return($rebuild_percent, $time_to_complete);
+}
+
 
 # This uses the 'MegaCli64' program to gather information about the LSI-based storage of a node.
 sub _get_storage_data
@@ -840,9 +906,9 @@ sub _get_storage_data
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_get_storage_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
@@ -1682,9 +1748,9 @@ sub _make_disk_good
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_make_disk_good" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
@@ -1756,9 +1822,9 @@ sub _make_disk_hot_spare
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_make_disk_hot_spare" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
@@ -1832,9 +1898,9 @@ sub _mark_disk_missing
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_mark_disk_missing" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
@@ -1929,9 +1995,9 @@ sub _put_disk_offline
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_put_disk_offline" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
@@ -2071,9 +2137,9 @@ sub _put_disk_online
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_put_disk_online" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
@@ -2144,9 +2210,9 @@ sub _spin_disk_down
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_spin_disk_down" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
@@ -2250,9 +2316,9 @@ sub _spin_disk_up
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_spin_disk_up" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
@@ -2325,9 +2391,9 @@ sub _unmake_disk_as_hot_spare
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_unmake_disk_as_hot_spare" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = defined $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,

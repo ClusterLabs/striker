@@ -5268,6 +5268,17 @@ sub get_controller_info
 					name1 => "<< line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			
+			# Many of the variables in the 'Defaults' section are also used for their current 
+			# values. So to help differentiate them, we're going to prefix the variables with
+			# 'Default '.
+			if (($in_defaults) && ($line =~ / = /))
+			{
+				$line = "Default ".$line;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 		
 		# Mangle capability variables.
@@ -5330,7 +5341,7 @@ sub get_controller_info
 		$line =~ s/Mfg/Manufacture/i;
 		$line =~ s/Cfg/Config/i;
 		$line =~ s/Perf /Performance /i;
-		$line =~ s/Ext /External /i;
+		$line =~ s/ Ext / External /i;
 		$line =~ s/ VD/ Virtual Disk/i;
 		$line =~ s/ VDs/ Virtual Disks/i;
 		$line =~ s/VD /Virtual Disk /i;

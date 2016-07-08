@@ -4154,11 +4154,27 @@ sub translate_strings
 	{
 		$return = $an->String->get({key => "tools_suffix_0060"});
 	}
+	elsif (lc($string) eq "present")
+	{
+		$return = $an->String->get({key => "tools_suffix_0061"});
+	}
+	elsif (lc($string) eq "absent")
+	{
+		$return = $an->String->get({key => "tools_suffix_0062"});
+	}
+	elsif (lc($string) eq "read ahead")
+	{
+		$return = $an->String->get({key => "tools_suffix_0063"});
+	}
+	elsif (lc($string) eq "no read ahead")
+	{
+		$return = $an->String->get({key => "tools_suffix_0064"});
+	}
 # 	elsif (lc($string) eq "")
 # 	{
 # 		$return = $an->String->get({key => ""});
 # 	}
-	
+u	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "return",  value1 => $return, 
 	}, file => $THIS_FILE, line => __LINE__});

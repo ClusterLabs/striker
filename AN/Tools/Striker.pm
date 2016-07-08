@@ -12426,7 +12426,11 @@ sub _process_task
 			}
 			if ($display_details)
 			{
-				$an->HardwareLSI->_display_node_health();
+				$an->HardwareLSI->_display_node_health({
+					target   => $target, 
+					port     => $port, 
+					password => $password, 
+				});
 			}
 		}
 	}

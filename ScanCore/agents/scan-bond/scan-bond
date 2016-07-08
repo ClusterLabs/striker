@@ -2296,8 +2296,8 @@ sub parse_bonds
 			next if $file eq ".";
 			next if $file eq "..";
 			
-			# There is a bug where an almost-empty 'bond0' 
-			# interface file is created, we want to ignore that.
+			# There is a bug(?) where an almost-empty 'bond0' interface file is created, we want
+			# to ignore that. - See: https://bugzilla.redhat.com/show_bug.cgi?id=1245440
 			next if $file eq "bond0";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "file", value1 => $file,
