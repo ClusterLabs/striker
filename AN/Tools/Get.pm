@@ -4553,7 +4553,7 @@ sub upses_under_node
 	}
 	elsif (not $node_uuid)
 	{
-		$node_uuid = $an->ScanCore->get_node_name_from_node_uuid({node_name => $node_name});
+		$node_uuid = $an->ScanCore->get_node_uuid_from_node_name({node_name => $node_name});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_uuid", value1 => $node_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4565,6 +4565,14 @@ sub upses_under_node
 			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0170", message_variables => { node_name => $node_name }, code => 170, file => "$THIS_FILE", line => __LINE__});
 			return("");
 		}
+	}
+	if (not $node_name)
+	{
+		# Get the name for convenience sake.
+		$node_name = $an->ScanCore->get_node_name_from_node_uuid({node_uuid => $node_uuid});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_name", value1 => $node_name, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# See if we can find the host in node's cache.
@@ -4618,9 +4626,14 @@ sub upses_under_node
 					}
 					else
 					{
-						$upses->{$ip} = $name;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "upses->$ip", value1 => $upses->{$ip}, 
+						# This is a bit of a hack to make it easier to display a 
+						# UPS'es name retrievable by it's IP. We only need one name
+						# for this.
+						$upses->{$ip}                                        = $name;
+						$an->data->{node_name}{$node_name}{upses}{$ip}{name} = $name;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "upses->$ip",                                  value1 => $upses->{$ip}, 
+							name2 => "node_name::${node_name}::upses::${ip}::name", value2 => $an->data->{node_name}{$node_name}{upses}{$ip}{name}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}

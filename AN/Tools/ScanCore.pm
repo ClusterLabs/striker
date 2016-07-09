@@ -16,6 +16,7 @@ my $THIS_FILE = "ScanCore.pm";
 # get_manifests
 # get_migration_target
 # get_node_name_from_node_uuid
+# get_node_uuid_from_node_name
 # get_nodes
 # get_nodes_cache
 # get_notifications
@@ -298,13 +299,61 @@ AND
 	return($target);
 }
 
-# This takes a node name, gets its host uuid and then looks up and returns its node_uuid 
+# This takes a node UUID and returns it's node (host) name.
 sub get_node_name_from_node_uuid
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_node_name_from_node_uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $node_name = "";
+	my $node_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_name", value1 => $node_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($an->Validate->is_uuid({uuid => $node_uuid}))
+	{
+		my $query = "
+SELECT 
+    host_name 
+FROM 
+    hosts 
+WHERE 
+    host_uuid = (
+        SELECT 
+            node_host_uuid 
+        FROM 
+            nodes 
+        WHERE 
+            node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_name)."
+        )
+;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$node_uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$node_uuid = "" if not $node_uuid;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_uuid", value1 => $node_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_uuid", value1 => $node_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($node_uuid);
+}
+
+# This takes a node name, gets its host uuid and then looks up and returns its node_uuid 
+sub get_node_uuid_from_node_name
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_node_uuid_from_node_name" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_uuid = "";
 	my $node_name = $parameter->{node_name} ? $parameter->{node_name} : "";
@@ -327,23 +376,23 @@ WHERE
             hosts 
         WHERE 
             host_name = ".$an->data->{sys}{use_db_fh}->quote($node_name)."
-        );
-";
+        )
+;";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$node_uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-		$node_uuid = "" if not $node_uuid;
+		$node_name = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$node_name = "" if not $node_name;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "node_uuid", value1 => $node_uuid, 
+			name1 => "node_name", value1 => $node_name, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "node_uuid", value1 => $node_uuid, 
+		name1 => "node_name", value1 => $node_name, 
 	}, file => $THIS_FILE, line => __LINE__});
-	return($node_uuid);
+	return($node_name);
 }
 
 # Get a list of Anvil! nodes as an array of hash references

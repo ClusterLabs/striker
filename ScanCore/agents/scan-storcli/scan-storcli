@@ -5274,7 +5274,7 @@ sub get_controller_info
 			# 'Default '.
 			if (($in_defaults) && ($line =~ / = /))
 			{
-				$line = "Default ".$line;
+				$line = "Default ".$line if $line !~ /^Default /;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -5371,9 +5371,9 @@ sub get_controller_info
 		$line =~ s/TPM/Trusted Platform Module/i;		# https://en.wikipedia.org/wiki/Trusted_Platform_Module
 		$line =~ s/\(hrs\)/\(Hours\)/i;
 		$line =~ s/ hrs/ Hours/i;
-		$line =~ s/ZCR /Zero-Channel RAID/i;
-		$line =~ s/R1E /RAID 1E/i;
-		$line =~ s/R10/RAID 10/i;
+		$line =~ s/ZCR /Zero-Channel RAID /i;
+		$line =~ s/R1E /RAID 1E /i;
+		$line =~ s/ R10/ RAID 10/i;
 		$line =~ s/RAID(\d+)/RAID $1/gi;
 		$line =~ s/TTY /Terminal /i;
 		$line =~ s/CME /Continuous Media Error/i;
@@ -5844,6 +5844,8 @@ sub process_variable_name
 	$variable =~ s/\//_or_/g;
 	$variable =~ s/_%/_percent/g;
 	$variable =~ s/{_}+/_/g;
+	$variable =~ s/^_+//g;
+	$variable =~ s/_+$//g;
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "variable", value1 => $variable, 
@@ -5930,7 +5932,7 @@ sub sort_and_prepare_data
 	my ($an) = @_;
 	
 	### NOTE: This is mainly useful for dev and debug. Disabled for now.
-	return("");
+	#return("");
 	
 	# First, sort the controllers.
 	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
@@ -5942,7 +5944,7 @@ sub sort_and_prepare_data
 				name2 => "type",          value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 3, 
+				log_level => 2, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "$serial_number - $type",
@@ -5964,7 +5966,7 @@ sub sort_and_prepare_data
 			name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	#die "$THIS_FILE ".__LINE__."; testing...\n";
+	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	# Now Cachevault (FBUs)
 	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
@@ -5976,7 +5978,7 @@ sub sort_and_prepare_data
 				name2 => "type",                     value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 3, 
+				log_level => 2, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "$cachevault_serial_number - $type",
@@ -5995,7 +5997,7 @@ sub sort_and_prepare_data
 				name2 => "type",              value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 3, 
+				log_level => 2, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "$bbu_serial_number - $type",
@@ -6019,7 +6021,7 @@ sub sort_and_prepare_data
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 3, 
+				log_level => 2, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "VD $virtual_disk - $type",
@@ -6044,7 +6046,7 @@ sub sort_and_prepare_data
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Log->aligned_entries({
-					log_level => 3, 
+					log_level => 2, 
 					file      => $THIS_FILE,
 					line      => __LINE__,
 					prefix    => "VD $say_virtual_disk, DG $say_drive_group - $type",
@@ -6069,7 +6071,7 @@ sub sort_and_prepare_data
 							name1 => "type", value1 => $type,
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Log->aligned_entries({
-							log_level => 3, 
+							log_level => 2, 
 							file      => $THIS_FILE,
 							line      => __LINE__,
 							prefix    => "VD $say_virtual_disk, DG $say_drive_group, EID $enclosure_id, Slot $slot_number - $type",

@@ -79,7 +79,7 @@
 		<key name="button_0072">Notifications</key>
 		<key name="button_0073">Advanced Options</key>
 		<key name="button_0074">Backup and Restore</key>
-		<key name="button_0075">...free...</key>
+		<key name="button_0075">Removal disabled while 'Degraded'</key>
 		<key name="button_0076">#!string!brand_0015!# Databases</key>
 		<key name="button_0077">Edit</key>
 		
@@ -1461,7 +1461,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0052">Restarting the remote desktop server</key>
 		<key name="message_0053"><![CDATA[Please close this brower tab (or window).<br />You should now be able to connect to your server.]]></key>
 		<key name="message_0054">Drive can now be removed.</key>
-		<key name="message_0055">Temperaure unavailable while spun down</key>
+		<key name="message_0055">Temperature unavailable while spun down</key>
 		<key name="message_0056">Rebuild will begin in just a moment.</key>
 		<key name="message_0057">Temperarily unavailable while in transition</key>
 		<key name="message_0058">Drive is coming online</key>

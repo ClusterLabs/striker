@@ -456,9 +456,9 @@ sub _display_node_health
 			foreach my $this_logical_disk (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
 			{
 				next if $this_logical_disk eq "";
-				my $say_bad_blocks =  $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist} ? "Yes" : "No";
-				my $say_size       =  $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size};
-				   $say_size       =~ s/(\w)B/$1iB/;	# The use 'GB' when it should be 'GiB'.
+				my $say_bad_blocks =          $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist} ? "Yes" : "No";
+				my $say_size       =  defined $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size} ? $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size} : 0;
+				   $say_size       =~ s/(\w)B/$1iB/;	# They use 'GB' when it should be 'GiB'.
 				my $logical_disk_state_class = "highlight_good";
 				my $say_missing    = "";
 				my $allow_offline  = 1;
@@ -557,9 +557,8 @@ sub _display_node_health
 							$say_location_body  = $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id};
 						}
 						
-						my $button                      = $an->String->get({key => "row_0067"});
-						my $say_offline_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => $button }});
-						my $offline_button = $say_offline_disabled_button;
+						my $say_offline_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0075!#" }});
+						my $offline_button              = $say_offline_disabled_button;
 						if ($allow_offline)
 						{
 							$offline_button = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
@@ -609,8 +608,11 @@ sub _display_node_health
 						}
 						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Rebuild")
 						{
-							### TODO: Fix this 
+							# Array is rebuilding, read the progress.
 							my ($rebuild_percent, $time_to_complete) = $an->HardwareLSI->_get_rebuild_progress({
+									target	     => $target, 
+									port         => $port, 
+									password     => $password,
 									disk_address => "$this_enclosure_device_id:$this_slot_number",
 									adapter      => $this_adapter
 								});

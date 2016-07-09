@@ -160,12 +160,44 @@ sub access_all_upses
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ping", value1 => $ping,
 		}, file => $THIS_FILE, line => __LINE__});
-		if (not $ping)
+		if ($ping)
+		{
+			foreach my $node_name (sort {$a cmp $b} keys %{$an->data->{node_name}})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node_name", value1 => $node_name,
+				}, file => $THIS_FILE, line => __LINE__});
+				if (exists $an->data->{node_name}{$node_name}{upses}{$ip}{name})
+				{
+					# Mark this UPS as being accessible.
+					$an->data->{node_name}{$node_name}{upses}{$ip}{can_ping} = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "node_name::${node_name}::upses::${ip}::can_ping", value1 => $an->data->{node_name}{$node_name}{upses}{$ip}{can_ping},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		else
 		{
 			$access = 0;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "access", value1 => $access,
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			foreach my $node_name (sort {$a cmp $b} keys %{$an->data->{node_name}})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node_name", value1 => $node_name,
+				}, file => $THIS_FILE, line => __LINE__});
+				if (exists $an->data->{node_name}{$node_name}{upses}{$ip}{name})
+				{
+					# Mark this UPS as being inaccessible.
+					$an->data->{node_name}{$node_name}{upses}{$ip}{can_ping} = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "node_name::${node_name}::upses::${ip}::can_ping", value1 => $an->data->{node_name}{$node_name}{upses}{$ip}{can_ping},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
 		}
 	}
 	
@@ -6159,13 +6191,53 @@ sub _display_watchdog_panel
 			name1 => "access", value1 => $access,
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		### TODO: Show the connected UPS states.
+		my $seen_upses = {};
+		my $ups_list   = "";
+		foreach my $node_name (sort {$a cmp $b} keys %{$an->data->{node_name}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_name", value1 => $node_name,
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $ip (sort {$a cmp $b} keys %{$an->data->{node_name}{$node_name}{upses}})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "ip", value1 => $ip,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Skip this UPS if I saw it under the other node.
+				next if exists $seen_upses->{$ip};
+				$seen_upses->{$ip} = 1;
+				
+				# Still alive? Show our ability to ping it.
+				my $ups_name = $an->data->{node_name}{$node_name}{upses}{$ip}{name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "ups_name",                                        value1 => $ups_name,
+					name2 => "node_name::${node_name}::upses::${ip}::can_ping", value2 => $an->data->{node_name}{$node_name}{upses}{$ip}{can_ping},
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $say_access = "<span class=\"highlight_warning\">".$an->String->get({key => "state_0021"})."</span>";
+				if ($an->data->{node_name}{$node_name}{upses}{$ip}{can_ping})
+				{
+					# Accessible.
+					$say_access = "<span class=\"highlight_good\">".$an->String->get({key => "state_0022"})."</span>";
+				}
+				$ups_list .= $an->Web->template({file => "server.html", template => "watchdog_panel_ups_entry", replace => { 
+					name	=>	$upses->{$ip}{name},
+					ip	=>	$ip,
+					access	=>	$say_access,
+				}});
+			}
+		}
+		
 		if ($access)
 		{
 			$power_cycle_link .= "&note=$note";
 			$power_off_link   .= "&note=$note";
 			$watchdog_panel   =  $an->Web->template({file => "server.html", template => "watchdog_panel", replace => { 
-					power_cycle	=>	$power_cycle_link,
-					power_off	=>	$power_off_link,
+					power_cycle     => $power_cycle_link,
+					power_off       => $power_off_link,
+					ups_access_list => $ups_list,
 				}});
 			$watchdog_panel =~ s/\n$//;
 		}
@@ -6173,27 +6245,6 @@ sub _display_watchdog_panel
 		{
 			# Tell the user that we've disabled this because one or more UPSes are not 
 			# accessible.
-			my $ups_list = "";
-			foreach my $ip (sort {$a cmp $b} keys %{$upses})
-			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "upses->${ip}::name", value1 => $upses->{$ip}{name}, 
-					name2 => "upses->${ip}::ping", value2 => $upses->{$ip}{ping}, 
-				}, file => $THIS_FILE, line => __LINE__});
-				my $say_access = "<span class=\"highlight_good\">".$an->String->get({key => "state_0022"})."</span>";
-				if (not $upses->{$ip}{ping})
-				{
-					# No access
-					$say_access = "<span class=\"highlight_bad\">".$an->String->get({key => "state_0004"})."</span>";
-				}
-				
-				$ups_list .= $an->Web->template({file => "server.html", template => "watchdog_panel-lost-access-ups-entry", replace => { 
-					name	=>	$upses->{$ip}{name},
-					ip	=>	$ip,
-					access	=>	$say_access,
-				}});
-			}
-			
 			$watchdog_panel =  $an->Web->template({file => "server.html", template => "watchdog_panel-lost-access", replace => { ups_access_list => $ups_list }});
 			$watchdog_panel =~ s/\n$//;
 		}
@@ -7658,7 +7709,7 @@ sub _header
 		elsif ($an->data->{cgi}{task} eq "display_health")
 		{
 			$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-					button_link	=>	"?anvil_uuid=$anvil_uuid&node_name".$an->data->{cgi}{node}."&task=display_health",
+					button_link	=>	"?anvil_uuid=$anvil_uuid&node_name=".$an->data->{cgi}{node_name}."&task=display_health",
 					button_text	=>	"$refresh_image",
 					id		=>	"refresh",
 				}});

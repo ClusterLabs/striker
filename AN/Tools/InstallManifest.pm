@@ -4733,7 +4733,7 @@ then
     then
         ".$an->data->{path}{'mkdir'}." -p $path
     fi
-    wget -c $download_1 -O ".$an->data->{path}{nodes}{striker_tarball}."
+    ".$an->data->{path}{wget}." -c $download_1 -O ".$an->data->{path}{nodes}{striker_tarball}."
     if [ -s '".$an->data->{path}{nodes}{striker_tarball}."' ];
     then
         ".$an->data->{path}{echo}." 'downloaded from $download_1 successfully'
@@ -4744,7 +4744,7 @@ then
             ".$an->data->{path}{echo}." 'Deleting zero-size file'
             ".$an->data->{path}{rm}." -f ".$an->data->{path}{nodes}{striker_tarball}."
         fi;
-        wget -c $download_2 -O ".$an->data->{path}{nodes}{striker_tarball}."
+        ".$an->data->{path}{wget}." -c $download_2 -O ".$an->data->{path}{nodes}{striker_tarball}."
         if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
         then
             ".$an->data->{path}{echo}." 'downloaded from $download_2 successfully'
@@ -13348,6 +13348,7 @@ sub run_new_install_manifest
 		'bash-completion'		=>	0,
 		'bridge-utils'			=>	0,
 		ccs				=>	0,
+		'cim-schema'			=>	0,
 		cman 				=>	0,
 		'compat-libstdc++-33.i686'	=>	0,
 		corosync			=>	0,
@@ -13409,6 +13410,7 @@ sub run_new_install_manifest
 		ricci				=>	0,
 		rsync				=>	0,
 		screen				=>	0,
+		sharutils			=>	0,
 		syslinux			=>	0,
 		sysstat				=>	0,
 		tuned				=>	0,

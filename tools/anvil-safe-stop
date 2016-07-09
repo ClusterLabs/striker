@@ -465,8 +465,9 @@ sub check_drbd
 	my $drbd_data          = $an->Get->drbd_data();
 	foreach my $resource (sort {$a cmp $b} keys %{$drbd_data->{resource}})
 	{
-		my $local_disk_state = $drbd_data->{resource}{$resource}{my_disk_state};
-		my $peer_disk_state  = $drbd_data->{resource}{$resource}{peer_disk_state};
+		# If DRBD was down, there will be no data here.
+		my $local_disk_state = defined $drbd_data->{resource}{$resource}{my_disk_state}   ? $drbd_data->{resource}{$resource}{my_disk_state}   : "";
+		my $peer_disk_state  = defined $drbd_data->{resource}{$resource}{peer_disk_state} ? $drbd_data->{resource}{$resource}{peer_disk_state} : "";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "local_disk_state", value1 => $local_disk_state, 
 			name2 => "peer_disk_state",  value2 => $peer_disk_state, 
