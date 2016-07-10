@@ -5833,7 +5833,7 @@ sub get_controller_info
 sub process_variable_name
 {
 	my ($an, $variable) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_variable_name" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_variable_name" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "variable", value1 => $variable, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -5932,7 +5932,7 @@ sub sort_and_prepare_data
 	my ($an) = @_;
 	
 	### NOTE: This is mainly useful for dev and debug. Disabled for now.
-	#return("");
+	return("");
 	
 	# First, sort the controllers.
 	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
@@ -5944,7 +5944,7 @@ sub sort_and_prepare_data
 				name2 => "type",          value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 2, 
+				log_level => 3, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "$serial_number - $type",
@@ -5966,7 +5966,6 @@ sub sort_and_prepare_data
 			name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	# Now Cachevault (FBUs)
 	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
@@ -6005,6 +6004,7 @@ sub sort_and_prepare_data
 			});
 		}
 	}
+	#die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	# Now the virtual disks. Note that '9999' is a fake VD used for physical drives not in any actual 
 	# VDs.

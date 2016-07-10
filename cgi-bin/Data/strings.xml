@@ -831,6 +831,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0312">Caution</key>
 		<key name="row_0313">Manifest</key>
 		<key name="row_0314">Backup Mail Server</key>
+		<key name="row_0315">Disabled</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>

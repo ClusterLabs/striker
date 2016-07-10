@@ -3628,7 +3628,7 @@ sub check_email_configuration
 sub get_string_from_double_bang
 {
 	my ($an, $language, $key, $variables, $units) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0004", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "language",  value1 => $language, 
 		name2 => "key",       value2 => $key,  
 		name3 => "variables", value3 => $variables, 
@@ -3646,7 +3646,7 @@ sub get_string_from_double_bang
 			
 			my $pair      =  ($variables =~ /(!!.*?!!)/s)[0];
 			   $variables =~ s/\Q$pair\E//s;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "i",         value1 => $i, 
 				name2 => "pair",      value2 => $pair, 
 				name3 => "variables", value3 => $variables, 
@@ -3659,14 +3659,14 @@ sub get_string_from_double_bang
 			{
 				# No value, this is OK.
 				($variable) = ($pair =~ /^!!(.*?)!!!$/s);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "variable", value1 => $variable, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($pair =~ /^!!(.*?)!(.*?)!!$/s)
 			{
 				($variable, $value) = ($pair =~ /^!!(.*?)!(.*?)!!$/s);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -3676,7 +3676,7 @@ sub get_string_from_double_bang
 				{
 					# This language has a translation key!
 					$value = $an->String->get({key => $value});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "value", value1 => $value, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -3687,13 +3687,13 @@ sub get_string_from_double_bang
 			if ($variable eq "sensor_name") 
 			{
 				my ($sensor_name, $sensor_units) = ($value =~ /name=(.*?):units=(.*)$/);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "sensor_name",  value1 => $sensor_name, 
 					name2 => "sensor_units", value2 => $sensor_units, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				$value = translate_sensor_name($an, $sensor_name, $sensor_units);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "value", value1 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3701,13 +3701,13 @@ sub get_string_from_double_bang
 			elsif ($variable =~ /sensor_value/)
 			{
 				my ($sensor_value, $sensor_units) = ($value =~ /value=(.*?):units=(.*)$/);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "sensor_value", value1 => $sensor_value, 
 					name2 => "sensor_units", value2 => $sensor_units, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				$value = translate_sensor_value($an, $sensor_value, $sensor_units, $units);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "value", value1 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3718,13 +3718,13 @@ sub get_string_from_double_bang
 				#       we're NOT looking at a 'value units' pair!
 				my $left_hand_side  = $1;
 				my $right_hand_side = $2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "left_hand_side",  value1 => $left_hand_side, 
 					name2 => "right_hand_side", value2 => $right_hand_side, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				my $returned = translate_units($an, $left_hand_side, $right_hand_side, $units);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "returned", value1 => $returned, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -3732,7 +3732,7 @@ sub get_string_from_double_bang
 				if ($returned)
 				{
 					$value = $returned;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "value", value1 => $value, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -3741,7 +3741,7 @@ sub get_string_from_double_bang
 			else
 			{
 				my $returned = translate_strings($an, $value);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "returned", value1 => $returned, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -3749,20 +3749,20 @@ sub get_string_from_double_bang
 				if ($returned)
 				{
 					$value = $returned;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "value", value1 => $value, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			$hash->{$variable} = $value;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "hash->{$variable}", value1 => $hash->{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		$variables = $hash;
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "language",  value1 => $language, 
 		name2 => "key",       value2 => $key, 
 		name3 => "variables", value3 => $variables, 
@@ -3774,7 +3774,7 @@ sub get_string_from_double_bang
 		variables => $variables, 
 	});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "string", value1 => $string, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($string);
@@ -4162,6 +4162,10 @@ sub translate_strings
 	{
 		$return = $an->String->get({key => "tools_suffix_0062"});
 	}
+	elsif (lc($string) eq "missing")
+	{
+		$return = $an->String->get({key => "tools_suffix_0067"});
+	}
 	elsif (lc($string) eq "read ahead")
 	{
 		$return = $an->String->get({key => "tools_suffix_0063"});
@@ -4170,11 +4174,19 @@ sub translate_strings
 	{
 		$return = $an->String->get({key => "tools_suffix_0064"});
 	}
+	elsif ((lc($string) eq "na") or (lc($string) eq "n/a"))
+	{
+		$return = $an->String->get({key => "tools_suffix_0065"});
+	}
+	elsif (lc($string) eq "none")
+	{
+		$return = $an->String->get({key => "tools_suffix_0066"});
+	}
 # 	elsif (lc($string) eq "")
 # 	{
 # 		$return = $an->String->get({key => ""});
 # 	}
-u	
+	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "return",  value1 => $return, 
 	}, file => $THIS_FILE, line => __LINE__});

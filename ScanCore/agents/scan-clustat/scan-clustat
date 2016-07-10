@@ -1156,7 +1156,7 @@ WHERE
 				my $new_cluster_id = $an->data->{clustat}{node}{$node}{cluster_id};
 				my $old_status     = $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status};
 				my $new_status     = $an->data->{clustat}{node}{$node}{status};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 					name1 => "node",           value1 => $node, 
 					name2 => "old_cluster_id", value2 => $old_cluster_id, 
 					name3 => "new_cluster_id", value3 => $new_cluster_id, 
@@ -1167,7 +1167,7 @@ WHERE
 				if (($new_cluster_id ne $old_cluster_id) or
 				    ($new_status     ne $old_status))
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 						name1 => "old_cluster_id", value1 => $old_cluster_id, 
 						name2 => "new_cluster_id", value2 => $new_cluster_id, 
 						name3 => "old_status",     value3 => $old_status, 

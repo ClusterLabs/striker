@@ -327,10 +327,10 @@ WHERE
         FROM 
             nodes 
         WHERE 
-            node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_name)."
+            node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
         )
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2503,7 +2503,7 @@ AND
 					}
 					$query .= ";";
 					$query =~ s/'NULL'/NULL/g;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query, 
 					}, file => $THIS_FILE, line => __LINE__});
 					$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -4783,11 +4783,11 @@ sub target_power
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "target_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 1, title_key => "tools_log_0001", title_variables => { function => "target_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $task   = $parameter->{task}   ? $parameter->{task}   : "status";
 	my $target = $parameter->{target} ? $parameter->{target} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 		name1 => "task",   value1 => $task, 
 		name2 => "target", value2 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4815,7 +4815,7 @@ sub target_power
 	# Check the power state.
 	### WARNING: This exposes passwords. Only change the log level to actively debug.
 	my $power_check = $an->ScanCore->read_cache({target => $target, type => "power_check"});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 		name1 => "power_check", value1 => $power_check, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4823,13 +4823,13 @@ sub target_power
 	if (not $power_check)
 	{
 		$power_check = $an->ScanCore->read_cache({target => $target, type => "power_check", source => "any"});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "power_check", value1 => $power_check, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Now check, if we can.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 		name1 => "power_check", value1 => $power_check, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($power_check)
@@ -4841,7 +4841,7 @@ sub target_power
 		foreach my $method (split/;/, $power_check)
 		{
 			### WARNING: This exposes passwords. Only change the log level to actively debug.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "method", value1 => $method, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -4855,35 +4855,35 @@ sub target_power
 				$method_number = $1;
 				$method_name   = $2;
 				$power_check   = $3;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 					name1 => "method_number", value1 => $method_number, 
 					name2 => "method_name",   value2 => $method_name, 
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "power_check", value1 => $power_check, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			# Convert the '-a X' to an IP address, if needed.
 			my $target = ($power_check =~ /-a\s(.*?)\s/)[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "target", value1 => $target,
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->Validate->is_ipv4({ip => $target}))
 			{
 				my $ip = $an->Get->ip({host => $target});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "ip", value1 => $ip,
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				if ($ip)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 						name1 => ">> power_check", value1 => $power_check,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$power_check =~ s/$target/$ip/;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 						name1 => "<< power_check", value1 => $power_check,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -4892,8 +4892,16 @@ sub target_power
 			$power_check =~ s/#!action!#/$task/;
 			$power_check =~ s/^.*fence_/fence_/;
 			
+			if ($power_check !~ /^\//)
+			{
+				$power_check = $an->data->{path}{fence_agents}."/".$power_check;
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "power_check", value1 => $power_check,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
 			my $shell_call = $power_check;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -4901,20 +4909,20 @@ sub target_power
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ / On$/i)
 				{
 					$state = "on";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 						name1 => "state", value1 => $state,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ / Off$/i)
 				{
 					$state = "off";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 						name1 => "state", value1 => $state,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -4935,7 +4943,7 @@ sub target_power
 	}
 	
 	# Set to 'unknown', 'on' or 'off'.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($state);

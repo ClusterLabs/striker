@@ -127,6 +127,9 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_suffix_0062">Absent</key>
 		<key name="tools_suffix_0063">Read Ahead</key>
 		<key name="tools_suffix_0064">No Read Ahead</key>
+		<key name="tools_suffix_0065">N/A</key>		<!-- Not Applicable -->
+		<key name="tools_suffix_0066">None</key>		<!-- Not Applicable -->
+		<key name="tools_suffix_0067">Missing</key>
 		
 		<!-- Default values -->
 		<key name="tools_default_0001">Debug</key>
