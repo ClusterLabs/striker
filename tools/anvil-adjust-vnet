@@ -52,14 +52,12 @@ $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 
 # Record that we're starting.
-$an->Log->entry({log_level => 2, message_key => "aav_log_0001", message_variables => {
-	this_file => $THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 3, message_key => "aav_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 # Get a list of servers on this node and, for each, which vnets they have.
 get_server_list($an);
 
-# DEBUG TOOl: Show the found servers
+# Debug tool; Show the found servers
 if (0)
 {
 	foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})

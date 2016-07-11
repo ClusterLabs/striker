@@ -436,7 +436,7 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 	}
 	
 	# If this UPS was processed too recently, skip it.
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
 	if ((not $conf->{sys}{apc}{ups}{target}{$ups}{kick}) && (not $conf->{switches}{force}))
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The UPS: [$ups] is not scheduled to be kicked on this pass, skipping it.");

@@ -130,6 +130,7 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_suffix_0065">N/A</key>		<!-- Not Applicable -->
 		<key name="tools_suffix_0066">None</key>		<!-- Not Applicable -->
 		<key name="tools_suffix_0067">Missing</key>
+		<key name="tools_suffix_0068">Battery is not being charged</key>
 		
 		<!-- Default values -->
 		<key name="tools_default_0001">Debug</key>
@@ -177,6 +178,7 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0030">The peer does not appear to be running: [#!variable!program!#], so we are done waiting.</key>
 		<key name="tools_log_0031">Watching the peer: [#!variable!peer!#] and waiting for it to finish running its instance of: [#!variable!program!#].</key>
 		<key name="tools_log_0032">The peer no longer appears to be running: [#!variable!program!#], so we're done waiting.</key>
+		<key name="tools_log_0033">We were asked to mark the node: [#!variable!node!#] as 'on', but its stop reason is a time stamp in the future, so aborting.</key>
 	
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

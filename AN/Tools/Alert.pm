@@ -638,13 +638,7 @@ sub warning
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "warning" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	### TODO: Finish this, disabled for now.
-	return(1);
-	
-	# Clear any prior errors.
-	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "warning" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Setup default values
 	my $title_key         = $parameter->{title_key}         ? $parameter->{title_key}         : "";
@@ -656,15 +650,15 @@ sub warning
 	my $log_to            = $parameter->{log_to}            ? $parameter->{log_to}            : $an->default_log_file();
 	my $quiet             = $parameter->{quiet}             ? $parameter->{quiet}             : 0;
 	my $code              = 1;
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0008", message_variables => {
-		name1 => 'title_key',         value1 => $title_key, 
-		name2 => 'title_variables',   value2 => $title_variables, 
-		name3 => 'message_key',       value3 => $message_key, 
-		name4 => 'message_variables', value4 => $message_variables, 
-		name5 => 'file',              value5 => $file, 
-		name6 => 'line',              value6 => $line, 
-		name7 => 'log_to',            value7 => $log_to, 
-		name8 => 'quiet',             value8 => $quiet, 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+		name1 => "title_key",         value1 => $title_key, 
+		name2 => "title_variables",   value2 => $title_variables, 
+		name3 => "message_key",       value3 => $message_key, 
+		name4 => "message_variables", value4 => $message_variables, 
+		name5 => "file",              value5 => $file, 
+		name6 => "line",              value6 => $line, 
+		name7 => "log_to",            value7 => $log_to, 
+		name8 => "quiet",             value8 => $quiet, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Turn the arguments into strings.

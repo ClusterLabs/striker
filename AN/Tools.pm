@@ -203,7 +203,7 @@ sub new
 	}
 	if (not -e $an->{DEFAULT}{STRINGS})
 	{
-		print "Failed to read the core words file: [$an->{DEFAULT}{STRINGS}]\n";
+		print "Failed to read the core words file: [".$an->{DEFAULT}{STRINGS}."]\n";
 		exit(255);
 	}
 	$an->Storage->read_words({file => $an->{DEFAULT}{STRINGS}});

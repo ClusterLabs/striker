@@ -901,7 +901,7 @@ sub read_words
 		}
 		next if $line eq "";
 	}
-	$read->close();
+	close $read;
 	
 	# Set a couple values about this file.
 	$self->{FILE}->{XML_VERSION} = $xml_version;

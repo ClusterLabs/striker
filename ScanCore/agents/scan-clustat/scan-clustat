@@ -1010,15 +1010,15 @@ INSERT INTO
 		    ($new_quorum_status ne $old_quorum_status))
 		{
 			# Update the 'clustat' entry.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0022", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0022", message_variables => {
 				table => "clustat"
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "old_cluster_name", value1 => $old_cluster_name, 
 				name2 => "new_cluster_name", value2 => $new_cluster_name, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "old_quorum_status", value1 => $old_quorum_status, 
 				name2 => "new_quorum_status", value2 => $new_quorum_status, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1034,7 +1034,7 @@ SET
 WHERE 
     clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -1125,14 +1125,14 @@ WHERE
 		foreach my $node (sort {$a cmp $b} keys %{$an->data->{clustat}{node}})
 		{
 			# First, did this exist in the database before at all?
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0027", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0027", message_variables => {
 				table => "clustat_node",
 				entry => "$node",
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{clustat}{sql}{clustat_node}{$node})
 			{
 				# Nope, insert it.
-				$an->Log->entry({log_level => 2, message_key => "scancore_log_0024", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "scancore_log_0024", message_variables => {
 					table => "clustat_node",
 					entry => "$node",
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1156,7 +1156,7 @@ WHERE
 				my $new_cluster_id = $an->data->{clustat}{node}{$node}{cluster_id};
 				my $old_status     = $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status};
 				my $new_status     = $an->data->{clustat}{node}{$node}{status};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "node",           value1 => $node, 
 					name2 => "old_cluster_id", value2 => $old_cluster_id, 
 					name3 => "new_cluster_id", value3 => $new_cluster_id, 
@@ -1167,7 +1167,7 @@ WHERE
 				if (($new_cluster_id ne $old_cluster_id) or
 				    ($new_status     ne $old_status))
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 						name1 => "old_cluster_id", value1 => $old_cluster_id, 
 						name2 => "new_cluster_id", value2 => $new_cluster_id, 
 						name3 => "old_status",     value3 => $old_status, 
@@ -1177,7 +1177,7 @@ WHERE
 					### TODO: Have Striker set a flag that suppresses alerts when doing
 					###       a controlled shutdown.
 					# Something changed.
-					$an->Log->entry({log_level => 2, message_key => "scancore_log_0025", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "scancore_log_0025", message_variables => {
 						table => "clustat_node",
 						entry => "$node",
 					}, file => $THIS_FILE, line => __LINE__});
@@ -1225,7 +1225,7 @@ WHERE
 						
 						# Mark it as last seen as offline.
 						$set_peer_off = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "set_peer_off", value1 => $set_peer_off, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -1251,7 +1251,7 @@ WHERE
 						
 						# Mark it as last seen as online.
 						$set_peer_on = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "set_peer_on", value1 => $set_peer_on, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -1267,7 +1267,7 @@ WHERE
 						
 						# Mark it as last seen as offline.
 						$set_peer_off = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "set_peer_off", value1 => $set_peer_off, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -1283,7 +1283,7 @@ WHERE
 						
 						# Mark it as last seen as offline.
 						$set_peer_on = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "set_peer_on", value1 => $set_peer_on, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -1334,27 +1334,27 @@ WHERE
 					}
 					
 					# Is this the peer node?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "sys::single_node_start::enabled", value1 => $an->data->{sys}{single_node_start}{enabled}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{sys}{single_node_start}{enabled})
 					{
 						my $peer_hostname = $an->Cman->peer_hostname();
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "node",          value1 => $node, 
 							name2 => "peer_hostname", value2 => $peer_hostname, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($node eq $peer_hostname)
 						{
 							# OK, record the peer's state if it changed.
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "set_peer_off", value1 => $set_peer_off, 
 								name2 => "set_peer_on",  value2 => $set_peer_on, 
 							}, file => $THIS_FILE, line => __LINE__});
 							if ($set_peer_off)
 							{
 								my $variable_name = "sys::node::".$node."::last_seen";
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "variable_name", value1 => $variable_name, 
 								}, file => $THIS_FILE, line => __LINE__});
 								
@@ -1367,7 +1367,7 @@ WHERE
 									variable_source_table => "hosts", 
 									update_value_only     => 1,
 								});
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "variable_uuid", value1 => $variable_uuid, 
 								}, file => $THIS_FILE, line => __LINE__});
 							}
@@ -1375,7 +1375,7 @@ WHERE
 							{
 								# Mark the server as last seen = on
 								my $variable_name = "sys::node::".$node."::last_seen";
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "variable_name", value1 => $variable_name, 
 								}, file => $THIS_FILE, line => __LINE__});
 								
@@ -1388,13 +1388,13 @@ WHERE
 									variable_source_table => "hosts", 
 									update_value_only     => 1,
 								});
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "variable_uuid", value1 => $variable_uuid, 
 								}, file => $THIS_FILE, line => __LINE__});
 								
 								# And set the 'last_seen' to '0' (effectively disabling it.
 								$variable_name = "sys::node::".$node."::last_booted_without";
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "variable_name", value1 => $variable_name, 
 								}, file => $THIS_FILE, line => __LINE__});
 								
@@ -1407,7 +1407,7 @@ WHERE
 									variable_source_table => "hosts", 
 									update_value_only     => 1,
 								});
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "variable_uuid", value1 => $variable_uuid, 
 								}, file => $THIS_FILE, line => __LINE__});
 							}

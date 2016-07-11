@@ -114,9 +114,7 @@ if (($an->data->{switches}{h})   or
 avoid_duplicate_run($an);
 
 # Log our startup
-$an->Log->entry({log_level => 1, message_key => "assp_log_0001", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 1, message_key => "assp_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 # Can I connect to a database?
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
@@ -196,6 +194,9 @@ sub shed_load
 	}
 	
 	# Wait if we're node 2
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::i_am_node2", value1 => $an->data->{sys}{i_am_node2}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{i_am_node2})
 	{
 		print $an->String->get({key => "assp_message_0006"})."\n";
@@ -221,7 +222,7 @@ sub shed_load
 		name1 => "local_rgmanager_state", value1 => $local_rgmanager_state, 
 		name2 => "peer_rgmanager_state",  value2 => $peer_rgmanager_state, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $local_rgmanager_state) && (not $peer_rgmanager_state))
+	if (($local_rgmanager_state eq "0") && ($peer_rgmanager_state eq "0"))
 	{
 		# Neither node is in the cluster, so shut down node 2.
 		print $an->String->get({key => "assp_message_0007"})."\n";
@@ -242,7 +243,7 @@ sub shed_load
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	elsif (not $local_rgmanager_state)
+	elsif ($local_rgmanager_state eq "0")
 	{
 		# I'm not in the cluster, so I will shut down.
 		print $an->String->get({key => "assp_message_0008", variables => { node => $an->hostname() }})."\n";
@@ -532,6 +533,11 @@ sub shutdown_node
 			{
 				# Get off my lawn!
 				my ($success, $migrate_output) = do_migration($an, $server);
+				$an->Log->entry({log_level => 0, message_key => "an_variables_0002", message_variables => {
+					name1 => "success",        value1 => $success, 
+					name2 => "migrate_output", value2 => $migrate_output, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				$output .= $migrate_output;
 				
 				# Shut it down if migration failed.
@@ -548,6 +554,9 @@ sub shutdown_node
 			}
 			else
 			{
+				$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
+					name1 => "switches::reason", value1 => $an->data->{switches}{reason}, 
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($an->data->{switches}{reason})
 				{
 					if ($an->data->{switches}{reason} =~ /\W/)
@@ -556,10 +565,17 @@ sub shutdown_node
 							name1 => "reason", value1 => $an->data->{switches}{reason}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->data->{switches}{reason} = "";
+						$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
+							name1 => "switches::reason", value1 => $an->data->{switches}{reason}, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					else
 					{
-						$an->data->{sys}{stop_reason} = $an->data->{switches}{reason};
+						$an->data->{sys}{stop_reason} = $an->data->{switches}{reason} if not $an->data->{sys}{stop_reason};
+						$an->Log->entry({log_level => 0, message_key => "an_variables_0002", message_variables => {
+							name1 => "switches::reason", value1 => $an->data->{switches}{reason}, 
+							name2 => "sys::stop_reason", value2 => $an->data->{sys}{stop_reason}, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				
@@ -573,6 +589,9 @@ sub shutdown_node
 	}
 	
 	# Proceed, if safe.
+	$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
+		name1 => "proceed", value1 => $proceed, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($proceed)
 	{
 		# Stop rgmanager, then stop cman.
@@ -581,16 +600,46 @@ sub shutdown_node
 			target   => $node,
 			password => $an->data->{sys}{anvil_password}, 
 		});
-		$output .= $withdraw_output;
 		# 0 == success
 		# 1 == failed, restart succeeded.
 		# 2 == failed, restart also failed.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "return_code", value1 => $return_code, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		$output .= $withdraw_output;
 		if ($return_code eq "0")
 		{
+			# Set the stop reason.
+			my $node_uuid = $an->ScanCore->get_node_uuid_from_node_name({node_name => $node});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "node",             value1 => $node, 
+				name2 => "node_uuid",        value2 => $node_uuid, 
+				name3 => "sys::stop_reason", value3 => $an->data->{sys}{stop_reason}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($an->data->{sys}{stop_reason} =~ /cold/i) or ($an->data->{switches}{'cold-stop'}))
+			{
+				# Set the stop reason as a time stamp sys::power_off_delay seconds in the
+				# future
+				$an->Striker->mark_node_as_clean_off({
+					node_uuid => $node_uuid, 
+					delay     => 1,
+				});
+			}
+			elsif ($an->data->{sys}{stop_reason})
+			{
+				# Set the stop reason
+				$an->Striker->mark_node_as_clean_off({
+					node_uuid   => $node_uuid, 
+					stop_reason => $an->data->{sys}{stop_reason},
+				});
+			}
+			else
+			{
+				# Set a 'clean' stop.
+				$an->Striker->mark_node_as_clean_off({node_uuid => $node_uuid});
+			}
+			
 			# We're done, power off.
 			print $an->String->get({key => "assp_message_0015", variables => { node => $node }})."\n";
 			$output .= $an->System->poweroff({
@@ -805,6 +854,36 @@ sub local_shut_down
 	if ($return_code eq "0")
 	{
 		# We're done, power off.
+		my $node_uuid = $an->ScanCore->get_node_uuid_from_node_name({node_name => $an->hostname});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node_uuid",        value1 => $node_uuid, 
+			name2 => "sys::stop_reason", value2 => $an->data->{sys}{stop_reason}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{sys}{stop_reason} =~ /cold/i)
+		{
+			# Set the stop reason as a time stamp sys::power_off_delay seconds in the
+			# future
+			$an->Striker->mark_node_as_clean_off({
+				node_uuid => $node_uuid, 
+				delay     => 1,
+			});
+		}
+		elsif ($an->data->{sys}{stop_reason})
+		{
+			# Set the stop reason
+			$an->Striker->mark_node_as_clean_off({
+				node_uuid   => $node_uuid, 
+				stop_reason => $an->data->{sys}{stop_reason},
+			});
+		}
+		else
+		{
+			# Set a 'clean' stop.
+			$an->Striker->mark_node_as_clean_off({node_uuid => $node_uuid});
+		}
+		
+		# We're done, power off.
+		print $an->String->get({key => "assp_message_0015", variables => { node => $an->hostname }})."\n";
 		$an->System->poweroff();
 	}
 	elsif ($return_code eq "2")
@@ -862,19 +941,36 @@ sub process_request
 	if ($an->data->{switches}{'cold-stop'})
 	{
 		print $an->String->get({key => "assp_message_0002"})."\n";
+		
 		$an->data->{sys}{stop_reason} = "cold_stop";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::stop_reason", value1 => $an->data->{sys}{stop_reason}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		shed_load($an);
 	}
 	elsif ($an->data->{switches}{'shed-load'})
 	{
 		# We're shedding load
 		print $an->String->get({key => "assp_message_0003"})."\n";
-		$an->data->{sys}{stop_reason} = "shed-load";
+		
+		$an->data->{sys}{stop_reason} = "shed_load";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::stop_reason", value1 => $an->data->{sys}{stop_reason}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		shed_load($an);
 	}
 	elsif ($an->data->{switches}{'local'})
 	{
 		# Local shutdown
+		if ($an->data->{switches}{'cold-stop'})
+		{
+			$an->data->{sys}{stop_reason} = "cold_stop";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::stop_reason", value1 => $an->data->{sys}{stop_reason}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		print $an->String->get({key => "assp_message_0004", variables => { node => $an->hostname() }})."\n";
 		local_shut_down($an);
 	}
@@ -933,10 +1029,10 @@ sub find_myself
 	# Record the server(s) running on the nodes and record their RAM.
 	foreach my $server (sort {$a cmp $b} keys %{$return->{server}})
 	{
-		my $server_data = $an->Get->server_data({server => $server});
-		$an->data->{server}{$server}{'state'} = $return->{server}{$server}{'state'};
-		$an->data->{server}{$server}{host}    = $return->{server}{$server}{host};
-		$an->data->{server}{$server}{ram}     = $server_data->{current_ram};
+		my $server_data                          = $an->Get->server_data({server => $server});
+		   $an->data->{server}{$server}{'state'} = $return->{server}{$server}{'state'};
+		   $an->data->{server}{$server}{host}    = $return->{server}{$server}{host};
+		   $an->data->{server}{$server}{ram}     = $server_data->{current_ram};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "server::${server}::state", value1 => $an->data->{server}{$server}{'state'}, 
 			name2 => "server::${server}::host",  value2 => $an->data->{server}{$server}{host}, 

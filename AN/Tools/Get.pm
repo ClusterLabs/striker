@@ -1292,7 +1292,7 @@ sub ip_from_hostname
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "local_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ip_from_hostname" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ip        = "";
 	my $host_name = $parameter->{host_name} ? $parameter->{host_name} : "";
@@ -1414,13 +1414,13 @@ sub local_anvil_details
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "local_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "local_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If no host name is passed in, use this machine's host name.
 	my $hostname_full  = $parameter->{hostname_full}  ? $parameter->{hostname_full}  : $an->hostname;
 	my $hostname_short = $parameter->{hostname_short} ? $parameter->{hostname_short} : $an->short_hostname;
 	my $config_file    = $parameter->{config_file}    ? $parameter->{config_file}    : $an->data->{path}{cman_config};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "hostname_full",  value1 => $hostname_full, 
 		name2 => "hostname_short", value2 => $hostname_short, 
 		name3 => "config_file",    value3 => $config_file, 
@@ -1462,16 +1462,31 @@ sub local_anvil_details
 		}
 	}
 	
-	# Find the servers running locally and store their details.
-	my $clustat_data = $an->Cman->get_clustat_data();
-	foreach my $server (sort {$a cmp $b} keys %{$clustat_data->{server}})
+	# Load the Anvil! details, if not already loaded.
+	if (not $an->data->{sys}{anvil}{uuid})
 	{
-		$return->{server}{$server}{'state'} = $clustat_data->{server}{$server}{status};
-		$return->{server}{$server}{host}    = $clustat_data->{server}{$server}{host};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "server::${server}::state", value1 => $return->{server}{$server}{'state'}, 
-			name2 => "server::${server}::host",  value2 => $return->{server}{$server}{host}, 
+		$an->Striker->load_anvil();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Find the servers running locally and store their details, if we're in the cluster.
+	my $clustat_data = $an->Cman->get_clustat_data();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "clustat_data->cluster::name", value1 => $clustat_data->{cluster}{name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($clustat_data->{cluster}{name})
+	{
+		foreach my $server (sort {$a cmp $b} keys %{$clustat_data->{server}})
+		{
+			$return->{server}{$server}{'state'} = $clustat_data->{server}{$server}{status};
+			$return->{server}{$server}{host}    = $clustat_data->{server}{$server}{host};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "server::${server}::state", value1 => $return->{server}{$server}{'state'}, 
+				name2 => "server::${server}::host",  value2 => $return->{server}{$server}{host}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
 	# Now see if this Anvil! is in the database or, failing that, if it was read in from striker.conf.

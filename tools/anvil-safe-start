@@ -287,7 +287,7 @@ sub update_striker_conf
 			my $space1 = $1;
 			my $space2 = $2;
 			my $value  = $3;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "value", value1 => $value, 
 				name2 => "set",   value2 => $set, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -295,7 +295,7 @@ sub update_striker_conf
 			{
 				$changed = 1;
 				$line    = "tools::anvil-safe-start::enabled".$space1."=".$space2."$set";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "changed", value1 => $changed, 
 					name2 => "line",    value2 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -306,7 +306,7 @@ sub update_striker_conf
 	}
 	close $file_handle;
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "changed", value1 => $changed, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($changed)
@@ -1852,7 +1852,11 @@ sub wait_for_scancore_database
 		if (not $connections)
 		{
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0009", file => $THIS_FILE, line => __LINE__});
-			sleep 5;
+			sleep 30;
+		}
+		else
+		{
+			$an->Log->entry({log_level => 1, message_key => "asst_log_0033", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	

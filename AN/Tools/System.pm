@@ -542,7 +542,7 @@ sub synchronous_command_run
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "synchronous_command_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "synchronous_command_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Get the target
 	my $command = $parameter->{command} ? $parameter->{command} : "";
@@ -568,7 +568,7 @@ sub synchronous_command_run
 		my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
 		my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
 		my $password = $an->data->{sys}{anvil}{$node_key}{use_password};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "node",   value1 => $node, 
 			name2 => "target", value2 => $target, 
 			name3 => "port",   value3 => $port, 
@@ -585,7 +585,7 @@ sub synchronous_command_run
 			port     => $port,
 			password => $password, 
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "token", value1 => $token, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -595,7 +595,7 @@ sub synchronous_command_run
 			$an->data->{node}{$node}{token}  = $token;
 			$an->data->{node}{$node}{output} = $an->data->{path}{'anvil-jobs-output'};
 			$an->data->{node}{$node}{output} =~ s/#!token!#/$token/;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "node::${node}::token",  value1 => $an->data->{node}{$node}{token}, 
 				name2 => "node::${node}::output", value2 => $an->data->{node}{$node}{output}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -607,7 +607,7 @@ sub synchronous_command_run
 			$an->data->{node}{$node}{token}  = $token;
 			$an->data->{node}{$node}{output} = $an->data->{path}{'anvil-jobs-output'};
 			$an->data->{node}{$node}{output} =~ s/#!token!#/$token/;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "node::${node}::token",  value1 => $an->data->{node}{$node}{token}, 
 				name2 => "node::${node}::output", value2 => $an->data->{node}{$node}{output}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -617,7 +617,7 @@ sub synchronous_command_run
 			my $run_time =  $time + $delay;
 			my $job_line =  "$run_time:".$an->data->{node}{$node}{token}.":$command";
 			   $job_line =~ s/'/\'/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "time",     value1 => $time, 
 				name2 => "run_time", value2 => $run_time, 
 				name3 => "job_line", value3 => $job_line, 
@@ -654,7 +654,7 @@ sub synchronous_command_run
 				# this dashboard differs.
 				my $time       = time;
 				my $shell_call = $an->data->{path}{perl}." -e 'print time'";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "target",     value1 => $target,
 					name2 => "port",       value2 => $port,
 					name3 => "shell_call", value3 => $shell_call,
@@ -675,7 +675,7 @@ sub synchronous_command_run
 					if ($line =~ /^(\d+)$/)
 					{
 						$time = $1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "time", value1 => $time, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -686,7 +686,7 @@ sub synchronous_command_run
 				my $run_time =  $time + $delay;
 				my $job_line =  "$run_time:".$an->data->{node}{$node}{token}.":$command";
 				   $job_line =~ s/'/\'/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "time",     value1 => $time, 
 					name2 => "run_time", value2 => $run_time, 
 					name3 => "job_line", value3 => $job_line, 
@@ -718,14 +718,14 @@ sub synchronous_command_run
 	# Make sure we didn't hit an error
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node1}::output", value1 => $an->data->{node}{$node1}{output},
 		name2 => "node::${node2}::output", value2 => $an->data->{node}{$node2}{output},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $an->data->{node}{$node1}{output}) or (not $an->data->{node}{$node2}{output}))
 	{
 		$waiting = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "waiting", value1 => $waiting,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -737,7 +737,7 @@ sub synchronous_command_run
 	
 	my $current_time = time;
 	my $timeout      = $current_time + $delay + 120;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "current_time", value1 => $current_time,
 		name2 => "timeout",      value2 => $timeout,
 		name3 => "waiting",      value3 => $waiting,
@@ -818,7 +818,7 @@ fi
 				if ($line =~ /No output yet/)
 				{
 					# We have to wait more.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "target",  value1 => $target,
 						name2 => "waiting", value2 => $waiting,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -874,7 +874,14 @@ fi
 					
 					# Only record the last loop of output, otherwise partial output will
 					# stack on top of the final contents of the output file.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "call_output", value1 => $call_output,
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					$output->{$node} = $call_output;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "output->{$node}", value1 => $output->{$node},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{

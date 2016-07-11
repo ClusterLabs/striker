@@ -86,14 +86,14 @@ sub connect_to_databases
 	
 	my $file  = $parameter->{file}  ? $parameter->{file}  : "";
 	my $quiet = $parameter->{quiet} ? $parameter->{quiet} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "file",  value1 => $file, 
 		name2 => "quiet", value2 => $quiet, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# We need the host_uuid before we connect.
 	$an->Get->uuid({get => 'host_uuid'}) if not $an->data->{sys}{host_uuid};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -341,18 +341,22 @@ sub connect_to_databases
 		}
 	}
 	
-	# Do I have any connections?
+	# Do I have any connections? Don't die, if not, just return.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "connections", value1 => $connections, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $connections)
 	{
-		# Failed to connect to any database.
+		# Failed to connect to any database. Log this, print to the caller and return.
+		$an->Log->entry({log_level => 1, message_key => "tools_log_0021", message_variables => {
+			title		=>	$an->String->get({key => "tools_title_0003"}),
+			message		=>	$an->String->get({key => "error_message_0060"}),
+		}, file => $THIS_FILE, line => __LINE__});
 		print $an->String->get({ key => "tools_log_0021", variables => {
 			title		=>	$an->String->get({key => "tools_title_0003"}),
 			message		=>	$an->String->get({key => "error_message_0060"}),
 		}})."\n";
-		exit(1);
+		return($connections);
 	}
 	
 	# Report any failed DB connections
@@ -706,7 +710,7 @@ sub find_behind_databases
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_behind_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $file = $parameter->{file} ? $parameter->{file} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "file", value1 => $file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -738,14 +742,14 @@ AND
 			$query .= ";";
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		my $last_updated = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $last_updated = 0 if not defined $last_updated;
 		   
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "last_updated",                       value1 => $last_updated, 
 			name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 		}, file => $THIS_FILE, line => __LINE__});

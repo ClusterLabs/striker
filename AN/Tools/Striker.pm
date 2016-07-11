@@ -497,6 +497,7 @@ sub load_anvil
 	return(0);
 }
 
+### TODO: Fix the calls to this method to pass in the host_uuid, NOT the node_uuid...
 # Update the ScanCore database(s) to mark the node's (hosts -> host_stop_reason = 'clean') so that they don't
 # just turn right back on.
 sub mark_node_as_clean_off
@@ -504,13 +505,15 @@ sub mark_node_as_clean_off
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_off" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_off" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
-	my $delay     = $parameter->{delay}     ? $parameter->{delay}     : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node_uuid", value1 => $node_uuid,
-		name2 => "delay",     value2 => $delay,
+	my $node_uuid   = $parameter->{node_uuid}   ? $parameter->{node_uuid}   : "";
+	my $delay       = $parameter->{delay}       ? $parameter->{delay}       : 0;
+	my $stop_reason = $parameter->{stop_reason} ? $parameter->{stop_reason} : "clean";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "node_uuid",   value1 => $node_uuid,
+		name2 => "delay",       value2 => $delay,
+		name3 => "stop_reason", value3 => $stop_reason,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $node_uuid)
 	{
@@ -539,17 +542,24 @@ sub mark_node_as_clean_off
 	}
 
 	# Update the hosts entry.
-	my $say_off = "clean";
 	if ($delay)
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::power_off_delay", value1 => $an->data->{sys}{power_off_delay},
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		$an->data->{sys}{power_off_delay} = 300 if not $an->data->{sys}{power_off_delay};
-		$say_off = time + $an->data->{sys}{power_off_delay};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::power_off_delay", value1 => $an->data->{sys}{power_off_delay},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$stop_reason = time + $an->data->{sys}{power_off_delay};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "stop_reason", value1 => $stop_reason,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "say_off", value1 => $say_off,
+		name1 => "stop_reason", value1 => $stop_reason,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
@@ -557,10 +567,18 @@ UPDATE
     hosts 
 SET 
     host_emergency_stop = FALSE, 
-    host_stop_reason    = ".$an->data->{sys}{use_db_fh}->quote($say_off).", 
+    host_stop_reason    = ".$an->data->{sys}{use_db_fh}->quote($stop_reason).", 
+    host_health         = 'shutdown', 
     modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
+    host_uuid = (
+        SELECT 
+            node_host_uuid 
+        FROM 
+            nodes 
+        WHERE 
+            node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
+        )
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -577,13 +595,13 @@ sub mark_node_as_clean_on
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_on" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_on" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Fix this mess...
 	### NOTE: I made this confusing by calling this 'node_uuid' when it's really the 'host_uuid'. So 
 	###       we'll check the UUID against both nodes and hosts for now.
 	my $host_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "host_uuid", value1 => $host_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $host_uuid)
@@ -606,7 +624,7 @@ sub mark_node_as_clean_on
 	{
 		my $this_host_uuid = $hash_ref->{host_uuid};
 		my $this_host_name = $hash_ref->{host_name};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "this_host_uuid", value1 => $this_host_uuid, 
 			name2 => "this_host_name", value2 => $this_host_name, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -614,13 +632,13 @@ sub mark_node_as_clean_on
 		{
 			# We're good.
 			$node_name = $this_host_name;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_name", value1 => $node_name, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_name", value1 => $node_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $node_name)
@@ -631,7 +649,7 @@ sub mark_node_as_clean_on
 			my $this_node_name      = $hash_ref->{host_name};
 			my $this_node_uuid      = $hash_ref->{node_uuid};
 			my $this_node_host_uuid = $hash_ref->{node_host_uuid}; 
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "this_node_name",      value1 => $this_node_name, 
 				name2 => "this_node_uuid",      value2 => $this_node_uuid, 
 				name3 => "this_node_host_uuid", value3 => $this_node_host_uuid, 
@@ -641,7 +659,7 @@ sub mark_node_as_clean_on
 				# Found it. Switch the active node UUID out.
 				$node_name = $this_node_name;
 				$host_uuid = $this_node_host_uuid;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "node_name", value1 => $node_name, 
 					name2 => "host_uuid", value2 => $host_uuid, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -657,23 +675,51 @@ sub mark_node_as_clean_on
 		return(1);
 	}
 	
-	# Get the current health.
+	# Get the current health and stop reason.
 	my $query = "
 SELECT 
-    host_health 
+    host_health, 
+    host_stop_reason 
 FROM 
     hosts 
 WHERE 
     host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
-	my $old_health = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-	   $old_health = "" if not defined $old_health;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "old_health", value1 => $old_health, 
-	}, file => $THIS_FILE, line => __LINE__});
+		
+	my $results         = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $old_health      = "";
+	my $old_stop_reason = "";
+	foreach my $row (@{$results})
+	{
+		$old_health      = $row->[0] ? $row->[0] : "";
+		$old_stop_reason = $row->[1] ? $row->[1] : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "old_health",      value1 => $old_health, 
+			name2 => "old_stop_reason", value2 => $old_stop_reason, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# If the old stop reason is a time stamp and if that time stamp is in the future, abort.
+	if ($old_stop_reason =~ /^\d+$/)
+	{
+		my $time       = time;
+		my $difference = time - $old_stop_reason;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "time",            value1 => $time, 
+			name2 => "old_stop_reason", value2 => $old_stop_reason, 
+			name3 => "difference",      value3 => $difference, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($time < $old_stop_reason)
+		{
+			# We're still waiting, don't do anything.
+			$an->Log->entry({log_level => 2, message_key => "tools_log_0033", message_variables => { node => $node_name }, file => $THIS_FILE, line => __LINE__});
+			return(0);
+		}
+	}
 	
 	# Update the hosts entry.
 	$query = "
@@ -693,7 +739,7 @@ SET
 WHERE 
     host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -856,7 +902,7 @@ sub scan_node
 	}
 	
 	# If I don't have access (no cache or cache didn't work), walk through the networks.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::anvil::${node_key}::online", value1 => $an->data->{sys}{anvil}{$node_key}{online}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{anvil}{$node_key}{online})
@@ -3633,8 +3679,13 @@ fi;
 	{
 		# The user called this while the Anvil! was down, so don't throw a warning.
 		my $say_subtask = $an->data->{cgi}{subtask} eq "power_cycle" ? "#!string!button_0065!#" : "#!string!button_0066!#";
+		my $timestamp   = $an->Get->date_and_time({split_date_time => 0});
 		my $say_title   = $an->String->get({key => "title_0153", variables => { subtask => $say_subtask }});
-		print $an->Web->template({file => "server.html", template => "cold-stop-header", replace => { title => $say_title }});
+		my $say_message = $an->String->get({key => "message_0488", variables => { timestamp => $timestamp }});
+		print $an->Web->template({file => "server.html", template => "cold-stop-header", replace => { 
+			title   => $say_title,
+			message => $say_message, 
+		}});
 	}
 	else
 	{
@@ -6453,14 +6504,12 @@ sub _dual_join
 			node2_password	=>	$an->data->{sys}{anvil}{node2}{use_password}, 
 		});
 		
-		foreach my $node_key ($an->data->{sys}{anvil}{node1}{name}, $an->data->{sys}{anvil}{node2}{name})
+		foreach my $node_name ($an->data->{sys}{anvil}{node1}{name}, $an->data->{sys}{anvil}{node2}{name})
 		{
-			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
-			my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "output->$target", value1 => $output->{$target},
+				name1 => "output->$node_name", value1 => $output->{$node_name},
 			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $line (split/\n/, $output->{$target})
+			foreach my $line (split/\n/, $output->{$node_name})
 			{
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
@@ -12036,7 +12085,7 @@ sub _poweron_node
 			}
 			
 			# Update ScanCore to tell it that the nodes should now be booted.
-			$an->Striker->mark_node_as_clean_on({node_uuid => $$node_uuid});
+			$an->Striker->mark_node_as_clean_on({node_uuid => $node_uuid});
 			print $an->Web->template({file => "server.html", template => "poweron-node-close-tr"});
 		}
 		else
@@ -12055,7 +12104,7 @@ sub _poweron_node
 				# Success
 				my $line = $an->String->get({key => "message_0479", variables => { node_name => $node_name }});
 				print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
-				$an->Striker->mark_node_as_clean_on({node_uuid => $$node_uuid});
+				$an->Striker->mark_node_as_clean_on({node_uuid => $node_uuid});
 			}
 			elsif ($state eq "off")
 			{

@@ -892,6 +892,7 @@ sub ping
 # Internal methods                                                                                          #
 #############################################################################################################
 
+### WARNING: Don't use '$an->String->get()' (or warnings) because this is called before strings are read.
 # This private method is called my AN::Tools' constructor at startup and checks the calling environment. It 
 # will set 'cli' or 'html' depending on what environment variables are set. This in turn is used when 
 # displaying output to the user.
@@ -912,13 +913,7 @@ sub _environment
 	}
 	else
 	{
-		# Huh?
-		$an->Alert->warning({
-			title_key	=>	"warning_title_0002",
-			message_key	=>	"warning_message_0002",
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
-		});
+		# Huh? We'll set 'html' for now, as that is more readable in both environments.
 		$an->environment("html");
 	}
 	

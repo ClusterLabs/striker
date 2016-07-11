@@ -698,13 +698,13 @@ sub do_post_scan_checks
 sub read_cache
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Read in the nodes' etc_hosts cache and find their UPSes.
 	
 	# This will be stuck onto the start of fence agents that don't have a full path.
 	my $fence_path = $an->data->{path}{fence_agents};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "fence_path", value1 => $fence_path
 	}, file => $THIS_FILE, line => __LINE__});
 	my $node_cache = $an->ScanCore->get_nodes_cache();
@@ -714,7 +714,7 @@ sub read_cache
 		my $node_name                                  = $hash_ref->{host_name};
 		my $node_uuid                                  = $hash_ref->{node_uuid};
 		   $an->data->{node}{uuid_to_name}{$node_uuid} = $node_name;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "node::uuid_to_name::$node_uuid", value1 => $an->data->{node}{uuid_to_name}{$node_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -725,7 +725,7 @@ sub read_cache
 		my $node_cache_name      = $hash_ref->{node_cache_name};
 		my $node_cache_data      = $hash_ref->{node_cache_data};
 		my $node_name            = $an->data->{node}{uuid_to_name}{$node_cache_node_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "node_cache_node_uuid", value1 => $node_cache_node_uuid, 
 			name2 => "node_cache_name",      value2 => $node_cache_name, 
 			name3 => "node_cache_data",      value3 => $node_cache_data, 
@@ -737,7 +737,7 @@ sub read_cache
 		{
 			foreach my $line (split/\n/, $node_cache_data)
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -746,13 +746,13 @@ sub read_cache
 					### TODO: Check if the host has spaces and split if so.
 					my $this_ip   = $1;
 					my $this_host = $2;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "this_ip",   value1 => $this_ip, 
 						name2 => "this_host", value2 => $this_host, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$an->data->{cache}{$node_name}{host}{$this_host}{ip} = $this_ip;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "cache::${node_name}::host::${this_host}::ip", value1 => $an->data->{cache}{$node_name}{host}{$this_host}{ip}, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -764,13 +764,13 @@ sub read_cache
 			{
 				# Stick the full path onto the 'power_check_command'.
 				$node_cache_data =~ s/^fence/$fence_path\/fence/;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "node_cache_data", value1 => $node_cache_data, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			$an->data->{cache}{$node_name}{info}{$node_cache_name} = $node_cache_data;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cache::${node_name}::info::${node_cache_name}", value1 => $an->data->{cache}{$node_name}{info}{$node_cache_name}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1113,6 +1113,13 @@ ORDER BY
 		elsif ($host_stop_reason =~ /^\d+$/)
 		{
 			# Timed reboot. See if the timer has expired.
+			my $time       = time;
+			my $difference = time - $host_stop_reason;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "time",             value1 => $time, 
+				name2 => "host_stop_reason", value2 => $host_stop_reason, 
+				name3 => "difference",       value3 => $difference, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if (time > $host_stop_reason)
 			{
 				# Time to boot.
@@ -1635,6 +1642,22 @@ sub do_post_scan_node_tasks
 		name1 => "hostname",       value1 => $hostname, 
 		name2 => "short_hostname", value2 => $short_hostname, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Do a short scan of the system.
+	$an->Striker->load_anvil();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "sys::anvil::uuid",        value1 => $an->data->{sys}{anvil}{uuid}, 
+		name2 => "sys::anvil::node1::uuid", value2 => $an->data->{sys}{anvil}{node1}{uuid}, 
+		name3 => "sys::anvil::node2::uuid", value3 => $an->data->{sys}{anvil}{node2}{uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{anvil}{node1}{uuid})
+	{
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
+	}
+	if ($an->data->{sys}{anvil}{node2}{uuid})
+	{
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
+	}
 	
 	# Values are:
 	# 1 = At least one of the UPSes has power
@@ -4181,6 +4204,10 @@ sub translate_strings
 	elsif (lc($string) eq "none")
 	{
 		$return = $an->String->get({key => "tools_suffix_0066"});
+	}
+	elsif (lc($string) eq "battery is not being charged")
+	{
+		$return = $an->String->get({key => "tools_suffix_0068"});
 	}
 # 	elsif (lc($string) eq "")
 # 	{

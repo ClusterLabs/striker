@@ -350,11 +350,11 @@ sub remote_call
 	$an->data->{target}{$target}{ssh_fh} = defined $an->data->{target}{$target}{ssh_fh} ? $an->data->{target}{$target}{ssh_fh} : "";
 	
 	# Now pick up the rest of the variables.
-	my $port       = $parameter->{port}             ? $parameter->{port}     : 22;
-	my $user       = $parameter->{user}             ? $parameter->{user}     : "root";
-	my $password   = $parameter->{password}         ? $parameter->{password} : $an->data->{sys}{root_password};
-	my $ssh_fh     = $parameter->{ssh_fh}           ? $parameter->{ssh_fh}   : $an->data->{target}{$target}{ssh_fh};
-	my $close      = defined $parameter->{'close'}  ? $parameter->{'close'}  : 0;
+	my $port       = $parameter->{port}            ? $parameter->{port}     : 22;
+	my $user       = $parameter->{user}            ? $parameter->{user}     : "root";
+	my $password   = $parameter->{password}        ? $parameter->{password} : $an->data->{sys}{root_password};
+	my $ssh_fh     = $parameter->{ssh_fh}          ? $parameter->{ssh_fh}   : $an->data->{target}{$target}{ssh_fh};
+	my $close      = defined $parameter->{'close'} ? $parameter->{'close'}  : 0;
 	my $shell_call = $parameter->{shell_call};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "time",       value1 => time,
@@ -367,7 +367,7 @@ sub remote_call
 	# Shell calls can expose passwords, which is why it is down here.
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "password",   value1 => $password,
- 		name2 => "shell_call", value2 => $shell_call,
+		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make this a better looking error.
@@ -444,17 +444,22 @@ sub remote_call
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "user",   value1 => $user, 
-			name2 => "target", value1 => $target, 
-			name3 => "port",   value1 => $port, 
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "user",       value1 => $user, 
+			name2 => "target",     value2 => $target, 
+			name3 => "port",       value3 => $port, 
+			name4 => "shell_call", value4 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$ssh_fh = Net::SSH2->new();
 		if (not $ssh_fh->connect($target, $port, Timeout => 10))
 		{
-			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-				name1 => "error", value1 => $@, 
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0005", message_variables => {
+				name1 => "user",       value1 => $user, 
+				name2 => "target",     value2 => $target, 
+				name3 => "port",       value3 => $port, 
+				name4 => "shell_call", value4 => $shell_call,
+				name5 => "error",      value5 => $@, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($@ =~ /Bad hostname/)
 			{
@@ -693,9 +698,7 @@ sub remote_call
 	# Close the connection if requested.
 	if ($close)
 	{
-		$an->Log->entry({log_level => 3, message_key => "notice_message_0005", message_variables => {
-			target => $target, 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "notice_message_0005", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 		$ssh_fh->disconnect() if $ssh_fh;
 		
 		# For good measure, blank both variables.
@@ -734,6 +737,14 @@ sub wait_on_peer
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "program", value1 => $program, 
+		name2 => "target",  value2 => $target, 
+		name3 => "port",    value3 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
 
 	### TODO: Change this; Wait until we can reach node 1, sleep 30 seconds, then go into a loop that
 	###       waits while this program is running on the peer. Once it's done, we'll run as a precaution.
