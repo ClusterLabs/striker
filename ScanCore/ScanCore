@@ -362,7 +362,7 @@ while(1)
 	# Exit if I hit an error.
 	if ($an->data->{sys}{'exit'})
 	{
-		$an->Alert->warning({message_key => "scancore_warning_0024", file => $THIS_FILE, line => __LINE__});
+		$an->Alert->warning({message_key => "scancore_warning_0024", quiet => 1, file => $THIS_FILE, line => __LINE__});
 		exit(0);
 	}
 	
@@ -586,7 +586,7 @@ fi";
 			else
 			{
 				# Woops...
-				$an->Alert->warning({message_key => "scancore_warning_0015", file => $THIS_FILE, line => __LINE__});
+				$an->Alert->warning({message_key => "scancore_warning_0015", quiet => 1, file => $THIS_FILE, line => __LINE__});
 				$ok = 0;
 			}
 			
@@ -624,7 +624,7 @@ fi";
 			else
 			{
 				# Woops...
-				$an->Alert->warning({message_key => "scancore_warning_0016", file => $THIS_FILE, line => __LINE__});
+				$an->Alert->warning({message_key => "scancore_warning_0016", quiet => 1, file => $THIS_FILE, line => __LINE__});
 				$ok = 0;
 			}
 		}
@@ -4203,6 +4203,18 @@ sub translate_strings
 	elsif (lc($string) eq "transparent")
 	{
 		$return = $an->String->get({key => "tools_suffix_0072"});
+	}
+	elsif (lc($string) eq "inconsistent")
+	{
+		$return = $an->String->get({key => "tools_suffix_0075"});
+	}
+	elsif (lc($string) eq "consistent")
+	{
+		$return = $an->String->get({key => "tools_suffix_0074"});
+	}
+	elsif (lc($string) eq "direct io")
+	{
+		$return = $an->String->get({key => "tools_suffix_0076"});
 	}
 # 	elsif (lc($string) eq "")
 # 	{
@@ -9265,9 +9277,7 @@ sub check_ram_usage
 	# Exit if I failed to read the amount of RAM in use.
 	if (not $used_ram)
 	{
-		$an->Alert->warning({message_key => "scancore_warning_0023", message_variables => {
-			program_name	=>	$an->data->{sys}{program_name},
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->warning({message_key => "scancore_warning_0023", message_variables => { program_name => $an->data->{sys}{program_name} }, quiet => 1, file => $THIS_FILE, line => __LINE__});
 		$an->data->{sys}{'exit'} = 1;
 	}
 	

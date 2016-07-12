@@ -155,7 +155,7 @@ WHERE
 					alert_record_locator	=>	$alert_record_locator, 
 					alert_name		=>	$alert_name, 
 					modified_date		=>	$modified_date,
-				}, file => $THIS_FILE, line => __LINE__});
+				}, quiet => 1, file => $THIS_FILE, line => __LINE__});
 				return(0);
 			}
 			else
@@ -648,7 +648,7 @@ sub warning
 	my $file              = $parameter->{file}              ? $parameter->{file}              : "";
 	my $line              = $parameter->{line}              ? $parameter->{line}              : "";
 	my $log_to            = $parameter->{log_to}            ? $parameter->{log_to}            : $an->default_log_file();
-	my $quiet             = $parameter->{quiet}             ? $parameter->{quiet}             : 0;
+	my $quiet             = defined $parameter->{quiet}     ? $parameter->{quiet}             : 0;
 	my $code              = 1;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 		name1 => "title_key",         value1 => $title_key, 
@@ -738,11 +738,10 @@ sub warning
 	});
 	
 	# If not quieted, print to stdout.
-	if ($title_key)
+	if (not $quiet)
 	{
-		print "\n" if not $quiet;
+		#print "\n$warning\n";
 	}
-	print "$warning\n" if not $quiet;
 	
 	# Reset the error counter.
 	$an->_error_count(0);

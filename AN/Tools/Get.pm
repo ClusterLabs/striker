@@ -2929,7 +2929,7 @@ sub rsa_public_key
 		$an->Alert->warning({message_key => "warning_title_0006", message_variables => {
 			user	=>	$user,
 			file	=>	$rsa_file,
-		}, file => $THIS_FILE, line => __LINE__});
+		}, quiet => 1, file => $THIS_FILE, line => __LINE__});
 		return("", "");
 	}
 	else

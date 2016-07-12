@@ -84,9 +84,9 @@ sub connect_to_databases
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
 	
-	my $file  = $parameter->{file}  ? $parameter->{file}  : "";
-	my $quiet = $parameter->{quiet} ? $parameter->{quiet} : 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	my $file  = defined $parameter->{file}  ? $parameter->{file}  : "";
+	my $quiet = defined $parameter->{quiet} ? $parameter->{quiet} : 1;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "file",  value1 => $file, 
 		name2 => "quiet", value2 => $quiet, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -169,41 +169,29 @@ sub connect_to_databases
 		{
 			# Something went wrong...
 			$an->Alert->warning({message_key => "warning_message_0008", message_variables => {
-				id    => $id,
-				host  => $host,
-				name  => $name,
-				quiet => $quiet,
-			}, file => $THIS_FILE, line => __LINE__});
+				id   => $id,
+				host => $host,
+				name => $name,
+			}, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
 			$an->data->{scancore}{db}{$id}{connection_error} = [];
 			push @{$failed_connections}, $id;
 			if (not defined $DBI::errstr)
 			{
 				# General error
-				$an->Alert->warning({ message_key => "warning_message_0009", message_variables => {
-					dbi_error	=>	$@,
-					quiet		=>	$quiet,
-				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0009", message_variables => {
-					dbi_error	=>	$@,
-				}};
+				$an->Alert->warning({ message_key => "warning_message_0009", message_variables => { dbi_error => $@ }, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0009", message_variables => { dbi_error => $@ }};
 			}
 			elsif ($DBI::errstr =~ /No route to host/)
 			{
-				$an->Alert->warning({ message_key => "warning_message_0010", message_variables => {
-					port	=>	$port,
-					quiet	=>	$quiet,
-				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0010", message_variables => {
-					port	=>	$port,
-				}};
+				$an->Alert->warning({ message_key => "warning_message_0010", message_variables => { port => $port }, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0010", message_variables => { port => $port }};
 			}
 			elsif ($DBI::errstr =~ /no password supplied/)
 			{
 				$an->Alert->warning({ message_key => "warning_message_0011", message_variables => {
-					id		=>	$id,
-					config_file	=>	$an->data->{path}{striker_config},
-					quiet		=>	$quiet,
-				}, file => $THIS_FILE, line => __LINE__});
+					id          => $id,
+					config_file => $an->data->{path}{striker_config},
+				}, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0011", message_variables => {
 					id		=>	$id,
 					config_file	=>	$an->data->{path}{striker_config},
@@ -212,13 +200,12 @@ sub connect_to_databases
 			elsif ($DBI::errstr =~ /password authentication failed for user/)
 			{
 				$an->Alert->warning({ message_key => "warning_message_0012", message_variables => {
-					name		=>	$name,
-					host		=>	$host,
-					user		=>	$user,
-					id		=>	$id,
-					config_file	=>	$an->data->{path}{striker_config},
-					quiet		=>	$quiet,
-				}, file	 => $THIS_FILE, line => __LINE__});
+					name        => $name,
+					host        => $host,
+					user        => $user,
+					id          => $id,
+					config_file => $an->data->{path}{striker_config},
+				}, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0012", message_variables => {
 					user		=>	$user,
 					id		=>	$id,
@@ -228,11 +215,10 @@ sub connect_to_databases
 			elsif ($DBI::errstr =~ /Connection refused/)
 			{
 				$an->Alert->warning({ message_key => "warning_message_0013", message_variables => {
-					name		=>	$name,
-					host		=>	$host,
-					port		=>	$port,
-					quiet		=>	$quiet,
-				}, file	 => $THIS_FILE, line => __LINE__});
+					name => $name,
+					host => $host,
+					port => $port,
+				}, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0013", message_variables => {
 					name		=>	$name,
 					host		=>	$host,
@@ -242,11 +228,10 @@ sub connect_to_databases
 			elsif ($DBI::errstr =~ /Temporary failure in name resolution/i)
 			{
 				$an->Alert->warning({ message_key => "warning_message_0014", message_variables => {
-					name		=>	$name,
-					host		=>	$host,
-					port		=>	$port,
-					quiet		=>	$quiet,
-				}, file	 => $THIS_FILE, line => __LINE__});
+					name => $name,
+					host => $host,
+					port => $port,
+				}, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0014", message_variables => {
 					name		=>	$name,
 					host		=>	$host,
@@ -255,13 +240,8 @@ sub connect_to_databases
 			}
 			else
 			{
-				$an->Alert->warning({ message_key => "warning_message_0009", message_variables => {
-					dbi_error	=>	$DBI::errstr,
-					quiet		=>	$quiet,
-				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0009", message_variables => {
-					dbi_error	=>	$DBI::errstr,
-				}};
+				$an->Alert->warning({ message_key => "warning_message_0009", message_variables => { dbi_error => $DBI::errstr }, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0009", message_variables => { dbi_error => $DBI::errstr }};
 			}
 		}
 		elsif ($dbh =~ /^DBI::db=HASH/)

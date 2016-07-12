@@ -256,7 +256,7 @@ sub add_target_to_known_hosts
 			$an->Alert->warning({message_key => "warning_title_0007", message_variables => {
 				target => $target, 
 				user   => $user, 
-			}, file => $THIS_FILE, line => __LINE__});
+			}, quiet => 1, file => $THIS_FILE, line => __LINE__});
 			return(1);
 		}
 	}
@@ -324,9 +324,7 @@ sub generate_rsa_public_key
 	else
 	{
 		# Failed, tell the user.
-		$an->Alert->warning({message_key => "warning_title_0005", message_variables => {
-			user	=>	$user,
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->warning({message_key => "warning_title_0005", message_variables => { user => $user }, quiet => 1, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

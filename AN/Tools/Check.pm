@@ -63,7 +63,7 @@ sub access
 	
 	if (not $parameter->{target})
 	{
-		$an->Alert->warning({title_key => "warning_title_0004", message_key => "warning_title_0009", file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->warning({title_key => "warning_title_0004", message_key => "warning_title_0009", quiet => 1, file => "$THIS_FILE", line => __LINE__});
 		return("");
 	}
 	
@@ -947,15 +947,15 @@ sub _os
 	else
 	{
 		# Huh?
-		$an->Alert->warning({
-			title_key		=>	"warning_title_0001",
-			message_key		=>	"warning_message_0001",
-			message_variables	=>	{
-				os			=>	$^O,
-			},
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
+# 		$an->Alert->warning({
+# 			title_key		=>	"warning_title_0001",
+# 			message_key		=>	"warning_message_0001",
+# 			message_variables	=>	{
+# 				os			=>	$^O,
+# 			},
+# 			file			=>	"$THIS_FILE",
+# 			line			=>	__LINE__
+# 		});
 		$an->_directory_delimiter("/");
 	}
 	

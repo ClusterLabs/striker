@@ -136,6 +136,9 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_suffix_0071">Lithium Ion</key>
 		<key name="tools_suffix_0072">Transparent</key>	<!-- BBU/FBU Relearn Cycle Type -->
 		<key name="tools_suffix_0073">J</key>	<!-- Joules -->
+		<key name="tools_suffix_0074">Consistent</key>
+		<key name="tools_suffix_0075">Inconsistent</key>
+		<key name="tools_suffix_0076">Direct IO</key>
 		
 		<!-- Default values -->
 		<key name="tools_default_0001">Debug</key>

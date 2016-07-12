@@ -132,9 +132,7 @@ sub boot_server
 	if (not $server_found)
 	{
 		# We're done.
-		$an->Alert->warning({message_key => "warning_message_0003", message_variables => {
-			server => $server,
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->warning({message_key => "warning_message_0003", message_variables => { server => $server }, quiet => 1, file => $THIS_FILE, line => __LINE__});
 		return(2);
 	}
 	
@@ -407,9 +405,7 @@ sub boot_server
 		else
 		{
 			# No luck
-			$an->Alert->warning({message_key => "warning_message_0004", message_variables => {
-				server => $server,
-			}, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->warning({message_key => "warning_message_0004", message_variables => { server => $server }, quiet => 1, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	elsif ($nodes->{$secondary_node}{storage_ready})
@@ -456,9 +452,7 @@ sub boot_server
 		else
 		{
 			# No luck...
-			$an->Alert->warning({message_key => "warning_message_0004", message_variables => {
-				server => $server,
-			}, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->warning({message_key => "warning_message_0004", message_variables => { server => $server }, quiet => 1, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	elsif ($force)
@@ -467,14 +461,12 @@ sub boot_server
 		$an->Alert->warning({title_key => "warning_title_0008", message_key => "warning_message_0005", message_variables => {
 			server => $server,
 		        node   => $preferred_node, 
-		}, file => $THIS_FILE, line => __LINE__});
+		}, quiet => 1, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		# No safe node to boot on
-		$an->Alert->warning({message_key => "warning_message_0006", message_variables => {
-			server => $server,
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->warning({message_key => "warning_message_0006", message_variables => { server => $server }, quiet => 1, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	### Rescan if booted.
@@ -1805,7 +1797,7 @@ WHERE
 				server => $server,
 				node   => $node, 
 				error  => $line,
-			}, file => $THIS_FILE, line => __LINE__});
+			}, quiet => 1, file => $THIS_FILE, line => __LINE__});
 			$return = 2;
 			
 			# Disable it
