@@ -602,7 +602,7 @@ WHERE
 				# The current host?
 				if ($new_server_host ne $old_server_host)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_server_host", value1 => $old_server_host, 
 						name2 => "new_server_host", value2 => $new_server_host, 
 					}, file => $THIS_FILE, line => __LINE__});

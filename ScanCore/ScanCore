@@ -9166,7 +9166,8 @@ sub call_agents
 		
 		# Note how long it took.
 		my $runtime   = time - $start_time;
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0020", message_variables => { 
+		### NOTE: Customer requested, move to 2 before v2.0 release
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0020", message_variables => { 
 			agent   => $say_agent, 
 			runtime => $runtime 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9412,28 +9413,41 @@ sub avoid_duplicate_run
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $my_pid = $$;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "my_pid", value1 => $my_pid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $already_running = 0;
 	my $other_pids      = [];
-	my $file_handle     = IO::Handle->new();
-	my $shell_call      = $an->data->{path}{ps}." aux | ".$an->data->{path}{'grep'}." -v grep | ".$an->data->{path}{'grep'}." -v tail | ".$an->data->{path}{'grep'}." $THIS_FILE | ".$an->data->{path}{awk}." {'print \$2'}";
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	my $shell_call      = $an->data->{path}{ps}." aux | ".$an->data->{path}{'grep'}." -v grep | ".$an->data->{path}{'grep'}." -v tail | ".$an->data->{path}{'grep'}." -v '\/bin\/sh' | ".$an->data->{path}{'grep'}." $THIS_FILE";
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
-		my $pid = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "pid", value1 => $pid,
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($pid ne $$)
+		
+		if ($line =~ /^.*?\s+(\d+)\s/)
 		{
-			# Another copy is running.
-			$already_running = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "already_running", value1 => $already_running,
+			my $pid = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "pid", value1 => $pid,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			push @{$other_pids}, $pid;
+			if ($pid ne $my_pid)
+			{
+				# Another copy is running.
+				$already_running = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "already_running", value1 => $already_running,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$other_pids}, $pid;
+			}
 		}
 	}
 	close $file_handle;
@@ -9452,14 +9466,15 @@ WHERE
 AND 
     updated_by        = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).";
 ";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $last_updated = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		my $current_time = time;
 		my $difference   = $current_time - $last_updated;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		### NOTE: Customer requested, move to 2 before v2.0 release
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
 			name1 => "last_updated", value1 => $last_updated, 
 			name2 => "current_time", value2 => $current_time, 
 			name3 => "difference",   value3 => $difference, 

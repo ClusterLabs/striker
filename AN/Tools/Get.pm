@@ -2489,7 +2489,8 @@ sub peer_network_details
 	my $peer_bcn = $an->data->{sys}{anvil}{$node_key}{bcn_ip};
 	my $peer_sn  = $an->data->{sys}{anvil}{$node_key}{sn_ip};
 	my $peer_ifn = $an->data->{sys}{anvil}{$node_key}{ifn_ip};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	### NOTE: Customer requested, move to 2 before v2.0 release
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
 		name1 => "peer_bcn", value1 => $peer_bcn, 
 		name2 => "peer_sn",  value2 => $peer_sn, 
 		name3 => "peer_ifn", value3 => $peer_ifn, 

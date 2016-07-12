@@ -236,7 +236,8 @@ sub update_hosts
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		### NOTE: Customer requested, move to 2 before v2.0 release
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		

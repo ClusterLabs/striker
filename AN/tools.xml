@@ -195,7 +195,8 @@ Variables:
 |- #!variable!name2!#: [#!variable!value2!#]
 |- #!variable!name3!#: [#!variable!value3!#]
 \- #!variable!name4!#: [#!variable!value4!#]</key>
-		<key name="an_variables_0005">Variables:
+		<key name="an_variables_0005">
+Variables:
 |- #!variable!name1!#: [#!variable!value1!#]
 |- #!variable!name2!#: [#!variable!value2!#]
 |- #!variable!name3!#: [#!variable!value3!#]

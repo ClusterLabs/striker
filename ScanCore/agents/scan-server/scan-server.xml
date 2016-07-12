@@ -89,7 +89,7 @@ New:
 		<key name="scan_server_message_0008">The server: [#!variable!server!#]'s host has changed:
 
 New: [#!variable!new!#]
-Old: [#!variable!diff!#]
+Old: [#!variable!old!#]
 		</key>
 		<key name="scan_server_message_0009">The server: [#!variable!server!#]'s host has been recorded as: [#!variable!new!#].</key>
 		<key name="scan_server_message_0010">The server: [#!variable!server!#]'s state has changed:

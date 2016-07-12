@@ -35,41 +35,41 @@ The UPS: [#!variable!ups_name!#] has a new IP address:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
 		</key>
 		<key name="scan_apc_ups_note_0003">
-The UPS: [#!variable!ups_name!#] has had its start time after input power is restored changed:
+The UPS: [#!variable!ups_name!#] start time after input power is restored has changed:
 - [#!variable!old_value!#s] -> [#!variable!new_value!#s]
   Note: This controls how long the UPS will wait after the input power has returned until it starts providing output power.
 		</key>
 		<key name="scan_apc_ups_note_0004">
-The UPS: [#!variable!ups_name!#] has had its shutdown delay time changed:
+The UPS: [#!variable!ups_name!#] shutdown delay time has changed:
 - [#!variable!old_value!#s] -> [#!variable!new_value!#s]
   Note: This controls how long the UPS will wait after being asked to power down before actually disabling it's output power.
 		</key>
 		<key name="scan_apc_ups_note_0005">
-The UPS: [#!variable!ups_name!#] has had its firmware updated:
+The UPS: [#!variable!ups_name!#] firmware has been updated:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
-  Note: The firmware is software inside the UPS that controls how the UPS operates and how users interact with it. Typically a firmware is upgraded by an administrator to fox bugs or add new functionality.
+  Note: The firmware is software inside the UPS that controls how the UPS operates and how users interact with it. Typically a firmware is upgraded by an administrator to fix bugs or add new functionality.
 		</key>
 		<key name="scan_apc_ups_note_0006">
-The UPS: [#!variable!ups_name!#] has had its health status changed:
+The UPS: [#!variable!ups_name!#] health status has changed:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
 		</key>
 		<key name="scan_apc_ups_note_0007">
-The UPS: [#!variable!ups_name!#] has had the high-voltage transfer voltage decreased:
+The UPS: [#!variable!ups_name!#] high-voltage transfer voltage has decreased:
 - [#!variable!old_value!# vAC] -> [#!variable!new_value!# vAC]
   Note: An administrator may have made this change in order to help protect more sensitive down-stream equipment from high input voltages. This will likely shorten the life of the UPSes as the UPS will switch to batteries earlier on high-input power.
 		</key>
 		<key name="scan_apc_ups_note_0008">
-The UPS: [#!variable!ups_name!#] has had the high-voltage transfer voltage increased:
+The UPS: [#!variable!ups_name!#] high-voltage transfer voltage has increased:
 - [#!variable!old_value!# vAC] -> [#!variable!new_value!# vAC]
   Note: An administrator may have made this change in order to reduce how often the UPS switches to batteries. This may be done in cases where input power is often high and the down-stream equipment is known to be able to handle the higher voltage without issue. This change would help extend the life of the batteries.
 		</key>
 		<key name="scan_apc_ups_note_0009">
-The UPS: [#!variable!ups_name!#] has had the low-voltage transfer voltage increased:
+The UPS: [#!variable!ups_name!#] low-voltage transfer voltage has increased:
 - [#!variable!old_value!# vAC] -> [#!variable!new_value!# vAC]
   Note: An administrator may have made this change in order to help protect more sensitive down-stream equipment from low input voltages. This will likely shorten the life of the UPSes as the UPS will switch to batteries earlier on low-input power.
 		</key>
 		<key name="scan_apc_ups_note_0010">
-The UPS: [#!variable!ups_name!#] has had the low-voltage transfer voltage decreased:
+The UPS: [#!variable!ups_name!#] low-voltage transfer voltage has decreased:
 - [#!variable!old_value!# vAC] -> [#!variable!new_value!# vAC]
   Note: An administrator may have made this change in order to reduce how often the UPS switches to batteries. This may be done in cases where input power is often low and the down-stream equipment is known to be able to handle the lower voltage without issue. This change would help extend the life of the batteries.
 		</key>
@@ -95,37 +95,37 @@ The UPS: [#!variable!ups_name!#] is using a new internal measurement of temperat
   Note: #!string!scancore_brand_0001!# converts everything internally to #!string!tools_suffix_0011!# (#!string!tools_suffix_0010!#), so this change should have no visible impact.
 		</key>
 		<key name="scan_apc_ups_note_0015">
-The UPS: [#!variable!ups_name!#] has had its network interfaces's firmware updated:
+The UPS: [#!variable!ups_name!#] network interfaces's firmware has been updated:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
-  Note: The firmware is software inside the UPS's network interface card that controls how the card operates and how users interact with it. Typically a firmware is upgraded by an administrator to fox bugs or add new functionality.
+  Note: The firmware is software inside the UPS's network interface card that controls how the card operates and how users interact with it. Typically a firmware is upgraded by an administrator to fix bugs or add new functionality.
 		</key>
 		<key name="scan_apc_ups_note_0016">
-The UPS: [#!variable!ups_name!#] has had its network interface's serial number changed:
+The UPS: [#!variable!ups_name!#] network interface's serial number has changed:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
   Note: This probably a result of the network card being replaced.
 		</key>
 		<key name="scan_apc_ups_note_0017">
-The UPS: [#!variable!ups_name!#] has had its network interface's MAC address changed:
+The UPS: [#!variable!ups_name!#] network interface's MAC address has changed:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
   Note: This probably a result of the network card being replaced.
 		</key>
 		<key name="scan_apc_ups_note_0018">
-The UPS: [#!variable!ups_name!#] has had its battery's estimated replacement date change:
+The UPS: [#!variable!ups_name!#] battery's estimated replacement date has changed:
 - [#!variable!old_value!#] -> [#!variable!new_value!#] (yyyy/mm/dd)
   Note: If the date has changed significantly, it is probably because an administrator has replaced the batteries. If the change was minor, it probably was caused by a change in how often the UPS has run on it's batteries.
 		</key>
 		<key name="scan_apc_ups_note_0019">
-The UPS: [#!variable!ups_name!#] has had its battery fail:
+The UPS: [#!variable!ups_name!#] battery has failed!:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
   Note: The battery will need to be replaced. Please order an APC brand: [#!variable!battery_model!#] battery.
 		</key>
 		<key name="scan_apc_ups_note_0020">
-The UPS: [#!variable!ups_name!#] has had its battery replaced:
+The UPS: [#!variable!ups_name!#] battery has been replaced:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
   Note: The battery appears to have been replaced with a: [#!variable!battery_model!#] model battery.
 		</key>
 		<key name="scan_apc_ups_note_0021">
-The UPS: [#!variable!ups_name!#] has had its battery changed:
+The UPS: [#!variable!ups_name!#] battery has changed:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
   Note: The battery appears to have been replaced by an administrator.
 		</key>
@@ -134,7 +134,7 @@ The UPS: [#!variable!ups_name!#] is charging:
 - [#!variable!old_value!#%] -> [#!variable!new_value!#%]
 		</key>
 		<key name="scan_apc_ups_note_0023">
-The UPS: [#!variable!ups_name!#] has charged to it's "minimum good" charge percentage:
+The UPS: [#!variable!ups_name!#] has charged to its "minimum good" charge percentage:
 - [#!variable!old_value!#%] -> [#!variable!new_value!#%]
 		</key>
 		<key name="scan_apc_ups_note_0024">
@@ -151,17 +151,17 @@ The UPS: [#!variable!ups_name!#] has discharged below the warning threshold!:
   Warning: If power is not restored soon, this UPS will be marked as unusable. If the other UPS(es) also drop below this level, your #!string!brand_0004!# will automatically shut down, if configured to do so.
 		</key>
 		<key name="scan_apc_ups_note_0027">
-The UPS: [#!variable!ups_name!#] has had its battery's last replacement date changed:
+The UPS: [#!variable!ups_name!#] battery's last replacement date has changed:
 - [#!variable!old_value!#] -> [#!variable!new_value!#] (yyyy/mm/dd)
-  Note: This is most likely do to an administrator replacing the battery pack in the UPS.
+  Note: This is most likely due to an administrator replacing the battery pack in the UPS.
 		</key>
 		<key name="scan_apc_ups_note_0028">
-The UPS: [#!variable!ups_name!#] has had its battery enter a warning state!:
+The UPS: [#!variable!ups_name!#] battery has entered a warning state!:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
   Warning: It is possible that the battery has failed and will need to be replaced.
 		</key>
 		<key name="scan_apc_ups_note_0029">
-The UPS: [#!variable!ups_name!#] has had its battery recover from a warning state:
+The UPS: [#!variable!ups_name!#] battery has recovered from a warning state:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
   Note: This is most likely do to an administrator replacing the battery pack in the UPS.
 		</key>
@@ -196,7 +196,7 @@ The temperature of the battery in the UPS: [#!variable!ups_name!#] has fallen be
 - [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
 		</key>
 		<key name="scan_apc_ups_note_0037">
-The UPS: [#!variable!ups_name!#] has had its battery alarm temperature changed:
+The UPS: [#!variable!ups_name!#] battery alarm temperature has changed:
 - [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
 		</key>
 		<key name="scan_apc_ups_note_0038">

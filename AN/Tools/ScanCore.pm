@@ -4373,6 +4373,7 @@ sub read_variable
 	my $variable_name         = $parameter->{variable_name}         ? $parameter->{variable_name}         : "";
 	my $variable_source_uuid  = $parameter->{variable_source_uuid}  ? $parameter->{variable_source_uuid}  : "NULL";
 	my $variable_source_table = $parameter->{variable_source_table} ? $parameter->{variable_source_table} : "NULL";
+	### NOTE: Customer requested, move to 2 before v2.0 release
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "variable_uuid",         value1 => $variable_uuid, 
 		name2 => "variable_name",         value2 => $variable_name, 
@@ -4428,8 +4429,10 @@ AND
 	foreach my $row (@{$results})
 	{
 		$variable_value = $row->[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "variable_value", value1 => $variable_value, 
+		### NOTE: Customer requested, move to 2 before v2.0 release
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "variable_name",  value1 => $variable_name, 
+			name2 => "variable_value", value2 => $variable_value, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -4792,6 +4795,7 @@ sub target_power
 		name2 => "target", value2 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $target = "";
 	my $state  = "unknown";
 	if (($task ne "status") && ($task ne "on") && ($task ne "off"))
 	{
@@ -4815,7 +4819,7 @@ sub target_power
 	# Check the power state.
 	### WARNING: This exposes passwords. Only change the log level to actively debug.
 	my $power_check = $an->ScanCore->read_cache({target => $target, type => "power_check"});
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "power_check", value1 => $power_check, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4823,13 +4827,13 @@ sub target_power
 	if (not $power_check)
 	{
 		$power_check = $an->ScanCore->read_cache({target => $target, type => "power_check", source => "any"});
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "power_check", value1 => $power_check, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Now check, if we can.
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "power_check", value1 => $power_check, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($power_check)
@@ -4841,7 +4845,7 @@ sub target_power
 		foreach my $method (split/;/, $power_check)
 		{
 			### WARNING: This exposes passwords. Only change the log level to actively debug.
-			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "method", value1 => $method, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -4855,17 +4859,17 @@ sub target_power
 				$method_number = $1;
 				$method_name   = $2;
 				$power_check   = $3;
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "method_number", value1 => $method_number, 
 					name2 => "method_name",   value2 => $method_name, 
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 					name1 => "power_check", value1 => $power_check, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			# Convert the '-a X' to an IP address, if needed.
-			my $target = ($power_check =~ /-a\s(.*?)\s/)[0];
+			$target = ($power_check =~ /-a\s(.*?)\s/)[0];
 			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "target", value1 => $target,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -4878,12 +4882,12 @@ sub target_power
 				
 				if ($ip)
 				{
-					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 						name1 => ">> power_check", value1 => $power_check,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$power_check =~ s/$target/$ip/;
-					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 						name1 => "<< power_check", value1 => $power_check,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -4895,13 +4899,13 @@ sub target_power
 			if ($power_check !~ /^\//)
 			{
 				$power_check = $an->data->{path}{fence_agents}."/".$power_check;
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 					name1 => "power_check", value1 => $power_check,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			my $shell_call = $power_check;
-			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -4909,12 +4913,14 @@ sub target_power
 			{
 				chomp;
 				my $line = $_;
+				### NOTE: Customer requested, move to 2 before v2.0 release
 				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ / On$/i)
 				{
 					$state = "on";
+					### NOTE: Customer requested, move to 2 before v2.0 release
 					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 						name1 => "state", value1 => $state,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -4922,6 +4928,7 @@ sub target_power
 				if ($line =~ / Off$/i)
 				{
 					$state = "off";
+					### NOTE: Customer requested, move to 2 before v2.0 release
 					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 						name1 => "state", value1 => $state,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -4943,8 +4950,10 @@ sub target_power
 	}
 	
 	# Set to 'unknown', 'on' or 'off'.
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-		name1 => "state", value1 => $state,
+	### NOTE: Customer requested, move to 2 before v2.0 release
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target,
+		name2 => "state",  value2 => $state,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($state);
 }

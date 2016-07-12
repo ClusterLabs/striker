@@ -464,10 +464,7 @@ sub remote_call
 			if ($@ =~ /Bad hostname/)
 			{
 				# This is for the user
-				$error = $an->String->get({key => "error_message_0027", variables => {
-						target	=>	$target,
-					},
-				});
+				$error = $an->String->get({key => "error_message_0027", variables => { target => $target }});
 				# This is for our logs
 				$an->Log->entry({log_level => 1, message_key => "error_message_0027", message_variables => {
 					target	=>	$target,
@@ -483,45 +480,28 @@ sub remote_call
 					},
 				});
 				# This is for our logs
-				$an->Log->entry({log_level => 1, message_key => "error_message_0028", message_variables => {
-					target	=>	$target,
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 1, message_key => "error_message_0028", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($@ =~ /No route to host/)
 			{
 				# This is for the user
-				$error = $an->String->get({key => "error_message_0029", variables => {
-						target	=>	$target,
-					},
-				});
+				$error = $an->String->get({key => "error_message_0029", variables => { target => $target }});
 				# This is for our logs
-				$an->Log->entry({log_level => 1, message_key => "error_message_0029", message_variables => {
-					target	=>	$target,
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 1, message_key => "error_message_0029", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($@ =~ /timeout/)
 			{
 				# This is for the user
-				$error = $an->String->get({key => "error_message_0030", variables => {
-						target	=>	$target,
-					},
-				});
+				$error = $an->String->get({key => "error_message_0030", variables => { target => $target }});
 				# This is for our logs
-				$an->Log->entry({log_level => 1, message_key => "error_message_0030", message_variables => {
-					target	=>	$target,
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 1, message_key => "error_message_0030", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				# This is for the user
-				$error = $an->String->get({key => "error_message_0031", variables => {
-						target	=>	$target,
-					},
-				});
+				$error = $an->String->get({key => "error_message_0031", variables => { target => $target }});
 				# This is for our logs
-				$an->Log->entry({log_level => 1, message_key => "error_message_0031", message_variables => {
-					target	=>	$target,
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 1, message_key => "error_message_0031", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -553,21 +533,14 @@ sub remote_call
 						name1 => "target::${target}::ssh_fh", value1 => $an->data->{target}{$target}{ssh_fh}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					$an->Log->entry({log_level => 3, message_key => "notice_message_0014", message_variables => {
-						target => $target, 
-					}, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 3, message_key => "notice_message_0014", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
 					# This is for the user
-					$error = $an->String->get({key => "error_message_0032", variables => {
-							target	=>	$target,
-						},
-					});
+					$error = $an->String->get({key => "error_message_0032", variables => { target => $target }});
 					# This is for our logs
-					$an->Log->entry({log_level => 1, message_key => "error_message_0032", message_variables => {
-						target	=>	$target,
-					}, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 1, message_key => "error_message_0032", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			else
@@ -577,9 +550,7 @@ sub remote_call
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "target::${target}::ssh_fh", value1 => $an->data->{target}{$target}{ssh_fh}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 3, message_key => "notice_message_0004", message_variables => {
-					target => $target, 
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 3, message_key => "notice_message_0004", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -737,7 +708,8 @@ sub wait_on_peer
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	### NOTE: Customer requested, move to 2 before v2.0 release
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
 		name1 => "program", value1 => $program, 
 		name2 => "target",  value2 => $target, 
 		name3 => "port",    value3 => $port, 
