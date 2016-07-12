@@ -723,9 +723,9 @@ sub warning
 	{
 		if ($title_key)
 		{
-			#print "\n";
+			print "\n";
 		}
-		#print "$warning\n";
+		print "$warning\n";
 	}
 	
 	# Reset the error counter.

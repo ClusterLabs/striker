@@ -478,7 +478,60 @@ https://alteeve.ca/w/Support
 		<key name="scheduled_consistency_check">Scheduled Consistency Check?</key>
 		<key name="write_cache">Write Cache?</key>
 		
-		
+		<!-- Physical Disk -->
+		<key name="certified">Vendor Certified Drive?</key>
+		<key name="coerced_size">Coerced Size</key>
+		<key name="commissioned_spare">Commissioned Spare?</key>
+		<key name="connected_port_number">Connected Port Number</key>
+		<key name="connector_name">Connector Name</key>
+		<key name="device_id">Device ID</key>
+		<key name="device_speed">Drive Link Speed</key>
+		<key name="drive_media">Drive Type</key>
+		<key name="drive_model">Drive Model Number</key>
+		<key name="drive_size">Drive Capacity</key>
+		<key name="emergency_spare">Emergency Spare?</key>
+		<key name="enclosure_position">Enclusure Position</key>
+		<key name="firmware_release_number">Firmware Release Number</key>
+		<key name="firmware_revision">Firmware Revision</key>
+		<key name="interface">Interface Type</key>
+		<key name="last_predictive_failure_event_sequence_number">Last "Predictive Failure" Event Sequence Number</key>	<!-- Warning -->
+		<key name="link_speed">Interface Link Speed</key>
+		<key name="locked">Drive Is Locked?</key>
+		<key name="manufacturer_identification">Drive Manufacturer</key>
+		<key name="media_error_count">Media Error Count</key>	<!-- Warning -->
+		<key name="model_number">Drive Model Number</key>
+		<key name="nand_vendor">Flash (NAND) Vendor</key>
+		<key name="needs_external_key_management_attention">Needs External Key Management Attention?</key>
+		<key name="non_coerced_size">Non-Coerced Size</key>
+		<key name="other_error_count">"Other" Error Count</key>	<!-- Warning -->
+		<key name="predictive_failure_count">Predictive Failure Count</key>	<!-- Warning -->
+		<key name="protection_info">Protection Information</key>
+		<key name="protection_information_eligible">Protection Information Eligible?</key>
+		<key name="raw_size">Raw Size</key>
+		<key name="row">Row</key>
+		<key name="sas_port_0_link_speed">SAS Port #0 Interface Speed</key>
+		<key name="sas_port_0_port_status">SAS Port #0 Port Status</key>
+		<key name="sas_port_0_sas_address">SAS Port #0 SAS Address</key>
+		<key name="sas_port_1_link_speed">SAS Port #1 Interface Speed</key>
+		<key name="sas_port_1_port_status">SAS Port #1 Port Status</key>
+		<key name="sas_port_1_sas_address">SAS Port #1 SAS Address</key>
+		<key name="sector_size">Sector Size</key>
+		<key name="secured">Drive Encrypted?</key>
+		<key name="sed_capable">Self-Encrypting Drive (SED) Capable?</key>
+		<key name="sed_enabled">Self-Encrypting Drive (SED) Enabled?</key>
+		<key name="self_encrypting_drive">Self-Encrypting Drive (SED)?</key>
+		<key name="sequence_number">Sequence Number</key>
+		<key name="serial_number">Drive Serial Number</key>
+		<key name="shield_counter">Shield Counter</key>
+		<key name="smart_alert_flagged_by_drive">SMART Alert Flagged By Drive?</key>	<!-- Warning -->
+		<key name="span">Span</key>
+		<key name="spun_up">Spun-Up?</key>
+		<key name="state">State</key>
+		<key name="successful_diagnostics_completion_on">Successful Diagnostics Completion On Date?</key>
+		<key name="wide_port_capable">Wide Port Capable?</key>
+		<key name="world_wide_name">World Wide Name (WWN)</key>
+		<key name="write_cache">Write Cache</key>
+		<key name="drive_temperature">Drive's Temperature</key>
 		
 		<!-- Sensor message titles -->
 		<key name="scan_storcli_title_0001"></key>
