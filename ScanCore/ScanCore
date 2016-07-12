@@ -4216,6 +4216,22 @@ sub translate_strings
 	{
 		$return = $an->String->get({key => "tools_suffix_0076"});
 	}
+	elsif (lc($string) eq "hdd")
+	{
+		$return = $an->String->get({key => "tools_suffix_0077"});
+	}
+	elsif (lc($string) eq "ssd")
+	{
+		$return = $an->String->get({key => "tools_suffix_0078"});
+	}
+	elsif (lc($string) eq "sas")
+	{
+		$return = $an->String->get({key => "tools_suffix_0079"});
+	}
+	elsif (lc($string) eq "sata")
+	{
+		$return = $an->String->get({key => "tools_suffix_0080"});
+	}
 # 	elsif (lc($string) eq "")
 # 	{
 # 		$return = $an->String->get({key => ""});

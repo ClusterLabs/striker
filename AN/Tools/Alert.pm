@@ -681,10 +681,7 @@ sub warning
 	#print "$THIS_FILE ".__LINE__."; title_key: [$title_key]\n";
 	if ($title_key =~ /\w+_\d+$/)
 	{
-		$title_key = $an->String->get({
-			key		=>	$title_key,
-			variables	=>	$title_variables,
-		});
+		$title_key = $an->String->get({key => $title_key, variables => $title_variables});
 		#print "$THIS_FILE ".__LINE__."; title_key: [$title_key]\n";
 	}
 	
@@ -692,10 +689,7 @@ sub warning
 	#print "$THIS_FILE ".__LINE__."; message_key: [$message_key], message_variables: [$message_variables]\n";
 	if ($message_key =~ /\w+_\d+$/)
 	{
-		$message_key = $an->String->get({
-			key		=>	$message_key,
-			variables	=>	$message_variables,
-		});
+		$message_key = $an->String->get({key => $message_key, variables => $message_variables});
 		#print "$THIS_FILE ".__LINE__."; message_key: [$message_key]\n";
 	}
 	
@@ -706,41 +700,32 @@ sub warning
 	my $warning = "";
 	if ($title_key)
 	{
-		$warning = $an->String->get({
-			key		=>	"an_0009",
-			variables	=>	{
-				file		=>	$file,
-				line		=>	$readable_line,
-				title		=>	$title_key,
-				message		=>	$message_key,
-			},
-		});
+		$warning = $an->String->get({key => "an_0009", variables => {
+				file    => $file,
+				line    => $readable_line,
+				title   => $title_key,
+				message => $message_key,
+			}});
 	}
 	else
 	{
 		# This is usually a continuation of an earlier warning.
-		$warning = $an->String->get({
-			key		=>	"an_0010",
-			variables	=>	{
-				message		=>	$message_key,
-			},
-		});
+		$warning = $an->String->get({key => "an_0010", variables => { message => $message_key }});
 	}
 	#print "$THIS_FILE ".__LINE__."; warning: [$warning]\n";
 	
 	### TODO: Make sure this is using the log language.
 	# Write a copy of the error to the log.
-	$an->Log->entry({
-		file		=>	$THIS_FILE,
-		level		=>	1,
-		raw		=>	$warning,
-		log_to		=>	$log_to,
-	});
+	$an->Log->entry({file => $THIS_FILE, level => 1, raw => $warning, log_to => $log_to});
 	
 	# If not quieted, print to stdout.
-	if (not $quiet)
+	if ($quiet)
 	{
-		#print "\n$warning\n";
+		if ($title_key)
+		{
+			#print "\n";
+		}
+		#print "$warning\n";
 	}
 	
 	# Reset the error counter.

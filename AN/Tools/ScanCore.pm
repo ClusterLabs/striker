@@ -4795,8 +4795,8 @@ sub target_power
 		name2 => "target", value2 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $target = "";
-	my $state  = "unknown";
+	my $ipmi_target = "";
+	my $state       = "unknown";
 	if (($task ne "status") && ($task ne "on") && ($task ne "off"))
 	{
 		# Bad task.
@@ -4869,13 +4869,13 @@ sub target_power
 			}
 			
 			# Convert the '-a X' to an IP address, if needed.
-			$target = ($power_check =~ /-a\s(.*?)\s/)[0];
+			$ipmi_target = ($power_check =~ /-a\s(.*?)\s/)[0];
 			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-				name1 => "target", value1 => $target,
+				name1 => "ipmi_target", value1 => $ipmi_target,
 			}, file => $THIS_FILE, line => __LINE__});
-			if (not $an->Validate->is_ipv4({ip => $target}))
+			if (not $an->Validate->is_ipv4({ip => $ipmi_target}))
 			{
-				my $ip = $an->Get->ip({host => $target});
+				my $ip = $an->Get->ip({host => $ipmi_target});
 				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "ip", value1 => $ip,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -4886,7 +4886,7 @@ sub target_power
 						name1 => ">> power_check", value1 => $power_check,
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					$power_check =~ s/$target/$ip/;
+					$power_check =~ s/$ipmi_target/$ip/;
 					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 						name1 => "<< power_check", value1 => $power_check,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -4952,8 +4952,8 @@ sub target_power
 	# Set to 'unknown', 'on' or 'off'.
 	### NOTE: Customer requested, move to 2 before v2.0 release
 	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
-		name1 => "target", value1 => $target,
-		name2 => "state",  value2 => $state,
+		name1 => "ipmi_target", value1 => $ipmi_target,
+		name2 => "state",       value2 => $state,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($state);
 }
