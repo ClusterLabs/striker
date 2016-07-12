@@ -792,7 +792,7 @@ sub start_the_cluster
 	
 	# It takes a bit for the storage to actually come up, so we'll watch clustat for the storage services
 	# to start, then verify that /shared is mounted on both nodes.
-	wait_for_storage($an);
+	wait_for_storage($an, "both");
 	
 	return(0);
 }
@@ -800,19 +800,38 @@ sub start_the_cluster
 # This simply waits until /shared is mounted on both nodes before it returns.
 sub wait_for_storage
 {
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	my ($an, $who) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "wait_for_storage" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "who", value1 => $who,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# First, loop locally watching clustat for the storage services.
 	my $started_waiting        = time;
 	my $restart_rgmanager_time = $started_waiting + 120;
 	my $force_reset_time       = $started_waiting + 300;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	my $peer_key               = $an->data->{sys}{peer_key};
+	my $local_key              = $an->data->{sys}{local_key};
+	my $peer_name              = $an->data->{sys}{anvil}{$peer_key}{name};
+	my $peer_state_variable    = "sys::node::".$peer_name."::last_seen";
+	my $last_booted_variable   = "sys::node::".$peer_name."::last_booted_without";
+	my $storage_up             = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 		name1 => "started_waiting",        value1 => $started_waiting, 
 		name2 => "restart_rgmanager_time", value2 => $restart_rgmanager_time, 
 		name3 => "force_reset_time",       value3 => $force_reset_time, 
+		name4 => "local_key",              value4 => $local_key,
+		name5 => "peer_key",               value5 => $peer_key,
+		name6 => "peer_name",              value6 => $peer_name,
+		name7 => "peer_state_variable",    value7 => $peer_state_variable,
+		name8 => "last_booted_variable",   value8 => $last_booted_variable,
 	}, file => $THIS_FILE, line => __LINE__});
-	my $storage_up       = 0;
+	
+	# I need to know my service names so that if 'who' is set to 'local', we only watch that service.
+	my $local_service = $local_key eq "node1" ? "storage_n01" : "storage_n02";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "local_service", value1 => $local_service, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	until ($storage_up)
 	{
 		# If I've waited too long, clvmd might be hung. Try force-stopping clvmd and then restarting
@@ -862,8 +881,25 @@ sub wait_for_storage
 			# Sleep to make sure the log entry above makes it to disk
 			sleep 5;
 			
-			my $shell_call = $an->data->{path}{echo}." c > ".$an->data->{path}{proc_sysrq};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			# If this is dying after a single node start, reset our counter so that we can try
+			# again.
+			if ($an->data->{sys}{single_node_start}{ran})
+			{
+				my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+					variable_name         => $last_booted_variable,
+					variable_value        => 0,
+					variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+					variable_source_table => "hosts", 
+					update_value_only     => 1,
+				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "variable_uuid", value1 => $variable_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Use ipmitool to reset our own chassis
+			my $shell_call = $an->data->{path}{ipmitool}." chassis power reset";
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -874,7 +910,7 @@ sub wait_for_storage
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -915,6 +951,15 @@ sub wait_for_storage
 						name1 => "storge_count", value1 => $storge_count, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
+				elsif (($who eq "local") && ($service ne $local_service))
+				{
+					# This is the peer's storage and we're only watching local so pretend
+					# it is up.
+					$storge_count++;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "storge_count", value1 => $storge_count, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 		}
 		close $file_handle;
@@ -925,7 +970,7 @@ sub wait_for_storage
 		if ($storge_count == 2)
 		{
 			# Now verify that '/shared/ is mounted on both nodes.
-			my $shared_up = check_shared($an);
+			my $shared_up = check_shared($an, $who);
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shared_up", value1 => $shared_up, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -954,8 +999,10 @@ sub wait_for_storage
 # This returns '1' if shared is mounted on both nods and '0' if it is not.
 sub check_shared
 {
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	my ($an, $who) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_shared" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "who", value1 => $who,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $node_key = $an->data->{sys}{local_key};
 	my $peer_key = $an->data->{sys}{peer_key};
@@ -964,29 +1011,29 @@ sub check_shared
 		name2 => "peer_key", value2 => $peer_key,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Call 'mount' on both nodes and make sure '/shared' is found.
-	my $mounted = 1;
-	my $command = $an->data->{path}{mount};
+	my $mounted    = 1;
+	my $shell_call = $an->data->{path}{mount};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "command", value1 => $command,
+		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	my ($output) = $an->System->dual_command_run({
-		command => $command, 
-		delay   => 10,
-	});
-	foreach my $node ($an->data->{sys}{anvil}{$node_key}{name}, $an->data->{sys}{anvil}{$peer_key}{name})
+	
+	if ($who eq "local")
 	{
+		# I only care about local storage.
 		my $shared_mounted = 0;
-		foreach my $line (split/\n/, $output->{$node})
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
 		{
-			$line =~ s/^\s+//;
-			$line =~ s/\s+$//;
-			$line =~ s/\s+/ /g;
-			next if not $line;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "node", value1 => $node,
-				name2 => "line", value2 => $line,
+			chomp;
+			my $line =  $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			next if not $line;
 			if ($line =~ /\/shared type gfs2/)
 			{
 				$shared_mounted = 1;
@@ -996,12 +1043,57 @@ sub check_shared
 			}
 		}
 		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shared_mounted", value1 => $shared_mounted,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not $shared_mounted)
 		{
 			$mounted = 0;
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0023", message_variables => {
-				node => $node, 
+				node => $an->hostname, 
 			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# Call 'mount' on both nodes and make sure '/shared' is found.
+		my ($output) = $an->System->dual_command_run({
+			command => $shell_call, 
+			delay   => 10,
+		});
+		foreach my $node ($an->data->{sys}{anvil}{$node_key}{name}, $an->data->{sys}{anvil}{$peer_key}{name})
+		{
+			my $shared_mounted = 0;
+			foreach my $line (split/\n/, $output->{$node})
+			{
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				next if not $line;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node", value1 => $node,
+					name2 => "line", value2 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /\/shared type gfs2/)
+				{
+					$shared_mounted = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "shared_mounted", value1 => $shared_mounted,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shared_mounted", value1 => $shared_mounted,
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $shared_mounted)
+			{
+				$mounted = 0;
+				$an->Log->entry({log_level => 1, message_key => "asst_log_0023", message_variables => {
+					node => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	
@@ -2508,7 +2600,6 @@ sub check_single_node_start
 					}
 					close $file_handle;
 					
-					### TODO: Left off here...
 					# Now wait for the output from the pkill.
 					my $done = 0;
 					until($done)
@@ -2561,9 +2652,17 @@ sub check_single_node_start
 					
 					# Record that we started alone.
 					$an->data->{sys}{single_node_start}{ran} = 1;
+					
+					# It takes a bit for the storage to actually come up, so we'll watch clustat for the storage services
+					# to start, then verify that /shared is mounted on both nodes.
+					wait_for_storage($an, "local");
 				}
 				else
 				{
+					### TODO: If this is running after a second reboot within the boot 
+					###       frequency delay, it will wait up to 24 hours (or whatever 
+					###       the user set), even if the peer shows up in the meantime. 
+					###       Update this to abort if the peer connects.
 					sleep 10;
 					my $difference = $boot_after - time;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -2571,6 +2670,8 @@ sub check_single_node_start
 						name2 => "boot_after", value2 => $boot_after,
 						name3 => "difference", value3 => $difference,
 					}, file => $THIS_FILE, line => __LINE__});
+					
+					# See if my peer came up in the meantime.
 				}
 			}
 		}

@@ -579,6 +579,7 @@ sub _set_paths
 	$an->data->{path}{ip}                  = "/sbin/ip";
 	$an->data->{path}{ipmitool}            = "/usr/bin/ipmitool";
 	$an->data->{path}{'iptables-save'}     = "/sbin/iptables-save";
+	$an->data->{path}{'kill'}              = "/bin/kill";
 	$an->data->{path}{'less'}              = "/usr/bin/less";
 	$an->data->{path}{ln}                  = "/bin/ln";
 	$an->data->{path}{ls}                  = "/bin/ls";

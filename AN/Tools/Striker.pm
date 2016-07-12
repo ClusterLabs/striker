@@ -3704,6 +3704,56 @@ fi;
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{cgi}{subtask} eq "power_cycle")
 	{
+		# Sleep until both nodes are off.
+		my $time         = time;
+		my $stop_waiting = $time + 120;
+		my $both_down    = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "time",         value1 => $time,
+			name2 => "stop_waiting", value2 => $stop_waiting,
+		}, file => $THIS_FILE, line => __LINE__});
+		until ($both_down)
+		{
+			$both_down = 1;
+			if (time > $stop_waiting)
+			{
+				# Give up waiting
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "both_down", value1 => $both_down,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Try pinging both nodes.
+				my $ping_node1 = 0;
+				my $ping_node2 = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "sys::anvil::node1::bcn_ip", value1 => $an->data->{sys}{anvil}{node1}{bcn_ip},
+					name2 => "sys::anvil::node2::bcn_ip", value2 => $an->data->{sys}{anvil}{node2}{bcn_ip},
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($an->Validate->is_ipv4({ip => $an->data->{sys}{anvil}{node1}{bcn_ip}}))
+				{
+					$ping_node1 = $an->Check->ping({ping => $an->data->{sys}{anvil}{node1}{bcn_ip}});
+				}
+				if ($an->Validate->is_ipv4({ip => $an->data->{sys}{anvil}{node1}{bcn_ip}}))
+				{
+					$ping_node2 = $an->Check->ping({ping => $an->data->{sys}{anvil}{node2}{bcn_ip}});
+				}
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "ping_node1", value1 => $ping_node1,
+					name2 => "ping_node2", value2 => $ping_node2,
+				}, file => $THIS_FILE, line => __LINE__});
+				if (($ping_node1) or ($ping_node2))
+				{
+					$both_down = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "both_down", value1 => $both_down,
+					}, file => $THIS_FILE, line => __LINE__});
+					sleep 5;
+				}
+			}
+		}
+		
 		# Tell the user
 		print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
 			row_class	=>	"highlight_warning_bold",
@@ -3730,6 +3780,44 @@ fi;
 	}
 	elsif($an->data->{cgi}{subtask} eq "power_off")
 	{
+		# Sleep until both nodes are off.
+		my $time         = time;
+		my $stop_waiting = $time + 120;
+		my $both_down    = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "time",         value1 => $time,
+			name2 => "stop_waiting", value2 => $stop_waiting,
+		}, file => $THIS_FILE, line => __LINE__});
+		until ($both_down)
+		{
+			$both_down = 1;
+			if (time > $stop_waiting)
+			{
+				# Give up waiting
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "both_down", value1 => $both_down,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Try pinging both nodes.
+				my $ping_node1 = $an->Check->ping({ping => $an->data->{sys}{anvil}{node1}{use_ip}});
+				my $ping_node2 = $an->Check->ping({ping => $an->data->{sys}{anvil}{node2}{use_ip}});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "ping_node1", value1 => $ping_node1,
+					name2 => "ping_node2", value2 => $ping_node2,
+				}, file => $THIS_FILE, line => __LINE__});
+				if (($ping_node1) or ($ping_node2))
+				{
+					$both_down = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "both_down", value1 => $both_down,
+					}, file => $THIS_FILE, line => __LINE__});
+					sleep 5;
+				}
+			}
+		}
+		
 		# Tell the user
 		print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
 			row_class	=>	"highlight_warning_bold",

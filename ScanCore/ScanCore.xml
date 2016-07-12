@@ -156,6 +156,8 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0086">Clearing the stop reason and emergency stop values for the now-running node: [#!variable!node!#].</key>
 		<key name="scancore_log_0087">The node: [#!variable!node!#] appears to be hung (likely DLM spinlock), it will be rebooted now.</key>
 		<key name="scancore_log_0088">The node: [#!variable!node!#] was rebooted.</key>
+		<key name="scancore_log_0089">Another copy of ScanCore is running, but it has not updated the ScanCore database in: [#!variable!difference!#] seconds. It might be hung, so we will kill it now.</key>
+		<key name="scancore_log_0090">Killing ScanCore instance with PID: [#!variable!pid!#].</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

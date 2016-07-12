@@ -4581,6 +4581,9 @@ sub get_bbu_data
 				if ($variable eq "Absolute State of charge")
 				{
 					$variable = "Absolute state of charge";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "variable", value1 => $variable, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				
 				# They use 'Temperature' twice; once for the temperature and once to show if
@@ -4589,6 +4592,38 @@ sub get_bbu_data
 				if (($variable eq "Temperature") && ($value !~ /\d/))
 				{
 					$variable = "Temperature Status";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "variable", value1 => $variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# *sigh* - Typo on their part, but also a re-use of the variable name 
+				# "Remaining Time Alarm". The Status one we will rename the variable and the 
+				# later we'll fix the type. 
+				if ((lc($variable) eq "remaining time alarm") && ($value !~ /\d/))
+				{
+					# No digit in the value, so this is the status.
+					$variable = "Remaining Time Alarm Status";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "variable", value1 => $variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($variable =~ /remining /)
+				{
+					$variable =~ s/emining /emaining /;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "variable", value1 => $variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				if ($variable =~ /\(initial setting\)/i)
+				{
+					$variable =~ s/\(initial setting\)//i;
+					$variable =  "Initial ".$variable." Setting";
+					$variable =~ s/\s+//;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "variable", value1 => $variable, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			

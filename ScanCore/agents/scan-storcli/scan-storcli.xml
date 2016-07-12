@@ -367,6 +367,104 @@ https://alteeve.ca/w/Support
 		<key name="webbios_version">WebBIOS Version</key>
 		<key name="roc_temperature">RAID On Chip (ROC) Temperature</key>
 		
+		<!-- BBU Strings -->
+		<key name="absolute_state_of_charge">Absolute State Of Charge (Percent)</key>
+		<key name="app_data">Application Data</key>
+		<key name="auto_learn_mode">Automatic Learning Mode</key>
+		<key name="auto_learn_period">Automatic Learning Interval</key>
+		<key name="average_time_to_empty">Average Time To Empty</key>
+		<key name="average_time_to_full">Average Time To Full</key>
+		<key name="battery_backup_charge_time">Battery Backup Charge (Hold-Up) Time</key>
+		<key name="battery_fru">Battery Field Replaceable Unit (FRU) Number</key>
+		<key name="battery_pack_missing">Battery Missing?</key>
+		<key name="battery_state">Battery State</key>
+		<key name="cache_offload_premium_feature_required">"Cache Offload" Premium Feature Required?</key>
+		<key name="charger_system_ctrl">Charger System Controller</key>
+		<key name="charger_system_state">Charger System State</key>
+		<key name="charging_current">Charging Current</key>
+		<key name="charging_status">Charging Status</key>
+		<key name="charging_terminated">Charging Terminated?</key>
+		<key name="current">Current</key>
+		<key name="cycle_count">Charge/Discharge Cycle Count</key>
+		<key name="date_of_manufacture">Date Manufactured</key>
+		<key name="design_capacity">Design Capacity</key>
+		<key name="design_voltage">Design Voltage</key>
+		<key name="device_chemistry">Battery Chemistry</key>
+		<key name="device_name">Device Name</key>
+		<key name="discharging">Discharging?</key>
+		<key name="full_charge_capacity">Full Charge Capacity</key>
+		<key name="fully_charged">Fully Charged?</key>
+		<key name="fully_discharged">Fully Discharged?</key>
+		<key name="i2c_errors_detected">i2c Errors Detected?</key>
+		<key name="initialized">Initialized?</key>
+		<key name="learn_cycle_active">Learn Cycle Active?</key>
+		<key name="learn_cycle_requested">Learn Cycle Requested?</key>
+		<key name="learn_cycle_status">Learn Cycle Status</key>
+		<key name="learn_cycle_timeout">Learn Cycle Timeout?</key>
+		<key name="learn_delay_interval">Learn Cycle Delay Interval</key>
+		<key name="manufacture_name">Manufacturer Model Name</key>
+		<key name="max_error">Maximum Errors</key>
+		<key name="module_microcode_update_required">Module Microcode Update Required?</key>
+		<key name="next_learn_time">Next Scheduled Learn Cycle</key>
+		<key name="no_space_to_cache_offload">No Space To Cache Offload?</key>
+		<key name="over_charged">Over Charged?</key>	<!-- Warning -->
+		<key name="over_temperature">Over Temperature?</key>	<!-- Warning -->
+		<key name="pack_is_about_to_fail_and_should_be_replaced">Battery Unit Is About To Fail?</key>	<!-- Warning -->
+		<key name="pack_stat_configuration">Battery Unit Statistics Configuration</key>
+		<key name="periodic_learn_required">Learn Cycle Required?</key>
+		<key name="relative_state_of_charge">Relative State Of Charge</key>
+		<key name="remaining_capacity">Remaining Capacity</key>
+		<key name="remaining_capacity_alarm">Remaining Capacity Alarm</key>
+		<key name="remaining_capacity_low">Remaining Capacity Low?</key>	<!-- Warning -->
+		<key name="remaining_time_alarm_status">Remaining Time Alarm?</key>
+		<key name="remaining_time_alarm">Remainin Time Alarm Threshold</key>
+		<key name="replacement_required">Replacement Required?</key>	<!-- Warning -->
+		<key name="run_time_to_empty">Runtime To Empty</key>
+		<key name="specification_info">Specification Information</key>
+		<key name="temperature_status">Temperature Status</key>	<!-- Warning -->
+		<key name="terminate_discharge_alarm">Terminate Discharge Alarm?</key>
+		<key name="transparent_learn">Transparent Learn</key>
+		<key name="type">Battery Backup Unit Type</key>
+		<key name="voltage">Voltage Status</key>
+		
+		<!-- Cachevault Strings -->
+		<key name="auto_learn_mode">Automatic Learn Mode</key>
+		<key name="auto_learn_period">Automatic Learn Interval</key>
+		<key name="cachevault_flash_size">Cachevault Flash Size</key>
+		<key name="capacitance">Capacitance (Percent)</key>
+		<key name="date_of_manufacture">Manufacture Date</key>
+		<key name="design_capacity">Design Capacity</key>
+		<key name="device_name">Manufacturer Device Name</key>
+		<key name="learn_delay_interval">Learn Delay Interval</key>
+		<key name="manufacture_name">Manufacturer's Name</key>
+		<key name="module_microcode_update_required">Cachevault Module's Microcode Update Required?</key>
+		<key name="next_learn_time">Next Scheduled Learn Time</key>
+		<key name="no_space_to_cache_offload">No Space To Cache Offload</key>
+		<key name="pack_energy">Cachevault Pack Energy</key>
+		<key name="remaining_reserve_space">Remaining Reserve Space</key>
+		<key name="replacement_required">Replacement Required?</key>	<!-- warning -->
+		<key name="state">State</key>	<!-- warning -->
+		<key name="tmmfru">TMM Field Replacable Unit Number</key>
+		<key name="type">Pack Type</key>
+		
+		<!-- Virtual Disk -->
+		<key name="active_operations">Active Operations</key>
+		<key name="creation_date">Creation Date</key>
+		<key name="creation_time">Creation Time</key>
+		<key name="data_protection">Data Protection?</key>
+		<key name="disk_cache_policy">Disk Cache Policy</key>
+		<key name="emulation_type">Emulation Type</key>
+		<key name="encryption">Encryption</key>
+		<key name="exposed_to_os">Exposed To The Operating System?</key>
+		<key name="is_ld_ready_for_os_requests">Logical Disk Is Ready For Operating System Requests?</key>
+		<key name="number_of_blocks">Number Of Blocks</key>
+		<key name="number_of_drives_per_span">Number Of Drives Per Span</key>
+		<key name="on_controller">On Controller With Serial Number</key>
+		<key name="scsi_naa_id">SCSI Network Address Authority (NAA) ID</key>
+		<key name="span_depth">Span Depth</key>
+		<key name="strip_size">Strip Size</key>
+		<key name="initial_write_cache_setting">Initial Write-Cache Setting</key>
+		
 		
 		
 		<!-- Sensor message titles -->

@@ -926,7 +926,7 @@ The 'AN::Tools::Get' module's 'upses()' method was called without an Anvil! UUID
 
 =head2 C<172>
 
-The 'AN::Tools::Check' module's 'ping()' method was called without 'ping' being set.
+The 'AN::Tools::Check' module's 'ping()' method was called without 'ip' being set.
 
 =head2 C<173>
 

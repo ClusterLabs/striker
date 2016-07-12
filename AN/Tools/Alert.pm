@@ -223,7 +223,7 @@ sub convert_level_name_to_number
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "convert_level_name_to_number" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_level_name_to_number" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $level = $parameter->{level} ? $parameter->{level} : ""; # This should error.
 	
@@ -261,7 +261,7 @@ sub convert_level_number_to_name
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "convert_level_number_to_name" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_level_number_to_name" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $level = $parameter->{level} ? $parameter->{level} : ""; # This should error.
 	
