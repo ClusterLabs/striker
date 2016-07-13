@@ -197,6 +197,76 @@ sub find_changes
 	###       that existed in the DB, and then marking as removed anything left in the databased data not
 	###       seen in this scan.
 	
+	### TODO: Left off here... Create functions to process the various bits under each controller. 
+	###       Remember to keep in mind that a drive that vanishes or appears may come from another node
+	###       or controller. We may not care here though and, if not, we'll try to trace a drive through
+	###       notes in the UI later...
+	process_controllers($an);
+	process_bbus($an);
+	process_cachevaults($an);
+	process_drive_groups($an);
+	process_virtual_disks($an);
+	process_physical_disks($an);
+	
+	# Now read back in the various temperature data and process them.
+	#...
+	
+	return(0);
+}
+
+sub process_bbus
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+sub process_cachevaults
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+sub process_drive_groups
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+sub process_virtual_disks
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+sub process_physical_disks
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+sub process_controllers
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: Make sure we catch removed controllers...
+# 	$an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid} = {
+# 		storcli_controller_serial_number	=>	$storcli_controller_serial_number, 
+# 		storcli_controller_model		=>	$storcli_controller_model, 
+# 		storcli_controller_alarm_state		=>	$storcli_controller_alarm_state, 
+# 		storcli_controller_cache_size		=>	$storcli_controller_cache_size, 
+# 	};
+	
 	# Look for new, changed or deleted controllers.
 	$an->data->{sys}{sql} = [];
 	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
@@ -280,6 +350,12 @@ sub find_changes
 			}
 		}
 		
+		# Pull out the rest of the variables now. If the controller is new, all variables will be 
+		# INSERTed. If the controller exists, each variable will be examined and new ones will be
+		# INSERTed, existing ones will be checked for changes and UPDATEd as needed. If the 
+		# controller is NOT new, then variables from the old data will be deleted as we go and any
+		# not found in the current data set will be left over. We'll use this to determine variables
+		# that have vanished. They will not be deleted, but their value will be set to 'VANISHED'.
 		if ($is_new)
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
@@ -332,33 +408,36 @@ INSERT INTO
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
 
-			### Process the rest of the variables now. 
-			# Variables
-			foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{variable}})
+			# Process the rest of the variables and temperatures now. 
+			foreach my $type ("variable", "temperature")
 			{
-				my $value = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "key",   value1 => $key,
-					name2 => "value", value2 => $value,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Send an alert telling the user that we've found a new controller.
-				$an->data->{sys}{alert_sort}++; 
-				$an->Alert->register_alert({
-					alert_level		=>	"notice", 
-					alert_agent_name	=>	"$THIS_FILE",
-					alert_sort		=>	$an->data->{sys}{alert_sort},
-					alert_header		=>	'FALSE',
-					alert_title_key		=>	"an_alert_title_0003",
-					alert_message_key	=>	"scan_storcli_note_0002",
-					alert_message_variables	=>	{
-						name			=>	$key,
-						value			=>	$value,
-					},
-				});
-				
-				# INSERT
-				my $query = "
+				foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
+				{
+					my $value       = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$key};
+					my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "key",         value1 => $key,
+						name2 => "value",       value2 => $value,
+						name3 => "temperature", value3 => $temperature,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Send an alert telling the user that we've found a new controller.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	'FALSE',
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_storcli_note_0002",
+						alert_message_variables	=>	{
+							name			=>	$key,
+							value			=>	$value,
+						},
+					});
+					
+					# INSERT
+					my $query = "
 INSERT INTO 
     storcli_variables
 (
@@ -375,71 +454,17 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     'storcli_controllers', 
     ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
-    FALSE, 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
     ".$an->data->{sys}{use_db_fh}->quote($key).", 
     ".$an->data->{sys}{use_db_fh}->quote($value).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
-				# Now record the query in the array
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query
-				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{sys}{sql}}, $query;
-			}
-			
-			# Temperatures
-			foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{temperature}})
-			{
-				my $value = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "key",   value1 => $key,
-					name2 => "value", value2 => $value,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Send an alert telling the user that we've found a new controller.
-				$an->data->{sys}{alert_sort}++; 
-				$an->Alert->register_alert({
-					alert_level		=>	"notice", 
-					alert_agent_name	=>	"$THIS_FILE",
-					alert_sort		=>	$an->data->{sys}{alert_sort},
-					alert_header		=>	'FALSE',
-					alert_title_key		=>	"an_alert_title_0003",
-					alert_message_key	=>	"scan_storcli_note_0002",
-					alert_message_variables	=>	{
-						name			=>	$key,
-						value			=>	$value,
-					},
-				});
-				
-				### TODO: Process the temperature.
-				# INSERT
-				my $query = "
-INSERT INTO 
-    storcli_variables
-(
-    storcli_variable_uuid, 
-    storcli_variable_host_uuid, 
-    storcli_variable_source_table, 
-    storcli_variable_source_uuid, 
-    storcli_variable_is_temperature, 
-    storcli_variable_name, 
-    storcli_variable_value, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    'storcli_controllers', 
-    ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
-    TRUE, 
-    ".$an->data->{sys}{use_db_fh}->quote($key).", 
-    ".$an->data->{sys}{use_db_fh}->quote($value).", 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-);";
-				# Now record the query in the array
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query
-				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{sys}{sql}}, $query;
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
 			}
 		}
 		else
@@ -519,48 +544,61 @@ AND
 			}
 			
 			### Process the rest of the variables now. 
-			# Variables
-			foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{variable}})
+			foreach my $type ("variable", "temperature")
 			{
-				# Being in the 'variable' hash, 'is_temperature' is 'FALSE'.
-				my $new_variable_value = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "key", value1 => $key,
-				}, file => $THIS_FILE, line => __LINE__});
-				if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{variable}{$key}{storcli_variable_uuid})
+				foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
 				{
-					# Look for changes
-					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{variable}{$key}{storcli_variable_value};
-					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{variable}{$key}{storcli_variable_uuid};
-					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{variable}{$key};
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-						name1 => "new_variable_value", value1 => $new_variable_value,
-						name2 => "old_variable_value", value2 => $old_variable_value,
-						name3 => "variable_uuid",      value3 => $variable_uuid,
+					# Being in the 'variable' hash, 'is_temperature' is 'FALSE'.
+					my $new_variable_value = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$key};
+					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "key",         value1 => $key,
+						name2 => "temperature", value2 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
-					
-					if (($new_variable_value ne $old_variable_value))
+					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_uuid})
 					{
-						# Changed! For now, we treat everything as 'warning' and step
-						# down explicitely anything not of concern that proves noisey
-						# later (better safe than sorry).
-						$an->data->{sys}{alert_sort}++; 
-						$an->Alert->register_alert({
-							alert_level		=>	"warning", 
-							alert_agent_name	=>	"$THIS_FILE",
-							alert_sort		=>	$an->data->{sys}{alert_sort},
-							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
-							alert_title_key		=>	"an_alert_title_0004",
-							alert_message_key	=>	"scan_storcli_warning_0003",
-							alert_message_variables	=>	{
-								controller		=>	$serial_number,
-								name			=>	$key,
-								old_value		=>	$old_variable_value,
-								new_value		=>	$new_variable_value,
-							},
-						});
+						# Look for changes
+						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_value};
+						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_uuid};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "new_variable_value", value1 => $new_variable_value,
+							name2 => "old_variable_value", value2 => $old_variable_value,
+							name3 => "variable_uuid",      value3 => $variable_uuid,
+						}, file => $THIS_FILE, line => __LINE__});
 						
-						my $query = "
+						# Delete it so that we know it has been processed.
+						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key};
+						
+						if (($new_variable_value ne $old_variable_value))
+						{
+							# Changed! If the old value was 'VANISHED', then a 
+							# sensor or variable returned. Otherwise, for now, we
+							# treat everything as 'warning' and step down 
+							# explicitely anything not of concern that proves 
+							# noisey later (better safe than sorry).
+							$an->data->{sys}{alert_sort}++; 
+							
+							my $message_key = "scan_storcli_warning_0003";
+							if ($old_variable eq "VANISHED")
+							{
+								$message_key = "scan_storcli_warning_0006";
+							}
+							$an->Alert->register_alert({
+								alert_level		=>	"warning", 
+								alert_agent_name	=>	"$THIS_FILE",
+								alert_sort		=>	$an->data->{sys}{alert_sort},
+								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+								alert_title_key		=>	"an_alert_title_0004",
+								alert_message_key	=>	$message_key,
+								alert_message_variables	=>	{
+									controller		=>	$serial_number,
+									name			=>	$key,
+									old_value		=>	$old_variable_value,
+									new_value		=>	$new_variable_value,
+								},
+							});
+							
+							my $query = "
 UPDATE 
     storcli_variables 
 SET 
@@ -569,34 +607,33 @@ SET
 WHERE 
     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
 ;";
-						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "query", value1 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{sys}{sql}}, $query;
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "query", value1 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{sys}{sql}}, $query;
+						}
 					}
-				}
-				else
-				{
-					# New variable, record it. This is a 'warning' level as variables 
-					# aren't expected to spawn into existence.
-					$an->data->{sys}{alert_sort}++; 
-					$an->Alert->register_alert({
-						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
-						alert_sort		=>	$an->data->{sys}{alert_sort},
-						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
-						alert_title_key		=>	"an_alert_title_0003",
-						alert_message_key	=>	"scan_storcli_warning_0004",
-						alert_message_variables	=>	{
-							name			=>	$key,
-							value			=>	$new_variable_value,
-						},
-					});
-					
-					### TODO: Process the temperature.
-					# INSERT
-					my $query = "
+					else
+					{
+						# New variable, record it. This is a 'warning' level as 
+						# variables aren't expected to spawn into existence.
+						$an->data->{sys}{alert_sort}++; 
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	"$THIS_FILE",
+							alert_sort		=>	$an->data->{sys}{alert_sort},
+							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_storcli_warning_0004",
+							alert_message_variables	=>	{
+								name			=>	$key,
+								value			=>	$new_variable_value,
+							},
+						});
+						
+						# INSERT
+						my $query = "
 INSERT INTO 
     storcli_variables
 (
@@ -613,30 +650,75 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     'storcli_controllers', 
     ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
-    FALSE, 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
     ".$an->data->{sys}{use_db_fh}->quote($key).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{sys}{sql}}, $query;
+					}
+				}
+			}
+			
+			# Now look for any variables left from the previous scan that we didn't match up (and
+			# delete) this pass.
+			foreach my $type ("variable", "temperature")
+			{
+				foreach my $key (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}})
+				{
+					# This variable has vanished
+					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_value};
+					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_uuid};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "new_variable_value", value1 => $new_variable_value,
+						name2 => "old_variable_value", value2 => $old_variable_value,
+						name3 => "variable_uuid",      value3 => $variable_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Delete it so that we know it has been processed.
+					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key};
+					
+					# If the old value is already 'VANISHED', ignore it.
+					next if $old_variable_value eq "VANISHED";
+					
+					### NOTE: For now, we're going to use warning level because variables
+					###       shouldn't vanish, but under an-cm, it did happen for 
+					###       reasons that we never figured out. So later, we may drop 
+					###       the alert level in some cases.
+					# Still here? Alert and UPDATE.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_storcli_warning_0007",
+						alert_message_variables	=>	{
+							controller		=>	$serial_number,
+							name			=>	$key,
+						},
+					});
+					
+					my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = 'VANISHED', 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
 					# Now record the query in the array
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
 				}
-			}
-			
-			# Temperatures
-			foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{temperature}})
-			{
-				# Being in the 'temperature' hash, 'is_temperature' is 'TRUE'.
-				my $new_variable_value = delete $an->data->{controller}{serial_number}{$serial_number}{temperature}{$key};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "key", value1 => $key,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				### TODO: This is where I need to check/set temperature nased alerts/clears.
-				### NOTE: Left off here.
 			}
 		}
 	}

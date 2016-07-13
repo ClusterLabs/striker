@@ -1526,7 +1526,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0108"><![CDATA[The <span class="fixed_width">ricci</span> daemon is not running on <span class="fixed_width">#!variable!node!#</span>.]]></key>
 		<key name="message_0109">This is probably a mis-configuration of the #!string!brand_0003!# node.</key>
 		<key name="message_0110"><![CDATA[Please ensure that <span class="fixed_width">ricci</span> is running and is set to start on boot.]]></key>
-		<key name="message_0111">The server has been added successfully.</key>
+		<key name="message_0111">The server has been added the the management system.</key>
 		<key name="message_0112"><![CDATA[#!string!message_0068!#<br />
 			The call to add the new server to the #!string!brand_0003!# should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!ccs_exit_code!#</span> was received.<br />
 			#!string!brand_0011!#]]></key>
