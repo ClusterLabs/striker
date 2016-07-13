@@ -2266,13 +2266,14 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<!-- anvil-report-memory strings -->
 		<key name="arm_log_0001">#!variable!this_file!# has started.</key>
 		<key name="arm_log_0002">Current memory used by: [#!variable!program_name!#] is approximately: [#!variable!bytes!#] bytes (#!variable!hr_size!#).</key>
+		<key name="arm_log_0003">The 'smaps' proc file for the process ID: [#!variable!pid!#] was not found. Did the program just close?</key>
 		
 		<!-- errors -->
 		<key name="arm_error_0001"><![CDATA[Must be called with '--program <name>', no program name read in.]]></key>
 		<key name="arm_error_0002">Asked 'pgrep' to return the PIDs (process IDs) of the program: [#!variable!program!#] and a non-digit value was returned in: [#!variable!line!#]. This should not have happened.</key>
 		
 		<!-- warnings -->
-		<key name="arm_warning_0001">The 'smaps' proc file for the process ID: [#!variable!pid!#] was not found. Did the program just close?</key>
+		<key name="arm_warning_0001"></key>
 		
 		<!-- anvil-adjust-vnet strings -->
 		<key name="aav_log_0001">#!variable!this_file!# has started.</key>

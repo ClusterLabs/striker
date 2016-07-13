@@ -579,7 +579,7 @@ AND
 							$an->data->{sys}{alert_sort}++; 
 							
 							my $message_key = "scan_storcli_warning_0003";
-							if ($old_variable eq "VANISHED")
+							if ($old_variable_value eq "VANISHED")
 							{
 								$message_key = "scan_storcli_warning_0006";
 							}
@@ -673,10 +673,9 @@ INSERT INTO
 					# This variable has vanished
 					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_value};
 					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_uuid};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-						name1 => "new_variable_value", value1 => $new_variable_value,
-						name2 => "old_variable_value", value2 => $old_variable_value,
-						name3 => "variable_uuid",      value3 => $variable_uuid,
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_variable_value", value1 => $old_variable_value,
+						name2 => "variable_uuid",      value2 => $variable_uuid,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Delete it so that we know it has been processed.

@@ -98,10 +98,8 @@ sub read_smaps
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not -e $smaps_file)
 		{
-			# warning, it is possible that the program just closed.
-			$an->Alert->warning({message_key => "arm_warning_0001", message_variables => {
-				pid	=>	$pid,
-			}, file => $THIS_FILE, line => __LINE__});
+			# It is possible that the program just closed.
+			$an->Log->entry({log_level => 2, message_key => "arm_log_0003", message_variables => { pid => $pid }, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
