@@ -42,6 +42,13 @@ Other detected variables:
 		<key name="scan_storcli_warning_0005">- Controller: [#!variable!controller!#]: Old variable lost; #!variable!name!#: [#!variable!old_value!#]</key>
 		<key name="scan_storcli_warning_0006">- Controller: [#!variable!controller!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0007">- Controller: [#!variable!controller!#]: '#!variable!name!#' has vanished!</key>
+		<key name="scan_storcli_warning_0008">The controller: [#!variable!model!#] with the serial number: [#!variable!serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0009">The RAID controller has returned:
+- Model: ....... [#!variable!new_model!#]
+- Serial Number: [#!variable!new_serial_number!#]
+- Cache Size: .. [#!variable!new_say_cache_size!#]
+- Alarm State: . [#!variable!new_alarm_state!#]
+</key>
 		
 		<!-- Errors -->
 		<key name="scan_storcli_error_0001">The 'storcli64' program was not found at: [#!variable!path!#], exiting.</key>

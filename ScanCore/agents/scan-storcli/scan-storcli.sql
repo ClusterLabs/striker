@@ -542,6 +542,7 @@ CREATE TRIGGER trigger_storcli_physical_drives
 -- would be to create massive tables that would miss variables not shown for all controllers or when new   --
 -- variables are added or renamed. So this table is used to store all those myriade of variables. Each     --
 -- entry will reference the table it is attached to and the UUID of the record in that table. The column   --
+
 -- 'storcli_variable_is_temperature' will be used to know what data is a temperature and will be then used --
 -- to inform on the host's thermal health.                                                                 --
 -- ------------------------------------------------------------------------------------------------------- --

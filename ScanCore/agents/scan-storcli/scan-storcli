@@ -217,7 +217,7 @@ sub find_changes
 sub process_bbus
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_bbus" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -225,7 +225,7 @@ sub process_bbus
 sub process_cachevaults
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_cachevaults" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -233,7 +233,7 @@ sub process_cachevaults
 sub process_drive_groups
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_drive_groups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -241,7 +241,7 @@ sub process_drive_groups
 sub process_virtual_disks
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_virtual_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -249,7 +249,7 @@ sub process_virtual_disks
 sub process_physical_disks
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_physical_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -257,7 +257,7 @@ sub process_physical_disks
 sub process_controllers
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make sure we catch removed controllers...
 # 	$an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid} = {
@@ -411,6 +411,9 @@ INSERT INTO
 			# Process the rest of the variables and temperatures now. 
 			foreach my $type ("variable", "temperature")
 			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
 				{
 					my $value       = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$key};
@@ -495,10 +498,19 @@ INSERT INTO
 			{
 				# Send a warning level alert because the most likely change is 'alarm_state'.
 				# If, however, the alarm state is now 'off', then we'll clear the alert.
-				my $title_key = "an_alert_title_0004";
-				if (($new_alarm_state ne $old_alarm_state) && ($new_alarm_state =~ /off/i))
+				my $title_key   = "an_alert_title_0004";
+				my $message_key = "scan_storcli_warning_0002";
+				if ($new_alarm_state ne $old_alarm_state)
 				{
-					$title_key   = "an_alert_title_0004";
+					if ($old_alarm_state eq "VANISHED")
+					{
+						# Controller has returned.
+						$message_key = "scan_storcli_warning_0009";
+					}
+					if ($new_alarm_state =~ /off/i)
+					{
+						$title_key = "an_alert_title_0004";
+					}
 				}
 				$an->data->{sys}{alert_sort}++; 
 				$an->Alert->register_alert({
@@ -507,7 +519,7 @@ INSERT INTO
 					alert_sort		=>	$an->data->{sys}{alert_sort},
 					alert_header		=>	'FALSE',
 					alert_title_key		=>	$title_key,
-					alert_message_key	=>	"scan_storcli_warning_0002",
+					alert_message_key	=>	$message_key,
 					alert_message_variables	=>	{
 						new_serial_number	=>	$serial_number,
 						old_serial_number	=>	$old_serial_number,
@@ -546,6 +558,9 @@ AND
 			### Process the rest of the variables now. 
 			foreach my $type ("variable", "temperature")
 			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
 				{
 					# Being in the 'variable' hash, 'is_temperature' is 'FALSE'.
@@ -668,6 +683,9 @@ INSERT INTO
 			# delete) this pass.
 			foreach my $type ("variable", "temperature")
 			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $key (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}})
 				{
 					# This variable has vanished
@@ -720,6 +738,69 @@ WHERE
 				}
 			}
 		}
+		
+		# Delete the controller from the last scan so that we can find controllers that have been 
+		# removed.
+		if (exists $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid})
+		{
+			delete $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid};
+		}
+	}
+	
+	# See if any controllers vanished.
+	foreach my $controller_uuid (keys %{$an->data->{sql}{storcli_controllers}{storcli_controller_uuid}})
+	{
+		# Controller vanished!
+		my $old_serial_number = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_serial_number};
+		my $old_model         = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_model};
+		my $old_alarm_state   = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_alarm_state};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "controller_uuid",   value1 => $controller_uuid,
+			name2 => "old_serial_number", value2 => $old_serial_number,
+			name3 => "old_model",         value3 => $old_model,
+			name4 => "old_alarm_state",   value4 => $old_alarm_state,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Delete it so that we know it has been processed.
+		delete $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid};
+		
+		# If the old alarm state is already 'VANISHED', ignore it.
+		next if $old_alarm_state eq "VANISHED";
+		
+		# Still here? Alert and UPDATE.
+		### NOTE: For now, we're going to use warning level because controllers should never vanish
+		###       unless one failed. If that is the case, the admin already knows, but this will let
+		###       other notification targets know that the change has happened.
+		$an->data->{sys}{alert_sort}++; 
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	"$THIS_FILE",
+			alert_sort		=>	$an->data->{sys}{alert_sort},
+			alert_header		=>	"TRUE",
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scan_storcli_warning_0008",
+			alert_message_variables	=>	{
+				model			=>	$old_model,
+				serial_number		=>	$old_serial_number,
+			},
+		});
+		
+		my $query = "
+UPDATE 
+    storcli_controllers
+SET 
+    storcli_controller_alarm_state   = 'VANISHED', 
+    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_controller_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid)." 
+;";
+		# Now record the query in the array
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
 	}
 	
 	# Now commit the changes.
@@ -1220,7 +1301,8 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# We store these differently for easier reference.
-		$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{variable}{$storcli_variable_name} = {
+		my $type = $storcli_variable_is_temperature eq "1" ? "temperature" : "variable";
+		$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{$type}{$storcli_variable_name} = {
 			storcli_variable_uuid		=>	$storcli_variable_uuid, 
 			storcli_variable_is_temperature	=>	$storcli_variable_is_temperature, 
 			storcli_variable_value		=>	$storcli_variable_value, 
@@ -1228,13 +1310,13 @@ WHERE
 		
 		# Entries are so long that we log the one per variable.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "sql::storcli_variables::storcli_variable_uuid::source_table::${storcli_variable_source_table}::source_uuid::${storcli_variable_source_uuid}::variable::${storcli_variable_name}::storcli_variable_uuid",           value1 => $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{variable}{$storcli_variable_name}{storcli_variable_uuid}, 
+			name1 => "sql::storcli_variables::storcli_variable_uuid::source_table::${storcli_variable_source_table}::source_uuid::${storcli_variable_source_uuid}::${type}::${storcli_variable_name}::storcli_variable_uuid",           value1 => $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{$type}{$storcli_variable_name}{storcli_variable_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "sql::storcli_variables::storcli_variable_uuid::source_table::${storcli_variable_source_table}::source_uuid::${storcli_variable_source_uuid}::variable::${storcli_variable_name}::storcli_variable_is_temperature", value1 => $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{variable}{$storcli_variable_name}{storcli_variable_is_temperature}, 
+			name1 => "sql::storcli_variables::storcli_variable_uuid::source_table::${storcli_variable_source_table}::source_uuid::${storcli_variable_source_uuid}::${type}::${storcli_variable_name}::storcli_variable_is_temperature", value1 => $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{$type}{$storcli_variable_name}{storcli_variable_is_temperature}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "sql::storcli_variables::storcli_variable_uuid::source_table::${storcli_variable_source_table}::source_uuid::${storcli_variable_source_uuid}::variable::${storcli_variable_name}::storcli_variable_value",          value1 => $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{variable}{$storcli_variable_name}{storcli_variable_value}, 
+			name1 => "sql::storcli_variables::storcli_variable_uuid::source_table::${storcli_variable_source_table}::source_uuid::${storcli_variable_source_uuid}::${type}::${storcli_variable_name}::storcli_variable_value",          value1 => $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{$storcli_variable_source_table}{source_uuid}{$storcli_variable_source_uuid}{$type}{$storcli_variable_name}{storcli_variable_value}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
