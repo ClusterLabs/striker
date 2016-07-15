@@ -1139,8 +1139,9 @@ CREATE TRIGGER trigger_ram_used
 	FOR EACH ROW EXECUTE PROCEDURE history_ram_used();
 
 
--- These are special tables with no history that simply record transient state
--- information. 
+-- ------------------------------------------------------------------------------------------------------- --
+-- These are special tables with no history or tracking UUIDs that simply record transient information.    --
+-- ------------------------------------------------------------------------------------------------------- --
 
 -- This table records the last time a scan ran.
 CREATE TABLE updated (
@@ -1159,7 +1160,6 @@ ALTER TABLE updated OWNER TO #!variable!user!#;
 -- this table is used by agents to record when a warning message was sent. 
 CREATE TABLE alert_sent (
 	alert_sent_host_uuid	uuid				not null,			-- The node associated with this alert
-	alert_sent_id		bigserial			not null,
 	alert_sent_by		text				not null,			-- name of the agent
 	alert_record_locator	text,								-- Optional string used by the agent to identify the source of the alert (ie: UPS serial number)
 	alert_name		text				not null,			-- A free-form name used by the caller to identify this alert.

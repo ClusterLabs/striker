@@ -15,6 +15,8 @@
 # 4   - Got data from the wrong controller.
 # 5   - Unexpecte status when querying adapter
 # 6   - Failed to parse out the controller's serial number.
+# 7   - Failed to match a BBU to a host controller's serial number.
+# 8   - Failed to match a controller's serial number to a controller UUID.
 # 
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
@@ -30,7 +32,7 @@
 # 
 
 # Disable this for now.
-exit(0);
+#exit(0);
 
 # Use my modules.
 use strict;
@@ -219,6 +221,716 @@ sub process_bbus
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_bbus" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Find new, changed and replaced BBUs.
+	$an->data->{sys}{sql} = [];
+	foreach my $bbu_serial_number (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "type", value1 => $type,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Is this a new BBU?
+		my $bbu_uuid = "";
+		my $is_new   = 1;
+		if (exists $an->data->{'scan-storcli'}{bbus}{by_serial}{$bbu_serial_number})
+		{
+			# Yes!
+			$bbu_uuid = $an->data->{'scan-storcli'}{bbus}{by_serial}{$bbu_serial_number};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "bbu_uuid", value1 => $bbu_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# No, this is a new BBU. Create a new UUID for it.
+			$bbu_uuid = $an->Get->uuid();
+			$is_new   = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "bbu_uuid", value1 => $bbu_uuid,
+				name2 => "is_new",   value2 => $is_new,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Add the keys for looking it up by UUID or serial number.
+			$an->data->{'scan-storcli'}{bbus}{by_serial}{$serial_number} = $bbu_uuid;
+			$an->data->{'scan-storcli'}{bbus}{by_uuid}{$bbu_uuid} = $serial_number;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "scan-storcli::bbus::by_serial::$serial_number", value1 => $an->data->{'scan-storcli'}{bbus}{by_serial}{$serial_number},
+				name2 => "scan-storcli::bbus::by_uuid::$bbu_uuid", value2 => $an->data->{'scan-storcli'}{bbus}{by_uuid}{$bbu_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# First up, get the controller serial number and translate that to a controller_uuid.
+		if (not $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number})
+		{
+			# Error!
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0007", message_variables => { serial_number => $bbu_serial_number }, code => 7, file => "$THIS_FILE", line => __LINE__});
+			exit(7);
+		}
+		my $host_controller_serial_number = $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "host_controller_serial_number", value1 => $host_controller_serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (not $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number})
+		{
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 7, file => "$THIS_FILE", line => __LINE__});
+			exit(8);
+		}
+		my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "controller_uuid", value1 => $controller_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# These are the values for the main table. Anything else will go in the variables table.
+		my $new_type               = "";
+		my $new_model              = "";
+		my $new_state              = "";
+		my $new_manufacture_date   = "";
+		my $new_design_capacity    = "";
+		my $new_replacement_needed = "";
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "variable", value1 => $variable,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Store and delete the value
+			if ($variable eq "type")
+			{
+				$new_type = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_type", value1 => $new_type,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "manufacture_name")
+			{
+				$new_model = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_model", value1 => $new_model,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "battery_state")
+			{
+				$new_state = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_model", value1 => $new_model,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "date_of_manufacture")
+			{
+				$new_manufacture_date = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_manufacture_date", value1 => $new_manufacture_date,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "design_capacity")
+			{
+				$new_design_capacity = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_design_capacity", value1 => $new_design_capacity,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "replacement_required")
+			{
+				$new_replacement_needed = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_replacement_needed", value1 => $new_replacement_needed,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+		}
+		
+		# -------------------------------------------------------------------------------------------
+		
+		# Pull out the rest of the variables now. If the BBU is new, all variables will be INSERTed.
+		# If the BBU exists, each variable will be examined and new ones will be INSERTed, existing 
+		# ones will be checked for changes and UPDATEd as needed. If the BBU is NOT new, then 
+		# variables from the old data will be deleted as we go and any not found in the current data
+		# set will be left over. We'll use this to determine variables that have vanished. They will 
+		# not be deleted, but their value will be set to 'VANISHED'.
+		if ($is_new)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "bbu_uuid",               value1 => $bbu_uuid,
+				name2 => "controller_uuid",        value2 => $controller_uuid,
+				name3 => "bbu_serial_number",      value3 => $bbu_serial_number,
+				name4 => "new_type",               value4 => $new_type,
+				name5 => "new_model",              value5 => $new_model,
+				name6 => "new_state",              value6 => $new_state,
+				name7 => "new_design_capacity",    value7 => $new_design_capacity,
+				name8 => "new_manufacture_date",   value8 => $new_manufacture_date,
+				name9 => "new_replacement_needed", value9 => $new_replacement_needed,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
+			# Send an alert telling the user that we've found a new controller.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_sort		=>	$an->data->{sys}{alert_sort},	
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scan_storcli_note_0001",
+				alert_message_variables	=>	{
+					on_controller		=>	$host_controller_serial_number,
+					serial_number		=>	$serial_number,
+					type			=>	$new_type, 
+					model			=>	$new_model, 
+					'state'			=>	$new_state, 
+					design_capacity		=>	$new_design_capacity, 
+					manufacture_date	=>	$new_manufacture_date, 
+					replacement_needed	=>	$new_replacement_needed, 
+				},
+			});
+			
+			# INSERT
+			my $query = "
+INSERT INTO 
+    public.storcli_bbus
+(
+    storcli_bbu_uuid, 
+    storcli_bbu_host_uuid, 
+    storcli_bbu_controller_uuid, 
+    storcli_bbu_serial_number, 
+    storcli_bbu_type, 
+    storcli_bbu_model, 
+    storcli_bbu_state, 
+    storcli_bbu_design_capacity, 
+    storcli_bbu_manufacture_date, 
+    storcli_bbu_replacement_needed, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($bbu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bbu_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_design_capacity).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_manufacture_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+			# Now record the query in the array
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+
+			# Process the rest of the variables and temperatures now. 
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}})
+				{
+					my $value       = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable};
+					my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "variable",    value1 => $variable,
+						name2 => "value",       value2 => $value,
+						name3 => "temperature", value3 => $temperature,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Send an alert telling the user that we've found a new controller.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	'FALSE',
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_storcli_note_0002",
+						alert_message_variables	=>	{
+							name			=>	$variable,
+							value			=>	$value,
+						},
+					});
+					
+					# INSERT
+					my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_bbus', 
+    ".$an->data->{sys}{use_db_fh}->quote($bbu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
+			}
+		}
+		else
+		{
+			### NOTE: The serial number should never change (a changed SN/BBU should be picked up
+			###       as a new BBU), but we check/update just to be safe.
+			# Look for changes.
+			my $main_table_changed     = 0;
+			my $old_bbu_serial_number  = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_serial_number};
+			my $old_controller_uuid    = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_controller_uuid};
+			my $old_type               = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_type};
+			my $old_model              = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_model};
+			my $old_state              = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_state};
+			my $old_design_capacity    = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_design_capacity};
+			my $old_manufacture_date   = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_manufacture_date};
+			my $old_replacement_needed = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_replacement_needed};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
+				name1  => "bbu_serial_number",      value1  => $bbu_serial_number,
+				name2  => "old_bbu_serial_number",  value2  => $old_bbu_serial_number,
+				name3  => "controller_uuid",        value3  => $controller_uuid,
+				name4  => "old_controller_uuid",    value4  => $old_controller_uuid,
+				name5  => "new_type",               value5  => $new_type,
+				name6  => "old_type",               value6  => $old_type,
+				name7  => "new_model",              value7  => $new_model,
+				name8  => "old_model",              value8  => $old_model,
+				name9  => "new_state",              value9  => $new_state,
+				name10 => "old_state",              value10 => $old_state,
+				name11 => "new_design_capacity",    value11 => $new_design_capacity,
+				name12 => "old_design_capacity",    value12 => $old_design_capacity,
+				name13 => "new_manufacture_date",   value13 => $new_manufacture_date,
+				name14 => "old_manufacture_date",   value14 => $old_manufacture_date,
+				name15 => "new_replacement_needed", value15 => $new_replacement_needed,
+				name16 => "old_replacement_needed", value16 => $old_replacement_needed,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($bbu_serial_number      ne $old_bbu_serial_number) or 
+			    ($controller_uuid        ne $old_controller_uuid)   or 
+			    ($new_type               ne $old_type)              or 
+			    ($new_model              ne $old_model)             or 
+			    ($new_state              ne $old_state)             or 
+			    ($new_design_capacity    ne $old_design_capacity)   or
+			    ($new_manufacture_date   ne $old_manufacture_date)  or 
+			    ($new_replacement_needed ne $old_replacement_needed))
+			{
+				### NOTE: Left off here...
+				# Send a warning level alert because the most likely change is 'state' or 
+				# 'replacement_needed'.
+				my $title_key   = "an_alert_title_0004";
+				my $message_key = "scan_storcli_warning_0002";
+				if ($new_state ne $old_state)
+				{
+					if ($old_state eq "VANISHED")
+					{
+						# BBU has returned.
+						$message_key = "scan_storcli_warning_0009";
+					}
+					### TODO: Verify this is the expected string on BBUs.
+					if ($new_state =~ /off/i)
+					{
+						$title_key = "an_alert_title_0004";
+					}
+				}
+				$an->data->{sys}{alert_sort}++; 
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	"$THIS_FILE",
+					alert_sort		=>	$an->data->{sys}{alert_sort},
+					alert_header		=>	'FALSE',
+					alert_title_key		=>	$title_key,
+					alert_message_key	=>	$message_key,
+					alert_message_variables	=>	{
+						new_serial_number	=>	$serial_number,
+						old_serial_number	=>	$old_serial_number,
+						new_model		=>	$new_model,
+						old_model		=>	$old_model,
+						new_alarm_state		=>	$new_alarm_state,
+						old_alarm_state		=>	$old_alarm_state,
+						new_cache_size		=>	$new_cache_size,
+						old_cache_size		=>	$old_cache_size,
+					},
+				});
+				$main_table_changed = 1;
+				
+				my $query = "
+UPDATE 
+    storcli_controllers
+SET 
+    storcli_controller_serial_number = ".$an->data->{sys}{use_db_fh}->quote($serial_number).", 
+    storcli_controller_model         = ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
+    storcli_controller_alarm_state   = ".$an->data->{sys}{use_db_fh}->quote($new_alarm_state).", 
+    storcli_controller_cache_size    = ".$an->data->{sys}{use_db_fh}->quote($new_cache_size).", 
+    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_controller_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid)." 
+;";
+
+				# Now record the query in the array
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+			
+			### Process the rest of the variables now. 
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
+				{
+					# Being in the 'variable' hash, 'is_temperature' is 'FALSE'.
+					my $new_variable_value = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable};
+					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "variable",    value1 => $variable,
+						name2 => "temperature", value2 => $temperature,
+					}, file => $THIS_FILE, line => __LINE__});
+					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid})
+					{
+						# Look for changes
+						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_value};
+						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "new_variable_value", value1 => $new_variable_value,
+							name2 => "old_variable_value", value2 => $old_variable_value,
+							name3 => "variable_uuid",      value3 => $variable_uuid,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# Delete it so that we know it has been processed.
+						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable};
+						
+						if (($new_variable_value ne $old_variable_value))
+						{
+							# Changed! If the old value was 'VANISHED', then a 
+							# sensor or variable returned. Otherwise, for now, we
+							# treat everything as 'warning' and step down 
+							# explicitely anything not of concern that proves 
+							# noisey later (better safe than sorry).
+							$an->data->{sys}{alert_sort}++; 
+							
+							my $message_key = "scan_storcli_warning_0003";
+							if ($old_variable_value eq "VANISHED")
+							{
+								$message_key = "scan_storcli_warning_0006";
+							}
+							$an->Alert->register_alert({
+								alert_level		=>	"warning", 
+								alert_agent_name	=>	"$THIS_FILE",
+								alert_sort		=>	$an->data->{sys}{alert_sort},
+								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+								alert_title_key		=>	"an_alert_title_0004",
+								alert_message_key	=>	$message_key,
+								alert_message_variables	=>	{
+									controller		=>	$serial_number,
+									name			=>	$variable,
+									old_value		=>	$old_variable_value,
+									new_value		=>	$new_variable_value,
+								},
+							});
+							
+							my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "query", value1 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{sys}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# New variable, record it. This is a 'warning' level as 
+						# variables aren't expected to spawn into existence.
+						$an->data->{sys}{alert_sort}++; 
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	"$THIS_FILE",
+							alert_sort		=>	$an->data->{sys}{alert_sort},
+							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_storcli_warning_0004",
+							alert_message_variables	=>	{
+								name			=>	$variable,
+								value			=>	$new_variable_value,
+							},
+						});
+						
+						# INSERT
+						my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_controllers', 
+    ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{sys}{sql}}, $query;
+					}
+				}
+			}
+			
+			# Now look for any variables left from the previous scan that we didn't match up (and
+			# delete) this pass.
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}})
+				{
+					# This variable has vanished
+					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_value};
+					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_variable_value", value1 => $old_variable_value,
+						name2 => "variable_uuid",      value2 => $variable_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Delete it so that we know it has been processed.
+					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable};
+					
+					# If the old value is already 'VANISHED', ignore it.
+					next if $old_variable_value eq "VANISHED";
+					
+					### NOTE: For now, we're going to use warning level because variables
+					###       shouldn't vanish, but under an-cm, it did happen for 
+					###       reasons that we never figured out. So later, we may drop 
+					###       the alert level in some cases.
+					# Still here? Alert and UPDATE.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	"$THIS_FILE",
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_storcli_warning_0007",
+						alert_message_variables	=>	{
+							controller		=>	$serial_number,
+							name			=>	$variable,
+						},
+					});
+					
+					my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = 'VANISHED', 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
+			}
+		}
+		
+		# Delete the controller from the last scan so that we can find controllers that have been 
+		# removed.
+		if (exists $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid})
+		{
+			delete $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid};
+		}
+	}
+	
+	# See if any controllers vanished.
+	foreach my $controller_uuid (keys %{$an->data->{sql}{storcli_controllers}{storcli_controller_uuid}})
+	{
+		# Controller vanished!
+		my $old_serial_number = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_serial_number};
+		my $old_model         = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_model};
+		my $old_alarm_state   = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_alarm_state};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "controller_uuid",   value1 => $controller_uuid,
+			name2 => "old_serial_number", value2 => $old_serial_number,
+			name3 => "old_model",         value3 => $old_model,
+			name4 => "old_alarm_state",   value4 => $old_alarm_state,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Delete it so that we know it has been processed.
+		delete $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid};
+		
+		# If the old alarm state is already 'VANISHED', ignore it.
+		next if $old_alarm_state eq "VANISHED";
+		
+		# Still here? Alert and UPDATE.
+		### NOTE: For now, we're going to use warning level because controllers should never vanish
+		###       unless one failed. If that is the case, the admin already knows, but this will let
+		###       other notification targets know that the change has happened.
+		$an->data->{sys}{alert_sort}++; 
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	"$THIS_FILE",
+			alert_sort		=>	$an->data->{sys}{alert_sort},
+			alert_header		=>	"TRUE",
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scan_storcli_warning_0008",
+			alert_message_variables	=>	{
+				model			=>	$old_model,
+				serial_number		=>	$old_serial_number,
+			},
+		});
+		
+		my $query = "
+UPDATE 
+    storcli_controllers
+SET 
+    storcli_controller_alarm_state   = 'VANISHED', 
+    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_controller_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid)." 
+;";
+		# Now record the query in the array
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+	}
+	
+	# Now commit the changes.
+	commit_sql($an);
+
+=cut
+
+		$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable} = $value;
+
+		$an->data->{'scan-storcli'}{bbus}{by_uuid}{$storcli_bbu_uuid}            = $storcli_bbu_serial_number;
+		$an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid} = {
+			storcli_bbu_controller_uuid	=>	$storcli_bbu_controller_uuid, 
+			storcli_bbu_serial_number	=>	$storcli_bbu_serial_number,
+			storcli_bbu_type		=>	$storcli_bbu_type, 
+			storcli_bbu_model		=>	$storcli_bbu_model, 
+			storcli_bbu_state		=>	$storcli_bbu_state, 
+			storcli_bbu_manufacture_date	=>	$storcli_bbu_manufacture_date, 
+			storcli_bbu_design_capacity	=>	$storcli_bbu_design_capacity, 
+			storcli_bbu_replacement_needed	=>	$storcli_bbu_replacement_needed, 
+		};
+
+		<key name="absolute_state_of_charge">Absolute State Of Charge (Percent)</key>
+		<key name="app_data">Application Data</key>
+		<key name="auto_learn_mode">Automatic Learning Mode</key>
+		<key name="auto_learn_period">Automatic Learning Interval</key>
+		<key name="average_time_to_empty">Average Time To Empty</key>
+		<key name="average_time_to_full">Average Time To Full</key>
+		<key name="battery_backup_charge_time">Battery Backup Charge (Hold-Up) Time</key>
+		<key name="battery_fru">Battery Field Replaceable Unit (FRU) Number</key>
+		<key name="battery_pack_missing">Battery Missing?</key>
+		<key name="battery_state">Battery State</key>
+		<key name="cache_offload_premium_feature_required">"Cache Offload" Premium Feature Required?</key>
+		<key name="charger_system_ctrl">Charger System Controller</key>
+		<key name="charger_system_state">Charger System State</key>
+		<key name="charging_current">Charging Current</key>
+		<key name="charging_status">Charging Status</key>
+		<key name="charging_terminated">Charging Terminated?</key>
+		<key name="current">Current</key>
+		<key name="cycle_count">Charge/Discharge Cycle Count</key>
+		<key name="date_of_manufacture">Date Manufactured</key>
+		<key name="design_capacity">Design Capacity</key>
+		<key name="design_voltage">Design Voltage</key>
+		<key name="device_chemistry">Battery Chemistry</key>
+		<key name="device_name">Device Name</key>
+		<key name="discharging">Discharging?</key>
+		<key name="full_charge_capacity">Full Charge Capacity</key>
+		<key name="fully_charged">Fully Charged?</key>
+		<key name="fully_discharged">Fully Discharged?</key>
+		<key name="i2c_errors_detected">i2c Errors Detected?</key>
+		<key name="initialized">Initialized?</key>
+		<key name="learn_cycle_active">Learn Cycle Active?</key>
+		<key name="learn_cycle_requested">Learn Cycle Requested?</key>
+		<key name="learn_cycle_status">Learn Cycle Status</key>
+		<key name="learn_cycle_timeout">Learn Cycle Timeout?</key>
+		<key name="learn_delay_interval">Learn Cycle Delay Interval</key>
+		<key name="manufacture_name">Manufacturer Model Name</key>
+		<key name="max_error">Maximum Errors</key>
+		<key name="module_microcode_update_required">Module Microcode Update Required?</key>
+		<key name="next_learn_time">Next Scheduled Learn Cycle</key>
+		<key name="no_space_to_cache_offload">No Space To Cache Offload?</key>
+		<key name="over_charged">Over Charged?</key>	<!-- Warning -->
+		<key name="over_temperature">Over Temperature?</key>	<!-- Warning -->
+		<key name="pack_is_about_to_fail_and_should_be_replaced">Battery Unit Is About To Fail?</key>	<!-- Warning -->
+		<key name="pack_stat_configuration">Battery Unit Statistics Configuration</key>
+		<key name="periodic_learn_required">Learn Cycle Required?</key>
+		<key name="relative_state_of_charge">Relative State Of Charge</key>
+		<key name="remaining_capacity">Remaining Capacity</key>
+		<key name="remaining_capacity_alarm">Remaining Capacity Alarm</key>
+		<key name="remaining_capacity_low">Remaining Capacity Low?</key>	<!-- Warning -->
+		<key name="remaining_time_alarm_status">Remaining Time Alarm?</key>
+		<key name="remaining_time_alarm">Remainin Time Alarm Threshold</key>
+		<key name="replacement_required">Replacement Required?</key>	<!-- Warning -->
+		<key name="run_time_to_empty">Runtime To Empty</key>
+		<key name="specification_info">Specification Information</key>
+		<key name="temperature_status">Temperature Status</key>	<!-- Warning -->
+		<key name="terminate_discharge_alarm">Terminate Discharge Alarm?</key>
+		<key name="transparent_learn">Transparent Learn</key>
+		<key name="type">Battery Backup Unit Type</key>
+		<key name="voltage">Voltage Status</key>
+
+};
+=cut
+		
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "type", value1 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
+			{
+				my $old_value = $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "old_value", value1 => $old_value,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
 	return(0);
 }
 
@@ -259,14 +971,6 @@ sub process_controllers
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Make sure we catch removed controllers...
-# 	$an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid} = {
-# 		storcli_controller_serial_number	=>	$storcli_controller_serial_number, 
-# 		storcli_controller_model		=>	$storcli_controller_model, 
-# 		storcli_controller_alarm_state		=>	$storcli_controller_alarm_state, 
-# 		storcli_controller_cache_size		=>	$storcli_controller_cache_size, 
-# 	};
-	
 	# Look for new, changed or deleted controllers.
 	$an->data->{sys}{sql} = [];
 	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
@@ -279,7 +983,6 @@ sub process_controllers
 		# Is this controller in the database yet?
 		my $controller_uuid = "";
 		my $is_new          = 0;
-		my $changes         = 0;
 		if ($an->data->{'scan-storcli'}{controllers}{by_serial}{$serial_number})
 		{
 			# Yes!
@@ -312,37 +1015,34 @@ sub process_controllers
 		my $new_model       = "";
 		my $new_alarm_state = "";
 		my $new_cache_size  = "";
-		my $source_table    = "storcli_controllers";
-		my $source_uuid     = $controller_uuid;
-		my $is_temperature  = "FALSE";
-		foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{variable}})
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{variable}})
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "key", value1 => $key,
+				name1 => "variable", value1 => $variable,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($key eq "model")
+			if ($variable eq "model")
 			{
 				# Store and delete the value
-				$new_model = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+				$new_model = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$variable};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_model", value1 => $new_model,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
-			elsif ($key eq "alarm_state")
+			elsif ($variable eq "alarm_state")
 			{
 				# Store and delete the value
-				$new_alarm_state = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+				$new_alarm_state = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$variable};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_alarm_state", value1 => $new_alarm_state,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
-			elsif ($key eq "on_board_memory_size")
+			elsif ($variable eq "on_board_memory_size")
 			{
 				# Store and delete the value
-				$new_cache_size = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$key};
+				$new_cache_size = delete $an->data->{controller}{serial_number}{$serial_number}{variable}{$variable};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_cache_size", value1 => $new_cache_size,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -414,12 +1114,12 @@ INSERT INTO
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
 				{
-					my $value       = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$key};
+					my $value       = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable};
 					my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-						name1 => "key",         value1 => $key,
+						name1 => "variable",    value1 => $variable,
 						name2 => "value",       value2 => $value,
 						name3 => "temperature", value3 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -434,7 +1134,7 @@ INSERT INTO
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_storcli_note_0002",
 						alert_message_variables	=>	{
-							name			=>	$key,
+							name			=>	$variable,
 							value			=>	$value,
 						},
 					});
@@ -458,7 +1158,7 @@ INSERT INTO
     'storcli_controllers', 
     ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
-    ".$an->data->{sys}{use_db_fh}->quote($key).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
     ".$an->data->{sys}{use_db_fh}->quote($value).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
@@ -561,20 +1261,20 @@ AND
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $key (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
 				{
 					# Being in the 'variable' hash, 'is_temperature' is 'FALSE'.
-					my $new_variable_value = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$key};
+					my $new_variable_value = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable};
 					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "key",         value1 => $key,
+						name1 => "variable",    value1 => $variable,
 						name2 => "temperature", value2 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
-					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_uuid})
+					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid})
 					{
 						# Look for changes
-						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_value};
-						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_uuid};
+						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_value};
+						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid};
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 							name1 => "new_variable_value", value1 => $new_variable_value,
 							name2 => "old_variable_value", value2 => $old_variable_value,
@@ -582,7 +1282,7 @@ AND
 						}, file => $THIS_FILE, line => __LINE__});
 						
 						# Delete it so that we know it has been processed.
-						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key};
+						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable};
 						
 						if (($new_variable_value ne $old_variable_value))
 						{
@@ -607,7 +1307,7 @@ AND
 								alert_message_key	=>	$message_key,
 								alert_message_variables	=>	{
 									controller		=>	$serial_number,
-									name			=>	$key,
+									name			=>	$variable,
 									old_value		=>	$old_variable_value,
 									new_value		=>	$new_variable_value,
 								},
@@ -642,7 +1342,7 @@ WHERE
 							alert_title_key		=>	"an_alert_title_0003",
 							alert_message_key	=>	"scan_storcli_warning_0004",
 							alert_message_variables	=>	{
-								name			=>	$key,
+								name			=>	$variable,
 								value			=>	$new_variable_value,
 							},
 						});
@@ -666,7 +1366,7 @@ INSERT INTO
     'storcli_controllers', 
     ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
-    ".$an->data->{sys}{use_db_fh}->quote($key).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
@@ -686,18 +1386,18 @@ INSERT INTO
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $key (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}})
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}})
 				{
 					# This variable has vanished
-					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_value};
-					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key}{storcli_variable_uuid};
+					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_value};
+					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid};
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_variable_value", value1 => $old_variable_value,
 						name2 => "variable_uuid",      value2 => $variable_uuid,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Delete it so that we know it has been processed.
-					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$key};
+					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable};
 					
 					# If the old value is already 'VANISHED', ignore it.
 					next if $old_variable_value eq "VANISHED";
@@ -717,7 +1417,7 @@ INSERT INTO
 						alert_message_key	=>	"scan_storcli_warning_0007",
 						alert_message_variables	=>	{
 							controller		=>	$serial_number,
-							name			=>	$key,
+							name			=>	$variable,
 						},
 					});
 					
@@ -988,8 +1688,8 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Store the information about this BBU
-		$an->data->{'scan-storcli'}{bbus}{by_serial}{$storcli_bbu_serial_number} = $storcli_bbu_controller_uuid;
-		$an->data->{'scan-storcli'}{bbus}{by_uuid}{$storcli_bbu_controller_uuid} = $storcli_bbu_serial_number;
+		$an->data->{'scan-storcli'}{bbus}{by_serial}{$storcli_bbu_serial_number} = $storcli_bbu_uuid;
+		$an->data->{'scan-storcli'}{bbus}{by_uuid}{$storcli_bbu_uuid}            = $storcli_bbu_serial_number;
 		$an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid} = {
 			storcli_bbu_controller_uuid	=>	$storcli_bbu_controller_uuid, 
 			storcli_bbu_serial_number	=>	$storcli_bbu_serial_number,
@@ -4188,123 +4888,123 @@ sub process_vg_pd_list_data
 		### NOTE: We don't use a function for this because the glossary for the block of data is 
 		###       specific for the table above (it would appear).
 		# Translate the weird short form to useable strings
-		foreach my $key (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
 		{
-			my $value = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key};
+			my $value = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => ">> virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+				name1 => ">> virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($value =~ /^DHS$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Dedicated Hot Spare";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Dedicated Hot Spare";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UGood$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured Good";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unconfigured Good";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^GHS$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Global Hotspare";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Global Hotspare";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UBad$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured Bad";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unconfigured Bad";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^Onln$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Online";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Online";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^Offln$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Offline";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Offline";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^U$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Spun Up";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Spun Up";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^D$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Spun Down";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Spun Down";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^T$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Transition";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Transition";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^F$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Foreign";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Foreign";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UGUnsp$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unsupported";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unsupported";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UGShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Unconfigured shielded";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unconfigured shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^HSPShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Hotspare shielded";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Hotspare shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^CFShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Configured shielded";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Configured shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^Cpybck$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Copyback";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Copyback";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^CBShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key} = "Copyback Shielded";
+				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Copyback Shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$key}, 
+					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -4436,116 +5136,116 @@ sub process_vg_overview_data
 	### NOTE: We don't use a function for this because the glossary for the block of data is specific for
 	###       the table above (it would appear).
 	# Translate the weird short form to useable strings
-	foreach my $key (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}})
+	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => ">> virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+			name1 => ">> virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} eq "-")
+		if ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} eq "-")
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "No";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "No";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^Cac$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^Cac$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "CacheCade";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "CacheCade";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^Rec$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^Rec$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Recovery";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Recovery";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^OfLn$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^OfLn$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "OffLine";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "OffLine";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^Pdgd$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^Pdgd$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Partially Degraded";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Partially Degraded";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^dgrd$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^dgrd$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Degraded";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Degraded";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^Optl$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^Optl$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Optimal";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Optimal";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^RO$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^RO$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Read Only";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Read Only";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^RW$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^RW$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Read Write";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Read Write";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^HD$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^HD$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Hidden";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Hidden";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^TRANS$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^TRANS$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Transport Ready";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Transport Ready";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^B$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^B$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Blocked";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Blocked";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^Consist$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^Consist$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Consistent";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Consistent";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} =~ /^sCC$/i)
+		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^sCC$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key} = "Scheduled Check Consistency";
+			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Scheduled Check Consistency";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$key", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key}, 
+				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Because they hate programmers, the cache is a combination of a few of the 
 		# above strings.
-		if ($key eq "cache")
+		if ($variable eq "cache")
 		{
-			my $cache = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$key};
+			my $cache = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cache", value1 => $cache, 
 			}, file => $THIS_FILE, line => __LINE__});
