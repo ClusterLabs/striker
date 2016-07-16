@@ -61,6 +61,31 @@ Other detected variables:
 - Cache Size: .. [#!variable!new_say_cache_size!#]
 - Alarm State: . [#!variable!new_alarm_state!#]
 </key>
+		<key name="scan_storcli_warning_0010">The RAID controller's Battery Backup Unit (BBU) properties have changed:
+- On Controller: .... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
+- Model: ............ [#!variable!old_model!#] -> [#!variable!new_model!#]
+- Serial Number: .... [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+- Type: ............. [#!variable!old_type!#] -> [#!variable!new_type!#]
+- State: ............ [#!variable!old_state!#] -> [#!variable!new_state!#]
+- Design Capacity: .. [#!variable!old_design_capacity!#] -> [#!variable!new_design_capacity!#]
+- Manufacture Date: . [#!variable!old_manufacture_date!#] -> [#!variable!new_manufacture_date!#] (yyyy/mm/dd)
+- Replacement Needed? [#!variable!old_replacement_needed!#] -> [#!variable!new_replacement_needed!#]
+</key>
+		<key name="scan_storcli_warning_0011">The RAID controller's Battery Backup Unit (BBU) has returned:
+- On Controller: .... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
+- Model: ............ [#!variable!old_model!#] -> [#!variable!new_model!#]
+- Serial Number: .... [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+- Type: ............. [#!variable!old_type!#] -> [#!variable!new_type!#]
+- State: ............ [#!variable!old_state!#] -> [#!variable!new_state!#]
+- Design Capacity: .. [#!variable!old_design_capacity!#] -> [#!variable!new_design_capacity!#]
+- Manufacture Date: . [#!variable!old_manufacture_date!#] -> [#!variable!new_manufacture_date!#] (yyyy/mm/dd)
+- Replacement Needed? [#!variable!old_replacement_needed!#] -> [#!variable!new_replacement_needed!#]
+</key>
+		<key name="scan_storcli_warning_0012">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0013">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0014">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
+		<key name="scan_storcli_warning_0015">- The BBU: [#!variable!serial_number!#]; New variable found; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0016">The BBU: [#!variable!bbu_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		
 		<!-- Errors -->
 		<key name="scan_storcli_error_0001">The 'storcli64' program was not found at: [#!variable!path!#], exiting.</key>

@@ -390,7 +390,7 @@ sub process_bbus
 			# INSERT
 			my $query = "
 INSERT INTO 
-    public.storcli_bbus
+    storcli_bbus
 (
     storcli_bbu_uuid, 
     storcli_bbu_host_uuid, 
@@ -414,7 +414,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($new_design_capacity).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_manufacture_date).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 			# Now record the query in the array
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -526,20 +526,27 @@ INSERT INTO
 			    ($new_manufacture_date   ne $old_manufacture_date)  or 
 			    ($new_replacement_needed ne $old_replacement_needed))
 			{
-				### NOTE: Left off here...
+				# I need the serial numbers for the controller UUIDs.
+				my $new_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid};
+				my $old_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_controller_serial_number", value1 => $new_controller_serial_number,
+					name2 => "old_controller_serial_number", value2 => $old_controller_serial_number,
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				# Send a warning level alert because the most likely change is 'state' or 
 				# 'replacement_needed'.
 				my $title_key   = "an_alert_title_0004";
-				my $message_key = "scan_storcli_warning_0002";
+				my $message_key = "scan_storcli_warning_0010";
 				if ($new_state ne $old_state)
 				{
 					if ($old_state eq "VANISHED")
 					{
 						# BBU has returned.
-						$message_key = "scan_storcli_warning_0009";
+						$message_key = "scan_storcli_warning_0011";
 					}
 					### TODO: Verify this is the expected string on BBUs.
-					if ($new_state =~ /off/i)
+					if ($new_state =~ /optimal/i)
 					{
 						$title_key = "an_alert_title_0004";
 					}
@@ -553,31 +560,41 @@ INSERT INTO
 					alert_title_key		=>	$title_key,
 					alert_message_key	=>	$message_key,
 					alert_message_variables	=>	{
-						new_serial_number	=>	$serial_number,
-						old_serial_number	=>	$old_serial_number,
+						new_on_controller	=>	$new_controller_serial_number, 
+						old_on_controller	=>	$old_controller_serial_number, 
 						new_model		=>	$new_model,
 						old_model		=>	$old_model,
-						new_alarm_state		=>	$new_alarm_state,
-						old_alarm_state		=>	$old_alarm_state,
-						new_cache_size		=>	$new_cache_size,
-						old_cache_size		=>	$old_cache_size,
+						new_serial_number	=>	$bbu_serial_number,
+						old_serial_number	=>	$old_bbu_serial_number,
+						new_type		=>	$new_type, 
+						old_type		=>	$old_type, 
+						new_state		=>	$new_state, 
+						old_state		=>	$old_state, 
+						new_design_capacity	=>	$new_design_capacity, 
+						old_design_capacity	=>	$old_design_capacity, 
+						new_manufacture_date	=>	$new_manufacture_date, 
+						old_manufacture_date	=>	$old_manufacture_date, 
+						new_replacement_needed	=>	$new_replacement_needed, 
+						old_replacement_needed	=>	$old_replacement_needed, 
 					},
 				});
 				$main_table_changed = 1;
 				
 				my $query = "
 UPDATE 
-    storcli_controllers
-SET 
-    storcli_controller_serial_number = ".$an->data->{sys}{use_db_fh}->quote($serial_number).", 
-    storcli_controller_model         = ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
-    storcli_controller_alarm_state   = ".$an->data->{sys}{use_db_fh}->quote($new_alarm_state).", 
-    storcli_controller_cache_size    = ".$an->data->{sys}{use_db_fh}->quote($new_cache_size).", 
-    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    storcli_bbus
+SET
+    storcli_bbu_controller_uuid    = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    storcli_bbu_serial_number      = ".$an->data->{sys}{use_db_fh}->quote($old_controller_uuid).", 
+    storcli_bbu_type               = ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
+    storcli_bbu_model              = ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
+    storcli_bbu_state              = ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
+    storcli_bbu_manufacture_date   = ".$an->data->{sys}{use_db_fh}->quote($new_manufacture_date).", 
+    storcli_bbu_design_capacity    = ".$an->data->{sys}{use_db_fh}->quote($new_design_capacity).", 
+    storcli_bbu_replacement_needed = ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
+    modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    storcli_controller_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid)." 
+    storcli_bbu_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid)." 
 ;";
 
 				# Now record the query in the array
@@ -593,20 +610,19 @@ AND
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}})
 				{
-					# Being in the 'variable' hash, 'is_temperature' is 'FALSE'.
-					my $new_variable_value = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable};
+					my $new_variable_value = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable};
 					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "variable",    value1 => $variable,
 						name2 => "temperature", value2 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
-					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid})
+					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$storcli_bbu_uuid}{$type}{$variable}{storcli_variable_uuid})
 					{
 						# Look for changes
-						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_value};
-						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid};
+						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$storcli_bbu_uuid}{$type}{$variable}{storcli_variable_value};
+						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$storcli_bbu_uuid}{$type}{$variable}{storcli_variable_uuid};
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 							name1 => "new_variable_value", value1 => $new_variable_value,
 							name2 => "old_variable_value", value2 => $old_variable_value,
@@ -614,7 +630,7 @@ AND
 						}, file => $THIS_FILE, line => __LINE__});
 						
 						# Delete it so that we know it has been processed.
-						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable};
+						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$storcli_bbu_uuid}{$type}{$variable};
 						
 						if (($new_variable_value ne $old_variable_value))
 						{
@@ -625,10 +641,10 @@ AND
 							# noisey later (better safe than sorry).
 							$an->data->{sys}{alert_sort}++; 
 							
-							my $message_key = "scan_storcli_warning_0003";
+							my $message_key = "scan_storcli_warning_0012";
 							if ($old_variable_value eq "VANISHED")
 							{
-								$message_key = "scan_storcli_warning_0006";
+								$message_key = "scan_storcli_warning_0013";
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	"warning", 
@@ -638,7 +654,7 @@ AND
 								alert_title_key		=>	"an_alert_title_0004",
 								alert_message_key	=>	$message_key,
 								alert_message_variables	=>	{
-									controller		=>	$serial_number,
+									serial_number		=>	$bbu_serial_number,
 									name			=>	$variable,
 									old_value		=>	$old_variable_value,
 									new_value		=>	$new_variable_value,
@@ -672,9 +688,9 @@ WHERE
 							alert_sort		=>	$an->data->{sys}{alert_sort},
 							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 							alert_title_key		=>	"an_alert_title_0003",
-							alert_message_key	=>	"scan_storcli_warning_0004",
+							alert_message_key	=>	"scan_storcli_warning_0015",
 							alert_message_variables	=>	{
-								name			=>	$variable,
+								serial_number		=>	$variable,
 								value			=>	$new_variable_value,
 							},
 						});
@@ -695,8 +711,8 @@ INSERT INTO
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    'storcli_controllers', 
-    ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    'storcli_bbus', 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
     ".$an->data->{sys}{use_db_fh}->quote($variable).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
@@ -718,18 +734,18 @@ INSERT INTO
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}})
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$storcli_bbu_uuid}{$type}})
 				{
 					# This variable has vanished
-					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_value};
-					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid};
+					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$storcli_bbu_uuid}{$type}{$variable}{storcli_variable_value};
+					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$storcli_bbu_uuid}{$type}{$variable}{storcli_variable_uuid};
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_variable_value", value1 => $old_variable_value,
 						name2 => "variable_uuid",      value2 => $variable_uuid,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Delete it so that we know it has been processed.
-					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable};
+					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$storcli_bbu_uuid}{$type}{$variable};
 					
 					# If the old value is already 'VANISHED', ignore it.
 					next if $old_variable_value eq "VANISHED";
@@ -771,33 +787,34 @@ WHERE
 			}
 		}
 		
-		# Delete the controller from the last scan so that we can find controllers that have been 
-		# removed.
-		if (exists $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid})
+		# Delete the BBU from the last scan so that we can find controllers that have been removed.
+		if (exists $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid})
 		{
-			delete $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid};
+			delete $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid};
 		}
 	}
 	
-	# See if any controllers vanished.
-	foreach my $controller_uuid (keys %{$an->data->{sql}{storcli_controllers}{storcli_controller_uuid}})
+	# See if any BBUs have vanished.
+	foreach my $storcli_bbu_uuid (keys %{$an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}})
 	{
-		# Controller vanished!
-		my $old_serial_number = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_serial_number};
-		my $old_model         = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_model};
-		my $old_alarm_state   = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_alarm_state};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-			name1 => "controller_uuid",   value1 => $controller_uuid,
-			name2 => "old_serial_number", value2 => $old_serial_number,
-			name3 => "old_model",         value3 => $old_model,
-			name4 => "old_alarm_state",   value4 => $old_alarm_state,
+		# BBU vanished!
+		my $old_bbu_serial_number        = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_serial_number};
+		my $old_controller_uuid          = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_controller_uuid};
+		my $old_state                    = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_state};
+		my $old_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "old_bbu_serial_number",        value1 => $old_bbu_serial_number,
+			name2 => "old_controller_uuid",          value2 => $old_controller_uuid,
+			name3 => "old_state",                    value3 => $old_state,
+			name4 => "old_replacement_needed",       value4 => $old_replacement_needed,
+			name5 => "old_controller_serial_number", value5 => $old_controller_serial_number,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Delete it so that we know it has been processed.
-		delete $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid};
+		delete $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid};
 		
 		# If the old alarm state is already 'VANISHED', ignore it.
-		next if $old_alarm_state eq "VANISHED";
+		next if $old_state eq "VANISHED";
 		
 		# Still here? Alert and UPDATE.
 		### NOTE: For now, we're going to use warning level because controllers should never vanish
@@ -810,23 +827,21 @@ WHERE
 			alert_sort		=>	$an->data->{sys}{alert_sort},
 			alert_header		=>	"TRUE",
 			alert_title_key		=>	"an_alert_title_0004",
-			alert_message_key	=>	"scan_storcli_warning_0008",
+			alert_message_key	=>	"scan_storcli_warning_0016",
 			alert_message_variables	=>	{
-				model			=>	$old_model,
-				serial_number		=>	$old_serial_number,
+				bbu_serial_number	=>	$old_bbu_serial_number, 
+				controller_serial_number =>	$old_controller_serial_number, 
 			},
 		});
 		
 		my $query = "
 UPDATE 
-    storcli_controllers
+    storcli_bbus
 SET 
-    storcli_controller_alarm_state   = 'VANISHED', 
-    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    storcli_bbu_state = 'VANISHED', 
+    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    storcli_controller_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid)." 
+    storcli_bbu_uuid  = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid)." 
 ;";
 		# Now record the query in the array
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -837,99 +852,6 @@ AND
 	
 	# Now commit the changes.
 	commit_sql($an);
-
-=cut
-
-		$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable} = $value;
-
-		$an->data->{'scan-storcli'}{bbus}{by_uuid}{$storcli_bbu_uuid}            = $storcli_bbu_serial_number;
-		$an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid} = {
-			storcli_bbu_controller_uuid	=>	$storcli_bbu_controller_uuid, 
-			storcli_bbu_serial_number	=>	$storcli_bbu_serial_number,
-			storcli_bbu_type		=>	$storcli_bbu_type, 
-			storcli_bbu_model		=>	$storcli_bbu_model, 
-			storcli_bbu_state		=>	$storcli_bbu_state, 
-			storcli_bbu_manufacture_date	=>	$storcli_bbu_manufacture_date, 
-			storcli_bbu_design_capacity	=>	$storcli_bbu_design_capacity, 
-			storcli_bbu_replacement_needed	=>	$storcli_bbu_replacement_needed, 
-		};
-
-		<key name="absolute_state_of_charge">Absolute State Of Charge (Percent)</key>
-		<key name="app_data">Application Data</key>
-		<key name="auto_learn_mode">Automatic Learning Mode</key>
-		<key name="auto_learn_period">Automatic Learning Interval</key>
-		<key name="average_time_to_empty">Average Time To Empty</key>
-		<key name="average_time_to_full">Average Time To Full</key>
-		<key name="battery_backup_charge_time">Battery Backup Charge (Hold-Up) Time</key>
-		<key name="battery_fru">Battery Field Replaceable Unit (FRU) Number</key>
-		<key name="battery_pack_missing">Battery Missing?</key>
-		<key name="battery_state">Battery State</key>
-		<key name="cache_offload_premium_feature_required">"Cache Offload" Premium Feature Required?</key>
-		<key name="charger_system_ctrl">Charger System Controller</key>
-		<key name="charger_system_state">Charger System State</key>
-		<key name="charging_current">Charging Current</key>
-		<key name="charging_status">Charging Status</key>
-		<key name="charging_terminated">Charging Terminated?</key>
-		<key name="current">Current</key>
-		<key name="cycle_count">Charge/Discharge Cycle Count</key>
-		<key name="date_of_manufacture">Date Manufactured</key>
-		<key name="design_capacity">Design Capacity</key>
-		<key name="design_voltage">Design Voltage</key>
-		<key name="device_chemistry">Battery Chemistry</key>
-		<key name="device_name">Device Name</key>
-		<key name="discharging">Discharging?</key>
-		<key name="full_charge_capacity">Full Charge Capacity</key>
-		<key name="fully_charged">Fully Charged?</key>
-		<key name="fully_discharged">Fully Discharged?</key>
-		<key name="i2c_errors_detected">i2c Errors Detected?</key>
-		<key name="initialized">Initialized?</key>
-		<key name="learn_cycle_active">Learn Cycle Active?</key>
-		<key name="learn_cycle_requested">Learn Cycle Requested?</key>
-		<key name="learn_cycle_status">Learn Cycle Status</key>
-		<key name="learn_cycle_timeout">Learn Cycle Timeout?</key>
-		<key name="learn_delay_interval">Learn Cycle Delay Interval</key>
-		<key name="manufacture_name">Manufacturer Model Name</key>
-		<key name="max_error">Maximum Errors</key>
-		<key name="module_microcode_update_required">Module Microcode Update Required?</key>
-		<key name="next_learn_time">Next Scheduled Learn Cycle</key>
-		<key name="no_space_to_cache_offload">No Space To Cache Offload?</key>
-		<key name="over_charged">Over Charged?</key>	<!-- Warning -->
-		<key name="over_temperature">Over Temperature?</key>	<!-- Warning -->
-		<key name="pack_is_about_to_fail_and_should_be_replaced">Battery Unit Is About To Fail?</key>	<!-- Warning -->
-		<key name="pack_stat_configuration">Battery Unit Statistics Configuration</key>
-		<key name="periodic_learn_required">Learn Cycle Required?</key>
-		<key name="relative_state_of_charge">Relative State Of Charge</key>
-		<key name="remaining_capacity">Remaining Capacity</key>
-		<key name="remaining_capacity_alarm">Remaining Capacity Alarm</key>
-		<key name="remaining_capacity_low">Remaining Capacity Low?</key>	<!-- Warning -->
-		<key name="remaining_time_alarm_status">Remaining Time Alarm?</key>
-		<key name="remaining_time_alarm">Remainin Time Alarm Threshold</key>
-		<key name="replacement_required">Replacement Required?</key>	<!-- Warning -->
-		<key name="run_time_to_empty">Runtime To Empty</key>
-		<key name="specification_info">Specification Information</key>
-		<key name="temperature_status">Temperature Status</key>	<!-- Warning -->
-		<key name="terminate_discharge_alarm">Terminate Discharge Alarm?</key>
-		<key name="transparent_learn">Transparent Learn</key>
-		<key name="type">Battery Backup Unit Type</key>
-		<key name="voltage">Voltage Status</key>
-
-};
-=cut
-		
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "type", value1 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
-			{
-				my $old_value = $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "old_value", value1 => $old_value,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
 	
 	return(0);
 }
