@@ -231,7 +231,7 @@ sub process_bbus
 		
 		# Is this a new BBU?
 		my $bbu_uuid = "";
-		my $is_new   = 1;
+		my $is_new   = 0;
 		if (exists $an->data->{'scan-storcli'}{bbus}{by_serial}{$bbu_serial_number})
 		{
 			# Yes!
@@ -428,7 +428,7 @@ INSERT INTO
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}})
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
 				{
 					my $value       = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable};
 					my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
@@ -610,7 +610,7 @@ WHERE
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}})
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
 				{
 					my $new_variable_value = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable};
 					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
@@ -1474,6 +1474,11 @@ WHERE
 		# Store the information about this controllers
 		$an->data->{'scan-storcli'}{controllers}{by_serial}{$storcli_controller_serial_number} = $storcli_controller_uuid;
 		$an->data->{'scan-storcli'}{controllers}{by_uuid}{$storcli_controller_uuid}            = $storcli_controller_serial_number;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "scan-storcli::controllers::by_serial::${storcli_controller_serial_number}", value1 => $an->data->{'scan-storcli'}{controllers}{by_serial}{$storcli_controller_serial_number}, 
+			name2 => "scan-storcli::controllers::by_uuid::${storcli_controller_uuid}",            value2 => $an->data->{'scan-storcli'}{controllers}{by_uuid}{$storcli_controller_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		$an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid} = {
 			storcli_controller_serial_number	=>	$storcli_controller_serial_number, 
 			storcli_controller_model		=>	$storcli_controller_model, 
@@ -1539,6 +1544,11 @@ WHERE
 		# Store the information about this cachevault
 		$an->data->{'scan-storcli'}{cachevaults}{by_serial}{$storcli_cachevault_serial_number} = $storcli_cachevault_uuid;
 		$an->data->{'scan-storcli'}{cachevaults}{by_uuid}{$storcli_cachevault_uuid}            = $storcli_cachevault_serial_number;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "scan-storcli::cachevaults::by_serial::${storcli_cachevault_serial_number}", value1 => $an->data->{'scan-storcli'}{cachevaults}{by_serial}{$storcli_cachevault_serial_number}, 
+			name2 => "scan-storcli::cachevaults::by_uuid::${storcli_cachevault_uuid}",            value2 => $an->data->{'scan-storcli'}{cachevaults}{by_uuid}{$storcli_cachevault_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		$an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid} = {
 			storcli_cachevault_controller_uuid	=>	$storcli_cachevault_controller_uuid, 
 			storcli_cachevault_serial_number	=>	$storcli_cachevault_serial_number, 
@@ -1611,6 +1621,11 @@ WHERE
 		# Store the information about this BBU
 		$an->data->{'scan-storcli'}{bbus}{by_serial}{$storcli_bbu_serial_number} = $storcli_bbu_uuid;
 		$an->data->{'scan-storcli'}{bbus}{by_uuid}{$storcli_bbu_uuid}            = $storcli_bbu_serial_number;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "scan-storcli::bbus::by_serial::${storcli_bbu_serial_number}", value1 => $an->data->{'scan-storcli'}{bbus}{by_serial}{$storcli_bbu_serial_number}, 
+			name2 => "scan-storcli::bbus::by_uuid::${storcli_bbu_uuid}",            value2 => $an->data->{'scan-storcli'}{bbus}{by_uuid}{$storcli_bbu_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		$an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid} = {
 			storcli_bbu_controller_uuid	=>	$storcli_bbu_controller_uuid, 
 			storcli_bbu_serial_number	=>	$storcli_bbu_serial_number,
@@ -1623,13 +1638,13 @@ WHERE
 		};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_controller_uuid",    value1 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_controller_uuid}, 
-			name3 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_serial_number",      value2 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_serial_number}, 
-			name4 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_type",               value3 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_type}, 
-			name5 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_model",              value4 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_model}, 
-			name6 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_state",              value5 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_state}, 
-			name7 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_manufacture_date",   value6 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_manufacture_date}, 
-			name8 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_design_capacity",    value7 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_design_capacity}, 
-			name9 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_replacement_needed", value8 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_replacement_needed}, 
+			name2 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_serial_number",      value2 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_serial_number}, 
+			name3 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_type",               value3 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_type}, 
+			name4 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_model",              value4 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_model}, 
+			name5 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_state",              value5 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_state}, 
+			name6 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_manufacture_date",   value6 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_manufacture_date}, 
+			name7 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_design_capacity",    value7 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_design_capacity}, 
+			name8 => "sql::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::storcli_bbu_replacement_needed", value8 => $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_replacement_needed}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
@@ -5248,7 +5263,7 @@ sub get_bbu_data
 	my $bbu_serial_number = "";
 	my $bbu_data          = [];
 	my $shell_call        = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{bbu_data};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -5268,7 +5283,7 @@ sub get_bbu_data
 		if ($line =~ /^Serial Number\s+(\S.*)?/i)
 		{
 			$bbu_serial_number = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "bbu_serial_number", value1 => $bbu_serial_number, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
@@ -5282,7 +5297,7 @@ sub get_bbu_data
 	
 	# Record the controller the bbu is on.
 	$an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number} = $serial_number;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "bbu::serial_number::${bbu_serial_number}::host_controller_serial_number", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number},
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -5373,9 +5388,16 @@ sub get_bbu_data
 				# They use 'Temperature' twice; once for the temperature and once to show if
 				# it is OK or not. We'll avoid one clobbering the other by renaming the 
 				# status one.
-				if (($variable eq "Temperature") && ($value !~ /\d/))
+				if (($variable eq "Temperature") && ($value !~ /^\d/))
 				{
 					$variable = "Temperature Status";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "variable", value1 => $variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if (($variable eq "Temperature") && ($value =~ /^\d/))
+				{
+					$variable = "BBU Temperature";
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "variable", value1 => $variable, 
 					}, file => $THIS_FILE, line => __LINE__});
