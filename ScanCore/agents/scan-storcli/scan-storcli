@@ -8,15 +8,16 @@
 # https://alteeve.ca
 # 
 # Exit Codes:
-# 0   - Success
-# 1   - storcli64 not installed
-# 2   - storcli64 is installed but it is not executable.
-# 3   - No LSI-based controllers found.
-# 4   - Got data from the wrong controller.
-# 5   - Unexpecte status when querying adapter
-# 6   - Failed to parse out the controller's serial number.
-# 7   - Failed to match a BBU to a host controller's serial number.
-# 8   - Failed to match a controller's serial number to a controller UUID.
+# 0  - Success
+# 1  - storcli64 not installed
+# 2  - storcli64 is installed but it is not executable.
+# 3  - No LSI-based controllers found.
+# 4  - Got data from the wrong controller.
+# 5  - Unexpecte status when querying adapter
+# 6  - Failed to parse out the controller's serial number.
+# 7  - Failed to match a BBU to a host controller's serial number.
+# 8  - Failed to match a controller's serial number to a controller UUID.
+# 9  - Failed to match a Cachevault to a host controller's serial number.
 # 
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
@@ -150,7 +151,7 @@ $an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => "$THIS_FILE", line => __LINE__});
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
 }
 
 print $an->String->get({key => "scan_storcli_message_0001"})."\n";
@@ -216,6 +217,688 @@ sub find_changes
 	return(0);
 }
 
+sub process_cachevaults
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_cachevaults" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Find new, changed and replaced Cachevaults (FBUs).
+	$an->data->{sys}{sql} = [];
+	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cachevault_serial_number", value1 => $cachevault_serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Is this a new Cachevault?
+		my $cachevault_uuid = "";
+		my $is_new          = 0;
+		if (exists $an->data->{'scan-storcli'}{cachevaults}{by_serial}{$cachevault_serial_number})
+		{
+			# Yes!
+			$cachevault_uuid = $an->data->{'scan-storcli'}{cachevaults}{by_serial}{$cachevault_serial_number};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cachevault_uuid", value1 => $cachevault_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# No, this is a new Cachevault. Create a new UUID for it.
+			$cachevault_uuid = $an->Get->uuid();
+			$is_new          = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "cachevault_uuid", value1 => $cachevault_uuid,
+				name2 => "is_new",   value2 => $is_new,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Add the keys for looking it up by UUID or serial number.
+			$an->data->{'scan-storcli'}{cachevaults}{by_serial}{$cachevault_serial_number} = $cachevault_uuid;
+			$an->data->{'scan-storcli'}{cachevaults}{by_uuid}{$cachevault_uuid} = $cachevault_serial_number;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "scan-storcli::cachevaults::by_serial::$cachevault_serial_number", value1 => $an->data->{'scan-storcli'}{cachevaults}{by_serial}{$cachevault_serial_number},
+				name2 => "scan-storcli::cachevaults::by_uuid::$cachevault_uuid", value2 => $an->data->{'scan-storcli'}{cachevaults}{by_uuid}{$cachevault_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# First up, get the controller serial number and translate that to a controller_uuid.
+		if (not $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{host_controller_serial_number})
+		{
+			# Error!
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0009", message_variables => { serial_number => $cachevault_serial_number }, code => 9, file => $THIS_FILE, line => __LINE__});
+			exit(9);
+		}
+		my $host_controller_serial_number = $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{host_controller_serial_number};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "host_controller_serial_number", value1 => $host_controller_serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (not $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number})
+		{
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
+			exit(8);
+		}
+		my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "controller_uuid", value1 => $controller_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# These are the values for the main table. Anything else will go in the variables table.
+		my $new_type               = "";
+		my $new_state              = "";
+		my $new_manufacture_date   = "";
+		my $new_design_capacity    = "";
+		my $new_replacement_needed = "";
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "variable", value1 => $variable,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Store and delete the value
+			if ($variable eq "type")
+			{
+				$new_type = delete $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_type", value1 => $new_type,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "device_name")
+			{
+				$new_model = delete $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_model", value1 => $new_model,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "state")
+			{
+				$new_state = delete $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_model", value1 => $new_model,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "date_of_manufacture")
+			{
+				$new_manufacture_date = delete $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_manufacture_date", value1 => $new_manufacture_date,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "design_capacity")
+			{
+				$new_design_capacity = delete $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_design_capacity", value1 => $new_design_capacity,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "replacement_required")
+			{
+				$new_replacement_needed = delete $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_replacement_needed", value1 => $new_replacement_needed,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+		}
+		
+		# Pull out the rest of the variables now. If the Cachevault is new, all variables will be 
+		# INSERTed. If the Cachevault exists, each variable will be examined and new ones will be 
+		# INSERTed, existing ones will be checked for changes and UPDATEd as needed. If the 
+		# Cachevault is NOT new, then variables from the old data will be deleted as we go and any 
+		# not found in the current data set will be left over. We'll use this to determine variables
+		# that have vanished. They will not be deleted, but their value will be set to 'VANISHED'.
+		if ($is_new)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "cachevault_uuid",               value1 => $cachevault_uuid,
+				name2 => "controller_uuid",        value2 => $controller_uuid,
+				name3 => "cachevault_serial_number",      value3 => $cachevault_serial_number,
+				name4 => "new_type",               value4 => $new_type,
+				name5 => "new_model",              value5 => $new_model,
+				name6 => "new_state",              value6 => $new_state,
+				name7 => "new_design_capacity",    value7 => $new_design_capacity,
+				name8 => "new_manufacture_date",   value8 => $new_manufacture_date,
+				name9 => "new_replacement_needed", value9 => $new_replacement_needed,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
+			# Send an alert telling the user that we've found a new controller.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_sort		=>	$an->data->{sys}{alert_sort},	
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scan_storcli_note_0001",
+				alert_message_variables	=>	{
+					on_controller		=>	$host_controller_serial_number,
+					serial_number		=>	$cachevault_serial_number,
+					type			=>	$new_type, 
+					model			=>	$new_model, 
+					'state'			=>	$new_state, 
+					design_capacity		=>	$new_design_capacity, 
+					manufacture_date	=>	$new_manufacture_date, 
+					replacement_needed	=>	$new_replacement_needed, 
+				},
+			});
+			
+			# INSERT
+			my $query = "
+INSERT INTO 
+    public.storcli_cachevaults
+(
+    storcli_cachevault_uuid, 
+    storcli_cachevault_host_uuid, 
+    storcli_cachevault_controller_uuid, 
+    storcli_cachevault_serial_number, 
+    storcli_cachevault_type, 
+    storcli_cachevault_model, 
+    storcli_cachevault_state, 
+    storcli_cachevault_design_capacity, 
+    storcli_cachevault_manufacture_date, 
+    storcli_cachevault_replacement_needed, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($cachevault_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($cachevault_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_design_capacity).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_manufacture_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			# Now record the query in the array
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+
+			# Process the rest of the variables and temperatures now. 
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}})
+				{
+					my $value       = delete $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable};
+					my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "variable",    value1 => $variable,
+						name2 => "value",       value2 => $value,
+						name3 => "temperature", value3 => $temperature,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Send an alert telling the user that we've found a new controller.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	'FALSE',
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_storcli_note_0002",
+						alert_message_variables	=>	{
+							name			=>	$variable,
+							value			=>	$value,
+						},
+					});
+					
+					# INSERT
+					my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_cachevaults', 
+    ".$an->data->{sys}{use_db_fh}->quote($cachevault_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
+			}
+		}
+		else
+		{
+		
+=cut
+serial_number: [0000000043113628], type: [temperature]
+18000 - variable - auto_learn_mode ............... : [Transparent]
+18000 - variable - auto_learn_period ............. : [2419200 seconds]
+18000 - variable - cachevault_flash_size ......... : [N/A]
+18000 - variable - capacitance ................... : [100 %]
+18000 - variable - date_of_manufacture ........... : [2013/10/25]
+18000 - variable - design_capacity ............... : [283 J]
+18000 - variable - device_name ................... : [SuperCaP]
+18000 - variable - learn_delay_interval .......... : [0 seconds]
+18000 - variable - manufacture_name .............. : [LSI]
+18000 - variable - module_microcode_update_required: [No]
+18000 - variable - next_learn_time ............... : [2016/07/27, 20:39:52]
+18000 - variable - no_space_to_cache_offload ..... : [No]
+18000 - variable - pack_energy ................... : [306 J]
+18000 - variable - remaining_reserve_space ....... : [93]
+18000 - variable - replacement_required .......... : [No]
+18000 - variable - state ......................... : [Optimal]
+18000 - variable - tmmfru ........................ : [N/A]
+18000 - variable - type .......................... : [SuperCaP]
+18000 - temperature - cachevault_temperature: [34 C]
+=cut
+			### NOTE: The serial number should never change (a changed SN/Cachevault should be 
+			###       picked up as a new Cachevault), but we check/update just to be safe.
+			# Look for changes.
+			my $main_table_changed           = 0;
+			my $old_cachevault_serial_number = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_serial_number};
+			my $old_controller_uuid          = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_controller_uuid};
+			my $old_type                     = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_type};
+			my $old_model                    = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_model};
+			my $old_state                    = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_state};
+			my $old_design_capacity          = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_design_capacity};
+			my $old_manufacture_date         = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_manufacture_date};
+			my $old_replacement_needed       = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_replacement_needed};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
+				name1  => "cachevault_serial_number",     value1  => $cachevault_serial_number,
+				name2  => "old_cachevault_serial_number", value2  => $old_cachevault_serial_number,
+				name3  => "controller_uuid",              value3  => $controller_uuid,
+				name4  => "old_controller_uuid",          value4  => $old_controller_uuid,
+				name5  => "new_type",                     value5  => $new_type,
+				name6  => "old_type",                     value6  => $old_type,
+				name7  => "new_model",                    value7  => $new_model,
+				name8  => "old_model",                    value8  => $old_model,
+				name9  => "new_state",                    value9  => $new_state,
+				name10 => "old_state",                    value10 => $old_state,
+				name11 => "new_design_capacity",          value11 => $new_design_capacity,
+				name12 => "old_design_capacity",          value12 => $old_design_capacity,
+				name13 => "new_manufacture_date",         value13 => $new_manufacture_date,
+				name14 => "old_manufacture_date",         value14 => $old_manufacture_date,
+				name15 => "new_replacement_needed",       value15 => $new_replacement_needed,
+				name16 => "old_replacement_needed",       value16 => $old_replacement_needed,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($cachevault_serial_number ne $old_cachevault_serial_number) or 
+			    ($controller_uuid          ne $old_controller_uuid)          or 
+			    ($new_type                 ne $old_type)                     or 
+			    ($new_model                ne $old_model)                    or 
+			    ($new_state                ne $old_state)                    or 
+			    ($new_design_capacity      ne $old_design_capacity)          or
+			    ($new_manufacture_date     ne $old_manufacture_date)         or 
+			    ($new_replacement_needed   ne $old_replacement_needed))
+			{
+				# I need the serial numbers for the controller UUIDs.
+				my $new_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid};
+				my $old_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_controller_serial_number", value1 => $new_controller_serial_number,
+					name2 => "old_controller_serial_number", value2 => $old_controller_serial_number,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Send a warning level alert because the most likely change is 'state' or 
+				# 'replacement_needed'.
+				my $title_key   = "an_alert_title_0004";
+				my $message_key = "scan_storcli_warning_0010";
+				if ($new_state ne $old_state)
+				{
+					if ($old_state eq "VANISHED")
+					{
+						# Cachevault has returned.
+						$message_key = "scan_storcli_warning_0011";
+					}
+					### TODO: Verify this is the expected string on Cachevaults.
+					if ($new_state =~ /optimal/i)
+					{
+						$title_key = "an_alert_title_0004";
+					}
+				}
+				$an->data->{sys}{alert_sort}++; 
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_sort		=>	$an->data->{sys}{alert_sort},
+					alert_header		=>	'FALSE',
+					alert_title_key		=>	$title_key,
+					alert_message_key	=>	$message_key,
+					alert_message_variables	=>	{
+						new_on_controller	=>	$new_controller_serial_number, 
+						old_on_controller	=>	$old_controller_serial_number, 
+						new_model		=>	$new_model,
+						old_model		=>	$old_model,
+						new_serial_number	=>	$cachevault_serial_number,
+						old_serial_number	=>	$old_cachevault_serial_number,
+						new_type		=>	$new_type, 
+						old_type		=>	$old_type, 
+						new_state		=>	$new_state, 
+						old_state		=>	$old_state, 
+						new_design_capacity	=>	$new_design_capacity, 
+						old_design_capacity	=>	$old_design_capacity, 
+						new_manufacture_date	=>	$new_manufacture_date, 
+						old_manufacture_date	=>	$old_manufacture_date, 
+						new_replacement_needed	=>	$new_replacement_needed, 
+						old_replacement_needed	=>	$old_replacement_needed, 
+					},
+				});
+				$main_table_changed = 1;
+				
+				my $query = "
+UPDATE 
+    storcli_cachevaults
+SET
+    storcli_cachevault_controller_uuid    = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    storcli_cachevault_serial_number      = ".$an->data->{sys}{use_db_fh}->quote($old_controller_uuid).", 
+    storcli_cachevault_type               = ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
+    storcli_cachevault_model              = ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
+    storcli_cachevault_state              = ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
+    storcli_cachevault_manufacture_date   = ".$an->data->{sys}{use_db_fh}->quote($new_manufacture_date).", 
+    storcli_cachevault_design_capacity    = ".$an->data->{sys}{use_db_fh}->quote($new_design_capacity).", 
+    storcli_cachevault_replacement_needed = ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
+    modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_cachevault_uuid               = ".$an->data->{sys}{use_db_fh}->quote($cachevault_uuid)." 
+;";
+
+				# Now record the query in the array
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+			
+			### Process the rest of the variables now. 
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}})
+				{
+					my $new_variable_value = delete $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable};
+					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "variable",    value1 => $variable,
+						name2 => "temperature", value2 => $temperature,
+					}, file => $THIS_FILE, line => __LINE__});
+					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}{$variable}{storcli_variable_uuid})
+					{
+						# Look for changes
+						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}{$variable}{storcli_variable_value};
+						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}{$variable}{storcli_variable_uuid};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "new_variable_value", value1 => $new_variable_value,
+							name2 => "old_variable_value", value2 => $old_variable_value,
+							name3 => "variable_uuid",      value3 => $variable_uuid,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# Delete it so that we know it has been processed.
+						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}{$variable};
+						
+						if (($new_variable_value ne $old_variable_value))
+						{
+							# Changed! If the old value was 'VANISHED', then a 
+							# sensor or variable returned. Otherwise, for now, we
+							# treat everything as 'warning' and step down 
+							# explicitely anything not of concern that proves 
+							# noisey later (better safe than sorry).
+							$an->data->{sys}{alert_sort}++; 
+							
+							my $message_key = "scan_storcli_warning_0012";
+							if ($old_variable_value eq "VANISHED")
+							{
+								$message_key = "scan_storcli_warning_0013";
+							}
+							$an->Alert->register_alert({
+								alert_level		=>	"warning", 
+								alert_agent_name	=>	$THIS_FILE,
+								alert_sort		=>	$an->data->{sys}{alert_sort},
+								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+								alert_title_key		=>	"an_alert_title_0004",
+								alert_message_key	=>	$message_key,
+								alert_message_variables	=>	{
+									serial_number		=>	$cachevault_serial_number,
+									name			=>	$variable,
+									old_value		=>	$old_variable_value,
+									new_value		=>	$new_variable_value,
+								},
+							});
+							
+							my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "query", value1 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{sys}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# New variable, record it. This is a 'warning' level as 
+						# variables aren't expected to spawn into existence.
+						$an->data->{sys}{alert_sort}++; 
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_sort		=>	$an->data->{sys}{alert_sort},
+							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_storcli_warning_0015",
+							alert_message_variables	=>	{
+								serial_number		=>	$variable,
+								value			=>	$new_variable_value,
+							},
+						});
+						
+						# INSERT
+						my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_cachevaults', 
+    ".$an->data->{sys}{use_db_fh}->quote($cachevault_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{sys}{sql}}, $query;
+					}
+				}
+			}
+			
+			# Now look for any variables left from the previous scan that we didn't match up (and
+			# delete) this pass.
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}})
+				{
+					# This variable has vanished
+					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}{$variable}{storcli_variable_value};
+					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}{$variable}{storcli_variable_uuid};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_variable_value", value1 => $old_variable_value,
+						name2 => "variable_uuid",      value2 => $variable_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Delete it so that we know it has been processed.
+					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}{$variable};
+					
+					# If the old value is already 'VANISHED', ignore it.
+					next if $old_variable_value eq "VANISHED";
+					
+					### NOTE: For now, we're going to use warning level because variables
+					###       shouldn't vanish, but under an-cm, it did happen for 
+					###       reasons that we never figured out. So later, we may drop 
+					###       the alert level in some cases.
+					# Still here? Alert and UPDATE.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_storcli_warning_0007",
+						alert_message_variables	=>	{
+							controller		=>	$cachevault_serial_number,
+							name			=>	$variable,
+						},
+					});
+					
+					my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = 'VANISHED', 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
+			}
+		}
+		
+		# Delete the Cachevault from the last scan so that we can find controllers that have been removed.
+		if (exists $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid})
+		{
+			delete $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid};
+		}
+	}
+	
+	# See if any Cachevaults have vanished.
+	foreach my $cachevault_uuid (keys %{$an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}})
+	{
+		# Cachevault vanished!
+		my $old_cachevault_serial_number        = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_serial_number};
+		my $old_controller_uuid          = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_controller_uuid};
+		my $old_state                    = $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid}{storcli_cachevault_state};
+		my $old_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "old_cachevault_serial_number",        value1 => $old_cachevault_serial_number,
+			name2 => "old_controller_uuid",          value2 => $old_controller_uuid,
+			name3 => "old_state",                    value3 => $old_state,
+			name4 => "old_controller_serial_number", value4 => $old_controller_serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Delete it so that we know it has been processed.
+		delete $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$cachevault_uuid};
+		
+		# If the old alarm state is already 'VANISHED', ignore it.
+		next if $old_state eq "VANISHED";
+		
+		# Still here? Alert and UPDATE.
+		### NOTE: For now, we're going to use warning level because controllers should never vanish
+		###       unless one failed. If that is the case, the admin already knows, but this will let
+		###       other notification targets know that the change has happened.
+		$an->data->{sys}{alert_sort}++; 
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_sort		=>	$an->data->{sys}{alert_sort},
+			alert_header		=>	"TRUE",
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scan_storcli_warning_0016",
+			alert_message_variables	=>	{
+				cachevault_serial_number	=>	$old_cachevault_serial_number, 
+				controller_serial_number =>	$old_controller_serial_number, 
+			},
+		});
+		
+		my $query = "
+UPDATE 
+    storcli_cachevaults
+SET 
+    storcli_cachevault_state = 'VANISHED', 
+    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_cachevault_uuid  = ".$an->data->{sys}{use_db_fh}->quote($cachevault_uuid)." 
+;";
+		# Now record the query in the array
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+	}
+	
+	# Now commit the changes.
+	commit_sql($an);
+	
+	return(0);
+}
+
+sub process_drive_groups
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_drive_groups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+sub process_virtual_disks
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_virtual_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+sub process_physical_disks
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_physical_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
 sub process_bbus
 {
 	my ($an) = @_;
@@ -263,7 +946,7 @@ sub process_bbus
 		if (not $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number})
 		{
 			# Error!
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0007", message_variables => { serial_number => $bbu_serial_number }, code => 7, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0007", message_variables => { serial_number => $bbu_serial_number }, code => 7, file => $THIS_FILE, line => __LINE__});
 			exit(7);
 		}
 		my $host_controller_serial_number = $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number};
@@ -273,7 +956,7 @@ sub process_bbus
 		
 		if (not $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number})
 		{
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 7, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
 			exit(8);
 		}
 		my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
@@ -345,8 +1028,6 @@ sub process_bbus
 			}
 		}
 		
-		# -------------------------------------------------------------------------------------------
-		
 		# Pull out the rest of the variables now. If the BBU is new, all variables will be INSERTed.
 		# If the BBU exists, each variable will be examined and new ones will be INSERTed, existing 
 		# ones will be checked for changes and UPDATEd as needed. If the BBU is NOT new, then 
@@ -371,7 +1052,7 @@ sub process_bbus
 			# Send an alert telling the user that we've found a new controller.
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_sort		=>	$an->data->{sys}{alert_sort},	
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"scan_storcli_note_0001",
@@ -442,7 +1123,7 @@ INSERT INTO
 					$an->data->{sys}{alert_sort}++; 
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_sort		=>	$an->data->{sys}{alert_sort},
 						alert_header		=>	'FALSE',
 						alert_title_key		=>	"an_alert_title_0003",
@@ -554,7 +1235,7 @@ INSERT INTO
 				$an->data->{sys}{alert_sort}++; 
 				$an->Alert->register_alert({
 					alert_level		=>	"warning", 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_sort		=>	$an->data->{sys}{alert_sort},
 					alert_header		=>	'FALSE',
 					alert_title_key		=>	$title_key,
@@ -648,7 +1329,7 @@ WHERE
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	"warning", 
-								alert_agent_name	=>	"$THIS_FILE",
+								alert_agent_name	=>	$THIS_FILE,
 								alert_sort		=>	$an->data->{sys}{alert_sort},
 								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 								alert_title_key		=>	"an_alert_title_0004",
@@ -684,7 +1365,7 @@ WHERE
 						$an->data->{sys}{alert_sort}++; 
 						$an->Alert->register_alert({
 							alert_level		=>	"warning", 
-							alert_agent_name	=>	"$THIS_FILE",
+							alert_agent_name	=>	$THIS_FILE,
 							alert_sort		=>	$an->data->{sys}{alert_sort},
 							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 							alert_title_key		=>	"an_alert_title_0003",
@@ -758,7 +1439,7 @@ INSERT INTO
 					$an->data->{sys}{alert_sort}++; 
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_sort		=>	$an->data->{sys}{alert_sort},
 						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 						alert_title_key		=>	"an_alert_title_0004",
@@ -822,7 +1503,7 @@ WHERE
 		$an->data->{sys}{alert_sort}++; 
 		$an->Alert->register_alert({
 			alert_level		=>	"warning", 
-			alert_agent_name	=>	"$THIS_FILE",
+			alert_agent_name	=>	$THIS_FILE,
 			alert_sort		=>	$an->data->{sys}{alert_sort},
 			alert_header		=>	"TRUE",
 			alert_title_key		=>	"an_alert_title_0004",
@@ -851,38 +1532,6 @@ WHERE
 	
 	# Now commit the changes.
 	commit_sql($an);
-	
-	return(0);
-}
-
-sub process_cachevaults
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_cachevaults" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	return(0);
-}
-
-sub process_drive_groups
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_drive_groups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	return(0);
-}
-
-sub process_virtual_disks
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_virtual_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	return(0);
-}
-
-sub process_physical_disks
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_physical_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -990,7 +1639,7 @@ sub process_controllers
 			# Send an alert telling the user that we've found a new controller.
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_sort		=>	$an->data->{sys}{alert_sort},	
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"scan_storcli_note_0001",
@@ -1049,7 +1698,7 @@ INSERT INTO
 					$an->data->{sys}{alert_sort}++; 
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_sort		=>	$an->data->{sys}{alert_sort},
 						alert_header		=>	'FALSE',
 						alert_title_key		=>	"an_alert_title_0003",
@@ -1136,7 +1785,7 @@ INSERT INTO
 				$an->data->{sys}{alert_sort}++; 
 				$an->Alert->register_alert({
 					alert_level		=>	"warning", 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_sort		=>	$an->data->{sys}{alert_sort},
 					alert_header		=>	'FALSE',
 					alert_title_key		=>	$title_key,
@@ -1221,7 +1870,7 @@ AND
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	"warning", 
-								alert_agent_name	=>	"$THIS_FILE",
+								alert_agent_name	=>	$THIS_FILE,
 								alert_sort		=>	$an->data->{sys}{alert_sort},
 								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 								alert_title_key		=>	"an_alert_title_0004",
@@ -1257,7 +1906,7 @@ WHERE
 						$an->data->{sys}{alert_sort}++; 
 						$an->Alert->register_alert({
 							alert_level		=>	"warning", 
-							alert_agent_name	=>	"$THIS_FILE",
+							alert_agent_name	=>	$THIS_FILE,
 							alert_sort		=>	$an->data->{sys}{alert_sort},
 							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 							alert_title_key		=>	"an_alert_title_0003",
@@ -1331,7 +1980,7 @@ INSERT INTO
 					$an->data->{sys}{alert_sort}++; 
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_sort		=>	$an->data->{sys}{alert_sort},
 						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 						alert_title_key		=>	"an_alert_title_0004",
@@ -1395,7 +2044,7 @@ WHERE
 		$an->data->{sys}{alert_sort}++; 
 		$an->Alert->register_alert({
 			alert_level		=>	"warning", 
-			alert_agent_name	=>	"$THIS_FILE",
+			alert_agent_name	=>	$THIS_FILE,
 			alert_sort		=>	$an->data->{sys}{alert_sort},
 			alert_header		=>	"TRUE",
 			alert_title_key		=>	"an_alert_title_0004",
@@ -3976,7 +4625,7 @@ sub prep_databases
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Loop through the databases...
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='storcli_controllers' AND schemaname='public';";
@@ -3997,7 +4646,7 @@ sub prep_databases
 			# Send an alert telling the user that we've initialized this database.
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"notice_message_0002",
 				alert_message_variables	=>	{
@@ -4080,7 +4729,7 @@ sub get_physical_disk_data
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4545,7 +5194,7 @@ sub get_virtual_disk_data
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -5266,7 +5915,7 @@ sub get_bbu_data
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -5524,7 +6173,7 @@ sub get_cachevault_data
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -5630,6 +6279,17 @@ sub get_cachevault_data
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
+			# With BBUs, they use 'Temperature' twice; once for status and once for the current
+			# temperature. They don't currently do this with Cachevaults, but in case they do
+			# later, we'll rename the temperature variable.
+			if (($variable eq "Temperature") && ($value =~ /^\d/))
+			{
+				$variable = "Cachevault Temperature";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "variable", value1 => $variable, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
 			# Is this a temperature or something else we want to pre-process?
 			if ($value =~ /^\d+ C$/i)
 			{
@@ -5732,7 +6392,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6258,7 +6918,7 @@ sub get_controller_info
 	if (not $serial_number)
 	{
 		# Error out.
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0006", message_variables => { adapter => $adapter }, code => 6, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0006", message_variables => { adapter => $adapter }, code => 6, file => $THIS_FILE, line => __LINE__});
 		exit(6);
 	}
 	
@@ -6267,7 +6927,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6297,7 +6957,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6327,7 +6987,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6357,7 +7017,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6387,7 +7047,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6417,7 +7077,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6729,7 +7389,7 @@ sub find_lsi_controllers
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6837,7 +7497,7 @@ sub sort_and_prepare_data
 				name2 => "type",              value2 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 2, 
+				log_level => 3, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "$bbu_serial_number - $type",
@@ -6862,7 +7522,7 @@ sub sort_and_prepare_data
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 2, 
+				log_level => 3, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "VD $virtual_disk - $type",
@@ -6887,7 +7547,7 @@ sub sort_and_prepare_data
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Log->aligned_entries({
-					log_level => 2, 
+					log_level => 3, 
 					file      => $THIS_FILE,
 					line      => __LINE__,
 					prefix    => "VD $say_virtual_disk, DG $say_drive_group - $type",
@@ -6912,7 +7572,7 @@ sub sort_and_prepare_data
 							name1 => "type", value1 => $type,
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Log->aligned_entries({
-							log_level => 2, 
+							log_level => 3, 
 							file      => $THIS_FILE,
 							line      => __LINE__,
 							prefix    => "VD $say_virtual_disk, DG $say_drive_group, EID $enclosure_id, Slot $slot_number - $type",
@@ -6923,6 +7583,8 @@ sub sort_and_prepare_data
 			}
 		}
 	}
+	
+	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	return(0);
 }
