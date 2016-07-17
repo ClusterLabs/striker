@@ -130,16 +130,16 @@ BEGIN
 		 storcli_cachevault_manufacture_date, 
 		 modified_date)
 	VALUES
-		(history_storcli_cachevault.storcli_cachevault_uuid,
-		 history_storcli_cachevault.storcli_cachevault_host_uuid,
-		 history_storcli_cachevault.storcli_cachevault_controller_uuid, 
-		 history_storcli_cachevault.storcli_cachevault_serial_number, 
-		 history_storcli_cachevault.storcli_cachevault_state, 
-		 history_storcli_cachevault.storcli_cachevault_design_capacity, 
-		 history_storcli_cachevault.storcli_cachevault_replacement_needed, 
-		 history_storcli_cachevault.storcli_cachevault_type, 
-		 history_storcli_cachevault.storcli_cachevault_manufacture_date, 
-		 history_storcli_cachevault.modified_date);
+		(history_storcli_cachevaults.storcli_cachevault_uuid,
+		 history_storcli_cachevaults.storcli_cachevault_host_uuid,
+		 history_storcli_cachevaults.storcli_cachevault_controller_uuid, 
+		 history_storcli_cachevaults.storcli_cachevault_serial_number, 
+		 history_storcli_cachevaults.storcli_cachevault_state, 
+		 history_storcli_cachevaults.storcli_cachevault_design_capacity, 
+		 history_storcli_cachevaults.storcli_cachevault_replacement_needed, 
+		 history_storcli_cachevaults.storcli_cachevault_type, 
+		 history_storcli_cachevaults.storcli_cachevault_manufacture_date, 
+		 history_storcli_cachevaults.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -219,17 +219,17 @@ BEGIN
 		 storcli_bbu_replacement_needed, 
 		 modified_date)
 	VALUES
-		(history_storcli_bbu.storcli_bbu_uuid,
-		 history_storcli_bbu.storcli_bbu_host_uuid, 
-		 history_storcli_bbu.storcli_bbu_controller_uuid, 
-		 history_storcli_bbu.storcli_bbu_serial_number, 
-		 history_storcli_bbu.storcli_bbu_type, 
-		 history_storcli_bbu.storcli_bbu_model, 
-		 history_storcli_bbu.storcli_bbu_state, 
-		 history_storcli_bbu.storcli_bbu_manufacture_date, 
-		 history_storcli_bbu.storcli_bbu_design_capacity, 
-		 history_storcli_bbu.storcli_bbu_replacement_needed, 
-		 history_storcli_bbu.modified_date);
+		(history_storcli_bbus.storcli_bbu_uuid,
+		 history_storcli_bbus.storcli_bbu_host_uuid, 
+		 history_storcli_bbus.storcli_bbu_controller_uuid, 
+		 history_storcli_bbus.storcli_bbu_serial_number, 
+		 history_storcli_bbus.storcli_bbu_type, 
+		 history_storcli_bbus.storcli_bbu_model, 
+		 history_storcli_bbus.storcli_bbu_state, 
+		 history_storcli_bbus.storcli_bbu_manufacture_date, 
+		 history_storcli_bbus.storcli_bbu_design_capacity, 
+		 history_storcli_bbus.storcli_bbu_replacement_needed, 
+		 history_storcli_bbus.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -308,20 +308,20 @@ BEGIN
 		 storcli_virtual_drive_scsi_naa_id, 
 		 modified_date)
 	VALUES
-		(history_storcli_virtual_drive.storcli_virtual_drive_uuid,
-		 history_storcli_virtual_drive.storcli_virtual_drive_host_uuid, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_controller_uuid, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_creation_date, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_data_protection, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_disk_cache_policy, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_emulation_type, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_encryption, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_blocks, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_strip_size, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_drives_per_span, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_span_depth, 
-		 history_storcli_virtual_drive.storcli_virtual_drive_scsi_naa_id, 
-		 history_storcli_virtual_drive.modified_date);
+		(history_storcli_virtual_drives.storcli_virtual_drive_uuid,
+		 history_storcli_virtual_drives.storcli_virtual_drive_host_uuid, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_controller_uuid, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_creation_date, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_data_protection, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_disk_cache_policy, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_emulation_type, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_encryption, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_blocks, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_strip_size, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_drives_per_span, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_span_depth, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_scsi_naa_id, 
+		 history_storcli_virtual_drives.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -403,21 +403,21 @@ BEGIN
 		 storcli_drive_group_write_cache, 
 		 modified_date)
 	VALUES
-		(history_storcli_drive_group.storcli_drive_group_uuid,
-		 history_storcli_drive_group.storcli_drive_group_host_uuid, 
-		 history_storcli_drive_group.storcli_drive_group_virtual_drive_uuid, 
-		 history_storcli_drive_group.storcli_drive_group_access, 
-		 history_storcli_drive_group.storcli_drive_group_array_size, 
-		 history_storcli_drive_group.storcli_drive_group_array_state, 
-		 history_storcli_drive_group.storcli_drive_group_cache, 
-		 history_storcli_drive_group.storcli_drive_group_cachecade, 
-		 history_storcli_drive_group.storcli_drive_group_consistent, 
-		 history_storcli_drive_group.storcli_drive_group_disk_cache, 
-		 history_storcli_drive_group.storcli_drive_group_raid_type, 
-		 history_storcli_drive_group.storcli_drive_group_read_cache, 
-		 history_storcli_drive_group.storcli_drive_group_scheduled_cc, 
-		 history_storcli_drive_group.storcli_drive_group_write_cache, 
-		 history_storcli_drive_group.modified_date);
+		(history_storcli_drive_groups.storcli_drive_group_uuid,
+		 history_storcli_drive_groups.storcli_drive_group_host_uuid, 
+		 history_storcli_drive_groups.storcli_drive_group_virtual_drive_uuid, 
+		 history_storcli_drive_groups.storcli_drive_group_access, 
+		 history_storcli_drive_groups.storcli_drive_group_array_size, 
+		 history_storcli_drive_groups.storcli_drive_group_array_state, 
+		 history_storcli_drive_groups.storcli_drive_group_cache, 
+		 history_storcli_drive_groups.storcli_drive_group_cachecade, 
+		 history_storcli_drive_groups.storcli_drive_group_consistent, 
+		 history_storcli_drive_groups.storcli_drive_group_disk_cache, 
+		 history_storcli_drive_groups.storcli_drive_group_raid_type, 
+		 history_storcli_drive_groups.storcli_drive_group_read_cache, 
+		 history_storcli_drive_groups.storcli_drive_group_scheduled_cc, 
+		 history_storcli_drive_groups.storcli_drive_group_write_cache, 
+		 history_storcli_drive_groups.modified_date);
 	RETURN NULL;
 END;
 $$
@@ -507,7 +507,7 @@ BEGIN
 	SELECT INTO history_storcli_physical_drives * FROM storcli_physical_drives WHERE storcli_physical_drive_uuid=new.storcli_physical_drive_uuid;
 	INSERT INTO history.storcli_physical_drives
 		(storcli_physical_drive_uuid, 
--- 		 storcli_physical_drive_host_uuid,
+		 storcli_physical_drive_host_uuid,
 		 storcli_physical_drive_controller_uuid, 
 		 storcli_physical_drive_size, 
 		 storcli_physical_drive_sector_size, 
@@ -517,15 +517,15 @@ BEGIN
 		 storcli_physical_drive_self_encrypting_drive, 
 		 modified_date)
 	VALUES
-		(history_storcli_physical_drive.storcli_physical_drive_uuid,
-		 history_storcli_physical_drive.storcli_physical_drive_host_uuid,
-		 history_storcli_physical_drive.storcli_physical_drive_size, 
-		 history_storcli_physical_drive.storcli_physical_drive_sector_size, 
-		 history_storcli_physical_drive.storcli_physical_drive_vendor, 
-		 history_storcli_physical_drive.storcli_physical_drive_model, 
-		 history_storcli_physical_drive.storcli_physical_drive_serial_number, 
-		 history_storcli_physical_drive.storcli_physical_drive_self_encrypting_drive, 
-		 history_storcli_physical_drive.modified_date);
+		(history_storcli_physical_drives.storcli_physical_drive_uuid,
+		 history_storcli_physical_drives.storcli_physical_drive_host_uuid,
+		 history_storcli_physical_drives.storcli_physical_drive_size, 
+		 history_storcli_physical_drives.storcli_physical_drive_sector_size, 
+		 history_storcli_physical_drives.storcli_physical_drive_vendor, 
+		 history_storcli_physical_drives.storcli_physical_drive_model, 
+		 history_storcli_physical_drives.storcli_physical_drive_serial_number, 
+		 history_storcli_physical_drives.storcli_physical_drive_self_encrypting_drive, 
+		 history_storcli_physical_drives.modified_date);
 	RETURN NULL;
 END;
 $$

@@ -755,7 +755,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0099"><![CDATA[The 'AN::Tools::ScanCore' module's 'host_state()' method was passes in the target: [#!variable!target!#] which could not be translated to a host UUID.]]></key>
 		<key name="error_message_0100"><![CDATA[The 'AN::Tools::ScanCore' module's 'host_state()' method was passes in the target: [#!variable!target!#] which does not exist in the 'nodes' database table.]]></key>
 		<key name="error_message_0101"><![CDATA[The 'AN::Tools::ScanCore' module's 'get_migration_target()' method was called without passing in a server name.]]></key>
-		<key name="error_message_0102"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called without passing in a UUID.]]></key>
+		<key name="error_message_0102"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called without passing in a UUID. Was the ScanCore database reloaded and the Anvil! not yet added back?]]></key>
 		<key name="error_message_0103"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called with the UUID set to: [#!variable!uuid!#], but this does not appear to be a properly formatted UUID.]]></key>
 		<key name="error_message_0104"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called with the UUID: [#!variable!uuid!#], but does not appear to match any known #!string!an_brand_0003!# systems.]]></key>
 		<key name="error_message_0105"><![CDATA[The 'AN::Tools::Striker' module's 'scan_node()' method was called without passing in a UUID.]]></key>
