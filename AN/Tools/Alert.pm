@@ -719,7 +719,7 @@ sub warning
 	$an->Log->entry({file => $THIS_FILE, level => 1, raw => $warning, log_to => $log_to});
 	
 	# If not quieted, print to stdout.
-	if ($quiet)
+	if (not $quiet)
 	{
 		if ($title_key)
 		{
