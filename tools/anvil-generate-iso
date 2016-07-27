@@ -55,6 +55,8 @@ my $conf = {
 		md5sum		=>	"md5sum",
 		mkisofs		=>	"mkisofs",
 		mount		=>	"mount",
+		rm		=>	"rm",
+		unzip		=>	"unzip",
 	},
 	# Paths to files and directories
 	path		=>	{
@@ -86,7 +88,7 @@ my $conf = {
 		iso		=>	{
 			file_name	=>	"",
 			kickstart	=>	"ks",
-			striker		=>	"striker",	# striker-master will be created by git
+			striker		=>	"striker",	# striker-master will be created by git/zip
 			packages	=>	"Packages",
 			tools		=>	"Tools",
 			### NOTE: Entries below here are appended to 'path::iso::tools'.
@@ -96,6 +98,7 @@ my $conf = {
 			asix		=>	"ASIX",
 			### NOTE: Entries above here are appended to 'path::iso::tools'.
 			git_iso		=>	"ISO",
+			zip_iso		=>	"ISO",
 			# These keys are appended to the 'path::'git::<os>' path. The 'target' is where the 
 			# files in these directories should be copied to. The 'target' will be appended to
 			# 'path::source_path'.
@@ -109,7 +112,32 @@ my $conf = {
 				ks		=>	{
 					target		=>	"ks",
 				},
+			},
+			# These keys are appended to the 'path::zip::<os>' path. The 'target' is where the 
+			# files in these directories should be copied to. The 'target' will be appended to
+			# 'path::source_path'.
+			zip_copy	=>	{
+				isolinux	=>	{
+					target		=>	"isolinux",
+				},
+				syslinux	=>	{
+					target		=>	"syslinux",
+				},
+				ks		=>	{
+					target		=>	"ks",
+				},
 			}
+		},
+		# This details files to be copied out of git to a directory in the source.
+		zip		=>	{
+			# This is where we find the root of the ISO data from the extracted zip file under
+			# 'path::source_path'.
+			root		=>	"striker/ISO",
+			# These are the subdirectory names we'll used under 'path::zip::root' depending on
+			# the OS being build on.
+			centos		=>	"CentOS",
+			rhel		=>	"RHEL",
+			suffix		=>	"6/Anvil",
 		},
 	},
 	source		=>	{},
@@ -187,7 +215,8 @@ my $conf = {
 	},
 	url		=>	{
 		striker		=>	"https://github.com/ClusterLabs/striker.git",
-		striker_zip	=>	"https://github.com/ClusterLabs/striker/archive/master.zip",
+		striker_zip	=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
+		striker_zip_file =>	"striker-master.zip",
 		'an-repo'	=>	"https://alteeve.ca/an-repo/el6/RPMS",
 		third_party	=>	"https://alteeve.ca/an-repo/el6/Third_Party",
 		# These are non-RPM packages we want to download for the ISO.
@@ -323,7 +352,8 @@ get_package_list($conf);
 build_source($conf);
 
 # Download things we need.
-download_striker($conf);
+#download_striker($conf);
+download_striker_zip($conf);
 
 # Prepare the 'Packages' repository
 prep_packages_repo($conf);
@@ -1340,10 +1370,28 @@ sub build_iso
 	}
 	close $file_handle;
 	
+	my $sum = "";
 	if (-e $output_file)
 	{
 		# All done!
-		print "- New ISO generated.\n";
+		print "- New ISO generated. Calculating sum...\n";
+		my $shell_call = $conf->{executable}{md5sum}." ".$output_file;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			
+			if ($line =~ /^(\S+)\s+$output_file/)
+			{
+				$sum = $1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - sum: [$sum]\n" if $conf->{sys}{debug} >= 2;
+			}
+		}
+		close $file_handle;
+		
 		my $size   = (stat($output_file))[7];
 		my $suffix = "MiB";
 		if ($size >= (2 ** 30))
@@ -1357,8 +1405,12 @@ sub build_iso
 			# Mebibyte
 			$size = sprintf("%.2f", ($size /= (2 ** 20)));
 		}
-		print "- All done!\n";
-		print "\nThe ISO file: [$output_file] ($size $suffix) has been generated!\n\n";
+		print "- All done!
+
+The ISO file: [$output_file] has been generated!
+- The size is: [$size $suffix] and the md5sum is: [$sum]
+
+";
 	}
 	else
 	{
@@ -1568,14 +1620,95 @@ sub get_date
 }
 
 # This downloads Striker, but using master.zip instead of pulling github
-sub striker_zip
+sub download_striker_zip
 {
 	my ($conf) = @_;
 	
-	my $out_directory = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker};
-	my $download      = $conf->{url}{striker_zip};
+	# The github source file is simply 'master', so we save it as the 'url::striker_zip_file'.
+	my $out_directory    = $conf->{path}{iso}{working_directory};
+	my $source_directory = $conf->{path}{iso}{source_directory};
+	my $download         = $conf->{url}{striker_zip};
+	my $file             = $conf->{url}{striker_zip_file};
+	my $out_file         = $out_directory."/".$file;
+	my $source_name      = $source_directory."/striker-master";
+	my $target_name      = $source_directory."/striker";
+	if ($conf->{sys}{debug} >= 2)
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - out_directory: .. [$out_directory]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_directory: [$source_directory]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: ....... [$download]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - file: ........... [$file]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - out_file: ....... [$out_file]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: .... [$source_name]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - target_name: .... [$target_name]\n";
+	}
 	
+	#die "$THIS_FILE ".__LINE__."; testing...\n";
 	
+	if (-e $out_file)
+	{
+		print "- Striker source already downloaded.\n";
+		if ($conf->{switches}{'no-refresh'})
+		{
+			print "- Refresh disabled, using the existing copy.\n";
+		}
+		else
+		{
+			print "- Removing the old copy and downloading the latest version.\n";
+			unlink $out_file or die __LINE__."; [ Error ] - Failed to delete: [$out_file] to make room for the new file. The error was: $!\n";
+			download_file($conf, $download, $out_file, 0644);
+		}
+	}
+	else
+	{
+		print "- Downloading the Striker source code.\n";
+		print "- This might take a few minutes on slow connections, please be patient.\n";
+		download_file($conf, $download, $out_file, 0644);
+	}
+	
+	# Unzip the source file.
+	print "- Extracting the Striker source file.\n";
+	my $shell_call = $conf->{executable}{unzip}." -uo $out_file -d $source_directory";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+	}
+	close $file_handle;
+	
+	# Remove the old source directory.
+	if ((-e $target_name) && ($target_name =~ /\/striker$/))
+	{
+		print "- Removing old Striker from source.\n";
+		my $shell_call = $conf->{executable}{rm}." -rf $target_name";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		}
+		close $file_handle;
+	}
+	
+	# Rename the extracted directory
+	rename $source_name, $target_name or die "$THIS_FILE ".__LINE__."; Failed to rename: [$source_name] to: [$target_name]. The error was: $!\n";
+
+	# Download RPMs from our repo.
+	download_anrepo_rpms($conf);
+	
+	# Download non-RPM tools
+	download_anrepo_tools($conf);
+	
+	# Now start copying files into place.
+	copy_files_from_source($conf);
+	
+	# Generate kickstart files.
+	generate_kickstart_files($conf);
 	
 	return(0);
 }
@@ -1643,6 +1776,53 @@ sub download_striker
 	
 	# Generate kickstart files.
 	generate_kickstart_files($conf);
+	
+	return(0);
+}
+
+# This copies files extracted from the striker source zip file.
+sub copy_files_from_source
+{
+	my ($conf) = @_;
+	
+	# I need the OS-specific source.
+	my $os_type          = $conf->{sys}{os_type};
+	my $distro_directory = $conf->{path}{zip}{$os_type};
+	my $source_on_iso   = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{zip_iso}."/".$distro_directory."/".$conf->{path}{zip}{suffix};
+	if ($conf->{sys}{debug} >= 2)
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::source_directory: [".$conf->{path}{iso}{source_directory}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::striker: ........ [".$conf->{path}{iso}{striker}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::zip_iso: ........ [".$conf->{path}{iso}{zip_iso}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - distro_directory: .......... [$distro_directory]\n";
+		#print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::suffix: ......... [".$conf->{path}{iso}{suffix}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_on_iso: ............. [$source_on_iso]\n";
+	}
+	
+	# isolinux
+	foreach my $directory (sort {$a cmp $b} keys %{$conf->{path}{iso}{zip_copy}})
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory], path::iso::zip_copy::${directory}::target: [$conf->{path}{iso}{zip_copy}{$directory}{target}]\n" if $conf->{sys}{debug} >= 2;
+		my $source = $source_on_iso."/".$directory;
+		my $target = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{zip_copy}{$directory}{target});
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
+		   $source =~ s/\/\/+/\//g;
+		   #$target =~ s/\/\/+/\//g;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
+		local(*DIR);
+		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
+		while (my $file = readdir(DIR))
+		{
+			next if (($file eq ".") or ($file eq ".."));
+			my $source_file = $source."/".$file;
+			my $target_file = $target."/".$file;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_file: [$source_file], target_file: [$target_file]\n" if $conf->{sys}{debug} >= 2;
+			copy_file($conf, $source_file, $target_file, 1);
+		}
+		closedir(DIR);
+	}
+	
+	#die "$THIS_FILE ".__LINE__."; testing\n";
 	
 	return(0);
 }
@@ -1984,22 +2164,51 @@ sub download_file
 	}
 	else
 	{
-		print "- Downloading: [$source]\n";
+		# Get the file size so that we can warn the user
+		my $size       = "";
+		my $shell_call = $conf->{executable}{curl}." --head $source";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			   $line =~ s/\r//;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			if ($line =~ /Content-Length: (\d+)$/)
+			{
+				$size = $1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - size: [$size]\n" if $conf->{sys}{debug} >= 2;
+			}
+		}
+		close $file_handle;
+		
+		# If I got a size, make it (crudely) human readable.
+		my $say_size = "<unknown>";
+		if ($size =~ /^\d+$/)
+		{
+			$say_size = hr_size($conf, $size);
+		}
+		
+		my $start_time = time;
+		print "- Downloading: [$source], which is: [$say_size]... ";
+		print "\n" if $conf->{sys}{debug} >= 1;
+		
 		### NOTE: Do NOT use 2>&1 as this pushes the download progress into the download file. If 
 		###       debug is enabled, we'll dump the progress to the screen.
-		my $shell_call = $conf->{executable}{curl}." $source 2>/dev/null > $target";
+		$shell_call = $conf->{executable}{curl}." $source 2>/dev/null > $target";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		if ($conf->{sys}{debug})
 		{
 			$shell_call = $conf->{executable}{curl}." $source > $target";
 		}
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open ($file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 		}
 		close $file_handle;
 		
@@ -2053,7 +2262,8 @@ sub download_file
 		}
 		if ($file_ok)
 		{
-			print "  The file: [$target] was downloaded successfully.\n" if $conf->{sys}{debug} >= 1;
+			my $duration = time - $start_time;
+			print "Finished! Took: [$duration] second(s).\n";
 		}
 		else
 		{
@@ -2076,6 +2286,59 @@ sub download_file
 	return(0);
 }
 
+# This converts a raw number of bytes to a human readable size. It always uses base-2.
+sub hr_size
+{
+	my ($conf, $hr_size) = @_;
+	
+	if ($hr_size >= (2 ** 80))
+	{
+		# Yebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 80)))." YiB";
+	}
+	elsif ($hr_size >= (2 ** 70))
+	{
+		# Zebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 70)))." ZiB";
+	}
+	elsif ($hr_size >= (2 ** 60))
+	{
+		# Exbibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 60)))." EiB";
+	}
+	elsif ($hr_size >= (2 ** 50))
+	{
+		# Pebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 50)))." PiB";
+	}
+	elsif ($hr_size >= (2 ** 40))
+	{
+		# Tebibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 40)))." TiB";
+	}
+	elsif ($hr_size >= (2 ** 30))
+	{
+		# Gibibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 30)))." GiB";
+	}
+	elsif ($hr_size >= (2 ** 20))
+	{
+		# Mebibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 20)))." MiB";
+	}
+	elsif ($hr_size >= (2 ** 10))
+	{
+		# Kibibyte
+		$hr_size = sprintf("%.1f", ($hr_size /= (2 ** 10)))." KiB";
+	}
+	else
+	{
+		$hr_size .= " Bytes";
+	}
+	
+	return($hr_size);
+}
+
 # This curl's the 'x86_64' and 'noarch' directories in the 'url::an-repo' URL. Then it looks through the RPMs
 # in out package list to find matches and downloads them.
 sub download_anrepo_rpms
@@ -2084,6 +2347,7 @@ sub download_anrepo_rpms
 	
 	# First, get a list of the RPMs available
 	print "- Downloading packages from the Alteeve's Niche! repository now.\n";
+	print "- If your connection is slow, this might take a few minutes. Please be patient.\n";
 	foreach my $arch ("x86_64", "noarch")
 	{
 		my $shell_call = $conf->{executable}{curl}." ".$conf->{url}{'an-repo'}."/$arch/";
@@ -2222,18 +2486,25 @@ sub setup_build_environment
 	{
 		print "- The working directory: [$conf->{path}{iso}{working_directory}] doesn't exist.\n";
 		print "- Can I create it (and needed subdirectories) now? [Y/n] ";
-		my $answer = <STDIN>;
-		chomp($answer);
-		if ((not $answer) or ($answer =~ /^y/i))
+		if ($conf->{switches}{y})
 		{
-			print "- Thank you, proceeding now.\n";
-			$conf->{path}{iso}{working_directory} = make_directory($conf, $conf->{path}{iso}{working_directory});
+			print "\n- Permission given via '-y', proceeding.\n";
 		}
 		else
 		{
-			print "- Without a working directory, ISO generation can not proceed. Exiting.\n";
-			exit(8);
+			my $answer = <STDIN>;
+			chomp($answer);
+			if ((not $answer) or ($answer =~ /^y/i))
+			{
+				print "- Thank you, proceeding now.\n";
+			}
+			else
+			{
+				print "- Without a working directory, ISO generation can not proceed. Exiting.\n";
+				exit(8);
+			}
 		}
+		$conf->{path}{iso}{working_directory} = make_directory($conf, $conf->{path}{iso}{working_directory});
 	}
 	
 	# Make sure the rest of the directories now exist.
@@ -2313,7 +2584,7 @@ sub make_directory
 		
 		if (not -e $current_directory)
 		{
-			print "- Creating the directory: [$current_directory]\n";
+			print "- Creating the directory: [$current_directory]\n" if $conf->{sys}{debug} >= 1;
 			mkdir $current_directory or die __LINE__."; failed to create the directory: [$current_directory]. The error was: $!\n";
 		}
 	}
@@ -2327,10 +2598,8 @@ sub build_source
 {
 	my ($conf) = @_;
 	
-	print "- Please be patient! 
-- We're looking through the source ISO(s) to find which installation packages 
-  are needed. This can take a minute.
-";
+	print "- We're looking through the source ISO(s) to find which installation packages are needed.\n";
+	print "- Please be patient! This can take a minute.\n"; 
 	
 	# Build a list of all the packages needed for this OS (common plus distro-specific).
 	my $extra_packages = $conf->{sys}{os_type};
@@ -2762,12 +3031,13 @@ sub validate_source
 # 		{
 # 			$conf->{source}{$iso}{sum} = "efd54b939787519b350d986329e2c7a3";
 # 		}
-# 		elsif ($iso eq "/data1/VMs/files/rhel-server-6.7-x86_64-dvd.iso")
-# 		{
-# 			$conf->{source}{$iso}{sum} = "a2bc9de743bfb0bfe1f14676a46a624b";
-# 		}
-# 		else
-# 		{
+# 		els
+		if ($iso eq "/data1/VMs/files/rhel-server-6.8-x86_64-dvd.iso")
+		{
+			$conf->{source}{$iso}{sum} = "ef0f3bbfbb846491a07e4a02b5d5640a";
+		}
+		else
+		{
 			print "- Generating md5sum of the source: [$iso], please wait a moment...\n";
 			   $conf->{source}{$iso}{sum} = "";
 			my $shell_call                = $conf->{executable}{md5sum}." ".$iso;
@@ -2786,7 +3056,7 @@ sub validate_source
 				}
 			}
 			close $file_handle;
-# 		}
+		}
 		
 		# If we got a sum, make sure it matches an expected one.
 		if ($conf->{source}{$iso}{sum})
@@ -3950,6 +4220,13 @@ SWITCHES
 
 	Show this dialoge and exit.
 
+--no-refresh
+
+	By default, if the Striker source file (master.zip) is found, it will
+	be removed and re-downloaded to make sure it is the latest version. 
+	This switch tells the program NOT to download again, and just use the
+	existing version.
+
 --source
 
 	This must be the full path and file name to the source ISO to base the
@@ -3969,6 +4246,10 @@ SWITCHES
 -v, -vv, -vvv
 
 	Enable debugging output (each additional 'v' increases the verbosity).
+
+-y
+
+	This automatically answers 'yes' to creating new directories.
 
 
 EXAMPLES
