@@ -792,7 +792,7 @@ sub local_shut_down
 			{
 				# Make sure the target is still OK.
 				my $peer_health = $an->ScanCore->host_state({target => $an->data->{sys}{peer_node}});
-				if (($peer_health eq "critical") or ($peer_health eq "shutdown"))
+				if (($peer_health eq "warning") or ($peer_health eq "critical") or ($peer_health eq "shutdown"))
 				{
 					# Node is no longer a viable target, so we'll shut down.
 					$migrate_servers = 0;
