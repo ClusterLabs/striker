@@ -1097,7 +1097,7 @@ WHERE
     host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($target)." 
 ";
 			$query =~ s/'NULL'/NULL/g;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});

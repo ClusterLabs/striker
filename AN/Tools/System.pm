@@ -463,7 +463,6 @@ sub get_uptime
 	return($uptime);
 }
 
-### TODO: Set the stop reason
 # This calls 'poweroff' on a machine (possibly this one).
 sub poweroff
 {
@@ -483,6 +482,9 @@ sub poweroff
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	### NOTE: The alternate call effectively disables the shutdown, which can be useful in debugging 
+	###       shutdown and restart issues.
+	#my $shell_call = $an->data->{path}{echo}." '".$an->data->{path}{poweroff}." --verbose'";
 	my $shell_call = $an->data->{path}{poweroff}." --verbose";
 	my $return     = [];
 	

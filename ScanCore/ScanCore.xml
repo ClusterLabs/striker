@@ -158,6 +158,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0088">The node: [#!variable!node!#] was rebooted.</key>
 		<key name="scancore_log_0089">Another copy of ScanCore is running, but it has not updated the ScanCore database in: [#!variable!difference!#] seconds. It might be hung, so we will kill it now.</key>
 		<key name="scancore_log_0090">Killing ScanCore instance with PID: [#!variable!pid!#].</key>
+		<key name="scancore_log_0091">My 'host_stop_reason' is set to 'clean', but it was set: [#!variable!seconds!#] second(s) ago. That is fairly recent so this machine might still be shutting down, so I will not clear the state yet.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

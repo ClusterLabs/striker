@@ -284,6 +284,7 @@ sub process_cachevaults
 		
 		# These are the values for the main table. Anything else will go in the variables table.
 		my $new_type               = "";
+		my $new_model              = "";
 		my $new_state              = "";
 		my $new_manufacture_date   = "";
 		my $new_design_capacity    = "";

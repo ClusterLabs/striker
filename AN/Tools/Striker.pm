@@ -617,6 +617,19 @@ sub mark_node_as_clean_on
 		return(1);
 	}
 	
+	# Don't set another node's stack if this machine is itself a node.
+	my $i_am_a = $an->Get->what_am_i();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "i_am_a",         value1 => $i_am_a, 
+		name2 => "sys::host_uuid", value2 => $an->data->{sys}{host_uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($i_am_a eq "node") && ($host_uuid ne $an->data->{sys}{host_uuid}))
+	{
+		# Don't proceed.
+		$an->Log->entry({log_level => 1, message_key => "tools_log_0035", message_variables => { host_uuid => $host_uuid }, file => $THIS_FILE, line => __LINE__});
+		return(0);
+	}
+	
 	my $node_data = $an->ScanCore->get_nodes();
 	my $host_data = $an->ScanCore->get_hosts();
 	my $node_name = "";
@@ -624,7 +637,7 @@ sub mark_node_as_clean_on
 	{
 		my $this_host_uuid = $hash_ref->{host_uuid};
 		my $this_host_name = $hash_ref->{host_name};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "this_host_uuid", value1 => $this_host_uuid, 
 			name2 => "this_host_name", value2 => $this_host_name, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -632,7 +645,7 @@ sub mark_node_as_clean_on
 		{
 			# We're good.
 			$node_name = $this_host_name;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_name", value1 => $node_name, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -680,7 +693,9 @@ sub mark_node_as_clean_on
 	my $query = "
 SELECT 
     host_health, 
-    host_stop_reason 
+    host_stop_reason, 
+    host_emergency_stop, 
+    round(extract(epoch from modified_date)) 
 FROM 
     hosts 
 WHERE 
@@ -690,18 +705,45 @@ WHERE
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 		
-	my $results         = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $old_health      = "";
-	my $old_stop_reason = "";
+	my $results            = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $old_health         = "";
+	my $old_stop_reason    = "";
+	my $old_emergency_stop = "";
+	my $unix_modified_date = "";
 	foreach my $row (@{$results})
 	{
-		$old_health      = $row->[0] ? $row->[0] : "";
-		$old_stop_reason = $row->[1] ? $row->[1] : "";
+		$old_health         = defined $row->[0] ? $row->[0] : "";
+		$old_stop_reason    = defined $row->[1] ? $row->[1] : "";
+		$old_emergency_stop = defined $row->[2] ? $row->[2] : "";
+		$unix_modified_date =         $row->[3];
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
-			name1 => "old_health",      value1 => $old_health, 
-			name2 => "old_stop_reason", value2 => $old_stop_reason, 
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0004", message_variables => {
+			name1 => "old_health",         value1 => $old_health, 
+			name2 => "old_stop_reason",    value2 => $old_stop_reason, 
+			name3 => "old_emergency_stop", value3 => $old_emergency_stop, 
+			name4 => "unix_modified_date", value4 => $unix_modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
+	}
+	my $current_time = time;
+	my $record_age   = 0;
+	if ($unix_modified_date)
+	{
+		$record_age = $current_time - $unix_modified_date;
+	}
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		name1 => "current_time", value1 => $current_time, 
+		name2 => "record_age",   value2 => $record_age, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If the stop_reason is 'clean' and that was set less than fine minutes ago, don't clear the stop
+	# reason as the host might still be shutting down.
+	if (($old_stop_reason eq "clean") && ($record_age) && ($record_age < 300))
+	{
+		$an->Log->entry({log_level => 2, message_key => "tools_log_0034", message_variables => { 
+			host_uuid => $host_uuid,
+			seconds   => $record_age,
+		}, file => $THIS_FILE, line => __LINE__});
+		return(0);
 	}
 	
 	# If the old stop reason is a time stamp and if that time stamp is in the future, abort.
@@ -724,28 +766,25 @@ WHERE
 		}
 	}
 	
-	# Update the hosts entry.
-	$query = "
+	if (($old_stop_reason) or ($old_health eq "shutdown") or ($old_emergency_stop))
+	{
+		# Update the hosts entry.
+		$query = "
 UPDATE 
     hosts 
 SET 
     host_emergency_stop = FALSE, 
     host_stop_reason    = NULL, 
-";
-	# Update the health to 'ok' if it was 'shutdown' before.
-	if ($old_health eq "shutdown")
-	{
-		$query .= "    host_health         = 'ok', 
-";
-	}
-	$query .= "    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    host_health         = 'ok', 
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
     host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
 	
 	return(0);
 }
@@ -912,8 +951,15 @@ sub scan_node
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{anvil}{$node_key}{online})
 	{
-		# Make sure it's marked as up.
-		$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{anvil}{$node_key}{host_uuid}});
+		# Make sure it's marked as up (if I am a dashboard).
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "scancore::i_am_a", value1 => $an->data->{scancore}{i_am_a}, 
+			name2 => "sys::host_uuid",   value2 => $an->data->{sys}{host_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($an->data->{scancore}{i_am_a} eq "dashboard") or ($an->data->{sys}{host_uuid} eq $an->data->{sys}{anvil}{$node_key}{host_uuid}))
+		{
+			$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{anvil}{$node_key}{host_uuid}});
+		}
 	}
 	else
 	{

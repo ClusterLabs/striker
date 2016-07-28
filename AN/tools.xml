@@ -191,6 +191,8 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0031">Watching the peer: [#!variable!peer!#] and waiting for it to finish running its instance of: [#!variable!program!#].</key>
 		<key name="tools_log_0032">The peer no longer appears to be running: [#!variable!program!#], so we're done waiting.</key>
 		<key name="tools_log_0033">We were asked to mark the node: [#!variable!node!#] as 'on', but its stop reason is a time stamp in the future, so aborting.</key>
+		<key name="tools_log_0034">My 'host_stop_reason' for the host with the UUID: [#!variable!host_uuid!#] is set to 'clean', but it was set: [#!variable!seconds!#] second(s) ago. That is fairly recent so it might still be shutting down, so we will not clear the state yet.</key>
+		<key name="tools_log_0035">I was asked to mark the host with the UUID: [#!variable!host_uuid!#] as 'off', but I am a node and this isn't my host UUID. This shouldn't happen and is probably the sign of a bug in the program. Returning from the method without doing anything.</key>
 	
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

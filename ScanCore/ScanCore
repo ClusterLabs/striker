@@ -1039,20 +1039,22 @@ ORDER BY
 				}
 			}
 			
-			# OK, if 'clear' and if there is a stop reason and/or estop flag, clear it
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "clear",               value1 => $clear, 
-				name2 => "host_emergency_stop", value2 => $host_emergency_stop, 
-				name3 => "host_stop_reason",    value3 => $host_stop_reason, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if (($clear) && (($host_emergency_stop) or ($host_stop_reason)))
-			{
-				# Clear it
-				$an->Log->entry({log_level => 1, message_key => "scancore_log_0086", message_variables => {
-					node => $host_name, 
-				}, file => $THIS_FILE, line => __LINE__});
-				clear_node_stop($an, $host_uuid);
-			}
+			### NOTE: Disabled, because it was clearing before a 'clean' stop could finish. We'll
+			###       trust the node to clear its own state on boot in anvil-safe-start.
+# 			# OK, if 'clear' and if there is a stop reason and/or estop flag, clear it
+# 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+# 				name1 => "clear",               value1 => $clear, 
+# 				name2 => "host_emergency_stop", value2 => $host_emergency_stop, 
+# 				name3 => "host_stop_reason",    value3 => $host_stop_reason, 
+# 			}, file => $THIS_FILE, line => __LINE__});
+# 			if (($clear) && (($host_emergency_stop) or ($host_stop_reason)))
+# 			{
+# 				# Clear it
+# 				$an->Log->entry({log_level => 1, message_key => "scancore_log_0086", message_variables => {
+# 					node => $host_name, 
+# 				}, file => $THIS_FILE, line => __LINE__});
+# 				clear_node_stop($an, $host_uuid);
+# 			}
 			next;
 		}
 		
@@ -1780,6 +1782,9 @@ WHERE
 			# And now die via 'anvil-safe-stop'. We should be dead before this exits. So ya, so 
 			# long and thanks for all the fish.
 			$shell_call = $an->data->{path}{'anvil-safe-stop'}." --local";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
 			open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
@@ -9014,12 +9019,12 @@ sub check_hostname_for_changes
 	# What was the last recorded host name?
 	my $query = "SELECT host_name FROM hosts WHERE host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1  => "query", value1 => $query
+		name1  => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $host_name = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "host_name", value1 => $host_name
+		name1 => "host_name", value1 => $host_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Has it changed?
@@ -9035,6 +9040,9 @@ SET
 WHERE
     host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -9105,23 +9113,54 @@ INSERT INTO
 	else
 	{
 		# A record exists. Check to see if the 'host_emergency_stop' has been set and clear it, if so.
-		my $query = "SELECT host_emergency_stop, host_stop_reason, modified_date FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		my $query = "
+SELECT 
+    host_emergency_stop, 
+    host_stop_reason, 
+    round(extract(epoch from modified_date)) 
+FROM 
+    hosts 
+WHERE 
+    host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		#                        The actual query -----------------.                                                .------- Row 0
-		#                                                          |                                                |    .-- Columns 0
-		my $host_emergency_stop = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-		my $host_stop_reason    = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[1];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "host_emergency_stop", value1 => $host_emergency_stop, 
-			name2 => "host_stop_reason",    value2 => $host_stop_reason
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($host_emergency_stop) or ($host_stop_reason))
+		foreach my $row (@{$results})
 		{
-			# Clear the stop data.
-			my $query = "
+			my $host_emergency_stop =         $row->[0];
+			my $host_stop_reason    = defined $row->[1] ? $row->[1] : "";
+			my $unix_modified_date  =         $row->[2];
+			my $current_time        = time;
+			my $difference          = $current_time - $unix_modified_date;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "host_emergency_stop", value1 => $host_emergency_stop, 
+				name2 => "host_stop_reason",    value2 => $host_stop_reason, 
+				name3 => "unix_modified_date",  value3 => $unix_modified_date, 
+				name4 => "current_time",        value4 => $current_time, 
+				name5 => "difference",          value5 => $difference, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# If the stop_reason is 'clean' but it is less than five minutes old, don't clear it
+			# because the node is probably still shutting down.
+			if (($host_stop_reason eq "clean") && ($difference) && ($difference < 300))
+			{
+				# Not old enough.
+				$an->Log->entry({log_level => 2, message_key => "scancore_log_0091", message_variables => { seconds => $difference }, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+			
+			if (($host_emergency_stop) or ($host_stop_reason))
+			{
+				# Clear the stop data.
+				my $query = "
 UPDATE 
     hosts
 SET 
@@ -9131,7 +9170,11 @@ SET
 WHERE
     host_uuid           = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	$an->data->{sys}{host_is_in_db} = 1;
