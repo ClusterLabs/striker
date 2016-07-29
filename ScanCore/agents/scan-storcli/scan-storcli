@@ -33,7 +33,7 @@
 # 
 
 # Disable this for now.
-exit(0);
+# exit(0);
 
 # Use my modules.
 use strict;
@@ -355,15 +355,15 @@ sub process_cachevaults
 		if ($is_new)
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
-				name1 => "cachevault_uuid",               value1 => $cachevault_uuid,
-				name2 => "controller_uuid",        value2 => $controller_uuid,
-				name3 => "cachevault_serial_number",      value3 => $cachevault_serial_number,
-				name4 => "new_type",               value4 => $new_type,
-				name5 => "new_model",              value5 => $new_model,
-				name6 => "new_state",              value6 => $new_state,
-				name7 => "new_design_capacity",    value7 => $new_design_capacity,
-				name8 => "new_manufacture_date",   value8 => $new_manufacture_date,
-				name9 => "new_replacement_needed", value9 => $new_replacement_needed,
+				name1 => "cachevault_uuid",          value1 => $cachevault_uuid,
+				name2 => "controller_uuid",          value2 => $controller_uuid,
+				name3 => "cachevault_serial_number", value3 => $cachevault_serial_number,
+				name4 => "new_type",                 value4 => $new_type,
+				name5 => "new_model",                value5 => $new_model,
+				name6 => "new_state",                value6 => $new_state,
+				name7 => "new_design_capacity",      value7 => $new_design_capacity,
+				name8 => "new_manufacture_date",     value8 => $new_manufacture_date,
+				name9 => "new_replacement_needed",   value9 => $new_replacement_needed,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
@@ -407,11 +407,12 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($cachevault_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_design_capacity).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_manufacture_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 			# Now record the query in the array
@@ -628,14 +629,14 @@ WHERE
 			### Process the rest of the variables now. 
 			foreach my $type ("variable", "temperature")
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}})
 				{
 					my $new_variable_value = delete $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable};
 					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "variable",    value1 => $variable,
 						name2 => "temperature", value2 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -644,10 +645,11 @@ WHERE
 						# Look for changes
 						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}{$variable}{storcli_variable_value};
 						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}{$variable}{storcli_variable_uuid};
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-							name1 => "new_variable_value", value1 => $new_variable_value,
-							name2 => "old_variable_value", value2 => $old_variable_value,
-							name3 => "variable_uuid",      value3 => $variable_uuid,
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+							name1 => "variable",           value1 => $variable,
+							name2 => "new_variable_value", value2 => $new_variable_value,
+							name3 => "old_variable_value", value3 => $old_variable_value,
+							name4 => "variable_uuid",      value4 => $variable_uuid,
 						}, file => $THIS_FILE, line => __LINE__});
 						
 						# Delete it so that we know it has been processed.
@@ -1837,7 +1839,7 @@ AND
 					# Being in the 'variable' hash, 'is_temperature' is 'FALSE'.
 					my $new_variable_value = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable};
 					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "variable",    value1 => $variable,
 						name2 => "temperature", value2 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -1846,7 +1848,7 @@ AND
 						# Look for changes
 						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_value};
 						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid};
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 							name1 => "new_variable_value", value1 => $new_variable_value,
 							name2 => "old_variable_value", value2 => $old_variable_value,
 							name3 => "variable_uuid",      value3 => $variable_uuid,
@@ -2156,6 +2158,7 @@ SELECT
     storcli_cachevault_design_capacity, 
     storcli_cachevault_replacement_needed, 
     storcli_cachevault_type, 
+    storcli_cachevault_model, 
     storcli_cachevault_manufacture_date 
 FROM 
     storcli_cachevaults
@@ -2179,7 +2182,8 @@ WHERE
 		my $storcli_cachevault_design_capacity    = defined $row->[4] ? $row->[4] : "";
 		my $storcli_cachevault_replacement_needed = defined $row->[5] ? $row->[5] : "";
 		my $storcli_cachevault_type               = defined $row->[6] ? $row->[6] : "";
-		my $storcli_cachevault_manufacture_date   = defined $row->[7] ? $row->[7] : "";
+		my $storcli_cachevault_model              = defined $row->[7] ? $row->[7] : "";
+		my $storcli_cachevault_manufacture_date   = defined $row->[8] ? $row->[8] : "";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "storcli_cachevault_uuid",               value1 => $storcli_cachevault_uuid, 
 			name2 => "storcli_cachevault_controller_uuid",    value2 => $storcli_cachevault_controller_uuid, 
@@ -2188,7 +2192,8 @@ WHERE
 			name4 => "storcli_cachevault_design_capacity",    value4 => $storcli_cachevault_design_capacity, 
 			name5 => "storcli_cachevault_replacement_needed", value5 => $storcli_cachevault_replacement_needed, 
 			name6 => "storcli_cachevault_type",               value6 => $storcli_cachevault_type, 
-			name7 => "storcli_cachevault_manufacture_date",   value7 => $storcli_cachevault_manufacture_date, 
+			name7 => "storcli_cachevault_model",              value7 => $storcli_cachevault_model, 
+			name8 => "storcli_cachevault_manufacture_date",   value8 => $storcli_cachevault_manufacture_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Store the information about this cachevault
@@ -2206,16 +2211,18 @@ WHERE
 			storcli_cachevault_design_capacity	=>	$storcli_cachevault_design_capacity, 
 			storcli_cachevault_replacement_needed	=>	$storcli_cachevault_replacement_needed, 
 			storcli_cachevault_type			=>	$storcli_cachevault_type, 
+			storcli_cachevault_model		=>	$storcli_cachevault_model, 
 			storcli_cachevault_manufacture_date	=>	$storcli_cachevault_manufacture_date, 
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_controller_uuid",    value1 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_controller_uuid}, 
 			name2 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_serial_number",      value2 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_serial_number}, 
 			name3 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_state",              value3 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_state}, 
 			name4 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_design_capacity",    value4 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_design_capacity}, 
 			name5 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_replacement_needed", value5 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_replacement_needed}, 
 			name6 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_type",               value6 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_type}, 
-			name7 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_manufacture_date",   value7 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_manufacture_date}, 
+			name7 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_model",              value7 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_model}, 
+			name8 => "sql::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::storcli_cachevault_manufacture_date",   value8 => $an->data->{sql}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_manufacture_date}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;

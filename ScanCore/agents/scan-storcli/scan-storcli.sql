@@ -89,6 +89,7 @@ CREATE TABLE storcli_cachevaults (
 	storcli_cachevault_design_capacity	text,						-- "Design Capacity"
 	storcli_cachevault_replacement_needed	text,						-- "Replacement required"
 	storcli_cachevault_type			text,						-- "Type"
+	storcli_cachevault_model		text,						-- "Device Name"
 	storcli_cachevault_manufacture_date	text,						-- "Date of Manufacture"
 	modified_date				timestamp with time zone	not null,
 	
@@ -107,6 +108,7 @@ CREATE TABLE history.storcli_cachevaults (
 	storcli_cachevault_design_capacity	text,
 	storcli_cachevault_replacement_needed	text,
 	storcli_cachevault_type			text,
+	storcli_cachevault_model		text,
 	storcli_cachevault_manufacture_date	text,
 	modified_date				timestamp with time zone
 );
@@ -127,6 +129,7 @@ BEGIN
 		 storcli_cachevault_design_capacity, 
 		 storcli_cachevault_replacement_needed, 
 		 storcli_cachevault_type, 
+		 storcli_cachevault_model, 
 		 storcli_cachevault_manufacture_date, 
 		 modified_date)
 	VALUES
@@ -138,6 +141,7 @@ BEGIN
 		 history_storcli_cachevaults.storcli_cachevault_design_capacity, 
 		 history_storcli_cachevaults.storcli_cachevault_replacement_needed, 
 		 history_storcli_cachevaults.storcli_cachevault_type, 
+		 history_storcli_cachevaults.storcli_cachevault_model, 
 		 history_storcli_cachevaults.storcli_cachevault_manufacture_date, 
 		 history_storcli_cachevaults.modified_date);
 	RETURN NULL;
