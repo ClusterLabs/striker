@@ -159,6 +159,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0089">Another copy of ScanCore is running, but it has not updated the ScanCore database in: [#!variable!difference!#] seconds. It might be hung, so we will kill it now.</key>
 		<key name="scancore_log_0090">Killing ScanCore instance with PID: [#!variable!pid!#].</key>
 		<key name="scancore_log_0091">My 'host_stop_reason' is set to 'clean', but it was set: [#!variable!seconds!#] second(s) ago. That is fairly recent so this machine might still be shutting down, so I will not clear the state yet.</key>
+		<key name="scancore_log_0092">Another instance of ScanCore is currently resynchronizing the database. Will check periodically and proceed once it is done.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -226,6 +227,11 @@ To reduce thermal output and slow down how quickly the room is heating,
 one of the nodes will now be withdrawn and shutdown. Which node will shutdown will be determined momentarily.
 		</key>
 		<key name="scancore_warning_0028">Failed to find the peer's host UUID. The local node's temperature is high enough across enough sensors to potentially trigger load shedding. In order to decide whether to initiate load shedding or not though, we need to check to see if the peer is also in the same state. Without the peer's UUID, this is not possible. For this reason, load shedding is disabled.</key>
+		<key name="scancore_warning_0029">
+Another instance of ScanCore registered that it was starting to sync the databases: [#!variable!age!#] seconds ago, but it still hasn't finished. It might be hung, so it will be terminated, if possible. 
+
+If you are getting this message repeatedly, then it might be failing to terminate the hung instance. If that happens, please feel free to contact #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) and we will do our best to assist.
+		</key>
 		
 		<!-- Cleared warnings. -->
 		<key name="scancore_cleared_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

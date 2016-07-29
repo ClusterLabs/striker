@@ -193,6 +193,7 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0033">We were asked to mark the node: [#!variable!node!#] as 'on', but its stop reason is a time stamp in the future, so aborting.</key>
 		<key name="tools_log_0034">My 'host_stop_reason' for the host with the UUID: [#!variable!host_uuid!#] is set to 'clean', but it was set: [#!variable!seconds!#] second(s) ago. That is fairly recent so it might still be shutting down, so we will not clear the state yet.</key>
 		<key name="tools_log_0035">I was asked to mark the host with the UUID: [#!variable!host_uuid!#] as 'off', but I am a node and this isn't my host UUID. This shouldn't happen and is probably the sign of a bug in the program. Returning from the method without doing anything.</key>
+		<key name="tools_log_0036">I was asked to wait: [#!variable!wait!#] seconds after setting the "database is being resynchronized' flag, to give other instances of ScanCore time to finish their scans. Will resume shortly...</key>
 	
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -732,21 +733,21 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0074"><![CDATA[The 'AN::Tools::Get' module's 'template()' method was called without a template name passed.]]></key>
 		<key name="error_message_0075"><![CDATA[The 'AN::Tools::Get' module's 'template()' method failed to find the template file: [#!variable!file!#].]]></key>
 		<key name="error_message_0076"><![CDATA[The 'AN::Tools::String' module's private '_process_string_replace()' method hit an infitie loop while replacing "replace" variables in the template file: [#!variable!file!#] in the template: [#!variable!template!#]. If this is triggered erroneously, increase the 'sys::error_limit' value.]]></key>
-		<key name="error_message_0077"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_smtp()' method was called without passing in an SMTP server name.]]></key>
-		<key name="error_message_0078"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_owners()' method was called without passing in an #!string!an_brand_0003!# owner name.]]></key>
-		<key name="error_message_0079"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method was called without passing in an #!string!an_brand_0003!# name.]]></key>
-		<key name="error_message_0080"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method tried to create a new #!string!an_brand_0003!# entry, but no Owner UUID was passed in.]]></key>
-		<key name="error_message_0081"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method tried to create a new #!string!an_brand_0003!# entry, but no SMTP UUID was passed in.]]></key>
-		<key name="error_message_0082"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_nodes()' method was called without an #!string!an_brand_0003!# UUID.]]></key>
-		<key name="error_message_0083"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_nodes()' method was called without a host UUID.]]></key>
+		<key name="error_message_0077"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_smtp()' method was called without passing in an SMTP server name.]]></key>
+		<key name="error_message_0078"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_owners()' method was called without passing in an #!string!an_brand_0003!# owner name.]]></key>
+		<key name="error_message_0079"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_anvils()' method was called without passing in an #!string!an_brand_0003!# name.]]></key>
+		<key name="error_message_0080"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_anvils()' method tried to create a new #!string!an_brand_0003!# entry, but no Owner UUID was passed in.]]></key>
+		<key name="error_message_0081"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_anvils()' method tried to create a new #!string!an_brand_0003!# entry, but no SMTP UUID was passed in.]]></key>
+		<key name="error_message_0082"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes()' method was called without an #!string!an_brand_0003!# UUID.]]></key>
+		<key name="error_message_0083"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes()' method was called without a host UUID.]]></key>
 		<key name="error_message_0084"><![CDATA[The 'AN::Tools::Get' module's 'anvil_data()' method was called but neither an #!string!an_brand_0003!# name or UUID was passed in.]]></key>
 		<key name="error_message_0085"><![CDATA[The 'AN::Tools::Get' module's 'owner_data()' method was called but neither a name or UUID was passed in.]]></key>
 		<key name="error_message_0086"><![CDATA[The 'AN::Tools::Get' module's 'smtp_data()' method was called but neither a server or UUID was passed in.]]></key>
 		<key name="error_message_0087"><![CDATA[The 'AN::Tools::Get' module's 'alert_data()' method was called but neither a target or UUID was passed in.]]></key>
-		<key name="error_message_0088"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_notifications()' method was called without passing in a target or UUID.]]></key>
+		<key name="error_message_0088"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_notifications()' method was called without passing in a target or UUID.]]></key>
 		<key name="error_message_0089"><![CDATA[The 'AN::Tools::Storage' module's 'read_words()' method was called without passing in a file to read.]]></key>
 		<key name="error_message_0090"><![CDATA[The 'AN::Tools::Get' module's 'recipient_data()' method was called but no recipient, anvil or notification target UUID was passed in.]]></key>
-		<key name="error_message_0091"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_recipients()' method was called without passing in an #!string!an_brand_0003!# and/or notification UUID.]]></key>
+		<key name="error_message_0091"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_recipients()' method was called without passing in an #!string!an_brand_0003!# and/or notification UUID.]]></key>
 		<key name="error_message_0092"><![CDATA[The 'AN::Tools::Get' module's 'server_data()' method failed to find the requested server's XML definition data.]]></key>
 		<key name="error_message_0093"><![CDATA[The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method was not passed a manifest (XML format) to parse.]]></key>
 		<key name="error_message_0094"><![CDATA[The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method failed to find the install manifest XML data for the manifest UUID: [#!variable!uuid!#].]]></key>
@@ -819,7 +820,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0161"><![CDATA[The 'AN::Tools::InstallManifest' module's 'write_cluster_conf()' was called without a node name.]]></key>
 		<key name="error_message_0162"><![CDATA[The 'AN::Tools::System' module's 'daemon_boot_config()' was called without a daemon name.]]></key>
 		<key name="error_message_0163"><![CDATA[The 'AN::Tools::System' module's 'daemon_boot_config()' was called with an invalid 'set' value. Received: [#!variable!set!#], but only 'on' or 'off' are valid.]]></key>
-		<key name="error_message_0164"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_variables()' method was called without passing in an variable name.]]></key>
+		<key name="error_message_0164"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_variables()' method was called without passing in an variable name or variable UUID.]]></key>
 		<key name="error_message_0165"><![CDATA[The 'AN::Tools::Web' module's 'read_variables()' method was called without passing in an variable name.]]></key>
 		<key name="error_message_0166"><![CDATA[The 'AN::Tools::Get' module's 'server_uuid()' method was unable to gather the UUIDs of the Anvil! nodes.]]></key>
 		<key name="error_message_0167"><![CDATA[The 'AN::Tools::Get' module's 'server_xml()' method was called without a server name being passed.]]></key>

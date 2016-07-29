@@ -2356,14 +2356,34 @@ sub insert_or_update_variables
 		name8 => "variable_source_table", value8 => $variable_source_table, 
 		name9 => "update_value_only",     value9 => $update_value_only, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not $variable_name)
+	if ((not $variable_name) && (not $variable_uuid))
 	{
 		# Throw an error and exit.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0164", code => 164, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
-	# If we don't have a UUID, see if we can find one for the given SMTP server name.
+	# If we have a variable UUID but not a name, read the variable name. If we don't have a UUID, see if
+	# we can find one for the given variable name.
+	if (not $variable_name)
+	{
+		my $query = "
+SELECT 
+    variable_name 
+FROM 
+    variables 
+WHERE 
+    variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$variable_name = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$variable_name = "" if not defined $variable_name;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable_name", value1 => $variable_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	if (not $variable_uuid)
 	{
 		my $query = "
@@ -4353,6 +4373,7 @@ AND
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $data = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	   $data = "" if not defined $data;
 	
 	### WARNING: This can expose passwords. Only change the log level to actively debug.
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {

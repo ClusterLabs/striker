@@ -294,6 +294,9 @@ while(1)
 	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 	if ($connections)
 	{
+		# Wait if another instance is updating the database
+		$an->DB->wait_if_db_is_updating();
+		
 		# Look to see if any databases need to be updated.
 		update_db($an);
 		
@@ -383,9 +386,9 @@ while(1)
 # This should never be hit...
 nice_exit($an);
 
-###############################################################################
-# Functions                                                                   #
-###############################################################################
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
 
 # This locates and reads in the database data about this Anvil! 
 sub update_anvil_data
@@ -4461,15 +4464,9 @@ sub update_db
 		# Something somewhere is out of sync. So start with updating the core tables. The agents will
 		# take care of their own.
 		
-		### NOTE: This requires admin access, which may be resolved with C. Keane's reply here: 
-		###       https://forums.aws.amazon.com/thread.jspa?messageID=561509
-		### TODO: Verify that disabling triggers is the right approach.
-		# Disable triggers.
-		#my $query = "SET session_replication_role = replica;";
-		#$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		#	name1 => "query", value1 => $query, 
-		#}, file => $THIS_FILE, line => __LINE__});
-		#$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		# Make a note in the databases that we're starting an update and ask it to wait 30 seconds 
+		# before returning to give other instances time to finish their scans.
+		$an->DB->set_update_db_flag({set => time, 'wait' => 30});
 		
 		# Update (and commit) the hosts table
 		update_db_hosts($an);
@@ -4497,14 +4494,9 @@ sub update_db
 		
 		# Record the time
 		$an->DB->update_time({file => $THIS_FILE});
-
-		# Re-enable triggers
-		#$query = "SET session_replication_role = DEFAULT;";
-		#$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		#	name1 => "query", value1 => $query, 
-		#}, file => $THIS_FILE, line => __LINE__});
-		#$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	
+		# Clear the update flag.
+		$an->DB->set_update_db_flag({set => 0});
 	}
 	
 	return(0);
@@ -7543,20 +7535,20 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $server_uuid                     = $row->[0];
-			my $server_name                     = $row->[1];
-			my $server_stop_reason              = $row->[2];
-			my $server_start_after              = $row->[3];
-			my $server_start_delay              = $row->[4];
-			my $server_note                     = $row->[5];
-			my $server_definition               = $row->[6];
-			my $server_host                     = $row->[7];
-			my $server_state                    = $row->[8];
-			my $server_migration_type           = $row->[9];
-			my $server_pre_migration_script     = $row->[10];
-			my $server_pre_migration_arguments  = $row->[11];
-			my $server_post_migration_script    = $row->[12];
-			my $server_post_migration_arguments = $row->[13];
+			my $server_uuid                     =         $row->[0];
+			my $server_name                     =         $row->[1];
+			my $server_stop_reason              = defined $row->[2]  ? $row->[2]  : "";
+			my $server_start_after              = defined $row->[3]  ? $row->[3]  : "";
+			my $server_start_delay              = defined $row->[4]  ? $row->[4]  : "";
+			my $server_note                     = defined $row->[5]  ? $row->[5]  : "";
+			my $server_definition               = defined $row->[6]  ? $row->[6]  : "";
+			my $server_host                     = defined $row->[7]  ? $row->[7]  : "";
+			my $server_state                    = defined $row->[8]  ? $row->[8]  : "";
+			my $server_migration_type           = defined $row->[9]  ? $row->[9]  : "";
+			my $server_pre_migration_script     = defined $row->[10] ? $row->[10] : "";
+			my $server_pre_migration_arguments  = defined $row->[11] ? $row->[11] : "";
+			my $server_post_migration_script    = defined $row->[12] ? $row->[12] : "";
+			my $server_post_migration_arguments = defined $row->[13] ? $row->[13] : "";
 			my $modified_date                   = $row->[14];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
 				name1  => "server_uuid",                     value1  => $server_uuid, 
@@ -7568,11 +7560,11 @@ FROM
 				name7  => "server_definition",               value7  => $server_definition, 
 				name8  => "server_host",                     value8  => $server_host, 
 				name9  => "server_state",                    value9  => $server_state, 
-				name10 => "server_migration_type",           value10 => "$server_migration_type",
-				name11 => "server_pre_migration_script",     value11 => "$server_pre_migration_script",
-				name12 => "server_pre_migration_arguments",  value12 => "$server_pre_migration_arguments",
-				name13 => "server_post_migration_script",    value13 => "$server_post_migration_script",
-				name14 => "server_post_migration_arguments", value14 => "$server_post_migration_arguments",
+				name10 => "server_migration_type",           value10 => $server_migration_type,
+				name11 => "server_pre_migration_script",     value11 => $server_pre_migration_script,
+				name12 => "server_pre_migration_arguments",  value12 => $server_pre_migration_arguments,
+				name13 => "server_post_migration_script",    value13 => $server_post_migration_script,
+				name14 => "server_post_migration_arguments", value14 => $server_post_migration_arguments,
 				name15 => "modified_date",                   value15 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -9486,6 +9478,40 @@ sub avoid_duplicate_run
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "my_pid", value1 => $my_pid,
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# See if another instance is in the 
+	my $last_peer_state = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "last_peer_state", value1 => $last_peer_state,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($last_peer_state) && ($last_peer_state =~ /^\d+$/))
+	{
+		# An update is running. If it is less than ten minutes old, simply exit.
+		my $current_time = time;
+		my $update_age   = $current_time - $last_peer_state;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "current_time", value1 => $current_time,
+			name2 => "update_age",   value2 => $update_age,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($update_age > 600)
+		{
+			# Set an alert and proceed.
+			my $variables = { age => $update_age };
+			$an->Alert->register_alert({
+				alert_level		=>	"warning", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_title_key		=>	"an_alert_title_0004",
+				alert_message_key	=>	"scancore_warning_0029",
+				alert_message_variables	=>	$variables,
+			});
+			$an->Log->entry({log_level => 1, message_key => "scancore_warning_0029", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Nothing to worry about yet, just exit.
+			exit(6);
+		}
+	}
 	
 	my $already_running = 0;
 	my $other_pids      = [];

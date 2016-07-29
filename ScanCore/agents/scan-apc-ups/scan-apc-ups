@@ -2842,11 +2842,19 @@ sub update_db
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
 	{
+		# Make a note in the databases that we're starting an update and ask it to wait 10 seconds 
+		# before returning to give other instances time to finish their scans. (our scans end quickly
+		# enough).
+		$an->DB->set_update_db_flag({set => time, 'wait' => 10});
+		
 		# Update apc_ups and interfaces
 		update_db_apc_ups($an);
 		update_db_apc_ups_battery($an);
 		update_db_apc_ups_input($an);
 		update_db_apc_ups_output($an);
+	
+		# Clear the update flag.
+		$an->DB->set_update_db_flag({set => 0});
 	}
 	
 	return(0);

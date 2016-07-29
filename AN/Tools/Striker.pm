@@ -952,11 +952,12 @@ sub scan_node
 	if ($an->data->{sys}{anvil}{$node_key}{online})
 	{
 		# Make sure it's marked as up (if I am a dashboard).
+		my $i_am_a = $an->Get->what_am_i();
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "scancore::i_am_a", value1 => $an->data->{scancore}{i_am_a}, 
-			name2 => "sys::host_uuid",   value2 => $an->data->{sys}{host_uuid}, 
+			name1 => "i_am_a",         value1 => $i_am_a, 
+			name2 => "sys::host_uuid", value2 => $an->data->{sys}{host_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($an->data->{scancore}{i_am_a} eq "dashboard") or ($an->data->{sys}{host_uuid} eq $an->data->{sys}{anvil}{$node_key}{host_uuid}))
+		if (($i_am_a eq "dashboard") or ($an->data->{sys}{host_uuid} eq $an->data->{sys}{anvil}{$node_key}{host_uuid}))
 		{
 			$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{anvil}{$node_key}{host_uuid}});
 		}

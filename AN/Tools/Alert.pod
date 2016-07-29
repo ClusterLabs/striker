@@ -546,31 +546,31 @@ The 'AN::Tools::String' module's private '_process_string_replace()' method hit 
 
 =head2 C<77>
 
-The 'AN::Tools::Web' module's 'insert_or_update_smtp()' method was called without passing in an SMTP server name.
+The 'AN::Tools::ScanCore' module's 'insert_or_update_smtp()' method was called without passing in an SMTP server name.
 
 =head2 C<78>
 
-The 'AN::Tools::Web' module's 'insert_or_update_owners()' method was called without passing in an Anvil! owner name.
+The 'AN::Tools::ScanCore' module's 'insert_or_update_owners()' method was called without passing in an Anvil! owner name.
 
 =head2 C<79>
 
-The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method was called without passing in an Anvil! name.
+The 'AN::Tools::ScanCore' module's 'insert_or_update_anvils()' method was called without passing in an Anvil! name.
 
 =head2 C<80>
 
-The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method tried to create a new Anvil! entry, but no Owner UUID was passed in.
+The 'AN::Tools::ScanCore' module's 'insert_or_update_anvils()' method tried to create a new Anvil! entry, but no Owner UUID was passed in.
 
 =head2 C<81>
 
-The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method tried to create a new Anvil! entry, but no SMTP UUID was passed in.
+The 'AN::Tools::ScanCore' module's 'insert_or_update_anvils()' method tried to create a new Anvil! entry, but no SMTP UUID was passed in.
 
 =head2 C<82>
 
-The 'AN::Tools::Web' module's 'insert_or_update_nodes()' method was called without an Anvil! UUID.
+The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes()' method was called without an Anvil! UUID.
 
 =head2 C<83>
 
-The 'AN::Tools::Web' module's 'insert_or_update_nodes()' method was called without a host UUID.
+The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes()' method was called without a host UUID.
 
 =head2 C<84>
 
@@ -590,7 +590,7 @@ The 'AN::Tools::Get' module's 'alert_data()' method was called but neither a tar
 
 =head2 C<88>
 
-The 'AN::Tools::Web' module's 'insert_or_update_notifications()' method was called without passing in a target or UUID
+The 'AN::Tools::ScanCore' module's 'insert_or_update_notifications()' method was called without passing in a target or UUID
 
 =head2 C<89>
 
@@ -602,7 +602,7 @@ The 'AN::Tools::Get' module's 'recipient_data()' method was called but no recipi
 
 =head2 C<91>
 
-The 'AN::Tools::Web' module's 'insert_or_update_recipients()' method was called without passing in an Anvil! and/or notification UUID.
+The 'AN::Tools::ScanCore' module's 'insert_or_update_recipients()' method was called without passing in an Anvil! and/or notification UUID.
 
 =head2 C<92>
 
@@ -894,7 +894,7 @@ The 'AN::Tools::System' module's 'daemon_boot_config()' was called with an inval
 
 =head2 C<164>
 
-The 'AN::Tools::Web' module's 'insert_or_update_variables()' method was called without passing in an variable name.
+The 'AN::Tools::Web' module's 'insert_or_update_variables()' method was called without passing in an variable name or variable UUID.
 
 =head2 C<165>
 

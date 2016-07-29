@@ -23,9 +23,10 @@ my $THIS_FILE = "DB.pm";
 # get_sql_schema
 # initialize_db
 # load_schema
+# set_update_db_flag
 # update_time
 # verify_host_uuid
-# 
+# wait_if_db_is_updating
 
 
 #############################################################################################################
@@ -1297,6 +1298,43 @@ sub load_schema
 	return(0);
 }
 
+# This sets the 'db_resync_in_progress' variable to be the timestamp that a db sync starts or '0' when a
+# resync is finished.
+sub set_update_db_flag
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_flag", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $set  = defined $parameter->{set}    ? $parameter->{set}    : 0;
+	my $wait = defined $parameter->{'wait'} ? $parameter->{'wait'} : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "set",  value1 => $set, 
+		name2 => "wait", value2 => $wait, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+		variable_name     => 'db_resync_in_progress',
+		variable_value    => $set,
+		update_value_only => 1,
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "variable_uuid", value1 => $variable_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If we've been asked to wait, wait. This is sometimes requested to give the other instances time to 
+	# finish their scan runs before starting the actual update process.
+	if (($wait) && ($wait =~ /^\d+$/))
+	{
+		$an->Log->entry({log_level => 1, message_key => "tools_log_0036", message_variables => { 'wait' => $wait }, file => $THIS_FILE, line => __LINE__});
+		sleep $wait;
+	}
+	
+	return(0);
+}
+
 # This simply updates the 'updated' table with the current time.
 sub update_time
 {
@@ -1434,6 +1472,37 @@ WHERE
 		name1 => "ok", value1 => $ok
 	}, file => $THIS_FILE, line => __LINE__});
 	return($ok);
+}
+
+# This checks to see if 'db_resync_in_progress' is set and, if so, waits until it is cleared.
+sub wait_if_db_is_updating
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "wait_if_db_is_updating" }, file => $THIS_FILE, line => __LINE__});
+	
+	my $last_peer_state = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "last_peer_state", value1 => $last_peer_state,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($last_peer_state) && ($last_peer_state =~ /^\d+$/))
+	{
+		# Wait.
+		while ($last_peer_state)
+		{
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0092", file => $THIS_FILE, line => __LINE__});
+			sleep 10;
+			
+			$last_peer_state = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "last_peer_state", value1 => $last_peer_state,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
 }
 
 

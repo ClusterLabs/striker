@@ -33,7 +33,7 @@
 # 
 
 # Disable this for now.
-#exit(0);
+exit(0);
 
 # Use my modules.
 use strict;
@@ -2623,6 +2623,11 @@ sub update_db
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
 	{
+		# Make a note in the databases that we're starting an update and ask it to wait 10 seconds 
+		# before returning to give other instances time to finish their scans. (our scans end quickly
+		# enough).
+		$an->DB->set_update_db_flag({set => time, 'wait' => 10});
+		
 		# Update Controllers and the various dangly bits hanging off them.
 		update_db_controllers($an);
 		update_db_cachevaults($an);
@@ -2631,6 +2636,9 @@ sub update_db
 		update_db_drive_groups($an);
 		update_db_physical_drives($an);
 		update_db_variables($an);
+	
+		# Clear the update flag.
+		$an->DB->set_update_db_flag({set => 0});
 	}
 	
 	return(0);
