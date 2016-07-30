@@ -18,6 +18,7 @@
 # 7  - Failed to match a BBU to a host controller's serial number.
 # 8  - Failed to match a controller's serial number to a controller UUID.
 # 9  - Failed to match a Cachevault to a host controller's serial number.
+# 10 - Failed to match a virtual disk ID string to a host controller's serial number.
 # 
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
@@ -114,7 +115,7 @@ my $an = AN::Tools->new({data =>
 				performance_mode	=>	"show perfmode",
 				pr_rate			=>	"show prrate",
 				rebuild_rate		=>	"show rebuildrate",
-				virtual_disk_data	=>	"/vall show all",
+				virtual_drive_data	=>	"/vall show all",
 			},
 			sql			=>	[],
 		},
@@ -207,9 +208,9 @@ sub find_changes
 	process_controllers($an);
 	process_bbus($an);
 	process_cachevaults($an);
-	process_drive_groups($an);
-	process_virtual_disks($an);
-	process_physical_disks($an);
+	process_virtual_drives($an);	# This calls process_drive_groups() and that calls process_physical_disks().
+	#process_drive_groups($an);
+	#process_physical_disks($an);
 	
 	# Now read back in the various temperature data and process them.
 	#...
@@ -217,6 +218,762 @@ sub find_changes
 	return(0);
 }
 
+# Look for added, changed or deleted physical drives.
+sub process_physical_disks
+{
+	my ($an, $virtual_drive, $drive_group) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_physical_disks" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "virtual_drive", value1 => $virtual_drive, 
+		name2 => "drive_group",  value2 => $drive_group, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "enclosure_id", value1 => $enclosure_id,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "slot_number", value1 => $slot_number,
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->aligned_entries({
+					log_level => 2, 
+					file      => $THIS_FILE,
+					line      => __LINE__,
+					prefix    => "VD $virtual_drive, DG $drive_group, EID $enclosure_id, Slot $slot_number - $type",
+					hash_ref  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
+				});
+			}
+		}
+	}
+	
+	return(0);
+}
+
+# Look for added, changed or deleted drive groups.
+sub process_drive_groups
+{
+	my ($an, $virtual_drive) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_drive_groups" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "virtual_drive", value1 => $virtual_drive, 
+	}, file => $THIS_FILE, line => __LINE__});
+
+	# Show the drive group and drives.
+	foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "drive_group", value1 => $drive_group,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Show the basic drive group data
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "type", value1 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->aligned_entries({
+				log_level => 2, 
+				file      => $THIS_FILE,
+				line      => __LINE__,
+				prefix    => "VD $virtual_drive, DG $drive_group - $type",
+				hash_ref  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{$type},
+			});
+		}
+		
+		process_physical_disks($an, $virtual_drive, $drive_group);
+	}
+	
+	return(0);
+}
+
+# Look for added, changed or deleted virtual disks.
+sub process_virtual_drives
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_virtual_drives" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# This method is a little different because as we process virtual drives, we will also process and 
+	# drive groups under them.
+	$an->data->{sys}{sql} = [];
+	foreach my $storcli_virtual_drive_id_string (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
+	{
+		# The identifying string '<host_controller_sn>-vd<x>' where 'x' is the virtual drive number.
+		my $host_controller_serial_number = $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{on_controller};
+		my $controller_uuid               = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
+		my $virtual_drive                 = ($storcli_virtual_drive_id_string =~ /-vd(\d+)$/)[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "storcli_virtual_drive_id_string", value1 => $storcli_virtual_drive_id_string,
+			name2 => "host_controller_serial_number",   value2 => $host_controller_serial_number,
+			name3 => "controller_uuid",                 value3 => $controller_uuid,
+			name4 => "virtual_drive",                   value4 => $virtual_drive,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Make sure I have the host's serial number and UUID.
+		if (not $host_controller_serial_number)
+		{
+			# Error!
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0010", message_variables => { id_string => $storcli_virtual_drive_id_string }, code => 10, file => $THIS_FILE, line => __LINE__});
+			exit(10);
+		}
+		if (not $controller_uuid)
+		{
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
+			exit(8);
+		}
+		
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "type", value1 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->Log->aligned_entries({
+				log_level => 2, 
+				file      => $THIS_FILE,
+				line      => __LINE__,
+				prefix    => "VD $virtual_drive - $type",
+				hash_ref  => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type},
+			});
+		}
+		
+		# Is this a new Virtual Disk?
+		my $storcli_virtual_drive_uuid = "";
+		my $is_new                     = 0;
+		if (exists $an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string})
+		{
+			# Yes!
+			$storcli_virtual_drive_uuid = $an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli_virtual_drive_uuid", value1 => $storcli_virtual_drive_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# No, this is a new Virtual Drive. Create a new UUID for it.
+			$storcli_virtual_drive_uuid = $an->Get->uuid();
+			$is_new                     = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "storcli_virtual_drive_uuid", value1 => $storcli_virtual_drive_uuid,
+				name2 => "is_new",   value2 => $is_new,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Add the keys for looking it up by UUID or serial number.
+			$an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string} = $storcli_virtual_drive_uuid;
+			$an->data->{'scan-storcli'}{virtual_drives}{by_uuid}{$storcli_virtual_drive_uuid}           = $storcli_virtual_drive_id_string;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "scan-storcli::virtual_drives::by_id_string::$storcli_virtual_drive_id_string", value1 => $an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string},
+				name2 => "scan-storcli::virtual_drives::by_uuid::$storcli_virtual_drive_uuid",           value2 => $an->data->{'scan-storcli'}{virtual_drives}{by_uuid}{$storcli_virtual_drive_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		
+		### These are the values for the main table. Anything else will go in the variables table.
+		# Creation date is a combination of two variables.
+		my $creation_date         = "";
+		my $creation_time         = "";
+		my $new_creation_date     = "";
+		my $new_data_protection   = "";
+		my $new_disk_cache_policy = "";
+		my $new_emulation_type    = "";
+		my $new_encryption        = "";
+		my $new_blocks            = "";
+		my $new_strip_size        = "";
+		my $new_drives_per_span   = "";
+		my $new_span_depth        = "";
+		my $new_scsi_naa_id       = "";
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "variable", value1 => $variable,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Store and delete the value
+			if ($variable eq "creation_date")
+			{
+				$creation_date = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "creation_date", value1 => $creation_date,
+					name2 => "creation_time", value2 => $creation_time,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If I have the time, assemble.
+				if ($creation_time)
+				{
+					$new_creation_date = $creation_date." ".$creation_time;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "new_creation_date", value1 => $new_creation_date,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				next;
+			}
+			if ($variable eq "creation_time")
+			{
+				$creation_time = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "creation_date", value1 => $creation_date,
+					name2 => "creation_time", value2 => $creation_time,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If I have the date, assemble.
+				if ($creation_date)
+				{
+					$new_creation_date = $creation_date." ".$creation_time;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "new_creation_date", value1 => $new_creation_date,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				next;
+			}
+		}
+# 		my $new_creation_date     =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{creation_date};
+# 		   $new_creation_date     .= " ";
+# 		   $new_creation_date     .= delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{creation_time};
+# 		my $new_data_protection   =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{data_protection};
+# 		my $new_disk_cache_policy =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{disk_cache_policy};
+# 		my $new_emulation_type    =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{emulation_type};
+# 		my $new_encryption        =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{encryption};
+# 		my $new_blocks            =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{number_of_blocks};
+# 		my $new_strip_size        =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{strip_size};
+# 		my $new_drives_per_span   =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{number_of_drives_per_span};
+# 		my $new_span_depth        =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{span_depth};
+# 		my $new_scsi_naa_id       =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{scsi_naa_id};
+# 		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+# 			name1  => "new_creation_date",     value1  => $new_creation_date,
+# 			name2  => "new_data_protection",   value2  => $new_data_protection,
+# 			name3  => "new_disk_cache_policy", value3  => $new_disk_cache_policy,
+# 			name4  => "new_emulation_type",    value4  => $new_emulation_type,
+# 			name5  => "new_encryption",        value5  => $new_encryption,
+# 			name6  => "new_blocks",            value6  => $new_blocks,
+# 			name7  => "new_strip_size",        value7  => $new_strip_size,
+# 			name8  => "new_drives_per_span",   value8  => $new_drives_per_span,
+# 			name9  => "new_span_depth",        value9  => $new_span_depth,
+# 			name10 => "new_scsi_naa_id",       value10 => $new_scsi_naa_id,
+# 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Pull out the rest of the variables now. If the Virtual Drive is new, all variables will be 
+		# INSERTed. If the Virtual Drive exists, each variable will be examined and new ones will be 
+		# INSERTed, existing ones will be checked for changes and UPDATEd as needed. If the 
+		# Virtual Drive is NOT new, then variables from the old data will be deleted as we go and any 
+		# not found in the current data set will be left over. We'll use this to determine variables
+		# that have vanished. They will not be deleted, but their value will be set to 'VANISHED'.
+=cut
+		if ($is_new)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "storcli_virtual_drive_uuid",          value1 => $storcli_virtual_drive_uuid,
+				name2 => "controller_uuid",          value2 => $controller_uuid,
+				name3 => "storcli_virtual_drive_id_string", value3 => $storcli_virtual_drive_id_string,
+				name4 => "new_type",                 value4 => $new_type,
+				name5 => "new_model",                value5 => $new_model,
+				name6 => "new_state",                value6 => $new_state,
+				name7 => "new_design_capacity",      value7 => $new_design_capacity,
+				name8 => "new_manufacture_date",     value8 => $new_manufacture_date,
+				name9 => "new_replacement_needed",   value9 => $new_replacement_needed,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
+			# Send an alert telling the user that we've found a new controller.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_sort		=>	$an->data->{sys}{alert_sort},	
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scan_storcli_note_0001",
+				alert_message_variables	=>	{
+					on_controller		=>	$host_controller_serial_number,
+					serial_number		=>	$storcli_virtual_drive_id_string,
+					type			=>	$new_type, 
+					model			=>	$new_model, 
+					'state'			=>	$new_state, 
+					design_capacity		=>	$new_design_capacity, 
+					manufacture_date	=>	$new_manufacture_date, 
+					replacement_needed	=>	$new_replacement_needed, 
+				},
+			});
+			
+			# INSERT
+			my $query = "
+INSERT INTO 
+    public.storcli_virtual_drives
+(
+    storcli_storcli_virtual_drive_uuid, 
+    storcli_storcli_virtual_drive_host_uuid, 
+    storcli_storcli_virtual_drive_controller_uuid, 
+    storcli_storcli_virtual_drive_id_string, 
+    storcli_storcli_virtual_drive_type, 
+    storcli_storcli_virtual_drive_model, 
+    storcli_storcli_virtual_drive_state, 
+    storcli_storcli_virtual_drive_design_capacity, 
+    storcli_storcli_virtual_drive_manufacture_date, 
+    storcli_storcli_virtual_drive_replacement_needed, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_id_string).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_design_capacity).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_manufacture_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			# Now record the query in the array
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+
+			# Process the rest of the variables and temperatures now. 
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type}})
+				{
+					my $value       = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type}{$variable};
+					my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "variable",    value1 => $variable,
+						name2 => "value",       value2 => $value,
+						name3 => "temperature", value3 => $temperature,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Send an alert telling the user that we've found a new controller.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	'FALSE',
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_storcli_note_0002",
+						alert_message_variables	=>	{
+							name			=>	$variable,
+							value			=>	$value,
+						},
+					});
+					
+					# INSERT
+					my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_virtual_drives', 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
+			}
+		}
+		else
+		{
+			### NOTE: The serial number should never change (a changed SN/Virtual Drive should be 
+			###       picked up as a new Virtual Drive), but we check/update just to be safe.
+			# Look for changes.
+			my $main_table_changed           = 0;
+			my $old_storcli_virtual_drive_id_string = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_id_string};
+			my $old_controller_uuid          = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_controller_uuid};
+			my $old_type                     = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_type};
+			my $old_model                    = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_model};
+			my $old_state                    = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_state};
+			my $old_design_capacity          = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_design_capacity};
+			my $old_manufacture_date         = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_manufacture_date};
+			my $old_replacement_needed       = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_replacement_needed};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
+				name1  => "storcli_virtual_drive_id_string",     value1  => $storcli_virtual_drive_id_string,
+				name2  => "old_storcli_virtual_drive_id_string", value2  => $old_storcli_virtual_drive_id_string,
+				name3  => "controller_uuid",              value3  => $controller_uuid,
+				name4  => "old_controller_uuid",          value4  => $old_controller_uuid,
+				name5  => "new_type",                     value5  => $new_type,
+				name6  => "old_type",                     value6  => $old_type,
+				name7  => "new_model",                    value7  => $new_model,
+				name8  => "old_model",                    value8  => $old_model,
+				name9  => "new_state",                    value9  => $new_state,
+				name10 => "old_state",                    value10 => $old_state,
+				name11 => "new_design_capacity",          value11 => $new_design_capacity,
+				name12 => "old_design_capacity",          value12 => $old_design_capacity,
+				name13 => "new_manufacture_date",         value13 => $new_manufacture_date,
+				name14 => "old_manufacture_date",         value14 => $old_manufacture_date,
+				name15 => "new_replacement_needed",       value15 => $new_replacement_needed,
+				name16 => "old_replacement_needed",       value16 => $old_replacement_needed,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($storcli_virtual_drive_id_string ne $old_storcli_virtual_drive_id_string) or 
+			    ($controller_uuid          ne $old_controller_uuid)          or 
+			    ($new_type                 ne $old_type)                     or 
+			    ($new_model                ne $old_model)                    or 
+			    ($new_state                ne $old_state)                    or 
+			    ($new_design_capacity      ne $old_design_capacity)          or
+			    ($new_manufacture_date     ne $old_manufacture_date)         or 
+			    ($new_replacement_needed   ne $old_replacement_needed))
+			{
+				# I need the serial numbers for the controller UUIDs.
+				my $new_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid};
+				my $old_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "new_controller_serial_number", value1 => $new_controller_serial_number,
+					name2 => "old_controller_serial_number", value2 => $old_controller_serial_number,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Send a warning level alert because the most likely change is 'state' or 
+				# 'replacement_needed'.
+				my $title_key   = "an_alert_title_0004";
+				my $message_key = "scan_storcli_warning_0010";
+				if ($new_state ne $old_state)
+				{
+					if ($old_state eq "VANISHED")
+					{
+						# Virtual Drive has returned.
+						$message_key = "scan_storcli_warning_0011";
+					}
+					### TODO: Verify this is the expected string on Virtual Drives.
+					if ($new_state =~ /optimal/i)
+					{
+						$title_key = "an_alert_title_0004";
+					}
+				}
+				$an->data->{sys}{alert_sort}++; 
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_sort		=>	$an->data->{sys}{alert_sort},
+					alert_header		=>	'FALSE',
+					alert_title_key		=>	$title_key,
+					alert_message_key	=>	$message_key,
+					alert_message_variables	=>	{
+						new_on_controller	=>	$new_controller_serial_number, 
+						old_on_controller	=>	$old_controller_serial_number, 
+						new_model		=>	$new_model,
+						old_model		=>	$old_model,
+						new_serial_number	=>	$storcli_virtual_drive_id_string,
+						old_serial_number	=>	$old_storcli_virtual_drive_id_string,
+						new_type		=>	$new_type, 
+						old_type		=>	$old_type, 
+						new_state		=>	$new_state, 
+						old_state		=>	$old_state, 
+						new_design_capacity	=>	$new_design_capacity, 
+						old_design_capacity	=>	$old_design_capacity, 
+						new_manufacture_date	=>	$new_manufacture_date, 
+						old_manufacture_date	=>	$old_manufacture_date, 
+						new_replacement_needed	=>	$new_replacement_needed, 
+						old_replacement_needed	=>	$old_replacement_needed, 
+					},
+				});
+				$main_table_changed = 1;
+				
+				my $query = "
+UPDATE 
+    storcli_virtual_drives
+SET
+    storcli_storcli_virtual_drive_controller_uuid    = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    storcli_storcli_virtual_drive_id_string      = ".$an->data->{sys}{use_db_fh}->quote($old_controller_uuid).", 
+    storcli_storcli_virtual_drive_type               = ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
+    storcli_storcli_virtual_drive_model              = ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
+    storcli_storcli_virtual_drive_state              = ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
+    storcli_storcli_virtual_drive_manufacture_date   = ".$an->data->{sys}{use_db_fh}->quote($new_manufacture_date).", 
+    storcli_storcli_virtual_drive_design_capacity    = ".$an->data->{sys}{use_db_fh}->quote($new_design_capacity).", 
+    storcli_storcli_virtual_drive_replacement_needed = ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
+    modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_storcli_virtual_drive_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
+;";
+
+				# Now record the query in the array
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+			
+			### Process the rest of the variables now. 
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type}})
+				{
+					my $new_variable_value = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type}{$variable};
+					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "variable",    value1 => $variable,
+						name2 => "temperature", value2 => $temperature,
+					}, file => $THIS_FILE, line => __LINE__});
+					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid})
+					{
+						# Look for changes
+						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_value};
+						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+							name1 => "variable",           value1 => $variable,
+							name2 => "new_variable_value", value2 => $new_variable_value,
+							name3 => "old_variable_value", value3 => $old_variable_value,
+							name4 => "variable_uuid",      value4 => $variable_uuid,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# Delete it so that we know it has been processed.
+						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable};
+						
+						if (($new_variable_value ne $old_variable_value))
+						{
+							# Changed! If the old value was 'VANISHED', then a 
+							# sensor or variable returned. Otherwise, for now, we
+							# treat everything as 'warning' and step down 
+							# explicitely anything not of concern that proves 
+							# noisey later (better safe than sorry).
+							$an->data->{sys}{alert_sort}++; 
+							
+							my $message_key = "scan_storcli_warning_0012";
+							if ($old_variable_value eq "VANISHED")
+							{
+								$message_key = "scan_storcli_warning_0013";
+							}
+							$an->Alert->register_alert({
+								alert_level		=>	"warning", 
+								alert_agent_name	=>	$THIS_FILE,
+								alert_sort		=>	$an->data->{sys}{alert_sort},
+								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+								alert_title_key		=>	"an_alert_title_0004",
+								alert_message_key	=>	$message_key,
+								alert_message_variables	=>	{
+									serial_number		=>	$storcli_virtual_drive_id_string,
+									name			=>	$variable,
+									old_value		=>	$old_variable_value,
+									new_value		=>	$new_variable_value,
+								},
+							});
+							
+							my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "query", value1 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{sys}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# New variable, record it. This is a 'warning' level as 
+						# variables aren't expected to spawn into existence.
+						$an->data->{sys}{alert_sort}++; 
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_sort		=>	$an->data->{sys}{alert_sort},
+							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_storcli_warning_0015",
+							alert_message_variables	=>	{
+								serial_number		=>	$variable,
+								value			=>	$new_variable_value,
+							},
+						});
+						
+						# INSERT
+						my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_virtual_drives', 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{sys}{sql}}, $query;
+					}
+				}
+			}
+			
+			# Now look for any variables left from the previous scan that we didn't match up (and
+			# delete) this pass.
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}})
+				{
+					# This variable has vanished
+					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_value};
+					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_variable_value", value1 => $old_variable_value,
+						name2 => "variable_uuid",      value2 => $variable_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Delete it so that we know it has been processed.
+					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable};
+					
+					# If the old value is already 'VANISHED', ignore it.
+					next if $old_variable_value eq "VANISHED";
+					
+					### NOTE: For now, we're going to use warning level because variables
+					###       shouldn't vanish, but under an-cm, it did happen for 
+					###       reasons that we never figured out. So later, we may drop 
+					###       the alert level in some cases.
+					# Still here? Alert and UPDATE.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_storcli_warning_0007",
+						alert_message_variables	=>	{
+							controller		=>	$storcli_virtual_drive_id_string,
+							name			=>	$variable,
+						},
+					});
+					
+					my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = 'VANISHED', 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
+			}
+		}
+		
+		# Delete the Virtual Drive from the last scan so that we can find controllers that have been removed.
+		if (exists $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid})
+		{
+			delete $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid};
+		}
+	}
+	
+	# See if any Virtual Drives have vanished.
+	foreach my $storcli_virtual_drive_uuid (keys %{$an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}})
+	{
+		# Virtual Drive vanished!
+		my $old_storcli_virtual_drive_id_string        = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_id_string};
+		my $old_controller_uuid          = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_controller_uuid};
+		my $old_state                    = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_state};
+		my $old_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "old_storcli_virtual_drive_id_string",        value1 => $old_storcli_virtual_drive_id_string,
+			name2 => "old_controller_uuid",          value2 => $old_controller_uuid,
+			name3 => "old_state",                    value3 => $old_state,
+			name4 => "old_controller_serial_number", value4 => $old_controller_serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Delete it so that we know it has been processed.
+		delete $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid};
+		
+		# If the old alarm state is already 'VANISHED', ignore it.
+		next if $old_state eq "VANISHED";
+		
+		# Still here? Alert and UPDATE.
+		### NOTE: For now, we're going to use warning level because controllers should never vanish
+		###       unless one failed. If that is the case, the admin already knows, but this will let
+		###       other notification targets know that the change has happened.
+		$an->data->{sys}{alert_sort}++; 
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_sort		=>	$an->data->{sys}{alert_sort},
+			alert_header		=>	"TRUE",
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scan_storcli_warning_0016",
+			alert_message_variables	=>	{
+				storcli_virtual_drive_id_string	=>	$old_storcli_virtual_drive_id_string, 
+				controller_serial_number =>	$old_controller_serial_number, 
+			},
+		});
+		
+		my $query = "
+UPDATE 
+    storcli_virtual_drives
+SET 
+    storcli_storcli_virtual_drive_state = 'VANISHED', 
+    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_storcli_virtual_drive_uuid  = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
+;";
+		# Now record the query in the array
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+		
+		# Now commit the changes. We do this here so that the VD is in place before processing drive
+		# groups under it.
+		commit_sql($an);
+		
+		# Process drive groups under this virtual disk.
+		#process_drive_groups($an, $virtual_drive);
+=cut
+	}
+	
+	die "$THIS_FILE ".__LINE__."; testing...\n";
+	
+	return(0);
+}
+
+# Look for added, changed or deleted cachevaults (FBUs).
 sub process_cachevaults
 {
 	my ($an) = @_;
@@ -485,29 +1242,6 @@ INSERT INTO
 		}
 		else
 		{
-		
-=cut
-serial_number: [0000000043113628], type: [temperature]
-18000 - variable - auto_learn_mode ............... : [Transparent]
-18000 - variable - auto_learn_period ............. : [2419200 seconds]
-18000 - variable - cachevault_flash_size ......... : [N/A]
-18000 - variable - capacitance ................... : [100 %]
-18000 - variable - date_of_manufacture ........... : [2013/10/25]
-18000 - variable - design_capacity ............... : [283 J]
-18000 - variable - device_name ................... : [SuperCaP]
-18000 - variable - learn_delay_interval .......... : [0 seconds]
-18000 - variable - manufacture_name .............. : [LSI]
-18000 - variable - module_microcode_update_required: [No]
-18000 - variable - next_learn_time ............... : [2016/07/27, 20:39:52]
-18000 - variable - no_space_to_cache_offload ..... : [No]
-18000 - variable - pack_energy ................... : [306 J]
-18000 - variable - remaining_reserve_space ....... : [93]
-18000 - variable - replacement_required .......... : [No]
-18000 - variable - state ......................... : [Optimal]
-18000 - variable - tmmfru ........................ : [N/A]
-18000 - variable - type .......................... : [SuperCaP]
-18000 - temperature - cachevault_temperature: [34 C]
-=cut
 			### NOTE: The serial number should never change (a changed SN/Cachevault should be 
 			###       picked up as a new Cachevault), but we check/update just to be safe.
 			# Look for changes.
@@ -878,30 +1612,7 @@ WHERE
 	return(0);
 }
 
-sub process_drive_groups
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_drive_groups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	return(0);
-}
-
-sub process_virtual_disks
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_virtual_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	return(0);
-}
-
-sub process_physical_disks
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_physical_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	return(0);
-}
-
+# Look for added, changed or deleted battery backup units (BBUs).
 sub process_bbus
 {
 	my ($an) = @_;
@@ -1539,6 +2250,7 @@ WHERE
 	return(0);
 }
 
+# Look for added, changed or deleted controllers.
 sub process_controllers
 {
 	my ($an) = @_;
@@ -2311,6 +3023,7 @@ WHERE
 SELECT 
     storcli_virtual_drive_uuid, 
     storcli_virtual_drive_controller_uuid, 
+    storcli_virtual_drive_id_string, 
     storcli_virtual_drive_creation_date, 
     storcli_virtual_drive_data_protection, 
     storcli_virtual_drive_disk_cache_policy, 
@@ -2338,34 +3051,45 @@ WHERE
 	{
 		my $storcli_virtual_drive_uuid              = $row->[0]; 
 		my $storcli_virtual_drive_controller_uuid   = $row->[1];
-		my $storcli_virtual_drive_creation_date     = defined $row->[2]  ? $row->[2]  : "";
-		my $storcli_virtual_drive_data_protection   = defined $row->[3]  ? $row->[3]  : "";
-		my $storcli_virtual_drive_disk_cache_policy = defined $row->[4]  ? $row->[4]  : "";
-		my $storcli_virtual_drive_emulation_type    = defined $row->[5]  ? $row->[5]  : "";
-		my $storcli_virtual_drive_encryption        = defined $row->[6]  ? $row->[6]  : "";
-		my $storcli_virtual_drive_blocks            = defined $row->[7]  ? $row->[7]  : "";
-		my $storcli_virtual_drive_strip_size        = defined $row->[8]  ? $row->[8]  : "";
-		my $storcli_virtual_drive_drives_per_span   = defined $row->[9]  ? $row->[9]  : "";
-		my $storcli_virtual_drive_span_depth        = defined $row->[10] ? $row->[10] : "";
-		my $storcli_virtual_drive_scsi_naa_id       = defined $row->[11] ? $row->[11] : "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+		my $storcli_virtual_drive_id_string         = $row->[2];
+		my $storcli_virtual_drive_creation_date     = defined $row->[3]  ? $row->[3]  : "";
+		my $storcli_virtual_drive_data_protection   = defined $row->[4]  ? $row->[4]  : "";
+		my $storcli_virtual_drive_disk_cache_policy = defined $row->[5]  ? $row->[5]  : "";
+		my $storcli_virtual_drive_emulation_type    = defined $row->[6]  ? $row->[6]  : "";
+		my $storcli_virtual_drive_encryption        = defined $row->[7]  ? $row->[7]  : "";
+		my $storcli_virtual_drive_blocks            = defined $row->[8]  ? $row->[8]  : "";
+		my $storcli_virtual_drive_strip_size        = defined $row->[9]  ? $row->[9]  : "";
+		my $storcli_virtual_drive_drives_per_span   = defined $row->[10] ? $row->[10] : "";
+		my $storcli_virtual_drive_span_depth        = defined $row->[11] ? $row->[11] : "";
+		my $storcli_virtual_drive_scsi_naa_id       = defined $row->[12] ? $row->[12] : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
 			name1  => "storcli_virtual_drive_uuid",              value1  => $storcli_virtual_drive_uuid, 
 			name2  => "storcli_virtual_drive_controller_uuid",   value2  => $storcli_virtual_drive_controller_uuid, 
-			name3  => "storcli_virtual_drive_creation_date",     value3  => $storcli_virtual_drive_creation_date, 
-			name4  => "storcli_virtual_drive_data_protection",   value4  => $storcli_virtual_drive_data_protection, 
-			name5  => "storcli_virtual_drive_disk_cache_policy", value5  => $storcli_virtual_drive_disk_cache_policy, 
-			name6  => "storcli_virtual_drive_emulation_type",    value6  => $storcli_virtual_drive_emulation_type, 
-			name7  => "storcli_virtual_drive_encryption",        value7  => $storcli_virtual_drive_encryption, 
-			name8  => "storcli_virtual_drive_blocks",            value8  => $storcli_virtual_drive_blocks, 
-			name9  => "storcli_virtual_drive_strip_size",        value9  => $storcli_virtual_drive_strip_size, 
-			name10 => "storcli_virtual_drive_drives_per_span",   value10 => $storcli_virtual_drive_drives_per_span, 
-			name11 => "storcli_virtual_drive_span_depth",        value11 => $storcli_virtual_drive_span_depth, 
-			name12 => "storcli_virtual_drive_scsi_naa_id",       value12 => $storcli_virtual_drive_scsi_naa_id, 
+			name3  => "storcli_virtual_drive_id_string",         value3  => $storcli_virtual_drive_id_string, 
+			name4  => "storcli_virtual_drive_creation_date",     value4  => $storcli_virtual_drive_creation_date, 
+			name5  => "storcli_virtual_drive_data_protection",   value5  => $storcli_virtual_drive_data_protection, 
+			name6  => "storcli_virtual_drive_disk_cache_policy", value6  => $storcli_virtual_drive_disk_cache_policy, 
+			name7  => "storcli_virtual_drive_emulation_type",    value7  => $storcli_virtual_drive_emulation_type, 
+			name8  => "storcli_virtual_drive_encryption",        value8  => $storcli_virtual_drive_encryption, 
+			name9  => "storcli_virtual_drive_blocks",            value9  => $storcli_virtual_drive_blocks, 
+			name10 => "storcli_virtual_drive_strip_size",        value10 => $storcli_virtual_drive_strip_size, 
+			name11 => "storcli_virtual_drive_drives_per_span",   value11 => $storcli_virtual_drive_drives_per_span, 
+			name12 => "storcli_virtual_drive_span_depth",        value12 => $storcli_virtual_drive_span_depth, 
+			name13 => "storcli_virtual_drive_scsi_naa_id",       value13 => $storcli_virtual_drive_scsi_naa_id, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the information about this controllers
+		$an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string} = $storcli_virtual_drive_uuid;
+		$an->data->{'scan-storcli'}{virtual_drives}{by_uuid}{$storcli_virtual_drive_uuid}           = $storcli_virtual_drive_id_string;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "scan-storcli::controllers::by_id_string::${storcli_virtual_drive_id_string}", value1 => $an->data->{'scan-storcli'}{controllers}{by_id_string}{$storcli_virtual_drive_id_string}, 
+			name2 => "scan-storcli::controllers::by_uuid::${storcli_virtual_drive_uuid}",           value2 => $an->data->{'scan-storcli'}{controllers}{by_uuid}{$storcli_virtual_drive_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Store the drive group data. (Drive groups have no SN)
 		$an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid} = {
 			storcli_virtual_drive_controller_uuid	=>	$storcli_virtual_drive_controller_uuid, 
+			storcli_virtual_drive_id_string		=>	$storcli_virtual_drive_id_string, 
 			storcli_virtual_drive_creation_date	=>	$storcli_virtual_drive_creation_date, 
 			storcli_virtual_drive_data_protection	=>	$storcli_virtual_drive_data_protection, 
 			storcli_virtual_drive_disk_cache_policy	=>	$storcli_virtual_drive_disk_cache_policy, 
@@ -2377,18 +3101,19 @@ WHERE
 			storcli_virtual_drive_span_depth	=>	$storcli_virtual_drive_span_depth, 
 			storcli_virtual_drive_scsi_naa_id	=>	$storcli_virtual_drive_scsi_naa_id, 
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 			name1  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_controller_uuid",   value1  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_controller_uuid}, 
-			name2  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_creation_date",     value2  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_creation_date}, 
-			name3  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_data_protection",   value3  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_data_protection}, 
-			name4  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_disk_cache_policy", value4  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_disk_cache_policy}, 
-			name5  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_emulation_type",    value5  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_emulation_type}, 
-			name6  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_encryption",        value6  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_encryption}, 
-			name7  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_blocks",            value7  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_blocks}, 
-			name8  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_strip_size",        value8  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_strip_size}, 
-			name9  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_drives_per_span",   value9  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_drives_per_span}, 
-			name10 => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_span_depth",        value10 => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_span_depth}, 
-			name11 => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_scsi_naa_id",       value11 => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_scsi_naa_id}, 
+			name2  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_id_string",         value2  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_id_string}, 
+			name3  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_creation_date",     value3  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_creation_date}, 
+			name4  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_data_protection",   value4  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_data_protection}, 
+			name5  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_disk_cache_policy", value5  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_disk_cache_policy}, 
+			name6  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_emulation_type",    value6  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_emulation_type}, 
+			name7  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_encryption",        value7  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_encryption}, 
+			name8  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_blocks",            value8  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_blocks}, 
+			name9  => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_strip_size",        value9  => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_strip_size}, 
+			name10 => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_drives_per_span",   value10 => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_drives_per_span}, 
+			name11 => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_span_depth",        value11 => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_span_depth}, 
+			name12 => "sql::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::storcli_virtual_drive_scsi_naa_id",       value12 => $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_scsi_naa_id}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
@@ -4711,7 +5436,7 @@ sub gather_data
 		get_bbu_data($an, $adapter, $serial_number);
 		
 		# Read in virtual disk information.
-		get_virtual_disk_data($an, $adapter, $serial_number);
+		get_virtual_drive_data($an, $adapter, $serial_number);
 		
 		# Read in the physical disk information.
 		get_physical_disk_data($an, $adapter, $serial_number);
@@ -4732,7 +5457,7 @@ sub get_physical_disk_data
 		name2 => "serial_number", value2 => $serial_number, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $virtual_disk     = 9999;
+	my $virtual_drive     = 9999;
 	my $drive_group      = 9999;
 	my $enclosure_id     = "";
 	my $slot_number      = "";
@@ -4820,12 +5545,12 @@ sub get_physical_disk_data
 				###       drives. The way the system parses them handles N-number of ports,
 				###       though. For now, we'll squeeze these into the top layer variables
 				###       to save having to have another table to process.
-				my $sas_port_0_port_status = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{port_status};
-				my $sas_port_0_link_speed  = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{link_speed};
-				my $sas_port_0_sas_address = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{sas_address};
-				my $sas_port_1_port_status = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{port_status};
-				my $sas_port_1_link_speed  = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{link_speed};
-				my $sas_port_1_sas_address = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{sas_address};
+				my $sas_port_0_port_status = $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{port_status};
+				my $sas_port_0_link_speed  = $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{link_speed};
+				my $sas_port_0_sas_address = $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{0}{sas_address};
+				my $sas_port_1_port_status = $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{port_status};
+				my $sas_port_1_link_speed  = $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{link_speed};
+				my $sas_port_1_sas_address = $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{1}{sas_address};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 					name1 => "sas_port_0_port_status", value1 => $sas_port_0_port_status, 
 					name2 => "sas_port_0_link_speed",  value2 => $sas_port_0_link_speed, 
@@ -4835,12 +5560,12 @@ sub get_physical_disk_data
 					name6 => "sas_port_1_sas_address", value6 => $sas_port_1_sas_address, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_port_status} = $sas_port_0_port_status;
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_link_speed}  = $sas_port_0_link_speed;
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_sas_address} = $sas_port_0_sas_address;
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_port_status} = $sas_port_1_port_status;
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_link_speed}  = $sas_port_1_link_speed;
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_sas_address} = $sas_port_1_sas_address;
+				$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_port_status} = $sas_port_0_port_status;
+				$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_link_speed}  = $sas_port_0_link_speed;
+				$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_0_sas_address} = $sas_port_0_sas_address;
+				$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_port_status} = $sas_port_1_port_status;
+				$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_link_speed}  = $sas_port_1_link_speed;
+				$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sas_port_1_sas_address} = $sas_port_1_sas_address;
 				next;
 			}
 		}
@@ -4852,11 +5577,11 @@ sub get_physical_disk_data
 			foreach my $variable (sort {$a cmp $b} @{$sector_variables})
 			{
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				next if not $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
+				next if not $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
 
-				my $value = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
+				my $value = $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
@@ -4872,28 +5597,28 @@ sub get_physical_disk_data
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($sector_size)
 					{
-						$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = ($sectors * $sector_size);
+						$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = ($sectors * $sector_size);
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+							name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					else
 					{
-						$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = $size;
+						$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = $size;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+							name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 			}
 			
 			# Record the drive as being on this controller.
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller} = $serial_number;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller} = $serial_number;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::on_controller", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}, 
+				name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::on_controller", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$virtual_disk     = 9999;
+			$virtual_drive     = 9999;
 			$drive_group      = 9999;
 			$enclosure_id     = "";
 			$slot_number      = "";
@@ -4903,7 +5628,7 @@ sub get_physical_disk_data
 			$sector_size      = 0;
 			$sector_variables = [];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-				name1 => "virtual_disk",    value1 => $virtual_disk, 
+				name1 => "virtual_drive",    value1 => $virtual_drive, 
 				name2 => "drive_group",     value2 => $drive_group, 
 				name3 => "enclosure_id",    value3 => $enclosure_id, 
 				name4 => "slot_number",     value4 => $slot_number, 
@@ -4933,23 +5658,23 @@ sub get_physical_disk_data
 			}
 			
 			# Find the virtual disk this drive is connected to, if any.
-			foreach my $this_virtual_disk (sort {$a cmp $b} keys %{$an->data->{virtual_disk}})
+			foreach my $this_virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
 			{
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${this_virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size", value1 => $an->data->{virtual_disk}{$this_virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
+					name1 => "virtual_drive::${this_virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size", value1 => $an->data->{virtual_drive}{$this_virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if ($an->data->{virtual_disk}{$this_virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size})
+				if ($an->data->{virtual_drive}{$this_virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size})
 				{
 					# Found it.
-					$virtual_disk = $this_virtual_disk;
+					$virtual_drive = $this_virtual_drive;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "virtual_disk", value1 => $virtual_disk, 
+						name1 => "virtual_drive", value1 => $virtual_drive, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
 				}
 			}
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk", value1 => $virtual_disk, 
+				name1 => "virtual_drive", value1 => $virtual_drive, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -4968,19 +5693,19 @@ sub get_physical_disk_data
 				name4 => "sas_address", value4 => $sas_address, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{port_status} = $port_status;
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{link_speed}  = $link_speed;
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{sas_address} = $sas_address;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{port_status} = $port_status;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{link_speed}  = $link_speed;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{sas_address} = $sas_address;
 			# These are so flipping long that we print them as three separate log entries so that
 			# they're easier to read in the logs.
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::port_status", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{port_status}, 
+				name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::port_status", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{port_status}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::link_speed",  value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{link_speed}, 
+				name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::link_speed",  value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{link_speed}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::sas_address", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{sas_address}, 
+				name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::sas_port::${sas_port}::sas_address", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{sas_port}{$sas_port}{sas_address}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -5006,7 +5731,7 @@ sub get_physical_disk_data
 				$an->Log->entry({log_level => 0, title_key => "tools_title_0002", message_key => "scan_storcli_warning_0001", message_variables => { 
 					adapter         => $adapter,
 					serial_number   => $serial_number, 
-					virtual_disk    => $virtual_disk, 
+					virtual_drive    => $virtual_drive, 
 					enclosure_id    => $enclosure_id, 
 					slot_number     => $slot_number, 
 					span            => $span, 
@@ -5020,16 +5745,16 @@ sub get_physical_disk_data
 					name1 => "drive_group", value1 => $drive_group, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{span} = $span;
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{row}  = $row;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{span} = $span;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{row}  = $row;
 			
 			# These are so flipping long that we print them as three separate log entries so that
 			# they're easier to read in the logs.
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::span", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{span}, 
+				name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::span", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{span}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::row", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{row}, 
+				name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::row", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{row}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -5181,9 +5906,9 @@ sub get_physical_disk_data
 			$variable = process_variable_name($an, $variable);
 			
 			# Record
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable} = $value;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable} = $value;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::${type}::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable}, 
+				name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::${type}::$variable", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -5193,21 +5918,22 @@ sub get_physical_disk_data
 }
 
 # This looks for virtual disks on the controller.
-sub get_virtual_disk_data
+sub get_virtual_drive_data
 {
 	my ($an, $adapter, $serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_virtual_disk_data" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_virtual_drive_data" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "adapter",       value1 => $adapter, 
 		name2 => "serial_number", value2 => $serial_number, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $virtual_disk = "";
+	my $virtual_drive = "";
+	my $id_string    = "";
 	my $in_overview  = 0;
 	my $in_pd_list   = 0;
 	my $in_vd_data   = 0;
 	my $start_break  = 0;
-	my $shell_call   = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{virtual_disk_data};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	my $shell_call   = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{virtual_drive_data};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -5226,39 +5952,46 @@ sub get_virtual_disk_data
 		
 		if ($line =~ /\/c$adapter\/v(\d+):/)
 		{
-			$virtual_disk                                                     = $1;
-			$an->data->{virtual_disk}{$virtual_disk}{variable}{on_controller} = $serial_number;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk::${virtual_disk}::variable::on_controller", value1 => $an->data->{virtual_disk}{$virtual_disk}{variable}{on_controller}, 
+			$virtual_drive                                                  = $1;
+			$id_string                                                     = $serial_number."-vd".$virtual_drive;
+			$an->data->{virtual_drive}{$id_string}{variable}{on_controller} = $serial_number;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "virtual_drive",                                           value1 => $virtual_drive, 
+				name2 => "id_string",                                              value2 => $id_string, 
+				name3 => "virtual_drive::${id_string}::variable::on_controller", value3 => $an->data->{virtual_drive}{$id_string}{variable}{on_controller}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# We set the VD '9999' to the same SN so that we can find unallocated disks later.
-			if (not $an->data->{virtual_disk}{9999}{variable}{on_controller})
+			my $unallocated_id_string = $serial_number."-vd9999";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "unallocated_id_string", value1 => $unallocated_id_string, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $an->data->{virtual_drive}{$unallocated_id_string}{variable}{on_controller})
 			{
-				$an->data->{virtual_disk}{9999}{variable}{on_controller} = $serial_number;
+				$an->data->{virtual_drive}{$unallocated_id_string}{variable}{on_controller} = $serial_number;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::9999::variable::on_controller", value1 => $an->data->{virtual_disk}{9999}{variable}{on_controller}, 
+					name1 => "virtual_drive::${unallocated_id_string}::variable::on_controller", value1 => $an->data->{virtual_drive}{$unallocated_id_string}{variable}{on_controller}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		if ($line =~ /PDs for VD (\d+) :/)
 		{
-			$virtual_disk = $1;
+			$virtual_drive = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_disk", value1 => $virtual_disk, 
+				name1 => "virtual_drive", value1 => $virtual_drive, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /VD(\d+) Properties/)
 		{
-			$virtual_disk = $1;
+			$virtual_drive = $1;
 			$in_vd_data   = 1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "virtual_disk", value1 => $virtual_disk, 
+				name1 => "virtual_drive", value1 => $virtual_drive, 
 				name2 => "in_vd_data",   value2 => $in_vd_data, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		next if $virtual_disk eq "";
+		next if $virtual_drive eq "";
 		
 		# See if I am entering or exiting the overview chunk.
 		if ($line =~ /^DG\/VD/)
@@ -5331,7 +6064,7 @@ sub get_virtual_disk_data
 		}
 		if ($in_pd_list)
 		{
-			process_vg_pd_list_data($an, $line, $virtual_disk, $serial_number);
+			process_vg_pd_list_data($an, $line, $virtual_drive, $serial_number, $id_string);
 		}
 		
 		if ($in_vd_data)
@@ -5391,9 +6124,9 @@ sub get_virtual_disk_data
 				
 				# Record
 				$variable = process_variable_name($an, $variable);
-				$an->data->{virtual_disk}{$virtual_disk}{$type}{$variable} = $value;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::${type}::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{$type}{$variable}, 
+				$an->data->{virtual_drive}{$id_string}{$type}{$variable} = $value;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_drive::${id_string}::${type}::$variable", value1 => $an->data->{virtual_drive}{$id_string}{$type}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -5406,11 +6139,12 @@ sub get_virtual_disk_data
 # This parses a virtual disk's physical disk overview line
 sub process_vg_pd_list_data
 {
-	my ($an, $line, $virtual_disk, $serial_number) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_vg_pd_list_data" }, message_key => "an_variables_0003", message_variables => { 
+	my ($an, $line, $virtual_drive, $serial_number, $id_string) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_vg_pd_list_data" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "line",          value1 => $line, 
-		name1 => "virtual_disk",  value1 => $virtual_disk, 
-		name2 => "serial_number", value2 => $serial_number, 
+		name2 => "virtual_drive", value2 => $virtual_drive, 
+		name3 => "serial_number", value3 => $serial_number, 
+		name4 => "id_string",     value4 => $id_string, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### Sector size is either '512B' or '4 KB'
@@ -5461,27 +6195,27 @@ sub process_vg_pd_list_data
 		
 		### Long hashes are long... x_x
 		# Store the data (we'll convert it in a minute.
-		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}             = $device_id;
-		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}               = $state;
-		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}            = $drive_size;
-		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}             = $interface;
-		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}           = $drive_media;
-		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive} = $self_encrypting_drive;
-		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}       = $protection_info;
-		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}           = $sector_size;
-		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}           = $drive_model;
-		$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}               = $spun_up;
+		$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}             = $device_id;
+		$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}               = $state;
+		$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}            = $drive_size;
+		$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}             = $interface;
+		$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}           = $drive_media;
+		$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive} = $self_encrypting_drive;
+		$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}       = $protection_info;
+		$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}           = $sector_size;
+		$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}           = $drive_model;
+		$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}               = $spun_up;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
-			name1  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::device_id",             value1  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}, 
-			name2  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::state",                 value2  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}, 
-			name3  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size",            value3  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
-			name4  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::interface",             value4  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}, 
-			name5  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_media",           value5  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}, 
-			name6  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::self_encrypting_drive", value6  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive}, 
-			name7  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::protection_info",       value7  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}, 
-			name8  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::sector_size",           value8  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}, 
-			name9  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_model",           value9  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}, 
-			name10 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::spun_up",               value10 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}, 
+			name1  => "virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::device_id",             value1  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}, 
+			name2  => "virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::state",                 value2  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}, 
+			name3  => "virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size",            value3  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
+			name4  => "virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::interface",             value4  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}, 
+			name5  => "virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_media",           value5  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}, 
+			name6  => "virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::self_encrypting_drive", value6  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive}, 
+			name7  => "virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::protection_info",       value7  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}, 
+			name8  => "virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::sector_size",           value8  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}, 
+			name9  => "virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_model",           value9  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}, 
+			name10 => "virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::spun_up",               value10 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		### WARNING: The strings we set here will be parsed later, so don't change them without also 
@@ -5489,123 +6223,123 @@ sub process_vg_pd_list_data
 		### NOTE: We don't use a function for this because the glossary for the block of data is 
 		###       specific for the table above (it would appear).
 		# Translate the weird short form to useable strings
-		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
 		{
-			my $value = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
+			my $value = $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => ">> virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+				name1 => ">> virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($value =~ /^DHS$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Dedicated Hot Spare";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Dedicated Hot Spare";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UGood$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unconfigured Good";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unconfigured Good";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^GHS$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Global Hotspare";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Global Hotspare";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UBad$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unconfigured Bad";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unconfigured Bad";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^Onln$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Online";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Online";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^Offln$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Offline";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Offline";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^U$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Spun Up";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Spun Up";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^D$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Spun Down";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Spun Down";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^T$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Transition";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Transition";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^F$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Foreign";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Foreign";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UGUnsp$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unsupported";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unsupported";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^UGShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unconfigured shielded";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Unconfigured shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^HSPShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Hotspare shielded";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Hotspare shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^CFShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Configured shielded";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Configured shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^Cpybck$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Copyback";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Copyback";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($value =~ /^CBShld$/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Copyback Shielded";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = "Copyback Shielded";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+					name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -5631,7 +6365,7 @@ sub process_vg_overview_data
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $drive_group                 = "";
-	my $virtual_disk                = "";
+	my $virtual_drive                = "";
 	my $raid_type                   = "";
 	my $array_state                 = "";
 	my $access                      = "";
@@ -5641,12 +6375,13 @@ sub process_vg_overview_data
 	my $scheduled_consistency_check = "";
 	my $array_size                  = "";
 	my $name                        = "";
+	my $id_string                   = "";
 	# Get the line when there is no name
 	#	        0   / 0      RAID5   Optl    RW      Yes     NRWBD   -       OFF     953.531 GB
 	if ($line =~ /^(\d+)\/(\d+)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*? \wB)$/i)
 	{
 		$drive_group                 = $1;
-		$virtual_disk                = $2;
+		$virtual_drive                = $2;
 		$raid_type                   = $3;
 		$array_state                 = $4;
 		$access                      = $5;
@@ -5655,9 +6390,10 @@ sub process_vg_overview_data
 		$cachecade                   = $8;
 		$scheduled_consistency_check = $9;
 		$array_size                  = $10;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+		$id_string                   = $serial_number."-vd".$virtual_drive;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 			name1  => "drive_group",                 value1  => $drive_group, 
-			name2  => "virtual_disk",                value2  => $virtual_disk, 
+			name2  => "virtual_drive",                value2  => $virtual_drive, 
 			name3  => "raid_type",                   value3  => $raid_type, 
 			name4  => "array_state",                 value4  => $array_state, 
 			name5  => "access",                      value5  => $access, 
@@ -5666,13 +6402,14 @@ sub process_vg_overview_data
 			name8  => "cachecade",                   value8  => $cachecade, 
 			name9  => "scheduled_consistency_check", value9  => $scheduled_consistency_check, 
 			name10 => "array_size",                  value10 => $array_size, 
+			name11 => "id_string",                   value11 => $id_string, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	# Get the line when there is a name
 	elsif ($line =~ /^(d+)\/(d+)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*? \wB)\s+(.*)$/)
 	{
 		$drive_group                 = $1;
-		$virtual_disk                = $2;
+		$virtual_drive                = $2;
 		$raid_type                   = $3;
 		$array_state                 = $4;
 		$access                      = $5;
@@ -5682,9 +6419,10 @@ sub process_vg_overview_data
 		$scheduled_consistency_check = $9;
 		$array_size                  = $10;
 		$name                        = $11;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+		$id_string                   = $serial_number."-vd".$virtual_drive;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 			name1  => "drive_group",                 value1  => $drive_group, 
-			name2  => "virtual_disk",                value2  => $virtual_disk, 
+			name2  => "virtual_drive",                value2  => $virtual_drive, 
 			name3  => "raid_type",                   value3  => $raid_type, 
 			name4  => "array_state",                 value4  => $array_state, 
 			name5  => "access",                      value5  => $access, 
@@ -5694,6 +6432,7 @@ sub process_vg_overview_data
 			name9  => "scheduled_consistency_check", value9  => $scheduled_consistency_check, 
 			name10 => "array_size",                  value10 => $array_size, 
 			name11 => "name",                        value11 => $name, 
+			name12 => "id_string",                   value12 => $id_string, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -5709,27 +6448,27 @@ sub process_vg_overview_data
 	$array_size = $an->Readable->hr_to_bytes({base2 => 1, size => $array_size})." Bytes";
 	
 	# Store the data.
-	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{on_controller}               = $serial_number;
-	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{raid_type}                   = $raid_type;
-	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{array_state}                 = $array_state;
-	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{access}                      = $access;
-	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{consistent}                  = $consistent;
-	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{cache}                       = $cache;
-	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{cachecade}                   = $cachecade;
-	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{scheduled_consistency_check} = $scheduled_consistency_check;
-	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{array_size}                  = $array_size;
-	$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{name}                        = $name;
+	$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{on_controller}               = $serial_number;
+	$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{raid_type}                   = $raid_type;
+	$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{array_state}                 = $array_state;
+	$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{access}                      = $access;
+	$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{consistent}                  = $consistent;
+	$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{cache}                       = $cache;
+	$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{cachecade}                   = $cachecade;
+	$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{scheduled_consistency_check} = $scheduled_consistency_check;
+	$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{array_size}                  = $array_size;
+	$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{name}                        = $name;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
-		name1  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::on_controller",               value1  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{on_controller}, 
-		name2  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::raid_type",                   value2  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{raid_type}, 
-		name3  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::array_state",                 value3  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{array_state}, 
-		name4  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::access",                      value4  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{access}, 
-		name5  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::consistent",                  value5  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{consistent}, 
-		name6  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::cache",                       value6  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{cache}, 
-		name7  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::cachecade",                   value7  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{cachecade}, 
-		name8  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::scheduled_consistency_check", value8  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{scheduled_consistency_check}, 
-		name9  => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::array_size",                  value9  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{array_size}, 
-		name10 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::name",                        value10 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{name}, 
+		name1  => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::on_controller",               value1  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{on_controller}, 
+		name2  => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::raid_type",                   value2  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{raid_type}, 
+		name3  => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::array_state",                 value3  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{array_state}, 
+		name4  => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::access",                      value4  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{access}, 
+		name5  => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::consistent",                  value5  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{consistent}, 
+		name6  => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::cache",                       value6  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{cache}, 
+		name7  => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::cachecade",                   value7  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{cachecade}, 
+		name8  => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::scheduled_consistency_check", value8  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{scheduled_consistency_check}, 
+		name9  => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::array_size",                  value9  => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{array_size}, 
+		name10 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::name",                        value10 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{name}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### WARNING: The strings we set here will be parsed later, so don't change them without also changing
@@ -5737,108 +6476,108 @@ sub process_vg_overview_data
 	### NOTE: We don't use a function for this because the glossary for the block of data is specific for
 	###       the table above (it would appear).
 	# Translate the weird short form to useable strings
-	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}})
+	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => ">> virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+			name1 => ">> virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} eq "-")
+		if ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} eq "-")
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "No";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "No";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^Cac$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^Cac$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "CacheCade";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "CacheCade";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^Rec$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^Rec$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Recovery";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Recovery";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^OfLn$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^OfLn$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "OffLine";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "OffLine";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^Pdgd$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^Pdgd$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Partially Degraded";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Partially Degraded";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^dgrd$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^dgrd$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Degraded";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Degraded";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^Optl$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^Optl$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Optimal";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Optimal";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^RO$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^RO$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Read Only";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Read Only";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^RW$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^RW$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Read Write";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Read Write";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^HD$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^HD$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Hidden";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Hidden";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^TRANS$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^TRANS$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Transport Ready";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Transport Ready";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^B$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^B$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Blocked";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Blocked";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^Consist$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^Consist$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Consistent";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Consistent";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} =~ /^sCC$/i)
+		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^sCC$/i)
 		{
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable} = "Scheduled Check Consistency";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Scheduled Check Consistency";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable}, 
+				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
@@ -5846,68 +6585,68 @@ sub process_vg_overview_data
 		# above strings.
 		if ($variable eq "cache")
 		{
-			my $cache = $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{$variable};
+			my $cache = $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cache", value1 => $cache, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Prep some blanks
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{read_cache}  = "";
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache} = "";
-			$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{disk_cache}  = "";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{read_cache}  = "";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{write_cache} = "";
+			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{disk_cache}  = "";
 			
 			# Read cache
 			if ($cache =~ /NR/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{read_cache} = "No Read-Ahead";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{read_cache} = "No Read-Ahead";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::read_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{read_cache}, 
+					name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::read_cache", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{read_cache}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($cache =~ /R/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{read_cache} = "Always Read-Ahead";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{read_cache} = "Always Read-Ahead";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::read_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{read_cache}, 
+					name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::read_cache", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{read_cache}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			# Write cache
 			if ($cache =~ /AWB/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache} = "Always Write-Back";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{write_cache} = "Always Write-Back";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::write_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache}, 
+					name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::write_cache", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{write_cache}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($cache =~ /WB/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache} = "Write-Back";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{write_cache} = "Write-Back";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::write_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache}, 
+					name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::write_cache", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{write_cache}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($cache =~ /WT/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache} = "Write-Through";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{write_cache} = "Write-Through";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::write_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{write_cache}, 
+					name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::write_cache", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{write_cache}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			# Disk cache
 			if ($cache =~ /C/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{disk_cache} = "Cached IO";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{disk_cache} = "Cached IO";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::disk_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{disk_cache}, 
+					name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::disk_cache", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{disk_cache}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($cache =~ /D/i)
 			{
-				$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{disk_cache} = "Direct IO";
+				$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{disk_cache} = "Direct IO";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_disk::${virtual_disk}::drive_group::${drive_group}::variable::disk_cache", value1 => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{variable}{disk_cache}, 
+					name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::disk_cache", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{disk_cache}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -7525,11 +8264,11 @@ sub sort_and_prepare_data
 	
 	# Now the virtual disks. Note that '9999' is a fake VD used for physical drives not in any actual 
 	# VDs.
-	foreach my $virtual_disk (sort {$a cmp $b} keys %{$an->data->{virtual_disk}})
+	foreach my $virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
 	{
-		my $serial_number = $an->data->{virtual_disk}{$virtual_disk}{variable}{on_controller};
+		my $serial_number = $an->data->{virtual_drive}{$virtual_drive}{variable}{on_controller};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "virtual_disk",  value1 => $virtual_disk,
+			name1 => "virtual_drive",  value1 => $virtual_drive,
 			name2 => "serial_number", value2 => $serial_number,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $type ("variable", "temperature")
@@ -7541,20 +8280,20 @@ sub sort_and_prepare_data
 				log_level => 3, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
-				prefix    => "VD $virtual_disk - $type",
-				hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{$type},
+				prefix    => "VD $virtual_drive - $type",
+				hash_ref  => $an->data->{virtual_drive}{$virtual_drive}{$type},
 			});
 		}
 		
 		# Show the drive group and drives.
-		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}})
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}})
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "drive_group", value1 => $drive_group,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $say_drive_group  = $drive_group  eq "9999" ? "x" : $drive_group;
-			my $say_virtual_disk = $virtual_disk eq "9999" ? "x" : $virtual_disk;
+			my $say_virtual_drive = $virtual_drive eq "9999" ? "x" : $virtual_drive;
 			
 			# Show the basic drive group data
 			foreach my $type ("variable", "temperature")
@@ -7566,18 +8305,18 @@ sub sort_and_prepare_data
 					log_level => 3, 
 					file      => $THIS_FILE,
 					line      => __LINE__,
-					prefix    => "VD $say_virtual_disk, DG $say_drive_group - $type",
-					hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{$type},
+					prefix    => "VD $say_virtual_drive, DG $say_drive_group - $type",
+					hash_ref  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{$type},
 				});
 			}
 			
 			# And show the drives in this group.
-			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}})
+			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}})
 			{
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "enclosure_id", value1 => $enclosure_id,
 				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
+				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
 				{
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "slot_number", value1 => $slot_number,
@@ -7591,8 +8330,8 @@ sub sort_and_prepare_data
 							log_level => 3, 
 							file      => $THIS_FILE,
 							line      => __LINE__,
-							prefix    => "VD $say_virtual_disk, DG $say_drive_group, EID $enclosure_id, Slot $slot_number - $type",
-							hash_ref  => $an->data->{virtual_disk}{$virtual_disk}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
+							prefix    => "VD $say_virtual_drive, DG $say_drive_group, EID $enclosure_id, Slot $slot_number - $type",
+							hash_ref  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
 						});
 					}
 				}

@@ -254,6 +254,7 @@ CREATE TABLE storcli_virtual_drives (
 	storcli_virtual_drive_uuid		uuid				primary key,
 	storcli_virtual_drive_host_uuid		uuid				not null,
 	storcli_virtual_drive_controller_uuid	uuid				not null,
+	storcli_virtual_drive_id_string		text				not null,	-- This is '<host_controller_sn>-vd<x>' where 'x' is the virtual drive number.
 	storcli_virtual_drive_creation_date	text,						-- "Creation Date" and "Creation Time"
 	storcli_virtual_drive_data_protection	text,						-- "Data Protection"
 	storcli_virtual_drive_disk_cache_policy	text,						-- "Disk Cache Policy"
@@ -276,6 +277,7 @@ CREATE TABLE history.storcli_virtual_drives (
 	storcli_virtual_drive_uuid		uuid,
 	storcli_virtual_drive_host_uuid		uuid,
 	storcli_virtual_drive_controller_uuid	uuid,
+	storcli_virtual_drive_id_string		text,
 	storcli_virtual_drive_creation_date	text,
 	storcli_virtual_drive_data_protection	text,
 	storcli_virtual_drive_disk_cache_policy	text,
@@ -300,6 +302,7 @@ BEGIN
 		(storcli_virtual_drive_uuid, 
 		 storcli_virtual_drive_host_uuid, 
 		 storcli_virtual_drive_controller_uuid, 
+		 storcli_virtual_drive_id_string, 
 		 storcli_virtual_drive_creation_date, 
 		 storcli_virtual_drive_data_protection, 
 		 storcli_virtual_drive_disk_cache_policy, 
@@ -315,6 +318,7 @@ BEGIN
 		(history_storcli_virtual_drives.storcli_virtual_drive_uuid,
 		 history_storcli_virtual_drives.storcli_virtual_drive_host_uuid, 
 		 history_storcli_virtual_drives.storcli_virtual_drive_controller_uuid, 
+		 history_storcli_virtual_drives.storcli_virtual_drive_id_string, 
 		 history_storcli_virtual_drives.storcli_virtual_drive_creation_date, 
 		 history_storcli_virtual_drives.storcli_virtual_drive_data_protection, 
 		 history_storcli_virtual_drives.storcli_virtual_drive_disk_cache_policy, 
