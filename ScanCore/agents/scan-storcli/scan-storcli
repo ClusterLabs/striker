@@ -390,12 +390,14 @@ sub process_virtual_drives
 		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}})
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "variable", value1 => $variable,
+				name1 => "virtual_drive::${storcli_virtual_drive_id_string}::variable::${variable}", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable},
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Store and delete the value
 			if ($variable eq "creation_date")
 			{
+				# The creation date we store is a combination of two variables. That's why 
+				# these first two entries are a little odd.
 				$creation_date = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "creation_date", value1 => $creation_date,
@@ -430,31 +432,80 @@ sub process_virtual_drives
 				}
 				next;
 			}
+			# Back to our regularly scheduled programming...
+			if ($variable eq "data_protection")
+			{
+				$new_data_protection = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_data_protection", value1 => $new_data_protection,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "disk_cache_policy")
+			{
+				$new_disk_cache_policy = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_disk_cache_policy", value1 => $new_disk_cache_policy,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "emulation_type")
+			{
+				$new_emulation_type = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_emulation_type", value1 => $new_emulation_type,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "encryption")
+			{
+				$new_encryption = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_encryption", value1 => $new_encryption,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "number_of_blocks")
+			{
+				$new_blocks = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_blocks", value1 => $new_blocks,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "strip_size")
+			{
+				$new_strip_size = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_strip_size", value1 => $new_strip_size,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "number_of_drives_per_span")
+			{
+				$new_drives_per_span = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drives_per_span", value1 => $new_drives_per_span,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "span_depth")
+			{
+				$new_span_depth = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_span_depth", value1 => $new_span_depth,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "scsi_naa_id")
+			{
+				$new_scsi_naa_id = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_scsi_naa_id", value1 => $new_scsi_naa_id,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
 		}
-# 		my $new_creation_date     =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{creation_date};
-# 		   $new_creation_date     .= " ";
-# 		   $new_creation_date     .= delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{creation_time};
-# 		my $new_data_protection   =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{data_protection};
-# 		my $new_disk_cache_policy =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{disk_cache_policy};
-# 		my $new_emulation_type    =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{emulation_type};
-# 		my $new_encryption        =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{encryption};
-# 		my $new_blocks            =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{number_of_blocks};
-# 		my $new_strip_size        =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{strip_size};
-# 		my $new_drives_per_span   =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{number_of_drives_per_span};
-# 		my $new_span_depth        =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{span_depth};
-# 		my $new_scsi_naa_id       =  delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{scsi_naa_id};
-# 		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
-# 			name1  => "new_creation_date",     value1  => $new_creation_date,
-# 			name2  => "new_data_protection",   value2  => $new_data_protection,
-# 			name3  => "new_disk_cache_policy", value3  => $new_disk_cache_policy,
-# 			name4  => "new_emulation_type",    value4  => $new_emulation_type,
-# 			name5  => "new_encryption",        value5  => $new_encryption,
-# 			name6  => "new_blocks",            value6  => $new_blocks,
-# 			name7  => "new_strip_size",        value7  => $new_strip_size,
-# 			name8  => "new_drives_per_span",   value8  => $new_drives_per_span,
-# 			name9  => "new_span_depth",        value9  => $new_span_depth,
-# 			name10 => "new_scsi_naa_id",       value10 => $new_scsi_naa_id,
-# 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Pull out the rest of the variables now. If the Virtual Drive is new, all variables will be 
 		# INSERTed. If the Virtual Drive exists, each variable will be examined and new ones will be 
@@ -462,19 +513,26 @@ sub process_virtual_drives
 		# Virtual Drive is NOT new, then variables from the old data will be deleted as we go and any 
 		# not found in the current data set will be left over. We'll use this to determine variables
 		# that have vanished. They will not be deleted, but their value will be set to 'VANISHED'.
-=cut
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "is_new", value1 => $is_new,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($is_new)
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
-				name1 => "storcli_virtual_drive_uuid",          value1 => $storcli_virtual_drive_uuid,
-				name2 => "controller_uuid",          value2 => $controller_uuid,
-				name3 => "storcli_virtual_drive_id_string", value3 => $storcli_virtual_drive_id_string,
-				name4 => "new_type",                 value4 => $new_type,
-				name5 => "new_model",                value5 => $new_model,
-				name6 => "new_state",                value6 => $new_state,
-				name7 => "new_design_capacity",      value7 => $new_design_capacity,
-				name8 => "new_manufacture_date",     value8 => $new_manufacture_date,
-				name9 => "new_replacement_needed",   value9 => $new_replacement_needed,
+			### NOTE: VD 9999 will be mostly NULL and that is fine
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+				name1  => "storcli_virtual_drive_uuid",      value1  => $storcli_virtual_drive_uuid,
+				name2  => "controller_uuid",                 value2  => $controller_uuid,
+				name3  => "storcli_virtual_drive_id_string", value3  => $storcli_virtual_drive_id_string,
+				name4  => "new_creation_date",               value4  => $new_creation_date,
+				name5  => "new_data_protection",             value5  => $new_data_protection,
+				name6  => "new_disk_cache_policy",           value6  => $new_disk_cache_policy,
+				name7  => "new_emulation_type",              value7  => $new_emulation_type,
+				name8  => "new_encryption",                  value8  => $new_encryption,
+				name9  => "new_blocks",                      value9  => $new_blocks,
+				name10 => "new_strip_size",                  value10 => $new_strip_size,
+				name11 => "new_drives_per_span",             value11 => $new_drives_per_span,
+				name12 => "new_span_depth",                  value12 => $new_span_depth,
+				name13 => "new_scsi_naa_id",                 value13 => $new_scsi_naa_id,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
@@ -484,49 +542,62 @@ sub process_virtual_drives
 				alert_agent_name	=>	$THIS_FILE,
 				alert_sort		=>	$an->data->{sys}{alert_sort},	
 				alert_title_key		=>	"an_alert_title_0003",
-				alert_message_key	=>	"scan_storcli_note_0001",
+				alert_message_key	=>	"scan_storcli_note_0004",
 				alert_message_variables	=>	{
 					on_controller		=>	$host_controller_serial_number,
-					serial_number		=>	$storcli_virtual_drive_id_string,
-					type			=>	$new_type, 
-					model			=>	$new_model, 
-					'state'			=>	$new_state, 
-					design_capacity		=>	$new_design_capacity, 
-					manufacture_date	=>	$new_manufacture_date, 
-					replacement_needed	=>	$new_replacement_needed, 
+					id_string		=>	$storcli_virtual_drive_id_string,
+					creation_date		=>	$new_creation_date,
+					data_protection		=>	$new_data_protection,
+					disk_cache_policy	=>	$new_disk_cache_policy,
+					emulation_type		=>	$new_emulation_type,
+					encryption		=>	$new_encryption,
+					blocks			=>	$new_blocks,
+					strip_size		=>	$new_strip_size,
+					drives_per_span		=>	$new_drives_per_span,
+					span_depth		=>	$new_span_depth,
+					scsi_naa_id		=>	$new_scsi_naa_id,
 				},
 			});
 			
 			# INSERT
 			my $query = "
 INSERT INTO 
-    public.storcli_virtual_drives
+    storcli_virtual_drives
 (
-    storcli_storcli_virtual_drive_uuid, 
-    storcli_storcli_virtual_drive_host_uuid, 
-    storcli_storcli_virtual_drive_controller_uuid, 
-    storcli_storcli_virtual_drive_id_string, 
-    storcli_storcli_virtual_drive_type, 
-    storcli_storcli_virtual_drive_model, 
-    storcli_storcli_virtual_drive_state, 
-    storcli_storcli_virtual_drive_design_capacity, 
-    storcli_storcli_virtual_drive_manufacture_date, 
-    storcli_storcli_virtual_drive_replacement_needed, 
+    storcli_virtual_drive_uuid, 
+    storcli_virtual_drive_host_uuid, 
+    storcli_virtual_drive_controller_uuid, 
+    storcli_virtual_drive_id_string,
+    storcli_virtual_drive_creation_date,
+    storcli_virtual_drive_data_protection, 
+    storcli_virtual_drive_disk_cache_policy, 
+    storcli_virtual_drive_emulation_type, 
+    storcli_virtual_drive_encryption, 
+    storcli_virtual_drive_blocks, 
+    storcli_virtual_drive_strip_size, 
+    storcli_virtual_drive_drives_per_span, 
+    storcli_virtual_drive_span_depth, 
+    storcli_virtual_drive_scsi_naa_id, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_id_string).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_design_capacity).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_manufacture_date).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_creation_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_data_protection).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_disk_cache_policy).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_emulation_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_encryption).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_blocks).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_strip_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drives_per_span).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_span_depth).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_scsi_naa_id).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 			# Now record the query in the array
+			$query =~ s/''/NULL/g;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
@@ -596,6 +667,7 @@ INSERT INTO
 		}
 		else
 		{
+=cut
 			### NOTE: The serial number should never change (a changed SN/Virtual Drive should be 
 			###       picked up as a new Virtual Drive), but we check/update just to be safe.
 			# Look for changes.
@@ -896,6 +968,7 @@ WHERE
 					push @{$an->data->{sys}{sql}}, $query;
 				}
 			}
+=cut
 		}
 		
 		# Delete the Virtual Drive from the last scan so that we can find controllers that have been removed.
@@ -904,6 +977,10 @@ WHERE
 			delete $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid};
 		}
 	}
+	
+	# Now commit the changes. We do this here so that the VD is in place before processing drive
+	# groups under it.
+	commit_sql($an);
 	
 	# See if any Virtual Drives have vanished.
 	foreach my $storcli_virtual_drive_uuid (keys %{$an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}})
@@ -965,7 +1042,6 @@ WHERE
 		
 		# Process drive groups under this virtual disk.
 		#process_drive_groups($an, $virtual_drive);
-=cut
 	}
 	
 	die "$THIS_FILE ".__LINE__."; testing...\n";
@@ -8102,6 +8178,8 @@ sub process_variable_name
 	$variable =~ s/{_}+/_/g;
 	$variable =~ s/^_+//g;
 	$variable =~ s/_+$//g;
+	$variable =~ s/(\w)\(/$1_\(/;
+	$variable =~ s/\((.*?)\)/-_$1/g;
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "variable", value1 => $variable, 

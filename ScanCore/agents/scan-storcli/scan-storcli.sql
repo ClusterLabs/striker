@@ -261,7 +261,7 @@ CREATE TABLE storcli_virtual_drives (
 	storcli_virtual_drive_emulation_type	text,						-- "Emulation type"
 	storcli_virtual_drive_encryption	text,						-- "Encryption"
 	storcli_virtual_drive_blocks		numeric,					-- "Number of Blocks"
-	storcli_virtual_drive_strip_size	numeric,					-- "Strip Size"
+	storcli_virtual_drive_strip_size	text,						-- "Strip Size" (has the suffix 'Bytes', so not numeric)
 	storcli_virtual_drive_drives_per_span	numeric,					-- "Number of Drives Per Span"
 	storcli_virtual_drive_span_depth	numeric,					-- "Span Depth"
 	storcli_virtual_drive_scsi_naa_id	text,						-- "SCSI NAA Id" - https://en.wikipedia.org/wiki/ISCSI#Addressing
@@ -284,7 +284,7 @@ CREATE TABLE history.storcli_virtual_drives (
 	storcli_virtual_drive_emulation_type	text,
 	storcli_virtual_drive_encryption	text,
 	storcli_virtual_drive_blocks		numeric,
-	storcli_virtual_drive_strip_size	numeric,
+	storcli_virtual_drive_strip_size	text,
 	storcli_virtual_drive_drives_per_span	numeric,
 	storcli_virtual_drive_span_depth	numeric,
 	storcli_virtual_drive_scsi_naa_id	text,

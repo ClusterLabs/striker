@@ -40,6 +40,22 @@ Other detected variables:
 
 Other detected variables:
 </key>
+		<key name="scan_storcli_note_0004">A new Broadcom (AVAGO/LSI) Storage controller Dirtual Drive (VD) has been found.
+- On Controller: .... [#!variable!on_controller!#]
+- ID String: ........ [#!variable!id_string!#]
+- Creation Date: .... [#!variable!creation_date!#]
+- Data Protection: .. [#!variable!data_protection!#]
+- Disk Cache Policy:  [#!variable!disk_cache_policy!#]
+- Emulation Type: ... [#!variable!emulation_type!#]
+- Encryption: ....... [#!variable!encryption!#]
+- Blocks: ........... [#!variable!blocks!#]
+- Strip Size: ....... [#!variable!strip_size!#]
+- Drives Per Span: .. [#!variable!drives_per_span!#]
+- Span Depth: ....... [#!variable!span_depth!#]
+- SCSI NAA ID: ...... [#!variable!scsi_naa_id!#] (https://en.wikipedia.org/wiki/ISCSI#Addressing)
+
+Other detected variables:
+</key>
 		
 		<!-- Warnings -->
 		<key name="scan_storcli_warning_0001">While processing data from adapter: [#!variable!adapter!#], which has the serial number: [#!variable!serial_number!#], the drive in virtual disk: [#!variable!virtual_disk!#] in the enclosure: [#!variable!enclosure_id!#] at slot number: [#!variable!slot_number!#] in span: [#!variable!span!#] at row: [#!variable!row!#] initially was found in drive group: [#!variable!old_drive_group!#] but the variable 'Drive position' reports it as being in drive group: [#!variable!new_drive_group!#]. This might be a program error in parsing the output of: [#!variable!shell_call!#]. Please report this error along with the output of that shell call so that we can improve this scan agent.</key>
