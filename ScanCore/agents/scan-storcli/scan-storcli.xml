@@ -100,8 +100,41 @@ Other detected variables:
 		<key name="scan_storcli_warning_0012">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0013">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0014">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
-		<key name="scan_storcli_warning_0015">- The BBU: [#!variable!serial_number!#]; New variable found; #!variable!name!#: [#!variable!value!#]</key>
-		<key name="scan_storcli_warning_0016">The BBU: [#!variable!bbu_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0015">- A new variable was found on the BBU: [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0016">- The BBU: [#!variable!bbu_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0017">The RAID controller's Virtual Drive (VD) properties have changed:
+- On Controller: .... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
+- ID String: ........ [#!variable!old_id_string!#] -> [#!variable!new_id_string!#]
+- Creation Date: .... [#!variable!old_creation_date!#] -> [#!variable!new_creation_date!#]
+- Data Protection: .. [#!variable!old_data_protection!#] -> [#!variable!new_data_protection!#]
+- Disk Cache Policy:  [#!variable!old_disk_cache_policy!#] -> [#!variable!new_disk_cache_policy!#]
+- Emulation Type: ... [#!variable!old_emulation_type!#] -> [#!variable!new_emulation_type!#]
+- Encryption: ....... [#!variable!old_encryption!#] -> [#!variable!new_encryption!#]
+- Blocks: ........... [#!variable!old_blocks!#] -> [#!variable!new_blocks!#]
+- Strip Size: ....... [#!variable!old_strip_size!#] -> [#!variable!new_strip_size!#]
+- Drives Per Span: .. [#!variable!old_drives_per_span!#] -> [#!variable!new_drives_per_span!#]
+- Span Depth: ....... [#!variable!old_span_depth!#] -> [#!variable!new_span_depth!#]
+- SCSI NAA ID: ...... [#!variable!old_scsi_naa_id!#] -> [#!variable!new_scsi_naa_id!#]
+</key>
+		<key name="scan_storcli_warning_0018">The RAID controller's Virtual Drive (VD) has returned:
+- On Controller: .... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
+- ID String: ........ [#!variable!old_id_string!#] -> [#!variable!new_id_string!#]
+- Creation Date: .... [#!variable!old_creation_date!#] -> [#!variable!new_creation_date!#]
+- Data Protection: .. [#!variable!old_data_protection!#] -> [#!variable!new_data_protection!#]
+- Disk Cache Policy:  [#!variable!old_disk_cache_policy!#] -> [#!variable!new_disk_cache_policy!#]
+- Emulation Type: ... [#!variable!old_emulation_type!#] -> [#!variable!new_emulation_type!#]
+- Encryption: ....... [#!variable!old_encryption!#] -> [#!variable!new_encryption!#]
+- Blocks: ........... [#!variable!old_blocks!#] -> [#!variable!new_blocks!#]
+- Strip Size: ....... [#!variable!old_strip_size!#] -> [#!variable!new_strip_size!#]
+- Drives Per Span: .. [#!variable!old_drives_per_span!#] -> [#!variable!new_drives_per_span!#]
+- Span Depth: ....... [#!variable!old_span_depth!#] -> [#!variable!new_span_depth!#]
+- SCSI NAA ID: ...... [#!variable!old_scsi_naa_id!#] -> [#!variable!new_scsi_naa_id!#]
+</key>
+		<key name="scan_storcli_warning_0019">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0020">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0021">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' has vanished!</key>
+		<key name="scan_storcli_warning_0022">- A new variable was found on the Virtual Drive: [#!variable!id_string!#]; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0023">The Virtual Drive: [#!variable!id_string!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		
 		<!-- Errors -->
 		<key name="scan_storcli_error_0001">The 'storcli64' program was not found at: [#!variable!path!#], exiting.</key>

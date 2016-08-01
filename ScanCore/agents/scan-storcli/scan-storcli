@@ -286,7 +286,8 @@ sub process_drive_groups
 			});
 		}
 		
-		process_physical_disks($an, $virtual_drive, $drive_group);
+die "$THIS_FILE ".__LINE__."; testing...\n";
+		#process_physical_disks($an, $virtual_drive, $drive_group);
 	}
 	
 	return(0);
@@ -667,46 +668,61 @@ INSERT INTO
 		}
 		else
 		{
-=cut
 			### NOTE: The serial number should never change (a changed SN/Virtual Drive should be 
 			###       picked up as a new Virtual Drive), but we check/update just to be safe.
 			# Look for changes.
-			my $main_table_changed           = 0;
-			my $old_storcli_virtual_drive_id_string = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_id_string};
-			my $old_controller_uuid          = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_controller_uuid};
-			my $old_type                     = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_type};
-			my $old_model                    = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_model};
-			my $old_state                    = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_state};
-			my $old_design_capacity          = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_design_capacity};
-			my $old_manufacture_date         = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_manufacture_date};
-			my $old_replacement_needed       = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_replacement_needed};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
+			my $main_table_changed                  = 0;
+			my $old_storcli_virtual_drive_id_string = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_id_string};
+			my $old_controller_uuid                 = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_controller_uuid};
+			my $old_creation_date                   = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_creation_date};
+			my $old_data_protection                 = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_data_protection};
+			my $old_disk_cache_policy               = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_disk_cache_policy};
+			my $old_emulation_type                  = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_emulation_type};
+			my $old_encryption                      = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_encryption};
+			my $old_blocks                          = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_blocks};
+			my $old_strip_size                      = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_strip_size};
+			my $old_drives_per_span                 = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_drives_per_span};
+			my $old_span_depth                      = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_span_depth};
+			my $old_scsi_naa_id                     = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_scsi_naa_id};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0024", message_variables => {
 				name1  => "storcli_virtual_drive_id_string",     value1  => $storcli_virtual_drive_id_string,
 				name2  => "old_storcli_virtual_drive_id_string", value2  => $old_storcli_virtual_drive_id_string,
-				name3  => "controller_uuid",              value3  => $controller_uuid,
-				name4  => "old_controller_uuid",          value4  => $old_controller_uuid,
-				name5  => "new_type",                     value5  => $new_type,
-				name6  => "old_type",                     value6  => $old_type,
-				name7  => "new_model",                    value7  => $new_model,
-				name8  => "old_model",                    value8  => $old_model,
-				name9  => "new_state",                    value9  => $new_state,
-				name10 => "old_state",                    value10 => $old_state,
-				name11 => "new_design_capacity",          value11 => $new_design_capacity,
-				name12 => "old_design_capacity",          value12 => $old_design_capacity,
-				name13 => "new_manufacture_date",         value13 => $new_manufacture_date,
-				name14 => "old_manufacture_date",         value14 => $old_manufacture_date,
-				name15 => "new_replacement_needed",       value15 => $new_replacement_needed,
-				name16 => "old_replacement_needed",       value16 => $old_replacement_needed,
+				name3  => "controller_uuid",                     value3  => $controller_uuid,
+				name4  => "old_controller_uuid",                 value4  => $old_controller_uuid,
+				name5  => "new_creation_date",                   value5  => $new_creation_date,
+				name6  => "old_creation_date",                   value6  => $old_creation_date,
+				name7  => "new_data_protection",                 value7  => $new_data_protection,
+				name8  => "old_data_protection",                 value8  => $old_data_protection,
+				name9  => "new_disk_cache_policy",               value9  => $new_disk_cache_policy,
+				name10 => "old_disk_cache_policy",               value10 => $old_disk_cache_policy,
+				name11 => "new_emulation_type",                  value11 => $new_emulation_type,
+				name12 => "old_emulation_type",                  value12 => $old_emulation_type,
+				name13 => "new_encryption",                      value13 => $new_encryption,
+				name14 => "old_encryption",                      value14 => $old_encryption,
+				name15 => "new_blocks",                          value15 => $new_blocks,
+				name16 => "old_blocks",                          value16 => $old_blocks,
+				name17 => "new_strip_size",                      value17 => $new_strip_size,
+				name18 => "old_strip_size",                      value18 => $old_strip_size,
+				name19 => "new_drives_per_span",                 value19 => $new_drives_per_span,
+				name20 => "old_drives_per_span",                 value20 => $old_drives_per_span,
+				name21 => "new_span_depth",                      value21 => $new_span_depth,
+				name22 => "old_span_depth",                      value22 => $old_span_depth,
+				name23 => "new_scsi_naa_id",                     value23 => $new_scsi_naa_id,
+				name24 => "old_scsi_naa_id",                     value24 => $old_scsi_naa_id,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if (($storcli_virtual_drive_id_string ne $old_storcli_virtual_drive_id_string) or 
-			    ($controller_uuid          ne $old_controller_uuid)          or 
-			    ($new_type                 ne $old_type)                     or 
-			    ($new_model                ne $old_model)                    or 
-			    ($new_state                ne $old_state)                    or 
-			    ($new_design_capacity      ne $old_design_capacity)          or
-			    ($new_manufacture_date     ne $old_manufacture_date)         or 
-			    ($new_replacement_needed   ne $old_replacement_needed))
+			    ($controller_uuid                 ne $old_controller_uuid)                 or 
+			    ($new_creation_date               ne $old_creation_date)                   or 
+			    ($new_data_protection             ne $old_data_protection)                 or 
+			    ($new_disk_cache_policy           ne $old_disk_cache_policy)               or 
+			    ($new_emulation_type              ne $old_emulation_type)                  or 
+			    ($new_encryption                  ne $old_encryption)                      or 
+			    ($new_blocks                      ne $old_blocks)                          or 
+			    ($new_strip_size                  ne $old_strip_size)                      or 
+			    ($new_drives_per_span             ne $old_drives_per_span)                 or 
+			    ($new_span_depth                  ne $old_span_depth)                      or 
+			    ($new_scsi_naa_id                 ne $old_scsi_naa_id))
 			{
 				# I need the serial numbers for the controller UUIDs.
 				my $new_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid};
@@ -716,21 +732,15 @@ INSERT INTO
 					name2 => "old_controller_serial_number", value2 => $old_controller_serial_number,
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				# Send a warning level alert because the most likely change is 'state' or 
-				# 'replacement_needed'.
+				# Send a warning level alert because nothing should change here, ever.
 				my $title_key   = "an_alert_title_0004";
-				my $message_key = "scan_storcli_warning_0010";
-				if ($new_state ne $old_state)
+				my $message_key = "scan_storcli_warning_0017";
+				if ($new_creation_date ne $old_creation_date)
 				{
-					if ($old_state eq "VANISHED")
+					if ($old_creation_date eq "VANISHED")
 					{
 						# Virtual Drive has returned.
-						$message_key = "scan_storcli_warning_0011";
-					}
-					### TODO: Verify this is the expected string on Virtual Drives.
-					if ($new_state =~ /optimal/i)
-					{
-						$title_key = "an_alert_title_0004";
+						$message_key = "scan_storcli_warning_0018";
 					}
 				}
 				$an->data->{sys}{alert_sort}++; 
@@ -742,22 +752,30 @@ INSERT INTO
 					alert_title_key		=>	$title_key,
 					alert_message_key	=>	$message_key,
 					alert_message_variables	=>	{
-						new_on_controller	=>	$new_controller_serial_number, 
 						old_on_controller	=>	$old_controller_serial_number, 
-						new_model		=>	$new_model,
-						old_model		=>	$old_model,
-						new_serial_number	=>	$storcli_virtual_drive_id_string,
-						old_serial_number	=>	$old_storcli_virtual_drive_id_string,
-						new_type		=>	$new_type, 
-						old_type		=>	$old_type, 
-						new_state		=>	$new_state, 
-						old_state		=>	$old_state, 
-						new_design_capacity	=>	$new_design_capacity, 
-						old_design_capacity	=>	$old_design_capacity, 
-						new_manufacture_date	=>	$new_manufacture_date, 
-						old_manufacture_date	=>	$old_manufacture_date, 
-						new_replacement_needed	=>	$new_replacement_needed, 
-						old_replacement_needed	=>	$old_replacement_needed, 
+						new_on_controller	=>	$new_controller_serial_number, 
+						old_id_string		=>	$old_storcli_virtual_drive_id_string, 
+						new_id_string		=>	$storcli_virtual_drive_id_string, 
+						old_creation_date	=>	$old_creation_date, 
+						new_creation_date	=>	$new_creation_date, 
+						old_data_protection	=>	$old_data_protection, 
+						new_data_protection	=>	$new_data_protection, 
+						old_disk_cache_policy	=>	$old_disk_cache_policy, 
+						new_disk_cache_policy	=>	$new_disk_cache_policy, 
+						old_emulation_type	=>	$old_emulation_type, 
+						new_emulation_type	=>	$new_emulation_type, 
+						old_encryption		=>	$old_encryption, 
+						new_encryption		=>	$new_encryption, 
+						old_blocks		=>	$old_blocks, 
+						new_blocks		=>	$new_blocks, 
+						old_strip_size		=>	$old_strip_size, 
+						new_strip_size		=>	$new_strip_size, 
+						old_drives_per_span	=>	$old_drives_per_span, 
+						new_drives_per_span	=>	$new_drives_per_span, 
+						old_span_depth		=>	$old_span_depth, 
+						new_span_depth		=>	$new_span_depth, 
+						old_scsi_naa_id		=>	$old_scsi_naa_id, 
+						new_scsi_naa_id		=>	$new_scsi_naa_id, 
 					},
 				});
 				$main_table_changed = 1;
@@ -766,17 +784,21 @@ INSERT INTO
 UPDATE 
     storcli_virtual_drives
 SET
-    storcli_storcli_virtual_drive_controller_uuid    = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
-    storcli_storcli_virtual_drive_id_string      = ".$an->data->{sys}{use_db_fh}->quote($old_controller_uuid).", 
-    storcli_storcli_virtual_drive_type               = ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
-    storcli_storcli_virtual_drive_model              = ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
-    storcli_storcli_virtual_drive_state              = ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
-    storcli_storcli_virtual_drive_manufacture_date   = ".$an->data->{sys}{use_db_fh}->quote($new_manufacture_date).", 
-    storcli_storcli_virtual_drive_design_capacity    = ".$an->data->{sys}{use_db_fh}->quote($new_design_capacity).", 
-    storcli_storcli_virtual_drive_replacement_needed = ".$an->data->{sys}{use_db_fh}->quote($new_replacement_needed).", 
-    modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    storcli_virtual_drive_controller_uuid   = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    storcli_virtual_drive_id_string         = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_id_string).",
+    storcli_virtual_drive_creation_date     = ".$an->data->{sys}{use_db_fh}->quote($new_creation_date).",
+    storcli_virtual_drive_data_protection   = ".$an->data->{sys}{use_db_fh}->quote($new_data_protection).", 
+    storcli_virtual_drive_disk_cache_policy = ".$an->data->{sys}{use_db_fh}->quote($new_disk_cache_policy).", 
+    storcli_virtual_drive_emulation_type    = ".$an->data->{sys}{use_db_fh}->quote($new_emulation_type).", 
+    storcli_virtual_drive_encryption        = ".$an->data->{sys}{use_db_fh}->quote($new_encryption).", 
+    storcli_virtual_drive_blocks            = ".$an->data->{sys}{use_db_fh}->quote($new_blocks).", 
+    storcli_virtual_drive_strip_size        = ".$an->data->{sys}{use_db_fh}->quote($new_strip_size).", 
+    storcli_virtual_drive_drives_per_span   = ".$an->data->{sys}{use_db_fh}->quote($new_drives_per_span).", 
+    storcli_virtual_drive_span_depth        = ".$an->data->{sys}{use_db_fh}->quote($new_span_depth).", 
+    storcli_virtual_drive_scsi_naa_id       = ".$an->data->{sys}{use_db_fh}->quote($new_scsi_naa_id).", 
+    modified_date                           = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    storcli_storcli_virtual_drive_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
+    storcli_virtual_drive_uuid              = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
 ;";
 
 				# Now record the query in the array
@@ -824,10 +846,10 @@ WHERE
 							# noisey later (better safe than sorry).
 							$an->data->{sys}{alert_sort}++; 
 							
-							my $message_key = "scan_storcli_warning_0012";
+							my $message_key = "scan_storcli_warning_0019";
 							if ($old_variable_value eq "VANISHED")
 							{
-								$message_key = "scan_storcli_warning_0013";
+								$message_key = "scan_storcli_warning_0020";
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	"warning", 
@@ -837,7 +859,7 @@ WHERE
 								alert_title_key		=>	"an_alert_title_0004",
 								alert_message_key	=>	$message_key,
 								alert_message_variables	=>	{
-									serial_number		=>	$storcli_virtual_drive_id_string,
+									id_string		=>	$storcli_virtual_drive_id_string,
 									name			=>	$variable,
 									old_value		=>	$old_variable_value,
 									new_value		=>	$new_variable_value,
@@ -871,9 +893,10 @@ WHERE
 							alert_sort		=>	$an->data->{sys}{alert_sort},
 							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 							alert_title_key		=>	"an_alert_title_0003",
-							alert_message_key	=>	"scan_storcli_warning_0015",
+							alert_message_key	=>	"scan_storcli_warning_0021",
 							alert_message_variables	=>	{
-								serial_number		=>	$variable,
+								id_string		=>	$storcli_virtual_drive_id_string,
+								name			=>	$variable,
 								value			=>	$new_variable_value,
 							},
 						});
@@ -945,9 +968,9 @@ INSERT INTO
 						alert_sort		=>	$an->data->{sys}{alert_sort},
 						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 						alert_title_key		=>	"an_alert_title_0004",
-						alert_message_key	=>	"scan_storcli_warning_0007",
+						alert_message_key	=>	"scan_storcli_warning_0021",
 						alert_message_variables	=>	{
-							controller		=>	$storcli_virtual_drive_id_string,
+							id_string		=>	$storcli_virtual_drive_id_string,
 							name			=>	$variable,
 						},
 					});
@@ -968,13 +991,12 @@ WHERE
 					push @{$an->data->{sys}{sql}}, $query;
 				}
 			}
-=cut
 		}
 		
 		# Delete the Virtual Drive from the last scan so that we can find controllers that have been removed.
-		if (exists $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid})
+		if (exists $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid})
 		{
-			delete $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid};
+			delete $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid};
 		}
 	}
 	
@@ -983,25 +1005,25 @@ WHERE
 	commit_sql($an);
 	
 	# See if any Virtual Drives have vanished.
-	foreach my $storcli_virtual_drive_uuid (keys %{$an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}})
+	foreach my $storcli_virtual_drive_uuid (keys %{$an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}})
 	{
 		# Virtual Drive vanished!
-		my $old_storcli_virtual_drive_id_string        = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_id_string};
-		my $old_controller_uuid          = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_controller_uuid};
-		my $old_state                    = $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_storcli_virtual_drive_state};
-		my $old_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
+		my $old_storcli_virtual_drive_id_string = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_id_string};
+		my $old_controller_uuid                 = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_controller_uuid};
+		my $old_creation_date                   = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_creation_date};
+		my $old_controller_serial_number        = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-			name1 => "old_storcli_virtual_drive_id_string",        value1 => $old_storcli_virtual_drive_id_string,
-			name2 => "old_controller_uuid",          value2 => $old_controller_uuid,
-			name3 => "old_state",                    value3 => $old_state,
-			name4 => "old_controller_serial_number", value4 => $old_controller_serial_number,
+			name1 => "old_storcli_virtual_drive_id_string", value1 => $old_storcli_virtual_drive_id_string,
+			name2 => "old_controller_uuid",                 value2 => $old_controller_uuid,
+			name3 => "old_creation_date",                   value3 => $old_creation_date,
+			name4 => "old_controller_serial_number",        value4 => $old_controller_serial_number,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Delete it so that we know it has been processed.
-		delete $an->data->{sql}{storcli_virtual_drives}{storcli_storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid};
+		delete $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid};
 		
-		# If the old alarm state is already 'VANISHED', ignore it.
-		next if $old_state eq "VANISHED";
+		# If the old creation date is already 'VANISHED', ignore it.
+		next if $old_creation_date eq "VANISHED";
 		
 		# Still here? Alert and UPDATE.
 		### NOTE: For now, we're going to use warning level because controllers should never vanish
@@ -1014,9 +1036,9 @@ WHERE
 			alert_sort		=>	$an->data->{sys}{alert_sort},
 			alert_header		=>	"TRUE",
 			alert_title_key		=>	"an_alert_title_0004",
-			alert_message_key	=>	"scan_storcli_warning_0016",
+			alert_message_key	=>	"scan_storcli_warning_0023",
 			alert_message_variables	=>	{
-				storcli_virtual_drive_id_string	=>	$old_storcli_virtual_drive_id_string, 
+				id_string		=>	$old_storcli_virtual_drive_id_string, 
 				controller_serial_number =>	$old_controller_serial_number, 
 			},
 		});
@@ -1025,10 +1047,10 @@ WHERE
 UPDATE 
     storcli_virtual_drives
 SET 
-    storcli_storcli_virtual_drive_state = 'VANISHED', 
-    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    storcli_virtual_drive_creation_date = 'VANISHED', 
+    modified_date                       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    storcli_storcli_virtual_drive_uuid  = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
+    storcli_virtual_drive_uuid          = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
 ;";
 		# Now record the query in the array
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1040,11 +1062,10 @@ WHERE
 		# groups under it.
 		commit_sql($an);
 		
+		### TODO: Call this in such a way that drive groups below it are marked as VANISHED as well.
 		# Process drive groups under this virtual disk.
 		#process_drive_groups($an, $virtual_drive);
 	}
-	
-	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	return(0);
 }
@@ -1524,6 +1545,7 @@ WHERE
 							alert_message_key	=>	"scan_storcli_warning_0015",
 							alert_message_variables	=>	{
 								serial_number		=>	$variable,
+								name			=>	$variable,
 								value			=>	$new_variable_value,
 							},
 						});
@@ -2162,6 +2184,7 @@ WHERE
 							alert_message_key	=>	"scan_storcli_warning_0015",
 							alert_message_variables	=>	{
 								serial_number		=>	$variable,
+								name			=>	$variable,
 								value			=>	$new_variable_value,
 							},
 						});
