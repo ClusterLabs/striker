@@ -9905,6 +9905,7 @@ sub _parse_clustat
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					
+					### TODO: This will hang if DLM is hung.
 					# Sleep for a short bit and the start the service back up.
 					sleep 5;
 					$shell_call = $an->data->{path}{clusvcadm}." -e service:$name";

@@ -399,7 +399,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0181">This is the password used to connect to and control the #!string!brand_0003!#.</key>
 		<key name="explain_0182"><![CDATA[The address (name or ip) of node 1.<br />If you need to use a non-standard port, use '<span class="highlight_detail">address:port</span>'.]]></key>
 		<key name="explain_0183"><![CDATA[The same for node 2.]]></key>
-		<key name="explain_0184"><![CDATA[This is the email server that #!string!brand_0015!# will use to send alerts. If you use a non-standard port,<br />use '<span class="highlight_detail">address:port</span>'. The default port will depend on the connection security being<br />used. The defaults are <span class="highlight_detail">587</span> for '#!string!select_0003!#', <span class="highlight_detail">465</span> for '#!string!select_0002!#' and <span class="highlight_detail">25</span> for '#!string!select_0001!#.<br />]]></key>
+		<key name="explain_0184"><![CDATA[This is the email server that #!string!brand_0015!# will use to send alerts. If you use a non-standard port,<br />use '<span class="highlight_detail">address:port</span>'. The default port will depend on the connection security being<br />used. The defaults are <span class="highlight_detail">587</span> for '#!string!select_0003!#', <span class="highlight_detail">465</span> for '#!string!select_0002!#' and <span class="highlight_detail">25</span> for '#!string!select_0001!#.<br /><span class="highlight_note_bold">NOTE</span>: If you plan to use file-based alerts only, blank this field.<br />]]></key>
 		<key name="explain_0185"><![CDATA[This is the "TCP" port number used when connecting to the outgoing mail server.]]></key>
 		<key name="explain_0186"><![CDATA[This is the name to use when logging into your outgoing mail server.<br />It is usually, but not always, your email address.]]></key>
 		<key name="explain_0187"><![CDATA[This is the password to use along with the login name above.<br />Leave it blank if '<span class="highlight_detail">#!string!row_0303!#</span>' is set to '<span class="highlight_detail">#!string!select_0004!#</span>'.]]></key>
@@ -515,6 +515,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="select_0008">Imperial</key>
 		<key name="select_0009">Yes</key>
 		<key name="select_0010">No</key>
+		<key name="select_0011">New</key>
+		<key name="select_0012">New (or none)</key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -1787,7 +1789,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0363"><![CDATA[There was a problem writing out the cluster configuration file.<br />Without this file properly in place, installation can not proceed.]]></key>
 		<key name="message_0364"><![CDATA[A program called <span class="highlight_detail">libvirtd</span> was found to be running on the dashboard.<br />We tried to turned it off because it can conflicts with us being an install target.<br />This attempt failed, so it probably will have to be stopped manually by running, as the <span class="highlight_detail">root</span> user,<br /><span class="highlight_detail">#!conf!path::initd_libvirtd!# stop</span>]]></key>
 		<key name="message_0365"><![CDATA[The '<span class="highlight_detail">#!string!row_0302!#</span>' field can only be blank is '<span class="highlight_detail">#!string!row_0302!#</span>' is set to '<span class="highlight_detail">#!string!row_0302!#</span>'.]]></key>
-		<key name="message_0366"><![CDATA[There appears to be no access to the Internet.<br />If all packages are already installed or if local repositories are available, this should be ok.<br />If not, however, the install may fail.]]></key>
+		<key name="message_0366"><![CDATA[There appears to be no access to the Internet.<br />This should be ok, the Striker dashboards can provide needed packages.]]></key>
 		<key name="message_0367"><![CDATA[Failed to add the local repositories.]]></key>
 		<key name="message_0368"><![CDATA[The program <span class="code">parted</span> is not installed and an attempt to install it failed.<br />The install will attempt to proceed but it will likely fail.]]></key>
 		<key name="message_0369"><![CDATA[One or more packages failed to install.<br />#!string!message_0372!#]]></key>

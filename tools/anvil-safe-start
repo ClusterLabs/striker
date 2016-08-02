@@ -842,6 +842,8 @@ sub wait_for_storage
 			$an->Log->entry({log_level => 0, message_key => "asst_error_0013", file => $THIS_FILE, line => __LINE__});
 			sleep 1;
 			
+			### NOTE: If the storage was 'failed', it will go 'disabled' and need to be manually
+			###       enabled.
 			# Stop storage (clvmd is usually the culprit here) and then restart rgmanager. The 
 			# timeout is there to make sure this doesn't hang so that we can commit suicide if
 			# needed.

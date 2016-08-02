@@ -68,18 +68,20 @@ sub build_select
 	my $name     = $parameter->{name};
 	my $options  = $parameter->{options};
 	# Optional
-	my $id       = defined $parameter->{id}       ? $parameter->{id}       : $name;
-	my $sort     = defined $parameter->{'sort'}   ? $parameter->{'sort'}   : 1;	# Sort the entries?
-	my $width    = defined $parameter->{width}    ? $parameter->{width}    : 0;	# 0 = let the browser set the width
-	my $blank    = defined $parameter->{blank}    ? $parameter->{blank}    : 0;	# Add a blank/null entry?
-	my $selected = defined $parameter->{selected} ? $parameter->{selected} : "";	# Pre-select an option?
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-		name1 => "name",     value1 => $name, 
-		name2 => "options",  value2 => $options, 
-		name3 => "sort",     value3 => $sort, 
-		name4 => "width",    value4 => $width, 
-		name5 => "blank",    value5 => $blank, 
-		name6 => "selected", value6 => $selected, 
+	my $id        = defined $parameter->{id}        ? $parameter->{id}        : $name;
+	my $sort      = defined $parameter->{'sort'}    ? $parameter->{'sort'}    : 1;	# Sort the entries?
+	my $width     = defined $parameter->{width}     ? $parameter->{width}     : 0;	# 0 = let the browser set the width
+	my $blank     = defined $parameter->{blank}     ? $parameter->{blank}     : 0;	# Add a blank/null entry?
+	my $say_blank = defined $parameter->{say_blank} ? $parameter->{say_blank} : "";	# An optional, grayed-out string in the place of the "blank" option
+	my $selected  = defined $parameter->{selected}  ? $parameter->{selected}  : "";	# Pre-select an option?
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		name1 => "name",      value1 => $name, 
+		name2 => "options",   value2 => $options, 
+		name3 => "sort",      value3 => $sort, 
+		name4 => "width",     value4 => $width, 
+		name5 => "blank",     value5 => $blank, 
+		name6 => "say_blank", value6 => $say_blank, 
+		name7 => "selected",  value7 => $selected, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $select = "<select name=\"$name\" id=\"$id\">\n";
@@ -97,7 +99,27 @@ sub build_select
 	# Insert a blank line.
 	if ($blank)
 	{
-		$select .= "<option value=\"\"></option>\n";
+		# If 'say_blank' is a string key, use it.
+		my $blank_string = "";
+		my $blank_class  = "";
+		if ($say_blank)
+		{
+			$blank_string = "#!string!".$say_blank."!#";
+			$blank_class  = "class=\"subtle_text\"";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "blank_string", value1 => $blank_string,
+				name2 => "blank_class",  value2 => $blank_class,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($selected eq "new")
+		{
+			$selected =  "";
+			$select   .= "<option value=\"\" $blank_class selected>$blank_string</option>\n";
+		}
+		else
+		{
+			$select .= "<option value=\"\" $blank_class>$blank_string</option>\n";
+		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "select", value1 => $select,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -162,7 +184,7 @@ sub build_select
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "selected", value1 => $selected,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($selected)
@@ -502,7 +524,10 @@ sub get_cgi
 		# I auto-select the 'anvil' variable if only one is checked. Because of this, I don't want
 		# to overwrite the empty CGI value. This prevents that. Note that sometimes the 'anvil_uuid'
 		# passed in will be 'NULL'. In those cases, we overwrite the selected UUID.
-		if (($variable eq "anvil_uuid") && ($cgi->param($variable) ne "NULL") && ($an->data->{cgi}{anvil_uuid}))
+		if (($variable eq "anvil_uuid")        && 
+		    ($cgi->param($variable) ne "NULL") && 
+		    ($cgi->param($variable) ne "new")  && 
+		    ($an->data->{cgi}{anvil_uuid}))
 		{
 			$an->data->{sys}{cgi_string} .= "$variable=".$an->data->{cgi}{$variable}."&";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {

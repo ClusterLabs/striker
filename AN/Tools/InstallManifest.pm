@@ -1065,10 +1065,14 @@ sub check_config_for_anvil
 	
 	my $anvil_configured = 0;
 	my $anvil_data       = $an->ScanCore->get_anvils();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_data", value1 => $anvil_data,
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $hash_ref (@{$anvil_data})
 	{
-		my $this_anvil_name = $anvil_data->{anvil_name};
-		my $this_anvil_uuid = $anvil_data->{anvil_uuid};
+		# Pull out the name and UUID.
+		my $this_anvil_name = $hash_ref->{anvil_name};
+		my $this_anvil_uuid = $hash_ref->{anvil_uuid};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "cgi::anvil_name", value1 => $an->data->{cgi}{anvil_name},
 			name2 => "this_anvil_name", value2 => $this_anvil_name,
@@ -3085,7 +3089,7 @@ sub configure_ipmi_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Now find the admin user ID number
-		my $user_id   = "";
+		my $user_id   = 0;
 		my $uid_found = 0;
 		if ($lan_found)
 		{
@@ -13223,8 +13227,12 @@ sub restart_rgmanager_service
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	### NOTE: See - https://bugzilla.redhat.com/show_bug.cgi?id=1349755
+	###       This can hang. For normal users, the only sane option is to reboot both nodes. So we might
+	###       want to add a 'timeout' call that exists and warns the user to reboot both nodes and try 
+	###       again. At least until we get the underlying problem solved.
 	# This is something of a 'hail mary' pass, so not much sanity checking is done (yet).
-	my $shell_call = $an->data->{path}{clusvcadm}." -d $service && ".$an->data->{path}{'sleep'}." 2 && ".$an->data->{path}{clusvcadm}." -F -e $service";
+	my $shell_call = $an->data->{path}{clusvcadm}." -d $service; ".$an->data->{path}{'sleep'}." 10; ".$an->data->{path}{clusvcadm}." -F -e $service";
 	if ($do eq "start")
 	{
 		$shell_call = $an->data->{path}{clusvcadm}." -F -e $service";
@@ -13685,6 +13693,7 @@ sub run_new_install_manifest
 			# NOTE: Don't pass the password. It will be read in from the manifest.
 			my $url =  "?task=anvil&";
 			   $url .= "manifest_uuid=".$an->data->{cgi}{manifest_uuid}."&";
+			   $url .= "anvil_uuid=new&";
 			   $url .= "node1_access=$say_node1_access&";
 			   $url .= "node2_access=$say_node2_access";
 			
@@ -16756,16 +16765,20 @@ sub start_cman
 	}
 	if ((not $node1_cman_state) && (not $node2_cman_state))
 	{
-		# Start cman on both nodes at the same time. We use node1's password as it has to be the same
-		# on both at this point.
+		# Start cman on both nodes at the same time.
 		my $command  = $an->data->{path}{initd}."/cman start";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "command", value1 => $command,
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		$an->System->synchronous_command_run({
 			command => $command, 
 			delay   => 30,
 		});
+		
+		# We sleep for a bit to give time for cman to be actually up. In rare cases, on slow 
+		# hardware, cman will exit from being asked to start without yet being started.
+		sleep 10;
 		
 		# Now see if that succeeded.
 		$an->Log->entry({log_level => 2, message_key => "log_0110", file => $THIS_FILE, line => __LINE__});
@@ -16787,16 +16800,23 @@ sub start_cman
 			name1 => "node1_cman_state", value1 => $node1_cman_state,
 			name2 => "node2_cman_state", value2 => $node2_cman_state,
 		}, file => $THIS_FILE, line => __LINE__});
+		### NOTE: The returned value is NOT the RC of the status call. It is normalized by the 
+		###       'get_daemon_state()' method.
 		# 1 == running, 0 == stopped.
 		
-		if (($node1_cman_state) && ($node2_cman_state))
+		# Node RCs;
+		# 1 == Can't ping peer
+		# 2 == Started 
+		# 3 == Already running (not used anymore)
+		# 4 == Failed
+		if ((not $node1_cman_state) && (not $node2_cman_state))
 		{
-			# \o/ - Successfully started cman on both nodes.
-			$node1_rc = 2;
-			$node2_rc = 2;
-			$an->Log->entry({log_level => 2, message_key => "log_0111", file => $THIS_FILE, line => __LINE__});
+			# Well crap...
+			$node1_rc = 4;
+			$node2_rc = 4;
+			$an->Log->entry({log_level => 2, message_key => "log_0114", file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($node1_cman_state)
+		elsif (not $node2_cman_state)
 		{
 			# Only node 1 started... node 2 was probably fenced.
 			$node1_rc = 2;
@@ -16806,7 +16826,7 @@ sub start_cman
 				node2 => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($node2_cman_state)
+		elsif (not $node1_cman_state)
 		{
 			# Only node 2 started... node 1 was probably fenced.
 			$node1_rc = 4;
@@ -16818,9 +16838,9 @@ sub start_cman
 		}
 		else
 		{
-			# Well crap...
-			$node1_rc = 4;
-			$node2_rc = 4;
+			# \o/ - Successfully started cman on both nodes.
+			$node1_rc = 2;
+			$node2_rc = 2;
 			$an->Log->entry({log_level => 1, message_key => "log_0111", file => $THIS_FILE, line => __LINE__});
 		}
 	}

@@ -131,7 +131,7 @@ CREATE TRIGGER trigger_owners
 CREATE TABLE anvils (
 	anvil_uuid		uuid				not null	primary key,	-- 
 	anvil_owner_uuid	uuid				not null	not null,	-- NOTE: Make life easy for users; Auto-generate the 'owner' if they enter one that doesn't exist.
-	anvil_smtp_uuid		uuid				not null,			-- This is the mail server to use when sending email notifications. It is not required because some users use file-based notifications only.
+	anvil_smtp_uuid		uuid,								-- This is the mail server to use when sending email notifications. It is not required because some users use file-based notifications only.
 	anvil_name		text				not null,
 	anvil_description	text				not null,			-- This is a short, one-line (usually) description of this particular Anvil!. It is displayed in the Anvil! selection list.
 	anvil_note		text,								-- This is a free-form note area for admins to record details about this Anvil!.

@@ -259,13 +259,15 @@ sub process_physical_disks
 # Look for added, changed or deleted drive groups.
 sub process_drive_groups
 {
-	my ($an, $virtual_drive) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_drive_groups" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "virtual_drive", value1 => $virtual_drive, 
+	my ($an, $vd_id_string, $controller_uuid, $host_controller_serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_drive_groups" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "vd_id_string",                  value1 => $vd_id_string, 
+		name2 => "controller_uuid",               value2 => $controller_uuid, 
+		name3 => "host_controller_serial_number", value3 => $host_controller_serial_number, 
 	}, file => $THIS_FILE, line => __LINE__});
 
 	# Show the drive group and drives.
-	foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}})
+	foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$vd_id_string}{drive_group}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "drive_group", value1 => $drive_group,
@@ -282,7 +284,7 @@ sub process_drive_groups
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "VD $virtual_drive, DG $drive_group - $type",
-				hash_ref  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{$type},
+				hash_ref  => $an->data->{virtual_drive}{$vd_id_string}{drive_group}{$drive_group}{$type},
 			});
 		}
 		
@@ -993,6 +995,9 @@ WHERE
 			}
 		}
 		
+		# Process drive groups under this virtual disk. They'll likely have vanished, too.
+		process_drive_groups($an, $storcli_virtual_drive_id_string, $controller_uuid, $host_controller_serial_number);
+		
 		# Delete the Virtual Drive from the last scan so that we can find controllers that have been removed.
 		if (exists $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid})
 		{
@@ -1062,9 +1067,8 @@ WHERE
 		# groups under it.
 		commit_sql($an);
 		
-		### TODO: Call this in such a way that drive groups below it are marked as VANISHED as well.
-		# Process drive groups under this virtual disk.
-		#process_drive_groups($an, $virtual_drive);
+		# Process drive groups under this virtual disk. They'll likely have vanished, too.
+		process_drive_groups($an, $storcli_virtual_drive_id_string, $controller_uuid, $host_controller_serial_number);
 	}
 	
 	return(0);

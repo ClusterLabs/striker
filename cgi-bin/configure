@@ -833,15 +833,22 @@ sub save_anvil_form
 		push @{$error_fields}, "anvil_password";
 	}
 	
-	# The SMTP password can only be blank is the password security is 'none'.
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::smtp_password",       value1 => $an->data->{cgi}{smtp_password},
-		name2 => "cgi::smtp_authentication", value2 => $an->data->{cgi}{smtp_authentication},
+	# If no 'smtp_server' is set, we'll ignore the rest of the mail setup.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::smtp_server", value1 => $an->data->{cgi}{smtp_server},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $an->data->{cgi}{smtp_password}) && ($an->data->{cgi}{smtp_authentication} ne "none"))
+	if ($an->data->{cgi}{smtp_server})
 	{
-		push @{$notices},      $an->String->get({key => "message_0486"});
-		push @{$error_fields}, "smtp_password";
+		# The SMTP password can only be blank is the password security is 'none'.
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+			name1 => "cgi::smtp_password",       value1 => $an->data->{cgi}{smtp_password},
+			name2 => "cgi::smtp_authentication", value2 => $an->data->{cgi}{smtp_authentication},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ((not $an->data->{cgi}{smtp_password}) && ($an->data->{cgi}{smtp_authentication} ne "none"))
+		{
+			push @{$notices},      $an->String->get({key => "message_0486"});
+			push @{$error_fields}, "smtp_password";
+		}
 	}
 	
 	# If there were errors, display them and return.
@@ -937,13 +944,40 @@ sub save_anvil_form
 	if ($error_count < 1)
 	{
 		### Gather up the records
-		# SMTP first
-		$an->data->{cgi}{smtp_uuid} = save_smtp($an);
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::smtp_uuid", value1 => $an->data->{cgi}{smtp_uuid},
+		# SMTP first, if appropriate
+		my $smtp_ok = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "smtp_ok",          value1 => $smtp_ok,
+			name2 => "cgi::smtp_server", value2 => $an->data->{cgi}{smtp_server},
 		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{cgi}{smtp_server})
+		{
+			$an->data->{cgi}{smtp_uuid} = save_smtp($an);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::smtp_uuid", value1 => $an->data->{cgi}{smtp_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($an->data->{cgi}{smtp_uuid})
+			{
+				$smtp_ok = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "smtp_ok", value1 => $smtp_ok,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		else
+		{
+			# No mail requested.
+			$smtp_ok = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "smtp_ok", value1 => $smtp_ok,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		
-		if ($an->data->{cgi}{smtp_uuid})
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "smtp_ok", value1 => $smtp_ok,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($smtp_ok)
 		{
 			$an->data->{cgi}{owner_uuid} = save_owner($an);
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -975,10 +1009,6 @@ sub save_anvil_form
 			{
 				# no owner_uuid
 			}
-		}
-		else
-		{
-			# no smtp_uuid
 		}
 	}
 	
@@ -1128,6 +1158,15 @@ sub save_anvil
 	my $anvil_description = $an->data->{cgi}{anvil_description};
 	my $anvil_note        = $an->data->{cgi}{anvil_note};
 	my $anvil_password    = $an->data->{cgi}{anvil_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If the anvil_uuid is NULL or new, wipe it before calling insert_or_update_anvils().
+	if (($anvil_uuid eq "NULL") or ($anvil_uuid eq "new"))
+	{
+		$anvil_uuid = "";
+	}
 	
 	# This will return the new UUID if INSERTed and the existing UUID for the matching Anvil! name, if 
 	# one exists. If nothing changed, the database will not be updated.
@@ -5205,10 +5244,14 @@ sub anvil_menu
 	if ($an->data->{cgi}{manifest_uuid})
 	{
 		$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "cgi::anvil_prefix",   value1 => $an->data->{cgi}{anvil_prefix},
+			name2 => "cgi::anvil_domain",   value2 => $an->data->{cgi}{anvil_domain},
+			name3 => "cgi::anvil_sequence", value3 => $an->data->{cgi}{anvil_sequence},
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_password", value1 => $an->data->{cgi}{anvil_password},
 		}, file => $THIS_FILE, line => __LINE__});
-		
 	}
 	
 	if ($an->data->{cgi}{save})
@@ -5228,8 +5271,17 @@ sub anvil_menu
 	my $owners = $an->ScanCore->get_owners();
 	my $smtp   = $an->ScanCore->get_smtp();
 	my $nodes  = $an->ScanCore->get_nodes();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "anvils", value1 => $anvils,
+		name2 => "owners", value2 => $owners,
+		name3 => "smtp",   value3 => $smtp,
+		name4 => "nodes",  value4 => $nodes,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Tease out the data for this form if we're loading an anvil_uuid
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::load_anvil", value1 => $an->data->{cgi}{load_anvil},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{cgi}{load_anvil})
 	{
 		if ($an->Validate->is_uuid({uuid => $an->data->{cgi}{anvil_uuid}}))
@@ -5263,10 +5315,17 @@ sub anvil_menu
 		}
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::load_owner", value1 => $an->data->{cgi}{load_owner},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{cgi}{load_owner})
 	{
 		load_owner_form($an, $owners, $an->data->{cgi}{owner_uuid});
 	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::load_smtp", value1 => $an->data->{cgi}{load_smtp},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{cgi}{load_smtp})
 	{
 		load_smtp_form($an, $smtp, $an->data->{cgi}{smtp_uuid});
@@ -5277,9 +5336,9 @@ sub anvil_menu
 	# Show a select box of existing Anvil! systems (if any).
 	my $width         = 300;
 	my $menu_items    = $an->Web->template({file => "web.html", template => "break-bar", replace => { 
-			message	=>	"#!string!header_0020!#",
-			class	=>	"breaker_header",
-			colspan	=>	4,
+			message => "#!string!header_0020!#",
+			class   => "breaker_header",
+			colspan => 4,
 		}});
 	my $anvil_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
 	my $anvil_explain = "#!string!explain_0174!#";
@@ -5300,7 +5359,7 @@ sub anvil_menu
 			value	=>	"#!string!row_0068!#",
 		}, no_comment => 1});
 		
-		my $options       = [];
+		my $options = [];
 		foreach my $hash_ref (@{$anvils})
 		{
 			my $anvil_uuid  = $hash_ref->{anvil_uuid};
@@ -5309,11 +5368,12 @@ sub anvil_menu
 			push @{$options}, $this_option;
 		}
 		$anvil_select = $an->Web->build_select({
-			name     => "anvil_uuid", 
-			options  => $options, 
-			blank    => 1,
-			selected => $an->data->{cgi}{anvil_uuid},
-			width    => ($width + 10),
+			name      => "anvil_uuid", 
+			options   => $options, 
+			blank     => 1,
+			say_blank => "select_0011", 
+			selected  => $an->data->{cgi}{anvil_uuid},
+			width     => ($width + 10),
 		});
 		
 		# anvil_uuid gets set on load, so I don't see it as blank when 'Load' is pressed with no 
@@ -5354,11 +5414,12 @@ sub anvil_menu
 			push @{$options}, $this_option;
 		}
 		$owner_select = $an->Web->build_select({
-			name     => "owner_uuid", 
-			options  => $options, 
-			blank    => 1,
-			selected => $an->data->{cgi}{owner_uuid},
-			width    => ($width + 10),
+			name      => "owner_uuid", 
+			options   => $options, 
+			blank     => 1,
+			say_blank => "select_0011", 
+			selected  => $an->data->{cgi}{owner_uuid},
+			width     => ($width + 10),
 		});
 	}
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
@@ -5395,11 +5456,12 @@ sub anvil_menu
 			push @{$options}, $this_option;
 		}
 		$smtp_select = $an->Web->build_select({
-			name     => "smtp_uuid", 
-			options  => $options, 
-			blank    => 1,
-			selected => $an->data->{cgi}{smtp_uuid},
-			width    => ($width + 10),
+			name      => "smtp_uuid", 
+			options   => $options, 
+			blank     => 1,
+			say_blank => "select_0012", 
+			selected  => $an->data->{cgi}{smtp_uuid},
+			width     => ($width + 10),
 		});
 	}
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
