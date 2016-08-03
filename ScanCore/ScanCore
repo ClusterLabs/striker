@@ -110,6 +110,7 @@ my $an = AN::Tools->new({data =>
 				more			=>	21600,
 			},
 			sleep_time		=>	30,
+			update_age_limit	=>	1200,
 		},
 		strings_read			=>	{},
 		sys		=>	{
@@ -8800,7 +8801,7 @@ FROM
 			my $host_stop_reason    = $row->[4] ? $row->[4] : "";
 			my $host_health         = $row->[5] ? $row->[5] : "";
 			my $modified_date       = $row->[6];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "host_uuid",           value1 => $host_uuid, 
 				name2 => "host_name",           value2 => $host_name, 
 				name3 => "host_type",           value3 => $host_type, 
@@ -9479,6 +9480,15 @@ sub avoid_duplicate_run
 		name1 => "my_pid", value1 => $my_pid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Make sure the update expire age is sane.
+	if ((not $an->data->{scancore}{update_age_limit}) or ($an->data->{scancore}{update_age_limit} =~ /\D/))
+	{
+		$an->data->{scancore}{update_age_limit} = 1200;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::update_age_limit", value1 => $an->data->{scancore}{update_age_limit},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	# See if another instance is in the 
 	my $last_peer_state = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -9486,16 +9496,19 @@ sub avoid_duplicate_run
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($last_peer_state) && ($last_peer_state =~ /^\d+$/))
 	{
-		# An update is running. If it is less than ten minutes old, simply exit.
+		# An update is running. If it is less than scancore::update_age_limit seconds old, simply 
+		# exit.
 		my $current_time = time;
 		my $update_age   = $current_time - $last_peer_state;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "current_time", value1 => $current_time,
-			name2 => "update_age",   value2 => $update_age,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "current_time",               value1 => $current_time,
+			name2 => "update_age",                 value2 => $update_age,
+			name3 => "scancore::update_age_limit", value3 => $an->data->{scancore}{update_age_limit},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($update_age > 600)
+		
+		if ($update_age > $an->data->{scancore}{update_age_limit})
 		{
-			# Set an alert and proceed.
+			# The other instance is taking too long... Set an alert and proceed.
 			my $variables = { age => $update_age };
 			$an->Alert->register_alert({
 				alert_level		=>	"warning", 
@@ -9569,13 +9582,14 @@ AND
 		my $current_time = time;
 		my $difference   = $current_time - $last_updated;
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
-			name1 => "last_updated", value1 => $last_updated, 
-			name2 => "current_time", value2 => $current_time, 
-			name3 => "difference",   value3 => $difference, 
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0004", message_variables => {
+			name1 => "last_updated",               value1 => $last_updated, 
+			name2 => "current_time",               value2 => $current_time, 
+			name3 => "difference",                 value3 => $difference, 
+			name4 => "scancore::update_age_limit", value4 => $an->data->{scancore}{update_age_limit}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($difference > 300)
+		if ($difference > $an->data->{scancore}{update_age_limit})
 		{
 			# Kill it and then exit. We could keep running, but it's safer to wait for cron to 
 			# re-fire ScanCore.
