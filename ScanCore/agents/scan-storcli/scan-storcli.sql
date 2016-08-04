@@ -350,6 +350,7 @@ CREATE TABLE storcli_drive_groups (
 	storcli_drive_group_uuid		uuid				primary key,
 	storcli_drive_group_host_uuid		uuid				not null,
 	storcli_drive_group_virtual_drive_uuid	uuid				not null,
+	storcli_drive_group_id_string		text,						-- This is '<host_controller_sn>-vd<x>-dg<y>' where 'x' is the virtual drive number and 'y' is the drive group number.
 	storcli_drive_group_access		text,						-- "access"
 	storcli_drive_group_array_size		text,						-- "array_size"
 	storcli_drive_group_array_state		text,						-- "array_state"
@@ -373,6 +374,7 @@ CREATE TABLE history.storcli_drive_groups (
 	storcli_drive_group_uuid		uuid,
 	storcli_drive_group_host_uuid		uuid,
 	storcli_drive_group_virtual_drive_uuid	uuid,
+	storcli_drive_group_id_string		text,
 	storcli_drive_group_access		text,
 	storcli_drive_group_array_size		text,
 	storcli_drive_group_array_state		text,
@@ -398,6 +400,7 @@ BEGIN
 		(storcli_drive_group_uuid, 
 		 storcli_drive_group_host_uuid, 
 		 storcli_drive_group_virtual_drive_uuid, 
+		 storcli_drive_group_id_string, 
 		 storcli_drive_group_access, 
 		 storcli_drive_group_array_size, 
 		 storcli_drive_group_array_state, 
@@ -414,6 +417,7 @@ BEGIN
 		(history_storcli_drive_groups.storcli_drive_group_uuid,
 		 history_storcli_drive_groups.storcli_drive_group_host_uuid, 
 		 history_storcli_drive_groups.storcli_drive_group_virtual_drive_uuid, 
+		 history_storcli_drive_groups.storcli_drive_group_id_string, 
 		 history_storcli_drive_groups.storcli_drive_group_access, 
 		 history_storcli_drive_groups.storcli_drive_group_array_size, 
 		 history_storcli_drive_groups.storcli_drive_group_array_state, 

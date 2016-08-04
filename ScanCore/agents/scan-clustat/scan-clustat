@@ -1437,6 +1437,8 @@ WHERE
 		# Lastly, look for changes in 'clustat_service'
 		foreach my $service (sort {$a cmp $b} keys %{$an->data->{clustat}{service}})
 		{
+			next if not $service;
+			
 			# First, did this exist in the database before at all?
 			$an->Log->entry({log_level => 3, message_key => "scancore_log_0027", message_variables => {
 				table => "clustat_service",
