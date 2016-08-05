@@ -109,7 +109,7 @@ my $an = AN::Tools->new({data =>
 				'4'			=>	7200,
 				more			=>	21600,
 			},
-			sleep_time		=>	30,
+			sleep_time		=>	60,
 			update_age_limit	=>	1200,
 		},
 		strings_read			=>	{},
@@ -200,6 +200,12 @@ elsif ($an->data->{switches}{disable})
 elsif (($an->data->{switches}{'state'}) or ($an->data->{switches}{status}))
 {
 	report_state($an);
+	exit(0);
+}
+elsif ($an->data->{switches}{'clear-resync-flag'})
+{
+	$an->Log->entry({log_level => 1, message_key => "scancore_log_0093", file => $THIS_FILE, line => __LINE__});
+	clear_resync_flag($an);
 	exit(0);
 }
 elsif ($an->data->{switches}{force})
@@ -390,6 +396,29 @@ nice_exit($an);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This connects to the available databases and clears the "resync" flag.
+sub clear_resync_flag
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_resync_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+	if (not $connections)
+	{
+		# Failed to connect to any database.
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0094", file => $THIS_FILE, line => __LINE__});
+		exit(1);
+	}
+
+	# Clear the update flag.
+	$an->DB->set_update_db_flag({set => 0});
+	
+	# Disconnect from databases.
+	$an->DB->disconnect_from_databases();
+	
+	return(0);
+}
 
 # This locates and reads in the database data about this Anvil! 
 sub update_anvil_data
@@ -4465,6 +4494,7 @@ sub update_db
 		# Something somewhere is out of sync. So start with updating the core tables. The agents will
 		# take care of their own.
 		
+		### TODO: Set a global flag and clear this block if an error is hit. 
 		# Make a note in the databases that we're starting an update and ask it to wait 30 seconds 
 		# before returning to give other instances time to finish their scans.
 		$an->DB->set_update_db_flag({set => time, 'wait' => 30});
@@ -7524,7 +7554,7 @@ SELECT
 FROM 
     history.servers 
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -7539,8 +7569,8 @@ FROM
 			my $server_uuid                     =         $row->[0];
 			my $server_name                     =         $row->[1];
 			my $server_stop_reason              = defined $row->[2]  ? $row->[2]  : "";
-			my $server_start_after              = defined $row->[3]  ? $row->[3]  : "";
-			my $server_start_delay              = defined $row->[4]  ? $row->[4]  : "";
+			my $server_start_after              = defined $row->[3]  ? $row->[3]  : "NULL";
+			my $server_start_delay              = defined $row->[4]  ? $row->[4]  : "NULL";
 			my $server_note                     = defined $row->[5]  ? $row->[5]  : "";
 			my $server_definition               = defined $row->[6]  ? $row->[6]  : "";
 			my $server_host                     = defined $row->[7]  ? $row->[7]  : "";
@@ -7550,7 +7580,7 @@ FROM
 			my $server_pre_migration_arguments  = defined $row->[11] ? $row->[11] : "";
 			my $server_post_migration_script    = defined $row->[12] ? $row->[12] : "";
 			my $server_post_migration_arguments = defined $row->[13] ? $row->[13] : "";
-			my $modified_date                   = $row->[14];
+			my $modified_date                   =          $row->[14];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
 				name1  => "server_uuid",                     value1  => $server_uuid, 
 				name2  => "server_name",                     value2  => $server_name, 
@@ -7628,7 +7658,7 @@ FROM
 			my $server_pre_migration_arguments  = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_pre_migration_arguments};
 			my $server_post_migration_script    = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_script};
 			my $server_post_migration_arguments = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_arguments};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
 				name1  => "server_uuid",                     value1  => $server_uuid, 
 				name2  => "server_name",                     value2  => $server_name, 
 				name3  => "server_stop_reason",              value3  => $server_stop_reason, 

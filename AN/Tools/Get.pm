@@ -3531,7 +3531,10 @@ sub server_uuid
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	else
+	
+	# If I still don't have the UUID, either because I couldn't reach a node or we failed to read the 
+	# data, check the database.
+	if (not $xml)
 	{
 		# Not online, so try to read the XML from the database.
 		my $query = "

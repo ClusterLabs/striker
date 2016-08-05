@@ -160,6 +160,8 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0090">Killing ScanCore instance with PID: [#!variable!pid!#].</key>
 		<key name="scancore_log_0091">My 'host_stop_reason' is set to 'clean', but it was set: [#!variable!seconds!#] second(s) ago. That is fairly recent so this machine might still be shutting down, so I will not clear the state yet.</key>
 		<key name="scancore_log_0092">Another instance of ScanCore is currently resynchronizing the database. Will check periodically and proceed once it is done.</key>
+		<key name="scancore_log_0093">#!string!scancore_brand_0001!# invoked with '--clear-resync-flag'. Will now connect to all available databases and clear the resync flag.</key>
+		<key name="scancore_log_0094">Failed to connect to any ScanCore databases. Unable to clear the resync flag.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -319,6 +321,13 @@ whether power and temperature is safe and, if so, will boot the nodes back up.
 
 
 SWITCHES
+
+ --clear-resync-flag
+
+	When a node or dashboard needs to resync the ScanCore database, it will
+	set a flag telling other instance to please pause. If that machine 
+	errors out or crashes, the flag can be left which blocks ScanCore until
+	the lock expires. This command will clear that flag.
 
  --disable
 

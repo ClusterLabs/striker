@@ -1907,7 +1907,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0481"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown power state. It is unlikely that the boot request succeeded. Can this system talk to the node's fence device(s)?]]></key>
 		<key name="message_0482"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] was already on, no action taken.]]></key>
 		<key name="message_0483"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown power state. It can't be booted.]]></key>
-		<key name="message_0484"><![CDATA[No #!string!brand_0003!# configured yet, redirecting...]]></key>
+		<key name="message_0484"><![CDATA[No #!string!brand_0003!# selected (or configured) yet, redirecting, one moment...]]></key>
 		<key name="message_0485"><![CDATA[The new: [<span class="highlight_detail">#!variable!anvil!#</span>] Anvil! system has been saved.<br /><a href="#!variable!manage_url!#">Click here</a> to start using it!]]></key>
 		<key name="message_0486"><![CDATA[The sending email server password must be set unless '<span class="highlight_detail">#!string!row_0303!#</span>' is set to '<span class="highlight_detail">#!string!select_0004!#</span>'.]]></key>
 		<key name="message_0487"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been aborted because one or more UPSes is not accessible.]]></key>

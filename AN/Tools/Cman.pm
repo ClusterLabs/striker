@@ -12,6 +12,7 @@ my $THIS_FILE = "Cman.pm";
 
 ### Methods;
 # boot_server
+# check_for_pending_fence
 # cluster_conf_data
 # cluster_name
 # find_node_in_cluster
@@ -504,6 +505,62 @@ sub boot_server
 		name2 => "boot_return", value2 => $boot_return, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($booted, $boot_return);
+}
+
+### NOTE: At this time, this can only be called against the local machine.
+# This uses 'fence_tool' to see if there is a pending fence. If so, it returns '1'. Otherwise it returns '0'.
+sub check_for_pending_fence
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_for_pending_fence" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Sleep for 5 seconds to make sure that, if a fence is starting, fence_tool reflects it.
+	sleep 5;
+	
+	# Now call 'fence_tool -n ls'. The '-n' isn't needed, but it might be useful is some debugging 
+	# contexts.
+	my $pending    = 0;
+	my $shell_call = $an->data->{path}{fence_tool}." -n ls ";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^wait state\s+(.*)$/)
+		{
+			my $wait_state = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "wait_state", value1 => $wait_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (lc($wait_state) eq "fencing")
+			{
+				# A fence is pending, so wait.
+				$pending = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "pending", value1 => $pending, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	close $file_handle;
+	
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "pending", value1 => $pending, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($pending);
 }
 
 # This gathers the data from a cluster.conf file. Returns '0' if the file wasn't read successfully.

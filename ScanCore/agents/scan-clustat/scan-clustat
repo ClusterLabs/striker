@@ -1129,7 +1129,12 @@ WHERE
 			return(0);
 		}
 		
-		# Now look for changes in 'clustat_node'
+		# Now look for changes in 'clustat_node'. I note the peer name to see if/when I should 
+		# (re)set the peer's last know membership state.
+		my $peer_hostname = $an->Cman->peer_hostname();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_hostname", value1 => $peer_hostname, 
+		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $node (sort {$a cmp $b} keys %{$an->data->{clustat}{node}})
 		{
 			# First, did this exist in the database before at all?
@@ -1172,6 +1177,37 @@ WHERE
 					name5 => "new_status",     value5 => $new_status, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				# If the peer is off, we'll mark the node as being off. We'll clear it if the
+				# peer is on. This will be used by anvil-safe-start if 
+				# 'sys::single_node_start::enabled' is set. This will only happen if the node
+				# being processed is the peer. Note that the check to set the variable as off
+				# happened every time that the current state of the peer is off, because we 
+				# WON'T set it if the peer has a pending fence action against it.
+				my $set_peer_on  = 0;
+				my $set_peer_off = 0;
+				
+				### If the state is 'Offline, rgmanager', it hasn't fenced yet.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "new_status",    value1 => $new_status, 
+					name2 => "node",          value2 => $node, 
+					name3 => "peer_hostname", value3 => $peer_hostname, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ((lc($new_status) eq "offline") && ($node eq $peer_hostname))
+				{
+					$set_peer_off = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "set_peer_off", value1 => $set_peer_off, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif (($new_status =~ /Online/i) && ($node eq $peer_hostname))
+				{
+					$set_peer_on = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "set_peer_on", value1 => $set_peer_on, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# Now look for changes
 				if (($new_cluster_id ne $old_cluster_id) or
 				    ($new_status     ne $old_status))
 				{
@@ -1190,13 +1226,6 @@ WHERE
 						entry => "$node",
 					}, file => $THIS_FILE, line => __LINE__});
 					update_clustat_node($an, $node);
-					
-					# If the peer is off, we'll mark the node as being off. We'll clear 
-					# it if the peer is on. This will be used by anvil-safe-start if 
-					# 'sys::single_node_start::enabled' is set. This will only happen if
-					# the node being processed is the peer.
-					my $set_peer_on  = 0;
-					my $set_peer_off = 0;
 					
 					# There are a few possible states;
 					# 'Online, rgmanager' -> 'Online'	= rgmanager was stopped, probably an admin doing work.
@@ -1230,12 +1259,6 @@ WHERE
 						$variables         = {
 							node		=>	$node,
 						};
-						
-						# Mark it as last seen as offline.
-						$set_peer_off = 1;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "set_peer_off", value1 => $set_peer_off, 
-						}, file => $THIS_FILE, line => __LINE__});
 					}
 					
 					# 'Online' -> 'Online, rgmanager'	= rgmanager started
@@ -1256,12 +1279,6 @@ WHERE
 						$variables         = {
 							node		=>	$node,
 						};
-						
-						# Mark it as last seen as online.
-						$set_peer_on = 1;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "set_peer_on", value1 => $set_peer_on, 
-						}, file => $THIS_FILE, line => __LINE__});
 					}
 					
 					# 'Online' -> 'Offline'			= cman was stopped
@@ -1272,12 +1289,6 @@ WHERE
 						$variables         = {
 							node		=>	$node,
 						};
-						
-						# Mark it as last seen as offline.
-						$set_peer_off = 1;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "set_peer_off", value1 => $set_peer_off, 
-						}, file => $THIS_FILE, line => __LINE__});
 					}
 					
 					# 'Offline' -> 'Online'			= cman was started
@@ -1288,12 +1299,6 @@ WHERE
 						$variables         = {
 							node		=>	$node,
 						};
-						
-						# Mark it as last seen as offline.
-						$set_peer_on = 1;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "set_peer_on", value1 => $set_peer_on, 
-						}, file => $THIS_FILE, line => __LINE__});
 					}
 					
 					# We need a catch-all now.
@@ -1340,87 +1345,6 @@ WHERE
 							},
 						});
 					}
-					
-					# Is this the peer node?
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "sys::single_node_start::enabled", value1 => $an->data->{sys}{single_node_start}{enabled}, 
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{sys}{single_node_start}{enabled})
-					{
-						my $peer_hostname = $an->Cman->peer_hostname();
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-							name1 => "node",          value1 => $node, 
-							name2 => "peer_hostname", value2 => $peer_hostname, 
-						}, file => $THIS_FILE, line => __LINE__});
-						if ($node eq $peer_hostname)
-						{
-							# OK, record the peer's state if it changed.
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-								name1 => "set_peer_off", value1 => $set_peer_off, 
-								name2 => "set_peer_on",  value2 => $set_peer_on, 
-							}, file => $THIS_FILE, line => __LINE__});
-							if ($set_peer_off)
-							{
-								my $variable_name = "sys::node::".$node."::last_seen";
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-									name1 => "variable_name", value1 => $variable_name, 
-								}, file => $THIS_FILE, line => __LINE__});
-								
-								# We'll check/log the returned UUID, mainly 
-								# for debugging purposes.
-								my $variable_uuid = $an->ScanCore->insert_or_update_variables({
-									variable_name         => $variable_name,
-									variable_value        => "off",
-									variable_source_uuid  => $an->data->{sys}{host_uuid}, 
-									variable_source_table => "hosts", 
-									update_value_only     => 1,
-								});
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-									name1 => "variable_uuid", value1 => $variable_uuid, 
-								}, file => $THIS_FILE, line => __LINE__});
-							}
-							elsif ($set_peer_on)
-							{
-								# Mark the server as last seen = on
-								my $variable_name = "sys::node::".$node."::last_seen";
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-									name1 => "variable_name", value1 => $variable_name, 
-								}, file => $THIS_FILE, line => __LINE__});
-								
-								# We'll check/log the returned UUID, mainly 
-								# for debugging purposes.
-								my $variable_uuid = $an->ScanCore->insert_or_update_variables({
-									variable_name         => $variable_name,
-									variable_value        => "on",
-									variable_source_uuid  => $an->data->{sys}{host_uuid}, 
-									variable_source_table => "hosts", 
-									update_value_only     => 1,
-								});
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-									name1 => "variable_uuid", value1 => $variable_uuid, 
-								}, file => $THIS_FILE, line => __LINE__});
-								
-								# And set the 'last_seen' to '0' (effectively disabling it.
-								$variable_name = "sys::node::".$node."::last_booted_without";
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-									name1 => "variable_name", value1 => $variable_name, 
-								}, file => $THIS_FILE, line => __LINE__});
-								
-								# We'll check/log the returned UUID, mainly 
-								# for debugging purposes.
-								$variable_uuid = $an->ScanCore->insert_or_update_variables({
-									variable_name         => $variable_name,
-									variable_value        => "0",
-									variable_source_uuid  => $an->data->{sys}{host_uuid}, 
-									variable_source_table => "hosts", 
-									update_value_only     => 1,
-								});
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-									name1 => "variable_uuid", value1 => $variable_uuid, 
-								}, file => $THIS_FILE, line => __LINE__});
-							}
-						}
-					}
 				}
 				else
 				{
@@ -1430,6 +1354,91 @@ WHERE
 						entry => "$node",
 					}, file => $THIS_FILE, line => __LINE__});
 					delete $an->data->{clustat}{sql}{clustat_node}{$node};
+				}
+				
+				# If we were asked to set the peer's state, do so now.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "set_peer_off",                    value1 => $set_peer_off, 
+					name2 => "set_peer_on",                     value2 => $set_peer_on, 
+					name3 => "sys::single_node_start::enabled", value3 => $an->data->{sys}{single_node_start}{enabled}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (($an->data->{sys}{single_node_start}{enabled}) && (($set_peer_on) or ($set_peer_off)))
+				{
+					my $variable_name = "sys::node::".$node."::last_seen";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "variable_name", value1 => $variable_name, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					my $last_peer_state = $an->ScanCore->read_variable({
+							variable_name         => $variable_name,
+							variable_source_uuid  => $an->data->{sys}{host_uuid},
+							variable_source_table => "hosts",
+						});
+					### NOTE: Customer requested, move to 2 before v2.0 release
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+						name1 => "last_peer_state", value1 => $last_peer_state,
+					}, file => $THIS_FILE, line => __LINE__});
+						
+					# OK, record the peer's state if needed
+					if (($set_peer_off) && ($last_peer_state ne "off"))
+					{
+						# this requires a check to make sure there is no pending 
+						# fence before actually setting the variable. 
+						my $pending_fence = $an->Cman->check_for_pending_fence();
+						$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+							name1 => "pending_fence", value1 => $pending_fence,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						if (not $pending_fence)
+						{
+							# No pending fence, so mark it as off. We'll 
+							# check/log the returned UUID, mainly for 
+							# debugging purposes.
+							my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+								variable_name         => $variable_name,
+								variable_value        => "off",
+								variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+								variable_source_table => "hosts", 
+								update_value_only     => 1,
+							});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "variable_uuid", value1 => $variable_uuid, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					elsif (($set_peer_on) && ($last_peer_state ne "on"))
+					{
+						# We'll check/log the returned UUID, mainly for debugging 
+						# purposes.
+						my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+							variable_name         => $variable_name,
+							variable_value        => "on",
+							variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+							variable_source_table => "hosts", 
+							update_value_only     => 1,
+						});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "variable_uuid", value1 => $variable_uuid, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# And set the 'last_seen' to '0', which will prevent a delay 
+						# if the node goes away again and single-node start is needed.
+						$variable_name = "sys::node::".$node."::last_booted_without";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "variable_name", value1 => $variable_name, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						$variable_uuid = $an->ScanCore->insert_or_update_variables({
+							variable_name         => $variable_name,
+							variable_value        => "0",
+							variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+							variable_source_table => "hosts", 
+							update_value_only     => 1,
+						});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "variable_uuid", value1 => $variable_uuid, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
 				}
 			}
 		}

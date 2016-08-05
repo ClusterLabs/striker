@@ -130,7 +130,6 @@ else
 {
 	# Ask the user which cluster they want to look at.
 	print $an->Web->template({file => "configure.html", template => "redirect-to-configure"});
-
 }
 
 exit (0);
