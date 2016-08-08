@@ -56,9 +56,26 @@ Other detected variables:
 
 Other detected variables:
 </key>
+		<key name="scan_storcli_note_0005">A new Broadcom (AVAGO/LSI) Storage controller Drive Group (DG) has been found.
+- On Controller: ............. [#!variable!on_controller!#]
+- ID String: ................. [#!variable!id_string!#]
+- Access: .................... [#!variable!access!#]
+- RAID Level: ................ [#!variable!raid_type!#]
+- Array Size: ................ [#!variable!array_size!#]
+- Array State: ............... [#!variable!array_state!#]
+- Consistent: ................ [#!variable!consistent!#]
+- Write Cache: ............... [#!variable!write_cache!#]
+- Read Cache: ................ [#!variable!read_cache!#]
+- Disk Cache: ................ [#!variable!disk_cache!#]
+- CacheCade: ................. [#!variable!cachecade!#]
+- Scheduled Consistency Check: [#!variable!scheduled_cc!#]
+- Raw Cache String: .......... [#!variable!cache!#]
+
+Other detected variables:
+</key>
 		
 		<!-- Warnings -->
-		<key name="scan_storcli_warning_0001">While processing data from adapter: [#!variable!adapter!#], which has the serial number: [#!variable!serial_number!#], the drive in virtual disk: [#!variable!virtual_disk!#] in the enclosure: [#!variable!enclosure_id!#] at slot number: [#!variable!slot_number!#] in span: [#!variable!span!#] at row: [#!variable!row!#] initially was found in drive group: [#!variable!old_drive_group!#] but the variable 'Drive position' reports it as being in drive group: [#!variable!new_drive_group!#]. This might be a program error in parsing the output of: [#!variable!shell_call!#]. Please report this error along with the output of that shell call so that we can improve this scan agent.</key>
+		<key name="scan_storcli_warning_0001">While processing data from adapter: [#!variable!adapter!#], which has the serial number: [#!variable!serial_number!#], the drive in virtual drive: [#!variable!virtual_disk!#] in the enclosure: [#!variable!enclosure_id!#] at slot number: [#!variable!slot_number!#] in span: [#!variable!span!#] at row: [#!variable!row!#] initially was found in drive group: [#!variable!old_drive_group!#] but the variable 'Drive position' reports it as being in drive group: [#!variable!new_drive_group!#]. This might be a program error in parsing the output of: [#!variable!shell_call!#]. Please report this error along with the output of that shell call so that we can improve this scan agent.</key>
 		<key name="scan_storcli_warning_0002">The RAID controller's properties have changed:
 - Model: ....... [#!variable!old_model!#] -> [#!variable!new_model!#]
 - Serial Number: [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
@@ -146,7 +163,8 @@ Other detected variables:
 		<key name="scan_storcli_error_0007">The BBU with the serial number: [#!variable!serial_number!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
 		<key name="scan_storcli_error_0008">The controller with serial number: [#!variable!serial_number!#] could not be converted to a controller UUID. This is probably a program error, sorry about that.</key>
 		<key name="scan_storcli_error_0009">The Cachevault (FBU) with the serial number: [#!variable!serial_number!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
-		<key name="scan_storcli_error_0010">The virtual disk with the ID string: [#!variable!id_string!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
+		<key name="scan_storcli_error_0010">The virtual drive with the ID string: [#!variable!id_string!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
+		<key name="scan_storcli_error_0011">The drive group with the ID string: [#!variable!id_string!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
 		
 		<!-- Storcli section names -->
 		<key name="scan_storcli_section_0001">Basic Information</key>
@@ -215,7 +233,7 @@ https://alteeve.ca/w/Support
 		<key name="bbu_connected">BBU/FBU Connected?</key>
 		<key name="bbu_status">BBU/FBU Status</key>
 		<key name="bbu_supported">BBU/FBU Supported?</key>
-		<key name="bios_enumerate_virtual_disks">Virtual Disks Presented to BIOS</key>
+		<key name="bios_enumerate_virtual_disks">Virtual Drives Presented to BIOS</key>
 		<key name="bios_version">Controller BIOS Version</key>
 		<key name="bios_was_not_detected_during_boot">Failed To Detect Controller BIOS At Boot?</key>
 		<key name="boot_block_version">Controller Boot Block Version</key>
@@ -276,7 +294,7 @@ https://alteeve.ca/w/Support
 		<key name="default_terminal_log_in_flash">"Terminal Log In Flash" Default Setting</key>
 		<key name="default_treat_single_span_raid_1e_as_raid_10">"Treat Single Span RAID 1E As RAID 10" Default Setting</key>
 		<key name="default_un_certified_hard_disk_drives">Default Uncertified Hard Disk Drive Policy</key>
-		<key name="default_virtual_disk_power_save_policy">Default Virtual Disk Power Save Policy</key>
+		<key name="default_virtual_disk_power_save_policy">Default Virtual Drive Power Save Policy</key>
 		<key name="default_write_policy">Default Write Cache Policy</key>
 		<key name="default_zero_based_enclosure_enumeration">Default "Zero-Based Enclosure Enumeration" Policy</key>
 		<key name="default_zero_channel_raid_config">Default Zero-Channel RAID Configuration</key>
@@ -291,14 +309,14 @@ https://alteeve.ca/w/Support
 		<key name="deny_scsi_passthrough">Deny "SCSI Pass-Through"?</key>
 		<key name="deny_serial_ata_tunneling_protocol_passthrough">Deny "SATA Tunneling Protocol Pass-Through"?</key>
 		<key name="deny_serial_management_protocol_passthrough">Deny "Serial Management Protocol Pass-Through"?</key>
-		<key name="deny_virtual_disk_locate">Deny "Virtual Disk Locate"?</key>
+		<key name="deny_virtual_disk_locate">Deny "Virtual Drive Locate"?</key>
 		<key name="device_id">Controller Device ID</key>
 		<key name="device_interface">Controller Interface</key>
 		<key name="device_number">Controller Device Number</key>
 		<key name="direct_attached_drives_spun_up_per_minute">Direct-Connect Drives Spun-Up Per Minute</key>
 		<key name="disable_online_controller_reset_policy">Disable "Online Controller Reset Policy"?</key>
 		<key name="disable_online_premium_feature_key_change">Disable "Premium Feature Key (PFK) Change"?</key>
-		<key name="disk_cache_policy">Virtual Disk Cache Policy Supported?</key>
+		<key name="disk_cache_policy">Virtual Drive Cache Policy Supported?</key>
 		<key name="drive_coercion_mode">Drive Coercion Mode</key>
 		<key name="drive_groups">Number Of Drive Groups</key>
 		<key name="driver_name">Linux Driver</key>
@@ -335,26 +353,26 @@ https://alteeve.ca/w/Support
 		<key name="lock_key_has_not_been_backed_up">Lock Key Has Not Been Backed Up?</key>
 		<key name="maintain_physical_disk_fail_history_policy">Maintain Physical Disk Fail History Policy</key>
 		<key name="manufacture_date">Controller Manufacture Date</key>
-		<key name="max_arms_per_virtual_disk">Maximum Arms Per Virtual Disk</key>
+		<key name="max_arms_per_virtual_disk">Maximum Arms Per Virtual Drive</key>
 		<key name="max_arrays">Maximum Number Of Arrays</key>
 		<key name="max_configurable_cachecade_size">Maximum Configurable Cachecade Size</key>
 		<key name="max_data_transfer_size">Maximum Data Transfer Size</key>
 		<key name="max_drives_to_spinup_at_one_time">Maximum Number of Drives To Spin-Up At A Time</key>
-		<key name="max_number_of_virtual_disks">Maximum Number Of Virtual Disks</key>
+		<key name="max_number_of_virtual_disks">Maximum Number Of Virtual Drives</key>
 		<key name="max_parallel_commands">Maximum Number Of Parallel Commands</key>
 		<key name="max_scatter_gather_element_count">Maximum Scatter-Gather Element Count</key>
-		<key name="max_spans_per_virtual_disk">Maximum Spans Per Virtual Disk</key>
+		<key name="max_spans_per_virtual_disk">Maximum Spans Per Virtual Drive</key>
 		<key name="max_strip_size">Maximum Strip Size</key>
 		<key name="max_strips_per_io">Maximum Strips Per IO</key>
-		<key name="max_transportable_virtual_disks">Maximum Transportable Virtual Disks</key>
-		<key name="max_virtual_disk_per_array">Maximum Virtual Disks Per Array</key>
+		<key name="max_transportable_virtual_disks">Maximum Transportable Virtual Drives</key>
+		<key name="max_virtual_disk_per_array">Maximum Virtual Drives Per Array</key>
 		<key name="memory_correctable_errors">Memory Correctable Error Count</key>
 		<key name="memory_uncorrectable_errors">Memory Uncorrectable Error Count</key>
 		<key name="min_strip_size">Minimum Strip Size</key>
 		<key name="mix_in_enclosure">Mix Drive Types In Enclosure?</key>
-		<key name="mix_of_sas_or_sata_of_hdd_type_in_virtual_disk">Mixing SAS and SATA Platter-Based Drives In Virtual Disk?</key>
-		<key name="mix_of_sas_or_sata_of_ssd_type_in_virtual_disk">Mixing SAS and SATA Solid State Drives In Virtual Disk?</key>
-		<key name="mix_of_ssd_or_hdd_in_virtual_disk">Mixing SSDs And HDDs In Virtual Disk</key>
+		<key name="mix_of_sas_or_sata_of_hdd_type_in_virtual_disk">Mixing SAS and SATA Platter-Based Drives In Virtual Drive?</key>
+		<key name="mix_of_sas_or_sata_of_ssd_type_in_virtual_disk">Mixing SAS and SATA Solid State Drives In Virtual Drive?</key>
+		<key name="mix_of_ssd_or_hdd_in_virtual_disk">Mixing SSDs And HDDs In Virtual Drive</key>
 		<key name="model">Controller Model</key>
 		<key name="native_command_queuing">Physical Disk Native Command Queuing Supported?</key>
 		<key name="next_battery_learn">Next Schedule Battery Learn Cycle Start</key>
@@ -368,7 +386,7 @@ https://alteeve.ca/w/Support
 		<key name="patrol_read_rate_percent">Patrol Read Rate (Persent)</key>
 		<key name="patrol_read_reoccurrence">Patrol Read Interval</key>
 		<key name="pci_address">PCI Bus Address</key>
-		<key name="performance_metrics">Virtual Disk Performance Metrics Supported?</key>
+		<key name="performance_metrics">Virtual Drive Performance Metrics Supported?</key>
 		<key name="performance_mode">Performance Mode</key>
 		<key name="point_in_time_progress">Point In Time Progress?</key>
 		<key name="power_savings">Power Saving?</key>
@@ -376,7 +394,7 @@ https://alteeve.ca/w/Support
 		<key name="raid_level_supported">RAID Levels Supported</key>
 		<key name="real_time_scheduler">Real-Time Scheduler?</key>
 		<key name="rebuild_rate_percent">Rebuild Rate (Percent)</key>
-		<key name="reconstruction">Virtual Disk Reconstruction Supported?</key>
+		<key name="reconstruction">Virtual Drive Reconstruction Supported?</key>
 		<key name="reorder_host_requests">Optimize/Reorder Host Requests?</key>
 		<key name="restore_hotspare_on_insertion">Restore Hot-Spare on Insertion?</key>
 		<key name="revertible_hot_spares">Hot-Spares Can Be Reverted?</key>
@@ -450,8 +468,8 @@ https://alteeve.ca/w/Support
 		<key name="support_the_online_capacity_expansion_without_adding_drives">Support Online Capacity Expansion Without Adding Drives?</key>
 		<key name="support_uneven_span">Support Uneven Spans?</key>
 		<key name="support_virtual_disk_cache_bypass">Support Virtual Drive Cache Bypass?</key>
-		<key name="support_virtual_disk_discard_cache_during_logical_disk_delete">Support Virtual Disk Discard Cache During Logical Disk Deletion?</key>
-		<key name="support_virtual_disk_hide">Support "Virtual Disk Hide"?</key>
+		<key name="support_virtual_disk_discard_cache_during_logical_disk_delete">Support Virtual Drive Discard Cache During Logical Disk Deletion?</key>
+		<key name="support_virtual_disk_hide">Support "Virtual Drive Hide"?</key>
 		<key name="supported_drives">Supported Drive Types?</key>
 		<key name="temperature_sensor_for_controller">Temperature Sensor For Controller?</key>
 		<key name="temperature_sensor_for_roc">Temperature Sensor For "RAID On Chip" (ROC) Processor?</key>
@@ -461,8 +479,8 @@ https://alteeve.ca/w/Support
 		<key name="upgrade_key">Upgrade Key</key>
 		<key name="use_drive_activity_for_locate">Use Drive Activity LED For Locate?</key>
 		<key name="vendor_id">Vendor ID</key>
-		<key name="virtual_disk_read_policy">Virtual Disk Read Policy</key>
-		<key name="virtual_disk_write_policy">Virtual Disk Write Policy</key>
+		<key name="virtual_disk_read_policy">Virtual Drive Read Policy</key>
+		<key name="virtual_disk_write_policy">Virtual Drive Write Policy</key>
 		<key name="webbios_version">WebBIOS Version</key>
 		<key name="roc_temperature">RAID On Chip (ROC) Temperature</key>
 		
@@ -546,7 +564,7 @@ https://alteeve.ca/w/Support
 		<key name="tmmfru">TMM Field Replacable Unit Number</key>
 		<key name="type">Pack Type</key>
 		
-		<!-- Virtual Disk -->
+		<!-- Virtual Drive -->
 		<key name="active_operations">Active Operations</key>
 		<key name="creation_date">Creation Date</key>
 		<key name="creation_time">Creation Time</key>

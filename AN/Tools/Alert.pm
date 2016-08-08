@@ -462,7 +462,7 @@ sub register_alert
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "register_alert" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "register_alert" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $alert_agent_name        = $parameter->{alert_agent_name}        ? $parameter->{alert_agent_name}        : die "$THIS_FILE ".__LINE__." 'alert_agent_name' parameter not passed to AN::Tools::Alert->register_alert()\n";
 	my $alert_level             = $parameter->{alert_level}             ? $parameter->{alert_level}             : "warning";	# Not being set by the agent should be treated as a bug.
@@ -472,7 +472,7 @@ sub register_alert
 	my $alert_message_variables = $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : "";
 	my $alert_sort              = $parameter->{alert_sort}              ? $parameter->{alert_sort}              : 9999;
 	my $alert_header            = $parameter->{alert_header}            ? $parameter->{alert_header}            : 'TRUE';
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 		name1 => "alert_agent_name",        value1 => $alert_agent_name,
 		name2 => "alert_level",             value2 => $alert_level,
 		name3 => "alert_title_key",         value3 => $alert_title_key,
@@ -485,7 +485,7 @@ sub register_alert
 	
 	# zero-pad sort numbers so that they sort properly.
 	$alert_sort = sprintf("%04d", $alert_sort);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "alert_sort", value1 => $alert_sort,
 	}, file => $THIS_FILE, line => __LINE__});
 	

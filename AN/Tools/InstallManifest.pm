@@ -9309,7 +9309,7 @@ sub generate_cluster_conf
 			<script file=\"".$an->data->{path}{initd}."/drbd\" name=\"drbd\"/>
 			<script file=\"".$an->data->{path}{initd}."/wait-for-drbd\" name=\"wait-for-drbd\"/>
 			<script file=\"".$an->data->{path}{initd}."/clvmd\" name=\"clvmd\"/>
-			<clusterfs device=\"$shared_lv\" force_unmount=\"1\" seld_fence=\"1\" fstype=\"gfs2\" mountpoint=\"".$an->data->{path}{shared}."\" name=\"sharedfs\" />
+			<clusterfs device=\"$shared_lv\" force_unmount=\"1\" self_fence=\"1\" fstype=\"gfs2\" mountpoint=\"".$an->data->{path}{shared}."\" name=\"sharedfs\" />
 		</resources>
 		<failoverdomains>
 			<failoverdomain name=\"only_n01\" nofailback=\"1\" ordered=\"0\" restricted=\"1\">

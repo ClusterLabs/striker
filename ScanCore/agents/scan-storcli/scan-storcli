@@ -18,7 +18,8 @@
 # 7  - Failed to match a BBU to a host controller's serial number.
 # 8  - Failed to match a controller's serial number to a controller UUID.
 # 9  - Failed to match a Cachevault to a host controller's serial number.
-# 10 - Failed to match a virtual disk ID string to a host controller's serial number.
+# 10 - Failed to match a virtual drive ID string to a host controller's serial number.
+# 11 - Failed to match a drive group ID string to a host controller's serial number.
 # 
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
@@ -27,6 +28,7 @@
 #   write-through.
 # 
 # NOTE:
+# - LSI seems to flip between "Virtual Drive" and "Virtual Disk". We're standardizing on "Virtual Drive".
 # - BBU and Cachevault specs/temp ranges;
 #   45646-00B_Cache_Backup_Products_SAS_SATA_RAID_Controller_UserGd.pdf ->  Specifications for the BBU Models
 #   - BBU - Charge: 10 °C to 40 °C, Discharge: 10 °C to 55 °C
@@ -259,23 +261,41 @@ sub process_physical_disks
 # Look for added, changed or deleted drive groups.
 sub process_drive_groups
 {
-	my ($an, $vd_id_string, $controller_uuid, $host_controller_serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_drive_groups" }, message_key => "an_variables_0003", message_variables => { 
-		name1 => "vd_id_string",                  value1 => $vd_id_string, 
-		name2 => "controller_uuid",               value2 => $controller_uuid, 
-		name3 => "host_controller_serial_number", value3 => $host_controller_serial_number, 
+	my ($an, $storcli_virtual_drive_id_string, $storcli_drive_group_virtual_drive_uuid, $controller_uuid, $host_controller_serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_drive_groups" }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "storcli_virtual_drive_id_string",        value1 => $storcli_virtual_drive_id_string, 
+		name2 => "storcli_drive_group_virtual_drive_uuid", value2 => $storcli_drive_group_virtual_drive_uuid, 
+		name3 => "controller_uuid",                        value3 => $controller_uuid, 
+		name4 => "host_controller_serial_number",          value4 => $host_controller_serial_number, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: The parent VD may be VANISHED, in which case this DG is likely VANISHED, too.
 	# Show the drive group and drives.
-	foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$vd_id_string}{drive_group}})
+	foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}})
 	{
-		my $dg_id_string = $vd_id_string."-dg".$drive_group;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "drive_group",  value1 => $drive_group,
-			name2 => "dg_id_string", value2 => $dg_id_string,
+		my $storcli_drive_group_id_string = $storcli_virtual_drive_id_string."-dg".$drive_group;
+		my $virtual_drive                 = ($storcli_virtual_drive_id_string =~ /-vd(\d+)$/)[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "storcli_virtual_drive_id_string", value1 => $storcli_virtual_drive_id_string,
+			name2 => "storcli_drive_group_id_string",   value2 => $storcli_drive_group_id_string,
+			name3 => "virtual_drive",                   value3 => $virtual_drive,
+			name4 => "drive_group",                     value4 => $drive_group,
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		# Make sure I have the host's serial number and UUID.
+		if (not $host_controller_serial_number)
+		{
+			# Error!
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0011", message_variables => { id_string => $storcli_virtual_drive_id_string }, code => 11, file => $THIS_FILE, line => __LINE__});
+			exit(11);
+		}
+		if (not $controller_uuid)
+		{
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
+			exit(8);
+		}
+		
+		### NOTE: This is here purely for debugging.
 		# Show the basic drive group data
 		foreach my $type ("variable", "temperature")
 		{
@@ -286,9 +306,633 @@ sub process_drive_groups
 				log_level => 2, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
-				prefix    => "$dg_id_string ($drive_group) - $type",
-				hash_ref  => $an->data->{virtual_drive}{$vd_id_string}{drive_group}{$drive_group}{$type},
+				prefix    => "$storcli_drive_group_id_string ($drive_group) - $type",
+				hash_ref  => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{$type},
 			});
+		}
+		
+		# Is this a new Drive Group?
+		my $storcli_drive_group_uuid = "";
+		my $is_new                     = 0;
+		if (exists $an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string})
+		{
+			# Yes!
+			$storcli_drive_group_uuid = $an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli_drive_group_uuid", value1 => $storcli_drive_group_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# No, this is a new Virtual Drive. Create a new UUID for it.
+			$storcli_drive_group_uuid = $an->Get->uuid();
+			$is_new                   = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "storcli_drive_group_uuid", value1 => $storcli_drive_group_uuid,
+				name2 => "is_new",   value2 => $is_new,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Add the keys for looking it up by UUID or serial number.
+			$an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string} = $storcli_drive_group_uuid;
+			$an->data->{'scan-storcli'}{drive_groups}{by_uuid}{$storcli_drive_group_uuid}           = $storcli_virtual_drive_id_string;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "scan-storcli::drive_groups::by_id_string::$storcli_virtual_drive_id_string", value1 => $an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string},
+				name2 => "scan-storcli::drive_groups::by_uuid::$storcli_drive_group_uuid",             value2 => $an->data->{'scan-storcli'}{drive_groups}{by_uuid}{$storcli_drive_group_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		my $new_drive_group_access       = "";
+		my $new_drive_group_array_size   = "";
+		my $new_drive_group_array_state  = "";
+		my $new_drive_group_cache        = "";
+		my $new_drive_group_cachecade    = "";
+		my $new_drive_group_consistent   = "";
+		my $new_drive_group_disk_cache   = "";
+		my $new_drive_group_raid_type    = "";
+		my $new_drive_group_read_cache   = "";
+		my $new_drive_group_scheduled_cc = "";
+		my $new_drive_group_write_cache  = "";
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "virtual_drive::${storcli_virtual_drive_id_string}::drive_group::${drive_group}::variable::${variable}", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable},
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Store and delete the value
+			if ($variable eq "access")
+			{
+				$new_drive_group_access = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_access", value1 => $new_drive_group_access,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "array_size")
+			{
+				$new_drive_group_array_size = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_array_size", value1 => $new_drive_group_array_size,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "array_state")
+			{
+				$new_drive_group_array_state = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_array_state", value1 => $new_drive_group_array_state,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "cache")
+			{
+				$new_drive_group_cache = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_cache", value1 => $new_drive_group_cache,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "cachecade")
+			{
+				$new_drive_group_cachecade = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_cachecade", value1 => $new_drive_group_cachecade,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "consistent")
+			{
+				$new_drive_group_consistent = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_consistent", value1 => $new_drive_group_consistent,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "disk_cache")
+			{
+				$new_drive_group_disk_cache = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_disk_cache", value1 => $new_drive_group_disk_cache,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "raid_type")
+			{
+				$new_drive_group_raid_type = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_raid_type", value1 => $new_drive_group_raid_type,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "read_cache")
+			{
+				$new_drive_group_read_cache = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_read_cache", value1 => $new_drive_group_read_cache,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "scheduled_consistency_check")
+			{
+				$new_drive_group_scheduled_cc = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_scheduled_cc", value1 => $new_drive_group_scheduled_cc,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($variable eq "write_cache")
+			{
+				$new_drive_group_write_cache = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_drive_group_write_cache", value1 => $new_drive_group_write_cache,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+		}
+	
+		# Pull out the rest of the variables now. If the Drive Group is new, all variables will be 
+		# INSERTed. If the Drive Group exists, each variable will be examined and new ones will be 
+		# INSERTed, existing ones will be checked for changes and UPDATEd as needed. If the Drive 
+		# Group is NOT new, then variables from the old data will be deleted as we go and any not 
+		# found in the current data set will be left over. We'll use this to determine variables that
+		# have vanished. They will not be deleted, but their value will be set to 'VANISHED'.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "is_new", value1 => $is_new,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($is_new)
+		{
+			### NOTE: DG 9999 will be mostly NULL and that is fine
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+				name1  => "storcli_drive_group_uuid",      value1  => $storcli_drive_group_uuid,
+				name2  => "controller_uuid",               value2  => $controller_uuid,
+				name3  => "storcli_drive_group_id_string", value3  => $storcli_drive_group_id_string,
+				name4  => "new_drive_group_access",        value4  => $new_drive_group_access,
+				name5  => "new_drive_group_array_size",    value5  => $new_drive_group_array_size,
+				name6  => "new_drive_group_array_state",   value6  => $new_drive_group_array_state,
+				name7  => "new_drive_group_cache",         value7  => $new_drive_group_cache,
+				name8  => "new_drive_group_cachecade",     value8  => $new_drive_group_cachecade,
+				name9  => "new_drive_group_consistent",    value9  => $new_drive_group_consistent,
+				name10 => "new_drive_group_disk_cache",    value10 => $new_drive_group_disk_cache,
+				name11 => "new_drive_group_raid_type",     value11 => $new_drive_group_raid_type,
+				name12 => "new_drive_group_read_cache",    value12 => $new_drive_group_read_cache,
+				name13 => "new_drive_group_scheduled_cc",  value13 => $new_drive_group_scheduled_cc,
+				name14 => "new_drive_group_write_cache",   value14 => $new_drive_group_write_cache,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
+			# Send an alert telling the user that we've found a new controller.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_sort		=>	$an->data->{sys}{alert_sort},	
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scan_storcli_note_0005",
+				alert_message_variables	=>	{
+					on_controller		=>	$host_controller_serial_number,
+					id_string		=>	$storcli_drive_group_id_string,
+					access			=>	$new_drive_group_access,
+					array_size		=>	$new_drive_group_array_size,
+					array_state		=>	$new_drive_group_array_state,
+					cache			=>	$new_drive_group_cache,
+					cachecade		=>	$new_drive_group_cachecade,
+					consistent		=>	$new_drive_group_consistent,
+					disk_cache		=>	$new_drive_group_disk_cache,
+					raid_type		=>	$new_drive_group_raid_type,
+					read_cache		=>	$new_drive_group_read_cache,
+					scheduled_cc		=>	$new_drive_group_scheduled_cc,
+					write_cache		=>	$new_drive_group_write_cache,
+				},
+			});
+			
+			# INSERT
+			my $query = "
+INSERT INTO 
+    storcli_drive_groups
+(
+    storcli_drive_group_uuid, 
+    storcli_drive_group_host_uuid, 
+    storcli_drive_group_virtual_drive_uuid, 
+    storcli_drive_group_id_string, 
+    storcli_drive_group_access, 
+    storcli_drive_group_array_size, 
+    storcli_drive_group_array_state, 
+    storcli_drive_group_cache, 
+    storcli_drive_group_cachecade, 
+    storcli_drive_group_consistent, 
+    storcli_drive_group_disk_cache, 
+    storcli_drive_group_raid_type, 
+    storcli_drive_group_read_cache, 
+    storcli_drive_group_scheduled_cc, 
+    storcli_drive_group_write_cache, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_virtual_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_id_string).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_access).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_array_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_array_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_cachecade).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_consistent).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_disk_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_raid_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_read_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_scheduled_cc).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_write_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			# Now record the query in the array
+			$query =~ s/''/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+
+			# Process the rest of the variables and temperatures now. 
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{$type}})
+				{
+					my $value       = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{$type}{$variable};
+					my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "variable",    value1 => $variable,
+						name2 => "value",       value2 => $value,
+						name3 => "temperature", value3 => $temperature,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Send an alert telling the user that we've found a new controller.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	'FALSE',
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_storcli_note_0002",
+						alert_message_variables	=>	{
+							name			=>	$variable,
+							value			=>	$value,
+						},
+					});
+					
+					# INSERT
+					my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_drive_groups', 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
+			}
+		}
+		else
+		{
+			### NOTE: The serial number should never change (a changed SN/Virtual Drive should be 
+			###       picked up as a new Virtual Drive), but we check/update just to be safe.
+			# Look for changes.
+			my $main_table_changed                 = 0;
+			my $old_drive_group_id_string          = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_id_string};
+			my $old_drive_group_virtual_drive_uuid = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_controller_uuid};
+			my $old_drive_group_access             = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_access};
+			my $old_drive_group_array_size         = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_array_size};
+			my $old_drive_group_array_state        = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_array_state};
+			my $old_drive_group_cache              = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_cache};
+			my $old_drive_group_cachecade          = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_cachecade};
+			my $old_drive_group_consistent         = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_consistent};
+			my $old_drive_group_disk_cache         = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_disk_cache};
+			my $old_drive_group_raid_type          = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_raid_type};
+			my $old_drive_group_read_cache         = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_read_cache};
+			my $old_drive_group_scheduled_cc       = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_scheduled_cc};
+			my $old_drive_group_write_cache        = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_write_cache};
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0026", message_variables => {
+				name1  => "storcli_drive_group_id_string",          value1  => $storcli_drive_group_id_string,
+				name2  => "old_drive_group_id_string",              value2  => $old_drive_group_id_string,
+				name3  => "storcli_drive_group_virtual_drive_uuid", value3  => $storcli_drive_group_virtual_drive_uuid,
+				name4  => "old_drive_group_virtual_drive_uuid",     value4  => $old_drive_group_virtual_drive_uuid,
+				name5  => "new_drive_group_access",                 value5  => $new_drive_group_access,
+				name6  => "old_drive_group_access",                 value6  => $old_drive_group_access,
+				name7  => "new_drive_group_array_size",             value7  => $new_drive_group_array_size,
+				name8  => "old_drive_group_array_size",             value8  => $old_drive_group_array_size,
+				name9  => "new_drive_group_array_state",            value9  => $new_drive_group_array_state,
+				name10 => "old_drive_group_array_state",            value10 => $old_drive_group_array_state,
+				name11 => "new_drive_group_cache",                  value11 => $new_drive_group_cache,
+				name12 => "old_drive_group_cache",                  value12 => $old_drive_group_cache,
+				name13 => "new_drive_group_cachecade",              value13 => $new_drive_group_cachecade,
+				name14 => "old_drive_group_cachecade",              value14 => $old_drive_group_cachecade,
+				name15 => "new_drive_group_consistent",             value15 => $new_drive_group_consistent,
+				name16 => "old_drive_group_consistent",             value16 => $old_drive_group_consistent,
+				name17 => "new_drive_group_disk_cache",             value17 => $new_drive_group_disk_cache,
+				name18 => "old_drive_group_disk_cache",             value18 => $old_drive_group_disk_cache,
+				name19 => "new_drive_group_raid_type",              value19 => $new_drive_group_raid_type,
+				name20 => "old_drive_group_raid_type",              value20 => $old_drive_group_raid_type,
+				name21 => "new_drive_group_read_cache",             value21 => $new_drive_group_read_cache,
+				name22 => "old_drive_group_read_cache",             value22 => $old_drive_group_read_cache,
+				name23 => "new_drive_group_scheduled_cc",           value23 => $new_drive_group_scheduled_cc,
+				name24 => "old_drive_group_scheduled_cc",           value24 => $old_drive_group_scheduled_cc,
+				name25 => "new_drive_group_write_cache",            value25 => $new_drive_group_write_cache,
+				name26 => "old_drive_group_write_cache",            value26 => $old_drive_group_write_cache,
+			}, file => $THIS_FILE, line => __LINE__});
+
+			if (($storcli_drive_group_id_string          ne $old_drive_group_id_string)          or 
+			    ($storcli_drive_group_virtual_drive_uuid ne $old_drive_group_virtual_drive_uuid) or 
+			    ($new_drive_group_access                 ne $old_drive_group_access)             or 
+			    ($new_drive_group_array_size             ne $old_drive_group_array_size)         or 
+			    ($new_drive_group_array_state            ne $old_drive_group_array_state)        or 
+			    ($new_drive_group_cache                  ne $old_drive_group_cache)              or 
+			    ($new_drive_group_cachecade              ne $old_drive_group_cachecade)          or 
+			    ($new_drive_group_consistent             ne $old_drive_group_consistent)         or 
+			    ($new_drive_group_disk_cache             ne $old_drive_group_disk_cache)         or 
+			    ($new_drive_group_raid_type              ne $old_drive_group_raid_type)          or 
+			    ($new_drive_group_read_cache             ne $old_drive_group_read_cache)         or 
+			    ($new_drive_group_scheduled_cc           ne $old_drive_group_scheduled_cc)       or 
+			    ($new_drive_group_write_cache            ne $old_drive_group_write_cache))
+			{
+# 				# Send a warning level alert because nothing should change here, ever.
+# 				my $title_key   = "an_alert_title_0004";
+# 				my $message_key = "scan_storcli_warning_0017";
+# 				if ($new_creation_date ne $old_creation_date)
+# 				{
+# 					if ($old_creation_date eq "VANISHED")
+# 					{
+# 						# Virtual Drive has returned.
+# 						$message_key = "scan_storcli_warning_0018";
+# 					}
+# 				}
+# 				$an->data->{sys}{alert_sort}++; 
+# 				$an->Alert->register_alert({
+# 					alert_level		=>	"warning", 
+# 					alert_agent_name	=>	$THIS_FILE,
+# 					alert_sort		=>	$an->data->{sys}{alert_sort},
+# 					alert_header		=>	'FALSE',
+# 					alert_title_key		=>	$title_key,
+# 					alert_message_key	=>	$message_key,
+# 					alert_message_variables	=>	{
+# 						old_on_controller	=>	$old_controller_serial_number, 
+# 						new_on_controller	=>	$new_controller_serial_number, 
+# 						old_id_string		=>	$old_storcli_virtual_drive_id_string, 
+# 						new_id_string		=>	$storcli_virtual_drive_id_string, 
+# 						old_creation_date	=>	$old_creation_date, 
+# 						new_creation_date	=>	$new_creation_date, 
+# 						old_data_protection	=>	$old_data_protection, 
+# 						new_data_protection	=>	$new_data_protection, 
+# 						old_disk_cache_policy	=>	$old_disk_cache_policy, 
+# 						new_disk_cache_policy	=>	$new_disk_cache_policy, 
+# 						old_emulation_type	=>	$old_emulation_type, 
+# 						new_emulation_type	=>	$new_emulation_type, 
+# 						old_encryption		=>	$old_encryption, 
+# 						new_encryption		=>	$new_encryption, 
+# 						old_blocks		=>	$old_blocks, 
+# 						new_blocks		=>	$new_blocks, 
+# 						old_strip_size		=>	$old_strip_size, 
+# 						new_strip_size		=>	$new_strip_size, 
+# 						old_drives_per_span	=>	$old_drives_per_span, 
+# 						new_drives_per_span	=>	$new_drives_per_span, 
+# 						old_span_depth		=>	$old_span_depth, 
+# 						new_span_depth		=>	$new_span_depth, 
+# 						old_scsi_naa_id		=>	$old_scsi_naa_id, 
+# 						new_scsi_naa_id		=>	$new_scsi_naa_id, 
+# 					},
+# 				});
+# 				$main_table_changed = 1;
+# 				
+# 				my $query = "
+# UPDATE 
+#     storcli_virtual_drives
+# SET
+#     storcli_virtual_drive_controller_uuid   = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+#     storcli_virtual_drive_id_string         = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_id_string).",
+#     storcli_virtual_drive_creation_date     = ".$an->data->{sys}{use_db_fh}->quote($new_creation_date).",
+#     storcli_virtual_drive_data_protection   = ".$an->data->{sys}{use_db_fh}->quote($new_data_protection).", 
+#     storcli_virtual_drive_disk_cache_policy = ".$an->data->{sys}{use_db_fh}->quote($new_disk_cache_policy).", 
+#     storcli_virtual_drive_emulation_type    = ".$an->data->{sys}{use_db_fh}->quote($new_emulation_type).", 
+#     storcli_virtual_drive_encryption        = ".$an->data->{sys}{use_db_fh}->quote($new_encryption).", 
+#     storcli_virtual_drive_blocks            = ".$an->data->{sys}{use_db_fh}->quote($new_blocks).", 
+#     storcli_virtual_drive_strip_size        = ".$an->data->{sys}{use_db_fh}->quote($new_strip_size).", 
+#     storcli_virtual_drive_drives_per_span   = ".$an->data->{sys}{use_db_fh}->quote($new_drives_per_span).", 
+#     storcli_virtual_drive_span_depth        = ".$an->data->{sys}{use_db_fh}->quote($new_span_depth).", 
+#     storcli_virtual_drive_scsi_naa_id       = ".$an->data->{sys}{use_db_fh}->quote($new_scsi_naa_id).", 
+#     modified_date                           = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+# WHERE 
+#     storcli_virtual_drive_uuid              = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
+# ;";
+# 
+# 				# Now record the query in the array
+# 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+# 					name1 => "query", value1 => $query
+# 				}, file => $THIS_FILE, line => __LINE__});
+# 				push @{$an->data->{sys}{sql}}, $query;
+			}
+# 			
+# 			### Process the rest of the variables now. 
+# 			foreach my $type ("variable", "temperature")
+# 			{
+# 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+# 					name1 => "type", value1 => $type,
+# 				}, file => $THIS_FILE, line => __LINE__});
+# 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type}})
+# 				{
+# 					my $new_variable_value = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type}{$variable};
+# 					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
+# 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+# 						name1 => "variable",    value1 => $variable,
+# 						name2 => "temperature", value2 => $temperature,
+# 					}, file => $THIS_FILE, line => __LINE__});
+# 					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid})
+# 					{
+# 						# Look for changes
+# 						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_value};
+# 						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
+# 						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+# 							name1 => "variable",           value1 => $variable,
+# 							name2 => "new_variable_value", value2 => $new_variable_value,
+# 							name3 => "old_variable_value", value3 => $old_variable_value,
+# 							name4 => "variable_uuid",      value4 => $variable_uuid,
+# 						}, file => $THIS_FILE, line => __LINE__});
+# 						
+# 						# Delete it so that we know it has been processed.
+# 						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable};
+# 						
+# 						if (($new_variable_value ne $old_variable_value))
+# 						{
+# 							# Changed! If the old value was 'VANISHED', then a 
+# 							# sensor or variable returned. Otherwise, for now, we
+# 							# treat everything as 'warning' and step down 
+# 							# explicitely anything not of concern that proves 
+# 							# noisey later (better safe than sorry).
+# 							$an->data->{sys}{alert_sort}++; 
+# 							
+# 							my $message_key = "scan_storcli_warning_0019";
+# 							if ($old_variable_value eq "VANISHED")
+# 							{
+# 								$message_key = "scan_storcli_warning_0020";
+# 							}
+# 							$an->Alert->register_alert({
+# 								alert_level		=>	"warning", 
+# 								alert_agent_name	=>	$THIS_FILE,
+# 								alert_sort		=>	$an->data->{sys}{alert_sort},
+# 								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+# 								alert_title_key		=>	"an_alert_title_0004",
+# 								alert_message_key	=>	$message_key,
+# 								alert_message_variables	=>	{
+# 									id_string		=>	$storcli_virtual_drive_id_string,
+# 									name			=>	$variable,
+# 									old_value		=>	$old_variable_value,
+# 									new_value		=>	$new_variable_value,
+# 								},
+# 							});
+# 							
+# 							my $query = "
+# UPDATE 
+#     storcli_variables 
+# SET 
+#     storcli_variable_value = ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+#     modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+# WHERE 
+#     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+# ;";
+# 							# Now record the query in the array
+# 							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+# 								name1 => "query", value1 => $query
+# 							}, file => $THIS_FILE, line => __LINE__});
+# 							push @{$an->data->{sys}{sql}}, $query;
+# 						}
+# 					}
+# 					else
+# 					{
+# 						# New variable, record it. This is a 'warning' level as 
+# 						# variables aren't expected to spawn into existence.
+# 						$an->data->{sys}{alert_sort}++; 
+# 						$an->Alert->register_alert({
+# 							alert_level		=>	"warning", 
+# 							alert_agent_name	=>	$THIS_FILE,
+# 							alert_sort		=>	$an->data->{sys}{alert_sort},
+# 							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+# 							alert_title_key		=>	"an_alert_title_0003",
+# 							alert_message_key	=>	"scan_storcli_warning_0021",
+# 							alert_message_variables	=>	{
+# 								id_string		=>	$storcli_virtual_drive_id_string,
+# 								name			=>	$variable,
+# 								value			=>	$new_variable_value,
+# 							},
+# 						});
+# 						
+# 						# INSERT
+# 						my $query = "
+# INSERT INTO 
+#     storcli_variables
+# (
+#     storcli_variable_uuid, 
+#     storcli_variable_host_uuid, 
+#     storcli_variable_source_table, 
+#     storcli_variable_source_uuid, 
+#     storcli_variable_is_temperature, 
+#     storcli_variable_name, 
+#     storcli_variable_value, 
+#     modified_date 
+# ) VALUES (
+#     ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+#     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+#     'storcli_virtual_drives', 
+#     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).", 
+#     ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+#     ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+#     ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+#     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+# );";
+# 						# Now record the query in the array
+# 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+# 							name1 => "query", value1 => $query
+# 						}, file => $THIS_FILE, line => __LINE__});
+# 						push @{$an->data->{sys}{sql}}, $query;
+# 					}
+# 				}
+# 			}
+# 			
+# 			# Now look for any variables left from the previous scan that we didn't match up (and
+# 			# delete) this pass.
+# 			foreach my $type ("variable", "temperature")
+# 			{
+# 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+# 					name1 => "type", value1 => $type,
+# 				}, file => $THIS_FILE, line => __LINE__});
+# 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}})
+# 				{
+# 					# This variable has vanished
+# 					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_value};
+# 					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
+# 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+# 						name1 => "old_variable_value", value1 => $old_variable_value,
+# 						name2 => "variable_uuid",      value2 => $variable_uuid,
+# 					}, file => $THIS_FILE, line => __LINE__});
+# 					
+# 					# Delete it so that we know it has been processed.
+# 					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable};
+# 					
+# 					# If the old value is already 'VANISHED', ignore it.
+# 					next if $old_variable_value eq "VANISHED";
+# 					
+# 					### NOTE: For now, we're going to use warning level because variables
+# 					###       shouldn't vanish, but under an-cm, it did happen for 
+# 					###       reasons that we never figured out. So later, we may drop 
+# 					###       the alert level in some cases.
+# 					# Still here? Alert and UPDATE.
+# 					$an->data->{sys}{alert_sort}++; 
+# 					$an->Alert->register_alert({
+# 						alert_level		=>	"warning", 
+# 						alert_agent_name	=>	$THIS_FILE,
+# 						alert_sort		=>	$an->data->{sys}{alert_sort},
+# 						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+# 						alert_title_key		=>	"an_alert_title_0004",
+# 						alert_message_key	=>	"scan_storcli_warning_0021",
+# 						alert_message_variables	=>	{
+# 							id_string		=>	$storcli_virtual_drive_id_string,
+# 							name			=>	$variable,
+# 						},
+# 					});
+# 					
+# 					my $query = "
+# UPDATE 
+#     storcli_variables 
+# SET 
+#     storcli_variable_value = 'VANISHED', 
+#     modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+# WHERE 
+#     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+# ;";
+# 					# Now record the query in the array
+# 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+# 						name1 => "query", value1 => $query
+# 					}, file => $THIS_FILE, line => __LINE__});
+# 					push @{$an->data->{sys}{sql}}, $query;
+# 				}
+# 			}
 		}
 		
 die "$THIS_FILE ".__LINE__."; testing...\n";
@@ -298,7 +942,7 @@ die "$THIS_FILE ".__LINE__."; testing...\n";
 	return(0);
 }
 
-# Look for added, changed or deleted virtual disks.
+# Look for added, changed or deleted virtual drives.
 sub process_virtual_drives
 {
 	my ($an) = @_;
@@ -333,14 +977,16 @@ sub process_virtual_drives
 			exit(8);
 		}
 		
+		### NOTE: This is here purely for debugging.
+		# Show the basic virtual drive data.
 		foreach my $type ("variable", "temperature")
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			$an->Log->aligned_entries({
-				log_level => 2, 
+				log_level => 3, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "VD $virtual_drive - $type",
@@ -348,7 +994,7 @@ sub process_virtual_drives
 			});
 		}
 		
-		# Is this a new Virtual Disk?
+		# Is this a new Virtual Drive?
 		my $storcli_virtual_drive_uuid = "";
 		my $is_new                     = 0;
 		if (exists $an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string})
@@ -377,7 +1023,6 @@ sub process_virtual_drives
 				name2 => "scan-storcli::virtual_drives::by_uuid::$storcli_virtual_drive_uuid",           value2 => $an->data->{'scan-storcli'}{virtual_drives}{by_uuid}{$storcli_virtual_drive_uuid},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		
 		
 		### These are the values for the main table. Anything else will go in the variables table.
 		# Creation date is a combination of two variables.
@@ -690,9 +1335,9 @@ INSERT INTO
 			my $old_span_depth                      = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_span_depth};
 			my $old_scsi_naa_id                     = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_scsi_naa_id};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0024", message_variables => {
-				name1  => "storcli_virtual_drive_id_string",     value1  => $storcli_virtual_drive_id_string,
+				name1  => "storcli_virtual_drive_id_string ...", value1  => $storcli_virtual_drive_id_string,
 				name2  => "old_storcli_virtual_drive_id_string", value2  => $old_storcli_virtual_drive_id_string,
-				name3  => "controller_uuid",                     value3  => $controller_uuid,
+				name3  => "controller_uuid ...",                 value3  => $controller_uuid,
 				name4  => "old_controller_uuid",                 value4  => $old_controller_uuid,
 				name5  => "new_creation_date",                   value5  => $new_creation_date,
 				name6  => "old_creation_date",                   value6  => $old_creation_date,
@@ -1000,10 +1645,10 @@ WHERE
 		
 		# Now commit the changes. We do this here so that the VD is in place before processing drive
 		# groups under it.
-		commit_sql($an);
+		$an->DB->commit_sql({sql => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
 		
-		# Process drive groups under this virtual disk. They'll likely have vanished, too.
-		process_drive_groups($an, $storcli_virtual_drive_id_string, $controller_uuid, $host_controller_serial_number);
+		# Process drive groups under this virtual drive. They'll likely have vanished, too.
+		process_drive_groups($an, $storcli_virtual_drive_id_string, $storcli_virtual_drive_uuid, $controller_uuid, $host_controller_serial_number);
 		
 		# Delete the Virtual Drive from the last scan so that we can find controllers that have been removed.
 		if (exists $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid})
@@ -1068,10 +1713,10 @@ WHERE
 		
 		# Now commit the changes. We do this here so that the VD is in place before processing drive
 		# groups under it.
-		commit_sql($an);
+		$an->DB->commit_sql({sql => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
 		
-		# Process drive groups under this virtual disk. They'll likely have vanished, too.
-		process_drive_groups($an, $storcli_virtual_drive_id_string, $controller_uuid, $host_controller_serial_number);
+		# Process drive groups under this virtual drive. They'll likely have vanished, too.
+		process_drive_groups($an, $storcli_virtual_drive_id_string, $storcli_virtual_drive_uuid, $controller_uuid, $host_controller_serial_number);
 	}
 	
 	return(0);
@@ -1712,7 +2357,7 @@ WHERE
 	}
 	
 	# Now commit the changes.
-	commit_sql($an);
+	$an->DB->commit_sql({sql => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -2351,7 +2996,7 @@ WHERE
 	}
 	
 	# Now commit the changes.
-	commit_sql($an);
+	$an->DB->commit_sql({sql => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -2895,7 +3540,7 @@ AND
 	}
 	
 	# Now commit the changes.
-	commit_sql($an);
+	$an->DB->commit_sql({sql => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -3184,12 +3829,12 @@ WHERE
 			name13 => "storcli_virtual_drive_scsi_naa_id",       value13 => $storcli_virtual_drive_scsi_naa_id, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Store the information about this controllers
+		# Store the information about this virtual drive.
 		$an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string} = $storcli_virtual_drive_uuid;
 		$an->data->{'scan-storcli'}{virtual_drives}{by_uuid}{$storcli_virtual_drive_uuid}           = $storcli_virtual_drive_id_string;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "scan-storcli::controllers::by_id_string::${storcli_virtual_drive_id_string}", value1 => $an->data->{'scan-storcli'}{controllers}{by_id_string}{$storcli_virtual_drive_id_string}, 
-			name2 => "scan-storcli::controllers::by_uuid::${storcli_virtual_drive_uuid}",           value2 => $an->data->{'scan-storcli'}{controllers}{by_uuid}{$storcli_virtual_drive_uuid}, 
+			name1 => "scan-storcli::virtual_drives::by_id_string::${storcli_virtual_drive_id_string}", value1 => $an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string}, 
+			name2 => "scan-storcli::virtual_drives::by_uuid::${storcli_virtual_drive_uuid}",           value2 => $an->data->{'scan-storcli'}{virtual_drives}{by_uuid}{$storcli_virtual_drive_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Store the drive group data. (Drive groups have no SN)
@@ -3285,6 +3930,14 @@ WHERE
 			name12 => "storcli_drive_group_read_cache",         value12 => $storcli_drive_group_read_cache, 
 			name13 => "storcli_drive_group_scheduled_cc",       value13 => $storcli_drive_group_scheduled_cc, 
 			name14 => "storcli_drive_group_write_cache",        value14 => $storcli_drive_group_write_cache, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the information about this virtual drive.
+		$an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string} = $storcli_drive_group_uuid;
+		$an->data->{'scan-storcli'}{drive_groups}{by_uuid}{$storcli_drive_group_uuid}           = $storcli_drive_group_id_string;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "scan-storcli::drive_groups::by_id_string::${storcli_drive_group_id_string}", value1 => $an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string}, 
+			name2 => "scan-storcli::drive_groups::by_uuid::${storcli_drive_group_uuid}",           value2 => $an->data->{'scan-storcli'}{drive_groups}{by_uuid}{$storcli_drive_group_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Store the drive group data. (Drive groups have no SN)
@@ -5558,7 +6211,7 @@ sub gather_data
 		# Read in BBU data (if it exists).
 		get_bbu_data($an, $adapter, $serial_number);
 		
-		# Read in virtual disk information.
+		# Read in virtual drive information.
 		get_virtual_drive_data($an, $adapter, $serial_number);
 		
 		# Read in the physical disk information.
@@ -5780,7 +6433,7 @@ sub get_physical_disk_data
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# Find the virtual disk this drive is connected to, if any.
+			# Find the virtual drive this drive is connected to, if any.
 			foreach my $this_virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
 			{
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -6040,7 +6693,7 @@ sub get_physical_disk_data
 	return(0);
 }
 
-# This looks for virtual disks on the controller.
+# This looks for virtual drives on the controller.
 sub get_virtual_drive_data
 {
 	my ($an, $adapter, $serial_number) = @_;
@@ -6050,12 +6703,12 @@ sub get_virtual_drive_data
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $virtual_drive = "";
-	my $id_string    = "";
-	my $in_overview  = 0;
-	my $in_pd_list   = 0;
-	my $in_vd_data   = 0;
-	my $start_break  = 0;
-	my $shell_call   = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{virtual_drive_data};
+	my $id_string     = "";
+	my $in_overview   = 0;
+	my $in_pd_list    = 0;
+	my $in_vd_data    = 0;
+	my $start_break   = 0;
+	my $shell_call    = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{virtual_drive_data};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6259,7 +6912,7 @@ sub get_virtual_drive_data
 	return(0);
 }
 
-# This parses a virtual disk's physical disk overview line
+# This parses a virtual drive's physical disk overview line
 sub process_vg_pd_list_data
 {
 	my ($an, $line, $virtual_drive, $serial_number, $id_string) = @_;
@@ -6478,7 +7131,7 @@ sub process_vg_pd_list_data
 	return(0);
 }
 
-# This parses a virtual disk overview line
+# This parses a virtual drive overview line
 sub process_vg_overview_data
 {
 	my ($an, $line, $serial_number) = @_;
@@ -7513,7 +8166,7 @@ sub get_controller_info
 			}
 		}
 		
-		# Mangle supported adapter virtual disk operation variables.
+		# Mangle supported adapter virtual drive operation variables.
 		if ($in_supported_vd_ops)
 		{
 			if ($line =~ /^Advanced Software Option/)
@@ -8387,7 +9040,7 @@ sub sort_and_prepare_data
 	}
 	#die "$THIS_FILE ".__LINE__."; testing...\n";
 	
-	# Now the virtual disks. Note that '9999' is a fake VD used for physical drives not in any actual 
+	# Now the virtual drives. Note that '9999' is a fake VD used for physical drives not in any actual 
 	# VDs.
 	foreach my $virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
 	{
@@ -8467,25 +9120,6 @@ sub sort_and_prepare_data
 	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	return(0);
-}
-
-# This commits the SQL queries in '$an->data->{sys}{sql}', if any.
-sub commit_sql
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "commit_sql" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $count = @{$an->data->{sys}{sql}};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::sql #", value1 => $count, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if (@{$an->data->{sys}{sql}} > 0)
-	{
-		$an->DB->do_db_write({query => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
-		$an->data->{sys}{sql} = [];
-	}
-	
-	return($count);
 }
 
 ### TODO: Make this a method
