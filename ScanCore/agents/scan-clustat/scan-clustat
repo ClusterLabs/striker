@@ -1125,7 +1125,7 @@ WHERE
 		if ($an->data->{clustat}{cluster_name} eq "OFFLINE")
 		{
 			$an->Log->entry({log_level => 3, message_key => "scan_clustat_log_0001", file => $THIS_FILE, line => __LINE__});
-			commit_sql($an);
+			$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 			return(0);
 		}
 		
@@ -2203,28 +2203,9 @@ WHERE
 	}
 	
 	# Now commit the changes.
-	commit_sql($an);
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
-}
-
-# This commits the SQL queries in '$an->data->{sys}{sql}', if any.
-sub commit_sql
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "commit_sql", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $count = @{$an->data->{sys}{sql}};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::sql #", value1 => $count, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if (@{$an->data->{sys}{sql}} > 0)
-	{
-		$an->DB->do_db_write({query => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
-		$an->data->{sys}{sql} = [];
-	}
-	
-	return($count);
 }
 
 # This tries to recover a server that is in a 'failed' or 'recovering' state.

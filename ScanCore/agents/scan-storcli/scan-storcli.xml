@@ -152,6 +152,37 @@ Other detected variables:
 		<key name="scan_storcli_warning_0021">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' has vanished!</key>
 		<key name="scan_storcli_warning_0022">- A new variable was found on the Virtual Drive: [#!variable!id_string!#]; #!variable!name!#: [#!variable!value!#]</key>
 		<key name="scan_storcli_warning_0023">The Virtual Drive: [#!variable!id_string!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0024">The RAID controller's Drive Group (DG) properties have changed:
+- ID String: ................. [#!variable!old_id_string!#] -> [#!variabl!new_id_string!#]
+- Access: .................... [#!variable!old_access!#] -> [#!variabl!new_access!#]
+- RAID Level: ................ [#!variable!old_raid_type!#] -> [#!variabl!new_raid_type!#]
+- Array Size: ................ [#!variable!old_array_size!#] -> [#!variabl!new_array_size!#]
+- Array State: ............... [#!variable!old_array_state!#] -> [#!variabl!new_array_state!#]
+- Consistent: ................ [#!variable!old_consistent!#] -> [#!variabl!new_consistent!#]
+- Write Cache: ............... [#!variable!old_write_cache!#] -> [#!variabl!new_write_cache!#]
+- Read Cache: ................ [#!variable!old_read_cache!#] -> [#!variabl!new_read_cache!#]
+- Disk Cache: ................ [#!variable!old_disk_cache!#] -> [#!variabl!new_disk_cache!#]
+- CacheCade: ................. [#!variable!old_cachecade!#] -> [#!variabl!new_cachecade!#]
+- Scheduled Consistency Check: [#!variable!old_scheduled_cc!#] -> [#!variabl!new_scheduled_cc!#]
+- Raw Cache String: .......... [#!variable!old_cache!#] -> [#!variabl!new_cache!#]
+</key>
+		<key name="scan_storcli_warning_0025">The RAID controller's Drive Group (DG) has returned:
+- ID String: ................. [#!variable!old_id_string!#] -> [#!variabl!new_id_string!#]
+- Access: .................... [#!variable!old_access!#] -> [#!variabl!new_access!#]
+- RAID Level: ................ [#!variable!old_raid_type!#] -> [#!variabl!new_raid_type!#]
+- Array Size: ................ [#!variable!old_array_size!#] -> [#!variabl!new_array_size!#]
+- Array State: ............... [#!variable!old_array_state!#] -> [#!variabl!new_array_state!#]
+- Consistent: ................ [#!variable!old_consistent!#] -> [#!variabl!new_consistent!#]
+- Write Cache: ............... [#!variable!old_write_cache!#] -> [#!variabl!new_write_cache!#]
+- Read Cache: ................ [#!variable!old_read_cache!#] -> [#!variabl!new_read_cache!#]
+- Disk Cache: ................ [#!variable!old_disk_cache!#] -> [#!variabl!new_disk_cache!#]
+- CacheCade: ................. [#!variable!old_cachecade!#] -> [#!variabl!new_cachecade!#]
+- Scheduled Consistency Check: [#!variable!old_scheduled_cc!#] -> [#!variabl!new_scheduled_cc!#]
+- Raw Cache String: .......... [#!variable!old_cache!#] -> [#!variabl!new_cache!#]
+</key>
+		<key name="scan_storcli_warning_0026">- The Drive Group: [#!variable!id_string!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0027">- The Drive Group: [#!variable!id_string!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0028">- The Drive Group: [#!variable!id_string!#]: '#!variable!name!#' has vanished!</key>
 		
 		<!-- Errors -->
 		<key name="scan_storcli_error_0001">The 'storcli64' program was not found at: [#!variable!path!#], exiting.</key>

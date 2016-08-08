@@ -739,7 +739,7 @@ INSERT INTO
 	}
 	
 	# Now commit the changes.
-	commit_sql($an);
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -2498,25 +2498,6 @@ sub find_ipmi_targets
 	}
 	
 	return($ipmi_targets);
-}
-
-# This commits the SQL queries in '$an->data->{sys}{sql}', if any.
-sub commit_sql
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "commit_sql" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $count = @{$an->data->{sys}{sql}};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::sql #", value1 => $count, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if (@{$an->data->{sys}{sql}} > 0)
-	{
-		$an->DB->do_db_write({query => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
-		$an->data->{sys}{sql} = [];
-	}
-	
-	return($count);
 }
 
 ### TODO: Make this a method

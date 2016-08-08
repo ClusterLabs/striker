@@ -76,8 +76,7 @@ sub check_hostname
 	return(0);
 }
 
-# This commits the SQL queries in the passed in array reference, if any, and commits them. If no array 
-# reference is passed, 'sys::sql' will be used. The array reference will be re-initialized when done.
+# This commits the SQL queries in the 'sys::sql' array reference.
 sub commit_sql
 {
 	my $self      = shift;
@@ -85,34 +84,27 @@ sub commit_sql
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "commit_sql", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $sql    = defined $parameter->{sql}    ? $parameter->{sql}    : "";
 	my $source = defined $parameter->{source} ? $parameter->{source} : $THIS_FILE;
 	my $line   = defined $parameter->{line}   ? $parameter->{line}   : __LINE__;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "sql",    value1 => $sql, 
-		name2 => "source", value2 => $source, 
-		name3 => "line",   value3 => $line, 
+	my $count  = @{$an->data->{sys}{sql}};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "source", value1 => $source, 
+		name2 => "line",   value2 => $line, 
+		name3 => "count",  value3 => $count, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $sql) && (ref($an->data->{sys}{sql}) eq "ARRAY"))
+	
+	# DEBUG
+	foreach my $query (@{$an->data->{sys}{sql}})
 	{
-		$sql = $an->data->{sys}{sql};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "sql", value1 => $sql, 
+			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	my $count = @{$sql};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "sql",   value1 => $sql, 
-		name2 => "count", value2 => $count, 
-	}, file => $THIS_FILE, line => __LINE__});
 	
 	if ($count > 0)
 	{
-		$an->DB->do_db_write({query => $sql, source => $source, line => $line});
-		$sql = [];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "sql", value1 => $sql, 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $an->data->{sys}{sql}, source => $source, line => $line});
+		$an->data->{sys}{sql} = [];
 	}
 	
 	return($count);

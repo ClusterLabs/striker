@@ -313,7 +313,7 @@ sub process_drive_groups
 		
 		# Is this a new Drive Group?
 		my $storcli_drive_group_uuid = "";
-		my $is_new                     = 0;
+		my $is_new                   = 0;
 		if (exists $an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string})
 		{
 			# Yes!
@@ -324,7 +324,7 @@ sub process_drive_groups
 		}
 		else
 		{
-			# No, this is a new Virtual Drive. Create a new UUID for it.
+			# No, this is a new Drive Group. Create a new UUID for it.
 			$storcli_drive_group_uuid = $an->Get->uuid();
 			$is_new                   = 1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -613,12 +613,12 @@ INSERT INTO
 		}
 		else
 		{
-			### NOTE: The serial number should never change (a changed SN/Virtual Drive should be 
-			###       picked up as a new Virtual Drive), but we check/update just to be safe.
+			### NOTE: The serial number should never change (a changed SN/Drive Group should be 
+			###       picked up as a new Drive Group), but we check/update just to be safe.
 			# Look for changes.
 			my $main_table_changed                 = 0;
 			my $old_drive_group_id_string          = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_id_string};
-			my $old_drive_group_virtual_drive_uuid = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_controller_uuid};
+			my $old_drive_group_virtual_drive_uuid = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_virtual_drive_uuid};
 			my $old_drive_group_access             = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_access};
 			my $old_drive_group_array_size         = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_array_size};
 			my $old_drive_group_array_state        = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_array_state};
@@ -660,6 +660,8 @@ INSERT INTO
 				name26 => "old_drive_group_write_cache",            value26 => $old_drive_group_write_cache,
 			}, file => $THIS_FILE, line => __LINE__});
 
+			die "$THIS_FILE ".__LINE__."; old_drive_group_virtual_drive_uuid undefined.\n" if not defined $old_drive_group_virtual_drive_uuid;
+			
 			if (($storcli_drive_group_id_string          ne $old_drive_group_id_string)          or 
 			    ($storcli_drive_group_virtual_drive_uuid ne $old_drive_group_virtual_drive_uuid) or 
 			    ($new_drive_group_access                 ne $old_drive_group_access)             or 
@@ -674,269 +676,336 @@ INSERT INTO
 			    ($new_drive_group_scheduled_cc           ne $old_drive_group_scheduled_cc)       or 
 			    ($new_drive_group_write_cache            ne $old_drive_group_write_cache))
 			{
-# 				# Send a warning level alert because nothing should change here, ever.
-# 				my $title_key   = "an_alert_title_0004";
-# 				my $message_key = "scan_storcli_warning_0017";
-# 				if ($new_creation_date ne $old_creation_date)
-# 				{
-# 					if ($old_creation_date eq "VANISHED")
-# 					{
-# 						# Virtual Drive has returned.
-# 						$message_key = "scan_storcli_warning_0018";
-# 					}
-# 				}
-# 				$an->data->{sys}{alert_sort}++; 
-# 				$an->Alert->register_alert({
-# 					alert_level		=>	"warning", 
-# 					alert_agent_name	=>	$THIS_FILE,
-# 					alert_sort		=>	$an->data->{sys}{alert_sort},
-# 					alert_header		=>	'FALSE',
-# 					alert_title_key		=>	$title_key,
-# 					alert_message_key	=>	$message_key,
-# 					alert_message_variables	=>	{
-# 						old_on_controller	=>	$old_controller_serial_number, 
-# 						new_on_controller	=>	$new_controller_serial_number, 
-# 						old_id_string		=>	$old_storcli_virtual_drive_id_string, 
-# 						new_id_string		=>	$storcli_virtual_drive_id_string, 
-# 						old_creation_date	=>	$old_creation_date, 
-# 						new_creation_date	=>	$new_creation_date, 
-# 						old_data_protection	=>	$old_data_protection, 
-# 						new_data_protection	=>	$new_data_protection, 
-# 						old_disk_cache_policy	=>	$old_disk_cache_policy, 
-# 						new_disk_cache_policy	=>	$new_disk_cache_policy, 
-# 						old_emulation_type	=>	$old_emulation_type, 
-# 						new_emulation_type	=>	$new_emulation_type, 
-# 						old_encryption		=>	$old_encryption, 
-# 						new_encryption		=>	$new_encryption, 
-# 						old_blocks		=>	$old_blocks, 
-# 						new_blocks		=>	$new_blocks, 
-# 						old_strip_size		=>	$old_strip_size, 
-# 						new_strip_size		=>	$new_strip_size, 
-# 						old_drives_per_span	=>	$old_drives_per_span, 
-# 						new_drives_per_span	=>	$new_drives_per_span, 
-# 						old_span_depth		=>	$old_span_depth, 
-# 						new_span_depth		=>	$new_span_depth, 
-# 						old_scsi_naa_id		=>	$old_scsi_naa_id, 
-# 						new_scsi_naa_id		=>	$new_scsi_naa_id, 
-# 					},
-# 				});
-# 				$main_table_changed = 1;
-# 				
-# 				my $query = "
-# UPDATE 
-#     storcli_virtual_drives
-# SET
-#     storcli_virtual_drive_controller_uuid   = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
-#     storcli_virtual_drive_id_string         = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_id_string).",
-#     storcli_virtual_drive_creation_date     = ".$an->data->{sys}{use_db_fh}->quote($new_creation_date).",
-#     storcli_virtual_drive_data_protection   = ".$an->data->{sys}{use_db_fh}->quote($new_data_protection).", 
-#     storcli_virtual_drive_disk_cache_policy = ".$an->data->{sys}{use_db_fh}->quote($new_disk_cache_policy).", 
-#     storcli_virtual_drive_emulation_type    = ".$an->data->{sys}{use_db_fh}->quote($new_emulation_type).", 
-#     storcli_virtual_drive_encryption        = ".$an->data->{sys}{use_db_fh}->quote($new_encryption).", 
-#     storcli_virtual_drive_blocks            = ".$an->data->{sys}{use_db_fh}->quote($new_blocks).", 
-#     storcli_virtual_drive_strip_size        = ".$an->data->{sys}{use_db_fh}->quote($new_strip_size).", 
-#     storcli_virtual_drive_drives_per_span   = ".$an->data->{sys}{use_db_fh}->quote($new_drives_per_span).", 
-#     storcli_virtual_drive_span_depth        = ".$an->data->{sys}{use_db_fh}->quote($new_span_depth).", 
-#     storcli_virtual_drive_scsi_naa_id       = ".$an->data->{sys}{use_db_fh}->quote($new_scsi_naa_id).", 
-#     modified_date                           = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-# WHERE 
-#     storcli_virtual_drive_uuid              = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
-# ;";
-# 
-# 				# Now record the query in the array
-# 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-# 					name1 => "query", value1 => $query
-# 				}, file => $THIS_FILE, line => __LINE__});
-# 				push @{$an->data->{sys}{sql}}, $query;
+				# Send a warning level alert because nothing should change here, ever.
+				my $title_key   = "an_alert_title_0004";
+				my $message_key = "scan_storcli_warning_0024";
+				if ($new_drive_group_access ne $old_drive_group_access)
+				{
+					if ($new_drive_group_access eq "VANISHED")
+					{
+						# Drive Group has returned.
+						$message_key = "scan_storcli_warning_0025";
+					}
+				}
+				$an->data->{sys}{alert_sort}++; 
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_sort		=>	$an->data->{sys}{alert_sort},
+					alert_header		=>	'FALSE',
+					alert_title_key		=>	$title_key,
+					alert_message_key	=>	$message_key,
+					alert_message_variables	=>	{
+						old_id_string		=>	$old_drive_group_id_string, 
+						new_id_string		=>	$storcli_drive_group_id_string, 
+						new_access		=>	$new_drive_group_access,
+						old_access		=>	$old_drive_group_access,
+						new_array_size		=>	$new_drive_group_array_size,
+						old_array_size		=>	$old_drive_group_array_size,
+						new_array_state		=>	$new_drive_group_array_state,
+						old_array_state		=>	$old_drive_group_array_state,
+						new_cache		=>	$new_drive_group_cache,
+						old_cache		=>	$old_drive_group_cache,
+						new_cachecade		=>	$new_drive_group_cachecade,
+						old_cachecade		=>	$old_drive_group_cachecade,
+						new_consistent		=>	$new_drive_group_consistent,
+						old_consistent		=>	$old_drive_group_consistent,
+						new_disk_cache		=>	$new_drive_group_disk_cache,
+						old_disk_cache		=>	$old_drive_group_disk_cache,
+						new_raid_type		=>	$new_drive_group_raid_type,
+						old_raid_type		=>	$old_drive_group_raid_type,
+						new_read_cache		=>	$new_drive_group_read_cache,
+						old_read_cache		=>	$old_drive_group_read_cache,
+						new_scheduled_cc	=>	$new_drive_group_scheduled_cc,
+						old_scheduled_cc	=>	$old_drive_group_scheduled_cc,
+						new_write_cache		=>	$new_drive_group_write_cache,
+						old_write_cache		=>	$old_drive_group_write_cache,
+					},
+				});
+				$main_table_changed = 1;
+				
+				my $query = "
+UPDATE 
+    storcli_drive_groups
+SET
+    storcli_drive_group_virtual_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_virtual_drive_uuid).", 
+    storcli_drive_group_id_string          = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_id_string).", 
+    storcli_drive_group_access             = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_access).", 
+    storcli_drive_group_array_size         = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_array_size).", 
+    storcli_drive_group_array_state        = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_array_state).", 
+    storcli_drive_group_cache              = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_cache).", 
+    storcli_drive_group_cachecade          = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_cachecade).", 
+    storcli_drive_group_consistent         = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_consistent).", 
+    storcli_drive_group_disk_cache         = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_disk_cache).", 
+    storcli_drive_group_raid_type          = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_raid_type).", 
+    storcli_drive_group_read_cache         = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_read_cache).", 
+    storcli_drive_group_scheduled_cc       = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_scheduled_cc).", 
+    storcli_drive_group_write_cache        = ".$an->data->{sys}{use_db_fh}->quote($new_drive_group_write_cache).", 
+    modified_date                          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_drive_group_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid)." 
+;";
+
+				# Now record the query in the array
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
 			}
-# 			
-# 			### Process the rest of the variables now. 
-# 			foreach my $type ("variable", "temperature")
-# 			{
-# 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-# 					name1 => "type", value1 => $type,
-# 				}, file => $THIS_FILE, line => __LINE__});
-# 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type}})
-# 				{
-# 					my $new_variable_value = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type}{$variable};
-# 					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
-# 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-# 						name1 => "variable",    value1 => $variable,
-# 						name2 => "temperature", value2 => $temperature,
-# 					}, file => $THIS_FILE, line => __LINE__});
-# 					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid})
-# 					{
-# 						# Look for changes
-# 						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_value};
-# 						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
-# 						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-# 							name1 => "variable",           value1 => $variable,
-# 							name2 => "new_variable_value", value2 => $new_variable_value,
-# 							name3 => "old_variable_value", value3 => $old_variable_value,
-# 							name4 => "variable_uuid",      value4 => $variable_uuid,
-# 						}, file => $THIS_FILE, line => __LINE__});
-# 						
-# 						# Delete it so that we know it has been processed.
-# 						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable};
-# 						
-# 						if (($new_variable_value ne $old_variable_value))
-# 						{
-# 							# Changed! If the old value was 'VANISHED', then a 
-# 							# sensor or variable returned. Otherwise, for now, we
-# 							# treat everything as 'warning' and step down 
-# 							# explicitely anything not of concern that proves 
-# 							# noisey later (better safe than sorry).
-# 							$an->data->{sys}{alert_sort}++; 
-# 							
-# 							my $message_key = "scan_storcli_warning_0019";
-# 							if ($old_variable_value eq "VANISHED")
-# 							{
-# 								$message_key = "scan_storcli_warning_0020";
-# 							}
-# 							$an->Alert->register_alert({
-# 								alert_level		=>	"warning", 
-# 								alert_agent_name	=>	$THIS_FILE,
-# 								alert_sort		=>	$an->data->{sys}{alert_sort},
-# 								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
-# 								alert_title_key		=>	"an_alert_title_0004",
-# 								alert_message_key	=>	$message_key,
-# 								alert_message_variables	=>	{
-# 									id_string		=>	$storcli_virtual_drive_id_string,
-# 									name			=>	$variable,
-# 									old_value		=>	$old_variable_value,
-# 									new_value		=>	$new_variable_value,
-# 								},
-# 							});
-# 							
-# 							my $query = "
-# UPDATE 
-#     storcli_variables 
-# SET 
-#     storcli_variable_value = ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
-#     modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-# WHERE 
-#     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
-# ;";
-# 							# Now record the query in the array
-# 							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-# 								name1 => "query", value1 => $query
-# 							}, file => $THIS_FILE, line => __LINE__});
-# 							push @{$an->data->{sys}{sql}}, $query;
-# 						}
-# 					}
-# 					else
-# 					{
-# 						# New variable, record it. This is a 'warning' level as 
-# 						# variables aren't expected to spawn into existence.
-# 						$an->data->{sys}{alert_sort}++; 
-# 						$an->Alert->register_alert({
-# 							alert_level		=>	"warning", 
-# 							alert_agent_name	=>	$THIS_FILE,
-# 							alert_sort		=>	$an->data->{sys}{alert_sort},
-# 							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
-# 							alert_title_key		=>	"an_alert_title_0003",
-# 							alert_message_key	=>	"scan_storcli_warning_0021",
-# 							alert_message_variables	=>	{
-# 								id_string		=>	$storcli_virtual_drive_id_string,
-# 								name			=>	$variable,
-# 								value			=>	$new_variable_value,
-# 							},
-# 						});
-# 						
-# 						# INSERT
-# 						my $query = "
-# INSERT INTO 
-#     storcli_variables
-# (
-#     storcli_variable_uuid, 
-#     storcli_variable_host_uuid, 
-#     storcli_variable_source_table, 
-#     storcli_variable_source_uuid, 
-#     storcli_variable_is_temperature, 
-#     storcli_variable_name, 
-#     storcli_variable_value, 
-#     modified_date 
-# ) VALUES (
-#     ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
-#     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-#     'storcli_virtual_drives', 
-#     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).", 
-#     ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
-#     ".$an->data->{sys}{use_db_fh}->quote($variable).", 
-#     ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
-#     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-# );";
-# 						# Now record the query in the array
-# 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-# 							name1 => "query", value1 => $query
-# 						}, file => $THIS_FILE, line => __LINE__});
-# 						push @{$an->data->{sys}{sql}}, $query;
-# 					}
-# 				}
-# 			}
-# 			
-# 			# Now look for any variables left from the previous scan that we didn't match up (and
-# 			# delete) this pass.
-# 			foreach my $type ("variable", "temperature")
-# 			{
-# 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-# 					name1 => "type", value1 => $type,
-# 				}, file => $THIS_FILE, line => __LINE__});
-# 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}})
-# 				{
-# 					# This variable has vanished
-# 					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_value};
-# 					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
-# 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-# 						name1 => "old_variable_value", value1 => $old_variable_value,
-# 						name2 => "variable_uuid",      value2 => $variable_uuid,
-# 					}, file => $THIS_FILE, line => __LINE__});
-# 					
-# 					# Delete it so that we know it has been processed.
-# 					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable};
-# 					
-# 					# If the old value is already 'VANISHED', ignore it.
-# 					next if $old_variable_value eq "VANISHED";
-# 					
-# 					### NOTE: For now, we're going to use warning level because variables
-# 					###       shouldn't vanish, but under an-cm, it did happen for 
-# 					###       reasons that we never figured out. So later, we may drop 
-# 					###       the alert level in some cases.
-# 					# Still here? Alert and UPDATE.
-# 					$an->data->{sys}{alert_sort}++; 
-# 					$an->Alert->register_alert({
-# 						alert_level		=>	"warning", 
-# 						alert_agent_name	=>	$THIS_FILE,
-# 						alert_sort		=>	$an->data->{sys}{alert_sort},
-# 						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
-# 						alert_title_key		=>	"an_alert_title_0004",
-# 						alert_message_key	=>	"scan_storcli_warning_0021",
-# 						alert_message_variables	=>	{
-# 							id_string		=>	$storcli_virtual_drive_id_string,
-# 							name			=>	$variable,
-# 						},
-# 					});
-# 					
-# 					my $query = "
-# UPDATE 
-#     storcli_variables 
-# SET 
-#     storcli_variable_value = 'VANISHED', 
-#     modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-# WHERE 
-#     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
-# ;";
-# 					# Now record the query in the array
-# 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-# 						name1 => "query", value1 => $query
-# 					}, file => $THIS_FILE, line => __LINE__});
-# 					push @{$an->data->{sys}{sql}}, $query;
-# 				}
-# 			}
+			
+			### Process the rest of the variables now. 
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{$type}})
+				{
+					my $new_variable_value = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{$type}{$variable};
+					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "variable",    value1 => $variable,
+						name2 => "temperature", value2 => $temperature,
+					}, file => $THIS_FILE, line => __LINE__});
+					if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable}{storcli_variable_uuid})
+					{
+						# Look for changes
+						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable}{storcli_variable_value};
+						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable}{storcli_variable_uuid};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+							name1 => "variable",           value1 => $variable,
+							name2 => "new_variable_value", value2 => $new_variable_value,
+							name3 => "old_variable_value", value3 => $old_variable_value,
+							name4 => "variable_uuid",      value4 => $variable_uuid,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# Delete it so that we know it has been processed.
+						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable};
+						
+						if (($new_variable_value ne $old_variable_value))
+						{
+							# Changed! If the old value was 'VANISHED', then a 
+							# sensor or variable returned. Otherwise, for now, we
+							# treat everything as 'warning' and step down 
+							# explicitely anything not of concern that proves 
+							# noisey later (better safe than sorry).
+							$an->data->{sys}{alert_sort}++; 
+							
+							my $message_key = "scan_storcli_warning_0026";
+							if ($old_variable_value eq "VANISHED")
+							{
+								$message_key = "scan_storcli_warning_0027";
+							}
+							$an->Alert->register_alert({
+								alert_level		=>	"warning", 
+								alert_agent_name	=>	$THIS_FILE,
+								alert_sort		=>	$an->data->{sys}{alert_sort},
+								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+								alert_title_key		=>	"an_alert_title_0004",
+								alert_message_key	=>	$message_key,
+								alert_message_variables	=>	{
+									id_string		=>	$storcli_drive_group_id_string,
+									name			=>	$variable,
+									old_value		=>	$old_variable_value,
+									new_value		=>	$new_variable_value,
+								},
+							});
+							
+							my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "query", value1 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{sys}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# New variable, record it. This is a 'warning' level as 
+						# variables aren't expected to spawn into existence.
+						$an->data->{sys}{alert_sort}++; 
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_sort		=>	$an->data->{sys}{alert_sort},
+							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_storcli_warning_0028",
+							alert_message_variables	=>	{
+								id_string		=>	$storcli_drive_group_id_string,
+								name			=>	$variable,
+								value			=>	$new_variable_value,
+							},
+						});
+						
+						# INSERT
+						my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_drive_groups', 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{sys}{sql}}, $query;
+					}
+				}
+			}
+			
+			# Now look for any variables left from the previous scan that we didn't match up (and
+			# delete) this pass.
+			foreach my $type ("variable", "temperature")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "type", value1 => $type,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}})
+				{
+					# This variable has vanished
+					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable}{storcli_variable_value};
+					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable}{storcli_variable_uuid};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_variable_value", value1 => $old_variable_value,
+						name2 => "variable_uuid",      value2 => $variable_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Delete it so that we know it has been processed.
+					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable};
+					
+					# If the old value is already 'VANISHED', ignore it.
+					next if $old_variable_value eq "VANISHED";
+					
+					### NOTE: For now, we're going to use warning level because variables
+					###       shouldn't vanish, but under an-cm, it did happen for 
+					###       reasons that we never figured out. So later, we may drop 
+					###       the alert level in some cases.
+					# Still here? Alert and UPDATE.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_storcli_warning_0028",
+						alert_message_variables	=>	{
+							id_string		=>	$storcli_drive_group_id_string,
+							name			=>	$variable,
+						},
+					});
+					
+					my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = 'VANISHED', 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
+			}
 		}
 		
-die "$THIS_FILE ".__LINE__."; testing...\n";
-		#process_physical_disks($an, $virtual_drive, $drive_group);
+		# Now commit the changes. We do this here so that the VD is in place before processing drive
+		# groups under it.
+		$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
+		
+		# Delete the Drive Group from the last scan so that we can find controllers that have been removed.
+		if (exists $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid})
+		{
+			delete $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid};
+		}
+	}
+	
+	# See if any Drive Groups have vanished.
+	foreach my $storcli_drive_group_uuid (keys %{$an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}})
+	{
+		# Drive Group vanished!
+		my $storcli_drive_group_id_string = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_id_string};
+		my $controller_uuid               = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_controller_uuid};
+		my $access                        = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_access};
+		my $host_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "storcli_drive_group_id_string", value1 => $storcli_drive_group_id_string,
+			name2 => "controller_uuid",               value2 => $controller_uuid,
+			name3 => "access",                        value3 => $access,
+			name4 => "host_controller_serial_number", value4 => $host_controller_serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Delete it so that we know it has been processed.
+		delete $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid};
+		
+		# If the old creation date is already 'VANISHED', ignore it.
+		next if $access eq "VANISHED";
+		
+		# Still here? Alert and UPDATE.
+		### NOTE: For now, we're going to use warning level because controllers should never vanish
+		###       unless one failed. If that is the case, the admin already knows, but this will let
+		###       other notification targets know that the change has happened.
+		$an->data->{sys}{alert_sort}++; 
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_sort		=>	$an->data->{sys}{alert_sort},
+			alert_header		=>	"TRUE",
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scan_storcli_warning_0023",
+			alert_message_variables	=>	{
+				id_string		=>	$storcli_drive_group_id_string, 
+				controller_serial_number =>	$host_controller_serial_number, 
+			},
+		});
+		
+		my $query = "
+UPDATE 
+    storcli_drive_groups
+SET 
+    storcli_drive_group_access = 'VANISHED', 
+    modified_date              = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_drive_group_uuid   = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid)." 
+;";
+		# Now record the query in the array
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+		
+		# Now commit the changes. We do this here so that the VD is in place before processing drive
+		# groups under it.
+		$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -1645,7 +1714,7 @@ WHERE
 		
 		# Now commit the changes. We do this here so that the VD is in place before processing drive
 		# groups under it.
-		$an->DB->commit_sql({sql => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
+		$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 		
 		# Process drive groups under this virtual drive. They'll likely have vanished, too.
 		process_drive_groups($an, $storcli_virtual_drive_id_string, $storcli_virtual_drive_uuid, $controller_uuid, $host_controller_serial_number);
@@ -1713,7 +1782,7 @@ WHERE
 		
 		# Now commit the changes. We do this here so that the VD is in place before processing drive
 		# groups under it.
-		$an->DB->commit_sql({sql => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
+		$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 		
 		# Process drive groups under this virtual drive. They'll likely have vanished, too.
 		process_drive_groups($an, $storcli_virtual_drive_id_string, $storcli_virtual_drive_uuid, $controller_uuid, $host_controller_serial_number);
@@ -1895,7 +1964,7 @@ sub process_cachevaults
 			# INSERT
 			my $query = "
 INSERT INTO 
-    public.storcli_cachevaults
+    storcli_cachevaults
 (
     storcli_cachevault_uuid, 
     storcli_cachevault_host_uuid, 
@@ -2357,7 +2426,7 @@ WHERE
 	}
 	
 	# Now commit the changes.
-	$an->DB->commit_sql({sql => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -2996,7 +3065,7 @@ WHERE
 	}
 	
 	# Now commit the changes.
-	$an->DB->commit_sql({sql => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -3540,7 +3609,7 @@ AND
 	}
 	
 	# Now commit the changes.
-	$an->DB->commit_sql({sql => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -3915,7 +3984,7 @@ WHERE
 		my $storcli_drive_group_read_cache         = defined $row->[11] ? $row->[11] : "";
 		my $storcli_drive_group_scheduled_cc       = defined $row->[12] ? $row->[12] : "";
 		my $storcli_drive_group_write_cache        = defined $row->[13] ? $row->[13] : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
 			name1  => "storcli_drive_group_uuid",               value1  => $storcli_drive_group_uuid, 
 			name2  => "storcli_drive_group_virtual_drive_uuid", value2  => $storcli_drive_group_virtual_drive_uuid, 
 			name3  => "storcli_drive_group_id_string",          value3  => $storcli_drive_group_id_string, 
@@ -3956,7 +4025,7 @@ WHERE
 			storcli_drive_group_scheduled_cc	=>	$storcli_drive_group_scheduled_cc, 
 			storcli_drive_group_write_cache		=>	$storcli_drive_group_write_cache, 
 		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
 			name1  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_virtual_drive_uuid", value1  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_virtual_drive_uuid}, 
 			name2  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_id_string",          value2  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_id_string}, 
 			name3  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_access",             value3  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_access}, 
