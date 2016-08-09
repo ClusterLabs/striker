@@ -208,50 +208,11 @@ sub find_changes
 	process_controllers($an);
 	process_bbus($an);
 	process_cachevaults($an);
-	process_virtual_drives($an);	# This calls process_drive_groups() and that calls process_physical_disks().
-	#process_drive_groups($an);
-	#process_physical_disks($an);
+	process_virtual_drives($an);	# This calls process_drive_groups();
+	process_physical_disks($an);
 	
 	# Now read back in the various temperature data and process them.
 	#...
-	
-	return(0);
-}
-
-# Look for added, changed or deleted physical drives.
-sub process_physical_disks
-{
-	my ($an, $virtual_drive, $drive_group) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_physical_disks" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "virtual_drive", value1 => $virtual_drive, 
-		name2 => "drive_group",  value2 => $drive_group, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "enclosure_id", value1 => $enclosure_id,
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "slot_number", value1 => $slot_number,
-			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $type ("variable", "temperature")
-			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "type", value1 => $type,
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->aligned_entries({
-					log_level => 2, 
-					file      => $THIS_FILE,
-					line      => __LINE__,
-					prefix    => "VD $virtual_drive, DG $drive_group, EID $enclosure_id, Slot $slot_number - $type",
-					hash_ref  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
-				});
-			}
-		}
-	}
 	
 	return(0);
 }
@@ -273,7 +234,7 @@ sub process_drive_groups
 	{
 		my $storcli_drive_group_id_string = $storcli_virtual_drive_id_string."-dg".$drive_group;
 		my $virtual_drive                 = ($storcli_virtual_drive_id_string =~ /-vd(\d+)$/)[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "storcli_virtual_drive_id_string", value1 => $storcli_virtual_drive_id_string,
 			name2 => "storcli_drive_group_id_string",   value2 => $storcli_drive_group_id_string,
 			name3 => "virtual_drive",                   value3 => $virtual_drive,
@@ -297,11 +258,11 @@ sub process_drive_groups
 		# Show the basic drive group data
 		foreach my $type ("variable", "temperature")
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->aligned_entries({
-				log_level => 2, 
+				log_level => 3, 
 				file      => $THIS_FILE,
 				line      => __LINE__,
 				prefix    => "$storcli_drive_group_id_string ($drive_group) - $type",
@@ -316,7 +277,7 @@ sub process_drive_groups
 		{
 			# Yes!
 			$storcli_drive_group_uuid = $an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "storcli_drive_group_uuid", value1 => $storcli_drive_group_uuid,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -325,7 +286,7 @@ sub process_drive_groups
 			# No, this is a new Drive Group. Create a new UUID for it.
 			$storcli_drive_group_uuid = $an->Get->uuid();
 			$is_new                   = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "storcli_drive_group_uuid", value1 => $storcli_drive_group_uuid,
 				name2 => "is_new",   value2 => $is_new,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -333,7 +294,7 @@ sub process_drive_groups
 			# Add the keys for looking it up by UUID or serial number.
 			$an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string} = $storcli_drive_group_uuid;
 			$an->data->{'scan-storcli'}{drive_groups}{by_uuid}{$storcli_drive_group_uuid}           = $storcli_virtual_drive_id_string;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "scan-storcli::drive_groups::by_id_string::$storcli_virtual_drive_id_string", value1 => $an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string},
 				name2 => "scan-storcli::drive_groups::by_uuid::$storcli_drive_group_uuid",             value2 => $an->data->{'scan-storcli'}{drive_groups}{by_uuid}{$storcli_drive_group_uuid},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -352,7 +313,7 @@ sub process_drive_groups
 		my $new_drive_group_write_cache  = "";
 		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "virtual_drive::${storcli_virtual_drive_id_string}::drive_group::${drive_group}::variable::${variable}", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable},
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -360,7 +321,7 @@ sub process_drive_groups
 			if ($variable eq "access")
 			{
 				$new_drive_group_access = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_access", value1 => $new_drive_group_access,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -368,7 +329,7 @@ sub process_drive_groups
 			if ($variable eq "array_size")
 			{
 				$new_drive_group_array_size = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_array_size", value1 => $new_drive_group_array_size,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -376,7 +337,7 @@ sub process_drive_groups
 			if ($variable eq "array_state")
 			{
 				$new_drive_group_array_state = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_array_state", value1 => $new_drive_group_array_state,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -384,7 +345,7 @@ sub process_drive_groups
 			if ($variable eq "cache")
 			{
 				$new_drive_group_cache = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_cache", value1 => $new_drive_group_cache,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -392,7 +353,7 @@ sub process_drive_groups
 			if ($variable eq "cachecade")
 			{
 				$new_drive_group_cachecade = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_cachecade", value1 => $new_drive_group_cachecade,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -400,7 +361,7 @@ sub process_drive_groups
 			if ($variable eq "consistent")
 			{
 				$new_drive_group_consistent = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_consistent", value1 => $new_drive_group_consistent,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -408,7 +369,7 @@ sub process_drive_groups
 			if ($variable eq "disk_cache")
 			{
 				$new_drive_group_disk_cache = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_disk_cache", value1 => $new_drive_group_disk_cache,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -416,7 +377,7 @@ sub process_drive_groups
 			if ($variable eq "raid_type")
 			{
 				$new_drive_group_raid_type = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_raid_type", value1 => $new_drive_group_raid_type,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -424,7 +385,7 @@ sub process_drive_groups
 			if ($variable eq "read_cache")
 			{
 				$new_drive_group_read_cache = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_read_cache", value1 => $new_drive_group_read_cache,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -432,7 +393,7 @@ sub process_drive_groups
 			if ($variable eq "scheduled_consistency_check")
 			{
 				$new_drive_group_scheduled_cc = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_scheduled_cc", value1 => $new_drive_group_scheduled_cc,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -440,7 +401,7 @@ sub process_drive_groups
 			if ($variable eq "write_cache")
 			{
 				$new_drive_group_write_cache = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drive_group_write_cache", value1 => $new_drive_group_write_cache,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -453,13 +414,13 @@ sub process_drive_groups
 		# Group is NOT new, then variables from the old data will be deleted as we go and any not 
 		# found in the current data set will be left over. We'll use this to determine variables that
 		# have vanished. They will not be deleted, but their value will be set to 'VANISHED'.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "is_new", value1 => $is_new,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($is_new)
 		{
 			### NOTE: DG 9999 will be mostly NULL and that is fine
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
 				name1  => "storcli_drive_group_uuid",      value1  => $storcli_drive_group_uuid,
 				name2  => "controller_uuid",               value2  => $controller_uuid,
 				name3  => "storcli_drive_group_id_string", value3  => $storcli_drive_group_id_string,
@@ -542,7 +503,7 @@ INSERT INTO
 );";
 			# Now record the query in the array
 			$query =~ s/''/NULL/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -550,14 +511,14 @@ INSERT INTO
 			# Process the rest of the variables and temperatures now. 
 			foreach my $type ("variable", "temperature")
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{$type}})
 				{
 					my $value       = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{$type}{$variable};
 					my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "variable",    value1 => $variable,
 						name2 => "value",       value2 => $value,
 						name3 => "temperature", value3 => $temperature,
@@ -602,7 +563,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 					# Now record the query in the array
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -629,7 +590,7 @@ INSERT INTO
 			my $old_drive_group_scheduled_cc       = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_scheduled_cc};
 			my $old_drive_group_write_cache        = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_write_cache};
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0026", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0026", message_variables => {
 				name1  => "storcli_drive_group_id_string",          value1  => $storcli_drive_group_id_string,
 				name2  => "old_drive_group_id_string",              value2  => $old_drive_group_id_string,
 				name3  => "storcli_drive_group_virtual_drive_uuid", value3  => $storcli_drive_group_virtual_drive_uuid,
@@ -745,7 +706,7 @@ WHERE
 ;";
 
 				# Now record the query in the array
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -754,14 +715,14 @@ WHERE
 			### Process the rest of the variables now. 
 			foreach my $type ("variable", "temperature")
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{$type}})
 				{
 					my $new_variable_value = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{$type}{$variable};
 					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "variable",    value1 => $variable,
 						name2 => "temperature", value2 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -770,7 +731,7 @@ WHERE
 						# Look for changes
 						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable}{storcli_variable_value};
 						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable}{storcli_variable_uuid};
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 							name1 => "variable",           value1 => $variable,
 							name2 => "new_variable_value", value2 => $new_variable_value,
 							name3 => "old_variable_value", value3 => $old_variable_value,
@@ -819,7 +780,7 @@ WHERE
     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "query", value1 => $query
 							}, file => $THIS_FILE, line => __LINE__});
 							push @{$an->data->{sys}{sql}}, $query;
@@ -868,7 +829,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
@@ -880,7 +841,7 @@ INSERT INTO
 			# delete) this pass.
 			foreach my $type ("variable", "temperature")
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}})
@@ -888,7 +849,7 @@ INSERT INTO
 					# This variable has vanished
 					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable}{storcli_variable_value};
 					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_drive_groups'}{source_uuid}{$storcli_drive_group_uuid}{$type}{$variable}{storcli_variable_uuid};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_variable_value", value1 => $old_variable_value,
 						name2 => "variable_uuid",      value2 => $variable_uuid,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -928,7 +889,7 @@ WHERE
     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
 ;";
 					# Now record the query in the array
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -955,7 +916,7 @@ WHERE
 		my $controller_uuid               = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_controller_uuid};
 		my $access                        = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_access};
 		my $host_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "storcli_drive_group_id_string", value1 => $storcli_drive_group_id_string,
 			name2 => "controller_uuid",               value2 => $controller_uuid,
 			name3 => "access",                        value3 => $access,
@@ -996,7 +957,7 @@ WHERE
     storcli_drive_group_uuid   = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid)." 
 ;";
 		# Now record the query in the array
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$an->data->{sys}{sql}}, $query;
@@ -1024,7 +985,7 @@ sub process_virtual_drives
 		my $host_controller_serial_number = $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{on_controller};
 		my $controller_uuid               = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
 		my $virtual_drive                 = ($storcli_virtual_drive_id_string =~ /-vd(\d+)$/)[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "storcli_virtual_drive_id_string", value1 => $storcli_virtual_drive_id_string,
 			name2 => "host_controller_serial_number",   value2 => $host_controller_serial_number,
 			name3 => "controller_uuid",                 value3 => $controller_uuid,
@@ -1068,7 +1029,7 @@ sub process_virtual_drives
 		{
 			# Yes!
 			$storcli_virtual_drive_uuid = $an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "storcli_virtual_drive_uuid", value1 => $storcli_virtual_drive_uuid,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1077,7 +1038,7 @@ sub process_virtual_drives
 			# No, this is a new Virtual Drive. Create a new UUID for it.
 			$storcli_virtual_drive_uuid = $an->Get->uuid();
 			$is_new                     = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "storcli_virtual_drive_uuid", value1 => $storcli_virtual_drive_uuid,
 				name2 => "is_new",   value2 => $is_new,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1085,7 +1046,7 @@ sub process_virtual_drives
 			# Add the keys for looking it up by UUID or serial number.
 			$an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string} = $storcli_virtual_drive_uuid;
 			$an->data->{'scan-storcli'}{virtual_drives}{by_uuid}{$storcli_virtual_drive_uuid}           = $storcli_virtual_drive_id_string;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "scan-storcli::virtual_drives::by_id_string::$storcli_virtual_drive_id_string", value1 => $an->data->{'scan-storcli'}{virtual_drives}{by_id_string}{$storcli_virtual_drive_id_string},
 				name2 => "scan-storcli::virtual_drives::by_uuid::$storcli_virtual_drive_uuid",           value2 => $an->data->{'scan-storcli'}{virtual_drives}{by_uuid}{$storcli_virtual_drive_uuid},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1107,7 +1068,7 @@ sub process_virtual_drives
 		my $new_scsi_naa_id       = "";
 		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "virtual_drive::${storcli_virtual_drive_id_string}::variable::${variable}", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable},
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -1117,7 +1078,7 @@ sub process_virtual_drives
 				# The creation date we store is a combination of two variables. That's why 
 				# these first two entries are a little odd.
 				$creation_date = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "creation_date", value1 => $creation_date,
 					name2 => "creation_time", value2 => $creation_time,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1126,7 +1087,7 @@ sub process_virtual_drives
 				if ($creation_time)
 				{
 					$new_creation_date = $creation_date." ".$creation_time;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_creation_date", value1 => $new_creation_date,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1135,7 +1096,7 @@ sub process_virtual_drives
 			if ($variable eq "creation_time")
 			{
 				$creation_time = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "creation_date", value1 => $creation_date,
 					name2 => "creation_time", value2 => $creation_time,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1144,7 +1105,7 @@ sub process_virtual_drives
 				if ($creation_date)
 				{
 					$new_creation_date = $creation_date." ".$creation_time;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_creation_date", value1 => $new_creation_date,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1154,7 +1115,7 @@ sub process_virtual_drives
 			if ($variable eq "data_protection")
 			{
 				$new_data_protection = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_data_protection", value1 => $new_data_protection,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -1162,7 +1123,7 @@ sub process_virtual_drives
 			if ($variable eq "disk_cache_policy")
 			{
 				$new_disk_cache_policy = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_disk_cache_policy", value1 => $new_disk_cache_policy,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -1170,7 +1131,7 @@ sub process_virtual_drives
 			if ($variable eq "emulation_type")
 			{
 				$new_emulation_type = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_emulation_type", value1 => $new_emulation_type,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -1178,7 +1139,7 @@ sub process_virtual_drives
 			if ($variable eq "encryption")
 			{
 				$new_encryption = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_encryption", value1 => $new_encryption,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -1186,7 +1147,7 @@ sub process_virtual_drives
 			if ($variable eq "number_of_blocks")
 			{
 				$new_blocks = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_blocks", value1 => $new_blocks,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -1194,7 +1155,7 @@ sub process_virtual_drives
 			if ($variable eq "strip_size")
 			{
 				$new_strip_size = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_strip_size", value1 => $new_strip_size,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -1202,7 +1163,7 @@ sub process_virtual_drives
 			if ($variable eq "number_of_drives_per_span")
 			{
 				$new_drives_per_span = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_drives_per_span", value1 => $new_drives_per_span,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -1210,7 +1171,7 @@ sub process_virtual_drives
 			if ($variable eq "span_depth")
 			{
 				$new_span_depth = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_span_depth", value1 => $new_span_depth,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -1218,7 +1179,7 @@ sub process_virtual_drives
 			if ($variable eq "scsi_naa_id")
 			{
 				$new_scsi_naa_id = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_scsi_naa_id", value1 => $new_scsi_naa_id,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -1231,13 +1192,13 @@ sub process_virtual_drives
 		# Virtual Drive is NOT new, then variables from the old data will be deleted as we go and any 
 		# not found in the current data set will be left over. We'll use this to determine variables
 		# that have vanished. They will not be deleted, but their value will be set to 'VANISHED'.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "is_new", value1 => $is_new,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($is_new)
 		{
 			### NOTE: VD 9999 will be mostly NULL and that is fine
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 				name1  => "storcli_virtual_drive_uuid",      value1  => $storcli_virtual_drive_uuid,
 				name2  => "controller_uuid",                 value2  => $controller_uuid,
 				name3  => "storcli_virtual_drive_id_string", value3  => $storcli_virtual_drive_id_string,
@@ -1316,7 +1277,7 @@ INSERT INTO
 );";
 			# Now record the query in the array
 			$query =~ s/''/NULL/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -1324,14 +1285,14 @@ INSERT INTO
 			# Process the rest of the variables and temperatures now. 
 			foreach my $type ("variable", "temperature")
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type}})
 				{
 					my $value       = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type}{$variable};
 					my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "variable",    value1 => $variable,
 						name2 => "value",       value2 => $value,
 						name3 => "temperature", value3 => $temperature,
@@ -1376,7 +1337,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 					# Now record the query in the array
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -1401,7 +1362,7 @@ INSERT INTO
 			my $old_drives_per_span                 = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_drives_per_span};
 			my $old_span_depth                      = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_span_depth};
 			my $old_scsi_naa_id                     = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_scsi_naa_id};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0024", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0024", message_variables => {
 				name1  => "storcli_virtual_drive_id_string ...", value1  => $storcli_virtual_drive_id_string,
 				name2  => "old_storcli_virtual_drive_id_string", value2  => $old_storcli_virtual_drive_id_string,
 				name3  => "controller_uuid ...",                 value3  => $controller_uuid,
@@ -1444,7 +1405,7 @@ INSERT INTO
 				# I need the serial numbers for the controller UUIDs.
 				my $new_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid};
 				my $old_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "new_controller_serial_number", value1 => $new_controller_serial_number,
 					name2 => "old_controller_serial_number", value2 => $old_controller_serial_number,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1519,7 +1480,7 @@ WHERE
 ;";
 
 				# Now record the query in the array
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -1544,7 +1505,7 @@ WHERE
 						# Look for changes
 						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_value};
 						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 							name1 => "variable",           value1 => $variable,
 							name2 => "new_variable_value", value2 => $new_variable_value,
 							name3 => "old_variable_value", value3 => $old_variable_value,
@@ -1593,7 +1554,7 @@ WHERE
     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "query", value1 => $query
 							}, file => $THIS_FILE, line => __LINE__});
 							push @{$an->data->{sys}{sql}}, $query;
@@ -1642,7 +1603,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
@@ -1654,7 +1615,7 @@ INSERT INTO
 			# delete) this pass.
 			foreach my $type ("variable", "temperature")
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}})
@@ -1662,7 +1623,7 @@ INSERT INTO
 					# This variable has vanished
 					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_value};
 					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_virtual_drives'}{source_uuid}{$storcli_virtual_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_variable_value", value1 => $old_variable_value,
 						name2 => "variable_uuid",      value2 => $variable_uuid,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -1702,7 +1663,7 @@ WHERE
     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
 ;";
 					# Now record the query in the array
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -1732,7 +1693,7 @@ WHERE
 		my $controller_uuid                 = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_controller_uuid};
 		my $creation_date                   = $an->data->{sql}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_creation_date};
 		my $host_controller_serial_number   = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "storcli_virtual_drive_id_string", value1 => $storcli_virtual_drive_id_string,
 			name2 => "controller_uuid",                 value2 => $controller_uuid,
 			name3 => "creation_date",                   value3 => $creation_date,
@@ -1773,7 +1734,7 @@ WHERE
     storcli_virtual_drive_uuid          = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
 ;";
 		# Now record the query in the array
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$an->data->{sys}{sql}}, $query;
@@ -1785,6 +1746,183 @@ WHERE
 		# Process drive groups under this virtual drive. They'll likely have vanished, too.
 		process_drive_groups($an, $storcli_virtual_drive_id_string, $storcli_virtual_drive_uuid, $controller_uuid, $host_controller_serial_number);
 	}
+	
+	return(0);
+}
+
+# Look for added, changed or deleted physical drives.
+sub process_physical_disks
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_physical_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	foreach my $storcli_virtual_drive_id_string (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
+	{
+		my $virtual_drive = ($storcli_virtual_drive_id_string =~ /-vd(\d+)$/)[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "storcli_virtual_drive_id_string", value1 => $storcli_virtual_drive_id_string,
+			name2 => "virtual_drive",                   value2 => $virtual_drive,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "drive_group", value1 => $drive_group,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "enclosure_id", value1 => $enclosure_id,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "slot_number", value1 => $slot_number,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# This function is really just to help keep code clean and avoid massive indenting.
+					process_a_physical_disk($an, $storcli_virtual_drive_id_string, $drive_group, $enclosure_id, $slot_number);
+				}
+			}
+		}
+	}
+	
+	return(0);
+}
+
+### NOTE: I don't loop by drive serial number, like in the other process_X() functions, so this one is 
+###       designed a little different.
+# This does the work of processing a specific physical disk.
+sub process_a_physical_disk
+{
+	my ($an, $storcli_virtual_drive_id_string, $drive_group, $enclosure_id, $slot_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_a_physical_disk" }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "storcli_virtual_drive_id_string", value1 => $storcli_virtual_drive_id_string, 
+		name2 => "drive_group",                     value2 => $drive_group, 
+		name3 => "enclosure_id",                    value3 => $enclosure_id, 
+		name4 => "slot_number",                     value4 => $slot_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my ($vd_controller_serial_number, $virtual_drive) = ($storcli_virtual_drive_id_string =~ /^(.*?)-vd(\d+)$/);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "vd_controller_serial_number", value1 => $vd_controller_serial_number,
+		name2 => "virtual_drive",               value2 => $virtual_drive,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# I need the drive's serial number right off the bat.
+	my $storcli_physical_drive_serial_number = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{serial_number};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "storcli_physical_drive_serial_number", value1 => $storcli_physical_drive_serial_number,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure I have a controller serial number.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "virtual_drive::${storcli_virtual_drive_id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::on_controller", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller})
+	{
+		# Error!
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0012", message_variables => { serial_number => $storcli_physical_drive_serial_number }, code => 12, file => $THIS_FILE, line => __LINE__});
+		$an->nice_exit({exit_code => 12});
+	}
+	
+	my $host_controller_serial_number = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "host_controller_serial_number", value1 => $host_controller_serial_number,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Now make sure I can translate this to a UUID.
+	if (not $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number})
+	{
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
+		$an->nice_exit({exit_code => 8});
+	}
+	my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "controller_uuid", value1 => $controller_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Not gather the rest of the core table's values.
+	my $new_size                  = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size};
+	my $new_sector_size           = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size};
+	my $new_vendor                = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{manufacturer_identification};
+	my $new_model                 = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model};
+	my $new_self_encrypting_drive = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "new_size",                  value1 => $new_size,
+		name2 => "new_sector_size",           value2 => $new_sector_size,
+		name3 => "new_vendor",                value3 => $new_vendor,
+		name4 => "new_model",                 value4 => $new_model,
+		name5 => "new_self_encrypting_drive", value5 => $new_self_encrypting_drive,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Is this a new physical disk?
+	my $is_new                      = 0;
+	my $storcli_physical_drive_uuid = "";
+	if (exists $an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number})
+	{
+		# Yup!
+		$storcli_physical_drive_uuid = $an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli_physical_drive_uuid", value1 => $storcli_physical_drive_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		$is_new                      = 1;
+		$storcli_physical_drive_uuid = $an->Get->uuid();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "is_new",                      value1 => $is_new,
+			name2 => "storcli_physical_drive_uuid", value2 => $storcli_physical_drive_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number} = $storcli_physical_drive_uuid;
+		$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_serial_number;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "scan-storcli::physical_drives::by_serial::$storcli_physical_drive_serial_number", value1 => $an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number},
+			name2 => "scan-storcli::physical_drives::by_uuid::$storcli_physical_drive_uuid",            value2 => $an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	
+# 	storcli_physical_drive_size			numeric,					-- "drive_size" but also; "Raw size", "Non Coerced size" and "Coerced size"
+# 	storcli_physical_drive_sector_size		numeric,					-- "sector_size", "Sector Size"
+# 	storcli_physical_drive_vendor			text,						-- "Manufacturer Identification"
+# 	storcli_physical_drive_model			text,						-- "drive_model", "Model Number"
+# 	storcli_physical_drive_serial_number		text,						-- "Serial Number"
+# 	storcli_physical_drive_self_encrypting_drive	text,						-- "self_encrypting_drive", "SED Capable"
+# 	
+# 	$an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number} = $storcli_physical_drive_uuid;
+# 	$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_serial_number;
+# 	$an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid} = {
+# 		storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
+# 		storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
+# 		storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
+# 		storcli_physical_drive_vendor			=>	$storcli_physical_drive_vendor, 
+# 		storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
+# 		storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
+# 		storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
+# 	};
+	
+	### DEBUG
+# 	show_drive_controllers($an);
+# 	foreach my $type ("variable", "temperature")
+# 	{
+# 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+# 			name1 => "type", value1 => $type,
+# 		}, file => $THIS_FILE, line => __LINE__});
+# 		
+# 		$an->Log->aligned_entries({
+# 			log_level => 2, 
+# 			file      => $THIS_FILE,
+# 			line      => __LINE__,
+# 			prefix    => "VD $virtual_drive, DG $drive_group, EID $enclosure_id, Slot $slot_number - $type",
+# 			hash_ref  => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
+# 		});
+# 	}
+	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	return(0);
 }
@@ -6300,7 +6438,7 @@ sub get_physical_disk_data
 		name2 => "serial_number", value2 => $serial_number, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $virtual_drive     = 9999;
+	my $virtual_drive    = 9999;
 	my $drive_group      = 9999;
 	my $enclosure_id     = "";
 	my $slot_number      = "";
@@ -6326,6 +6464,48 @@ sub get_physical_disk_data
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		### TODO: Make sure we don't hit a case where we don't find the virtual drive ID string 
+		###       before we start recording data. If we do, we'll have to artificially create the ID
+		###       from the controller's serial number (which is pretty safe).
+		# If I am in the drive header, look for this drive's "Drive Group".
+		if (($in_drive_header) && ($line =~ /^$enclosure_id:$slot_number\s+\d+\s+.*?\s+(.*?)\s+/))
+		{
+			$drive_group = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "drive_group", value1 => $drive_group, 
+				name2 => "line",        value2 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($drive_group eq "-")
+			{
+				$drive_group = 9999 ;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "drive_group", value1 => $drive_group, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Find the virtual drive this drive is connected to, if any.
+			foreach my $this_virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_drive::${this_virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size", value1 => $an->data->{virtual_drive}{$this_virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($an->data->{virtual_drive}{$this_virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size})
+				{
+					# Found it.
+					$virtual_drive = $this_virtual_drive;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "virtual_drive", value1 => $virtual_drive, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "virtual_drive", value1 => $virtual_drive, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
 		
 		# See if I am entering or exiting a section.
 		if ($line =~ /Drive \/c$adapter\/e(\d+)\/s(\d+):/i)
@@ -6425,7 +6605,7 @@ sub get_physical_disk_data
 				next if not $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
 
 				my $value = $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -6441,14 +6621,14 @@ sub get_physical_disk_data
 					if ($sector_size)
 					{
 						$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = ($sectors * $sector_size);
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					else
 					{
 						$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable} = $size;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -6461,7 +6641,7 @@ sub get_physical_disk_data
 				name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::on_controller", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$virtual_drive     = 9999;
+			$virtual_drive    = 9999;
 			$drive_group      = 9999;
 			$enclosure_id     = "";
 			$slot_number      = "";
@@ -6470,57 +6650,8 @@ sub get_physical_disk_data
 			$start_break      = 0;
 			$sector_size      = 0;
 			$sector_variables = [];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-				name1 => "virtual_drive",    value1 => $virtual_drive, 
-				name2 => "drive_group",     value2 => $drive_group, 
-				name3 => "enclosure_id",    value3 => $enclosure_id, 
-				name4 => "slot_number",     value4 => $slot_number, 
-				name5 => "in_drive_header", value5 => $in_drive_header, 
-				name6 => "in_port_status",  value6 => $in_port_status, 
-				name7 => "start_break",     value7 => $start_break, 
-				name8 => "sector_size",     value8 => $sector_size, 
-			}, file => $THIS_FILE, line => __LINE__});
 		}
 		next if not $enclosure_id;
-		
-		# If I am in the drive header, look for this drive's "Drive Group".
-		if (($in_drive_header) && ($line =~ /^$enclosure_id:$slot_number\s+\d+\s+.*?\s+(.*?)\s+/))
-		{
-			$drive_group = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "drive_group", value1 => $drive_group, 
-				name2 => "line",        value2 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($drive_group eq "-")
-			{
-				$drive_group = 9999 ;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "drive_group", value1 => $drive_group, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			
-			# Find the virtual drive this drive is connected to, if any.
-			foreach my $this_virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_drive::${this_virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size", value1 => $an->data->{virtual_drive}{$this_virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if ($an->data->{virtual_drive}{$this_virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size})
-				{
-					# Found it.
-					$virtual_drive = $this_virtual_drive;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "virtual_drive", value1 => $virtual_drive, 
-					}, file => $THIS_FILE, line => __LINE__});
-					last;
-				}
-			}
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_drive", value1 => $virtual_drive, 
-			}, file => $THIS_FILE, line => __LINE__});
-			next;
-		}
 		
 		# If I am in the port status, parse the port info.
 		if (($in_port_status) && ($line =~ /^(\d+)\s+(.*?)\s+(\d.*?)Gb\/s\s+(0x.*)$/))
@@ -6756,6 +6887,46 @@ sub get_physical_disk_data
 		}
 	}
 	close $file_handle;
+	
+	return(0);
+}
+
+### TEMPORARY: Just used to debug where the controller serial numbers are being lost
+sub show_drive_controllers
+{
+	my ($an) = @_;
+	
+	foreach my $virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "virtual_drive", value1 => $virtual_drive, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "drive_group", value1 => $drive_group, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "enclosure_id", value1 => $enclosure_id, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "slot_number", value1 => $slot_number, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::on_controller", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+	}
 	
 	return(0);
 }

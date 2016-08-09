@@ -191,11 +191,12 @@ Other detected variables:
 		<key name="scan_storcli_error_0004">Requested data from controller: [#!variable!requested_controller!#] but got data from: [#!variable!this_controller!#]. Exiting.</key>
 		<key name="scan_storcli_error_0005">Requested data from adapter: [#!variable!adapter!#] but got an unexpected status. Expected 'Success', but got: [#!variable!status!#]. Exiting.</key>
 		<key name="scan_storcli_error_0006">Failed to find the serial number for the adapter: [#!variable!adapter!#]. Please check the output of '#!data!path::storcli64!# #!data!sys::arguments::controller_info!#' and look for the 'Serial Number = X' string. Exiting.</key>
-		<key name="scan_storcli_error_0007">The BBU with the serial number: [#!variable!serial_number!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
+		<key name="scan_storcli_error_0007">The battery backup unit (BBU) with the serial number: [#!variable!serial_number!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
 		<key name="scan_storcli_error_0008">The controller with serial number: [#!variable!serial_number!#] could not be converted to a controller UUID. This is probably a program error, sorry about that.</key>
 		<key name="scan_storcli_error_0009">The Cachevault (FBU) with the serial number: [#!variable!serial_number!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
-		<key name="scan_storcli_error_0010">The virtual drive with the ID string: [#!variable!id_string!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
-		<key name="scan_storcli_error_0011">The drive group with the ID string: [#!variable!id_string!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
+		<key name="scan_storcli_error_0010">The virtual drive (VD) with the ID string: [#!variable!id_string!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
+		<key name="scan_storcli_error_0011">The drive group (DG) with the ID string: [#!variable!id_string!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
+		<key name="scan_storcli_error_0012">The physical drive (PV) with the serial number: [#!variable!serial_number!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
 		
 		<!-- Storcli section names -->
 		<key name="scan_storcli_section_0001">Basic Information</key>
