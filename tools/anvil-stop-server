@@ -62,7 +62,7 @@ if (($an->data->{switches}{h})   or
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Log our startup
@@ -74,7 +74,7 @@ $an->Log->entry({log_level => 3, message_key => "assv_log_0001", message_variabl
 if (not $an->data->{switches}{server})
 {
 	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assv_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
-	exit(1);
+	$an->nice_exit({exit_code => 1});
 }
 
 # Connect to the databases.
@@ -106,10 +106,11 @@ if ($connections)
 else
 {
 	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "abs_error_0002", code => 2, file => "$THIS_FILE", line => __LINE__});
-	exit(2);
+	$an->nice_exit({exit_code => 2});
 }
 
-exit(0);
+$an->nice_exit({exit_code => 0});
+
 
 #############################################################################################################
 # Functions                                                                                                 #

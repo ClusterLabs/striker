@@ -229,7 +229,7 @@ if (gather_ups_data($an))
 {
 	# No UPSes found.
 	$an->Log->entry({log_level => 2, message_key => "scan_apc_ups_message_0003", file => $THIS_FILE, line => __LINE__});
-	nice_exit($an, 1);
+	$an->nice_exit({exit_code => 1});
 }
 
 # Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
@@ -245,7 +245,7 @@ find_changes($an);
 $an->DB->update_time({file => $THIS_FILE});
 
 # Clean up and go away.
-nice_exit($an);
+$an->nice_exit({exit_code => 0});
 
 #############################################################################################################
 # Functions                                                                                                 #
@@ -4929,22 +4929,6 @@ sub find_upses
 			name2 => "ip",       value2 => $ip, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-}
-
-### TODO: Make this a method
-# Nicely exits the program.
-sub nice_exit
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# Close database connections
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-	{
-		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
-	}
-	
-	exit(0);
 }
 
 # Print the usage information.

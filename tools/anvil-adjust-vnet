@@ -103,8 +103,8 @@ foreach my $server (sort {$a cmp $b} keys %{$an->data->{tools}{'hap-adjust-vnet'
 	}
 }
 
+$an->nice_exit({exit_code => 0});
 
-exit(0);
 
 # This sets the queue length on a given interface
 sub set_queue_length

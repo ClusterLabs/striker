@@ -75,7 +75,7 @@ if (($an->data->{switches}{h})   or
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Log our startup
@@ -119,10 +119,11 @@ if ($connections)
 else
 {
 	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "abs_error_0002", code => 2, file => "$THIS_FILE", line => __LINE__});
-	exit(2);
+	$an->nice_exit({exit_code => 2});
 }
 
-exit(0);
+$an->nice_exit({exit_code => 0});
+
 
 #############################################################################################################
 # Functions                                                                                                 #

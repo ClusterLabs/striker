@@ -70,12 +70,12 @@ if (($an->data->{switches}{h})   or
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 if (not $an->data->{switches}{server})
 {
 	print_usage($an);
-	exit(1);
+	$an->nice_exit({exit_code => 1});
 }
 
 # Can I connect to a database?
@@ -105,7 +105,8 @@ sanity_check_cluster($an);
 # Still alive? Migrate!
 migrate_server($an);
 
-exit(0);
+$an->nice_exit({exit_code => 0});
+
 
 #############################################################################################################
 # Functions                                                                                                 #
@@ -360,7 +361,7 @@ sub sanity_check_cluster
 		};
 		print $an->String->get({key => "ams_error_0001", variables => $variables})."\n";
 		$an->Log->entry({log_level => 0, message_key => "ams_error_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-		exit(2);
+		$an->nice_exit({exit_code => 2});
 	}
 	
 	# If the peer is down (or if I am down and failed to read the peer's state), abort.
@@ -372,14 +373,14 @@ sub sanity_check_cluster
 			# It's me, sorry 'bout that.
 			print $an->String->get({key => "ams_error_0002"})."\n";
 			$an->Log->entry({log_level => 0, message_key => "ams_error_0002", file => $THIS_FILE, line => __LINE__});
-			exit(3);
+			$an->nice_exit({exit_code => 3});
 		}
 		else
 		{
 			# It's not me, it's you.
 			print $an->String->get({key => "ams_error_0002"})."\n";
 			$an->Log->entry({log_level => 0, message_key => "ams_error_0002", file => $THIS_FILE, line => __LINE__});
-			exit(4);
+			$an->nice_exit({exit_code => 4});
 		}
 	}
 	
@@ -496,7 +497,7 @@ sub sanity_check_cluster
 			# We're out
 			print $an->String->get({key => "ams_error_0004", variables => $variables})."\n";
 			$an->Log->entry({log_level => 0, message_key => "ams_error_0004", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-			exit(5);
+			$an->nice_exit({exit_code => 5});
 		}
 		else
 		{

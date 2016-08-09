@@ -24,7 +24,7 @@ my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
-	        $running_directory =~ s/^\./$ENV{PWD}/;
+	$running_directory =~ s/^\./$ENV{PWD}/;
 }
 
 my $an = AN::Tools->new({data => {
@@ -78,7 +78,8 @@ $an->Log->entry({log_level => 3, message_key => "arm_log_0002", message_variable
 }, file => $THIS_FILE, line => __LINE__});
 print $an->data->{switches}{program}." = ".$an->data->{memory}{total}." # $hr_size\n";
 
-exit(0);
+$an->nice_exit({exit_code => 0});
+
 
 # This reads in smaps for each PID and sums the total 'Private_Dirty' memory used.
 sub read_smaps

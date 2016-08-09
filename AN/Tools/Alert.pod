@@ -944,6 +944,11 @@ The 'AN::Tools::Remote' module's 'remote_call()' method was asked to connecto to
 
 The 'AN::Tools::Striker' module's 'load_anvil()' method was called before ScanCore has run on both nodes. Please make sure that ScanCore is enabled and has run at least once.
 
+
+=head2 C<999>
+
+The 'AN::Tools' module exited without a defined exit code.
+
 =head1 SEE ALSO
 
 Other modules in the AN::Tools suite:

@@ -15,6 +15,7 @@ my $THIS_FILE = "DB.pm";
 
 ### Methods;
 # check_hostname
+# commit_sql
 # connect_to_databases
 # disconnect_from_databases
 # do_db_query
@@ -110,8 +111,8 @@ sub commit_sql
 	return($count);
 }
 
-# This will connect to the databases and record their database handles. It will also initialize the databases,
-# if needed.
+# This will connect to the databases and record their database handles. It will also initialize the 
+# databases, if needed.
 sub connect_to_databases
 {
 	my $self      = shift;
@@ -624,7 +625,7 @@ sub do_db_write
 			title	=>	$an->String->get({key => "tools_title_0003"}),
 			message	=>	$an->String->get({key => "error_title_0026"}),
 		}})."\n";
-		exit(1);
+		$an->nice_exit({exit_code => 1});
 	}
 	
 	# This array will hold either just the passed DB ID or all of them, if no ID was specified.
@@ -1155,7 +1156,7 @@ sub initialize_db
 			title		=>	$an->String->get({key => "tools_title_0003"}),
 			message		=>	$an->String->get({key => "error_message_0067"}),
 		}})."\n";
-		exit(67);
+		$an->nice_exit({exit_code => 67});
 	}
 	
 	# Tell the user we need to initialize
@@ -1238,7 +1239,7 @@ sub load_schema
 				message		=>	$an->String->get({key => "error_message_0062"}),
 			},
 		})."\n";
-		exit(62);
+		$an->nice_exit({exit_code => 62});
 	}
 	
 	# Do I have a file to load?
@@ -1252,7 +1253,7 @@ sub load_schema
 				message		=>	$an->String->get({key => "error_message_0063"}),
 			},
 		})."\n";
-		exit(63);
+		$an->nice_exit({exit_code => 63});
 	}
 	# Does the file exist?
 	if (not -e $file)
@@ -1265,7 +1266,7 @@ sub load_schema
 				message		=>	$an->String->get({key => "error_message_0064", variables => { file => $file }}),
 			},
 		})."\n";
-		exit(64);
+		$an->nice_exit({exit_code => 64});
 	}
 	# And can I read it?
 	if (not -r $file)
@@ -1278,7 +1279,7 @@ sub load_schema
 				message		=>	$an->String->get({key => "error_message_0065", variables => { file => $file }}),
 			},
 		})."\n";
-		exit(65);
+		$an->nice_exit({exit_code => 65});
 	}
 	
 	# Tell the user we're loading a schema

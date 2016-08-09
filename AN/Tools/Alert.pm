@@ -433,7 +433,7 @@ sub error
 		{
 			print "$error\n" if not $an->Alert->no_fatal_errors;
 		}
-		$an->Alert->_nice_exit($code);
+		$an->nice_exit({exit_code => $code});
 	}
 	
 	return ($code);
@@ -753,15 +753,6 @@ sub _error_string
 	my $self = shift;
 	my $an   = $self->parent;
 	return $an->Alert->{ERROR_STRING};
-}
-
-# This will handle cleanup prior to exit.
-sub _nice_exit
-{
-	my $self       = shift;
-	my $error_code = $_[0] ? shift : 1;
-	
-	exit ($error_code);
 }
 
 # This simply sets the error string method. Calling this method with an empty

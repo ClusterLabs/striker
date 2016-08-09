@@ -82,7 +82,7 @@ if (($an->data->{switches}{h})   or
 {
 	print_usage($an);
 	my $return_code = 0;
-	exit($return_code);
+	$an->nice_exit({exit_code => $return_code});
 }
 
 # Log our startup
@@ -97,7 +97,7 @@ if (($< != 0) && ($> != 0))
 	$an->Log->entry({log_level => 3, message_key => "smit_error_0001", file => $THIS_FILE, line => __LINE__});
 	my $return_code = 1;
 	print "rc:$return_code\n";
-	exit($return_code);
+	$an->nice_exit({exit_code => $return_code});
 }
 
 # First, see if shorewall is enabled. If it's not, then we only toggle dhcpd.
@@ -135,7 +135,7 @@ if (($an->data->{switches}{'state'}) or ($an->data->{switches}{status}))
 		print "state:2\n";
 	}
 	my $return_code = 0;
-	exit($return_code);
+	$an->nice_exit({exit_code => $return_code});
 }
 
 # Now, enable or disable as requested.
@@ -180,10 +180,11 @@ else
 	print_usage($an);
 	my $return_code = 2;
 	print "rc:$return_code\n";
-	exit($return_code);
+	$an->nice_exit({exit_code => $return_code});
 }
 
-exit(0);
+$an->nice_exit({exit_code => 0});
+
 
 #############################################################################################################
 # Functions                                                                                                 #
@@ -247,7 +248,7 @@ sub disable_install_target
 					# Exit
 					my $return_code = 9;
 					print "rc:$return_code\n";
-					exit($return_code);
+					$an->nice_exit({exit_code => $return_code});
 				}
 			}
 			else
@@ -267,7 +268,7 @@ sub disable_install_target
 				# Exit
 				my $return_code = 8;
 				print "rc:$return_code\n";
-				exit($return_code);
+				$an->nice_exit({exit_code => $return_code});
 				
 			}
 		}
@@ -287,7 +288,7 @@ sub disable_install_target
 		# Exit
 		my $return_code = 7;
 		print "rc:$return_code\n";
-		exit($return_code);
+		$an->nice_exit({exit_code => $return_code});
 	}
 	
 	return(0);
@@ -353,7 +354,7 @@ sub enable_install_target
 					# Exit
 					my $return_code = 6;
 					print "rc:$return_code\n";
-					exit($return_code);
+					$an->nice_exit({exit_code => $return_code});
 				}
 			}
 			else
@@ -373,7 +374,7 @@ sub enable_install_target
 				# Exit
 				my $return_code = 5;
 				print "rc:$return_code\n";
-				exit($return_code);
+				$an->nice_exit({exit_code => $return_code});
 			}
 		}
 		else
@@ -391,7 +392,7 @@ sub enable_install_target
 			# Exit
 			my $return_code = 4;
 			print "rc:$return_code\n";
-			exit($return_code);
+			$an->nice_exit({exit_code => $return_code});
 		}
 	}
 	else
@@ -416,7 +417,7 @@ sub enable_install_target
 			# Exit
 			my $return_code = 6;
 			print "rc:$return_code\n";
-			exit($return_code);
+			$an->nice_exit({exit_code => $return_code});
 		}
 	}
 	
@@ -552,7 +553,7 @@ sub set_daemon
 		# Local
 		my $return_code = 3;
 		print "rc:$return_code\n";
-		exit($return_code);
+		$an->nice_exit({exit_code => $return_code});
 	}
 	
 	my $shell_call  = $an->data->{path}{initd}."/$daemon $set; echo rc:\$?";
@@ -642,5 +643,5 @@ sub print_usage
 	
 	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");
 	
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }

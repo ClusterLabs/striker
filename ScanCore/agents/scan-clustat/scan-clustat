@@ -114,7 +114,7 @@ print $an->String->get({key => "scan_clustat_message_0001"})."\n";
 if (parse_clustat($an))
 {
 	# Clustat not found, exit.
-	nice_exit($an, 1);
+	$an->nice_exit({exit_code => 1});
 }
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
@@ -152,7 +152,7 @@ find_changes($an);
 $an->DB->update_time({file => $THIS_FILE});
 
 # Clean up and go away.
-nice_exit($an, 0);
+$an->nice_exit({exit_code => 0});
 
 #############################################################################################################
 # Functions                                                                                                 #
@@ -2676,23 +2676,6 @@ sub parse_clustat
 	}
 	
 	return($return_code);
-}
-
-### TODO: Make this a method
-# Nicely exits the program.
-sub nice_exit
-{
-	my ($an, $exit_code) = @_;
-	$exit_code = 99 if not defined $exit_code;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_directory", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__});
-	
-	# Close database connections
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-	{
-		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
-	}
-	
-	exit($exit_code);
 }
 
 # Print the usage information.

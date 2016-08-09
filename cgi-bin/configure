@@ -47,7 +47,8 @@ else
 	show_main_menu($an);
 }
 
-exit(0);
+$an->nice_exit({exit_code => 0});
+
 
 #############################################################################################################
 # Functions                                                                                                 #
@@ -6085,7 +6086,7 @@ sub initialize
 	if (not $an->data->{sys}{db_connections})
 	{
 		$an->Web->no_db_access();
-		exit(1);
+		$an->nice_exit({exit_code => 1});
 	}
 	
 	return($an);

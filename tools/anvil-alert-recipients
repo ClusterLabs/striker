@@ -155,7 +155,7 @@ foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
 					variable => $variable, 
 					value    => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
-				exit(1);
+				$an->nice_exit({exit_code => 1});
 			}
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
@@ -193,9 +193,7 @@ foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
 	}
 }
 
-
-
-exit(0);
+$an->nice_exit({exit_code => 0});
 
 # This translates a log level name into a string key
 sub get_log_level_key

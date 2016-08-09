@@ -172,7 +172,7 @@ if (($an->data->{switches}{h})   or
 {
 	# Help!
 	print_usage($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 if ($an->data->{switches}{enable})
@@ -184,7 +184,7 @@ if ($an->data->{switches}{enable})
 		# Tell the user that it was enabled.
 		print $an->String->get({key => "scancore_message_0005"})."\n";
 	}
-	exit($exit);
+	$an->nice_exit({exit_code => $exit});
 }
 elsif ($an->data->{switches}{disable})
 {
@@ -195,18 +195,18 @@ elsif ($an->data->{switches}{disable})
 		# Tell the user that it was disabled.
 		print $an->String->get({key => "scancore_message_0006"})."\n";
 	}
-	exit($exit);
+	$an->nice_exit({exit_code => $exit});
 }
 elsif (($an->data->{switches}{'state'}) or ($an->data->{switches}{status}))
 {
 	report_state($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 elsif ($an->data->{switches}{'clear-resync-flag'})
 {
 	$an->Log->entry({log_level => 1, message_key => "scancore_log_0093", file => $THIS_FILE, line => __LINE__});
 	clear_resync_flag($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 elsif ($an->data->{switches}{force})
 {
@@ -215,7 +215,7 @@ elsif ($an->data->{switches}{force})
 }
 
 # Has the user disabled ScanCore?
-exit(0) if not $an->data->{scancore}{enabled};
+$an->nice_exit({exit_code => 0}) if not $an->data->{scancore}{enabled};
 
 # Number 5 is Alive!
 #print $an->String->get({key => "scancore_message_0001"})."\n";
@@ -236,7 +236,7 @@ if (not $connections)
 	
 	# TODO: Send an email.
 	
-	exit(1);
+	$an->nice_exit({exit_code => 1});
 }
 
 # Should I live?
@@ -373,7 +373,7 @@ while(1)
 	if ($an->data->{sys}{'exit'})
 	{
 		$an->Alert->warning({message_key => "scancore_warning_0024", quiet => 1, file => $THIS_FILE, line => __LINE__});
-		exit(0);
+		$an->nice_exit({exit_code => 0});
 	}
 	
 	# Visual break in the log file
@@ -391,7 +391,7 @@ while(1)
 }
 
 # This should never be hit...
-nice_exit($an);
+$an->nice_exit({exit_code => 0});
 
 #############################################################################################################
 # Functions                                                                                                 #
@@ -408,7 +408,7 @@ sub clear_resync_flag
 	{
 		# Failed to connect to any database.
 		$an->Log->entry({log_level => 1, message_key => "scancore_log_0094", file => $THIS_FILE, line => __LINE__});
-		exit(1);
+		$an->nice_exit({exit_code => 1});
 	}
 
 	# Clear the update flag.
@@ -541,7 +541,7 @@ sub exit_if_one_shot
 			process_alerts($an, 0);
 			$an->DB->disconnect_from_databases();
 		}
-		exit(0);
+		$an->nice_exit({exit_code => 0});
 	}
 	
 	return(0);
@@ -570,7 +570,7 @@ sub exit_if_disabled
 			process_alerts($an, 0);
 			$an->DB->disconnect_from_databases();
 		}
-		exit(0);
+		$an->nice_exit({exit_code => 0});
 	}
 	
 	return(0);
@@ -1830,7 +1830,7 @@ WHERE
 			close $file_handle;
 			
 			# Why are we still alive? die already.
-			exit(255);
+			$an->nice_exit({exit_code => 999});
 		}
 		else
 		{
@@ -9486,19 +9486,6 @@ sub scan_directory
 	return(0);
 }
 
-# Nicely exits the program.
-sub nice_exit
-{
-	my ($an, $exit_code) = @_;
-	$exit_code = 99 if not defined $exit_code;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit" }, message_key => "an_variables_0001", message_variables => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__});
-	
-	# Close database connections
-	$an->DB->disconnect_from_databases();
-	
-	exit(0);
-}
-
 # This causes the script to exit if another instance is already running.
 sub avoid_duplicate_run
 {
@@ -9552,7 +9539,7 @@ sub avoid_duplicate_run
 		else
 		{
 			# Nothing to worry about yet, just exit.
-			exit(6);
+			$an->nice_exit({exit_code => 6});
 		}
 	}
 	
@@ -9647,7 +9634,7 @@ AND
 			}
 		}
 		
-		nice_exit($an, 6);
+		$an->nice_exit({exit_code => 6});
 	}
 	
 	return (0);

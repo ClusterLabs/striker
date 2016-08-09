@@ -2781,7 +2781,7 @@ sub parse_anvil_data
 		my $anvil_uuid       = $hash_ref->{anvil_uuid};
 		my $anvil_name       = $hash_ref->{anvil_name};
 		my $anvil_owner_uuid = $hash_ref->{anvil_owner_uuid};
-		my $anvil_smtp_uuid  = $hash_ref->{anvil_smtp_uuid};
+		my $anvil_smtp_uuid  = defined $hash_ref->{anvil_smtp_uuid} ? $hash_ref->{anvil_smtp_uuid} : "";
 		
 		if (($anvil_count == 1) && (not $an->data->{cgi}{anvil_uuid}))
 		{

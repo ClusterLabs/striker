@@ -143,7 +143,7 @@ else
 	print "output: [".$an->data->{sys}{token_file}."]\n";
 }
 
-exit(0);
+$an->nice_exit({exit_code => 0});
 
 #############################################################################################################
 # Functions                                                                                                 #
@@ -202,7 +202,7 @@ sub avoid_duplicate_entries
 		#	call	=>	$an->data->{switches}{call}, 
 		#	line	=>	$duplicate, 
 		#}, code => 1, file => "$THIS_FILE", line => __LINE__});
-		#exit(1);
+		#$an->nice_exit({exit_code => 1});
 	}
 
 	return(0);
@@ -245,7 +245,7 @@ sub run_call
 	# Record the exit code;
 	print "sdr-rc:$return_code\n";
 	
-	exit($return_code);
+	$an->nice_exit({exit_code => $return_code});
 }
 
 # This reads in the crontab file and deletes the entry with the matching token.
@@ -411,5 +411,5 @@ sub print_usage
 	
 	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");
 	
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }

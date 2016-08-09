@@ -36,7 +36,7 @@
 # 
 
 # Disable this for now.
-# exit(0);
+# $an->nice_exit({exit_code => 0});
 
 # Use my modules.
 use strict;
@@ -179,9 +179,7 @@ find_changes($an);
 
 
 # Clean up and go away.
-nice_exit($an);
-
-exit(0);
+$an->nice_exit({exit_code => 0});
 
 
 #############################################################################################################
@@ -287,12 +285,12 @@ sub process_drive_groups
 		{
 			# Error!
 			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0011", message_variables => { id_string => $storcli_virtual_drive_id_string }, code => 11, file => $THIS_FILE, line => __LINE__});
-			exit(11);
+			$an->nice_exit({exit_code => 11});
 		}
 		if (not $controller_uuid)
 		{
 			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
-			exit(8);
+			$an->nice_exit({exit_code => 8});
 		}
 		
 		### NOTE: This is here purely for debugging.
@@ -1038,12 +1036,12 @@ sub process_virtual_drives
 		{
 			# Error!
 			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0010", message_variables => { id_string => $storcli_virtual_drive_id_string }, code => 10, file => $THIS_FILE, line => __LINE__});
-			exit(10);
+			$an->nice_exit({exit_code => 10});
 		}
 		if (not $controller_uuid)
 		{
 			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
-			exit(8);
+			$an->nice_exit({exit_code => 8});
 		}
 		
 		### NOTE: This is here purely for debugging.
@@ -1840,7 +1838,7 @@ sub process_cachevaults
 		{
 			# Error!
 			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0009", message_variables => { serial_number => $cachevault_serial_number }, code => 9, file => $THIS_FILE, line => __LINE__});
-			exit(9);
+			$an->nice_exit({exit_code => 9});
 		}
 		my $host_controller_serial_number = $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{host_controller_serial_number};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1850,7 +1848,7 @@ sub process_cachevaults
 		if (not $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number})
 		{
 			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
-			exit(8);
+			$an->nice_exit({exit_code => 8});
 		}
 		my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -2480,7 +2478,7 @@ sub process_bbus
 		{
 			# Error!
 			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0007", message_variables => { serial_number => $bbu_serial_number }, code => 7, file => $THIS_FILE, line => __LINE__});
-			exit(7);
+			$an->nice_exit({exit_code => 7});
 		}
 		my $host_controller_serial_number = $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2490,7 +2488,7 @@ sub process_bbus
 		if (not $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number})
 		{
 			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
-			exit(8);
+			$an->nice_exit({exit_code => 8});
 		}
 		my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -8519,7 +8517,7 @@ sub get_controller_info
 	{
 		# Error out.
 		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0006", message_variables => { adapter => $adapter }, code => 6, file => $THIS_FILE, line => __LINE__});
-		exit(6);
+		$an->nice_exit({exit_code => 6});
 	}
 	
 	# Get the current alarm state.
@@ -8973,7 +8971,7 @@ sub find_lsi_controllers
 		$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0001", message_variables => {
 			path	=>	$an->data->{path}{storcli64},
 		}, file => $THIS_FILE, line => __LINE__});
-		nice_exit($an, 1);
+		$an->nice_exit({exit_code => 1});
 	}
 	
 	# Make sure it is executable
@@ -8983,7 +8981,7 @@ sub find_lsi_controllers
 		$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0002", message_variables => {
 			path	=>	$an->data->{path}{storcli64},
 		}, file => $THIS_FILE, line => __LINE__});
-		nice_exit($an, 2);
+		$an->nice_exit({exit_code => 2});
 	}
 	
 	# Still alive? Good! Look for controllers now.
@@ -9023,7 +9021,7 @@ sub find_lsi_controllers
 	{
 		print $an->String->get({key => "scan_storcli_error_0003", variables => { path => $an->data->{path}{storcli64} }})."\n";
 		$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0003", message_variables => { path => $an->data->{path}{storcli64} }, file => $THIS_FILE, line => __LINE__});
-		nice_exit($an, 3);
+		$an->nice_exit({exit_code => 3});
 	}
 	
 	return(0);
@@ -9189,22 +9187,6 @@ sub sort_and_prepare_data
 	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	return(0);
-}
-
-### TODO: Make this a method
-# Nicely exits the program.
-sub nice_exit
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# Close database connections
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-	{
-		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
-	}
-	
-	exit(0);
 }
 
 # Print the usage information.

@@ -64,13 +64,13 @@ if (($an->data->{switches}{h})   or
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Exit immediately if there is not job file.
 if (not -e $an->data->{path}{'anvil-jobs'})
 {
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Log our startup
@@ -92,7 +92,7 @@ else
 $an->Log->entry({log_level => 1, message_key => "arj_log_0002", message_variables => {
 	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
-exit(0);
+$an->nice_exit({exit_code => 0});
 
 
 #############################################################################################################

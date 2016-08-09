@@ -193,7 +193,7 @@ if (($an->data->{switches}{h})   or
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Log our startup
@@ -206,7 +206,7 @@ if (not -e $an->data->{path}{'virt-manager'})
 {
 	$an->Log->entry({log_level => 2, message_key => "scv_log_0003", file => $THIS_FILE, line => __LINE__});
 	print $an->String->get({key => "scv_log_0003"})."\n";
-	exit(3);
+	$an->nice_exit({exit_code => 3});
 }
 
 # Is the user asking to enable or disable this feature?
@@ -215,14 +215,14 @@ if ($an->data->{switches}{enable})
 	# Add ourself to GDM's PreSession script, if needed.
 	manage_gdm_presession($an, "add");
 	update_configuration($an, "enable");
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 elsif ($an->data->{switches}{disable})
 {
 	# Remove ourself to GDM's PreSession script, if needed.
 	manage_gdm_presession($an, "remove");
 	update_configuration($an, "disable");
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Can I connect to a database?
@@ -235,8 +235,7 @@ if (not $connections)
 	# Nope, warn the user.
 	print $an->String->get({key => "scv_warning_0003"})."\n";
 	$an->Log->entry({log_level => 1, message_key => "scv_warning_0003", file => $THIS_FILE, line => __LINE__});
-	
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Exit if virtual machine manager configuration is disabled in striker.conf.
@@ -260,7 +259,7 @@ else
 		manage_gdm_presession($an, "remove");
 		$an->Log->entry({log_level => 2, message_key => "scv_log_0004", file => $THIS_FILE, line => __LINE__});
 		print $an->String->get({key => "scv_log_0004"})."\n";
-		exit(1);
+		$an->nice_exit({exit_code => 1});
 	}
 }
 
@@ -271,7 +270,7 @@ if (not $local_user_count)
 {
 	# No users found, nothing to do.
 	$an->Log->entry({log_level => 3, message_key => "scv_log_0002", file => $THIS_FILE, line => __LINE__});
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Create the list of nodes to add to Virtual Machine Manager.
@@ -330,7 +329,8 @@ close $file_handle;
 
 print $an->String->get({key => "scv_message_0011"})."\n";
 
-exit(0);
+$an->nice_exit({exit_code => 0});
+
 
 #############################################################################################################
 # Functions                                                                                                 #

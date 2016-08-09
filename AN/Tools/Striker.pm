@@ -2986,7 +2986,7 @@ fi
 		print $an->Web->template({file => "server.html", template => "update-server-config-footer", replace => { url => "?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&server=".$an->data->{cgi}{server}."&task=manage_server" }});
 		
 		$an->Striker->_footer();
-		exit(0);
+		$an->nice_exit({exit_code => 0});
 	}
 	else
 	{
@@ -6713,7 +6713,7 @@ sub _error
 	print $an->Web->template({file => "common.html", template => "error-table", replace => { message => $message }});
 	$an->Striker->_footer() if $fatal;
 	
-	exit(1) if $fatal;
+	$an->nice_exit({exit_code => 1}) if $fatal;
 	return(1);
 }
 

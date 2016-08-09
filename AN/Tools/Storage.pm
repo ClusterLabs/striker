@@ -358,7 +358,7 @@ UUID=\$(".$an->data->{path}{cat}." ".$an->data->{path}{host_uuid}.")
 		$an->Log->entry({log_level => 0, message_key => "error_message_0061", file => $THIS_FILE, line => __LINE__});
 		
 		### TODO: Make this exit 69?
-		exit(7);
+		$an->nice_exit({exit_code => 7});
 	}
 	
 	# Set the system host_uuid if this is local
@@ -397,7 +397,7 @@ sub read_conf
 	{
 		foreach my $key (sort {$a cmp $b} keys %ENV) { print "ENV key: [$key]\t=\t[$ENV{$key}]\n"; }
 		foreach my $key (sort {$a cmp $b} keys %INC) { print "INC key: [$key]\t=\t[$INC{$key}]\n"; }
-		exit;
+		$an->nice_exit({exit_code => 0});
 	}
 	
 	# Now see if the user passed the values in a hash reference or directly.

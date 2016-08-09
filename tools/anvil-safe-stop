@@ -107,7 +107,7 @@ if (($an->data->{switches}{h})   or
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Exit if another instance is running already.
@@ -136,13 +136,12 @@ find_myself($an);
 process_request($an);
 
 # We're done.
-$an->Log->entry({log_level => 1, message_key => "asst_log_0006", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
-exit(0);
+$an->Log->entry({log_level => 1, message_key => "asst_log_0006", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+$an->nice_exit({exit_code => 0});
 
 ### TODO: Make this work without access to a DB. Check '$an->data->{sys}{read_db_id}' as needed and use local
 ###       checks or reads to the peer as needed.
+
 
 #############################################################################################################
 # Functions                                                                                                 #
@@ -190,7 +189,7 @@ sub shed_load
 		# We're done.
 		print $an->String->get({key => "assp_message_0005"})."\n";
 		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0002", message_variables => { peer => $an->data->{sys}{peer_node} }, code => 3, file => "$THIS_FILE", line => __LINE__});
-		exit(3);
+		$an->nice_exit({exit_code => 3});
 	}
 	
 	# Wait if we're node 2
@@ -276,7 +275,7 @@ sub shed_load
 		if (($i_am_synctarget) && ($peer_is_synctarget))
 		{
 			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0003", code => 4, file => "$THIS_FILE", line => __LINE__});
-			exit(4);
+			$an->nice_exit({exit_code => 4});
 		}
 		
 		# By default, we'll shutdown node 2, unless the peer is a sync target.
@@ -731,14 +730,14 @@ sub local_shut_down
 			if (($i_am_synctarget) && ($peer_is_synctarget))
 			{
 				$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0003", code => 4, file => "$THIS_FILE", line => __LINE__});
-				exit(4);
+				$an->nice_exit({exit_code => 4});
 			}
 			
 			# If we're sync target (or the peer is diskless), abort.
 			if ($i_am_synctarget)
 			{
 				$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0004", code => 5, file => "$THIS_FILE", line => __LINE__});
-				exit(5);
+				$an->nice_exit({exit_code => 5});
 			}
 			
 			# If we're still alive, the last thing to check is whether the peer is 'critical' or
@@ -979,7 +978,7 @@ sub process_request
 		# Bad request
 		print_usage($an);
 		print $an->String->get({key => "assp_error_0001"})."\n";
-		exit(2);
+		$an->nice_exit({exit_code => 2});
 	}
 	
 	return(0);
@@ -1076,7 +1075,7 @@ sub avoid_duplicate_run
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($count)
 	{
-		exit(1);
+		$an->nice_exit({exit_code => 1});
 	}
 	
 	return(0);

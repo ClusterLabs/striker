@@ -204,7 +204,7 @@ sub new
 	if (not -e $an->{DEFAULT}{STRINGS})
 	{
 		print "Failed to read the core words file: [".$an->{DEFAULT}{STRINGS}."]\n";
-		exit(255);
+		$an->nice_exit({exit_code => 255});
 	}
 	$an->Storage->read_words({file => $an->{DEFAULT}{STRINGS}});
 
@@ -526,16 +526,16 @@ sub System
 sub nice_exit
 {
 	my $self      = shift;
-	my $exit_code = defined $_[0] ? shift : 99;
+	my $parameter = shift;
+	my $an        = $self;
 	
-	my $an = $self;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => "$exit_code"}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
-	$exit_code = 99 if not $exit_code;
+	my $exit_code = defined $parameter->{exit_code} ? $parameter->{exit_code} : 999;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => $exit_code}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
 	
 	# Close database connections
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		$an->data->{dbh}{$id}->disconnect;
+		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
 	}
 	
 	exit($exit_code);

@@ -28,7 +28,7 @@ my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
-	        $running_directory =~ s/^\./$ENV{PWD}/;
+	$running_directory =~ s/^\./$ENV{PWD}/;
 }
 
 my $an = AN::Tools->new({data => {
@@ -163,7 +163,8 @@ print $an->String->get({key => "smd_message_0023"})."\n";
 ### ToDo:
 # merge_ssh_config($an);    <- Complicated, analyze files
 
-exit(0);
+$an->nice_exit({exit_code => 0});
+
 
 #############################################################################################################
 # Functions                                                                                                 #

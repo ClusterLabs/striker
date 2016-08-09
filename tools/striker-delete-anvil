@@ -74,7 +74,7 @@ if (($an->data->{switches}{h})   or
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # We'll be backing up files, so prep a time stamp.
@@ -167,7 +167,8 @@ if ((-e $an->data->{path}{'virt-manager'}) && ($an->data->{tools}{'striker-confi
 # Now delete the Anvil! from striker.conf.
 write_new_striker_conf($an);
 
-exit(0);
+$an->nice_exit({exit_code => 0});
+
 
 #############################################################################################################
 # Functions                                                                                                 #

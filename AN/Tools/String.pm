@@ -143,7 +143,7 @@ sub get
 		print "<pre>\n";
 		print Dumper $hash."\n";
 		print "</pre>\n";
-		exit(17);
+		$an->nice_exit({exit_code => 17});
 	}
 	
 	# Make sure that the request key is in the language hash.
@@ -549,7 +549,8 @@ sub _restore_protected
 			print "----------\n";
 			print "$parameter->{string}\n";
 			print "----------\n";
-			die "exiting.\n";
+			print "exiting.\n";
+			$an->nice_exit({exit_code => 999});
 		}
 		$i++;
 	}

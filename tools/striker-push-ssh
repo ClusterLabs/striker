@@ -66,7 +66,7 @@ if (($an->data->{switches}{h})   or
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Log our startup
@@ -77,7 +77,7 @@ if (not $an->data->{tools}{'striker-push-ssh'}{enabled})
 {
 	$an->Log->entry({log_level => 2, message_key => "sps_log_0013", file => $THIS_FILE, line => __LINE__});
 	print $an->String->get({key => "sps_log_0013"})."\n";
-	exit(1);
+	$an->nice_exit({exit_code => 1});
 }
 
 # Can I connect to a database?
@@ -90,8 +90,7 @@ if (not $connections)
 	# Nope, warn the user.
 	print $an->String->get({key => "scv_warning_0003"})."\n";
 	$an->Log->entry({log_level => 1, message_key => "scv_warning_0003", file => $THIS_FILE, line => __LINE__});
-	
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Now determine what local users exist.
@@ -101,7 +100,7 @@ if (not $local_user_count)
 {
 	# No users found, nothing to do.
 	$an->Log->entry({log_level => 2, message_key => "sps_log_0004", file => $THIS_FILE, line => __LINE__});
-	exit(0);
+	$an->nice_exit({exit_code => 0});
 }
 
 # Find the login details
@@ -137,7 +136,8 @@ foreach my $anvil_uuid (keys %{$an->data->{anvils}})
 	}
 }
 
-exit(0);
+$an->nice_exit({exit_code => 0});
+
 
 #############################################################################################################
 # Functions                                                                                                 #
