@@ -73,6 +73,31 @@ Other detected variables:
 
 Other detected variables:
 </key>
+		<key name="scan_storcli_note_0006">A new Physical Drive, connected to a Broadcom (AVAGO/LSI) Storage controller, has been found.
+- On Controller: ....... [#!variable!on_controller!#]
+- Virtual Drive: ....... [#!variable!virtual_drive!#]
+- Drive Group: ......... [#!variable!drive_group!#]
+- Vendor: .............. [#!variable!vendor!#]
+- Model: ............... [#!variable!model!#]
+- Serial Number: ....... [#!variable!serial_number!#]
+- Capacity: ............ [#!variable!size!#]
+- Sector Size: ......... [#!variable!sector_size!#]
+- Self-Encrypting Drive? [#!variable!self_encrypting_drive!#]
+
+Other detected variables:
+</key>
+		<key name="scan_storcli_note_0007">A new Broadcom (AVAGO/LSI) Storage controller Cachevault (FBU) has been found.
+- On Controller: .... [#!variable!on_controller!#]
+- Model: ............ [#!variable!model!#]
+- Serial Number: .... [#!variable!serial_number!#]
+- Type: ............. [#!variable!type!#]
+- State: ............ [#!variable!state!#]
+- Design Capacity: .. [#!variable!design_capacity!#]
+- Manufacture Date: . [#!variable!manufacture_date!#]
+- Replacement Needed? [#!variable!replacement_needed!#]
+
+Other detected variables:
+</key>
 		
 		<!-- Warnings -->
 		<key name="scan_storcli_warning_0001">While processing data from adapter: [#!variable!adapter!#], which has the serial number: [#!variable!serial_number!#], the drive in virtual drive: [#!variable!virtual_disk!#] in the enclosure: [#!variable!enclosure_id!#] at slot number: [#!variable!slot_number!#] in span: [#!variable!span!#] at row: [#!variable!row!#] initially was found in drive group: [#!variable!old_drive_group!#] but the variable 'Drive position' reports it as being in drive group: [#!variable!new_drive_group!#]. This might be a program error in parsing the output of: [#!variable!shell_call!#]. Please report this error along with the output of that shell call so that we can improve this scan agent.</key>
@@ -183,6 +208,58 @@ Other detected variables:
 		<key name="scan_storcli_warning_0026">- The Drive Group: [#!variable!id_string!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0027">- The Drive Group: [#!variable!id_string!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0028">- The Drive Group: [#!variable!id_string!#]: '#!variable!name!#' has vanished!</key>
+		<key name="scan_storcli_warning_0029">The Physical Drive (PD) properties have changed:
+- On Controller: ....... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
+- Virtual Drive: ....... [#!variable!old_virtual_drive!#] -> [#!variable!new_virtual_drive!#]
+- Drive Group: ......... [#!variable!old_drive_group!#] -> [#!variable!new_drive_group!#]
+- Vendor: .............. [#!variable!old_vendor!#] -> [#!variable!new_vendor!#]
+- Model: ............... [#!variable!old_model!#] -> [#!variable!new_model!#]
+- Serial Number: ....... [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+- Capacity: ............ [#!variable!old_size!#] -> [#!variable!new_size!#]
+- Sector Size: ......... [#!variable!old_sector_size!#] -> [#!variable!new_sector_size!#]
+- Self-Encrypting Drive? [#!variable!old_self_encrypting_drive!#] -> [#!variable!new_self_encrypting_drive!#]
+</key>
+		<key name="scan_storcli_warning_0030">The Physical Drive (PD) has returned:
+- On Controller: ....... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
+- Virtual Drive: ....... [#!variable!old_virtual_drive!#] -> [#!variable!new_virtual_drive!#]
+- Drive Group: ......... [#!variable!old_drive_group!#] -> [#!variable!new_drive_group!#]
+- Vendor: .............. [#!variable!old_vendor!#] -> [#!variable!new_vendor!#]
+- Model: ............... [#!variable!old_model!#] -> [#!variable!new_model!#]
+- Serial Number: ....... [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+- Capacity: ............ [#!variable!old_size!#] -> [#!variable!new_size!#]
+- Sector Size: ......... [#!variable!old_sector_size!#] -> [#!variable!new_sector_size!#]
+- Self-Encrypting Drive? [#!variable!old_self_encrypting_drive!#] -> [#!variable!new_self_encrypting_drive!#]
+</key>
+		<key name="scan_storcli_warning_0031">- The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0032">- The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0033">- A new variable was found on the Physical Drive (PD): [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0034">- Physical Drive: [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
+		<key name="scan_storcli_warning_0035">- The Physical Drive: [#!variable!physical_disk_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0036">The RAID controller's Cachevault (FBU) properties have changed:
+- On Controller: .... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
+- Model: ............ [#!variable!old_model!#] -> [#!variable!new_model!#]
+- Serial Number: .... [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+- Type: ............. [#!variable!old_type!#] -> [#!variable!new_type!#]
+- State: ............ [#!variable!old_state!#] -> [#!variable!new_state!#]
+- Design Capacity: .. [#!variable!old_design_capacity!#] -> [#!variable!new_design_capacity!#]
+- Manufacture Date: . [#!variable!old_manufacture_date!#] -> [#!variable!new_manufacture_date!#] (yyyy/mm/dd)
+- Replacement Needed? [#!variable!old_replacement_needed!#] -> [#!variable!new_replacement_needed!#]
+</key>
+		<key name="scan_storcli_warning_0037">The RAID controller's Cachevault (FBU) has returned:
+- On Controller: .... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
+- Model: ............ [#!variable!old_model!#] -> [#!variable!new_model!#]
+- Serial Number: .... [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+- Type: ............. [#!variable!old_type!#] -> [#!variable!new_type!#]
+- State: ............ [#!variable!old_state!#] -> [#!variable!new_state!#]
+- Design Capacity: .. [#!variable!old_design_capacity!#] -> [#!variable!new_design_capacity!#]
+- Manufacture Date: . [#!variable!old_manufacture_date!#] -> [#!variable!new_manufacture_date!#] (yyyy/mm/dd)
+- Replacement Needed? [#!variable!old_replacement_needed!#] -> [#!variable!new_replacement_needed!#]
+</key>
+		<key name="scan_storcli_warning_0038">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0039">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0040">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
+		<key name="scan_storcli_warning_0041">- A new variable was found on the Cachevault (FBU): [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0042">- The Cachevault (FBU): [#!variable!cachevault_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		
 		<!-- Errors -->
 		<key name="scan_storcli_error_0001">The 'storcli64' program was not found at: [#!variable!path!#], exiting.</key>

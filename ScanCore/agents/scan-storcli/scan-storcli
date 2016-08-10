@@ -1754,7 +1754,7 @@ WHERE
 sub process_physical_disks
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_physical_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_physical_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $storcli_virtual_drive_id_string (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
 	{
@@ -1788,6 +1788,66 @@ sub process_physical_disks
 			}
 		}
 	}
+	
+	# See if any Physical Disks have vanished.
+	foreach my $storcli_physical_drive_uuid (keys %{$an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}})
+	{
+		# Physical Disk vanished!
+		die "$THIS_FILE ".__LINE__."; sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_disk_model is not defined!\n" if not defined $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_disk_model};
+		
+		my $old_physical_disk_serial_number = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_disk_serial_number};
+		my $old_controller_uuid             = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_disk_controller_uuid};
+		my $old_model                       = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_disk_model};
+		my $old_controller_serial_number    = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "old_physical_disk_serial_number", value1 => $old_physical_disk_serial_number,
+			name2 => "old_controller_uuid",          value2 => $old_controller_uuid,
+			name3 => "old_model",                    value3 => $old_model,
+			name4 => "old_controller_serial_number", value4 => $old_controller_serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Delete it so that we know it has been processed.
+		delete $an->data->{sql}{storcli_physical_disks}{storcli_physical_disk_uuid}{$storcli_physical_drive_uuid};
+		
+		# If the old alarm state is already 'VANISHED', ignore it.
+		next if $old_model eq "VANISHED";
+		
+		# Still here? Alert and UPDATE.
+		### NOTE: For now, we're going to use warning level because controllers should never vanish
+		###       unless one failed. If that is the case, the admin already knows, but this will let
+		###       other notification targets know that the change has happened.
+		$an->data->{sys}{alert_sort}++; 
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_sort		=>	$an->data->{sys}{alert_sort},
+			alert_header		=>	"TRUE",
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scan_storcli_warning_0016",
+			alert_message_variables	=>	{
+				physical_disk_serial_number =>	$old_physical_disk_serial_number, 
+				controller_serial_number =>	$old_controller_serial_number, 
+			},
+		});
+		
+		my $query = "
+UPDATE 
+    storcli_physical_disks
+SET 
+    storcli_physical_disk_model = 'VANISHED', 
+    modified_date               = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_physical_disk_uuid  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid)." 
+;";
+		# Now record the query in the array
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+	}
+	
+	# Now commit the changes.
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -1886,25 +1946,457 @@ sub process_a_physical_disk
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	# Pull out the rest of the variables now. If the physical disk is new, all variables will be 
+	# INSERTed. If the physical drive exists, each variable will be examined and new ones will be 
+	# INSERTed, existing ones will be checked for changes and UPDATEd as needed. If the physical disk is
+	# NOT new, then variables from the old data will be deleted as we go and any not found in the current
+	# data set will be left over. We'll use this to determine variables that have vanished. They will not
+	# be deleted, but their value will be set to 'VANISHED'.
+	if ($is_new)
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			name1  => "storcli_physical_drive_serial_number", value1  => $storcli_physical_drive_serial_number,
+			name2  => "storcli_physical_drive_uuid",          value2  => $storcli_physical_drive_uuid,
+			name3  => "host_controller_serial_number",        value3  => $host_controller_serial_number,
+			name4  => "virtual_drive",                        value4  => $virtual_drive,
+			name5  => "drive_group",                          value5  => $drive_group,
+			name6  => "controller_uuid",                      value6  => $controller_uuid,
+			name7  => "new_size",                             value7  => $new_size,
+			name8  => "new_sector_size",                      value8  => $new_sector_size,
+			name9  => "new_vendor",                           value9  => $new_vendor,
+			name10 => "new_model",                            value10 => $new_model,
+			name11 => "new_self_encrypting_drive",            value11 => $new_self_encrypting_drive,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
+		# Send an alert telling the user that we've found a new controller.
+		$an->Alert->register_alert({
+			alert_level		=>	"notice", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_sort		=>	$an->data->{sys}{alert_sort},	
+			alert_title_key		=>	"an_alert_title_0003",
+			alert_message_key	=>	"scan_storcli_note_0006",
+			alert_message_variables	=>	{
+				on_controller		=>	$host_controller_serial_number,
+				virtual_drive		=>	$virtual_drive,
+				drive_group		=>	$drive_group,
+				serial_number		=>	$storcli_physical_drive_serial_number,
+				size			=>	$new_size,
+				sector_size		=>	$new_sector_size,
+				vendor			=>	$new_vendor,
+				model			=>	$new_model,
+				self_encrypting_drive	=>	$new_self_encrypting_drive,
+			},
+		});
+		
+		# INSERT
+		my $query = "
+INSERT INTO 
+    storcli_physical_drives
+(
+    storcli_physical_drive_uuid, 
+    storcli_physical_drive_host_uuid, 
+    storcli_physical_drive_controller_uuid, 
+    storcli_physical_drive_virtual_drive, 
+    storcli_physical_drive_drive_group, 
+    storcli_physical_drive_serial_number, 
+    storcli_physical_drive_size, 
+    storcli_physical_drive_sector_size, 
+    storcli_physical_drive_vendor, 
+    storcli_physical_drive_model, 
+    storcli_physical_drive_self_encrypting_drive, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($virtual_drive).", 
+    ".$an->data->{sys}{use_db_fh}->quote($drive_group).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_sector_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_vendor).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_self_encrypting_drive).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+		# Now record the query in the array
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+
+		# Process the rest of the variables and temperatures now. 
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "type", value1 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}})
+			{
+				my $value       = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable};
+				my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "variable",    value1 => $variable,
+					name2 => "value",       value2 => $value,
+					name3 => "temperature", value3 => $temperature,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Send an alert telling the user that we've found a new controller.
+				$an->data->{sys}{alert_sort}++; 
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_sort		=>	$an->data->{sys}{alert_sort},
+					alert_header		=>	'FALSE',
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_storcli_note_0002",
+					alert_message_variables	=>	{
+						name			=>	$variable,
+						value			=>	$value,
+					},
+				});
+				
+				# INSERT
+				my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_physical_drives', 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+				# Now record the query in the array
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+		}
+	}
+	else
+	{
+		### NOTE: The serial number should never change, but we check/update just to be safe.
+		# Look for changes.
+		my $main_table_changed               = 0;
+		my $old_controller_uuid              = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid};
+		my $old_virtual_drive                = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_virtual_drive};
+		my $old_drive_group                  = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_drive_group};
+		my $old_physical_drive_serial_number = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number};
+		my $old_size                         = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size};
+		my $old_sector_size                  = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size};
+		my $old_vendor                       = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
+		my $old_model                        = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
+		my $old_self_encrypting_drive        = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0018", message_variables => {
+			name1  => "storcli_physical_drive_serial_number", value1  => $storcli_physical_drive_serial_number,
+			name2  => "old_physical_drive_serial_number",     value2  => $old_physical_drive_serial_number,
+			name3  => "controller_uuid",                      value3  => $controller_uuid,
+			name4  => "old_controller_uuid",                  value4  => $old_controller_uuid,
+			name5  => "virtual_drive",                        value5  => $virtual_drive,
+			name6  => "old_virtual_drive",                    value6  => $old_virtual_drive,
+			name7  => "drive_group",                          value7  => $drive_group,
+			name8  => "old_drive_group",                      value8  => $old_drive_group,
+			name9  => "new_size",                             value9  => $new_size,
+			name10 => "old_size",                             value10 => $old_size,
+			name11 => "new_sector_size",                      value11 => $new_sector_size,
+			name12 => "old_sector_size",                      value12 => $old_sector_size,
+			name13 => "new_vendor",                           value13 => $new_vendor,
+			name14 => "old_vendor",                           value14 => $old_vendor,
+			name15 => "new_model",                            value15 => $new_model,
+			name16 => "old_model",                            value16 => $old_model,
+			name17 => "new_self_encrypting_drive",            value17 => $new_self_encrypting_drive,
+			name18 => "old_self_encrypting_drive",            value18 => $old_self_encrypting_drive,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (($storcli_physical_drive_serial_number ne $old_physical_drive_serial_number) or 
+		    ($controller_uuid                      ne $old_controller_uuid)              or 
+		    ($virtual_drive                        ne $old_virtual_drive)                or 
+		    ($drive_group                          ne $old_drive_group)                  or 
+		    ($new_size                             ne $old_size)                         or 
+		    ($new_sector_size                      ne $old_sector_size)                  or 
+		    ($new_vendor                           ne $old_vendor)                       or 
+		    ($new_model                            ne $old_model)                        or 
+		    ($new_self_encrypting_drive            ne $old_self_encrypting_drive))
+		{
+			# I'll need the old controller's serial number.
+			my $old_host_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name2 => "old_host_controller_serial_number", value2 => $old_host_controller_serial_number,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Send a warning level alert because these really should never change.
+			my $title_key   = "an_alert_title_0004";
+			my $message_key = "scan_storcli_warning_0029";
+			if ($new_model ne $old_model)
+			{
+				if ($old_model eq "VANISHED")
+				{
+					# Cachevault has returned.
+					$message_key = "scan_storcli_warning_0030";
+				}
+			}
+			$an->data->{sys}{alert_sort}++; 
+			$an->Alert->register_alert({
+				alert_level		=>	"warning", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_sort		=>	$an->data->{sys}{alert_sort},
+				alert_header		=>	'FALSE',
+				alert_title_key		=>	$title_key,
+				alert_message_key	=>	$message_key,
+				alert_message_variables	=>	{
+					new_on_controller	=>	$host_controller_serial_number,
+					old_on_controller	=>	$old_host_controller_serial_number,
+					new_virtual_drive	=>	$virtual_drive,
+					old_virtual_drive	=>	$old_virtual_drive,
+					new_drive_group		=>	$drive_group,
+					old_drive_group		=>	$old_drive_group,
+					new_serial_number	=>	$storcli_physical_drive_serial_number,
+					old_serial_number	=>	$old_physical_drive_serial_number,
+					new_vendor		=>	$new_vendor,
+					old_vendor		=>	$old_vendor,
+					new_model		=>	$new_model,
+					old_model		=>	$old_model,
+					new_size		=>	$new_size,
+					old_size		=>	$old_size,
+					new_sector_size		=>	$new_sector_size,
+					old_sector_size		=>	$old_sector_size,
+					new_self_encrypting_drive =>	$new_self_encrypting_drive,
+					old_self_encrypting_drive =>	$old_self_encrypting_drive,
+				},
+			});
+			$main_table_changed = 1;
+			
+			my $query = "
+UPDATE 
+    public.storcli_physical_drives
+SET
+    storcli_physical_drive_controller_uuid       = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
+    storcli_physical_drive_virtual_drive         = ".$an->data->{sys}{use_db_fh}->quote($virtual_drive).", 
+    storcli_physical_drive_drive_group           = ".$an->data->{sys}{use_db_fh}->quote($drive_group).", 
+    storcli_physical_drive_serial_number         = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
+    storcli_physical_drive_size                  = ".$an->data->{sys}{use_db_fh}->quote($new_size).", 
+    storcli_physical_drive_sector_size           = ".$an->data->{sys}{use_db_fh}->quote($new_sector_size).", 
+    storcli_physical_drive_vendor                = ".$an->data->{sys}{use_db_fh}->quote($new_vendor).", 
+    storcli_physical_drive_model                 = ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
+    storcli_physical_drive_serial_number         = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
+    storcli_physical_drive_self_encrypting_drive = ".$an->data->{sys}{use_db_fh}->quote($new_self_encrypting_drive).", 
+    modified_date                                = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_physical_drive_uuid                  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid)." 
+;";
+
+			# Now record the query in the array
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+		}
+		
+		### Process the rest of the variables now. 
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "type", value1 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}})
+			{
+				my $new_variable_value = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable};
+				my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable",    value1 => $variable,
+					name2 => "temperature", value2 => $temperature,
+				}, file => $THIS_FILE, line => __LINE__});
+				if (exists $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_uuid})
+				{
+					# Look for changes
+					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_value};
+					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+						name1 => "variable",           value1 => $variable,
+						name2 => "new_variable_value", value2 => $new_variable_value,
+						name3 => "old_variable_value", value3 => $old_variable_value,
+						name4 => "variable_uuid",      value4 => $variable_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Delete it so that we know it has been processed.
+					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable};
+					
+					if (($new_variable_value ne $old_variable_value))
+					{
+						# Changed! If the old value was 'VANISHED', then a 
+						# sensor or variable returned. Otherwise, for now, we
+						# treat everything as 'warning' and step down 
+						# explicitely anything not of concern that proves 
+						# noisey later (better safe than sorry).
+						$an->data->{sys}{alert_sort}++; 
+						
+						my $message_key = "scan_storcli_warning_0031";
+						if ($old_variable_value eq "VANISHED")
+						{
+							$message_key = "scan_storcli_warning_0032";
+						}
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_sort		=>	$an->data->{sys}{alert_sort},
+							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_message_key	=>	$message_key,
+							alert_message_variables	=>	{
+								serial_number		=>	$storcli_physical_drive_serial_number,
+								name			=>	$variable,
+								old_value		=>	$old_variable_value,
+								new_value		=>	$new_variable_value,
+							},
+						});
+						
+						my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{sys}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# New variable, record it. This is a 'warning' level as 
+					# variables aren't expected to spawn into existence.
+					$an->data->{sys}{alert_sort}++; 
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_sort		=>	$an->data->{sys}{alert_sort},
+						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_storcli_warning_0033",
+						alert_message_variables	=>	{
+							serial_number		=>	$variable,
+							name			=>	$variable,
+							value			=>	$new_variable_value,
+						},
+					});
+					
+					# INSERT
+					my $query = "
+INSERT INTO 
+    storcli_variables
+(
+    storcli_variable_uuid, 
+    storcli_variable_host_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_is_temperature, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    'storcli_physical_drives', 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
+			}
+		}
+		
+		# Now look for any variables left from the previous scan that we didn't match up (and delete)
+		# this pass.
+		foreach my $type ("variable", "temperature")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "type", value1 => $type,
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}})
+			{
+				# This variable has vanished
+				my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_value};
+				my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "old_variable_value", value1 => $old_variable_value,
+					name2 => "variable_uuid",      value2 => $variable_uuid,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Delete it so that we know it has been processed.
+				delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable};
+				
+				# If the old value is already 'VANISHED', ignore it.
+				next if $old_variable_value eq "VANISHED";
+				
+				### NOTE: For now, we're going to use warning level because variables
+				###       shouldn't vanish, but under an-cm, it did happen for 
+				###       reasons that we never figured out. So later, we may drop 
+				###       the alert level in some cases.
+				# Still here? Alert and UPDATE.
+				$an->data->{sys}{alert_sort}++; 
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_sort		=>	$an->data->{sys}{alert_sort},
+					alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+					alert_title_key		=>	"an_alert_title_0004",
+					alert_message_key	=>	"scan_storcli_warning_0034",
+					alert_message_variables	=>	{
+						serial_number		=>	$storcli_physical_drive_serial_number,
+						name			=>	$variable,
+					},
+				});
+				
+				my $query = "
+UPDATE 
+    storcli_variables 
+SET 
+    storcli_variable_value = 'VANISHED', 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
+;";
+				# Now record the query in the array
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+		}
+	}
 	
-# 	storcli_physical_drive_size			numeric,					-- "drive_size" but also; "Raw size", "Non Coerced size" and "Coerced size"
-# 	storcli_physical_drive_sector_size		numeric,					-- "sector_size", "Sector Size"
-# 	storcli_physical_drive_vendor			text,						-- "Manufacturer Identification"
-# 	storcli_physical_drive_model			text,						-- "drive_model", "Model Number"
-# 	storcli_physical_drive_serial_number		text,						-- "Serial Number"
-# 	storcli_physical_drive_self_encrypting_drive	text,						-- "self_encrypting_drive", "SED Capable"
-# 	
-# 	$an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number} = $storcli_physical_drive_uuid;
-# 	$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_serial_number;
-# 	$an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid} = {
-# 		storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
-# 		storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
-# 		storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
-# 		storcli_physical_drive_vendor			=>	$storcli_physical_drive_vendor, 
-# 		storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
-# 		storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
-# 		storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
-# 	};
+	# Delete the Physical Drive from the last scan so that we can find disks that have been removed.
+	if (exists $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid})
+	{
+		delete $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid};
+	}
 	
 	### DEBUG
 # 	show_drive_controllers($an);
@@ -1922,7 +2414,7 @@ sub process_a_physical_disk
 # 			hash_ref  => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
 # 		});
 # 	}
-	die "$THIS_FILE ".__LINE__."; testing...\n";
+# 	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	return(0);
 }
@@ -2084,7 +2576,7 @@ sub process_cachevaults
 				alert_agent_name	=>	$THIS_FILE,
 				alert_sort		=>	$an->data->{sys}{alert_sort},	
 				alert_title_key		=>	"an_alert_title_0003",
-				alert_message_key	=>	"scan_storcli_note_0001",
+				alert_message_key	=>	"scan_storcli_note_0007",
 				alert_message_variables	=>	{
 					on_controller		=>	$host_controller_serial_number,
 					serial_number		=>	$cachevault_serial_number,
@@ -2247,13 +2739,13 @@ INSERT INTO
 				# Send a warning level alert because the most likely change is 'state' or 
 				# 'replacement_needed'.
 				my $title_key   = "an_alert_title_0004";
-				my $message_key = "scan_storcli_warning_0010";
+				my $message_key = "scan_storcli_warning_0036";
 				if ($new_state ne $old_state)
 				{
 					if ($old_state eq "VANISHED")
 					{
 						# Cachevault has returned.
-						$message_key = "scan_storcli_warning_0011";
+						$message_key = "scan_storcli_warning_0037";
 					}
 					### TODO: Verify this is the expected string on Cachevaults.
 					if ($new_state =~ /optimal/i)
@@ -2352,10 +2844,10 @@ WHERE
 							# noisey later (better safe than sorry).
 							$an->data->{sys}{alert_sort}++; 
 							
-							my $message_key = "scan_storcli_warning_0012";
+							my $message_key = "scan_storcli_warning_0038";
 							if ($old_variable_value eq "VANISHED")
 							{
-								$message_key = "scan_storcli_warning_0013";
+								$message_key = "scan_storcli_warning_0039";
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	"warning", 
@@ -2399,7 +2891,7 @@ WHERE
 							alert_sort		=>	$an->data->{sys}{alert_sort},
 							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 							alert_title_key		=>	"an_alert_title_0003",
-							alert_message_key	=>	"scan_storcli_warning_0015",
+							alert_message_key	=>	"scan_storcli_warning_0041",
 							alert_message_variables	=>	{
 								serial_number		=>	$variable,
 								name			=>	$variable,
@@ -2474,7 +2966,7 @@ INSERT INTO
 						alert_sort		=>	$an->data->{sys}{alert_sort},
 						alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 						alert_title_key		=>	"an_alert_title_0004",
-						alert_message_key	=>	"scan_storcli_warning_0007",
+						alert_message_key	=>	"scan_storcli_warning_0040",
 						alert_message_variables	=>	{
 							controller		=>	$cachevault_serial_number,
 							name			=>	$variable,
@@ -2538,9 +3030,9 @@ WHERE
 			alert_sort		=>	$an->data->{sys}{alert_sort},
 			alert_header		=>	"TRUE",
 			alert_title_key		=>	"an_alert_title_0004",
-			alert_message_key	=>	"scan_storcli_warning_0016",
+			alert_message_key	=>	"cachevault_serial_number",
 			alert_message_variables	=>	{
-				cachevault_serial_number	=>	$old_cachevault_serial_number, 
+				cachevault_serial_number =>	$old_cachevault_serial_number, 
 				controller_serial_number =>	$old_controller_serial_number, 
 			},
 		});
@@ -4184,11 +4676,13 @@ WHERE
 SELECT 
     storcli_physical_drive_uuid, 
     storcli_physical_drive_controller_uuid, 
+    storcli_physical_drive_virtual_drive, 
+    storcli_physical_drive_drive_group, 
+    storcli_physical_drive_serial_number, 
     storcli_physical_drive_size, 
     storcli_physical_drive_sector_size, 
     storcli_physical_drive_vendor, 
     storcli_physical_drive_model, 
-    storcli_physical_drive_serial_number, 
     storcli_physical_drive_self_encrypting_drive 
 FROM 
     storcli_physical_drives
@@ -4207,21 +4701,25 @@ WHERE
 	{
 		my $storcli_physical_drive_uuid                  =         $row->[0]; 
 		my $storcli_physical_drive_controller_uuid       =         $row->[1];
-		my $storcli_physical_drive_size                  = defined $row->[2] ? $row->[2] : "";
-		my $storcli_physical_drive_sector_size           = defined $row->[3] ? $row->[3] : "";
-		my $storcli_physical_drive_vendor                = defined $row->[4] ? $row->[4] : "";
-		my $storcli_physical_drive_model                 = defined $row->[5] ? $row->[5] : "";
-		my $storcli_physical_drive_serial_number         = defined $row->[6] ? $row->[6] : "";
-		my $storcli_physical_drive_self_encrypting_drive = defined $row->[7] ? $row->[7] : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-			name1 => "storcli_physical_drive_uuid",                  value1 => $storcli_physical_drive_uuid, 
-			name2 => "storcli_physical_drive_controller_uuid",       value2 => $storcli_physical_drive_controller_uuid, 
-			name3 => "storcli_physical_drive_size",                  value3 => $storcli_physical_drive_size, 
-			name4 => "storcli_physical_drive_sector_size",           value4 => $storcli_physical_drive_sector_size, 
-			name5 => "storcli_physical_drive_vendor",                value5 => $storcli_physical_drive_vendor, 
-			name6 => "storcli_physical_drive_model",                 value6 => $storcli_physical_drive_model, 
-			name7 => "storcli_physical_drive_serial_number",         value7 => $storcli_physical_drive_serial_number, 
-			name8 => "storcli_physical_drive_self_encrypting_drive", value8 => $storcli_physical_drive_self_encrypting_drive, 
+		my $storcli_physical_drive_virtual_drive         = defined $row->[2] ? $row->[2] : "";
+		my $storcli_physical_drive_drive_group           = defined $row->[3] ? $row->[3] : "";
+		my $storcli_physical_drive_serial_number         = defined $row->[4] ? $row->[4] : "";
+		my $storcli_physical_drive_size                  = defined $row->[5] ? $row->[5] : "";
+		my $storcli_physical_drive_sector_size           = defined $row->[6] ? $row->[6] : "";
+		my $storcli_physical_drive_vendor                = defined $row->[7] ? $row->[7] : "";
+		my $storcli_physical_drive_model                 = defined $row->[8] ? $row->[8] : "";
+		my $storcli_physical_drive_self_encrypting_drive = defined $row->[9] ? $row->[9] : "";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
+			name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
+			name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
+			name4  => "storcli_physical_drive_drive_group",           value4  => $storcli_physical_drive_drive_group, 
+			name5  => "storcli_physical_drive_serial_number",         value5  => $storcli_physical_drive_serial_number, 
+			name6  => "storcli_physical_drive_size",                  value6  => $storcli_physical_drive_size, 
+			name7  => "storcli_physical_drive_sector_size",           value7  => $storcli_physical_drive_sector_size, 
+			name8  => "storcli_physical_drive_vendor",                value8  => $storcli_physical_drive_vendor, 
+			name9  => "storcli_physical_drive_model",                 value9  => $storcli_physical_drive_model, 
+			name10 => "storcli_physical_drive_self_encrypting_drive", value10 => $storcli_physical_drive_self_encrypting_drive, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Store the information about this physical drive
@@ -4229,21 +4727,25 @@ WHERE
 		$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_serial_number;
 		$an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid} = {
 			storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
+			storcli_physical_drive_virtual_drive		=>	$storcli_physical_drive_virtual_drive, 
+			storcli_physical_drive_drive_group		=>	$storcli_physical_drive_drive_group, 
+			storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
 			storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
 			storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
 			storcli_physical_drive_vendor			=>	$storcli_physical_drive_vendor, 
 			storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
-			storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
 			storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
 		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 			name1 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_controller_uuid",       value1 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid}, 
-			name2 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_size",                  value2 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size}, 
-			name3 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_sector_size",           value3 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size}, 
-			name4 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_vendor",                value4 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor}, 
-			name5 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_model",                 value5 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model}, 
-			name6 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_serial_number",         value6 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number}, 
-			name7 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_self_encrypting_drive", value7 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive}, 
+			name2 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_virtual_drive",         value2 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_virtual_drive}, 
+			name3 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_drive_group",           value3 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_drive_group}, 
+			name4 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_serial_number",         value4 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number}, 
+			name5 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_size",                  value5 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size}, 
+			name6 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_sector_size",           value6 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size}, 
+			name7 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_vendor",                value7 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor}, 
+			name8 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_model",                 value8 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model}, 
+			name9 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_self_encrypting_drive", value9 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
@@ -4364,11 +4866,13 @@ sub update_db_physical_drives
 SELECT 
     storcli_physical_drive_uuid, 
     storcli_physical_drive_controller_uuid, 
+    storcli_physical_drive_virtual_drive, 
+    storcli_physical_drive_drive_group, 
+    storcli_physical_drive_serial_number, 
     storcli_physical_drive_size, 
     storcli_physical_drive_sector_size, 
     storcli_physical_drive_vendor, 
     storcli_physical_drive_model, 
-    storcli_physical_drive_serial_number, 
     storcli_physical_drive_self_encrypting_drive, 
     modified_date 
 FROM 
@@ -4388,59 +4892,62 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $storcli_physical_drive_uuid                  = $row->[0]; 
-			my $storcli_physical_drive_controller_uuid       = $row->[1];
-			my $storcli_physical_drive_size                  = defined $row->[2] ? $row->[2] : "";
-			my $storcli_physical_drive_sector_size           = defined $row->[3] ? $row->[3] : "";
-			my $storcli_physical_drive_vendor                = defined $row->[4] ? $row->[4] : "";
-			my $storcli_physical_drive_model                 = defined $row->[5] ? $row->[5] : "";
-			my $storcli_physical_drive_serial_number         = defined $row->[6] ? $row->[6] : "";
-			my $storcli_physical_drive_self_encrypting_drive = defined $row->[7] ? $row->[7] : "";
-			my $modified_date                                = $row->[8];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
-				name1 => "storcli_physical_drive_uuid",                  value1 => $storcli_physical_drive_uuid, 
-				name2 => "storcli_physical_drive_controller_uuid",       value2 => $storcli_physical_drive_controller_uuid, 
-				name3 => "storcli_physical_drive_size",                  value3 => $storcli_physical_drive_size, 
-				name4 => "storcli_physical_drive_sector_size",           value4 => $storcli_physical_drive_sector_size, 
-				name5 => "storcli_physical_drive_vendor",                value5 => $storcli_physical_drive_vendor, 
-				name6 => "storcli_physical_drive_model",                 value6 => $storcli_physical_drive_model, 
-				name7 => "storcli_physical_drive_serial_number",         value7 => $storcli_physical_drive_serial_number, 
-				name8 => "storcli_physical_drive_self_encrypting_drive", value8 => $storcli_physical_drive_self_encrypting_drive, 
-				name9 => "modified_date",                                value9 => $modified_date
+			my $storcli_physical_drive_uuid                  =         $row->[0]; 
+			my $storcli_physical_drive_controller_uuid       =         $row->[1];
+			my $storcli_physical_drive_virtual_drive         = defined $row->[2]  ? $row->[2] : "";
+			my $storcli_physical_drive_drive_group           = defined $row->[3]  ? $row->[3] : "";
+			my $storcli_physical_drive_serial_number         = defined $row->[4]  ? $row->[4] : "";
+			my $storcli_physical_drive_size                  = defined $row->[5]  ? $row->[5] : "";
+			my $storcli_physical_drive_sector_size           = defined $row->[6]  ? $row->[6] : "";
+			my $storcli_physical_drive_vendor                = defined $row->[7]  ? $row->[7] : "";
+			my $storcli_physical_drive_model                 = defined $row->[8]  ? $row->[8] : "";
+			my $storcli_physical_drive_self_encrypting_drive = defined $row->[9]  ? $row->[9] : "";
+			my $modified_date                                =         $row->[10];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+				name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
+				name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
+				name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
+				name4  => "storcli_physical_drive_drive_group",           value4  => $storcli_physical_drive_drive_group, 
+				name5  => "storcli_physical_drive_serial_number",         value5  => $storcli_physical_drive_serial_number, 
+				name6  => "storcli_physical_drive_size",                  value6  => $storcli_physical_drive_size, 
+				name7  => "storcli_physical_drive_sector_size",           value7  => $storcli_physical_drive_sector_size, 
+				name8  => "storcli_physical_drive_vendor",                value8  => $storcli_physical_drive_vendor, 
+				name9  => "storcli_physical_drive_model",                 value9  => $storcli_physical_drive_model, 
+				name10 => "storcli_physical_drive_self_encrypting_drive", value10 => $storcli_physical_drive_self_encrypting_drive, 
+				name11 => "modified_date",                                value11 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			### There can only be one entry per host, so we don't have a subhash.
 			# Record this in the unified and local hashes.
 			$an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid} = {
 				storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
-				storcli_physical_drive_uuid			=>	$storcli_physical_drive_uuid, 
-				storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
+				storcli_physical_drive_virtual_drive		=>	$storcli_physical_drive_virtual_drive, 
+				storcli_physical_drive_drive_group		=>	$storcli_physical_drive_drive_group, 
+				storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
 				storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
 				storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
 				storcli_physical_drive_vendor			=>	$storcli_physical_drive_vendor, 
 				storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
-				storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
 				storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
 			};
 			$an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{'exists'} = 1;
 			$an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{seen}     = 0;
 			$an->data->{db_data}{$id}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid} = {
 				storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
-				storcli_physical_drive_uuid			=>	$storcli_physical_drive_uuid, 
-				storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
+				storcli_physical_drive_virtual_drive		=>	$storcli_physical_drive_virtual_drive, 
+				storcli_physical_drive_drive_group		=>	$storcli_physical_drive_drive_group, 
+				storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
 				storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
 				storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
 				storcli_physical_drive_vendor			=>	$storcli_physical_drive_vendor, 
 				storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
-				storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
 				storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
 			};
 		}
 	}
 	
 	### NOTE: Sort '$b cmp $a' on the modified date.
-	# Now, loop through each record from the unified table and see if it 
-	# needs to be added to any DBs.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -4448,22 +4955,27 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $storcli_physical_drive_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}})
 		{
-			my $storcli_physical_drive_controller_uuid   = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid};
-			my $storcli_physical_drive_size = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size};
-			my $storcli_physical_drive_sector_size = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size};
-			my $storcli_physical_drive_vendor = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
-			my $storcli_physical_drive_model = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
-			my $storcli_physical_drive_serial_number = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number};
+			my $storcli_physical_drive_controller_uuid       = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid};
+			my $storcli_physical_drive_virtual_drive         = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_virtual_drive};
+			my $storcli_physical_drive_drive_group           = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_drive_group};
+			my $storcli_physical_drive_serial_number         = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number};
+			my $storcli_physical_drive_size                  = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size};
+			my $storcli_physical_drive_sector_size           = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size};
+			my $storcli_physical_drive_vendor                = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
+			my $storcli_physical_drive_model                 = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 			my $storcli_physical_drive_self_encrypting_drive = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
-				name1 => "storcli_physical_drive_uuid",                  value1 => $storcli_physical_drive_uuid, 
-				name2 => "storcli_physical_drive_controller_uuid",       value2 => $storcli_physical_drive_controller_uuid, 
-				name3 => "storcli_physical_drive_size",            	value3 => $storcli_physical_drive_size, 
-				name4 => "storcli_physical_drive_sector_size",           value4 => $storcli_physical_drive_sector_size, 
-				name5 => "storcli_physical_drive_vendor",          	value5 => $storcli_physical_drive_vendor, 
-				name6 => "storcli_physical_drive_model",           	value6 => $storcli_physical_drive_model, 
-				name7 => "storcli_physical_drive_serial_number",         value7 => $storcli_physical_drive_serial_number, 
-				name8 => "storcli_physical_drive_self_encrypting_drive", value8 => $storcli_physical_drive_self_encrypting_drive, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+				name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
+				name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
+				name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
+				name4  => "storcli_physical_drive_drive_group",           value4  => $storcli_physical_drive_drive_group, 
+				name5  => "storcli_physical_drive_serial_number",         value5  => $storcli_physical_drive_serial_number, 
+				name6  => "storcli_physical_drive_size",                  value6  => $storcli_physical_drive_size, 
+				name7  => "storcli_physical_drive_sector_size",           value7  => $storcli_physical_drive_sector_size, 
+				name8  => "storcli_physical_drive_vendor",                value8  => $storcli_physical_drive_vendor, 
+				name9  => "storcli_physical_drive_model",                 value9  => $storcli_physical_drive_model, 
+				name10 => "storcli_physical_drive_serial_number",         value10 => $storcli_physical_drive_serial_number, 
+				name11 => "storcli_physical_drive_self_encrypting_drive", value11 => $storcli_physical_drive_self_encrypting_drive, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -4504,15 +5016,17 @@ UPDATE
     public.storcli_physical_drives
 SET
     storcli_physical_drive_controller_uuid       = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_controller_uuid).", 
+    storcli_physical_drive_virtual_drive         = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_virtual_drive).", 
+    storcli_physical_drive_drive_group           = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_drive_group).", 
+    storcli_physical_drive_serial_number         = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
     storcli_physical_drive_size                  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_size).", 
     storcli_physical_drive_sector_size           = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_sector_size).", 
     storcli_physical_drive_vendor                = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_vendor).", 
     storcli_physical_drive_model                 = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_model).", 
-    storcli_physical_drive_serial_number         = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
     storcli_physical_drive_self_encrypting_drive = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_self_encrypting_drive).", 
     modified_date                                = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
-    storcli_physical_drive_uuid              = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid)." 
+    storcli_physical_drive_uuid                  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid)." 
 ;";
 							# Now record the query in the array
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -4532,22 +5046,26 @@ INSERT INTO
     storcli_physical_drive_uuid, 
     storcli_physical_drive_host_uuid, 
     storcli_physical_drive_controller_uuid, 
+    storcli_physical_drive_virtual_drive, 
+    storcli_physical_drive_drive_group, 
+    storcli_physical_drive_serial_number, 
     storcli_physical_drive_size, 
     storcli_physical_drive_sector_size, 
     storcli_physical_drive_vendor, 
     storcli_physical_drive_model, 
-    storcli_physical_drive_serial_number, 
     storcli_physical_drive_self_encrypting_drive, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_virtual_drive).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_drive_group).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_size).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_sector_size).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_vendor).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_model).", 
-    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_self_encrypting_drive).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
@@ -4574,22 +5092,26 @@ INSERT INTO
     storcli_physical_drive_uuid, 
     storcli_physical_drive_host_uuid, 
     storcli_physical_drive_controller_uuid, 
+    storcli_physical_drive_virtual_drive, 
+    storcli_physical_drive_drive_group, 
+    storcli_physical_drive_serial_number, 
     storcli_physical_drive_size, 
     storcli_physical_drive_sector_size, 
     storcli_physical_drive_vendor, 
     storcli_physical_drive_model, 
-    storcli_physical_drive_serial_number, 
     storcli_physical_drive_self_encrypting_drive, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_virtual_drive).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_drive_group).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_size).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_sector_size).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_vendor).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_model).", 
-    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_self_encrypting_drive).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";

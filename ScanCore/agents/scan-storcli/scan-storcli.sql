@@ -483,12 +483,14 @@ CREATE TABLE storcli_physical_drives (
 	storcli_physical_drive_uuid			uuid				primary key,
 	storcli_physical_drive_host_uuid		uuid				not null,
 	storcli_physical_drive_controller_uuid		uuid				not null,
-	storcli_physical_drive_size			numeric,					-- "drive_size" but also; "Raw size", "Non Coerced size" and "Coerced size"
-	storcli_physical_drive_sector_size		numeric,					-- "sector_size", "Sector Size"
-	storcli_physical_drive_vendor			text,						-- "Manufacturer Identification"
-	storcli_physical_drive_model			text,						-- "drive_model", "Model Number"
-	storcli_physical_drive_serial_number		text,						-- "Serial Number"
-	storcli_physical_drive_self_encrypting_drive	text,						-- "self_encrypting_drive", "SED Capable"
+	storcli_physical_drive_virtual_drive		text,
+	storcli_physical_drive_drive_group		text,
+	storcli_physical_drive_serial_number		text,					-- "Serial Number"
+	storcli_physical_drive_size			text,					-- In 'text' because of 'Bytes' suffix - "drive_size" but also; "Raw size", "Non Coerced size" and "Coerced size"
+	storcli_physical_drive_sector_size		text,					-- In 'text' because of 'Bytes' suffix - "sector_size", "Sector Size"
+	storcli_physical_drive_vendor			text,					-- "Manufacturer Identification"
+	storcli_physical_drive_model			text,					-- "drive_model", "Model Number"
+	storcli_physical_drive_self_encrypting_drive	text,					-- "self_encrypting_drive", "SED Capable"
 	modified_date					timestamp with time zone	not null,
 	
 	FOREIGN KEY(storcli_physical_drive_host_uuid) REFERENCES hosts(host_uuid),
@@ -501,11 +503,13 @@ CREATE TABLE history.storcli_physical_drives (
 	storcli_physical_drive_uuid			uuid,
 	storcli_physical_drive_host_uuid		uuid,
 	storcli_physical_drive_controller_uuid		uuid,
-	storcli_physical_drive_size			numeric,
-	storcli_physical_drive_sector_size		numeric,
+	storcli_physical_drive_serial_number		text,
+	storcli_physical_drive_virtual_drive		text,
+	storcli_physical_drive_drive_group		text,
+	storcli_physical_drive_size			text,
+	storcli_physical_drive_sector_size		text,
 	storcli_physical_drive_vendor			text,
 	storcli_physical_drive_model			text,
-	storcli_physical_drive_serial_number		text,
 	storcli_physical_drive_self_encrypting_drive	text,
 	modified_date					timestamp with time zone
 );
@@ -521,16 +525,21 @@ BEGIN
 		(storcli_physical_drive_uuid, 
 		 storcli_physical_drive_host_uuid,
 		 storcli_physical_drive_controller_uuid, 
+		 storcli_physical_drive_virtual_drive, 
+		 storcli_physical_drive_drive_group, 
+		 storcli_physical_drive_serial_number, 
 		 storcli_physical_drive_size, 
 		 storcli_physical_drive_sector_size, 
 		 storcli_physical_drive_vendor, 
 		 storcli_physical_drive_model, 
-		 storcli_physical_drive_serial_number, 
 		 storcli_physical_drive_self_encrypting_drive, 
 		 modified_date)
 	VALUES
 		(history_storcli_physical_drives.storcli_physical_drive_uuid,
 		 history_storcli_physical_drives.storcli_physical_drive_host_uuid,
+		 history_storcli_physical_drives.storcli_physical_drive_controller_uuid, 
+		 history_storcli_physical_drives.storcli_physical_drive_virtual_drive, 
+		 history_storcli_physical_drives.storcli_physical_drive_drive_group, 
 		 history_storcli_physical_drives.storcli_physical_drive_size, 
 		 history_storcli_physical_drives.storcli_physical_drive_sector_size, 
 		 history_storcli_physical_drives.storcli_physical_drive_vendor, 
