@@ -90,13 +90,71 @@ my $an = AN::Tools->new({data =>
 			log_file		=>	"/var/log/ScanCore.log",
 			log_db_transactions	=>	0,
 			thresholds			=>	{
-				raid_on_chip			=>	{
-					high_warning			=>	98,
-					high_critical			=>	104,
+				# 45646-00B_Cache_Backup_Products_SAS_SATA_RAID_Controller_UserGd.pdf ->  Specifications for the BBU Models
+				bbu				=>	{
+					normal				=>	{
+						high_warning			=>	35,
+						high_critical			=>	40,
+						low_warning			=>	15,
+						low_critical			=>	10,
+						jump				=>	3,
+						buffer				=>	2,
+					},
+					discharging			=>	{
+						high_warning			=>	50,
+						high_critical			=>	55,
+						low_warning			=>	15,
+						low_critical			=>	10,
+						jump				=>	3,
+						buffer				=>	2,
+					},
+				},
+				# 45646-00B_Cache_Backup_Products_SAS_SATA_RAID_Controller_UserGd.pdf ->  Specifications for the Cachevaul Models
+				cachevault			=>	{
+					high_warning			=>	50,
+					high_critical			=>	55,
 					low_warning			=>	5,
 					low_critical			=>	0,
-					jump				=>	8,
+					jump				=>	5,
 					buffer				=>	3,
+				},
+				# This is used for unknown sensors and really shouldn't be used at all.
+				'default'			=>	{
+					high_warning			=>	50,
+					high_critical			=>	55,
+					low_warning			=>	15,
+					low_critical			=>	10,
+					jump				=>	5,
+					buffer				=>	3,
+				},
+				drives				=>	{
+					# http://storage.toshiba.com/docs/product-datasheets/mk01grrb-r.pdf
+					hdd				=>	{
+						high_warning			=>	50,
+						high_critical			=>	55,
+						low_warning			=>	10,
+						low_critical			=>	5,
+						jump				=>	3,
+						buffer				=>	2,
+					},
+					# http://toshiba.semicon-storage.com/us/product/storage-products/enterprise-ssd/px02smb-px02smfxxx.html
+					ssd				=>	{
+						high_warning			=>	50,
+						high_critical			=>	55,
+						low_warning			=>	5,
+						low_critical			=>	0,
+						jump				=>	3,
+						buffer				=>	2,
+					},
+				},
+				# See email from M. Labrosse on 2014/04/14 @ 12:20; Specs not publicly available
+				raid_on_chip			=>	{
+					high_warning			=>	108,
+					high_critical			=>	115,
+					low_warning			=>	15,
+					low_critical			=>	10,
+					jump				=>	10,
+					buffer				=>	5,
 				},
 			},
 		},
@@ -175,8 +233,8 @@ update_db($an);
 # Look for changes.
 find_changes($an);
 
-
-
+# Finally, process temperatures!
+process_temperatures($an);
 
 # Clean up and go away.
 $an->nice_exit({exit_code => 0});
@@ -185,6 +243,284 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Function below                                                                                            #
 #############################################################################################################
+
+# This reads in the various temperature sensors we read from this run and will set the temperature table 
+# and/or set/clear warnings/critical states.
+sub process_temperatures
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_temperatures" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	#### NOTE: This is the real query, but I am removing the date constraint while developing to ensure I
+	####       always get data.
+	# We'll want to read back the temperatures we set/changed this pass
+# 	my $query = "
+# SELECT 
+#     storcli_variable_source_table, 
+#     storcli_variable_source_uuid, 
+#     storcli_variable_name, 
+#     storcli_variable_value 
+# FROM 
+#     storcli_variables 
+# WHERE 
+#     storcli_variable_is_temperature IS TRUE 
+# AND 
+#     storcli_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+# AND 
+#     modified_date              = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+# ;";
+	my $query = "
+SELECT 
+    storcli_variable_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_name, 
+    storcli_variable_value 
+FROM 
+    storcli_variables 
+WHERE 
+    storcli_variable_is_temperature IS TRUE 
+AND 
+    storcli_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $storcli_variable_uuid         = $row->[0];
+		my $storcli_variable_source_table = $row->[1]; 
+		my $storcli_variable_source_uuid  = $row->[2]; 
+		my $storcli_variable_name         = $row->[3]; 
+		my $storcli_variable_value        = $row->[4]; 
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "storcli_variable_uuid",          value1 => $storcli_variable_uuid, 
+			name2 => "storcli_variable_source_table",  value2 => $storcli_variable_source_table, 
+			name3 => "storcli_variable_source_uuid",   value3 => $storcli_variable_source_uuid, 
+			name4 => "storcli_variable_name",          value4 => $storcli_variable_name, 
+			name5 => "storcli_variable_value",         value5 => $storcli_variable_value, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# We can trust that the temperatures are in Celsius already, so we will blindly strip off the
+		# ' C' suffixes.
+		$storcli_variable_value =~ s/C$//i;
+		$storcli_variable_value =~ s/\s+//g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "storcli_variable_uuid",          value1 => $storcli_variable_uuid, 
+			name2 => "storcli_variable_source_table",  value2 => $storcli_variable_source_table, 
+			name3 => "storcli_variable_source_uuid",   value3 => $storcli_variable_source_uuid, 
+			name4 => "storcli_variable_name",          value4 => $storcli_variable_name, 
+			name5 => "storcli_variable_value",         value5 => $storcli_variable_value, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Read the previous value, if any.
+		my $query = "
+SELECT 
+    storcli_variable_uuid, 
+    storcli_variable_source_table, 
+    storcli_variable_source_uuid, 
+    storcli_variable_name, 
+    storcli_variable_value, 
+    modified_date 
+FROM 
+    history.storcli_variables 
+WHERE 
+    storcli_variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+AND 
+    modified_date         < ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+LIMIT 1;";
+		
+		# The temperature range of the BBU depends on whether it is charging or discharging.
+		my $bbu_temperature_key = "normal";
+		if ($storcli_variable_name eq "bbu_temperature")
+		{
+			# Get the charge state.
+			# - None
+			# - Discharging
+			# - Charging
+			my $charging = get_storcli_variable($an, "charging_status", "storcli_bbus", $storcli_variable_source_uuid);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "charging", value1 => $charging, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($charging =~ /^discharging$/i)
+			{
+				$bbu_temperature_key = "discharging";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "bbu_temperature_key", value1 => $bbu_temperature_key, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# The temperature range of the disk depends on whether it is an HDD or SSD.
+		my $drive_temperature_key = "hdd";
+		if ($storcli_variable_name eq "drive_temperature")
+		{
+			### TODO: At some point, we'll probably need a DB of drive type/model temperature 
+			###       ranges...
+			# Get the drive media.
+			# - HDD
+			# - SSD
+			my $media = get_storcli_variable($an, "drive_media", "storcli_physical_drives", $storcli_variable_source_uuid);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "media", value1 => $media, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (lc($media) eq "ssd")
+			{
+				$drive_temperature_key = "discharging";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "drive_temperature_key", value1 => $drive_temperature_key, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Now determine if the current temperature is of concern or not.
+		my $high_critical = $an->data->{'scan-storcli'}{thresholds}{'default'}{high_critical};
+		my $high_warning  = $an->data->{'scan-storcli'}{thresholds}{'default'}{high_warning};
+		my $low_warning   = $an->data->{'scan-storcli'}{thresholds}{'default'}{low_warning};
+		my $low_critical  = $an->data->{'scan-storcli'}{thresholds}{'default'}{low_critical};
+		my $jump          = $an->data->{'scan-storcli'}{thresholds}{'default'}{jump};
+		my $buffer        = $an->data->{'scan-storcli'}{thresholds}{'default'}{buffer};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			name1 => "high_critical", value1 => $high_critical, 
+			name2 => "high_warning",  value2 => $high_warning, 
+			name3 => "low_warning",   value3 => $low_warning, 
+			name4 => "low_critical",  value4 => $low_critical, 
+			name5 => "jump",          value5 => $jump, 
+			name6 => "buffer",         value6 => $buffer, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($storcli_variable_name eq "cachevault_temperature")
+		{
+			$high_critical = $an->data->{'scan-storcli'}{thresholds}{cachevault}{high_critical};
+			$high_warning  = $an->data->{'scan-storcli'}{thresholds}{cachevault}{high_warning};
+			$low_warning   = $an->data->{'scan-storcli'}{thresholds}{cachevault}{low_warning};
+			$low_critical  = $an->data->{'scan-storcli'}{thresholds}{cachevault}{low_critical};
+			$jump          = $an->data->{'scan-storcli'}{thresholds}{cachevault}{jump};
+			$buffer        = $an->data->{'scan-storcli'}{thresholds}{cachevault}{buffer};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "high_critical", value1 => $high_critical, 
+				name2 => "high_warning",  value2 => $high_warning, 
+				name3 => "low_warning",   value3 => $low_warning, 
+				name4 => "low_critical",  value4 => $low_critical, 
+				name5 => "jump",          value5 => $jump, 
+				name6 => "buffer",         value6 => $buffer, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($storcli_variable_name eq "drive_temperature")
+		{
+			$high_critical = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{high_critical};
+			$high_warning  = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{high_warning};
+			$low_warning   = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{low_warning};
+			$low_critical  = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{low_critical};
+			$jump          = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{jump};
+			$buffer        = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{buffer};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "high_critical", value1 => $high_critical, 
+				name2 => "high_warning",  value2 => $high_warning, 
+				name3 => "low_warning",   value3 => $low_warning, 
+				name4 => "low_critical",  value4 => $low_critical, 
+				name5 => "jump",          value5 => $jump, 
+				name6 => "buffer",         value6 => $buffer, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($storcli_variable_name eq "bbu_temperature")
+		{
+			$high_critical = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{high_critical};
+			$high_warning  = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{high_warning};
+			$low_warning   = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{low_warning};
+			$low_critical  = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{low_critical};
+			$jump          = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{jump};
+			$buffer        = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{buffer};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "high_critical", value1 => $high_critical, 
+				name2 => "high_warning",  value2 => $high_warning, 
+				name3 => "low_warning",   value3 => $low_warning, 
+				name4 => "low_critical",  value4 => $low_critical, 
+				name5 => "jump",          value5 => $jump, 
+				name6 => "buffer",         value6 => $buffer, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($storcli_variable_name eq "roc_temperature_c")
+		{
+			$high_critical = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{high_critical};
+			$high_warning  = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{high_warning};
+			$low_warning   = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{low_warning};
+			$low_critical  = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{low_critical};
+			$jump          = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{jump};
+			$buffer        = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{buffer};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "high_critical", value1 => $high_critical, 
+				name2 => "high_warning",  value2 => $high_warning, 
+				name3 => "low_warning",   value3 => $low_warning, 
+				name4 => "low_critical",  value4 => $low_critical, 
+				name5 => "jump",          value5 => $jump, 
+				name6 => "buffer",         value6 => $buffer, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Unknown sensor. Send an alert to ask the user to inform us.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "high_critical", value1 => $high_critical, 
+				name2 => "high_warning",  value2 => $high_warning, 
+				name3 => "low_warning",   value3 => $low_warning, 
+				name4 => "low_critical",  value4 => $low_critical, 
+				name5 => "jump",          value5 => $jump, 
+				name6 => "buffer",         value6 => $buffer, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		
+		# See if the current temperature is OK, warning or critical.
+		#if (
+	}
+	
+	return(0);
+}
+
+# This returns the value for a given storcli DB variable from this host.
+sub get_storcli_variable
+{
+	my ($an, $storcli_variable_name, $storcli_variable_source_table, $storcli_variable_source_uuid) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_storcli_variable" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "storcli_variable_name",         value1 => $storcli_variable_name, 
+		name2 => "storcli_variable_source_table", value2 => $storcli_variable_source_table, 
+		name3 => "storcli_variable_source_uuid",  value3 => $storcli_variable_source_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $query = "
+SELECT 
+    storcli_variable_value 
+FROM 
+    storcli_variables 
+WHERE 
+    storcli_variable_name         = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_name)." 
+AND 
+    storcli_variable_source_table = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_source_table)." 
+AND 
+    storcli_variable_source_uuid  = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_source_uuid)." 
+AND 
+    storcli_variable_host_uuid    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $value = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	   $value = "" if not defined $value;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "value", value1 => $value, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($value);
+}
 
 # This reads in the last scan data from one of the databases and compares it against the just-read data. If 
 # anything changed, register an alert.
@@ -1759,26 +2095,26 @@ sub process_physical_disks
 	foreach my $storcli_virtual_drive_id_string (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
 	{
 		my $virtual_drive = ($storcli_virtual_drive_id_string =~ /-vd(\d+)$/)[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "storcli_virtual_drive_id_string", value1 => $storcli_virtual_drive_id_string,
 			name2 => "virtual_drive",                   value2 => $virtual_drive,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "drive_group", value1 => $drive_group,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "enclosure_id", value1 => $enclosure_id,
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "slot_number", value1 => $slot_number,
 					}, file => $THIS_FILE, line => __LINE__});
 					
@@ -1858,7 +2194,7 @@ WHERE
 sub process_a_physical_disk
 {
 	my ($an, $storcli_virtual_drive_id_string, $drive_group, $enclosure_id, $slot_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_a_physical_disk" }, message_key => "an_variables_0004", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_a_physical_disk" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "storcli_virtual_drive_id_string", value1 => $storcli_virtual_drive_id_string, 
 		name2 => "drive_group",                     value2 => $drive_group, 
 		name3 => "enclosure_id",                    value3 => $enclosure_id, 
@@ -1866,19 +2202,19 @@ sub process_a_physical_disk
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my ($vd_controller_serial_number, $virtual_drive) = ($storcli_virtual_drive_id_string =~ /^(.*?)-vd(\d+)$/);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "vd_controller_serial_number", value1 => $vd_controller_serial_number,
 		name2 => "virtual_drive",               value2 => $virtual_drive,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# I need the drive's serial number right off the bat.
 	my $storcli_physical_drive_serial_number = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{serial_number};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "storcli_physical_drive_serial_number", value1 => $storcli_physical_drive_serial_number,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure I have a controller serial number.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "virtual_drive::${storcli_virtual_drive_id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::on_controller", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller})
@@ -1889,7 +2225,7 @@ sub process_a_physical_disk
 	}
 	
 	my $host_controller_serial_number = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "host_controller_serial_number", value1 => $host_controller_serial_number,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1900,7 +2236,7 @@ sub process_a_physical_disk
 		$an->nice_exit({exit_code => 8});
 	}
 	my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "controller_uuid", value1 => $controller_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1910,13 +2246,67 @@ sub process_a_physical_disk
 	my $new_vendor                = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{manufacturer_identification};
 	my $new_model                 = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model};
 	my $new_self_encrypting_drive = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "new_size",                  value1 => $new_size,
 		name2 => "new_sector_size",           value2 => $new_sector_size,
 		name3 => "new_vendor",                value3 => $new_vendor,
 		name4 => "new_model",                 value4 => $new_model,
 		name5 => "new_self_encrypting_drive", value5 => $new_self_encrypting_drive,
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Get the temperature ranges, which depends on whether this is an SSD or HDD.
+	my $drive_temperature_key = "hdd";
+	my $drive_media           = $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "drive_media", value1 => $drive_media, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (lc($drive_media) eq "ssd")
+	{
+		$drive_temperature_key = "ssd";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "drive_temperature_key", value1 => $drive_temperature_key, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	my $high_critical       = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{high_critical};
+	my $high_warning        = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{high_warning};
+	my $low_warning         = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{low_warning};
+	my $low_critical        = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{low_critical};
+	my $jump                = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{jump};
+	my $buffer              = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{buffer};
+	my $clear_high_critical = $high_critical - $buffer;
+	my $clear_high_warning  = $high_warning - $buffer;
+	my $clear_low_critical  = $low_critical - $buffer;
+	my $clear_low_warning   = $low_warning - $buffer;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		name1  => "high_critical",       value1  => $high_critical, 
+		name2  => "high_warning",        value2  => $high_warning, 
+		name3  => "low_warning",         value3  => $low_warning, 
+		name4  => "low_critical",        value4  => $low_critical, 
+		name5  => "jump",                value5  => $jump, 
+		name6  => "buffer",              value6  => $buffer, 
+		name7  => "clear_high_critical", value7  => $clear_high_critical, 
+		name8  => "clear_high_warning",  value8  => $clear_high_warning, 
+		name9  => "clear_low_critical",  value9  => $clear_low_critical, 
+		name10 => "clear_low_warning",   value10 => $clear_low_warning, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Fine-tune the alert thresholds
+	if ($clear_high_critical < $high_warning)
+	{
+		$clear_high_critical = $high_warning + 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name7  => "clear_high_critical", value7  => $clear_high_critical, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ($clear_low_critical > $low_warning)
+	{
+		$clear_low_critical = $low_warning - 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name7  => "clear_low_critical", value7  => $clear_low_critical, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# Is this a new physical disk?
 	my $is_new                      = 0;
@@ -1925,7 +2315,7 @@ sub process_a_physical_disk
 	{
 		# Yup!
 		$storcli_physical_drive_uuid = $an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "storcli_physical_drive_uuid", value1 => $storcli_physical_drive_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1933,14 +2323,14 @@ sub process_a_physical_disk
 	{
 		$is_new                      = 1;
 		$storcli_physical_drive_uuid = $an->Get->uuid();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "is_new",                      value1 => $is_new,
 			name2 => "storcli_physical_drive_uuid", value2 => $storcli_physical_drive_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number} = $storcli_physical_drive_uuid;
 		$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_serial_number;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "scan-storcli::physical_drives::by_serial::$storcli_physical_drive_serial_number", value1 => $an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number},
 			name2 => "scan-storcli::physical_drives::by_uuid::$storcli_physical_drive_uuid",            value2 => $an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1954,7 +2344,7 @@ sub process_a_physical_disk
 	# be deleted, but their value will be set to 'VANISHED'.
 	if ($is_new)
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 			name1  => "storcli_physical_drive_serial_number", value1  => $storcli_physical_drive_serial_number,
 			name2  => "storcli_physical_drive_uuid",          value2  => $storcli_physical_drive_uuid,
 			name3  => "host_controller_serial_number",        value3  => $host_controller_serial_number,
@@ -2029,31 +2419,126 @@ INSERT INTO
 		# Process the rest of the variables and temperatures now. 
 		foreach my $type ("variable", "temperature")
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}})
 			{
 				my $value       = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable};
 				my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "variable",    value1 => $variable,
 					name2 => "value",       value2 => $value,
 					name3 => "temperature", value3 => $temperature,
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				# Send an alert telling the user that we've found a new controller.
+				# Send an alert telling the user that we've found a new physical drive sensor.
 				$an->data->{sys}{alert_sort}++; 
+				my $message_key = "scan_storcli_note_0002";
+				my $alert_level = "notice";
+				my $title_key   = "an_alert_title_0003";
+				if ($type eq "temperature")
+				{
+					# This is a temperature, so see if the temperature outside of the 
+					# warning or critical thresholds. This is a new sensor, so nothing
+					# to compare against.
+					if ($value > $high_critical)
+					{
+						# Crossed the critical threshold. This should
+						# always be unset because it is a new
+						# variable, but check anyway.
+						my $set = $an->Alert->check_alert_sent({
+							type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
+							alert_sent_by		=>	$THIS_FILE,
+							alert_record_locator	=>	$variable_uuid,
+							alert_name		=>	$variable."_high_critical",
+							modified_date		=>	$an->data->{sys}{db_timestamp},
+						});
+						if ($set)
+						{
+							# This is the first time we rose above the critical
+							# threshold.
+							$level       = "critical";
+							$title_key   = "an_alert_title_0005";
+							$message_key = "scan_storcli_note_0012";
+						}
+					}
+					elsif ($value > $high_warning)
+					{
+						# Crossed the warning threshold. This should always be unset
+						# because it is a new variable, but check anyway.
+						my $set = $an->Alert->check_alert_sent({
+							type			=>	"warning",
+							alert_sent_by		=>	$THIS_FILE,
+							alert_record_locator	=>	$variable_uuid,
+							alert_name		=>	$variable."_high_warning",
+							modified_date		=>	$an->data->{sys}{db_timestamp},
+						});
+						if ($set)
+						{
+							# This is the first time we rose above the critical
+							# threshold.
+							$level       = "warning";
+							$title_key   = "an_alert_title_0004";
+							$message_key = "scan_storcli_note_0013";
+						}
+					}
+					elsif ($value < $low_critical)
+					{
+						# Dropped below the critical threshold. This should always be
+						# unset because it is a new variable, but check anyway.
+						my $set = $an->Alert->check_alert_sent({
+							type			=>	"warning",
+							alert_sent_by		=>	$THIS_FILE,
+							alert_record_locator	=>	$variable_uuid,
+							alert_name		=>	$variable."_low_critical",
+							modified_date		=>	$an->data->{sys}{db_timestamp},
+						});
+						if ($set)
+						{
+							# This is the first time we rose above the critical
+							# threshold.
+							$level       = "critical";
+							$title_key   = "an_alert_title_0005";
+							$message_key = "scan_storcli_note_0014";
+						}
+					}
+					elsif ($value < $low_warning)
+					{
+						# Crossed the warning threshold. This should always be unset
+						# because it is a new variable, but check anyway.
+						my $set = $an->Alert->check_alert_sent({
+							type			=>	"warning",
+							alert_sent_by		=>	$THIS_FILE,
+							alert_record_locator	=>	$variable_uuid,
+							alert_name		=>	$variable."_low_warning",
+							modified_date		=>	$an->data->{sys}{db_timestamp},
+						});
+						if ($set)
+						{
+							# This is the first time we rose above the critical
+							# threshold.
+							$level       = "warning";
+							$title_key   = "an_alert_title_0004";
+							$message_key = "scan_storcli_note_0015";
+						}
+					}
+				}
 				$an->Alert->register_alert({
-					alert_level		=>	"notice", 
+					alert_level		=>	$alert_level, 
 					alert_agent_name	=>	$THIS_FILE,
 					alert_sort		=>	$an->data->{sys}{alert_sort},
-					alert_header		=>	'FALSE',
-					alert_title_key		=>	"an_alert_title_0003",
-					alert_message_key	=>	"scan_storcli_note_0002",
+					alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
+					alert_title_key		=>	$title_key,
+					alert_message_key	=>	$message_key,
 					alert_message_variables	=>	{
+						serial_number		=>	$storcli_physical_drive_serial_number,
 						name			=>	$variable,
 						value			=>	$value,
+						high_critical_temperature =>	$high_critical, 
+						high_warning_temperature =>	$high_warning, 
+						low_critical_temperature =>	$low_critical, 
+						low_warning_temperature	=>	$low_warning, 
 					},
 				});
 				
@@ -2102,7 +2587,7 @@ INSERT INTO
 		my $old_vendor                       = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
 		my $old_model                        = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 		my $old_self_encrypting_drive        = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0018", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0018", message_variables => {
 			name1  => "storcli_physical_drive_serial_number", value1  => $storcli_physical_drive_serial_number,
 			name2  => "old_physical_drive_serial_number",     value2  => $old_physical_drive_serial_number,
 			name3  => "controller_uuid",                      value3  => $controller_uuid,
@@ -2135,7 +2620,7 @@ INSERT INTO
 		{
 			# I'll need the old controller's serial number.
 			my $old_host_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name2 => "old_host_controller_serial_number", value2 => $old_host_controller_serial_number,
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -2183,7 +2668,7 @@ INSERT INTO
 			
 			my $query = "
 UPDATE 
-    public.storcli_physical_drives
+    storcli_physical_drives
 SET
     storcli_physical_drive_controller_uuid       = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
     storcli_physical_drive_virtual_drive         = ".$an->data->{sys}{use_db_fh}->quote($virtual_drive).", 
@@ -2210,14 +2695,14 @@ WHERE
 		### Process the rest of the variables now. 
 		foreach my $type ("variable", "temperature")
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}})
 			{
 				my $new_variable_value = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable};
 				my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable",    value1 => $variable,
 					name2 => "temperature", value2 => $temperature,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2226,7 +2711,7 @@ WHERE
 					# Look for changes
 					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_value};
 					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 						name1 => "variable",           value1 => $variable,
 						name2 => "new_variable_value", value2 => $new_variable_value,
 						name3 => "old_variable_value", value3 => $old_variable_value,
@@ -2246,22 +2731,155 @@ WHERE
 						$an->data->{sys}{alert_sort}++; 
 						
 						my $message_key = "scan_storcli_warning_0031";
+						my $alert_level = "notice";
+						my $title_key   = "an_alert_title_0003";
 						if ($old_variable_value eq "VANISHED")
 						{
 							$message_key = "scan_storcli_warning_0032";
 						}
+						if ($type eq "temperature")
+						{
+							# If the temperature is rising, see if we need to set
+							# a high warning or critical, or, clear a low warning
+							# or critical. Check for the reverse if the 
+							# temperature is dropping.
+							if ($old_value > $new_value)
+							{
+								# Rising
+								if ($value > $high_critical)
+								{
+									# Crossed the critical threshold. See
+									# if this is the first time.
+									my $set = $an->Alert->check_alert_sent({
+										type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
+										alert_sent_by		=>	$THIS_FILE,
+										alert_record_locator	=>	$variable_uuid,
+										alert_name		=>	$variable."_high_critical",
+										modified_date		=>	$an->data->{sys}{db_timestamp},
+									});
+									if ($set)
+									{
+										# This is the first time we 
+										# rose above the critical 
+										# threshold.
+										$level       = "critical";
+										$title_key   = "an_alert_title_0005";
+										$message_key = "scan_storcli_note_0008";
+									}
+								}
+								elsif ($value > $high_warning)
+								{
+									# Crossed the warning threshold.
+									my $set = $an->Alert->check_alert_sent({
+										type			=>	"warning",
+										alert_sent_by		=>	$THIS_FILE,
+										alert_record_locator	=>	$variable_uuid,
+										alert_name		=>	$variable."_high_warning",
+										modified_date		=>	$an->data->{sys}{db_timestamp},
+									});
+									if ($set)
+									{
+										# This is the first time we rose above the 
+										# critical threshold.
+										$level       = "warning";
+										$title_key   = "an_alert_title_0004";
+										$message_key = "scan_storcli_note_0009";
+									}
+								}
+								elsif ($value > $clear_low_warning)
+								{
+									### TODO: Make sure an old low_critical is cleared, too.
+									# Risen into the clear
+								}
+								elsif ($value > $clear_low_critical)
+								{
+									# Risen above critical, but not in 
+									# the clear.
+								}
+								elsif (($new_value - $old_value) > $jump)
+								{
+									# The temperature jumped a large 
+									# amount.
+								}
+							}
+							else
+							{
+								# Falling
+								if ($value < $low_critical)
+								{
+									# Dropped below the critical threshold. This 
+									# should always be unset because it is a new
+									# variable, but check anyway.
+									my $set = $an->Alert->check_alert_sent({
+										type			=>	"warning",
+										alert_sent_by		=>	$THIS_FILE,
+										alert_record_locator	=>	$variable_uuid,
+										alert_name		=>	$variable,
+										modified_date		=>	$an->data->{sys}{db_timestamp},
+									});
+									if ($set)
+									{
+										# This is the first time we rose above the 
+										# critical threshold.
+										$level       = "critical";
+										$title_key   = "an_alert_title_0005";
+										$message_key = "scan_storcli_note_0010";
+									}
+								}
+								elsif ($value < $low_warning)
+								{
+									# Crossed the warning threshold. This should
+									# always be unset because it is a new
+									# variable, but check anyway.
+									my $set = $an->Alert->check_alert_sent({
+										type			=>	"warning",
+										alert_sent_by		=>	$THIS_FILE,
+										alert_record_locator	=>	$variable_uuid,
+										alert_name		=>	$variable,
+										modified_date		=>	$an->data->{sys}{db_timestamp},
+									});
+									if ($set)
+									{
+										# This is the first time we rose above the 
+										# critical threshold.
+										$level       = "warning";
+										$title_key   = "an_alert_title_0004";
+										$message_key = "scan_storcli_note_0011";
+									}
+								}
+								elsif ($value < $clear_low_critical)
+								{
+									### TODO: Make sure an old low_critical is cleared, too.
+									# Dropped into the clear
+								}
+								elsif ($value < $clear_low_warning)
+								{
+									# Dropped below critical, but not in
+									# the clear.
+								}
+								elsif (($old_value - $new_value) > $jump)
+								{
+									# The temperature dropped a large
+									# amount.
+								}
+							}
+						}
 						$an->Alert->register_alert({
-							alert_level		=>	"warning", 
+							alert_level		=>	$alert_level, 
 							alert_agent_name	=>	$THIS_FILE,
 							alert_sort		=>	$an->data->{sys}{alert_sort},
 							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
-							alert_title_key		=>	"an_alert_title_0004",
+							alert_title_key		=>	$title_key,
 							alert_message_key	=>	$message_key,
 							alert_message_variables	=>	{
 								serial_number		=>	$storcli_physical_drive_serial_number,
 								name			=>	$variable,
-								old_value		=>	$old_variable_value,
+								old_value		=>	$old_variable_value ? $old_variable_value : "--",
 								new_value		=>	$new_variable_value,
+								high_critical_temperature =>	$high_critical, 
+								high_warning_temperature =>	$high_warning, 
+								low_critical_temperature =>	$low_critical, 
+								low_warning_temperature	=>	$low_warning, 
 							},
 						});
 						
@@ -2336,7 +2954,7 @@ INSERT INTO
 		# this pass.
 		foreach my $type ("variable", "temperature")
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}})
@@ -2344,7 +2962,7 @@ INSERT INTO
 				# This variable has vanished
 				my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_value};
 				my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "old_variable_value", value1 => $old_variable_value,
 					name2 => "variable_uuid",      value2 => $variable_uuid,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -3069,7 +3687,7 @@ sub process_bbus
 	$an->data->{sys}{sql} = [];
 	foreach my $bbu_serial_number (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "bbu_serial_number", value1 => $bbu_serial_number,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3080,7 +3698,7 @@ sub process_bbus
 		{
 			# Yes!
 			$bbu_uuid = $an->data->{'scan-storcli'}{bbus}{by_serial}{$bbu_serial_number};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "bbu_uuid", value1 => $bbu_uuid,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3089,7 +3707,7 @@ sub process_bbus
 			# No, this is a new BBU. Create a new UUID for it.
 			$bbu_uuid = $an->Get->uuid();
 			$is_new   = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "bbu_uuid", value1 => $bbu_uuid,
 				name2 => "is_new",   value2 => $is_new,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3097,7 +3715,7 @@ sub process_bbus
 			# Add the keys for looking it up by UUID or serial number.
 			$an->data->{'scan-storcli'}{bbus}{by_serial}{$bbu_serial_number} = $bbu_uuid;
 			$an->data->{'scan-storcli'}{bbus}{by_uuid}{$bbu_uuid} = $bbu_serial_number;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "scan-storcli::bbus::by_serial::$bbu_serial_number", value1 => $an->data->{'scan-storcli'}{bbus}{by_serial}{$bbu_serial_number},
 				name2 => "scan-storcli::bbus::by_uuid::$bbu_uuid", value2 => $an->data->{'scan-storcli'}{bbus}{by_uuid}{$bbu_uuid},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3111,7 +3729,7 @@ sub process_bbus
 			$an->nice_exit({exit_code => 7});
 		}
 		my $host_controller_serial_number = $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "host_controller_serial_number", value1 => $host_controller_serial_number,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3121,7 +3739,7 @@ sub process_bbus
 			$an->nice_exit({exit_code => 8});
 		}
 		my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "controller_uuid", value1 => $controller_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3142,7 +3760,7 @@ sub process_bbus
 			if ($variable eq "type")
 			{
 				$new_type = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_type", value1 => $new_type,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -3150,7 +3768,7 @@ sub process_bbus
 			if ($variable eq "manufacture_name")
 			{
 				$new_model = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_model", value1 => $new_model,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -3158,7 +3776,7 @@ sub process_bbus
 			if ($variable eq "battery_state")
 			{
 				$new_state = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_model", value1 => $new_model,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -3166,7 +3784,7 @@ sub process_bbus
 			if ($variable eq "date_of_manufacture")
 			{
 				$new_manufacture_date = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_manufacture_date", value1 => $new_manufacture_date,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -3174,7 +3792,7 @@ sub process_bbus
 			if ($variable eq "design_capacity")
 			{
 				$new_design_capacity = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_design_capacity", value1 => $new_design_capacity,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -3182,7 +3800,7 @@ sub process_bbus
 			if ($variable eq "replacement_required")
 			{
 				$new_replacement_needed = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_replacement_needed", value1 => $new_replacement_needed,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -3197,7 +3815,7 @@ sub process_bbus
 		# not be deleted, but their value will be set to 'VANISHED'.
 		if ($is_new)
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "bbu_uuid",               value1 => $bbu_uuid,
 				name2 => "controller_uuid",        value2 => $controller_uuid,
 				name3 => "bbu_serial_number",      value3 => $bbu_serial_number,
@@ -3259,7 +3877,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 			# Now record the query in the array
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -3267,14 +3885,14 @@ INSERT INTO
 			# Process the rest of the variables and temperatures now. 
 			foreach my $type ("variable", "temperature")
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
 				{
 					my $value       = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable};
 					my $temperature = $type eq "temperature" ? "TRUE" : "FALSE";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "variable",    value1 => $variable,
 						name2 => "value",       value2 => $value,
 						name3 => "temperature", value3 => $temperature,
@@ -3319,7 +3937,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 					# Now record the query in the array
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -3340,7 +3958,7 @@ INSERT INTO
 			my $old_design_capacity    = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$bbu_uuid}{storcli_bbu_design_capacity};
 			my $old_manufacture_date   = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$bbu_uuid}{storcli_bbu_manufacture_date};
 			my $old_replacement_needed = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$bbu_uuid}{storcli_bbu_replacement_needed};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
 				name1  => "bbu_serial_number",      value1  => $bbu_serial_number,
 				name2  => "old_bbu_serial_number",  value2  => $old_bbu_serial_number,
 				name3  => "controller_uuid",        value3  => $controller_uuid,
@@ -3371,7 +3989,7 @@ INSERT INTO
 				# I need the serial numbers for the controller UUIDs.
 				my $new_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid};
 				my $old_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "new_controller_serial_number", value1 => $new_controller_serial_number,
 					name2 => "old_controller_serial_number", value2 => $old_controller_serial_number,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -3427,7 +4045,7 @@ UPDATE
     storcli_bbus
 SET
     storcli_bbu_controller_uuid    = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
-    storcli_bbu_serial_number      = ".$an->data->{sys}{use_db_fh}->quote($old_controller_uuid).", 
+    storcli_bbu_serial_number      = ".$an->data->{sys}{use_db_fh}->quote($bbu_serial_number).", 
     storcli_bbu_type               = ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
     storcli_bbu_model              = ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
     storcli_bbu_state              = ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
@@ -3440,7 +4058,7 @@ WHERE
 ;";
 
 				# Now record the query in the array
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -3449,14 +4067,14 @@ WHERE
 			### Process the rest of the variables now. 
 			foreach my $type ("variable", "temperature")
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}})
 				{
 					my $new_variable_value = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type}{$variable};
 					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "variable",    value1 => $variable,
 						name2 => "temperature", value2 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -3465,7 +4083,7 @@ WHERE
 						# Look for changes
 						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$bbu_uuid}{$type}{$variable}{storcli_variable_value};
 						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$bbu_uuid}{$type}{$variable}{storcli_variable_uuid};
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 							name1 => "new_variable_value", value1 => $new_variable_value,
 							name2 => "old_variable_value", value2 => $old_variable_value,
 							name3 => "variable_uuid",      value3 => $variable_uuid,
@@ -3513,7 +4131,7 @@ WHERE
     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "query", value1 => $query
 							}, file => $THIS_FILE, line => __LINE__});
 							push @{$an->data->{sys}{sql}}, $query;
@@ -3562,7 +4180,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
@@ -3574,7 +4192,7 @@ INSERT INTO
 			# delete) this pass.
 			foreach my $type ("variable", "temperature")
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$bbu_uuid}{$type}})
@@ -3582,7 +4200,7 @@ INSERT INTO
 					# This variable has vanished
 					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$bbu_uuid}{$type}{$variable}{storcli_variable_value};
 					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$bbu_uuid}{$type}{$variable}{storcli_variable_uuid};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_variable_value", value1 => $old_variable_value,
 						name2 => "variable_uuid",      value2 => $variable_uuid,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -3622,7 +4240,7 @@ WHERE
     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
 ;";
 					# Now record the query in the array
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -3645,7 +4263,7 @@ WHERE
 		my $old_controller_uuid          = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$bbu_uuid}{storcli_bbu_controller_uuid};
 		my $old_state                    = $an->data->{sql}{storcli_bbus}{storcli_bbu_uuid}{$bbu_uuid}{storcli_bbu_state};
 		my $old_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "old_bbu_serial_number",        value1 => $old_bbu_serial_number,
 			name2 => "old_controller_uuid",          value2 => $old_controller_uuid,
 			name3 => "old_state",                    value3 => $old_state,
@@ -3686,7 +4304,7 @@ WHERE
     storcli_bbu_uuid  = ".$an->data->{sys}{use_db_fh}->quote($bbu_uuid)." 
 ;";
 		# Now record the query in the array
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$an->data->{sys}{sql}}, $query;
@@ -3708,7 +4326,7 @@ sub process_controllers
 	$an->data->{sys}{sql} = [];
 	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "serial_number",                                        value1 => $serial_number,
 			name2 => "scan-storcli::controllers::by_serial::$serial_number", value2 => $an->data->{'scan-storcli'}{controllers}{by_serial}{$serial_number},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4056,7 +4674,7 @@ WHERE
     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "query", value1 => $query
 							}, file => $THIS_FILE, line => __LINE__});
 							push @{$an->data->{sys}{sql}}, $query;
@@ -4104,7 +4722,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
@@ -4164,7 +4782,7 @@ WHERE
     storcli_variable_uuid  = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid)."
 ;";
 					# Now record the query in the array
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -4588,7 +5206,7 @@ FROM
 WHERE
     storcli_drive_group_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4612,7 +5230,7 @@ WHERE
 		my $storcli_drive_group_read_cache         = defined $row->[11] ? $row->[11] : "";
 		my $storcli_drive_group_scheduled_cc       = defined $row->[12] ? $row->[12] : "";
 		my $storcli_drive_group_write_cache        = defined $row->[13] ? $row->[13] : "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
 			name1  => "storcli_drive_group_uuid",               value1  => $storcli_drive_group_uuid, 
 			name2  => "storcli_drive_group_virtual_drive_uuid", value2  => $storcli_drive_group_virtual_drive_uuid, 
 			name3  => "storcli_drive_group_id_string",          value3  => $storcli_drive_group_id_string, 
@@ -4632,7 +5250,7 @@ WHERE
 		# Store the information about this virtual drive.
 		$an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string} = $storcli_drive_group_uuid;
 		$an->data->{'scan-storcli'}{drive_groups}{by_uuid}{$storcli_drive_group_uuid}           = $storcli_drive_group_id_string;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "scan-storcli::drive_groups::by_id_string::${storcli_drive_group_id_string}", value1 => $an->data->{'scan-storcli'}{drive_groups}{by_id_string}{$storcli_drive_group_id_string}, 
 			name2 => "scan-storcli::drive_groups::by_uuid::${storcli_drive_group_uuid}",           value2 => $an->data->{'scan-storcli'}{drive_groups}{by_uuid}{$storcli_drive_group_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4653,7 +5271,7 @@ WHERE
 			storcli_drive_group_scheduled_cc	=>	$storcli_drive_group_scheduled_cc, 
 			storcli_drive_group_write_cache		=>	$storcli_drive_group_write_cache, 
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 			name1  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_virtual_drive_uuid", value1  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_virtual_drive_uuid}, 
 			name2  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_id_string",          value2  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_id_string}, 
 			name3  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_access",             value3  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_access}, 
@@ -4880,7 +5498,7 @@ FROM
 WHERE
     storcli_physical_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4903,7 +5521,7 @@ WHERE
 			my $storcli_physical_drive_model                 = defined $row->[8]  ? $row->[8] : "";
 			my $storcli_physical_drive_self_encrypting_drive = defined $row->[9]  ? $row->[9] : "";
 			my $modified_date                                =         $row->[10];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 				name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
 				name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
 				name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
@@ -4950,7 +5568,7 @@ WHERE
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $storcli_physical_drive_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}})
@@ -4964,7 +5582,7 @@ WHERE
 			my $storcli_physical_drive_vendor                = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
 			my $storcli_physical_drive_model                 = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 			my $storcli_physical_drive_self_encrypting_drive = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 				name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
 				name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
 				name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
@@ -4988,7 +5606,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{seen})
@@ -4997,13 +5615,13 @@ WHERE
 					$an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::storcli_physical_drives::modified_date::${modified_date}::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}", value1 => $an->data->{db_data}{$id}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid})
@@ -5029,7 +5647,7 @@ WHERE
     storcli_physical_drive_uuid                  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -5070,7 +5688,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -5116,7 +5734,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -5182,7 +5800,7 @@ FROM
 WHERE
     storcli_drive_group_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -5209,7 +5827,7 @@ WHERE
 			my $storcli_drive_group_scheduled_cc       = defined $row->[12] ? $row->[12] : "";
 			my $storcli_drive_group_write_cache        = defined $row->[13] ? $row->[13] : "";
 			my $modified_date                          =         $row->[14];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0015", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
 				name1  => "storcli_drive_group_uuid",               value1  => $storcli_drive_group_uuid, 
 				name2  => "storcli_drive_group_virtual_drive_uuid", value2  => $storcli_drive_group_virtual_drive_uuid, 
 				name3  => "storcli_drive_group_id_string",          value3  => $storcli_drive_group_id_string, 
@@ -5269,7 +5887,7 @@ WHERE
 	# needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $storcli_drive_group_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}})
@@ -5287,7 +5905,7 @@ WHERE
 			my $storcli_drive_group_read_cache         = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_read_cache};
 			my $storcli_drive_group_scheduled_cc       = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_scheduled_cc};
 			my $storcli_drive_group_write_cache        = $an->data->{db_data}{unified}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_write_cache};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
 				name1  => "storcli_drive_group_uuid",               value1  => $storcli_drive_group_uuid, 
 				name2  => "storcli_drive_group_virtual_drive_uuid", value2  => $storcli_drive_group_virtual_drive_uuid, 
 				name3  => "storcli_drive_group_id_string",          value3  => $storcli_drive_group_id_string, 
@@ -5314,7 +5932,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{seen})
@@ -5323,13 +5941,13 @@ WHERE
 					$an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::storcli_drive_groups::modified_date::${modified_date}::storcli_drive_group_uuid::${storcli_drive_group_uuid}", value1 => $an->data->{db_data}{$id}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid})
@@ -5359,7 +5977,7 @@ WHERE
     storcli_drive_group_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -5408,7 +6026,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -5462,7 +6080,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -5526,7 +6144,7 @@ FROM
 WHERE
     storcli_virtual_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -5551,7 +6169,7 @@ WHERE
 			my $storcli_virtual_drive_span_depth        = defined $row->[10] ? $row->[10] : "";
 			my $storcli_virtual_drive_scsi_naa_id       = defined $row->[11] ? $row->[11] : "";
 			my $modified_date                           = $row->[12];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 				name1  => "storcli_virtual_drive_uuid",              value1  => $storcli_virtual_drive_uuid, 
 				name2  => "storcli_virtual_drive_controller_uuid",   value2  => $storcli_virtual_drive_controller_uuid, 
 				name3  => "storcli_virtual_drive_creation_date",     value3  => $storcli_virtual_drive_creation_date, 
@@ -5605,7 +6223,7 @@ WHERE
 	# needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $storcli_virtual_drive_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}})
@@ -5621,7 +6239,7 @@ WHERE
 			my $storcli_virtual_drive_drives_per_span   = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_drives_per_span};
 			my $storcli_virtual_drive_span_depth        = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_span_depth};
 			my $storcli_virtual_drive_scsi_naa_id       = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_scsi_naa_id};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 				name1  => "storcli_virtual_drive_uuid",              value1  => $storcli_virtual_drive_uuid, 
 				name2  => "storcli_virtual_drive_controller_uuid",   value2  => $storcli_virtual_drive_controller_uuid, 
 				name3  => "storcli_virtual_drive_creation_date",     value3  => $storcli_virtual_drive_creation_date, 
@@ -5646,7 +6264,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{seen})
@@ -5655,13 +6273,13 @@ WHERE
 					$an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::storcli_virtual_drives::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::storcli_virtual_drives::modified_date::${modified_date}::storcli_virtual_drive_uuid::${storcli_virtual_drive_uuid}", value1 => $an->data->{db_data}{$id}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid})
@@ -5689,7 +6307,7 @@ WHERE
     storcli_virtual_drive_uuid              = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -5734,7 +6352,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -5784,7 +6402,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -5845,7 +6463,7 @@ FROM
 WHERE
     storcli_bbu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -5867,7 +6485,7 @@ WHERE
 			my $storcli_bbu_design_capacity    = defined $row->[7] ? $row->[7] : "";
 			my $storcli_bbu_replacement_needed = defined $row->[8] ? $row->[8] : "";
 			my $modified_date                  = $row->[9];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "storcli_bbu_uuid",               value1  => $storcli_bbu_uuid, 
 				name2  => "storcli_bbu_controller_uuid",    value2  => $storcli_bbu_controller_uuid, 
 				name3  => "storcli_bbu_serial_number",      value3  => $storcli_bbu_serial_number, 
@@ -5912,7 +6530,7 @@ WHERE
 	# needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_bbus}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $storcli_bbu_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}})
@@ -5925,7 +6543,7 @@ WHERE
 			my $storcli_bbu_manufacture_date   = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_manufacture_date};
 			my $storcli_bbu_design_capacity    = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_design_capacity};
 			my $storcli_bbu_replacement_needed = $an->data->{db_data}{unified}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}{storcli_bbu_replacement_needed};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "storcli_bbu_uuid",               value1 => $storcli_bbu_uuid, 
 				name2 => "storcli_bbu_controller_uuid",    value2 => $storcli_bbu_controller_uuid, 
 				name3 => "storcli_bbu_serial_number",      value3 => $storcli_bbu_serial_number, 
@@ -5947,7 +6565,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{seen})
@@ -5956,13 +6574,13 @@ WHERE
 					$an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::storcli_bbus::storcli_bbu_uuid::${storcli_bbu_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{storcli_bbus}{storcli_bbu_uuid}{$storcli_bbu_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::storcli_bbus::modified_date::${modified_date}::storcli_bbu_uuid::${storcli_bbu_uuid}", value1 => $an->data->{db_data}{$id}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid})
@@ -5987,7 +6605,7 @@ WHERE
     storcli_bbu_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -6026,7 +6644,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -6070,7 +6688,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -6130,7 +6748,7 @@ FROM
 WHERE
     storcli_cachevault_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -6151,7 +6769,7 @@ WHERE
 			my $storcli_cachevault_type               = defined $row->[6] ? $row->[6] : "";
 			my $storcli_cachevault_manufacture_date   = defined $row->[7] ? $row->[7] : "";
 			my $modified_date                         = $row->[8];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "storcli_cachevault_uuid",               value1 => $storcli_cachevault_uuid, 
 				name2 => "storcli_cachevault_controller_uuid",    value2 => $storcli_cachevault_controller_uuid, 
 				name3 => "storcli_cachevault_serial_number",      value3 => $storcli_cachevault_serial_number, 
@@ -6193,7 +6811,7 @@ WHERE
 	# needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $storcli_cachevault_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}})
@@ -6205,7 +6823,7 @@ WHERE
 			my $storcli_cachevault_replacement_needed = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_replacement_needed};
 			my $storcli_cachevault_type               = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_type};
 			my $storcli_cachevault_manufacture_date   = $an->data->{db_data}{unified}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{storcli_cachevault_manufacture_date};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "storcli_cachevault_uuid",               value1 => $storcli_cachevault_uuid, 
 				name2 => "storcli_cachevault_controller_uuid",    value2 => $storcli_cachevault_controller_uuid, 
 				name3 => "storcli_cachevault_serial_number",      value3 => $storcli_cachevault_serial_number, 
@@ -6226,7 +6844,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{seen})
@@ -6235,13 +6853,13 @@ WHERE
 					$an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::storcli_cachevaults::storcli_cachevault_uuid::${storcli_cachevault_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{storcli_cachevaults}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::storcli_cachevaults::modified_date::${modified_date}::storcli_cachevault_uuid::${storcli_cachevault_uuid}", value1 => $an->data->{db_data}{$id}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid})
@@ -6265,7 +6883,7 @@ WHERE
     storcli_cachevault_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -6302,7 +6920,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -6344,7 +6962,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -6402,7 +7020,7 @@ FROM
 WHERE
     storcli_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -6421,7 +7039,7 @@ WHERE
 			my $storcli_variable_name            = $row->[4]; 
 			my $storcli_variable_value           = defined $row->[5] ? $row->[5] : ""; 
 			my $modified_date                    = $row->[6];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "storcli_variable_uuid",           value1 => $storcli_variable_uuid, 
 				name2 => "storcli_variable_source_table",   value2 => $storcli_variable_source_table, 
 				name3 => "storcli_variable_source_uuid",    value3 => $storcli_variable_source_uuid, 
@@ -6457,7 +7075,7 @@ WHERE
 	# needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_variables}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $storcli_variable_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}})
@@ -6467,7 +7085,7 @@ WHERE
 			my $storcli_variable_is_temperature = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_is_temperature};
 			my $storcli_variable_name           = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_name};
 			my $storcli_variable_value          = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_value};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "storcli_variable_uuid",           value1 => $storcli_variable_uuid, 
 				name2 => "storcli_variable_source_table",   value2 => $storcli_variable_source_table, 
 				name3 => "storcli_variable_source_uuid",    value3 => $storcli_variable_source_uuid, 
@@ -6486,7 +7104,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::storcli_variables::storcli_variable_uuid::${storcli_variable_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{seen})
@@ -6495,13 +7113,13 @@ WHERE
 					$an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::storcli_variables::storcli_variable_uuid::${storcli_variable_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{storcli_variables}{storcli_variable_uuid}{$storcli_variable_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::storcli_variables::modified_date::${modified_date}::storcli_variable_uuid::${storcli_variable_uuid}", value1 => $an->data->{db_data}{$id}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid})
@@ -6523,7 +7141,7 @@ WHERE
     storcli_variable_uuid           = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -6556,7 +7174,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -6594,7 +7212,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -6651,7 +7269,7 @@ FROM
 WHERE
     storcli_controller_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -6669,7 +7287,7 @@ WHERE
 			my $storcli_controller_alarm_state   = $row->[3]; 
 			my $storcli_controller_cache_size    = $row->[4]; 
 			my $modified_date                    = $row->[5];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "storcli_controller_uuid",          value1 => $storcli_controller_uuid, 
 				name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number, 
 				name3 => "storcli_controller_model",         value3 => $storcli_controller_model, 
@@ -6702,7 +7320,7 @@ WHERE
 	# needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{storcli_controllers}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $storcli_controller_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}})
@@ -6711,7 +7329,7 @@ WHERE
 			my $storcli_controller_model = $an->data->{db_data}{unified}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_model};
 			my $storcli_controller_alarm_state = $an->data->{db_data}{unified}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_alarm_state};
 			my $storcli_controller_cache_size = $an->data->{db_data}{unified}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid}{storcli_controller_cache_size};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "storcli_controller_uuid",          value1  => $storcli_controller_uuid, 
 				name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number, 
 				name3 => "storcli_controller_model",         value3 => $storcli_controller_model, 
@@ -6729,7 +7347,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::seen", value1 => $an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{seen})
@@ -6738,13 +7356,13 @@ WHERE
 					$an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::storcli_controllers::storcli_controller_uuid::${storcli_controller_uuid}::exists", value1 => $an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{storcli_controllers}{storcli_controller_uuid}{$storcli_controller_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::storcli_controllers::modified_date::${modified_date}::storcli_controller_uuid::${storcli_controller_uuid}", value1 => $an->data->{db_data}{$id}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid})
@@ -6765,7 +7383,7 @@ AND
     storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -6796,7 +7414,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -6832,7 +7450,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7358,7 +7976,7 @@ sub get_physical_disk_data
 			}
 			if ($value =~ /^(\d.*?)C \(\d.*? F\)/i)
 			{
-				$value = $1." C";
+				$value = $1;
 				$type  = "temperature";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "value", value1 => $value, 
@@ -7367,7 +7985,7 @@ sub get_physical_disk_data
 			}
 			if (($value =~ /^(\d+)C$/i) or ($value =~ /^(\d+\.\d+)C$/i))
 			{
-				$value = $1." C";
+				$value = $1;
 				$type  = "temperature";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "value", value1 => $value, 
@@ -7376,7 +7994,7 @@ sub get_physical_disk_data
 			}
 			if (($value =~ /^(\d+)F$/i) or ($value =~ /^(\d+\.\d+)F$/i))
 			{
-				$value = $an->Convert->convert_to_celsius({temperature => $1})." C";
+				$value = $an->Convert->convert_to_celsius({temperature => $1});
 				$type  = "temperature";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "value", value1 => $value, 
@@ -8195,7 +8813,7 @@ sub process_vg_overview_data
 sub get_bbu_data
 {
 	my ($an, $adapter, $serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_bbu_data" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_bbu_data" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "adapter",       value1 => $adapter, 
 		name2 => "serial_number", value2 => $serial_number, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -8386,7 +9004,7 @@ sub get_bbu_data
 			elsif ($value =~ /^(\d+) F$/i)
 			{
 				# Yup, but translate
-				$value = $an->Convert->convert_to_celsius({temperature => $1})." C";
+				$value = $an->Convert->convert_to_celsius({temperature => $1});
 				$type  = "temperature";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable,
@@ -8453,7 +9071,7 @@ sub get_bbu_data
 sub get_cachevault_data
 {
 	my ($an, $adapter, $serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_cachevault_data" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_cachevault_data" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "adapter",       value1 => $adapter, 
 		name2 => "serial_number", value2 => $serial_number, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -8594,7 +9212,7 @@ sub get_cachevault_data
 			elsif ($value =~ /^(\d+) F$/i)
 			{
 				# Yup, but translate
-				$value = $an->Convert->convert_to_celsius({temperature => $1})." C";
+				$value = $an->Convert->convert_to_celsius({temperature => $1});
 				$type  = "temperature";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable,
@@ -8662,7 +9280,7 @@ sub get_cachevault_data
 sub get_controller_info
 {
 	my ($an, $adapter) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_controller_info" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_controller_info" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "adapter", value1 => $adapter, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -9440,7 +10058,7 @@ sub get_controller_info
 				$variable =~ s/\(Degree Fahrenheit\)//i;
 				$variable =~ s/^\s+//;
 				$variable =~ s/\s+$//;
-				$value    =  $an->Convert->convert_to_celsius({temperature => $value})." C";
+				$value    =  $an->Convert->convert_to_celsius({temperature => $value});
 				$type     = "temperature";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "variable", value1 => $variable, 
@@ -9612,6 +10230,9 @@ sub get_controller_info
 			
 			$variable = process_variable_name($an, $variable);
 			$an->data->{controller}{serial_number}{$serial_number}{$type}{$variable} = $value;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "controller::serial_number::${serial_number}::${type}::${variable}", value1 => $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -9652,7 +10273,7 @@ sub process_variable_name
 sub find_lsi_controllers
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_lsi_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_lsi_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will keep track of how many controllers we find.
 	my $adapter_count = 0;

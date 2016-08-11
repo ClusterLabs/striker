@@ -1382,7 +1382,7 @@ AND
 								alert_name		=>	"apc_ups_battery_temperature_warning",
 								modified_date		=>	$an->data->{sys}{db_timestamp},
 							});
-							if (($cleared_shutdown) || ($cleared_critical) || ($cleared_warning))
+							if (($cleared_shutdown) or ($cleared_critical) or ($cleared_warning))
 							{
 								# The temperature has dropped back down to 
 								# safe levels.
@@ -1408,7 +1408,7 @@ AND
 								alert_name		=>	"apc_ups_battery_temperature_critical",
 								modified_date		=>	$an->data->{sys}{db_timestamp},
 							});
-							if (($cleared_shutdown) || ($cleared_critical))
+							if (($cleared_shutdown) or ($cleared_critical))
 							{
 								# The temperature has dropped back down to 
 								# warning levels.
@@ -2043,7 +2043,7 @@ WHERE
 		{
 			### No record found, INSERT everything.
 			# I'll need a new UUID
-			die "$THIS_FILE ".__LINE__."; UPS: [$new_apc_ups_name] has no serial number and I was about to INSERT..." if $new_apc_ups_nmc_serial_number eq "--";
+			#die "$THIS_FILE ".__LINE__."; UPS: [$new_apc_ups_name] has no serial number and I was about to INSERT..." if $new_apc_ups_nmc_serial_number eq "--";
 			my $apc_ups_uuid = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
 			my $query = "
 INSERT INTO 
