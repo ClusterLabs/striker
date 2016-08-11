@@ -1206,7 +1206,7 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($anvil_smtp_uuid)
 		{
-			$anvil_smtp_uuid = $an->data->{sys}{use_db_fh}->quote($anvil_owner_uuid);
+			$anvil_smtp_uuid = $an->data->{sys}{use_db_fh}->quote($anvil_smtp_uuid);
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "anvil_smtp_uuid", value1 => $anvil_smtp_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
