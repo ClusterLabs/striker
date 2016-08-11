@@ -130,6 +130,30 @@ The temperature of the physical drive: [#!variable!serial_number!#] is below the
 The temperature of the physical drive: [#!variable!serial_number!#] is below the warning temperature of: [#!variable!low_warning_temperature!# °C]. It will go critical at: [#!variable!low_critical_temperature!# °C]!:
 - #!variable!name!#: [#!variable!value!# °C]
 		</key>
+		<key name="scan_storcli_note_0016">
+The temperature of the physical drive: [#!variable!serial_number!#] has risen back into a safe temperature range.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0017">
+The temperature of the physical drive: [#!variable!serial_number!#] has risen back above the critical low threshold, but it is still in a warning state. It will be marked clear when it rises above: [#!variable!low_warning_temperature!#].
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0018">
+The temperature of the physical drive: [#!variable!serial_number!#] has jumped more than: [#!variable!jump!# °C] since the last scan.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0019">
+The temperature of the physical drive: [#!variable!serial_number!#] has fallen back into a safe temperature range.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0020">
+The temperature of the physical drive: [#!variable!serial_number!#] has dropped back below the critical high threshold, but it is still in a warning state. It will be marked clear when it drops below: [#!variable!high_warning_temperature!#].
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0021">
+The temperature of the physical drive: [#!variable!serial_number!#] has dropped more than: [#!variable!jump!# °C] since the last scan.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
 		
 		<!-- Warnings -->
 		<key name="scan_storcli_warning_0001">While processing data from adapter: [#!variable!adapter!#], which has the serial number: [#!variable!serial_number!#], the drive in virtual drive: [#!variable!virtual_disk!#] in the enclosure: [#!variable!enclosure_id!#] at slot number: [#!variable!slot_number!#] in span: [#!variable!span!#] at row: [#!variable!row!#] initially was found in drive group: [#!variable!old_drive_group!#] but the variable 'Drive position' reports it as being in drive group: [#!variable!new_drive_group!#]. This might be a program error in parsing the output of: [#!variable!shell_call!#]. Please report this error along with the output of that shell call so that we can improve this scan agent.</key>
