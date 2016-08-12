@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This strings file is for the 'server' scan agent that tracks servers hosted by the Anvil!. Please be careful
+not to use names used by the main Striker strings file. Do this by prefixing all strings with 'scan_server_resources_'.
+-->
+<strings>
+	<!-- Canadian English -->
+	<name>scan-server.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA</langs>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the rgmanager 'server' Scan Agent.</key>
+		
+		<!-- Strings that can change by rebranding -->
+		<key name="scan_server_resources_brand_0001">'server resources' Scan Agent</key>
+		
+		<!-- Log messages -->
+		<key name="scan_server_resources_log_0001"></key>
+		
+		<!-- Notices -->
+		<key name="scan_server_resources_note_0001"></key>
+		
+		<!-- Warnings. -->
+		<key name="scan_server_resources_warning_0001"></key>
+		
+		<!-- Errors -->
+		<key name="scan_server_resources_error_0001"></key>
+		
+		<!-- server Agent-specific messages -->
+		<key name="scan_server_resources_message_0001">Starting #!string!scan_server_resources_brand_0001!#:</key>
+		<key name="scan_server_resources_message_0002"><![CDATA[
+ -=] ScanCore - Agent - scan-server-resources
+
+DESCRIPTION
+
+This agent tries to read the resources on a server. Optionally, it can be 
+configured to reboot a server if it stops reporting resource data for a set
+period of time.
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+                  
+SUPPORT
+
+https://alteeve.ca/w/Support                             Alteeve's Niche! Inc.
+		]]></key>
+		
+	</lang>
+</strings>

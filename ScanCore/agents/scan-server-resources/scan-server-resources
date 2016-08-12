@@ -1,0 +1,148 @@
+#!/usr/bin/perl
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released under the terms of the GNU GPL 
+# version 2.
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0   - Success
+# 
+# 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
+# 
+# NOTE:
+# - This agent monitors the resources on servers that we've been told about. It monitors CPU, RAM and disk
+#   resource utilization.
+# - 
+# 
+# TODO: 
+#  - 
+# 
+
+# Disable this for now.
+exit(0);
+
+# Use my modules.
+use strict;
+use warnings;
+use AN::Tools;
+
+# Disable buffering.
+$| = 1;
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0];
+
+# Get the handle to the AN::Tools and preset some variables I will use.
+my $an = AN::Tools->new({data => 
+	{
+		path			=>	{
+			core_strings		=>	"$scancore_directory/ScanCore.xml",
+			sql			=>	"$running_directory/$THIS_FILE.sql",
+			strings			=>	"$running_directory/$THIS_FILE.xml",
+		},
+		# This is used so that the user can set the language in on striker.conf variable.
+		'scan-server-resources'	=>	{
+			language		=>	"en_CA",
+			log_level		=>	1,
+			log_language		=>	"en_CA",
+			log_file		=>	"/var/log/ScanCore.log",
+			log_db_transactions	=>	0,
+		},
+		server		=>	{},
+		sys		=>	{
+			# This will get set by AN::Tools::DB->connect_to_databases()
+			sql			=>	[],
+			# This is the source name of anything added to 'shared' by this agent.
+			shared_source_name	=>	'scan-server-resources', 
+			# This is the shared record used in 'shared' to store the XML definition data, 
+			# current host and current state.
+			shared_definition_name	=>	'definition',
+			shared_host_name	=>	'host',
+			shared_state_name	=>	'state',
+		},
+	}
+});
+
+# Read the config file
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+
+# Set some defaults
+$an->default_language    ($an->data->{'scan-server-resources'}{language});
+$an->default_log_language($an->data->{'scan-server-resources'}{log_language});
+$an->default_log_file    ($an->data->{'scan-server-resources'}{log_file});
+
+# Set the log level.
+$an->Log->level($an->data->{'scan-server-resources'}{log_level});
+$an->Log->db_transactions(1) if $an->data->{'scan-server-resources'}{log_db_transactions};
+
+# Read in the language strings.
+$an->Storage->read_words({file => $an->data->{path}{strings}});
+$an->Storage->read_words({file => $an->data->{path}{core_strings}});
+$an->Storage->read_words({file => $an->data->{path}{striker_strings}});
+
+# Get the switches before printing anything in case the user is asking for help.
+$an->Get->switches();
+$an->Log->adjust_log_level({key => $THIS_FILE});
+
+# I'll need to loop through the DBs and ensure our schema is loaded for each one.
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
+
+# Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
+# running ScanCore, it won't be.
+if (not $an->DB->verify_host_uuid())
+{
+	# ScanCore hasn't run, this host isn't in the 'hosts' table.
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
+}
+
+print $an->String->get({key => "scan_server_resources_message_0001"})."\n";
+
+
+
+
+# Update the database
+$an->DB->update_time({file => $THIS_FILE});
+
+# Clean up and go away.
+$an->nice_exit({exit_code => 0});
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This looks for servers locally and on the peer and reads in their data.
+sub scan_server_resources
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_server_resources", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# This will get set to '1' if we find any 'scan_server_resources' database entries.
+	my $proceed = 0;
+	
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "proceed", value1 => $proceed, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($proceed);
+}
+
+
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	print $an->String->get({key => "${THIS_FILE}_message_0002"})."\n";
+
+	return(0);
+}
