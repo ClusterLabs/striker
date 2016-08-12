@@ -1138,6 +1138,7 @@ sub log_abnormal_temperatures
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	### NOTE: Recording all temps now, so this might not be needed
 	# When the dashboard scans a node, it needs to know about the Ambient and Systemboard temperatures in
 	# order to decide whether the node is safe too boot back up or not. So if this machine is a 
 	# dashboard, log the 'Ambient' and 'Systemboard' temperatures (or whatever the user defined) as 
@@ -1150,7 +1151,7 @@ sub log_abnormal_temperatures
 			name2 => "ipmitool_sensor_name", value2 => $ipmitool_sensor_name, 
 			name3 => "i_am_a",               value3 => $i_am_a, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($ipmitool_sensor_name eq $sensor) && 
+		if (($ipmitool_sensor_name eq $sensor)    && 
 		    ($i_am_a               eq "dashboard") && 
 		    (not exists $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}))
 		{
@@ -1159,7 +1160,7 @@ sub log_abnormal_temperatures
 				temperature_state	=>	'ok',
 				temperature_is		=>	'nominal',
 			};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
 				name2 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
 				name3 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is}, 

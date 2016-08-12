@@ -2230,6 +2230,7 @@ sub process_a_physical_disk
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	# Setup our thermal thresholds
 	my $high_critical       = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{high_critical};
 	my $high_warning        = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{high_warning};
 	my $low_warning         = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{low_warning};
@@ -2393,8 +2394,7 @@ INSERT INTO
 					name3 => "temperature", value3 => $temperature,
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				# Send an alert telling the user that we've found a new physical drive sensor.
-				$an->data->{sys}{alert_sort}++; 
+				# If this is a thermal sensor, we need to see if it is OK or not.
 				my $message_key       = "scan_storcli_note_0002";
 				my $alert_level       = "notice";
 				my $title_key         = "an_alert_title_0003";
@@ -2496,7 +2496,7 @@ INSERT INTO
 					name1 => "sensor_host_key", value1 => $sensor_host_key,
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $new_variable_value;
+				$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
 				$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
 				$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -2505,10 +2505,13 @@ INSERT INTO
 					name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				# Send an alert telling the user that we've found a new physical drive sensor.
+				$an->data->{sys}{alert_sort}++; 
 				$an->Alert->register_alert({
 					alert_level		=>	$alert_level, 
 					alert_agent_name	=>	$THIS_FILE,
 					alert_sort		=>	$an->data->{sys}{alert_sort},
+					alert_header		=>	'FALSE',
 					alert_title_key		=>	$title_key,
 					alert_message_key	=>	$message_key,
 					alert_message_variables	=>	{
@@ -3057,9 +3060,27 @@ WHERE
 						# noisey later (better safe than sorry).
 						$an->data->{sys}{alert_sort}++; 
 						
-						if (($type ne "temperature") && ($old_variable_value eq "VANISHED"))
+						if ($type ne "temperature")
 						{
-							$message_key = "scan_storcli_warning_0032";
+							if ($old_variable_value eq "VANISHED")
+							{
+								$message_key = "scan_storcli_warning_0032";
+							}
+							
+							# We want to watch for the 'error' counters. If they 
+							# change, we make this a warning.
+							if ($variable =~ /error/)
+							{
+								$alert_level = "warning";
+								$title_key   = "an_alert_title_0004";
+								$message_key = "scan_storcli_warning_0044";
+							}
+							elsif ($variable =~ /fail/)
+							{
+								$alert_level = "warning";
+								$title_key   = "an_alert_title_0004";
+								$message_key = "scan_storcli_warning_0045";
+							}
 						}
 						$an->Alert->register_alert({
 							alert_level		=>	$alert_level, 
@@ -3240,6 +3261,30 @@ sub process_cachevaults
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_cachevaults" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Setup our thermal thresholds
+	my $high_critical       = $an->data->{'scan-storcli'}{thresholds}{cachevault}{high_critical};
+	my $high_warning        = $an->data->{'scan-storcli'}{thresholds}{cachevault}{high_warning};
+	my $low_warning         = $an->data->{'scan-storcli'}{thresholds}{cachevault}{low_warning};
+	my $low_critical        = $an->data->{'scan-storcli'}{thresholds}{cachevault}{low_critical};
+	my $jump                = $an->data->{'scan-storcli'}{thresholds}{cachevault}{jump};
+	my $buffer              = $an->data->{'scan-storcli'}{thresholds}{cachevault}{buffer};
+	my $clear_high_critical = $high_critical - $buffer;
+	my $clear_high_warning  = $high_warning - $buffer;
+	my $clear_low_critical  = $low_critical - $buffer;
+	my $clear_low_warning   = $low_warning - $buffer;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		name1  => "high_critical",       value1  => $high_critical, 
+		name2  => "high_warning",        value2  => $high_warning, 
+		name3  => "low_warning",         value3  => $low_warning, 
+		name4  => "low_critical",        value4  => $low_critical, 
+		name5  => "jump",                value5  => $jump, 
+		name6  => "buffer",              value6  => $buffer, 
+		name7  => "clear_high_critical", value7  => $clear_high_critical, 
+		name8  => "clear_high_warning",  value8  => $clear_high_warning, 
+		name9  => "clear_low_critical",  value9  => $clear_low_critical, 
+		name10 => "clear_low_warning",   value10 => $clear_low_warning, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Find new, changed and replaced Cachevaults (FBUs).
 	$an->data->{sys}{sql} = [];
@@ -3456,18 +3501,135 @@ INSERT INTO
 						name3 => "temperature", value3 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
 					
+					my $message_key       = "scan_storcli_note_0002";
+					my $alert_level       = "notice";
+					my $title_key         = "an_alert_title_0003";
+					my $temperature_state = "ok";
+					my $temperature_is    = "nominal";
+					if ($type eq "temperature")
+					{
+						# This is a temperature, so see if the temperature outside of
+						# the warning or critical thresholds. This is a new sensor, 
+						# so nothing to compare against.
+						my $temperature_state = "ok";
+						my $temperature_is    = "nominal";
+						if ($value > $high_critical)
+						{
+							# Crossed the critical threshold. This should
+							# always be unset because it is a new
+							# variable, but check anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$cachevault_serial_number,
+								alert_name		=>	$variable."_high_critical",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the 
+								# critical threshold.
+								$alert_level = "critical";
+								$title_key   = "an_alert_title_0005";
+								$message_key = "scan_storcli_note_0036";
+							}
+						}
+						elsif ($value > $high_warning)
+						{
+							# Crossed the warning threshold. This should always 
+							# be unset because it is a new variable, but check 
+							# anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$cachevault_serial_number,
+								alert_name		=>	$variable."_high_warning",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the 
+								# critical threshold.
+								$alert_level = "warning";
+								$title_key   = "an_alert_title_0004";
+								$message_key = "scan_storcli_note_0037";
+							}
+						}
+						elsif ($value < $low_critical)
+						{
+							# Dropped below the critical threshold. This should 
+							# always be unset because it is a new variable, but 
+							# check anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$cachevault_serial_number,
+								alert_name		=>	$variable."_low_critical",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the 
+								# critical threshold.
+								$alert_level = "critical";
+								$title_key   = "an_alert_title_0005";
+								$message_key = "scan_storcli_note_0038";
+							}
+						}
+						elsif ($value < $low_warning)
+						{
+							# Crossed the warning threshold. This should always be unset
+							# because it is a new variable, but check anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$cachevault_serial_number,
+								alert_name		=>	$variable."_low_warning",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the critical
+								# threshold.
+								$alert_level = "warning";
+								$title_key   = "an_alert_title_0004";
+								$message_key = "scan_storcli_note_0039";
+							}
+						}
+					}
+					
+					# Record this for later processing into the 'temperature' table.
+					my $sensor_host_key = "cachevault:$cachevault_serial_number";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "sensor_host_key", value1 => $sensor_host_key,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+						name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+						name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					# Send an alert telling the user that we've found a new controller.
 					$an->data->{sys}{alert_sort}++; 
 					$an->Alert->register_alert({
-						alert_level		=>	"notice", 
+						alert_level		=>	$alert_level, 
 						alert_agent_name	=>	$THIS_FILE,
 						alert_sort		=>	$an->data->{sys}{alert_sort},
 						alert_header		=>	'FALSE',
-						alert_title_key		=>	"an_alert_title_0003",
-						alert_message_key	=>	"scan_storcli_note_0002",
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
+							serial_number		=>	$cachevault_serial_number,
 							name			=>	$variable,
 							value			=>	$value,
+							high_critical_temperature =>	$high_critical, 
+							high_warning_temperature =>	$high_warning, 
+							low_critical_temperature =>	$low_critical, 
+							low_warning_temperature	=>	$low_warning, 
 						},
 					});
 					
@@ -3652,6 +3814,371 @@ WHERE
 						# Delete it so that we know it has been processed.
 						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_cachevaults'}{source_uuid}{$cachevault_uuid}{$type}{$variable};
 						
+						# If there is no change, I still want to record the 
+						# temperature (where applicable). So I setup like I will send
+						# an alert from the start, but will only actually send if 
+						# something has changed.
+						my $message_key       = "scan_storcli_warning_0038";
+						my $alert_level       = "notice";
+						my $title_key         = "an_alert_title_0003";
+						my $temperature_state = "ok";
+						my $temperature_is    = "nominal";
+						if ($type eq "temperature")
+						{
+							if (($new_variable_value ne $old_variable_value))
+							{
+								# If the temperature is rising, see if we 
+								# need to set a high warning or critical, or,
+								# clear a low warning or critical. Check for
+								# the reverse if the temperature is dropping.
+								if ($old_variable_value eq "VANISHED")
+								{
+									### NOTE: We don't (yet) check to see
+									###       if the drive is overheating
+									###       or freezing here. That 
+									###       would require new logic and
+									###       is unlikely to be needed.
+									# Temperature is back.
+									$message_key = "scan_storcli_warning_0039";
+								}
+								elsif ($old_variable_value > $new_variable_value)
+								{
+									# Rising
+									my $jumped = $new_variable_value - $old_variable_value;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "jumped", value1 => $jumped, 
+									}, file => $THIS_FILE, line => __LINE__});
+									if ($new_variable_value > $high_critical)
+									{
+										# Crossed the critical 
+										# threshold. See if this is 
+										# the first time.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$cachevault_serial_number,
+											alert_name		=>	$variable."_high_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "critical";
+											$title_key   = "an_alert_title_0005";
+											$message_key = "scan_storcli_note_0040";
+										}
+										$temperature_state = "critical";
+										$temperature_is    = "high";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value > $high_warning)
+									{
+										# Crossed the warning 
+										# threshold.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$cachevault_serial_number,
+											alert_name		=>	$variable."_high_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0004";
+											$message_key = "scan_storcli_note_0041";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "high";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value > $clear_low_warning)
+									{
+										# Risen into the clear, make 
+										# sure both warning and 
+										# critical are cleared.
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$cachevault_serial_number,
+											alert_name		=>	$variable."_low_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										my $cleared_warning = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$cachevault_serial_number,
+											alert_name		=>	$variable."_low_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+											name2 => "cleared_warning",  value2 => $cleared_warning, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0007";
+											$message_key = "scan_storcli_note_0042";
+										}
+										elsif ($cleared_warning)
+										{
+											# The temperature has
+											# dropped back down 
+											# to safe levels.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0042";
+										}
+									}
+									elsif ($new_variable_value > $clear_low_critical)
+									{
+										# Risen above critical, but 
+										# not in the clear.
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$cachevault_serial_number,
+											alert_name		=>	$variable."_low_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											# Set the warning.
+											my $set = $an->Alert->check_alert_sent({
+												type			=>	"warning",
+												alert_sent_by		=>	$THIS_FILE,
+												alert_record_locator	=>	$cachevault_serial_number,
+												alert_name		=>	$variable."_low_warning",
+												modified_date		=>	$an->data->{sys}{db_timestamp},
+											});
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+												name1 => "set", value1 => $set, 
+											}, file => $THIS_FILE, line => __LINE__});
+											
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0043";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "low";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($jumped > $jump)
+									{
+										# The temperature jumped a 
+										# large amount.
+										$alert_level = "warning";
+										$title_key   = "an_alert_title_0004";
+										$message_key = "scan_storcli_note_0044";
+									}
+								}
+								else
+								{
+									# Falling
+									my $jumped = $old_variable_value - $new_variable_value;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "jumped", value1 => $jumped, 
+									}, file => $THIS_FILE, line => __LINE__});
+									if ($new_variable_value < $low_critical)
+									{
+										# Dropped below the critical 
+										# threshold. This should 
+										# always be unset because it
+										# is a new variable, but 
+										# check anyway.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$cachevault_serial_number,
+											alert_name		=>	$variable."_low_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "critical";
+											$title_key   = "an_alert_title_0005";
+											$message_key = "scan_storcli_note_0045";
+										}
+										$temperature_state = "critical";
+										$temperature_is    = "low";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value < $low_warning)
+									{
+										# Crossed the warning 
+										# threshold. This should
+										# always be unset because it
+										# is a new variable, but 
+										# check anyway.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$cachevault_serial_number,
+											alert_name		=>	$variable."_low_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0004";
+											$message_key = "scan_storcli_note_0046";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "low";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value < $clear_high_warning)
+									{
+										# Dropped into the clear
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$cachevault_serial_number,
+											alert_name		=>	$variable."_high_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										my $cleared_warning = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$cachevault_serial_number,
+											alert_name		=>	$variable."_high_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+											name2 => "cleared_warning",  value2 => $cleared_warning, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0007";
+											$message_key = "scan_storcli_note_0047";
+										}
+										elsif ($cleared_warning)
+										{
+											# The temperature has
+											# dropped back down 
+											# to safe levels.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0047";
+										}
+									}
+									elsif ($new_variable_value < $clear_high_critical)
+									{
+										# Dropped below critical, but
+										# not in the clear.
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$cachevault_serial_number,
+											alert_name		=>	$variable."_high_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											# Set the warning.
+											my $set = $an->Alert->check_alert_sent({
+												type			=>	"warning",
+												alert_sent_by		=>	$THIS_FILE,
+												alert_record_locator	=>	$cachevault_serial_number,
+												alert_name		=>	$variable."_high_warning",
+												modified_date		=>	$an->data->{sys}{db_timestamp},
+											});
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+												name1 => "set", value1 => $set, 
+											}, file => $THIS_FILE, line => __LINE__});
+											
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0048";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "high";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($jumped > $jump)
+									{
+										# The temperature dropped a 
+										# large amount.
+										$alert_level = "warning";
+										$title_key   = "an_alert_title_0004";
+										$message_key = "scan_storcli_note_0049";
+									}
+								}
+							}
+							
+							# Record this for later processing into the 
+							# 'temperature' table.
+							my $sensor_host_key = "cachevault:$cachevault_serial_number";
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "sensor_host_key", value1 => $sensor_host_key,
+							}, file => $THIS_FILE, line => __LINE__});
+							
+							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $new_variable_value;
+							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+								name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+								name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+								name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						
+						# Now actually generate an alert and save the changes if something 
+						# changed. 
 						if (($new_variable_value ne $old_variable_value))
 						{
 							# Changed! If the old value was 'VANISHED', then a 
@@ -3661,23 +4188,34 @@ WHERE
 							# noisey later (better safe than sorry).
 							$an->data->{sys}{alert_sort}++; 
 							
-							my $message_key = "scan_storcli_warning_0038";
-							if ($old_variable_value eq "VANISHED")
+							if ($type ne "temperature")
 							{
-								$message_key = "scan_storcli_warning_0039";
+								if ($old_variable_value eq "VANISHED")
+								{
+									$message_key = "scan_storcli_warning_0039";
+								}
+								
+								# Check for some important issues
+								#if ($variable =~ /memory_correctable_errors/)
+								# Nothing seems to be of special interest... See: SELECT a.host_name, b.storcli_cachevault_serial_number AS sn, b.storcli_cachevault_type, storcli_cachevault_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_cachevaults b, storcli_variables c WHERE a.host_uuid = b.storcli_cachevault_host_uuid AND b.storcli_cachevault_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a07n01.alteeve.ca';
 							}
 							$an->Alert->register_alert({
-								alert_level		=>	"warning", 
+								alert_level		=>	$alert_level, 
 								alert_agent_name	=>	$THIS_FILE,
 								alert_sort		=>	$an->data->{sys}{alert_sort},
 								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
-								alert_title_key		=>	"an_alert_title_0004",
+								alert_title_key		=>	$title_key,
 								alert_message_key	=>	$message_key,
 								alert_message_variables	=>	{
 									serial_number		=>	$cachevault_serial_number,
 									name			=>	$variable,
-									old_value		=>	$old_variable_value,
+									old_value		=>	$old_variable_value ? $old_variable_value : "--",
 									new_value		=>	$new_variable_value,
+									high_critical_temperature =>	$high_critical, 
+									high_warning_temperature =>	$high_warning, 
+									low_critical_temperature =>	$low_critical, 
+									low_warning_temperature	=>	$low_warning, 
+									jump			=>	$jump,
 								},
 							});
 							
@@ -3920,6 +4458,65 @@ sub process_bbus
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
+		# The temperature range of the BBU depends on whether it is charging or discharging.
+		my $bbu_temperature_key = "normal";
+		# Get the charge state.
+		# - None
+		# - Discharging
+		# - Charging
+		my $charging = $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{charging_status};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "charging", value1 => $charging, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($charging =~ /^discharging$/i)
+		{
+			$bbu_temperature_key = "discharging";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "bbu_temperature_key", value1 => $bbu_temperature_key, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Setup our thermal thresholds
+		my $high_critical       = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{high_critical};
+		my $high_warning        = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{high_warning};
+		my $low_warning         = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{low_warning};
+		my $low_critical        = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{low_critical};
+		my $jump                = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{jump};
+		my $buffer              = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{buffer};
+		my $clear_high_critical = $high_critical - $buffer;
+		my $clear_high_warning  = $high_warning - $buffer;
+		my $clear_low_critical  = $low_critical - $buffer;
+		my $clear_low_warning   = $low_warning - $buffer;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			name1  => "high_critical",       value1  => $high_critical, 
+			name2  => "high_warning",        value2  => $high_warning, 
+			name3  => "low_warning",         value3  => $low_warning, 
+			name4  => "low_critical",        value4  => $low_critical, 
+			name5  => "jump",                value5  => $jump, 
+			name6  => "buffer",              value6  => $buffer, 
+			name7  => "clear_high_critical", value7  => $clear_high_critical, 
+			name8  => "clear_high_warning",  value8  => $clear_high_warning, 
+			name9  => "clear_low_critical",  value9  => $clear_low_critical, 
+			name10 => "clear_low_warning",   value10 => $clear_low_warning, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Fine-tune the alert thresholds
+		if ($clear_high_critical < $high_warning)
+		{
+			$clear_high_critical = $high_warning + 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name7  => "clear_high_critical", value7  => $clear_high_critical, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($clear_low_critical > $low_warning)
+		{
+			$clear_low_critical = $low_warning - 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name7  => "clear_low_critical", value7  => $clear_low_critical, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
 		# First up, get the controller serial number and translate that to a controller_uuid.
 		if (not $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number})
 		{
@@ -4097,18 +4694,135 @@ INSERT INTO
 						name3 => "temperature", value3 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
 					
+					my $message_key       = "scan_storcli_note_0002";
+					my $alert_level       = "notice";
+					my $title_key         = "an_alert_title_0003";
+					my $temperature_state = "ok";
+					my $temperature_is    = "nominal";
+					if ($type eq "temperature")
+					{
+						# This is a temperature, so see if the temperature outside of
+						# the warning or critical thresholds. This is a new sensor, 
+						# so nothing to compare against.
+						my $temperature_state = "ok";
+						my $temperature_is    = "nominal";
+						if ($value > $high_critical)
+						{
+							# Crossed the critical threshold. This should
+							# always be unset because it is a new
+							# variable, but check anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$bbu_serial_number,
+								alert_name		=>	$variable."_high_critical",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the 
+								# critical threshold.
+								$alert_level = "critical";
+								$title_key   = "an_alert_title_0005";
+								$message_key = "scan_storcli_note_0050";
+							}
+						}
+						elsif ($value > $high_warning)
+						{
+							# Crossed the warning threshold. This should always 
+							# be unset because it is a new variable, but check 
+							# anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$bbu_serial_number,
+								alert_name		=>	$variable."_high_warning",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the 
+								# critical threshold.
+								$alert_level = "warning";
+								$title_key   = "an_alert_title_0004";
+								$message_key = "scan_storcli_note_0051";
+							}
+						}
+						elsif ($value < $low_critical)
+						{
+							# Dropped below the critical threshold. This should 
+							# always be unset because it is a new variable, but 
+							# check anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$bbu_serial_number,
+								alert_name		=>	$variable."_low_critical",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the 
+								# critical threshold.
+								$alert_level = "critical";
+								$title_key   = "an_alert_title_0005";
+								$message_key = "scan_storcli_note_0052";
+							}
+						}
+						elsif ($value < $low_warning)
+						{
+							# Crossed the warning threshold. This should always be unset
+							# because it is a new variable, but check anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$bbu_serial_number,
+								alert_name		=>	$variable."_low_warning",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the critical
+								# threshold.
+								$alert_level = "warning";
+								$title_key   = "an_alert_title_0004";
+								$message_key = "scan_storcli_note_0053";
+							}
+						}
+					}
+					
+					# Record this for later processing into the 'temperature' table.
+					my $sensor_host_key = "bbu:$bbu_serial_number";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "sensor_host_key", value1 => $sensor_host_key,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+						name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+						name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					# Send an alert telling the user that we've found a new controller.
 					$an->data->{sys}{alert_sort}++; 
 					$an->Alert->register_alert({
-						alert_level		=>	"notice", 
+						alert_level		=>	$alert_level, 
 						alert_agent_name	=>	$THIS_FILE,
 						alert_sort		=>	$an->data->{sys}{alert_sort},
 						alert_header		=>	'FALSE',
-						alert_title_key		=>	"an_alert_title_0003",
-						alert_message_key	=>	"scan_storcli_note_0002",
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
+							serial_number		=>	$bbu_serial_number,
 							name			=>	$variable,
 							value			=>	$value,
+							high_critical_temperature =>	$high_critical, 
+							high_warning_temperature =>	$high_warning, 
+							low_critical_temperature =>	$low_critical, 
+							low_warning_temperature	=>	$low_warning, 
 						},
 					});
 					
@@ -4291,6 +5005,371 @@ WHERE
 						# Delete it so that we know it has been processed.
 						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_bbus'}{source_uuid}{$bbu_uuid}{$type}{$variable};
 						
+						# If there is no change, I still want to record the 
+						# temperature (where applicable). So I setup like I will send
+						# an alert from the start, but will only actually send if 
+						# something has changed.
+						my $message_key       = "scan_storcli_warning_0012";
+						my $alert_level       = "notice";
+						my $title_key         = "an_alert_title_0003";
+						my $temperature_state = "ok";
+						my $temperature_is    = "nominal";
+						if ($type eq "temperature")
+						{
+							if (($new_variable_value ne $old_variable_value))
+							{
+								# If the temperature is rising, see if we 
+								# need to set a high warning or critical, or,
+								# clear a low warning or critical. Check for
+								# the reverse if the temperature is dropping.
+								if ($old_variable_value eq "VANISHED")
+								{
+									### NOTE: We don't (yet) check to see
+									###       if the drive is overheating
+									###       or freezing here. That 
+									###       would require new logic and
+									###       is unlikely to be needed.
+									# Temperature is back.
+									$message_key = "scan_storcli_warning_0013";
+								}
+								elsif ($old_variable_value > $new_variable_value)
+								{
+									# Rising
+									my $jumped = $new_variable_value - $old_variable_value;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "jumped", value1 => $jumped, 
+									}, file => $THIS_FILE, line => __LINE__});
+									if ($new_variable_value > $high_critical)
+									{
+										# Crossed the critical 
+										# threshold. See if this is 
+										# the first time.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$bbu_serial_number,
+											alert_name		=>	$variable."_high_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "critical";
+											$title_key   = "an_alert_title_0005";
+											$message_key = "scan_storcli_note_0054";
+										}
+										$temperature_state = "critical";
+										$temperature_is    = "high";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value > $high_warning)
+									{
+										# Crossed the warning 
+										# threshold.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$bbu_serial_number,
+											alert_name		=>	$variable."_high_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0004";
+											$message_key = "scan_storcli_note_0055";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "high";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value > $clear_low_warning)
+									{
+										# Risen into the clear, make 
+										# sure both warning and 
+										# critical are cleared.
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$bbu_serial_number,
+											alert_name		=>	$variable."_low_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										my $cleared_warning = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$bbu_serial_number,
+											alert_name		=>	$variable."_low_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+											name2 => "cleared_warning",  value2 => $cleared_warning, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0007";
+											$message_key = "scan_storcli_note_0056";
+										}
+										elsif ($cleared_warning)
+										{
+											# The temperature has
+											# dropped back down 
+											# to safe levels.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0056";
+										}
+									}
+									elsif ($new_variable_value > $clear_low_critical)
+									{
+										# Risen above critical, but 
+										# not in the clear.
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$bbu_serial_number,
+											alert_name		=>	$variable."_low_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											# Set the warning.
+											my $set = $an->Alert->check_alert_sent({
+												type			=>	"warning",
+												alert_sent_by		=>	$THIS_FILE,
+												alert_record_locator	=>	$bbu_serial_number,
+												alert_name		=>	$variable."_low_warning",
+												modified_date		=>	$an->data->{sys}{db_timestamp},
+											});
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+												name1 => "set", value1 => $set, 
+											}, file => $THIS_FILE, line => __LINE__});
+											
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0057";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "low";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($jumped > $jump)
+									{
+										# The temperature jumped a 
+										# large amount.
+										$alert_level = "warning";
+										$title_key   = "an_alert_title_0004";
+										$message_key = "scan_storcli_note_0058";
+									}
+								}
+								else
+								{
+									# Falling
+									my $jumped = $old_variable_value - $new_variable_value;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "jumped", value1 => $jumped, 
+									}, file => $THIS_FILE, line => __LINE__});
+									if ($new_variable_value < $low_critical)
+									{
+										# Dropped below the critical 
+										# threshold. This should 
+										# always be unset because it
+										# is a new variable, but 
+										# check anyway.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$bbu_serial_number,
+											alert_name		=>	$variable."_low_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "critical";
+											$title_key   = "an_alert_title_0005";
+											$message_key = "scan_storcli_note_0059";
+										}
+										$temperature_state = "critical";
+										$temperature_is    = "low";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value < $low_warning)
+									{
+										# Crossed the warning 
+										# threshold. This should
+										# always be unset because it
+										# is a new variable, but 
+										# check anyway.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$bbu_serial_number,
+											alert_name		=>	$variable."_low_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0004";
+											$message_key = "scan_storcli_note_0060";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "low";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value < $clear_high_warning)
+									{
+										# Dropped into the clear
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$bbu_serial_number,
+											alert_name		=>	$variable."_high_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										my $cleared_warning = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$bbu_serial_number,
+											alert_name		=>	$variable."_high_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+											name2 => "cleared_warning",  value2 => $cleared_warning, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0007";
+											$message_key = "scan_storcli_note_0061";
+										}
+										elsif ($cleared_warning)
+										{
+											# The temperature has
+											# dropped back down 
+											# to safe levels.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0061";
+										}
+									}
+									elsif ($new_variable_value < $clear_high_critical)
+									{
+										# Dropped below critical, but
+										# not in the clear.
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$bbu_serial_number,
+											alert_name		=>	$variable."_high_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											# Set the warning.
+											my $set = $an->Alert->check_alert_sent({
+												type			=>	"warning",
+												alert_sent_by		=>	$THIS_FILE,
+												alert_record_locator	=>	$bbu_serial_number,
+												alert_name		=>	$variable."_high_warning",
+												modified_date		=>	$an->data->{sys}{db_timestamp},
+											});
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+												name1 => "set", value1 => $set, 
+											}, file => $THIS_FILE, line => __LINE__});
+											
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0062";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "high";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($jumped > $jump)
+									{
+										# The temperature dropped a 
+										# large amount.
+										$alert_level = "warning";
+										$title_key   = "an_alert_title_0004";
+										$message_key = "scan_storcli_note_0063";
+									}
+								}
+							}
+							
+							# Record this for later processing into the 
+							# 'temperature' table.
+							my $sensor_host_key = "bbu:$bbu_serial_number";
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "sensor_host_key", value1 => $sensor_host_key,
+							}, file => $THIS_FILE, line => __LINE__});
+							
+							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $new_variable_value;
+							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+								name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+								name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+								name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						
+						# Now actually generate an alert and save the changes if something 
+						# changed. 
 						if (($new_variable_value ne $old_variable_value))
 						{
 							# Changed! If the old value was 'VANISHED', then a 
@@ -4300,23 +5379,52 @@ WHERE
 							# noisey later (better safe than sorry).
 							$an->data->{sys}{alert_sort}++; 
 							
-							my $message_key = "scan_storcli_warning_0012";
-							if ($old_variable_value eq "VANISHED")
+							if ($type ne "temperature")
 							{
-								$message_key = "scan_storcli_warning_0013";
+								if ($old_variable_value eq "VANISHED")
+								{
+									$message_key = "scan_storcli_warning_0013";
+								}
+								
+								### TODO: If the learn cycle is active, then drop related sensor alerts to 'notice'.
+								# Check for some important issues
+								if ($variable =~ /over_charged/)
+								{
+									$alert_level = "critical";
+									$title_key   = "an_alert_title_0005";
+									$message_key = "scan_storcli_warning_0049";
+								}
+								if ($variable =~ /over_temperature/)
+								{
+									$alert_level = "warning";
+									$title_key   = "an_alert_title_0004";
+									$message_key = "scan_storcli_warning_0050";
+								}
+								if ($variable =~ /pack_is_about_to_fail_and_should_be_replaced/)
+								{
+									$alert_level = "warning";
+									$title_key   = "an_alert_title_0004";
+									$message_key = "scan_storcli_warning_0050";
+								}
+								# Other things that might be of interest... See: SELECT a.host_name, b.storcli_bbu_serial_number AS sn, b.storcli_bbu_type, b.storcli_bbu_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_bbus b, storcli_variables c WHERE a.host_uuid = b.storcli_bbu_host_uuid AND b.storcli_bbu_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a05n01.alteeve.ca';
 							}
 							$an->Alert->register_alert({
-								alert_level		=>	"warning", 
+								alert_level		=>	$alert_level, 
 								alert_agent_name	=>	$THIS_FILE,
 								alert_sort		=>	$an->data->{sys}{alert_sort},
 								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
-								alert_title_key		=>	"an_alert_title_0004",
+								alert_title_key		=>	$title_key,
 								alert_message_key	=>	$message_key,
 								alert_message_variables	=>	{
 									serial_number		=>	$bbu_serial_number,
 									name			=>	$variable,
-									old_value		=>	$old_variable_value,
+									old_value		=>	$old_variable_value ? $old_variable_value : "--",
 									new_value		=>	$new_variable_value,
+									high_critical_temperature =>	$high_critical, 
+									high_warning_temperature =>	$high_warning, 
+									low_critical_temperature =>	$low_critical, 
+									low_warning_temperature	=>	$low_warning, 
+									jump			=>	$jump,
 								},
 							});
 							
@@ -4521,6 +5629,46 @@ sub process_controllers
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Setup our thermal thresholds
+	my $high_critical       = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{high_critical};
+	my $high_warning        = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{high_warning};
+	my $low_warning         = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{low_warning};
+	my $low_critical        = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{low_critical};
+	my $jump                = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{jump};
+	my $buffer              = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{buffer};
+	my $clear_high_critical = $high_critical - $buffer;
+	my $clear_high_warning  = $high_warning - $buffer;
+	my $clear_low_critical  = $low_critical - $buffer;
+	my $clear_low_warning   = $low_warning - $buffer;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		name1  => "high_critical",       value1  => $high_critical, 
+		name2  => "high_warning",        value2  => $high_warning, 
+		name3  => "low_warning",         value3  => $low_warning, 
+		name4  => "low_critical",        value4  => $low_critical, 
+		name5  => "jump",                value5  => $jump, 
+		name6  => "buffer",              value6  => $buffer, 
+		name7  => "clear_high_critical", value7  => $clear_high_critical, 
+		name8  => "clear_high_warning",  value8  => $clear_high_warning, 
+		name9  => "clear_low_critical",  value9  => $clear_low_critical, 
+		name10 => "clear_low_warning",   value10 => $clear_low_warning, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Fine-tune the alert thresholds
+	if ($clear_high_critical < $high_warning)
+	{
+		$clear_high_critical = $high_warning + 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name7  => "clear_high_critical", value7  => $clear_high_critical, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ($clear_low_critical > $low_warning)
+	{
+		$clear_low_critical = $low_warning - 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name7  => "clear_low_critical", value7  => $clear_low_critical, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	# Look for new, changed or deleted controllers.
 	$an->data->{sys}{sql} = [];
 	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
@@ -4674,18 +5822,136 @@ INSERT INTO
 						name3 => "temperature", value3 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
 					
+					my $message_key       = "scan_storcli_note_0002";
+					my $alert_level       = "notice";
+					my $title_key         = "an_alert_title_0003";
+					my $temperature_state = "ok";
+					my $temperature_is    = "nominal";
+					if ($type eq "temperature")
+					{
+						# This is a temperature, so see if the temperature outside of
+						# the warning or critical thresholds. This is a new sensor, 
+						# so nothing to compare against.
+						my $temperature_state = "ok";
+						my $temperature_is    = "nominal";
+						if ($value > $high_critical)
+						{
+							# Crossed the critical threshold. This should
+							# always be unset because it is a new
+							# variable, but check anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$serial_number,
+								alert_name		=>	$variable."_high_critical",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the 
+								# critical threshold.
+								$alert_level = "critical";
+								$title_key   = "an_alert_title_0005";
+								$message_key = "scan_storcli_note_0022";
+							}
+						}
+						elsif ($value > $high_warning)
+						{
+							# Crossed the warning threshold. This should always 
+							# be unset because it is a new variable, but check 
+							# anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$serial_number,
+								alert_name		=>	$variable."_high_warning",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the 
+								# critical threshold.
+								$alert_level = "warning";
+								$title_key   = "an_alert_title_0004";
+								$message_key = "scan_storcli_note_0023";
+							}
+						}
+						elsif ($value < $low_critical)
+						{
+							# Dropped below the critical threshold. This should 
+							# always be unset because it is a new variable, but 
+							# check anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$serial_number,
+								alert_name		=>	$variable."_low_critical",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the 
+								# critical threshold.
+								$alert_level = "critical";
+								$title_key   = "an_alert_title_0005";
+								$message_key = "scan_storcli_note_0024";
+							}
+						}
+						elsif ($value < $low_warning)
+						{
+							# Crossed the warning threshold. This should always 
+							# be unset because it is a new variable, but check 
+							# anyway.
+							my $set = $an->Alert->check_alert_sent({
+								type			=>	"warning",
+								alert_sent_by		=>	$THIS_FILE,
+								alert_record_locator	=>	$serial_number,
+								alert_name		=>	$variable."_low_warning",
+								modified_date		=>	$an->data->{sys}{db_timestamp},
+							});
+							if ($set)
+							{
+								# This is the first time we rose above the 
+								# critical threshold.
+								$alert_level = "warning";
+								$title_key   = "an_alert_title_0004";
+								$message_key = "scan_storcli_note_0025";
+							}
+						}
+					}
+					
+					# Record this for later processing into the 'temperature' table.
+					my $sensor_host_key = "controller:$serial_number";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "sensor_host_key", value1 => $sensor_host_key,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+						name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+						name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					# Send an alert telling the user that we've found a new controller.
 					$an->data->{sys}{alert_sort}++; 
 					$an->Alert->register_alert({
-						alert_level		=>	"notice", 
+						alert_level		=>	$alert_level, 
 						alert_agent_name	=>	$THIS_FILE,
 						alert_sort		=>	$an->data->{sys}{alert_sort},
 						alert_header		=>	'FALSE',
-						alert_title_key		=>	"an_alert_title_0003",
-						alert_message_key	=>	"scan_storcli_note_0002",
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
+							serial_number		=>	$serial_number,
 							name			=>	$variable,
 							value			=>	$value,
+							high_critical_temperature =>	$high_critical, 
+							high_warning_temperature =>	$high_warning, 
+							low_critical_temperature =>	$low_critical, 
+							low_warning_temperature	=>	$low_warning, 
 						},
 					});
 					
@@ -4834,6 +6100,371 @@ AND
 						# Delete it so that we know it has been processed.
 						delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable};
 						
+						# If there is no change, I still want to record the 
+						# temperature (where applicable). So I setup like I will send
+						# an alert from the start, but will only actually send if 
+						# something has changed.
+						my $message_key       = "scan_storcli_warning_0003";
+						my $alert_level       = "notice";
+						my $title_key         = "an_alert_title_0003";
+						my $temperature_state = "ok";
+						my $temperature_is    = "nominal";
+						if ($type eq "temperature")
+						{
+							if (($new_variable_value ne $old_variable_value))
+							{
+								# If the temperature is rising, see if we 
+								# need to set a high warning or critical, or,
+								# clear a low warning or critical. Check for
+								# the reverse if the temperature is dropping.
+								if ($old_variable_value eq "VANISHED")
+								{
+									### NOTE: We don't (yet) check to see
+									###       if the drive is overheating
+									###       or freezing here. That 
+									###       would require new logic and
+									###       is unlikely to be needed.
+									# Temperature is back.
+									$message_key = "scan_storcli_warning_0006";
+								}
+								elsif ($old_variable_value > $new_variable_value)
+								{
+									# Rising
+									my $jumped = $new_variable_value - $old_variable_value;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "jumped", value1 => $jumped, 
+									}, file => $THIS_FILE, line => __LINE__});
+									if ($new_variable_value > $high_critical)
+									{
+										# Crossed the critical 
+										# threshold. See if this is 
+										# the first time.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$serial_number,
+											alert_name		=>	$variable."_high_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "critical";
+											$title_key   = "an_alert_title_0005";
+											$message_key = "scan_storcli_note_0026";
+										}
+										$temperature_state = "critical";
+										$temperature_is    = "high";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value > $high_warning)
+									{
+										# Crossed the warning 
+										# threshold.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$serial_number,
+											alert_name		=>	$variable."_high_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0004";
+											$message_key = "scan_storcli_note_0027";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "high";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value > $clear_low_warning)
+									{
+										# Risen into the clear, make 
+										# sure both warning and 
+										# critical are cleared.
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$serial_number,
+											alert_name		=>	$variable."_low_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										my $cleared_warning = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$serial_number,
+											alert_name		=>	$variable."_low_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+											name2 => "cleared_warning",  value2 => $cleared_warning, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0007";
+											$message_key = "scan_storcli_note_0028";
+										}
+										elsif ($cleared_warning)
+										{
+											# The temperature has
+											# dropped back down 
+											# to safe levels.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0028";
+										}
+									}
+									elsif ($new_variable_value > $clear_low_critical)
+									{
+										# Risen above critical, but 
+										# not in the clear.
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$serial_number,
+											alert_name		=>	$variable."_low_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											# Set the warning.
+											my $set = $an->Alert->check_alert_sent({
+												type			=>	"warning",
+												alert_sent_by		=>	$THIS_FILE,
+												alert_record_locator	=>	$serial_number,
+												alert_name		=>	$variable."_low_warning",
+												modified_date		=>	$an->data->{sys}{db_timestamp},
+											});
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+												name1 => "set", value1 => $set, 
+											}, file => $THIS_FILE, line => __LINE__});
+											
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0029";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "low";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($jumped > $jump)
+									{
+										# The temperature jumped a 
+										# large amount.
+										$alert_level = "warning";
+										$title_key   = "an_alert_title_0004";
+										$message_key = "scan_storcli_note_0030";
+									}
+								}
+								else
+								{
+									# Falling
+									my $jumped = $old_variable_value - $new_variable_value;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "jumped", value1 => $jumped, 
+									}, file => $THIS_FILE, line => __LINE__});
+									if ($new_variable_value < $low_critical)
+									{
+										# Dropped below the critical 
+										# threshold. This should 
+										# always be unset because it
+										# is a new variable, but 
+										# check anyway.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$serial_number,
+											alert_name		=>	$variable."_low_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "critical";
+											$title_key   = "an_alert_title_0005";
+											$message_key = "scan_storcli_note_0031";
+										}
+										$temperature_state = "critical";
+										$temperature_is    = "low";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value < $low_warning)
+									{
+										# Crossed the warning 
+										# threshold. This should
+										# always be unset because it
+										# is a new variable, but 
+										# check anyway.
+										my $set = $an->Alert->check_alert_sent({
+											type			=>	"warning",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$serial_number,
+											alert_name		=>	$variable."_low_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "set", value1 => $set, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($set)
+										{
+											# This is the first 
+											# time we rose above 
+											# the critical 
+											# threshold.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0004";
+											$message_key = "scan_storcli_note_0032";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "low";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($new_variable_value < $clear_high_warning)
+									{
+										# Dropped into the clear
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$serial_number,
+											alert_name		=>	$variable."_high_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										my $cleared_warning = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$serial_number,
+											alert_name		=>	$variable."_high_warning",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+											name2 => "cleared_warning",  value2 => $cleared_warning, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0007";
+											$message_key = "scan_storcli_note_0033";
+										}
+										elsif ($cleared_warning)
+										{
+											# The temperature has
+											# dropped back down 
+											# to safe levels.
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0033";
+										}
+									}
+									elsif ($new_variable_value < $clear_high_critical)
+									{
+										# Dropped below critical, but
+										# not in the clear.
+										my $cleared_critical = $an->Alert->check_alert_sent({
+											type			=>	"clear",
+											alert_sent_by		=>	$THIS_FILE,
+											alert_record_locator	=>	$serial_number,
+											alert_name		=>	$variable."_high_critical",
+											modified_date		=>	$an->data->{sys}{db_timestamp},
+										});
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											name1 => "cleared_critical", value1 => $cleared_critical, 
+										}, file => $THIS_FILE, line => __LINE__});
+										if ($cleared_critical)
+										{
+											# Set the warning.
+											my $set = $an->Alert->check_alert_sent({
+												type			=>	"warning",
+												alert_sent_by		=>	$THIS_FILE,
+												alert_record_locator	=>	$serial_number,
+												alert_name		=>	$variable."_high_warning",
+												modified_date		=>	$an->data->{sys}{db_timestamp},
+											});
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+												name1 => "set", value1 => $set, 
+											}, file => $THIS_FILE, line => __LINE__});
+											
+											$alert_level = "warning";
+											$title_key   = "an_alert_title_0006";
+											$message_key = "scan_storcli_note_0034";
+										}
+										$temperature_state = "warning";
+										$temperature_is    = "high";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+											name1 => "temperature_state", value1 => $temperature_state, 
+											name2 => "temperature_is",    value2 => $temperature_is, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+									elsif ($jumped > $jump)
+									{
+										# The temperature dropped a 
+										# large amount.
+										$alert_level = "warning";
+										$title_key   = "an_alert_title_0004";
+										$message_key = "scan_storcli_note_0035";
+									}
+								}
+							}
+							
+							# Record this for later processing into the 
+							# 'temperature' table.
+							my $sensor_host_key = "controller:$serial_number";
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "sensor_host_key", value1 => $sensor_host_key,
+							}, file => $THIS_FILE, line => __LINE__});
+							
+							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $new_variable_value;
+							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+								name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+								name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+								name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						
+						# Now actually generate an alert and save the changes if something 
+						# changed. 
 						if (($new_variable_value ne $old_variable_value))
 						{
 							# Changed! If the old value was 'VANISHED', then a 
@@ -4843,23 +6474,51 @@ AND
 							# noisey later (better safe than sorry).
 							$an->data->{sys}{alert_sort}++; 
 							
-							my $message_key = "scan_storcli_warning_0003";
-							if ($old_variable_value eq "VANISHED")
+							if ($type ne "temperature")
 							{
-								$message_key = "scan_storcli_warning_0006";
+								if ($old_variable_value eq "VANISHED")
+								{
+									$message_key = "scan_storcli_warning_0006";
+								}
+								
+								# Check for some important issues
+								if ($variable =~ /memory_correctable_errors/)
+								{
+									$alert_level = "warning";
+									$title_key   = "an_alert_title_0004";
+									$message_key = "scan_storcli_warning_0046";
+								}
+								elsif ($variable =~ /memory_uncorrectable_errors/)
+								{
+									$alert_level = "critical";
+									$title_key   = "an_alert_title_0005";
+									$message_key = "scan_storcli_warning_0047";
+								}
+								elsif ($variable =~ /controller_status/)
+								{
+									$alert_level = "critical";
+									$title_key   = "an_alert_title_0004";
+									$message_key = "scan_storcli_warning_0048";
+								}
+								# There more of interest... See: SELECT a.host_name, b.storcli_controller_serial_number AS sn, b.storcli_controller_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_controllers b, storcli_variables c WHERE a.host_uuid = b.storcli_controller_host_uuid AND b.storcli_controller_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a07n01.alteeve.ca';
 							}
 							$an->Alert->register_alert({
-								alert_level		=>	"warning", 
+								alert_level		=>	$alert_level, 
 								alert_agent_name	=>	$THIS_FILE,
 								alert_sort		=>	$an->data->{sys}{alert_sort},
 								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
-								alert_title_key		=>	"an_alert_title_0004",
+								alert_title_key		=>	$title_key,
 								alert_message_key	=>	$message_key,
 								alert_message_variables	=>	{
-									controller		=>	$serial_number,
+									serial_number		=>	$serial_number,
 									name			=>	$variable,
-									old_value		=>	$old_variable_value,
+									old_value		=>	$old_variable_value ? $old_variable_value : "--",
 									new_value		=>	$new_variable_value,
+									high_critical_temperature =>	$high_critical, 
+									high_warning_temperature =>	$high_warning, 
+									low_critical_temperature =>	$low_critical, 
+									low_warning_temperature	=>	$low_warning, 
+									jump			=>	$jump,
 								},
 							});
 							
@@ -9191,9 +10850,10 @@ sub get_bbu_data
 			}
 			
 			# Is this a temperature or something else we want to pre-process?
-			if ($value =~ /^\d+ C$/i)
+			if ($value =~ /^(\d+) C$/i)
 			{
 				# Yup
+				$value = $1;
 				$type  = "temperature";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable,

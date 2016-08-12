@@ -14,6 +14,7 @@
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
 # TODO:
+# - Temperature data isn't going into the main 'temperatures' table.
 # 
 
 # Use my modules.

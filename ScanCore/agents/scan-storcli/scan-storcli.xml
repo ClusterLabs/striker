@@ -155,6 +155,175 @@ The temperature of the physical drive: [#!variable!serial_number!#] has dropped 
 The temperature of the physical drive: [#!variable!serial_number!#] has dropped more than: [#!variable!jump!# °C] since the last scan.
 - #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
 		</key>
+		<key name="scan_storcli_note_0022">
+The temperature of the RAID controller: [#!variable!serial_number!#] is above the critical temperature of: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0023">
+The temperature of the RAID controller: [#!variable!serial_number!#] is above the warning temperature of: [#!variable!high_warning_temperature!# °C]. It will go critical at: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0024">
+The temperature of the RAID controller: [#!variable!serial_number!#] is below the critical temperature of: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0025">
+The temperature of the RAID controller: [#!variable!serial_number!#] is below the warning temperature of: [#!variable!low_warning_temperature!# °C]. It will go critical at: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0026">
+The temperature of the RAID controller: [#!variable!serial_number!#] has risen above the critical temperature of: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0027">
+The temperature of the RAID controller: [#!variable!serial_number!#] has risen above the warning temperature of: [#!variable!high_warning_temperature!# °C]. It will go critical at: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0028">
+The temperature of the RAID controller: [#!variable!serial_number!#] has risen back into a safe temperature range.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0029">
+The temperature of the RAID controller: [#!variable!serial_number!#] has risen back above the critical low threshold, but it is still in a warning state. It will be marked clear when it rises above: [#!variable!low_warning_temperature!#].
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0030">
+The temperature of the RAID controller: [#!variable!serial_number!#] has jumped more than: [#!variable!jump!# °C] since the last scan.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0031">
+The temperature of the RAID controller: [#!variable!serial_number!#] has dropped below the critical temperature of: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0032">
+The temperature of the RAID controller: [#!variable!serial_number!#] has dropped the warning temperature of: [#!variable!low_warning_temperature!# °C]. It will go critical at: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0033">
+The temperature of the RAID controller: [#!variable!serial_number!#] has fallen back into a safe temperature range.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0034">
+The temperature of the RAID controller: [#!variable!serial_number!#] has dropped back below the critical high threshold, but it is still in a warning state. It will be marked clear when it drops below: [#!variable!high_warning_temperature!#].
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0035">
+The temperature of the RAID controller: [#!variable!serial_number!#] has dropped more than: [#!variable!jump!# °C] since the last scan.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0036">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] is above the critical temperature of: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0037">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] is above the warning temperature of: [#!variable!high_warning_temperature!# °C]. It will go critical at: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0038">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] is below the critical temperature of: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0039">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] is below the warning temperature of: [#!variable!low_warning_temperature!# °C]. It will go critical at: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0040">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has risen above the critical temperature of: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0041">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has risen above the warning temperature of: [#!variable!high_warning_temperature!# °C]. It will go critical at: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0042">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has risen back into a safe temperature range.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0043">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has risen back above the critical low threshold, but it is still in a warning state. It will be marked clear when it rises above: [#!variable!low_warning_temperature!#].
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0044">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has jumped more than: [#!variable!jump!# °C] since the last scan.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0045">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has dropped below the critical temperature of: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0046">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has dropped the warning temperature of: [#!variable!low_warning_temperature!# °C]. It will go critical at: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0047">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has fallen back into a safe temperature range.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0048">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has dropped back below the critical high threshold, but it is still in a warning state. It will be marked clear when it drops below: [#!variable!high_warning_temperature!#].
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0049">
+The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has dropped more than: [#!variable!jump!# °C] since the last scan.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0050">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] is above the critical temperature of: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0051">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] is above the warning temperature of: [#!variable!high_warning_temperature!# °C]. It will go critical at: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0052">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] is below the critical temperature of: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0053">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] is below the warning temperature of: [#!variable!low_warning_temperature!# °C]. It will go critical at: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!value!# °C]
+		</key>
+		<key name="scan_storcli_note_0054">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] has risen above the critical temperature of: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0055">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] has risen above the warning temperature of: [#!variable!high_warning_temperature!# °C]. It will go critical at: [#!variable!high_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0056">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] has risen back into a safe temperature range.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0057">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] has risen back above the critical low threshold, but it is still in a warning state. It will be marked clear when it rises above: [#!variable!low_warning_temperature!#].
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0058">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] has jumped more than: [#!variable!jump!# °C] since the last scan.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0059">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] has dropped below the critical temperature of: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0060">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] has dropped the warning temperature of: [#!variable!low_warning_temperature!# °C]. It will go critical at: [#!variable!low_critical_temperature!# °C]!:
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0061">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] has fallen back into a safe temperature range.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0062">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] has dropped back below the critical high threshold, but it is still in a warning state. It will be marked clear when it drops below: [#!variable!high_warning_temperature!#].
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+		<key name="scan_storcli_note_0063">
+The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] has dropped more than: [#!variable!jump!# °C] since the last scan.
+- #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
+		</key>
+
 		
 		<!-- Warnings -->
 		<key name="scan_storcli_warning_0001">While processing data from adapter: [#!variable!adapter!#], which has the serial number: [#!variable!serial_number!#], the drive in virtual drive: [#!variable!virtual_disk!#] in the enclosure: [#!variable!enclosure_id!#] at slot number: [#!variable!slot_number!#] in span: [#!variable!span!#] at row: [#!variable!row!#] initially was found in drive group: [#!variable!old_drive_group!#] but the variable 'Drive position' reports it as being in drive group: [#!variable!new_drive_group!#]. This might be a program error in parsing the output of: [#!variable!shell_call!#]. Please report this error along with the output of that shell call so that we can improve this scan agent.</key>
@@ -317,6 +486,51 @@ The temperature of the physical drive: [#!variable!serial_number!#] has dropped 
 		<key name="scan_storcli_warning_0040">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
 		<key name="scan_storcli_warning_0041">- A new variable was found on the Cachevault (FBU): [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
 		<key name="scan_storcli_warning_0042">- The Cachevault (FBU): [#!variable!cachevault_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0043">- The Cachevault (FBU): [#!variable!cachevault_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0044">
+- The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]
+  If this ticks up by '1', and this hasn't changed recently before, it is generally safe to ignore. 
+  However, if the error count jumps by more than one, or increments more than once a month, or climbs above 5 or 6, then the drive may be in the early stages of failing.
+  If this is the case and your hardware vendor allows for pre-failure replacement, you may with to request a replacement.
+		</key>
+		<key name="scan_storcli_warning_0045">
+- The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]
+  The error counters generally shouldn't change. Please investigate the cause of the error and replace the drive, if necessary.
+  NOTE: Unless another alert indicates otherwise, the drive has *not* failed.
+		</key>
+		<key name="scan_storcli_warning_0046">
+- The RAID controller: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Correctable errors should be very rare, and though they don't pose an immediate threat, should be investigated as soon as possible.
+		</key>
+		<key name="scan_storcli_warning_0047">
+- The RAID controller: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Uncorrectable errors are likely an indication that the controller is failing. 
+  Please contact your hardware vendor and plan to replace the controller at your earliest opportunity.
+  Servers should be migrated to the peer as soon as possible.
+		</key>
+		<key name="scan_storcli_warning_0048">
+- The RAID controller: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]
+  The severity of this alert depends on the new state. if the new state is 'Optimal', then there is no cause for concern.
+  Most other states are likely worth investigating as soon as possible as the controller state should never change under normal conditions.
+		</key>
+		<key name="scan_storcli_warning_0049">
+- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]
+  The battery should never go into an over-charge state. This may indicate the pack is about to fail.
+  Please investigate and replace, if necessary, at your earliest convenience.
+  NOTE: If the pack fails, write performance will be impacted!
+		</key>
+		<key name="scan_storcli_warning_0050">
+- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]
+  If there is a known over temperature event, then this may indicate that the battery has heated up along with other components.
+  If the battery pack is the only device to get hot, then it may indicate that the pack is failing.
+  Please investigate and replace, if necessary, at your earliest convenience.
+  NOTE: If the pack fails, write performance will be impacted!
+		</key>
+		<key name="scan_storcli_warning_0051">
+- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Please investigate and replace, if necessary, at your earliest convenience.
+  NOTE: If the pack fails, write performance will be impacted!
+		</key>
 		
 		<!-- Errors -->
 		<key name="scan_storcli_error_0001">The 'storcli64' program was not found at: [#!variable!path!#], exiting.</key>
@@ -762,6 +976,7 @@ https://alteeve.ca/w/Support
 		<key name="write_cache">Write Cache?</key>
 		
 		<!-- Physical Disk -->
+		<key name="bbm_error_count">Bad Block Management (BBM) Error Count</key>
 		<key name="certified">Vendor Certified Drive?</key>
 		<key name="coerced_size">Coerced Size</key>
 		<key name="commissioned_spare">Commissioned Spare?</key>
