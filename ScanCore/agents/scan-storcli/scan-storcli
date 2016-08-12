@@ -29,10 +29,6 @@
 # 
 # NOTE:
 # - LSI seems to flip between "Virtual Drive" and "Virtual Disk". We're standardizing on "Virtual Drive".
-# - BBU and Cachevault specs/temp ranges;
-#   45646-00B_Cache_Backup_Products_SAS_SATA_RAID_Controller_UserGd.pdf ->  Specifications for the BBU Models
-#   - BBU - Charge: 10 °C to 40 °C, Discharge: 10 °C to 55 °C
-#   - CV  - 0 °C to 55 °C
 # 
 
 # Disable this for now.
@@ -251,236 +247,201 @@ sub process_temperatures
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_temperatures" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	#### NOTE: This is the real query, but I am removing the date constraint while developing to ensure I
-	####       always get data.
-	# We'll want to read back the temperatures we set/changed this pass
-# 	my $query = "
-# SELECT 
-#     storcli_variable_source_table, 
-#     storcli_variable_source_uuid, 
-#     storcli_variable_name, 
-#     storcli_variable_value 
-# FROM 
-#     storcli_variables 
-# WHERE 
-#     storcli_variable_is_temperature IS TRUE 
-# AND 
-#     storcli_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-# AND 
-#     modified_date              = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-# ;";
+	### NOTE: We use 'sensor_host' to hold the serial number of the device hosting the sensor.
+	# First, read in all existing entries. We'll compare and UPDATE or INSERT as needed and DELETE any 
+	# stale entries. 
 	my $query = "
 SELECT 
-    storcli_variable_uuid, 
-    storcli_variable_source_table, 
-    storcli_variable_source_uuid, 
-    storcli_variable_name, 
-    storcli_variable_value 
+    temperature_uuid, 
+    temperature_sensor_name, 
+    temperature_sensor_host, 
+    temperature_celsius,
+    temperature_state,
+    temperature_is
 FROM 
-    storcli_variables 
+    temperature 
 WHERE 
-    storcli_variable_is_temperature IS TRUE 
+    temperature_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND 
-    storcli_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    temperature_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
+		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results, 
-	}, file => $THIS_FILE, line => __LINE__});
+	
+	# One or more records were found.
 	foreach my $row (@{$results})
 	{
-		my $storcli_variable_uuid         = $row->[0];
-		my $storcli_variable_source_table = $row->[1]; 
-		my $storcli_variable_source_uuid  = $row->[2]; 
-		my $storcli_variable_name         = $row->[3]; 
-		my $storcli_variable_value        = $row->[4]; 
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-			name1 => "storcli_variable_uuid",          value1 => $storcli_variable_uuid, 
-			name2 => "storcli_variable_source_table",  value2 => $storcli_variable_source_table, 
-			name3 => "storcli_variable_source_uuid",   value3 => $storcli_variable_source_uuid, 
-			name4 => "storcli_variable_name",          value4 => $storcli_variable_name, 
-			name5 => "storcli_variable_value",         value5 => $storcli_variable_value, 
+		my $temperature_uuid        = $row->[0]; 
+		my $temperature_sensor_name = $row->[1];
+		my $temperature_sensor_host = $row->[2];
+		my $temperature_celsius     = $row->[3];
+		my $temperature_state       = $row->[4];
+		my $temperature_is          = $row->[5];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "temperature_uuid",        value1 => $temperature_uuid,
+			name2 => "temperature_sensor_name", value2 => $temperature_sensor_name,
+			name3 => "temperature_sensor_host", value3 => $temperature_sensor_host,
+			name4 => "temperature_celsius",     value4 => $temperature_celsius,
+			name5 => "temperature_state",       value5 => $temperature_state,
+			name6 => "temperature_is",          value6 => $temperature_is,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# We can trust that the temperatures are in Celsius already, so we will blindly strip off the
-		# ' C' suffixes.
-		$storcli_variable_value =~ s/C$//i;
-		$storcli_variable_value =~ s/\s+//g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-			name1 => "storcli_variable_uuid",          value1 => $storcli_variable_uuid, 
-			name2 => "storcli_variable_source_table",  value2 => $storcli_variable_source_table, 
-			name3 => "storcli_variable_source_uuid",   value3 => $storcli_variable_source_uuid, 
-			name4 => "storcli_variable_name",          value4 => $storcli_variable_name, 
-			name5 => "storcli_variable_value",         value5 => $storcli_variable_value, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Read the previous value, if any.
-		my $query = "
-SELECT 
-    storcli_variable_uuid, 
-    storcli_variable_source_table, 
-    storcli_variable_source_uuid, 
-    storcli_variable_name, 
-    storcli_variable_value, 
-    modified_date 
-FROM 
-    history.storcli_variables 
-WHERE 
-    storcli_variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
-AND 
-    modified_date         < ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-LIMIT 1;";
-		
-		# The temperature range of the BBU depends on whether it is charging or discharging.
-		my $bbu_temperature_key = "normal";
-		if ($storcli_variable_name eq "bbu_temperature")
-		{
-			# Get the charge state.
-			# - None
-			# - Discharging
-			# - Charging
-			my $charging = get_storcli_variable($an, "charging_status", "storcli_bbus", $storcli_variable_source_uuid);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "charging", value1 => $charging, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($charging =~ /^discharging$/i)
-			{
-				$bbu_temperature_key = "discharging";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "bbu_temperature_key", value1 => $bbu_temperature_key, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-		
-		# The temperature range of the disk depends on whether it is an HDD or SSD.
-		my $drive_temperature_key = "hdd";
-		if ($storcli_variable_name eq "drive_temperature")
-		{
-			### TODO: At some point, we'll probably need a DB of drive type/model temperature 
-			###       ranges...
-			# Get the drive media.
-			# - HDD
-			# - SSD
-			my $media = get_storcli_variable($an, "drive_media", "storcli_physical_drives", $storcli_variable_source_uuid);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "media", value1 => $media, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if (lc($media) eq "ssd")
-			{
-				$drive_temperature_key = "discharging";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "drive_temperature_key", value1 => $drive_temperature_key, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-		
-		# Now determine if the current temperature is of concern or not.
-		my $high_critical = $an->data->{'scan-storcli'}{thresholds}{'default'}{high_critical};
-		my $high_warning  = $an->data->{'scan-storcli'}{thresholds}{'default'}{high_warning};
-		my $low_warning   = $an->data->{'scan-storcli'}{thresholds}{'default'}{low_warning};
-		my $low_critical  = $an->data->{'scan-storcli'}{thresholds}{'default'}{low_critical};
-		my $jump          = $an->data->{'scan-storcli'}{thresholds}{'default'}{jump};
-		my $buffer        = $an->data->{'scan-storcli'}{thresholds}{'default'}{buffer};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-			name1 => "high_critical", value1 => $high_critical, 
-			name2 => "high_warning",  value2 => $high_warning, 
-			name3 => "low_warning",   value3 => $low_warning, 
-			name4 => "low_critical",  value4 => $low_critical, 
-			name5 => "jump",          value5 => $jump, 
-			name6 => "buffer",         value6 => $buffer, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($storcli_variable_name eq "cachevault_temperature")
-		{
-			$high_critical = $an->data->{'scan-storcli'}{thresholds}{cachevault}{high_critical};
-			$high_warning  = $an->data->{'scan-storcli'}{thresholds}{cachevault}{high_warning};
-			$low_warning   = $an->data->{'scan-storcli'}{thresholds}{cachevault}{low_warning};
-			$low_critical  = $an->data->{'scan-storcli'}{thresholds}{cachevault}{low_critical};
-			$jump          = $an->data->{'scan-storcli'}{thresholds}{cachevault}{jump};
-			$buffer        = $an->data->{'scan-storcli'}{thresholds}{cachevault}{buffer};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-				name1 => "high_critical", value1 => $high_critical, 
-				name2 => "high_warning",  value2 => $high_warning, 
-				name3 => "low_warning",   value3 => $low_warning, 
-				name4 => "low_critical",  value4 => $low_critical, 
-				name5 => "jump",          value5 => $jump, 
-				name6 => "buffer",         value6 => $buffer, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		elsif ($storcli_variable_name eq "drive_temperature")
-		{
-			$high_critical = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{high_critical};
-			$high_warning  = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{high_warning};
-			$low_warning   = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{low_warning};
-			$low_critical  = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{low_critical};
-			$jump          = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{jump};
-			$buffer        = $an->data->{'scan-storcli'}{thresholds}{drives}{$drive_temperature_key}{buffer};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-				name1 => "high_critical", value1 => $high_critical, 
-				name2 => "high_warning",  value2 => $high_warning, 
-				name3 => "low_warning",   value3 => $low_warning, 
-				name4 => "low_critical",  value4 => $low_critical, 
-				name5 => "jump",          value5 => $jump, 
-				name6 => "buffer",         value6 => $buffer, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		elsif ($storcli_variable_name eq "bbu_temperature")
-		{
-			$high_critical = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{high_critical};
-			$high_warning  = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{high_warning};
-			$low_warning   = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{low_warning};
-			$low_critical  = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{low_critical};
-			$jump          = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{jump};
-			$buffer        = $an->data->{'scan-storcli'}{thresholds}{bbu}{$bbu_temperature_key}{buffer};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-				name1 => "high_critical", value1 => $high_critical, 
-				name2 => "high_warning",  value2 => $high_warning, 
-				name3 => "low_warning",   value3 => $low_warning, 
-				name4 => "low_critical",  value4 => $low_critical, 
-				name5 => "jump",          value5 => $jump, 
-				name6 => "buffer",         value6 => $buffer, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		elsif ($storcli_variable_name eq "roc_temperature_c")
-		{
-			$high_critical = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{high_critical};
-			$high_warning  = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{high_warning};
-			$low_warning   = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{low_warning};
-			$low_critical  = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{low_critical};
-			$jump          = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{jump};
-			$buffer        = $an->data->{'scan-storcli'}{thresholds}{raid_on_chip}{buffer};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-				name1 => "high_critical", value1 => $high_critical, 
-				name2 => "high_warning",  value2 => $high_warning, 
-				name3 => "low_warning",   value3 => $low_warning, 
-				name4 => "low_critical",  value4 => $low_critical, 
-				name5 => "jump",          value5 => $jump, 
-				name6 => "buffer",         value6 => $buffer, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		else
-		{
-			# Unknown sensor. Send an alert to ask the user to inform us.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-				name1 => "high_critical", value1 => $high_critical, 
-				name2 => "high_warning",  value2 => $high_warning, 
-				name3 => "low_warning",   value3 => $low_warning, 
-				name4 => "low_critical",  value4 => $low_critical, 
-				name5 => "jump",          value5 => $jump, 
-				name6 => "buffer",         value6 => $buffer, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		
-		# See if the current temperature is OK, warning or critical.
-		#if (
+		$an->data->{old}{temperature}{$temperature_sensor_name}{$temperature_sensor_host} = {
+			temperature_uuid	=>	$temperature_uuid, 
+			temperature_celsius	=>	$temperature_celsius,
+			temperature_state	=>	$temperature_state,
+			temperature_is		=>	$temperature_is,
+		};
 	}
+	
+	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{new}{temperature}})
+	{
+		foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{new}{temperature}{$variable}})
+		{
+			my $new_temperature_celsius = $an->data->{new}{temperature}{$variable}{$serial_number}{temperature_celsius};
+			my $new_temperature_state   = $an->data->{new}{temperature}{$variable}{$serial_number}{temperature_state};
+			my $new_temperature_is      = $an->data->{new}{temperature}{$variable}{$serial_number}{temperature_is};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "variable",                value1 => $variable, 
+				name2 => "serial_number",           value2 => $serial_number, 
+				name3 => "new_temperature_celsius", value3 => $new_temperature_celsius, 
+				name4 => "new_temperature_state",   value4 => $new_temperature_state, 
+				name5 => "new_temperature_is",      value5 => $new_temperature_is, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (ref($an->data->{old}{temperature}{$variable}{$serial_number}))
+			{
+				# Update the existing entry, if needed.
+				my $temperature_uuid        = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_uuid};
+				my $old_temperature_celsius = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_celsius};
+				my $old_temperature_state   = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_state};
+				my $old_temperature_is      = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_is};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "temperature_uuid",         value1 => $temperature_uuid,
+					name2 => "old_temperature_celsius",  value2 => $old_temperature_celsius,
+					name3 => "old_temperature_state",    value3 => $old_temperature_state,
+					name4 => "old_temperature_is",       value4 => $old_temperature_is,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (($new_temperature_celsius ne $old_temperature_celsius) or 
+				    ($new_temperature_state   ne $old_temperature_state)   or
+				    ($new_temperature_is      ne $old_temperature_is))
+				{
+					# Something changed, update.
+					my $query = "
+UPDATE 
+    temperature 
+SET 
+    temperature_celsius = ".$an->data->{sys}{use_db_fh}->quote($new_temperature_celsius).", 
+    temperature_state   = ".$an->data->{sys}{use_db_fh}->quote($new_temperature_state).", 
+    temperature_is      = ".$an->data->{sys}{use_db_fh}->quote($new_temperature_is).", 
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE
+    temperature_uuid    = ".$an->data->{sys}{use_db_fh}->quote($temperature_uuid).";
+";
+					push @{$an->data->{sys}{sql}}, $query;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# No change.
+					$an->Log->entry({log_level => 2, message_key => "scan_storcli_log_0002", message_variables => {
+						sensor_name => $variable,
+						sensor_host => $serial_number, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# We still want this value, so delete it from the hash so it doesn't get 
+				# deleted in the next step.
+				delete $an->data->{old}{temperature}{$variable}{$serial_number};
+			}
+			else
+			{
+				# New entry
+				my $query = "
+INSERT INTO 
+    temperature 
+(
+    temperature_uuid, 
+    temperature_host_uuid, 
+    temperature_sensor_host, 
+    temperature_sensor_name, 
+    temperature_agent_name, 
+    temperature_celsius, 
+    temperature_state, 
+    temperature_is, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_temperature_celsius).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_temperature_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_temperature_is).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+				push @{$an->data->{sys}{sql}}, $query;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Now, if any undeleted old entries remain, delete them from the database.
+	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{old}{temperature}})
+	{
+		foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{old}{temperature}{$variable}})
+		{
+			my $old_temperature_uuid = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_uuid};
+			my $old_temperature      = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_celsius};
+			my $old_state            = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_state};
+			my $old_is               = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_is};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "variable",             value1 => $variable, 
+				name2 => "serial_number",        value2 => $serial_number, 
+				name3 => "old_temperature_uuid", value3 => $old_temperature_uuid, 
+				name4 => "old_temperature",      value4 => $old_temperature, 
+				name5 => "old_state",            value5 => $old_state, 
+				name6 => "old_is",               value6 => $old_is, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Mark the sensor as DELETEd.
+			my $query = "
+UPDATE 
+    temperature 
+SET 
+    temperature_state  = 'DELETED', 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE
+    temperature_uuid   = ".$an->data->{sys}{use_db_fh}->quote($old_temperature_uuid).";
+";
+			push @{$an->data->{sys}{sql}}, $query;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			$query = "
+DELETE FROM 
+    temperature 
+WHERE
+    temperature_uuid   = ".$an->data->{sys}{use_db_fh}->quote($old_temperature_uuid).";
+";
+			push @{$an->data->{sys}{sql}}, $query;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# Commit the queries.
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -2279,7 +2240,7 @@ sub process_a_physical_disk
 	my $clear_high_warning  = $high_warning - $buffer;
 	my $clear_low_critical  = $low_critical - $buffer;
 	my $clear_low_warning   = $low_warning - $buffer;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 		name1  => "high_critical",       value1  => $high_critical, 
 		name2  => "high_warning",        value2  => $high_warning, 
 		name3  => "low_warning",         value3  => $low_warning, 
@@ -2434,9 +2395,11 @@ INSERT INTO
 				
 				# Send an alert telling the user that we've found a new physical drive sensor.
 				$an->data->{sys}{alert_sort}++; 
-				my $message_key = "scan_storcli_note_0002";
-				my $alert_level = "notice";
-				my $title_key   = "an_alert_title_0003";
+				my $message_key       = "scan_storcli_note_0002";
+				my $alert_level       = "notice";
+				my $title_key         = "an_alert_title_0003";
+				my $temperature_state = "ok";
+				my $temperature_is    = "nominal";
 				if ($type eq "temperature")
 				{
 					# This is a temperature, so see if the temperature outside of the 
@@ -2526,6 +2489,22 @@ INSERT INTO
 						}
 					}
 				}
+				
+				# Record this for later processing into the 'temperature' table.
+				my $sensor_host_key = "pd:$storcli_physical_drive_serial_number";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "sensor_host_key", value1 => $sensor_host_key,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $new_variable_value;
+				$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+				$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+					name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+					name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				$an->Alert->register_alert({
 					alert_level		=>	$alert_level, 
 					alert_agent_name	=>	$THIS_FILE,
@@ -2721,31 +2700,32 @@ WHERE
 					# Delete it so that we know it has been processed.
 					delete $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable};
 					
-					if (($new_variable_value ne $old_variable_value))
+					# If there is no change, I still want to record the temperature 
+					# (where applicable). So I setup like I will send an alert from the
+					# start, but will only actually send if something has changed.
+					my $message_key       = "scan_storcli_warning_0031";
+					my $alert_level       = "notice";
+					my $title_key         = "an_alert_title_0003";
+					my $temperature_state = "ok";
+					my $temperature_is    = "nominal";
+					if ($type eq "temperature")
 					{
-						# Changed! If the old value was 'VANISHED', then a 
-						# sensor or variable returned. Otherwise, for now, we
-						# treat everything as 'warning' and step down 
-						# explicitely anything not of concern that proves 
-						# noisey later (better safe than sorry).
-						$an->data->{sys}{alert_sort}++; 
-						
-						my $message_key = "scan_storcli_warning_0031";
-						my $alert_level = "notice";
-						my $title_key   = "an_alert_title_0003";
-						if ($old_variable_value eq "VANISHED")
-						{
-							$message_key = "scan_storcli_warning_0032";
-						}
-						if ($type eq "temperature")
+						if (($new_variable_value ne $old_variable_value))
 						{
 							# If the temperature is rising, see if we need to set
 							# a high warning or critical, or, clear a low warning
 							# or critical. Check for the reverse if the 
 							# temperature is dropping.
-							my $temperature_state = "ok";
-							my $temperature_is    = "nominal";
-							if ($old_variable_value > $new_variable_value)
+							if ($old_variable_value eq "VANISHED")
+							{
+								### NOTE: We don't (yet) check to see if the 
+								###       drive is overheating or freezing 
+								###       here. That would require new logic 
+								###       and is unlikely to be needed.
+								# Temperature is back.
+								$message_key = "scan_storcli_warning_0032";
+							}
+							elsif ($old_variable_value > $new_variable_value)
 							{
 								# Rising
 								my $jumped = $new_variable_value - $old_variable_value;
@@ -3047,17 +3027,39 @@ WHERE
 									$message_key = "scan_storcli_note_0021";
 								}
 							}
-							
-							# Record this for later processing into the 
-							# 'temperature' table.
-							$an->data->{new}{temperature}{$variable}{$storcli_physical_drive_serial_number}{temperature_celsius} = $new_variable_value;
-							$an->data->{new}{temperature}{$variable}{$storcli_physical_drive_serial_number}{temperature_state}   = $temperature_state;
-							$an->data->{new}{temperature}{$variable}{$storcli_physical_drive_serial_number}{temperature_is}      = $temperature_is;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-								name1 => "new::temperature::${variable}::${storcli_physical_drive_serial_number}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$storcli_physical_drive_serial_number}{temperature_celsius}, 
-								name2 => "new::temperature::${variable}::${storcli_physical_drive_serial_number}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$storcli_physical_drive_serial_number}{temperature_state}, 
-								name3 => "new::temperature::${variable}::${storcli_physical_drive_serial_number}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$storcli_physical_drive_serial_number}{temperature_is}, 
-							}, file => $THIS_FILE, line => __LINE__});
+						}
+						
+						# Record this for later processing into the 'temperature' 
+						# table.
+						my $sensor_host_key = "pd:$storcli_physical_drive_serial_number";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "sensor_host_key", value1 => $sensor_host_key,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $new_variable_value;
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+							name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+							name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					
+					# Now actually generate an alert and save the changes if something 
+					# changed. 
+					if (($new_variable_value ne $old_variable_value))
+					{
+						# Changed! If the old value was 'VANISHED', then a 
+						# sensor or variable returned. Otherwise, for now, we
+						# treat everything as 'warning' and step down 
+						# explicitely anything not of concern that proves 
+						# noisey later (better safe than sorry).
+						$an->data->{sys}{alert_sort}++; 
+						
+						if (($type ne "temperature") && ($old_variable_value eq "VANISHED"))
+						{
+							$message_key = "scan_storcli_warning_0032";
 						}
 						$an->Alert->register_alert({
 							alert_level		=>	$alert_level, 
@@ -9321,7 +9323,7 @@ sub get_cachevault_data
 	foreach my $line (@{$cachevault_data})
 	{
 		next if not $line;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /Property(\s+)Value/)
@@ -9402,7 +9404,7 @@ sub get_cachevault_data
 				# Yup
 				$value = $1;
 				$type  = "temperature";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable,
 					name2 => "value",    value2 => $value,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -10525,7 +10527,7 @@ sub find_lsi_controllers
 	if ($adapter_count > 0)
 	{
 		$an->data->{sys}{adapter_count} = $adapter_count;
-		$an->Log->entry({log_level => 2, message_key => "scan_storcli_log_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "scan_storcli_log_0001", message_variables => {
 			count => $an->data->{sys}{adapter_count}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}

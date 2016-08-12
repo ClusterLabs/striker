@@ -818,8 +818,8 @@ CREATE TABLE temperature (
 	temperature_sensor_host	text				not null,
 	temperature_sensor_name	text				not null,
 	temperature_celsius	numeric				not null,
-	temperature_state	text				not null,			-- warning, critical
-	temperature_is		text				not null,			-- high or low
+	temperature_state	text				not null,			-- ok, warning, critical
+	temperature_is		text				not null,			-- nominal, high or low
 	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(temperature_host_uuid) REFERENCES hosts(host_uuid)

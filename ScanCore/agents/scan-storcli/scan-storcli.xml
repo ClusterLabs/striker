@@ -17,6 +17,7 @@ main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'
 		
 		<!-- Log strings -->
 		<key name="scan_storcli_log_0001">Found: [#!variable!count!#] controller(s).</key>
+		<key name="scan_storcli_log_0002">The thermal sensor named: [#!variable!sensor_name!#], on: [#!variable!sensor_host!#] has not changed.</key>
 		
 		<!-- Notices -->
 		<key name="scan_storcli_note_0001">A new Broadcom (AVAGO/LSI) Storage controller has been found.

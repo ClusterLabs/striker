@@ -841,7 +841,7 @@ SET
     temperature_is      = ".$an->data->{sys}{use_db_fh}->quote($new_temperature_is).", 
     modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE
-    temperature_uuid = ".$an->data->{sys}{use_db_fh}->quote($old_temperature_uuid).";
+    temperature_uuid    = ".$an->data->{sys}{use_db_fh}->quote($old_temperature_uuid).";
 ";
 				push @{$an->data->{sys}{sql}}, $query;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -967,15 +967,22 @@ sub log_abnormal_temperatures
 		name2 => "new_ipmitool_sensor_high_warning",                                 value2 => $new_ipmitool_sensor_high_critical, 
 		name3 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::high_warning", value3 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_warning}, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $high_warning = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{high_warning};
 	if ((defined $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_warning}) && 
-	    ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_warning} =~ /^\d/))
+	    (        $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_warning} =~ /^\d/))
 	{
 		$high_warning = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_warning};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "high_warning", value1 => $high_warning, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($new_ipmitool_sensor_high_critical =~ /^\d/)
 	{
 		$high_warning = $new_ipmitool_sensor_high_critical;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "high_warning", value1 => $high_warning, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	### High Critical
@@ -984,15 +991,22 @@ sub log_abnormal_temperatures
 		name2 => "new_ipmitool_sensor_high_critical",                                 value2 => $new_ipmitool_sensor_high_critical, 
 		name3 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::high_critical", value3 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_critical}, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $high_critical = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{high_critical};
 	if ((defined $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_critical}) && 
-	    ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_critical} =~ /^\d/))
+	    (        $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_critical} =~ /^\d/))
 	{
 		$high_critical = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{high_critical};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "high_critical", value1 => $high_critical, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($new_ipmitool_sensor_high_critical =~ /^\d/)
 	{
 		$high_critical = $new_ipmitool_sensor_high_critical;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "high_critical", value1 => $high_critical, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	### Low Warning
@@ -1001,15 +1015,22 @@ sub log_abnormal_temperatures
 		name2 => "new_ipmitool_sensor_low_warning",                                 value2 => $new_ipmitool_sensor_low_warning, 
 		name3 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::low_warning", value3 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_warning}, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $low_warning = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{low_warning};
 	if ((defined $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_warning}) && 
-	    ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_warning} =~ /^\d/))
+	    (        $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_warning} =~ /^\d/))
 	{
 		$low_warning = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_warning};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "low_warning", value1 => $low_warning, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($new_ipmitool_sensor_low_critical =~ /^\d/)
 	{
 		$low_warning = $new_ipmitool_sensor_low_critical;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "low_warning", value1 => $low_warning, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	### Low Critical
@@ -1020,13 +1041,19 @@ sub log_abnormal_temperatures
 	}, file => $THIS_FILE, line => __LINE__});
 	my $low_critical = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{low_critical};
 	if ((defined $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_critical}) && 
-	    ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_critical} =~ /^\d/))
+	    (        $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_critical} =~ /^\d/))
 	{
 		$low_critical = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{low_critical};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "low_critical", value1 => $low_critical, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($new_ipmitool_sensor_low_critical =~ /^\d/)
 	{
 		$low_critical = $new_ipmitool_sensor_low_critical;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "low_critical", value1 => $low_critical, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Record the levels
@@ -1040,7 +1067,7 @@ sub log_abnormal_temperatures
 		name7 => "new_ipmitool_value_sensor_value", value7 => $new_ipmitool_value_sensor_value,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Record the temperatures that are outside their nominal range
+	# Record the temperatures.
 	if ($new_ipmitool_value_sensor_value < $low_critical)
 	{
 		# Setup the 'temperature' entry.
@@ -1097,9 +1124,22 @@ sub log_abnormal_temperatures
 			name3 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
+	else
+	{
+		$an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name} = {
+			temperature_celsius	=>	$new_ipmitool_value_sensor_value,
+			temperature_state	=>	'ok',
+			temperature_is		=>	'nominal',
+		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_celsius", value1 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_celsius}, 
+			name2 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_state",   value2 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_state}, 
+			name3 => "new::${machine}::temperature::${ipmitool_sensor_name}::temperature_is",      value3 => $an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{temperature_is}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# When the dashboard scans a node, it needs to know about the Ambient and Systemboard temperatures in
-	# order to device whether the node is safe too boot back up or not. So if this machine is a 
+	# order to decide whether the node is safe too boot back up or not. So if this machine is a 
 	# dashboard, log the 'Ambient' and 'Systemboard' temperatures (or whatever the user defined) as 
 	# 'good', if they're not already in the 'new::temperature::x' hash.
 	my $i_am_a = $an->Get->what_am_i();
@@ -2333,6 +2373,12 @@ sub query_ipmi_targets
 				$high_warning  = $an->Convert->convert_to_celsius({temperature => $high_warning})  if $high_warning  ne "";
 				$low_critical  = $an->Convert->convert_to_celsius({temperature => $low_critical})  if $low_critical  ne "";
 				$low_warning   = $an->Convert->convert_to_celsius({temperature => $low_warning})   if $low_warning   ne "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "low_critical",  value1 => $low_critical, 
+					name2 => "low_warning",   value2 => $low_warning, 
+					name3 => "high_warning",  value3 => $high_warning, 
+					name4 => "high_critical", value4 => $high_critical, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			# Record
 			$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_value_sensor_value}   = $current_value;
@@ -2342,7 +2388,7 @@ sub query_ipmi_targets
 			$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_high_warning}  = $high_warning;
 			$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_low_critical}  = $low_critical;
 			$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_low_warning}   = $low_warning;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 				name1 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_value_sensor_value",   value1 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_value_sensor_value}, 
 				name2 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_sensor_units",         value2 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_units}, 
 				name3 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_sensor_status",        value3 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_status}, 
