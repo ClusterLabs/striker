@@ -3235,24 +3235,6 @@ WHERE
 		delete $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid};
 	}
 	
-	### DEBUG
-# 	show_drive_controllers($an);
-# 	foreach my $type ("variable", "temperature")
-# 	{
-# 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-# 			name1 => "type", value1 => $type,
-# 		}, file => $THIS_FILE, line => __LINE__});
-# 		
-# 		$an->Log->aligned_entries({
-# 			log_level => 2, 
-# 			file      => $THIS_FILE,
-# 			line      => __LINE__,
-# 			prefix    => "VD $virtual_drive, DG $drive_group, EID $enclosure_id, Slot $slot_number - $type",
-# 			hash_ref  => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
-# 		});
-# 	}
-# 	die "$THIS_FILE ".__LINE__."; testing...\n";
-	
 	return(0);
 }
 
@@ -9421,9 +9403,6 @@ sub gather_data
 		get_physical_disk_data($an, $adapter, $serial_number);
 	}
 	
-	# Sort and prepare the data for insertion into the database.
-	sort_and_prepare_data($an);
-	
 	return(0);
 }
 
@@ -9885,46 +9864,6 @@ sub get_physical_disk_data
 		}
 	}
 	close $file_handle;
-	
-	return(0);
-}
-
-### TEMPORARY: Just used to debug where the controller serial numbers are being lost
-sub show_drive_controllers
-{
-	my ($an) = @_;
-	
-	foreach my $virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "virtual_drive", value1 => $virtual_drive, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "drive_group", value1 => $drive_group, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}})
-			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "enclosure_id", value1 => $enclosure_id, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
-				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "slot_number", value1 => $slot_number, 
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::on_controller", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-			}
-		}
-	}
 	
 	return(0);
 }
@@ -12197,168 +12136,6 @@ sub find_lsi_controllers
 		$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0003", message_variables => { path => $an->data->{path}{storcli64} }, file => $THIS_FILE, line => __LINE__});
 		$an->nice_exit({exit_code => 3});
 	}
-	
-	return(0);
-}
-
-# Sort and prepare the data for insertion into the database.
-sub sort_and_prepare_data
-{
-	my ($an) = @_;
-	
-	### NOTE: This is mainly useful for dev and debug. Disabled for now.
-	return("");
-	
-	# First, sort the controllers.
-	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
-	{
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "serial_number", value1 => $serial_number,
-				name2 => "type",          value2 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->aligned_entries({
-				log_level => 3, 
-				file      => $THIS_FILE,
-				line      => __LINE__,
-				prefix    => "$serial_number - $type",
-				hash_ref  => $an->data->{controller}{serial_number}{$serial_number}{$type},
-			});
-		}
-		
-		my $storcli_controller_uuid          = "";
-		my $storcli_controller_host_uuid     = $an->data->{sys}{host_uuid};
-		my $storcli_controller_serial_number = $serial_number;
-		my $storcli_controller_model         = $an->data->{controller}{serial_number}{$serial_number}{variable}{model};
-		my $storcli_controller_alarm_state   = $an->data->{controller}{serial_number}{$serial_number}{variable}{alarm_state};
-		my $storcli_controller_cache_size    = $an->data->{controller}{serial_number}{$serial_number}{variable}{on_board_memory_size};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-			name1 => "storcli_controller_host_uuid",     value1 => $storcli_controller_host_uuid,
-			name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number,
-			name3 => "storcli_controller_model",         value3 => $storcli_controller_model,
-			name4 => "storcli_controller_alarm_state",   value4 => $storcli_controller_alarm_state,
-			name5 => "storcli_controller_cache_size",    value5 => $storcli_controller_cache_size,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Now Cachevault (FBUs)
-	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
-	{
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "cachevault_serial_number", value1 => $cachevault_serial_number,
-				name2 => "type",                     value2 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->aligned_entries({
-				log_level => 2, 
-				file      => $THIS_FILE,
-				line      => __LINE__,
-				prefix    => "$cachevault_serial_number - $type",
-				hash_ref  => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type},
-			});
-		}
-	}
-	
-	# Now BBUs
-	foreach my $bbu_serial_number (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}})
-	{
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "bbu_serial_number", value1 => $bbu_serial_number,
-				name2 => "type",              value2 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->aligned_entries({
-				log_level => 3, 
-				file      => $THIS_FILE,
-				line      => __LINE__,
-				prefix    => "$bbu_serial_number - $type",
-				hash_ref  => $an->data->{bbu}{serial_number}{$bbu_serial_number}{$type},
-			});
-		}
-	}
-	#die "$THIS_FILE ".__LINE__."; testing...\n";
-	
-	# Now the virtual drives. Note that '9999' is a fake VD used for physical drives not in any actual 
-	# VDs.
-	foreach my $virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
-	{
-		my $serial_number = $an->data->{virtual_drive}{$virtual_drive}{variable}{on_controller};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "virtual_drive",  value1 => $virtual_drive,
-			name2 => "serial_number", value2 => $serial_number,
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $type ("variable", "temperature")
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "type", value1 => $type,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->aligned_entries({
-				log_level => 3, 
-				file      => $THIS_FILE,
-				line      => __LINE__,
-				prefix    => "VD $virtual_drive - $type",
-				hash_ref  => $an->data->{virtual_drive}{$virtual_drive}{$type},
-			});
-		}
-		
-		# Show the drive group and drives.
-		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}})
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "drive_group", value1 => $drive_group,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			my $say_drive_group  = $drive_group  eq "9999" ? "x" : $drive_group;
-			my $say_virtual_drive = $virtual_drive eq "9999" ? "x" : $virtual_drive;
-			
-			# Show the basic drive group data
-			foreach my $type ("variable", "temperature")
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "type", value1 => $type,
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->aligned_entries({
-					log_level => 3, 
-					file      => $THIS_FILE,
-					line      => __LINE__,
-					prefix    => "VD $say_virtual_drive, DG $say_drive_group - $type",
-					hash_ref  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{$type},
-				});
-			}
-			
-			# And show the drives in this group.
-			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}})
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "enclosure_id", value1 => $enclosure_id,
-				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
-				{
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "slot_number", value1 => $slot_number,
-					}, file => $THIS_FILE, line => __LINE__});
-					foreach my $type ("variable", "temperature")
-					{
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "type", value1 => $type,
-						}, file => $THIS_FILE, line => __LINE__});
-						$an->Log->aligned_entries({
-							log_level => 3, 
-							file      => $THIS_FILE,
-							line      => __LINE__,
-							prefix    => "VD $say_virtual_drive, DG $say_drive_group, EID $enclosure_id, Slot $slot_number - $type",
-							hash_ref  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type},
-						});
-					}
-				}
-			}
-		}
-	}
-	
-	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	return(0);
 }
