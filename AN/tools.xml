@@ -179,7 +179,7 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0019">Connected to database: [#!variable!name!#] (id: [#!variable!id!#]) on host: [#!variable!host!#:#!variable!port!#].</key>
 		<key name="tools_log_0020">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be initialized.</key>
 		<key name="tools_log_0021">[ #!variable!title!# ] - #!variable!message!#</key>
-		<key name="tools_log_0022">The DB with ID: [#!variable!id!#] is behind.</key>
+		<key name="tools_log_0022">The DB with ID: [#!variable!id!#]'s core tables are behind.</key>
 		<key name="tools_log_0023">The database: [#!variable!name!#] on: [#!variable!host!#] needs to have the: [#!variable!file!#] SQL schema loaded.</key>
 		<key name="tools_log_0024">Setting mode to: [#!variable!directory_mode!#].</key>
 		<key name="tools_log_0025">Start template: [#!variable!template!#] from file: [#!variable!file!#]</key>
@@ -194,6 +194,7 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0034">My 'host_stop_reason' for the host with the UUID: [#!variable!host_uuid!#] is set to 'clean', but it was set: [#!variable!seconds!#] second(s) ago. That is fairly recent so it might still be shutting down, so we will not clear the state yet.</key>
 		<key name="tools_log_0035">I was asked to mark the host with the UUID: [#!variable!host_uuid!#] as 'off', but I am a node and this isn't my host UUID. This shouldn't happen and is probably the sign of a bug in the program. Returning from the method without doing anything.</key>
 		<key name="tools_log_0036">I was asked to wait: [#!variable!wait!#] seconds after setting the "database is being resynchronized' flag, to give other instances of ScanCore time to finish their scans. Will resume shortly...</key>
+		<key name="tools_log_0037">The DB with ID: [#!variable!id!#] for: [#!variable!file!#] is behind.</key>
 	
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

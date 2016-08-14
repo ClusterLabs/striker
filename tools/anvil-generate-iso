@@ -3022,41 +3022,24 @@ sub validate_source
 			exit(1);
 		}
 		
-		### TODO: Remove this; Calc all sums!
-# 		if ($iso eq "/data1/VMs/files/CentOS-6.7-x86_64-bin-DVD1.iso")
-# 		{
-# 			$conf->{source}{$iso}{sum} = "51f90e8ddd2ea199780065eaf75130ad";
-# 		}
-# 		elsif ($iso eq "/data1/VMs/files/CentOS-6.7-x86_64-bin-DVD2.iso")
-# 		{
-# 			$conf->{source}{$iso}{sum} = "efd54b939787519b350d986329e2c7a3";
-# 		}
-# 		els
-		if ($iso eq "/data1/VMs/files/rhel-server-6.8-x86_64-dvd.iso")
+		print "- Generating md5sum of the source: [$iso], please wait a moment...\n";
+			$conf->{source}{$iso}{sum} = "";
+		my $shell_call                = $conf->{executable}{md5sum}." ".$iso;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
 		{
-			$conf->{source}{$iso}{sum} = "ef0f3bbfbb846491a07e4a02b5d5640a";
-		}
-		else
-		{
-			print "- Generating md5sum of the source: [$iso], please wait a moment...\n";
-			   $conf->{source}{$iso}{sum} = "";
-			my $shell_call                = $conf->{executable}{md5sum}." ".$iso;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-			while(<$file_handle>)
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			
+			if ($line =~ /^(\S+)\s+$iso/)
 			{
-				chomp;
-				my $line = $_;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
-				
-				if ($line =~ /^(\S+)\s+$iso/)
-				{
-					$conf->{source}{$iso}{sum} = $1;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::sum: [$conf->{source}{$iso}{sum}]\n" if $conf->{sys}{debug} >= 2;
-				}
+				$conf->{source}{$iso}{sum} = $1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::sum: [$conf->{source}{$iso}{sum}]\n" if $conf->{sys}{debug} >= 2;
 			}
-			close $file_handle;
 		}
+		close $file_handle;
 		
 		# If we got a sum, make sure it matches an expected one.
 		if ($conf->{source}{$iso}{sum})

@@ -9261,7 +9261,7 @@ sub call_agents
 		# Note how long it took.
 		my $runtime   = time - $start_time;
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "scancore_log_0020", message_variables => { 
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0020", message_variables => { 
 			agent   => $say_agent, 
 			runtime => $runtime 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9599,7 +9599,7 @@ AND
 		my $current_time = time;
 		my $difference   = $current_time - $last_updated;
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "last_updated",               value1 => $last_updated, 
 			name2 => "current_time",               value2 => $current_time, 
 			name3 => "difference",                 value3 => $difference, 

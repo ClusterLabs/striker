@@ -801,7 +801,19 @@ AND
 		if ($an->data->{scancore}{sql}{source_updated_time} > $an->data->{scancore}{db}{$id}{last_updated})
 		{
 			# This database is behind
-			$an->Log->entry({log_level => 1, message_key => "tools_log_0022", message_variables => { id => $id }, file => $THIS_FILE, line => __LINE__});
+			if ($file)
+			{
+				# For a specific scan agent.
+				$an->Log->entry({log_level => 1, message_key => "tools_log_0037", message_variables => { 
+					id   => $id,
+					file => $file,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# the core tables.
+				$an->Log->entry({log_level => 1, message_key => "tools_log_0022", message_variables => { id => $id }, file => $THIS_FILE, line => __LINE__});
+			}
 			$an->data->{scancore}{db_to_update}{$id}{behind} = 1;
 			
 			# A database is behind, resync
@@ -1160,7 +1172,10 @@ sub initialize_db
 	}
 	
 	# Tell the user we need to initialize
-	$an->Log->entry({log_level => 1, title_key => "tools_title_0005", message_key => "tools_log_0020", message_variables => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 1, title_key => "tools_title_0005", message_key => "tools_log_0020", message_variables => {
+		name => $an->data->{scancore}{db}{$id}{name}, 
+		host => $an->data->{scancore}{db}{$id}{host}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Read in the SQL file and replace #!variable!name!# with the database owner name.
 	my $user = $an->data->{scancore}{db}{$id}{user};
