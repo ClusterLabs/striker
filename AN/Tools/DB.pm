@@ -122,7 +122,7 @@ sub connect_to_databases
 	
 	my $file  = defined $parameter->{file}  ? $parameter->{file}  : "";
 	my $quiet = defined $parameter->{quiet} ? $parameter->{quiet} : 1;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "file",  value1 => $file, 
 		name2 => "quiet", value2 => $quiet, 
 	}, file => $THIS_FILE, line => __LINE__});

@@ -424,7 +424,7 @@ sub clear_resync_flag
 sub update_anvil_data
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_anvil_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_anvil_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Update this to work on dashboards as well
 	# Load the information about the Anvil! this node is a part of (if it's been added to the database 
@@ -465,7 +465,7 @@ sub update_anvil_data
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::anvil_uuid", value1 => $an->data->{sys}{anvil_uuid},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{anvil_uuid})
@@ -2720,7 +2720,7 @@ sub process_alerts
 {
 	my ($an, $first_run) = @_;
 	$first_run = 0 if not defined $first_run;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_alerts", }, message_key => "tools_log_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_alerts", }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "first_run", value1 => $first_run
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2746,12 +2746,12 @@ ORDER BY
     modified_date ASC, 
     alert_sort ASC 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results, 
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
@@ -2767,7 +2767,7 @@ ORDER BY
 		my $alert_header            = $row->[7]; 
 		my $alert_sort              = defined $row->[8] ? $row->[8] : 9999; 
 		my $modified_date           = $row->[9]; 
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 			name1  => "alert_uuid",              value1  => $alert_uuid, 
 			name2  => "alert_agent_name",        value2  => $alert_agent_name, 
 			name3  => "alert_level",             value3  => $alert_level, 
@@ -2790,7 +2790,7 @@ ORDER BY
 			alert_header 		=> $alert_header,
 			modified_date           => $modified_date
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "db::alerts::agent_name::${alert_agent_name}::alert_sort::${alert_sort}::alert_uuid::${alert_uuid}::alert_level",             value1 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_level},
 			name2 => "db::alerts::agent_name::${alert_agent_name}::alert_sort::${alert_sort}::alert_uuid::${alert_uuid}::alert_title_key",         value2 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_title_key},
 			name3 => "db::alerts::agent_name::${alert_agent_name}::alert_sort::${alert_sort}::alert_uuid::${alert_uuid}::alert_title_variables",   value3 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_title_variables},
@@ -2815,7 +2815,7 @@ ORDER BY
 			my $notify_language = $hash_ref->{notify_language};
 			my $notify_level    = $hash_ref->{notify_level};
 			my $notify_units    = $hash_ref->{notify_units};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "notify_uuid",     value1 => $notify_uuid,
 				name2 => "notify_name",     value2 => $notify_name,
 				name3 => "notify_target",   value3 => $notify_target,
@@ -2829,7 +2829,7 @@ ORDER BY
 			$an->data->{notififactions}{$notify_uuid}{notify_language} = $notify_language;
 			$an->data->{notififactions}{$notify_uuid}{notify_level}    = $notify_level;
 			$an->data->{notififactions}{$notify_uuid}{notify_units}    = $notify_units;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "notififactions::${notify_uuid}::notify_name",     value1 => $an->data->{notififactions}{$notify_uuid}{notify_name},
 				name2 => "notififactions::${notify_uuid}::notify_target",   value2 => $an->data->{notififactions}{$notify_uuid}{notify_target},
 				name3 => "notififactions::${notify_uuid}::notify_language", value3 => $an->data->{notififactions}{$notify_uuid}{notify_language},
@@ -2849,7 +2849,7 @@ ORDER BY
 			my $recipient_anvil_uuid   = $hash_ref->{recipient_anvil_uuid};
 			my $recipient_notify_uuid  = $hash_ref->{recipient_notify_uuid};
 			my $recipient_notify_level = $hash_ref->{recipient_notify_level};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "sys::anvil_uuid",        value1 => $an->data->{sys}{anvil_uuid},
 				name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid,
 				name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid,
@@ -2866,7 +2866,7 @@ ORDER BY
 				my $notify_language = $an->data->{notififactions}{$recipient_notify_uuid}{notify_language};
 				my $notify_level    = $an->data->{notififactions}{$recipient_notify_uuid}{notify_level};
 				my $notify_units    = $an->data->{notififactions}{$recipient_notify_uuid}{notify_units};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 					name1 => "notify_name",            value1 => $notify_name,
 					name2 => "notify_target",          value2 => $notify_target,
 					name3 => "notify_language",        value3 => $notify_language,
@@ -2879,7 +2879,7 @@ ORDER BY
 				if ($recipient_notify_level)
 				{
 					$notify_level = $recipient_notify_level;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "notify_level", value1 => $notify_level,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -2924,7 +2924,7 @@ ORDER BY
 sub send_email
 {
 	my ($an, $email, $name, $level, $language, $units) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "send_email" }, message_key => "an_variables_0005", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "send_email" }, message_key => "an_variables_0005", message_variables => { 
 		name1 => "email",    value1 => $email, 
 		name2 => "name",     value2 => $name, 
 		name3 => "level",    value3 => $level, 
@@ -3184,7 +3184,7 @@ sub send_email
 sub record_alert_to_file
 {
 	my ($an, $file, $name, $level, $language, $units) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "record_alert_to_file" }, message_key => "an_variables_0005", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "record_alert_to_file" }, message_key => "an_variables_0005", message_variables => { 
 		name1 => "file",     value1 => $file, 
 		name2 => "name",     value2 => $name, 
 		name3 => "level",    value3 => $level, 
@@ -3285,7 +3285,7 @@ sub record_alert_to_file
 sub check_email_configuration
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_email_configuration" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_email_configuration" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: At this time, dashboards can't send email.
 	if (not -e $an->data->{path}{cman_config})
@@ -3360,34 +3360,8 @@ sub check_email_configuration
 					name1 => "reconfigure", value1 => $reconfigure, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-### Wrong place for this.
-# 			if ($line =~ /^smtp_fallback_relay = \[(.*?)\]:(\d+)/)
-# 			{
-# 				my $alt_domain = $1;
-# 				my $alt_port   = $2;
-# 				my $port       = $an->data->{sys}{anvil}{smtp}{alt_port}   ? $an->data->{sys}{anvil}{smtp}{alt_port}   : $an->data->{sys}{anvil}{smtp}{port};
-# 				my $alt_server = $an->data->{sys}{anvil}{smtp}{alt_server} ? $an->data->{sys}{anvil}{smtp}{alt_server} : "";
-# 				
-# 				if (($alt_domain ne $alt_server) or ($port ne $alt_port))
-# 				{
-# 					$reconfigure = 1;
-# 				}
-# 				$alt_server_found = 1;
-# 			}
 		}
 		close $file_handle;
-		
-# 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-# 			name1 => "sys::anvil::smtp::alt_server", value1 => $an->data->{sys}{anvil}{smtp}{alt_server}, 
-# 			name2 => "alt_server_found",             value2 => $alt_server_found, 
-# 		}, file => $THIS_FILE, line => __LINE__});
-# 		if (($an->data->{sys}{anvil}{smtp}{alt_server}) && (not $alt_server_found))
-# 		{
-# 			$reconfigure = 1;
-# 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-# 				name1 => "reconfigure", value1 => $reconfigure, 
-# 			}, file => $THIS_FILE, line => __LINE__});
-# 		}
 	}
 	else
 	{
@@ -3473,9 +3447,7 @@ sub check_email_configuration
 	if ($reconfigure)
 	{
 		# Write the new relay file.
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
-			postfix_relay_file => $an->data->{path}{postfix_relay_file}, 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0034", message_variables => { postfix_relay_file => $an->data->{path}{postfix_relay_file} }, file => $THIS_FILE, line => __LINE__});
 		
 		my $shell_call = $an->data->{path}{postfix_relay_file};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -3492,7 +3464,7 @@ sub check_email_configuration
 		close $file_handle;
 		
 		# Generate the binary version.
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0039", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0039", file => $THIS_FILE, line => __LINE__});
 		
 		$shell_call = $an->data->{path}{postmap}." ".$an->data->{path}{postfix_relay_file};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -3520,7 +3492,7 @@ sub check_email_configuration
 		if (not -e $backup_file)
 		{
 			# Backup the original.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0034", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
 				source      => $an->data->{path}{postfix_main},
 				destination =>  $backup_file,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3543,15 +3515,13 @@ sub check_email_configuration
 		else
 		{
 			# Already backed up
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0040", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0040", file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Now update the postfix main.cf file by reading it in and replacing the variables we want to
 		# update, then writing it all back out.
 		my $postfix_main = "";
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0041", message_variables => {
-			postfix_main => $an->data->{path}{postfix_main}, 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0041", message_variables => { postfix_main => $an->data->{path}{postfix_main} }, file => $THIS_FILE, line => __LINE__});
 		
 		$shell_call = $an->data->{path}{postfix_main};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -3602,9 +3572,7 @@ sub check_email_configuration
 		close $file_handle;
 		
 		# Write out the new version.
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0043", message_variables => {
-			postfix_main => $an->data->{path}{postfix_main}, 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0043", message_variables => { postfix_main => $an->data->{path}{postfix_main} }, file => $THIS_FILE, line => __LINE__});
 		
 		# Record the config in the main log
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -3621,7 +3589,7 @@ sub check_email_configuration
 		close $file_handle;
 		
 		# Reload postfix
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0044", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0044", file => $THIS_FILE, line => __LINE__});
 		$shell_call = $an->data->{path}{initd}."/postfix restart";
 		open ($file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
@@ -3644,16 +3612,12 @@ sub check_email_configuration
 	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $an->data->{path}{alert_emails})
 	{
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0055", message_variables => {
-			email_directory => $an->data->{path}{alert_emails}, 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0055", message_variables => { email_directory => $an->data->{path}{alert_emails} }, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		# Need to create it.
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0045", message_variables => {
-			email_directory => $an->data->{path}{alert_emails}, 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0045", message_variables => { email_directory => $an->data->{path}{alert_emails} }, file => $THIS_FILE, line => __LINE__});
 		
 		mkdir $an->data->{path}{alert_emails} or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0019", message_variables => {
 								directory => $an->data->{path}{alert_emails}, 
@@ -3662,9 +3626,7 @@ sub check_email_configuration
 		
 		# Set the mode
 		my $directory_mode = 0775;
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0046", message_variables => {
-			directory_mode => sprintf("%04o", $directory_mode), 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0046", message_variables => { directory_mode => sprintf("%04o", $directory_mode) }, file => $THIS_FILE, line => __LINE__});
 		chmod $directory_mode, $an->data->{path}{alert_emails};
 	}
 	
@@ -4484,9 +4446,9 @@ sub translate_sensor_value
 sub update_db
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
@@ -9146,13 +9108,13 @@ FROM
 WHERE 
     host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname)."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9163,7 +9125,7 @@ WHERE
 			my $unix_modified_date  =         $row->[2];
 			my $current_time        = time;
 			my $difference          = $current_time - $unix_modified_date;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "host_emergency_stop", value1 => $host_emergency_stop, 
 				name2 => "host_stop_reason",    value2 => $host_stop_reason, 
 				name3 => "unix_modified_date",  value3 => $unix_modified_date, 
@@ -9508,7 +9470,7 @@ sub avoid_duplicate_run
 	
 	# See if another instance is in the 
 	my $last_peer_state = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "last_peer_state", value1 => $last_peer_state,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($last_peer_state) && ($last_peer_state =~ /^\d+$/))
@@ -9517,7 +9479,7 @@ sub avoid_duplicate_run
 		# exit.
 		my $current_time = time;
 		my $update_age   = $current_time - $last_peer_state;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "current_time",               value1 => $current_time,
 			name2 => "update_age",                 value2 => $update_age,
 			name3 => "scancore::update_age_limit", value3 => $an->data->{scancore}{update_age_limit},
@@ -9567,7 +9529,7 @@ sub avoid_duplicate_run
 			{
 				# Another copy is running.
 				$already_running = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "already_running", value1 => $already_running,
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -9599,7 +9561,7 @@ AND
 		my $current_time = time;
 		my $difference   = $current_time - $last_updated;
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "last_updated",               value1 => $last_updated, 
 			name2 => "current_time",               value2 => $current_time, 
 			name3 => "difference",                 value3 => $difference, 

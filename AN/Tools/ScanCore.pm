@@ -4422,14 +4422,14 @@ sub read_variable
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_variable" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_variable" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $variable_uuid         = $parameter->{variable_uuid}         ? $parameter->{variable_uuid}         : "";
 	my $variable_name         = $parameter->{variable_name}         ? $parameter->{variable_name}         : "";
 	my $variable_source_uuid  = $parameter->{variable_source_uuid}  ? $parameter->{variable_source_uuid}  : "NULL";
 	my $variable_source_table = $parameter->{variable_source_table} ? $parameter->{variable_source_table} : "NULL";
 	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "variable_uuid",         value1 => $variable_uuid, 
 		name2 => "variable_name",         value2 => $variable_name, 
 		name3 => "variable_source_uuid",  value3 => $variable_source_uuid, 
@@ -4470,7 +4470,7 @@ AND
 		}
 	}
 	$query .= ";";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4485,7 +4485,7 @@ AND
 	{
 		$variable_value = $row->[0];
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "variable_name",  value1 => $variable_name, 
 			name2 => "variable_value", value2 => $variable_value, 
 		}, file => $THIS_FILE, line => __LINE__});
