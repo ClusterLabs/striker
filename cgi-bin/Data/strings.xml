@@ -82,6 +82,8 @@
 		<key name="button_0075">Removal disabled while 'Degraded'</key>
 		<key name="button_0076">#!string!brand_0015!# Databases</key>
 		<key name="button_0077">Edit</key>
+		<key name="button_0078">DR Targets</key>
+		<key name="button_0079">DR Jobs</key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -428,6 +430,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0210"><![CDATA[Below is the raw Install Manifest data. You can customize it as you wish.<br /><span class="highlight_detail">Note</span>: Please be careful that you maintain valid XML format.]]></key>
 		<key name="explain_0211"><![CDATA[<span class="highlight_detail">Optional</span>: A backup email server that #!string!brand_0015!# will use if the main email server stops responding.<br />A non-standard port can be set the same as above. <span class="highlight_detail">Note</span>; The backup server<br />must accept the same credentials and use the same security as the main email server!]]></key>
 		<key name="explain_0212"><![CDATA[One or more UPSes are inaccessible. Power cycle options have been disabled until communication is restored.]]></key>
+		<key name="explain_0213"><![CDATA[If you have a <a href="#!string!url_0011!#" target="_new">disaster recovery</a> server, you can define it here.]]></key>
+		<key name="explain_0214"><![CDATA[Create DR schedules to cold-image server(s) to a DR target.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -503,6 +507,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="url_0008"><![CDATA[https://www.drbd.org/en/doc/users-guide-84/s-configure-sync-rate]]></key>
 		<key name="url_0009"><![CDATA[https://alteeve.ca/w/TLUG_Talk:_Storage_Technologies_and_Theory#Level_#!variable!raid_level!#]]></key>
 		<key name="url_0010"><![CDATA[https://alteeve.ca/w/Failed_Server]]></key>
+		<key name="url_0011"><![CDATA[https://alteeve.ca/w/Disaster_Recovery]]></key>
 		
 		<!-- Fields used in <select ...> blocks. -->
 		<key name="select_0001">No Security</key>
@@ -1912,6 +1917,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0486"><![CDATA[The sending email server password must be set unless '<span class="highlight_detail">#!string!row_0303!#</span>' is set to '<span class="highlight_detail">#!string!select_0004!#</span>'.]]></key>
 		<key name="message_0487"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been aborted because one or more UPSes is not accessible.]]></key>
 		<key name="message_0488"><![CDATA[System call started at: [<span class="highlight_detail">#!variable!timestamp!#</span>]. Output, if any, will be below:]]></key>
+		<key name="message_0489"><![CDATA[The: [<span class="highlight_detail">#!variable!dr_target!#</span>] DR target has been deleted.]]></key>
+		<key name="message_0490"><![CDATA[The: [<span class="highlight_detail">#!variable!anvil_name!#</span>] install manifest has been deleted.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

@@ -2824,17 +2824,17 @@ ORDER BY
 				name6 => "notify_units",    value6 => $notify_units,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$an->data->{notififactions}{$notify_uuid}{notify_name}     = $notify_name;
-			$an->data->{notififactions}{$notify_uuid}{notify_target}   = $notify_target;
-			$an->data->{notififactions}{$notify_uuid}{notify_language} = $notify_language;
-			$an->data->{notififactions}{$notify_uuid}{notify_level}    = $notify_level;
-			$an->data->{notififactions}{$notify_uuid}{notify_units}    = $notify_units;
+			$an->data->{notifications}{$notify_uuid}{notify_name}     = $notify_name;
+			$an->data->{notifications}{$notify_uuid}{notify_target}   = $notify_target;
+			$an->data->{notifications}{$notify_uuid}{notify_language} = $notify_language;
+			$an->data->{notifications}{$notify_uuid}{notify_level}    = $notify_level;
+			$an->data->{notifications}{$notify_uuid}{notify_units}    = $notify_units;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name1 => "notififactions::${notify_uuid}::notify_name",     value1 => $an->data->{notififactions}{$notify_uuid}{notify_name},
-				name2 => "notififactions::${notify_uuid}::notify_target",   value2 => $an->data->{notififactions}{$notify_uuid}{notify_target},
-				name3 => "notififactions::${notify_uuid}::notify_language", value3 => $an->data->{notififactions}{$notify_uuid}{notify_language},
-				name4 => "notififactions::${notify_uuid}::notify_level",    value4 => $an->data->{notififactions}{$notify_uuid}{notify_level},
-				name5 => "notififactions::${notify_uuid}::notify_units",    value5 => $an->data->{notififactions}{$notify_uuid}{notify_units},
+				name1 => "notifications::${notify_uuid}::notify_name",     value1 => $an->data->{notifications}{$notify_uuid}{notify_name},
+				name2 => "notifications::${notify_uuid}::notify_target",   value2 => $an->data->{notifications}{$notify_uuid}{notify_target},
+				name3 => "notifications::${notify_uuid}::notify_language", value3 => $an->data->{notifications}{$notify_uuid}{notify_language},
+				name4 => "notifications::${notify_uuid}::notify_level",    value4 => $an->data->{notifications}{$notify_uuid}{notify_level},
+				name5 => "notifications::${notify_uuid}::notify_units",    value5 => $an->data->{notifications}{$notify_uuid}{notify_units},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
@@ -2858,14 +2858,14 @@ ORDER BY
 			next if $hash_ref->{recipient_anvil_uuid} ne $an->data->{sys}{anvil_uuid};
 			
 			# Get the information for this notification target
-			if ($an->data->{notififactions}{$recipient_notify_uuid}{notify_name})
+			if ($an->data->{notifications}{$recipient_notify_uuid}{notify_name})
 			{
 				# Match found, proceed.
-				my $notify_name     = $an->data->{notififactions}{$recipient_notify_uuid}{notify_name};
-				my $notify_target   = $an->data->{notififactions}{$recipient_notify_uuid}{notify_target};
-				my $notify_language = $an->data->{notififactions}{$recipient_notify_uuid}{notify_language};
-				my $notify_level    = $an->data->{notififactions}{$recipient_notify_uuid}{notify_level};
-				my $notify_units    = $an->data->{notififactions}{$recipient_notify_uuid}{notify_units};
+				my $notify_name     = $an->data->{notifications}{$recipient_notify_uuid}{notify_name};
+				my $notify_target   = $an->data->{notifications}{$recipient_notify_uuid}{notify_target};
+				my $notify_language = $an->data->{notifications}{$recipient_notify_uuid}{notify_language};
+				my $notify_level    = $an->data->{notifications}{$recipient_notify_uuid}{notify_level};
+				my $notify_units    = $an->data->{notifications}{$recipient_notify_uuid}{notify_units};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 					name1 => "notify_name",            value1 => $notify_name,
 					name2 => "notify_target",          value2 => $notify_target,

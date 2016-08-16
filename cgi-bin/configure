@@ -78,11 +78,15 @@ sub process_task
 	}
 	elsif ($an->data->{cgi}{task} eq "manifests")
 	{
-		### TODO: Make sure 'cgi::manifest_uuid' is set where needed.
 		manifests_menu($an);
+	}
+	elsif ($an->data->{cgi}{task} eq "dr_target")
+	{
+		dr_target_menu($an);
 	}
 	elsif ($an->data->{cgi}{task} eq "backup")
 	{
+		
 	}
 	elsif ($an->data->{cgi}{task} eq "install_target")
 	{
@@ -1625,6 +1629,123 @@ sub confirm_action
 				button		=>	$confirm_button,
 			}});
 	}
+	elsif ($action eq "delete_dr_target")
+	{
+		# Get the notification target's name.
+		my $dr_target_data = $an->Get->dr_target_data({uuid => $an->data->{cgi}{dr_target_uuid}});
+		my $confirm_button = $an->Web->template({file => "web.html", template => "bold-link-button", replace => { 
+			name	=>	"confirm",
+			id	=>	"confirm",
+			value	=>	"#!string!button_0004!#",
+			url	=>	"?task=dr_target&dr_target_uuid=".$an->data->{cgi}{dr_target_uuid}."&delete=true&confirm=true",
+		}, no_comment => 1});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "dr_target_data->dr_target_ip_or_name", value1 => $dr_target_data->{dr_target_ip_or_name},
+		}, file => $THIS_FILE, line => __LINE__});
+		$notice_message = $an->Web->template({file => "web.html", template => "confirm-message", replace => {
+				title		=>	"#!string!title_0195!#",
+				row_class	=>	"highlight_warning_bold",
+				row_body	=>	"#!string!row_0306!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0454", variables => { target => $dr_target_data->{dr_target_ip_or_name} }}),
+				button		=>	$confirm_button,
+			}});
+	}
+	
+	return($notice_message);
+}
+
+# This deletes the given DR target
+sub delete_dr_target
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_dr_target" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Get the Anvil! name and the dr target data before we delete it.
+	my $return     = $an->Get->dr_target_data({uuid => $an->data->{cgi}{dr_target_uuid}});
+	my $anvil_name = $an->data->{cgi}{anvil_name};
+	
+	my $notice_message = "";
+	
+	# Send the queries as an array
+	my $queries = [];
+	push @{$queries}, "
+UPDATE 
+    dr_targets 
+SET 
+    dr_target_note = 'DELETED' 
+WHERE 
+    dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_target_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    dr_targets 
+WHERE 
+    dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_target_uuid})."
+;";
+	
+	# Log the queries
+	foreach my $query (@{$queries})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Pass the array in.
+	$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
+	
+	# Make sure they're gone.
+	my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    dr_targets 
+WHERE 
+    dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_target_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $dr_target_count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "dr_target_count", value1 => $dr_target_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($dr_target_count)
+	{
+		# What is this!?
+		my $error_message = $an->String->get({key => "message_0461", variables => { 
+			anvil     => $anvil_name,
+			dr_targets => $dr_target_count, 
+		}});
+		my $error_body = $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning",
+					row_message	=>	"#!string!row_0133!#",
+					body_class	=>	"",
+					body_message	=>	$error_message,
+				}});
+		
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0197!#",
+				errors	=>	$error_body,
+			}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# All gone
+		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
+				title		=>	"#!string!title_0196!#",
+				row_class	=>	"highlight_good_bold",
+				row_body	=>	"#!string!row_0083!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "dr_target", variables => { dr_target => $return->{dr_target_ip_or_name} }}),
+			}});
+	}
 	
 	return($notice_message);
 }
@@ -1636,10 +1757,18 @@ sub delete_manifest
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_owner" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Get the Anvil! name from the manifest before we delete it.
-	my $return     = $an->Get->manifest_data({uuid => $an->data->{cgi}{manifest_uuid}});
-	my $anvil_name = $an->data->{cgi}{anvil_name};
+	my $manifest_data = $an->Get->manifest_data({uuid => $an->data->{cgi}{manifest_uuid}});
+	$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "cgi::anvil_prefix",   value1 => $an->data->{cgi}{anvil_prefix},
+		name2 => "cgi::anvil_sequence", value2 => $an->data->{cgi}{anvil_sequence},
+	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $anvil_name     = $an->data->{cgi}{anvil_prefix}."-anvil-".$an->data->{cgi}{anvil_sequence};
 	my $notice_message = "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Send the queries as an array
 	my $queries = [];
@@ -1717,7 +1846,7 @@ WHERE
 				row_class	=>	"highlight_good_bold",
 				row_body	=>	"#!string!row_0083!#",
 				message_class	=>	"",
-				message_body	=>	$an->String->get({key => "message_0395", variables => { manifest => $return->{manifest_name} }}),
+				message_body	=>	$an->String->get({key => "message_0490", variables => { anvil_name => $anvil_name }}),
 			}});
 	}
 	
@@ -4159,6 +4288,44 @@ WHERE
 	return(0);
 }
 
+# This handles the management of DR target machines.
+sub dr_target_menu
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "dr_target_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Is the user asking to save changes?
+	my $notice_message = "";
+	my $error_fields   = [];
+	my $refresh_link   = $an->data->{sys}{cgi_string};
+	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{dr_target_uuid}))
+	{
+		# Has the user confirmed?
+		if ($an->data->{cgi}{confirm})
+		{
+			# Baleted!
+			$notice_message = delete_dr_target($an);
+		}
+		else
+		{
+			# Ask them to confirm
+			$notice_message = confirm_action($an, "delete_dr_target");
+			$refresh_link =~ s/dr_target_uuid=.*?&/&/;
+			$refresh_link =~ s/dr_target_uuid=.*//;
+		}
+		
+		# Clear the commands from the refresh link.
+		$refresh_link =~ s/confirm=.*?&/&/;
+		$refresh_link =~ s/confirm=.*//;
+		$refresh_link =~ s/delete=.*?&/&/;
+		$refresh_link =~ s/delete=.*//;
+		$refresh_link =~ s/&&+/&/;
+	}
+	
+	
+	return(0);
+}
+
 # This handles the management of notification recipients and what Anvil! systems they are listening to.
 sub notify_menu
 {
@@ -5987,7 +6154,34 @@ sub show_main_menu
 # 			description	=>	"#!string!explain_0173!#",
 # 			url		=>	"",
 # 		}})."\n";
-		
+	
+	### Disaster recovery options
+	# DR Targets
+	my $task_dr_target_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"dr_target",
+			id	=>	"dr_target",
+			alt	=>	"#!string!button_0078!#",
+			value	=>	"#!string!button_0078!#",
+			url	=>	"?task=dr_target",
+		}, no_comment => 1});
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	$task_dr_target_anchor,
+			description	=>	"#!string!explain_0213!#",
+			url		=>	"",
+		}})."\n";
+	my $task_dr_job_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"dr_job",
+			id	=>	"dr_job",
+			alt	=>	"#!string!button_0079!#",
+			value	=>	"#!string!button_0079!#",
+			url	=>	"?task=dr_job",
+		}, no_comment => 1});
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	$task_dr_job_anchor,
+			description	=>	"#!string!explain_0214!#",
+			url		=>	"",
+		}})."\n";
+	
 	# Get the list of existing Anvil! systems, if any
 	my $anvil_count = 0;
 	foreach my $anvil_name (sort {$a cmp $b} keys %{$an->data->{sorted}{anvils}})

@@ -918,6 +918,8 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0174"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' method was called without a target being set.]]></key>
 		<key name="error_message_0175"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' was asked to connecto to the target machine: [#!variable!target!#] on requested TCP port: [#!variable!port!#], but the port is invalid.]]></key>
 		<key name="error_message_0176"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called before ScanCore has run on both nodes. Please make sure that ScanCore is enabled and has run at least once.]]></key>
+		<key name="error_message_0177"><![CDATA[The 'AN::Tools::Get' module's 'dr_target_data()' method was called without passing in a DR Target UUID.]]></key>
+		<key name="error_message_0178"><![CDATA[The 'AN::Tools::Get' module's 'dr_target_data()' method was called with the DR Target UUID: [#!variable!uuid!#] which isn't a valid UUID.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

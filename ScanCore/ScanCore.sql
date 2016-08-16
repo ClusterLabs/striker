@@ -1083,125 +1083,125 @@ CREATE TRIGGER trigger_servers
 	FOR EACH ROW EXECUTE PROCEDURE history_servers();
 
 
--- This stores information about backup targets. These can be local (USB/LV) or remote (SSH targets).
-CREATE TABLE backup_targets (
-	backup_target_uuid		uuid				not null	primary key,	-- 
-	backup_target_use_cache		boolean				not null	default TRUE,	-- If true, a backup will first look for a USB drive plugged into either node with enough space to store the image. if that is not found, but there is enough space on the cluster storage, a temporary LV will be created and used. Otherwise, the backup will directly dd over SSH to the target.
-	backup_target_ip_or_name	text				not null,			-- This is the IP or (resolvable) host name of the target machine.
-	backup_target_password		text,								-- This is the target's root user's password. It can be left blank if passwordless SSH has been configured on both nodes.
-	backup_target_tcp_port		numeric,							-- This is the target's SSH TCP port to use. 22 will be used if this is not set.
-	backup_target_bandwidth_limit	text,								-- This is an optional bandwidth limit to restrict how fast the copy over SSH runs. Default, when no set, is full speed.
-	backup_target_store		text				not null,			-- This indicates where images should be stored on the target machine. Format is: <device_type>:<name>. Examples; 'vg:dr01_vg0' (Create an LV on the 'dr01_vg0' VG), 'fs:/backups' (store as a flat file under the /backups directory).
-	backup_target_copies		numeric				not null	default 2,	-- When set to '1', no backups are kept and the copy overwrites any previous copy. This is the most space efficient, but leaves the backup target vulnerable during a backup operation because the last good copy is ruined. So a disaster during a backup would leave no functional backups. 2 or higher will cause a .X suffix to be used on flat files and _X on LVs. The oldest backup will be purged, then all remaining backups will be renamed to increment their number, and then the backup will write to '.0' or '_0'. This requires (a lot) more space, but it is the safest. Default is 2, which should always leave one good image available.
+-- This stores information about dr targets. These can be local (USB/LV) or remote (SSH targets).
+CREATE TABLE dr_targets (
+	dr_target_uuid			uuid				not null	primary key,	-- 
+	dr_target_use_cache		boolean				not null	default TRUE,	-- If true, a dr will first look for a USB drive plugged into either node with enough space to store the image. if that is not found, but there is enough space on the cluster storage, a temporary LV will be created and used. Otherwise, the dr will directly dd over SSH to the target.
+	dr_target_ip_or_name		text				not null,			-- This is the IP or (resolvable) host name of the target machine.
+	dr_target_password		text,								-- This is the target's root user's password. It can be left blank if passwordless SSH has been configured on both nodes.
+	dr_target_tcp_port		numeric,							-- This is the target's SSH TCP port to use. 22 will be used if this is not set.
+	dr_target_bandwidth_limit	text,								-- This is an optional bandwidth limit to restrict how fast the copy over SSH runs. Default, when no set, is full speed.
+	dr_target_store			text				not null,			-- This indicates where images should be stored on the target machine. Format is: <device_type>:<name>. Examples; 'vg:dr01_vg0' (Create an LV on the 'dr01_vg0' VG), 'fs:/drs' (store as a flat file under the /drs directory).
+	dr_target_copies		numeric				not null	default 2,	-- When set to '1', no drs are kept and the copy overwrites any previous copy. This is the most space efficient, but leaves the dr target vulnerable during a dr operation because the last good copy is ruined. So a disaster during a dr would leave no functional drs. 2 or higher will cause a .X suffix to be used on flat files and _X on LVs. The oldest dr will be purged, then all remaining drs will be renamed to increment their number, and then the dr will write to '.0' or '_0'. This requires (a lot) more space, but it is the safest. Default is 2, which should always leave one good image available.
 	modified_date			timestamp with time zone	not null 
 );
-ALTER TABLE backup_targets OWNER TO #!variable!user!#;
+ALTER TABLE dr_targets OWNER TO #!variable!user!#;
 
-CREATE TABLE history.backup_targets (
+CREATE TABLE history.dr_targets (
 	history_id			bigserial, 
-	backup_target_uuid		uuid, 
-	backup_target_use_cache		boolean, 
-	backup_target_ip_or_name	text, 
-	backup_target_password		text, 
-	backup_target_tcp_port		numeric, 
-	backup_target_bandwidth_limit	text, 
-	backup_target_store		text, 
-	backup_target_copies		numeric, 
+	dr_target_uuid			uuid, 
+	dr_target_use_cache		boolean, 
+	dr_target_ip_or_name		text, 
+	dr_target_password		text, 
+	dr_target_tcp_port		numeric, 
+	dr_target_bandwidth_limit	text, 
+	dr_target_store			text, 
+	dr_target_copies		numeric, 
 	modified_date			timestamp with time zone	not null 
 );
-ALTER TABLE history.backup_targets OWNER TO #!variable!user!#;
+ALTER TABLE history.dr_targets OWNER TO #!variable!user!#;
 
-CREATE FUNCTION history_backup_targets() RETURNS trigger
+CREATE FUNCTION history_dr_targets() RETURNS trigger
 AS $$
 DECLARE
-	history_backup_targets RECORD;
+	history_dr_targets RECORD;
 BEGIN
-	SELECT INTO history_backup_targets * FROM backup_targets WHERE backup_target_uuid = new.backup_target_uuid;
-	INSERT INTO history.backup_targets
-		(backup_target_uuid, 
-		 backup_target_use_cache, 
-		 backup_target_ip_or_name, 
-		 backup_target_password, 
-		 backup_target_tcp_port, 
-		 backup_target_bandwidth_limit, 
-		 backup_target_store, 
-		 backup_target_copies, 
+	SELECT INTO history_dr_targets * FROM dr_targets WHERE dr_target_uuid = new.dr_target_uuid;
+	INSERT INTO history.dr_targets
+		(dr_target_uuid, 
+		 dr_target_use_cache, 
+		 dr_target_ip_or_name, 
+		 dr_target_password, 
+		 dr_target_tcp_port, 
+		 dr_target_bandwidth_limit, 
+		 dr_target_store, 
+		 dr_target_copies, 
 		 modified_date)
 	VALUES
-		(history_backup_targets.backup_target_uuid,
-		 history_backup_targets.backup_target_use_cache, 
-		 history_backup_targets.backup_target_ip_or_name, 
-		 history_backup_targets.backup_target_password, 
-		 history_backup_targets.backup_target_tcp_port, 
-		 history_backup_targets.backup_target_bandwidth_limit, 
-		 history_backup_targets.backup_target_store, 
-		 history_backup_targets.backup_target_copies, 
-		 history_backup_targets.modified_date);
+		(history_dr_targets.dr_target_uuid,
+		 history_dr_targets.dr_target_use_cache, 
+		 history_dr_targets.dr_target_ip_or_name, 
+		 history_dr_targets.dr_target_password, 
+		 history_dr_targets.dr_target_tcp_port, 
+		 history_dr_targets.dr_target_bandwidth_limit, 
+		 history_dr_targets.dr_target_store, 
+		 history_dr_targets.dr_target_copies, 
+		 history_dr_targets.modified_date);
 	RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_backup_targets() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_dr_targets() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_backup_targets
-	AFTER INSERT OR UPDATE ON backup_targets
-	FOR EACH ROW EXECUTE PROCEDURE history_backup_targets();
+CREATE TRIGGER trigger_dr_targets
+	AFTER INSERT OR UPDATE ON dr_targets
+	FOR EACH ROW EXECUTE PROCEDURE history_dr_targets();
 
 
--- This stores information about backup jobs. This contains a run frequency, a (list of) server(s) to backup
+-- This stores information about dr jobs. This contains a run frequency, a (list of) server(s) to dr
 -- (together), what target to use and how often to run.
-CREATE TABLE backup_jobs (
-	backup_job_uuid			uuid				not null	primary key,	-- 
-	backup_job_backup_target_uuid	uuid				not null,			-- This is the target to use for this backup job.
-	backup_job_servers		text				not null,			-- One or more server UUIDs to back up. If more than one, the UUIDs must be CSV. When two or more servers are defined, all will be shut down at the same time and none will boot until all are backed up. 
-	backup_job_auto_prune		boolean				not null	default TRUE,	-- When set to true, if a server is found to be missing (because it was deleted), it will automatically be removed from the server list. If set to false, and a server is missing, the backup will not occur (and an alert will be sent).
-	backup_job_runtime		text				not null,			-- This is the schedule for the backups to run. It is stored internally using 'cron' timing format (.
+CREATE TABLE dr_jobs (
+	dr_job_uuid			uuid				not null	primary key,	-- 
+	dr_job_dr_target_uuid	uuid				not null,			-- This is the target to use for this dr job.
+	dr_job_servers		text				not null,			-- One or more server UUIDs to back up. If more than one, the UUIDs must be CSV. When two or more servers are defined, all will be shut down at the same time and none will boot until all are backed up. 
+	dr_job_auto_prune		boolean				not null	default TRUE,	-- When set to true, if a server is found to be missing (because it was deleted), it will automatically be removed from the server list. If set to false, and a server is missing, the dr will not occur (and an alert will be sent).
+	dr_job_runtime		text				not null,			-- This is the schedule for the drs to run. It is stored internally using 'cron' timing format (.
 	modified_date			timestamp with time zone	not null, 
 	
-	FOREIGN KEY(backup_job_backup_target_uuid) REFERENCES backup_targets(backup_target_uuid)
+	FOREIGN KEY(dr_job_dr_target_uuid) REFERENCES dr_targets(dr_target_uuid)
 );
-ALTER TABLE backup_jobs OWNER TO #!variable!user!#;
+ALTER TABLE dr_jobs OWNER TO #!variable!user!#;
 
-CREATE TABLE history.backup_jobs (
+CREATE TABLE history.dr_jobs (
 	history_id			bigserial, 
-	backup_job_uuid			uuid, 
-	backup_job_backup_target_uuid	uuid, 
-	backup_job_servers		text, 
-	backup_job_auto_prune		boolean, 
-	backup_job_runtime		text, 
+	dr_job_uuid			uuid, 
+	dr_job_dr_target_uuid	uuid, 
+	dr_job_servers		text, 
+	dr_job_auto_prune		boolean, 
+	dr_job_runtime		text, 
 	modified_date			timestamp with time zone	not null 
 );
-ALTER TABLE history.backup_jobs OWNER TO #!variable!user!#;
+ALTER TABLE history.dr_jobs OWNER TO #!variable!user!#;
 
-CREATE FUNCTION history_backup_jobs() RETURNS trigger
+CREATE FUNCTION history_dr_jobs() RETURNS trigger
 AS $$
 DECLARE
-	history_backup_jobs RECORD;
+	history_dr_jobs RECORD;
 BEGIN
-	SELECT INTO history_backup_jobs * FROM backup_jobs WHERE backup_job_uuid = new.backup_job_uuid;
-	INSERT INTO history.backup_jobs
-		(backup_job_uuid, 
-		 backup_job_backup_target_uuid, 
-		 backup_job_servers, 
-		 backup_job_auto_prune, 
-		 backup_job_runtime, 
+	SELECT INTO history_dr_jobs * FROM dr_jobs WHERE dr_job_uuid = new.dr_job_uuid;
+	INSERT INTO history.dr_jobs
+		(dr_job_uuid, 
+		 dr_job_dr_target_uuid, 
+		 dr_job_servers, 
+		 dr_job_auto_prune, 
+		 dr_job_runtime, 
 		 modified_date)
 	VALUES
-		(history_backup_jobs.backup_job_uuid,
-		 history_backup_jobs.backup_job_backup_target_uuid, 
-		 history_backup_jobs.backup_job_servers, 
-		 history_backup_jobs.backup_job_auto_prune, 
-		 history_backup_jobs.backup_job_runtime, 
-		 history_backup_jobs.modified_date);
+		(history_dr_jobs.dr_job_uuid,
+		 history_dr_jobs.dr_job_dr_target_uuid, 
+		 history_dr_jobs.dr_job_servers, 
+		 history_dr_jobs.dr_job_auto_prune, 
+		 history_dr_jobs.dr_job_runtime, 
+		 history_dr_jobs.modified_date);
 	RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_backup_jobs() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_dr_jobs() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_backup_jobs
-	AFTER INSERT OR UPDATE ON backup_jobs
-	FOR EACH ROW EXECUTE PROCEDURE history_backup_jobs();
+CREATE TRIGGER trigger_dr_jobs
+	AFTER INSERT OR UPDATE ON dr_jobs
+	FOR EACH ROW EXECUTE PROCEDURE history_dr_jobs();
 
 
 -- ------------------------------------------------------------------------------------------------------- --

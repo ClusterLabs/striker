@@ -565,6 +565,105 @@ sub date_seperator
 	return $self->{SEPERATOR}->{DATE};
 }
 
+# This returns a DR target for the given dr_target_uuid.
+sub dr_target_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "dr_target_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### NOTE: Left off here.
+	my $return     = {};
+	my $dr_target_ip_or_name = $parameter->{name} ? $parameter->{name} : "";
+	my $dr_target_uuid = $parameter->{uuid} ? $parameter->{uuid} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "dr_target_ip_or_name", value1 => $dr_target_ip_or_name, 
+		name2 => "dr_target_uuid", value2 => $dr_target_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $dr_target_ip_or_name) && (not $dr_target_uuid))
+	{
+		# What is my purpose?
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0084", code => 84, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    dr_target_uuid, 
+    dr_target_use_cache, 
+    dr_target_ip_or_name, 
+    dr_target_password, 
+    dr_target_tcp_port, 
+    dr_target_bandwidth_limit, 
+    dr_target_store, 
+    dr_target_copies, 
+    modified_date 
+FROM 
+    dr_targets 
+WHERE 
+";
+	if ($dr_target_uuid)
+	{
+		$query .= "dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($dr_target_uuid);
+	}
+	else
+	{
+		$query .= "dr_target_ip_or_name = ".$an->data->{sys}{use_db_fh}->quote($dr_target_ip_or_name);
+	}
+	$query .= "
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $dr_target_uuid            =         $row->[0]; 
+		my $dr_target_use_cache       =         $row->[1]; 
+		my $dr_target_ip_or_name      =         $row->[2]; 
+		my $dr_target_password        = defined $row->[3] ? $row->[3] : ""; 
+		my $dr_target_tcp_port        = defined $row->[4] ? $row->[4] : ""; 
+		my $dr_target_bandwidth_limit = defined $row->[5] ? $row->[5] : ""; 
+		my $dr_target_store           =         $row->[6]; 
+		my $dr_target_copies          =         $row->[7]; 
+		my $modified_date             =         $row->[8];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+			name1 => "dr_target_uuid",            value1 => $dr_target_uuid, 
+			name2 => "dr_target_use_cache",       value2 => $dr_target_use_cache, 
+			name3 => "dr_target_ip_or_name",      value3 => $dr_target_ip_or_name, 
+			name4 => "dr_target_tcp_port",        value4 => $dr_target_tcp_port, 
+			name5 => "dr_target_bandwidth_limit", value5 => $dr_target_bandwidth_limit, 
+			name6 => "dr_target_store",           value6 => $dr_target_store, 
+			name7 => "dr_target_copies",          value7 => $dr_target_copies, 
+			name8 => "modified_date",             value8 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "dr_target_password", value1 => $dr_target_password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$return = {
+			dr_target_uuid		=>	$dr_target_uuid,
+			dr_target_use_cache	=>	$dr_target_use_cache, 
+			dr_target_ip_or_name	=>	$dr_target_ip_or_name, 
+			dr_target_tcp_port	=>	$dr_target_tcp_port, 
+			dr_target_bandwidth_limit =>	$dr_target_bandwidth_limit, 
+			dr_target_store		=>	$dr_target_store, 
+			dr_target_copies	=>	$dr_target_copies, 
+			dr_target_password	=>	$dr_target_password, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
 # This gathers DRBD data
 sub drbd_data
 {
@@ -1982,7 +2081,6 @@ sub manifest_data
 		return("");
 	}
 	
-	
 	my $query = "
 SELECT 
     manifest_data 
@@ -1995,6 +2093,7 @@ WHERE
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $manifest_data = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	   $manifest_data = "" if not defined $manifest_data;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "manifest_data", value1 => $manifest_data, 
 	}, file => $THIS_FILE, line => __LINE__});

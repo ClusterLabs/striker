@@ -944,6 +944,14 @@ The 'AN::Tools::Remote' module's 'remote_call()' method was asked to connecto to
 
 The 'AN::Tools::Striker' module's 'load_anvil()' method was called before ScanCore has run on both nodes. Please make sure that ScanCore is enabled and has run at least once.
 
+=head2 C<177>
+
+The 'AN::Tools::Get' module's 'dr_target_data()' method was called without passing in a DR Target UUID.
+
+=head2 C<178>
+
+The 'AN::Tools::Get' module's 'dr_target_data()' method was called with an invalid DR Target UUID.
+
 
 =head2 C<999>
 
