@@ -12,6 +12,8 @@ my $THIS_FILE = "ScanCore.pm";
 
 ### Methods;
 # get_anvils
+# get_dr_jobs
+# get_dr_targets
 # get_hosts
 # get_manifests
 # get_migration_target
@@ -27,6 +29,8 @@ my $THIS_FILE = "ScanCore.pm";
 # get_smtp
 # host_state
 # insert_or_update_anvils
+# insert_or_update_dr_jobs
+# insert_or_update_dr_targets
 # insert_or_update_nodes
 # insert_or_update_nodes_cache
 # insert_or_update_notifications
@@ -145,7 +149,161 @@ FROM
 	return($return);
 }
 
-# Get a list of Anvil! hosts as an array of hash references
+# Get a list of DR jobs as an array of hash references.
+sub get_dr_jobs
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_dr_jobs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    dr_job_uuid, 
+    dr_job_dr_target_uuid, 
+    dr_job_name, 
+    dr_job_note, 
+    dr_job_servers, 
+    dr_job_auto_prune, 
+    dr_job_schedule, 
+    modified_date 
+FROM 
+    dr_jobs 
+WHERE 
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $dr_job_uuid           =         $row->[0]; 
+		my $dr_job_dr_target_uuid =         $row->[1];
+		my $dr_job_name           =         $row->[2];
+		my $dr_job_note           = defined $row->[3] ? $row->[] : "";
+		my $dr_job_servers        =         $row->[4];
+		my $dr_job_auto_prune     =         $row->[5];
+		my $dr_job_schedule       =         $row->[6];
+		my $modified_date         =         $row->[7];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+			name1 => "dr_job_uuid",           value1 => $dr_job_uuid, 
+			name2 => "dr_job_dr_target_uuid", value2 => $dr_job_dr_target_uuid, 
+			name3 => "dr_job_name",           value3 => $dr_name, 
+			name4 => "dr_job_note",           value4 => $dr_note, 
+			name5 => "dr_job_servers",        value5 => $dr_job_servers, 
+			name6 => "dr_job_auto_prune",     value6 => $dr_job_auto_prune, 
+			name7 => "dr_job_schedule",       value7 => $dr_job_schedule, 
+			name8 => "modified_date",         value8 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			dr_job_uuid		=>	$dr_job_uuid,
+			dr_job_dr_target_uuid	=>	$dr_job_dr_target_uuid, 
+			dr_job_name		=>	$dr_name, 
+			dr_job_note		=>	$dr_note, 
+			dr_job_servers		=>	$dr_job_servers, 
+			dr_job_auto_prune	=>	$dr_job_auto_prune, 
+			dr_job_schedule		=>	$dr_job_schedule, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of DR targets as an array of hash references.
+sub get_dr_targets
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_dr_targets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    dr_target_uuid, 
+    dr_target_name, 
+    dr_target_note, 
+    dr_target_ip_or_name, 
+    dr_target_password, 
+    dr_target_tcp_port, 
+    dr_target_use_cache, 
+    dr_target_store, 
+    dr_target_copies, 
+    dr_target_bandwidth_limit, 
+    modified_date 
+FROM 
+    dr_targets 
+WHERE 
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $dr_target_uuid            =         $row->[0]; 
+		my $dr_target_name            =         $row->[1];
+		my $dr_target_note            = defined $row->[2] ? $row->[2] : ""; 
+		my $dr_target_ip_or_name      =         $row->[3]; 
+		my $dr_target_password        = defined $row->[4] ? $row->[4] : ""; 
+		my $dr_target_tcp_port        = defined $row->[5] ? $row->[5] : ""; 
+		my $dr_target_use_cache       =         $row->[6]; 
+		my $dr_target_store           =         $row->[7]; 
+		my $dr_target_copies          =         $row->[8]; 
+		my $dr_target_bandwidth_limit = defined $row->[9] ? $row->[9] : ""; 
+		my $modified_date             =         $row->[10];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			name1  => "dr_target_uuid",            value1  => $dr_target_uuid, 
+			name2  => "dr_target_name",            value2  => $dr_name, 
+			name3  => "dr_target_note",            value3  => $dr_note, 
+			name4  => "dr_target_ip_or_name",      value4  => $dr_target_ip_or_name, 
+			name5  => "dr_target_tcp_port",        value5  => $dr_target_tcp_port, 
+			name6  => "dr_target_use_cache",       value6  => $dr_target_use_cache, 
+			name7  => "dr_target_store",           value7  => $dr_target_store, 
+			name8  => "dr_target_copies",          value8  => $dr_target_copies, 
+			name9  => "dr_target_bandwidth_limit", value9  => $dr_target_bandwidth_limit, 
+			name10 => "modified_date",             value10 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "dr_target_password", value1 => $dr_target_password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			dr_target_uuid		=>	$dr_target_uuid,
+			dr_target_name		=>	$dr_name, 
+			dr_target_note		=>	$dr_note, 
+			dr_target_ip_or_name	=>	$dr_target_ip_or_name, 
+			dr_target_password	=>	$dr_target_password, 
+			dr_target_tcp_port	=>	$dr_target_tcp_port, 
+			dr_target_use_cache	=>	$dr_target_use_cache, 
+			dr_target_store		=>	$dr_target_store, 
+			dr_target_copies	=>	$dr_target_copies, 
+			dr_target_bandwidth_limit =>	$dr_target_bandwidth_limit, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of Anvil! hosts as an array of hash references.
 sub get_hosts
 {
 	my $self      = shift;
@@ -1325,6 +1483,375 @@ WHERE
 	}
 	
 	return($anvil_uuid);
+}
+
+# This updates (or inserts) a record in the 'dr_jobs' table.
+sub insert_or_update_dr_jobs
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_dr_jobs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $dr_job_uuid           = $parameter->{dr_job_uuid}           ? $parameter->{dr_job_uuid}           : "";
+	my $dr_job_dr_target_uuid = $parameter->{dr_job_dr_target_uuid} ? $parameter->{dr_job_dr_target_uuid} : "";
+	my $dr_job_name           = $parameter->{dr_job_name}           ? $parameter->{dr_job_name}           : "";
+	my $dr_job_note           = $parameter->{dr_job_note}           ? $parameter->{dr_job_note}           : "NULL";
+	my $dr_job_servers        = $parameter->{dr_job_servers}        ? $parameter->{dr_job_servers}        : "";
+	my $dr_job_auto_prune     = $parameter->{dr_job_auto_prune}     ? $parameter->{dr_job_auto_prune}     : "";
+	my $dr_job_schedule       = $parameter->{dr_job_schedule}       ? $parameter->{dr_job_schedule}       : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		name1 => "dr_job_uuid",           value1 => $dr_job_uuid, 
+		name2 => "dr_job_dr_target_uuid", value2 => $dr_job_dr_target_uuid, 
+		name3 => "dr_job_name",           value3 => $dr_job_name, 
+		name4 => "dr_job_note",           value4 => $dr_job_note, 
+		name5 => "dr_job_servers",        value5 => $dr_job_servers, 
+		name6 => "dr_job_auto_prune",     value6 => $dr_job_auto_prune, 
+		name7 => "dr_job_schedule",       value7 => $dr_job_schedule, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If we don't have a UUID, see if we can find one for the given host UUID.
+	if (not $dr_job_uuid)
+	{
+		my $query = "
+SELECT 
+    dr_job_uuid 
+FROM 
+    dr_jobs 
+WHERE 
+    dr_job_name = ".$an->data->{sys}{use_db_fh}->quote($dr_job_name)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$dr_job_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "dr_job_uuid", value1 => $dr_job_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have a dr_job_uuid, we're INSERT'ing .
+	if (not $dr_job_uuid)
+	{
+		# INSERT.
+		$dr_job_uuid = $an->Get->uuid();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "dr_job_uuid", value1 => $dr_job_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $query = "
+INSERT INTO 
+    dr_jobs 
+(
+    dr_job_uuid,
+    dr_job_dr_target_uuid, 
+    dr_job_name, 
+    dr_job_note, 
+    dr_job_servers, 
+    dr_job_auto_prune, 
+    dr_job_schedule, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_dr_target_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_servers).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_auto_prune).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_schedule).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    dr_job_dr_target_uuid, 
+    dr_job_name, 
+    dr_job_note, 
+    dr_job_servers, 
+    dr_job_auto_prune, 
+    dr_job_schedule 
+FROM 
+    dr_jobs 
+WHERE 
+    dr_job_uuid = ".$an->data->{sys}{use_db_fh}->quote($dr_job_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_dr_job_dr_target_uuid =         $row->[0];
+			my $old_dr_job_name           =         $row->[1];
+			my $old_dr_job_note           = defined $row->[2] ? $row->[2] : "";
+			my $old_dr_job_servers        =         $row->[3];
+			my $old_dr_job_auto_prune     =         $row->[4];
+			my $old_dr_job_schedule       =         $row->[5];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+				name1 => "old_dr_job_dr_target_uuid", value1 => $old_dr_job_dr_target_uuid, 
+				name2 => "old_dr_job_name",           value2 => $old_dr_name, 
+				name3 => "old_dr_job_note",           value3 => $old_dr_note, 
+				name4 => "old_dr_job_servers",        value4 => $old_dr_job_servers, 
+				name5 => "old_dr_job_auto_prune",     value5 => $old_dr_job_auto_prune, 
+				name6 => "old_dr_job_schedule",       value6 => $old_dr_job_schedule, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_dr_job_dr_target_uuid ne $dr_job_dr_target_uuid) or 
+			    ($old_dr_job_name           ne $dr_name)               or 
+			    ($old_dr_job_note           ne $dr_note)               or 
+			    ($old_dr_job_servers        ne $dr_job_servers)        or 
+			    ($old_dr_job_auto_prune     ne $dr_job_auto_prune)     or 
+			    ($old_dr_job_schedule       ne $dr_job_schedule))
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    dr_jobs 
+SET 
+    dr_job_dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($dr_job_dr_target_uuid).", 
+    dr_job_name           = ".$an->data->{sys}{use_db_fh}->quote($dr_job_name).", 
+    dr_job_note           = ".$an->data->{sys}{use_db_fh}->quote($dr_job_note).", 
+    dr_job_servers        = ".$an->data->{sys}{use_db_fh}->quote($dr_job_servers).", 
+    dr_job_auto_prune     = ".$an->data->{sys}{use_db_fh}->quote($dr_job_auto_prune).", 
+    dr_job_schedule       = ".$an->data->{sys}{use_db_fh}->quote($dr_job_schedule).", 
+    modified_date         = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    dr_job_uuid           = ".$an->data->{sys}{use_db_fh}->quote($dr_job_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($dr_job_uuid);
+}
+
+# This updates (or inserts) a record in the 'dr_targets' table.
+sub insert_or_update_dr_targets
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_dr_targets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $dr_target_uuid            = $parameter->{dr_target_uuid}            ? $parameter->{dr_target_uuid}            : "";
+	my $dr_target_name            = $parameter->{dr_target_name}            ? $parameter->{dr_target_name}            : "";
+	my $dr_target_note            = $parameter->{dr_target_note}            ? $parameter->{dr_target_note}            : "NULL";
+	my $dr_target_ip_or_name      = $parameter->{dr_target_ip_or_name}      ? $parameter->{dr_target_ip_or_name}      : "";
+	my $dr_target_password        = $parameter->{dr_target_password}        ? $parameter->{dr_target_password}        : "NULL";
+	my $dr_target_tcp_port        = $parameter->{dr_target_tcp_port}        ? $parameter->{dr_target_tcp_port}        : "NULL";
+	my $dr_target_use_cache       = $parameter->{dr_target_use_cache}       ? $parameter->{dr_target_use_cache}       : "";
+	my $dr_target_store           = $parameter->{dr_target_store}           ? $parameter->{dr_target_store}           : "";
+	my $dr_target_copies          = $parameter->{dr_target_copies}          ? $parameter->{dr_target_copies}          : "";
+	my $dr_target_bandwidth_limit = $parameter->{dr_target_bandwidth_limit} ? $parameter->{dr_target_bandwidth_limit} : "NULL";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+		name1 => "dr_target_uuid",            value1 => $dr_target_uuid, 
+		name2 => "dr_target_name",            value2 => $dr_target_name, 
+		name3 => "dr_target_note",            value3 => $dr_target_note, 
+		name4 => "dr_target_ip_or_name",      value4 => $dr_target_ip_or_name, 
+		name5 => "dr_target_tcp_port",        value5 => $dr_target_tcp_port, 
+		name6 => "dr_target_use_cache",       value6 => $dr_target_use_cache, 
+		name7 => "dr_target_store",           value7 => $dr_target_store, 
+		name8 => "dr_target_copies",          value8 => $dr_target_copies, 
+		name9 => "dr_target_bandwidth_limit", value9 => $dr_target_bandwidth_limit, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "dr_target_password", value1 => $dr_target_password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If we don't have a UUID, see if we can find one for the given host UUID.
+	if (not $dr_target_uuid)
+	{
+		my $query = "
+SELECT 
+    dr_target_uuid 
+FROM 
+    dr_targets 
+WHERE 
+    dr_target_name = ".$an->data->{sys}{use_db_fh}->quote($dr_target_name)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$dr_target_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "dr_target_uuid", value1 => $dr_target_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have a dr_target_uuid, we're INSERT'ing .
+	if (not $dr_target_uuid)
+	{
+		# INSERT.
+		   $dr_target_uuid = $an->Get->uuid();
+		my $query          = "
+INSERT INTO 
+    dr_targets 
+(
+    dr_target_uuid,
+    dr_target_name, 
+    dr_target_note, 
+    dr_target_ip_or_name, 
+    dr_target_password, 
+    dr_target_tcp_port, 
+    dr_target_use_cache, 
+    dr_target_store, 
+    dr_target_copies, 
+    dr_target_bandwidth_limit, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_ip_or_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_password).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_tcp_port).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_use_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_store).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_copies).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_bandwidth_limit).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    dr_target_name, 
+    dr_target_note, 
+    dr_target_ip_or_name, 
+    dr_target_password, 
+    dr_target_tcp_port, 
+    dr_target_use_cache, 
+    dr_target_store, 
+    dr_target_copies, 
+    dr_target_bandwidth_limit 
+FROM 
+    dr_targets 
+WHERE 
+    dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($dr_target_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_dr_target_name            =         $row->[0];
+			my $old_dr_target_note            = defined $row->[1] ? $row->[1] : ""; 
+			my $old_dr_target_ip_or_name      =         $row->[2]; 
+			my $old_dr_target_password        = defined $row->[3] ? $row->[3] : ""; 
+			my $old_dr_target_tcp_port        = defined $row->[4] ? $row->[4] : ""; 
+			my $old_dr_target_use_cache       =         $row->[5]; 
+			my $old_dr_target_store           =         $row->[6]; 
+			my $old_dr_target_copies          =         $row->[7]; 
+			my $old_dr_target_bandwidth_limit = defined $row->[8] ? $row->[8] : ""; 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+				name1 => "old_dr_target_name",            value1 => $old_dr_name, 
+				name2 => "old_dr_target_note",            value2 => $old_dr_note, 
+				name3 => "old_dr_target_ip_or_name",      value3 => $old_dr_target_ip_or_name, 
+				name4 => "old_dr_target_tcp_port",        value4 => $old_dr_target_tcp_port, 
+				name5 => "old_dr_target_use_cache",       value5 => $old_dr_target_use_cache, 
+				name6 => "old_dr_target_store",           value6 => $old_dr_target_store, 
+				name7 => "old_dr_target_copies",          value7 => $old_dr_target_copies, 
+				name8 => "old_dr_target_bandwidth_limit", value8 => $old_dr_target_bandwidth_limit, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "old_dr_target_password", value1 => $old_dr_target_password, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_dr_target_name            ne $dr_target_name)       or 
+			    ($old_dr_target_note            ne $dr_target_note)       or 
+			    ($old_dr_target_ip_or_name      ne $dr_target_ip_or_name) or 
+			    ($old_dr_target_password        ne $dr_target_password)   or 
+			    ($old_dr_target_tcp_port        ne $dr_target_tcp_port)   or 
+			    ($old_dr_target_use_cache       ne $dr_target_use_cache)  or 
+			    ($old_dr_target_store           ne $dr_target_store)      or 
+			    ($old_dr_target_copies          ne $dr_target_copies)     or 
+			    ($old_dr_target_bandwidth_limit ne $dr_target_bandwidth_limit))
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    dr_targets 
+SET 
+    dr_target_name            = ".$an->data->{sys}{use_db_fh}->quote($dr_target_name).", 
+    dr_target_note            = ".$an->data->{sys}{use_db_fh}->quote($dr_target_note).", 
+    dr_target_ip_or_name      = ".$an->data->{sys}{use_db_fh}->quote($dr_target_ip_or_name).", 
+    dr_target_password        = ".$an->data->{sys}{use_db_fh}->quote($dr_target_password).", 
+    dr_target_tcp_port        = ".$an->data->{sys}{use_db_fh}->quote($dr_target_tcp_port).", 
+    dr_target_use_cache       = ".$an->data->{sys}{use_db_fh}->quote($dr_target_use_cache).", 
+    dr_target_store           = ".$an->data->{sys}{use_db_fh}->quote($dr_target_store).", 
+    dr_target_copies          = ".$an->data->{sys}{use_db_fh}->quote($dr_target_copies).", 
+    dr_target_bandwidth_limit = ".$an->data->{sys}{use_db_fh}->quote($dr_target_bandwidth_limit).", 
+    modified_date             = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    dr_target_uuid        = ".$an->data->{sys}{use_db_fh}->quote($dr_target_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($dr_target_uuid);
 }
 
 # This updates (or inserts) a record in the 'nodes' table.

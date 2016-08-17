@@ -1086,13 +1086,15 @@ CREATE TRIGGER trigger_servers
 -- This stores information about dr targets. These can be local (USB/LV) or remote (SSH targets).
 CREATE TABLE dr_targets (
 	dr_target_uuid			uuid				not null	primary key,	-- 
-	dr_target_use_cache		boolean				not null	default TRUE,	-- If true, a dr will first look for a USB drive plugged into either node with enough space to store the image. if that is not found, but there is enough space on the cluster storage, a temporary LV will be created and used. Otherwise, the dr will directly dd over SSH to the target.
+	dr_target_name			text				not null,			-- A human-friendly target name
+	dr_target_note			text,								-- An optional notes section
 	dr_target_ip_or_name		text				not null,			-- This is the IP or (resolvable) host name of the target machine.
 	dr_target_password		text,								-- This is the target's root user's password. It can be left blank if passwordless SSH has been configured on both nodes.
 	dr_target_tcp_port		numeric,							-- This is the target's SSH TCP port to use. 22 will be used if this is not set.
-	dr_target_bandwidth_limit	text,								-- This is an optional bandwidth limit to restrict how fast the copy over SSH runs. Default, when no set, is full speed.
+	dr_target_use_cache		boolean				not null	default TRUE,	-- If true, a dr will first look for a USB drive plugged into either node with enough space to store the image. if that is not found, but there is enough space on the cluster storage, a temporary LV will be created and used. Otherwise, the dr will directly dd over SSH to the target.
 	dr_target_store			text				not null,			-- This indicates where images should be stored on the target machine. Format is: <device_type>:<name>. Examples; 'vg:dr01_vg0' (Create an LV on the 'dr01_vg0' VG), 'fs:/drs' (store as a flat file under the /drs directory).
-	dr_target_copies		numeric				not null	default 2,	-- When set to '1', no drs are kept and the copy overwrites any previous copy. This is the most space efficient, but leaves the dr target vulnerable during a dr operation because the last good copy is ruined. So a disaster during a dr would leave no functional drs. 2 or higher will cause a .X suffix to be used on flat files and _X on LVs. The oldest dr will be purged, then all remaining drs will be renamed to increment their number, and then the dr will write to '.0' or '_0'. This requires (a lot) more space, but it is the safest. Default is 2, which should always leave one good image available.
+	dr_target_copies		numeric				not null,			-- When set to '1', no images are kept and the copy overwrites any previous copy. This is the most space efficient, but leaves the dr target vulnerable during a dr operation because the last good copy is ruined. So a disaster during a dr would leave no functional drs. 2 or higher will cause a .X suffix to be used on flat files and _X on LVs. The oldest dr will be purged, then all remaining drs will be renamed to increment their number, and then the dr will write to '.0' or '_0'. This requires (a lot) more space, but it is the safest. Default is 2, which should always leave one good image available.
+	dr_target_bandwidth_limit	text,								-- This is an optional bandwidth limit to restrict how fast the copy over SSH runs. Default, when no set, is full speed.
 	modified_date			timestamp with time zone	not null 
 );
 ALTER TABLE dr_targets OWNER TO #!variable!user!#;
@@ -1100,13 +1102,15 @@ ALTER TABLE dr_targets OWNER TO #!variable!user!#;
 CREATE TABLE history.dr_targets (
 	history_id			bigserial, 
 	dr_target_uuid			uuid, 
-	dr_target_use_cache		boolean, 
+	dr_target_name			text, 
+	dr_target_note			text, 
 	dr_target_ip_or_name		text, 
 	dr_target_password		text, 
 	dr_target_tcp_port		numeric, 
-	dr_target_bandwidth_limit	text, 
+	dr_target_use_cache		boolean, 
 	dr_target_store			text, 
 	dr_target_copies		numeric, 
+	dr_target_bandwidth_limit	text, 
 	modified_date			timestamp with time zone	not null 
 );
 ALTER TABLE history.dr_targets OWNER TO #!variable!user!#;
@@ -1119,23 +1123,27 @@ BEGIN
 	SELECT INTO history_dr_targets * FROM dr_targets WHERE dr_target_uuid = new.dr_target_uuid;
 	INSERT INTO history.dr_targets
 		(dr_target_uuid, 
-		 dr_target_use_cache, 
+		 dr_target_name, 
+		 dr_target_note, 
 		 dr_target_ip_or_name, 
 		 dr_target_password, 
 		 dr_target_tcp_port, 
-		 dr_target_bandwidth_limit, 
+		 dr_target_use_cache, 
 		 dr_target_store, 
 		 dr_target_copies, 
+		 dr_target_bandwidth_limit, 
 		 modified_date)
 	VALUES
 		(history_dr_targets.dr_target_uuid,
-		 history_dr_targets.dr_target_use_cache, 
+		 history_dr_targets.dr_target_name, 
+		 history_dr_targets.dr_target_note, 
 		 history_dr_targets.dr_target_ip_or_name, 
 		 history_dr_targets.dr_target_password, 
 		 history_dr_targets.dr_target_tcp_port, 
-		 history_dr_targets.dr_target_bandwidth_limit, 
+		 history_dr_targets.dr_target_use_cache, 
 		 history_dr_targets.dr_target_store, 
 		 history_dr_targets.dr_target_copies, 
+		 history_dr_targets.dr_target_bandwidth_limit, 
 		 history_dr_targets.modified_date);
 	RETURN NULL;
 END;
@@ -1152,10 +1160,12 @@ CREATE TRIGGER trigger_dr_targets
 -- (together), what target to use and how often to run.
 CREATE TABLE dr_jobs (
 	dr_job_uuid			uuid				not null	primary key,	-- 
-	dr_job_dr_target_uuid	uuid				not null,			-- This is the target to use for this dr job.
-	dr_job_servers		text				not null,			-- One or more server UUIDs to back up. If more than one, the UUIDs must be CSV. When two or more servers are defined, all will be shut down at the same time and none will boot until all are backed up. 
+	dr_job_dr_target_uuid		uuid				not null,			-- This is the target to use for this dr job.
+	dr_job_name			text				not null,			-- A human-friendly job name
+	dr_job_note			text,								-- An optional notes section
+	dr_job_servers			text				not null,			-- One or more server UUIDs to back up. If more than one, the UUIDs must be CSV. When two or more servers are defined, all will be shut down at the same time and none will boot until all are backed up. 
 	dr_job_auto_prune		boolean				not null	default TRUE,	-- When set to true, if a server is found to be missing (because it was deleted), it will automatically be removed from the server list. If set to false, and a server is missing, the dr will not occur (and an alert will be sent).
-	dr_job_runtime		text				not null,			-- This is the schedule for the drs to run. It is stored internally using 'cron' timing format (.
+	dr_job_schedule			text				not null,			-- This is the schedule for the drs to run. It is stored internally using 'cron' timing format (.
 	modified_date			timestamp with time zone	not null, 
 	
 	FOREIGN KEY(dr_job_dr_target_uuid) REFERENCES dr_targets(dr_target_uuid)
@@ -1165,10 +1175,12 @@ ALTER TABLE dr_jobs OWNER TO #!variable!user!#;
 CREATE TABLE history.dr_jobs (
 	history_id			bigserial, 
 	dr_job_uuid			uuid, 
-	dr_job_dr_target_uuid	uuid, 
-	dr_job_servers		text, 
+	dr_job_dr_target_uuid		uuid, 
+	dr_job_name			text, 
+	dr_job_note			text, 
+	dr_job_servers			text, 
 	dr_job_auto_prune		boolean, 
-	dr_job_runtime		text, 
+	dr_job_schedule			text, 
 	modified_date			timestamp with time zone	not null 
 );
 ALTER TABLE history.dr_jobs OWNER TO #!variable!user!#;
@@ -1182,16 +1194,20 @@ BEGIN
 	INSERT INTO history.dr_jobs
 		(dr_job_uuid, 
 		 dr_job_dr_target_uuid, 
+		 dr_job_name, 
+		 dr_job_note, 
 		 dr_job_servers, 
 		 dr_job_auto_prune, 
-		 dr_job_runtime, 
+		 dr_job_schedule, 
 		 modified_date)
 	VALUES
 		(history_dr_jobs.dr_job_uuid,
 		 history_dr_jobs.dr_job_dr_target_uuid, 
+		 history_dr_jobs.dr_job_name, 
+		 history_dr_jobs.dr_job_note, 
 		 history_dr_jobs.dr_job_servers, 
 		 history_dr_jobs.dr_job_auto_prune, 
-		 history_dr_jobs.dr_job_runtime, 
+		 history_dr_jobs.dr_job_schedule, 
 		 history_dr_jobs.modified_date);
 	RETURN NULL;
 END;

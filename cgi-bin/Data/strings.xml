@@ -432,6 +432,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0212"><![CDATA[One or more UPSes are inaccessible. Power cycle options have been disabled until communication is restored.]]></key>
 		<key name="explain_0213"><![CDATA[If you have a <a href="#!string!url_0011!#" target="_new">disaster recovery</a> server, you can define it here.]]></key>
 		<key name="explain_0214"><![CDATA[Create DR schedules to cold-image server(s) to a DR target.]]></key>
+		<key name="explain_0215"><![CDATA[You can select an existing disaster recovery target,<br />or enter a new one below and it will be added to the list.]]></key>
+		<key name="explain_0216"><![CDATA[This is a descriptive name of the disaster recovery target.<br />You can set this to any name you want.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -839,6 +841,17 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0313">Manifest</key>
 		<key name="row_0314">Backup Mail Server</key>
 		<key name="row_0315">Disabled</key>
+		<key name="row_0316">Use USB for Cache</key>
+		<key name="row_0317">Target Name or IP</key>
+		<key name="row_0318">TCP Port</key>
+		<key name="row_0319">Bandwidth Limit</key>
+		<key name="row_0320">Target Store</key>
+		<key name="row_0321">Copies</key>
+		<key name="row_0322">Servers</key>
+		<key name="row_0323">Job Name</key>
+		<key name="row_0324">Auto-Prune</key>
+		<key name="row_0325">Schedule</key>
+		<key name="row_0326">Target Name</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>

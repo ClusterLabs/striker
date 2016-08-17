@@ -106,6 +106,98 @@ sub process_task
 	return(0);
 }
 
+# This uses a dr_job_uuid to load information about the associated DR job.
+sub load_dr_job_form
+{
+	my ($an, $dr_jobs, $uuid) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_dr_job_form" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "uuid", value1 => $uuid,  
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($uuid)
+	{
+		foreach my $hash_ref (@{$dr_jobs})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->dr_job_uuid", value1 => $hash_ref->{dr_job_uuid},
+				name2 => "uuid",                     value2 => $uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{dr_job_uuid} eq $uuid)
+			{
+				$an->data->{cgi}{dr_job_uuid}           = $hash_ref->{dr_job_uuid};
+				$an->data->{cgi}{dr_job_dr_target_uuid} = $hash_ref->{dr_job_dr_target_uuid};
+				$an->data->{cgi}{dr_job_name}           = $hash_ref->{dr_job_name};
+				$an->data->{cgi}{dr_job_note}           = $hash_ref->{dr_job_note};
+				$an->data->{cgi}{dr_job_servers}        = $hash_ref->{dr_job_servers};
+				$an->data->{cgi}{dr_job_auto_prune}     = $hash_ref->{dr_job_auto_prune};
+				$an->data->{cgi}{dr_job_schedule}       = $hash_ref->{dr_job_schedule};
+			}
+		}
+	}
+	else
+	{
+		# Blank the values
+		$an->data->{cgi}{dr_job_uuid}           = "";
+		$an->data->{cgi}{dr_job_dr_target_uuid} = "";
+		$an->data->{cgi}{dr_job_name}           = "";
+		$an->data->{cgi}{dr_job_note}           = "";
+		$an->data->{cgi}{dr_job_servers}        = "";
+		$an->data->{cgi}{dr_job_auto_prune}     = "";
+		$an->data->{cgi}{dr_job_schedule}       = "";
+	}
+	
+	return(0);
+}
+
+# This uses a dr_target_uuid to load information about the associated DR target.
+sub load_dr_target_form
+{
+	my ($an, $dr_targets, $uuid) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_dr_target_form" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "uuid", value1 => $uuid,  
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($uuid)
+	{
+		foreach my $hash_ref (@{$dr_targets})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->dr_target_uuid", value1 => $hash_ref->{dr_target_uuid},
+				name2 => "uuid",                     value2 => $uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{dr_target_uuid} eq $uuid)
+			{
+				$an->data->{cgi}{dr_target_uuid}            = $hash_ref->{dr_target_uuid};
+				$an->data->{cgi}{dr_target_name}            = $hash_ref->{dr_target_name};
+				$an->data->{cgi}{dr_target_note}            = $hash_ref->{dr_target_note};
+				$an->data->{cgi}{dr_target_ip_or_name}      = $hash_ref->{dr_target_ip_or_name};
+				$an->data->{cgi}{dr_target_password}        = $hash_ref->{dr_target_password};
+				$an->data->{cgi}{dr_target_tcp_port}        = $hash_ref->{dr_target_tcp_port};
+				$an->data->{cgi}{dr_target_use_cache}       = $hash_ref->{dr_target_use_cache};
+				$an->data->{cgi}{dr_target_store}           = $hash_ref->{dr_target_store};
+				$an->data->{cgi}{dr_target_copies}          = $hash_ref->{dr_target_copies};
+				$an->data->{cgi}{dr_target_bandwidth_limit} = $hash_ref->{dr_target_bandwidth_limit};
+			}
+		}
+	}
+	else
+	{
+		# Blank the values
+		$an->data->{cgi}{dr_target_uuid}            = "";
+		$an->data->{cgi}{dr_target_name}            = "";
+		$an->data->{cgi}{dr_target_note}            = "";
+		$an->data->{cgi}{dr_target_ip_or_name}      = "";
+		$an->data->{cgi}{dr_target_password}        = "";
+		$an->data->{cgi}{dr_target_tcp_port}        = "";
+		$an->data->{cgi}{dr_target_use_cache}       = "";
+		$an->data->{cgi}{dr_target_store}           = "";
+		$an->data->{cgi}{dr_target_copies}          = "";
+		$an->data->{cgi}{dr_target_bandwidth_limit} = "";
+	}
+	
+	return(0);
+}
+
 # This uses a notify_uuid to load information about the associated notification target.
 sub load_notify_form
 {
@@ -631,6 +723,178 @@ sub save_smtp_form
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "notice_message", value1 => $notice_message,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($notice_message, $error_fields);
+}
+
+# This saves the changes to an Anvil! DR job.
+sub save_dr_job_form
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_dr_job_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### Some sanity checks before we begin.
+	my $notices        = [];
+	my $error_fields   = [];
+	my $notice_message = "";
+	
+	# Do I have at a job name?
+	if (not $an->data->{cgi}{dr_job_name})
+	{
+		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0323!#" }});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice", value1 => $notice,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$notices},      $notice;
+		push @{$error_fields}, "dr_job_name";
+	}
+	if (not $an->data->{cgi}{dr_job_servers})
+	{
+		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0322!#" }});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice", value1 => $notice,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$notices},      $notice;
+		push @{$error_fields}, "dr_job_servers";
+	}
+	if (not $an->data->{cgi}{dr_job_servers})
+	{
+		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0325!#" }});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice", value1 => $notice,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$notices},      $notice;
+		push @{$error_fields}, "dr_job_servers";
+	}
+	
+	my $error_count = @{$error_fields};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "error_count", value1 => $error_count,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Save the form (either INSERT or UPDATE if something has changed.
+	if (not $error_count)
+	{
+		$an->data->{cgi}{dr_job_uuid} = save_dr_job($an);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::dr_job_uuid", value1 => $an->data->{cgi}{dr_job_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Process errors now, if any.
+	if ($error_count > 0)
+	{
+		# Print the error header.
+		my $error_body = "";
+		foreach my $notice (@{$notices})
+		{
+			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning_bold",
+					row_message	=>	"#!string!row_0305!#",
+					body_class	=>	"",
+					body_message	=>	$notice,
+				}});
+		}
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0194!#",
+				errors	=>	$error_body,
+			}});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "notice_message", value1 => $notice_message,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($notice_message, $error_fields);
+}
+
+# This saves the changes to an Anvil! DR target.
+sub save_dr_target_form
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_dr_target_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### Some sanity checks before we begin.
+	my $notices        = [];
+	my $error_fields   = [];
+	my $notice_message = "";
+	
+	# Do I have an dr_target_name/IP?
+	if (not $an->data->{cgi}{dr_target_ip_or_name})
+	{
+		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0317!#" }});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice", value1 => $notice,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$notices},      $notice;
+		push @{$error_fields}, "dr_target_ip_or_name";
+	}
+	# Do I have at a target name?
+	if (not $an->data->{cgi}{dr_target_name})
+	{
+		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0326!#" }});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice", value1 => $notice,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$notices},      $notice;
+		push @{$error_fields}, "dr_target_name";
+	}
+	# NOTE: These to fields are joined to create dr_target_store as 
+	#       'dr_target_store_type:dr_target_store_location',
+	# Do I have at a target location? 
+	if ((not $an->data->{cgi}{dr_target_store_type}) or (not $an->data->{cgi}{dr_target_store_location}))
+	{
+		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0320!#" }});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice", value1 => $notice,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$notices},      $notice;
+		push @{$error_fields}, "dr_target_store";
+		push @{$error_fields}, "dr_target_store_type"     if not $an->data->{cgi}{dr_target_store_type};
+		push @{$error_fields}, "dr_target_store_location" if not $an->data->{cgi}{dr_target_store_location};
+	}
+	
+	my $error_count = @{$error_fields};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "error_count", value1 => $error_count,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Save the form (either INSERT or UPDATE if something has changed.
+	if (not $error_count)
+	{
+		$an->data->{cgi}{dr_target_uuid} = save_dr_target($an);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::dr_target_uuid", value1 => $an->data->{cgi}{dr_target_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Process errors now, if any.
+	if ($error_count > 0)
+	{
+		# Print the error header.
+		my $error_body = "";
+		foreach my $notice (@{$notices})
+		{
+			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning_bold",
+					row_message	=>	"#!string!row_0305!#",
+					body_class	=>	"",
+					body_message	=>	$notice,
+				}});
+		}
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0194!#",
+				errors	=>	$error_body,
+			}});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1191,6 +1455,56 @@ sub save_anvil
 	return($anvil_uuid);
 }
 
+# This parses the CGI data and calls $an->ScanCore->insert_or_update_dr_jobs();
+sub save_dr_job
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_dr_job" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# This will return the new UUID if INSERTed and the existing UUID for the matching dr_job name, if
+	# one exists. If nothing changed, the database will not be updated.
+	$an->data->{cgi}{dr_job_uuid} = $an->ScanCore->insert_or_update_dr_jobs({
+		dr_job_uuid		=>	$an->data->{cgi}{dr_job_uuid},
+		dr_job_dr_target_uuid	=>	$an->data->{cgi}{dr_job_dr_target_uuid}, 
+		dr_job_name		=>	$an->data->{cgi}{dr_job_name},
+		dr_job_note		=>	$an->data->{cgi}{dr_job_note}, 
+		dr_job_servers		=>	$an->data->{cgi}{dr_job_servers}, 
+		dr_job_auto_prune	=>	$an->data->{cgi}{dr_job_auto_prune}, 
+		dr_job_schedule		=>	$an->data->{cgi}{dr_job_schedule}, 
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::dr_job_uuid", value1 => $an->data->{cgi}{dr_job_uuid},
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($an->data->{cgi}{dr_job_uuid});
+}
+
+# This parses the CGI data and calls $an->ScanCore->insert_or_update_dr_targets();
+sub save_dr_target
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_dr_target" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# This will return the new UUID if INSERTed and the existing UUID for the matching dr_target name, if
+	# one exists. If nothing changed, the database will not be updated.
+	$an->data->{cgi}{dr_target_uuid} = $an->ScanCore->insert_or_update_dr_targets({
+		dr_target_uuid		=>	$an->data->{cgi}{dr_target_uuid},
+		dr_target_name		=>	$an->data->{cgi}{dr_target_name},
+		dr_target_note		=>	$an->data->{cgi}{dr_target_note}, 
+		dr_target_ip_or_name	=>	$an->data->{cgi}{dr_target_ip_or_name}, 
+		dr_target_password	=>	$an->data->{cgi}{dr_target_password}, 
+		dr_target_tcp_port	=>	$an->data->{cgi}{dr_target_tcp_port}, 
+		dr_target_use_cache	=>	$an->data->{cgi}{dr_target_use_cache}, 
+		dr_target_store		=>	$an->data->{cgi}{dr_target_store}, 
+		dr_target_copies	=>	$an->data->{cgi}{dr_target_copies}, 
+		dr_target_bandwidth_limit =>	$an->data->{cgi}{dr_target_bandwidth_limit}, 
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::dr_target_uuid", value1 => $an->data->{cgi}{dr_target_uuid},
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($an->data->{cgi}{dr_target_uuid});
+}
 
 # This parses the CGI data and calls $an->ScanCore->insert_or_update_notifications();
 sub save_notify
@@ -4321,6 +4635,134 @@ sub dr_target_menu
 		$refresh_link =~ s/delete=.*//;
 		$refresh_link =~ s/&&+/&/;
 	}
+	
+	if ($an->data->{cgi}{save})
+	{
+		# Save, if something changed.
+		($notice_message, $error_fields) = save_dr_target_form($an);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$refresh_link =~ s/save=.*?&/&/;
+		$refresh_link =~ s/save=.*//;
+		$refresh_link =~ s/&&+/&/;
+	}
+	else
+	{
+		# Set defaults if not set already.
+		$an->data->{cgi}{dr_target_tcp_port}        = 22 if not $an->data->{cgi}{dr_target_tcp_port};
+		$an->data->{cgi}{dr_target_copies}          = 2  if not $an->data->{cgi}{dr_target_copies};
+		$an->data->{cgi}{dr_target_bandwidth_limit} = 0  if not $an->data->{cgi}{dr_target_bandwidth_limit};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "cgi::dr_target_tcp_port",        value1 => $an->data->{cgi}{dr_target_tcp_port},
+			name2 => "cgi::dr_target_copies",          value2 => $an->data->{cgi}{dr_target_copies},
+			name3 => "cgi::dr_target_bandwidth_limit", value3 => $an->data->{cgi}{dr_target_bandwidth_limit},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Load information from the databases, then we'll tease out data if 'load' was set.
+	my $dr_targets = $an->ScanCore->get_dr_targets();
+	my $dr_jobs    = $an->ScanCore->get_dr_jobs();
+	
+	# Load a specific notification target, if requested.
+	if ($an->data->{cgi}{load_dr_target})
+	{
+		load_dr_target_form($an, $dr_targets, $an->data->{cgi}{dr_target_uuid});
+	}
+	
+	# Create a list of existing smtp.
+	my $width      = 300;
+	my $menu_items = $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	"&nbsp;",
+			class	=>	"breaker_header",
+			colspan	=>	4,
+		}});
+	
+	# Get a list of existing notification targets, if any.
+	my $dr_target_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
+	my $dr_target_explain = "#!string!explain_0196!#";
+	my $dr_target_row     = "&nbsp;";	# Actually the 'Load' button
+	my $dr_target_url     = "&nbsp;";	# Actually the 'delete' button
+	if (@{$dr_targets} > 0)
+	{
+		# Build an array to pass to 'build_select'
+		$dr_target_explain = "#!string!explain_0215!#";
+		$dr_target_row     = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"load_dr_target",
+			id	=>	"load_dr_target",
+			value	=>	"#!string!button_0048!#",
+		}, no_comment => 1});
+		$dr_target_url = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"delete",
+			id	=>	"delete",
+			value	=>	"#!string!row_0068!#",
+		}, no_comment => 1});
+		
+		# Disable the 'Delete' button if this DR target is being used by any DR jobs.
+		foreach my $hash_ref (@{$dr_jobs})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->dr_job_dr_target_uuid", value1 => $hash_ref->{dr_job_dr_target_uuid},
+				name2 => "cgi::dr_target_uuid",             value2 => $an->data->{cgi}{dr_target_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{dr_job_dr_target_uuid} eq $an->data->{cgi}{dr_target_uuid})
+			{
+				# Disable it.
+				$smtp_url =~ s/<input (.*?)>/<input $1 disabled>/;
+				$smtp_url =~ s/class="(.*?)"/class="bold_button_disabled"/;
+			}
+		}
+		
+		my $options = [];
+		foreach my $hash_ref (@{$dr_targets})
+		{
+			my $dr_target_uuid = $hash_ref->{dr_target_uuid};
+			my $dr_target_name = $hash_ref->{dr_target_name};
+			my $this_option    = $dr_target_uuid."#!#".$dr_target_name;
+			push @{$options}, $this_option;
+		}
+		$dr_target_select = $an->Web->build_select({
+			name     => "dr_target_uuid", 
+			options  => $options, 
+			blank    => 1,
+			selected => $an->data->{cgi}{dr_target_uuid},
+			width    => ($width + 10),
+		});
+	}
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"",
+			column1		=>	"$dr_target_row",
+			column2_class	=>	"input_select",
+			column2		=>	$dr_target_select,
+			column3_class	=>	"input_explain",
+			column3		=>	$dr_target_explain,
+			column4_class	=>	"",
+			column4		=>	"$dr_target_url",
+		}});
+	
+	# DR Target name
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0326!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"dr_target_name\" id=\"dr_target_name\" value=\"".$an->data->{cgi}{dr_target_name}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0216!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	### TODO: Fields to add
+# 	dr_target_note, 
+# 	dr_target_ip_or_name, 
+# 	dr_target_password, 
+# 	dr_target_tcp_port, 
+# 	dr_target_use_cache, 
+# 	dr_target_store, 
+# 	dr_target_copies, 
+# 	dr_target_bandwidth_limit, 
+	
 	
 	
 	return(0);
