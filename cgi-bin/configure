@@ -4753,15 +4753,26 @@ sub dr_target_menu
 			column4		=>	"&nbsp;",
 		}});
 	
+	# DR Target IP or host name
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0317!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"dr_target_ip_or_name\" id=\"dr_target_ip_or_name\" value=\"".$an->data->{cgi}{dr_target_ip_or_name}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0217!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
 	### TODO: Fields to add
-# 	dr_target_note, 
-# 	dr_target_ip_or_name, 
 # 	dr_target_password, 
 # 	dr_target_tcp_port, 
 # 	dr_target_use_cache, 
 # 	dr_target_store, 
 # 	dr_target_copies, 
 # 	dr_target_bandwidth_limit, 
+# 	dr_target_note, 
 	
 	
 	
