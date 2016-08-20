@@ -583,7 +583,7 @@ sub dr_job_data
 		name1 => "dr_job_name", value1 => $dr_job_name, 
 		name2 => "dr_job_uuid", value2 => $dr_job_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $dr_job_ip_or_name) && (not $dr_job_uuid))
+	if ((not $dr_job_name) && (not $dr_job_uuid))
 	{
 		# What is my purpose?
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0180", code => 180, file => $THIS_FILE, line => __LINE__});
@@ -638,8 +638,8 @@ WHERE
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "dr_job_uuid",           value1 => $dr_job_uuid, 
 			name2 => "dr_job_dr_target_uuid", value2 => $dr_job_dr_target_uuid, 
-			name3 => "dr_job_name",           value3 => $dr_name, 
-			name4 => "dr_job_note",           value4 => $dr_note, 
+			name3 => "dr_job_name",           value3 => $dr_job_name, 
+			name4 => "dr_job_note",           value4 => $dr_job_note, 
 			name5 => "dr_job_servers",        value5 => $dr_job_servers, 
 			name6 => "dr_job_auto_prune",     value6 => $dr_job_auto_prune, 
 			name7 => "dr_job_schedule",       value7 => $dr_job_schedule, 
@@ -648,8 +648,8 @@ WHERE
 		$return = {
 			dr_job_uuid		=>	$dr_job_uuid,
 			dr_job_dr_target_uuid	=>	$dr_job_dr_target_uuid, 
-			dr_job_name		=>	$dr_name, 
-			dr_job_note		=>	$dr_note, 
+			dr_job_name		=>	$dr_job_name, 
+			dr_job_note		=>	$dr_job_note, 
 			dr_job_servers		=>	$dr_job_servers, 
 			dr_job_auto_prune	=>	$dr_job_auto_prune, 
 			dr_job_schedule		=>	$dr_job_schedule, 
@@ -736,8 +736,8 @@ WHERE
 		my $modified_date             =         $row->[10];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 			name1  => "dr_target_uuid",            value1  => $dr_target_uuid, 
-			name2  => "dr_target_name",            value2  => $dr_name, 
-			name3  => "dr_target_note",            value3  => $dr_note, 
+			name2  => "dr_target_name",            value2  => $dr_target_name, 
+			name3  => "dr_target_note",            value3  => $dr_target_note, 
 			name4  => "dr_target_ip_or_name",      value4  => $dr_target_ip_or_name, 
 			name5  => "dr_target_tcp_port",        value5  => $dr_target_tcp_port, 
 			name6  => "dr_target_use_cache",       value6  => $dr_target_use_cache, 
@@ -751,8 +751,8 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		$return = {
 			dr_target_uuid		=>	$dr_target_uuid,
-			dr_target_name		=>	$dr_name, 
-			dr_target_note		=>	$dr_note, 
+			dr_target_name		=>	$dr_target_name, 
+			dr_target_note		=>	$dr_target_note, 
 			dr_target_ip_or_name	=>	$dr_target_ip_or_name, 
 			dr_target_password	=>	$dr_target_password, 
 			dr_target_tcp_port	=>	$dr_target_tcp_port, 

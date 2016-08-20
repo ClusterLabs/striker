@@ -171,9 +171,8 @@ SELECT
     modified_date 
 FROM 
     dr_jobs 
-WHERE 
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -189,16 +188,16 @@ WHERE
 		my $dr_job_uuid           =         $row->[0]; 
 		my $dr_job_dr_target_uuid =         $row->[1];
 		my $dr_job_name           =         $row->[2];
-		my $dr_job_note           = defined $row->[3] ? $row->[] : "";
+		my $dr_job_note           = defined $row->[3] ? $row->[3] : "";
 		my $dr_job_servers        =         $row->[4];
 		my $dr_job_auto_prune     =         $row->[5];
 		my $dr_job_schedule       =         $row->[6];
 		my $modified_date         =         $row->[7];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "dr_job_uuid",           value1 => $dr_job_uuid, 
 			name2 => "dr_job_dr_target_uuid", value2 => $dr_job_dr_target_uuid, 
-			name3 => "dr_job_name",           value3 => $dr_name, 
-			name4 => "dr_job_note",           value4 => $dr_note, 
+			name3 => "dr_job_name",           value3 => $dr_job_name, 
+			name4 => "dr_job_note",           value4 => $dr_job_note, 
 			name5 => "dr_job_servers",        value5 => $dr_job_servers, 
 			name6 => "dr_job_auto_prune",     value6 => $dr_job_auto_prune, 
 			name7 => "dr_job_schedule",       value7 => $dr_job_schedule, 
@@ -207,8 +206,8 @@ WHERE
 		push @{$return}, {
 			dr_job_uuid		=>	$dr_job_uuid,
 			dr_job_dr_target_uuid	=>	$dr_job_dr_target_uuid, 
-			dr_job_name		=>	$dr_name, 
-			dr_job_note		=>	$dr_note, 
+			dr_job_name		=>	$dr_job_name, 
+			dr_job_note		=>	$dr_job_note, 
 			dr_job_servers		=>	$dr_job_servers, 
 			dr_job_auto_prune	=>	$dr_job_auto_prune, 
 			dr_job_schedule		=>	$dr_job_schedule, 
@@ -244,9 +243,8 @@ SELECT
     modified_date 
 FROM 
     dr_targets 
-WHERE 
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -270,10 +268,10 @@ WHERE
 		my $dr_target_copies          =         $row->[8]; 
 		my $dr_target_bandwidth_limit = defined $row->[9] ? $row->[9] : ""; 
 		my $modified_date             =         $row->[10];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 			name1  => "dr_target_uuid",            value1  => $dr_target_uuid, 
-			name2  => "dr_target_name",            value2  => $dr_name, 
-			name3  => "dr_target_note",            value3  => $dr_note, 
+			name2  => "dr_target_name",            value2  => $dr_target_name, 
+			name3  => "dr_target_note",            value3  => $dr_target_note, 
 			name4  => "dr_target_ip_or_name",      value4  => $dr_target_ip_or_name, 
 			name5  => "dr_target_tcp_port",        value5  => $dr_target_tcp_port, 
 			name6  => "dr_target_use_cache",       value6  => $dr_target_use_cache, 
@@ -287,8 +285,8 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$return}, {
 			dr_target_uuid		=>	$dr_target_uuid,
-			dr_target_name		=>	$dr_name, 
-			dr_target_note		=>	$dr_note, 
+			dr_target_name		=>	$dr_target_name, 
+			dr_target_note		=>	$dr_target_note, 
 			dr_target_ip_or_name	=>	$dr_target_ip_or_name, 
 			dr_target_password	=>	$dr_target_password, 
 			dr_target_tcp_port	=>	$dr_target_tcp_port, 
@@ -1614,8 +1612,8 @@ WHERE
 			my $old_dr_job_schedule       =         $row->[5];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "old_dr_job_dr_target_uuid", value1 => $old_dr_job_dr_target_uuid, 
-				name2 => "old_dr_job_name",           value2 => $old_dr_name, 
-				name3 => "old_dr_job_note",           value3 => $old_dr_note, 
+				name2 => "old_dr_job_name",           value2 => $old_dr_job_name, 
+				name3 => "old_dr_job_note",           value3 => $old_dr_job_note, 
 				name4 => "old_dr_job_servers",        value4 => $old_dr_job_servers, 
 				name5 => "old_dr_job_auto_prune",     value5 => $old_dr_job_auto_prune, 
 				name6 => "old_dr_job_schedule",       value6 => $old_dr_job_schedule, 
@@ -1623,8 +1621,8 @@ WHERE
 			
 			# Anything change?
 			if (($old_dr_job_dr_target_uuid ne $dr_job_dr_target_uuid) or 
-			    ($old_dr_job_name           ne $dr_name)               or 
-			    ($old_dr_job_note           ne $dr_note)               or 
+			    ($old_dr_job_name           ne $dr_job_name)           or 
+			    ($old_dr_job_note           ne $dr_job_note)           or 
 			    ($old_dr_job_servers        ne $dr_job_servers)        or 
 			    ($old_dr_job_auto_prune     ne $dr_job_auto_prune)     or 
 			    ($old_dr_job_schedule       ne $dr_job_schedule))
@@ -1800,8 +1798,8 @@ WHERE
 			my $old_dr_target_copies          =         $row->[7]; 
 			my $old_dr_target_bandwidth_limit = defined $row->[8] ? $row->[8] : ""; 
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-				name1 => "old_dr_target_name",            value1 => $old_dr_name, 
-				name2 => "old_dr_target_note",            value2 => $old_dr_note, 
+				name1 => "old_dr_target_name",            value1 => $old_dr_target_name, 
+				name2 => "old_dr_target_note",            value2 => $old_dr_target_note, 
 				name3 => "old_dr_target_ip_or_name",      value3 => $old_dr_target_ip_or_name, 
 				name4 => "old_dr_target_tcp_port",        value4 => $old_dr_target_tcp_port, 
 				name5 => "old_dr_target_use_cache",       value5 => $old_dr_target_use_cache, 

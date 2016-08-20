@@ -4681,6 +4681,9 @@ sub dr_target_menu
 	my $dr_jobs    = $an->ScanCore->get_dr_jobs();
 	
 	# Load a specific notification target, if requested.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::load_dr_target", value1 => $an->data->{cgi}{load_dr_target},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{cgi}{load_dr_target})
 	{
 		load_dr_target_form($an, $dr_targets, $an->data->{cgi}{dr_target_uuid});
@@ -4721,12 +4724,12 @@ sub dr_target_menu
 				name1 => "hash_ref->dr_job_dr_target_uuid", value1 => $hash_ref->{dr_job_dr_target_uuid},
 				name2 => "cgi::dr_target_uuid",             value2 => $an->data->{cgi}{dr_target_uuid},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($hash_ref->{dr_job_dr_target_uuid} eq $an->data->{cgi}{dr_target_uuid})
-			{
-				# Disable it.
-				$smtp_url =~ s/<input (.*?)>/<input $1 disabled>/;
-				$smtp_url =~ s/class="(.*?)"/class="bold_button_disabled"/;
-			}
+# 			if ($hash_ref->{dr_job_dr_target_uuid} eq $an->data->{cgi}{dr_target_uuid})
+# 			{
+# 				# Disable it.
+# 				$smtp_url =~ s/<input (.*?)>/<input $1 disabled>/;
+# 				$smtp_url =~ s/class="(.*?)"/class="bold_button_disabled"/;
+# 			}
 		}
 		
 		my $options = [];
@@ -4814,7 +4817,7 @@ sub dr_target_menu
 			column3_class	=>	"input_explain",
 			column3		=>	"#!string!explain_0220!#",
 			column4_class	=>	"input_url",
-			column4		=>	"#!string!url_0012!#",
+			column4		=>	$an->Web->more_info_link({url => "#!string!url_0012!#"}),
 		}});
 	
 	### NOTE: The DR store is a little more complicated as it is divided into a selection box for the 
@@ -4825,22 +4828,24 @@ sub dr_target_menu
 		$an->data->{cgi}{dr_target_store_type}     = $1;
 		$an->data->{cgi}{dr_target_store_location} = $2;
 	}
+	my $select_width = 120;
+	my $text_width = ($width - $select_width - 5);
 	my $dr_target_store_type_select = $an->Web->build_select({
 		name     => "dr_target_store_type", 
-		options  => ["fs:#!string!select_0013!#", "lvm:#!string!select_0014!#"], 
+		options  => ["fs#!##!string!select_0013!#", "lvm#!##!string!select_0014!#"], 
 		blank    => 0,
 		selected => $an->data->{cgi}{dr_target_store_type},
-		width    => 100,
+		width    => $select_width,
 	});
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
 			column1_class	=>	"highlight_row_bold",
 			column1		=>	"#!string!row_0320!#",
 			column2_class	=>	"input_select",
-			column2		=>	$dr_target_store_type_select." <input type=\"text\" name=\"dr_target_store_location\" id=\"dr_target_store_location\" value=\"".$an->data->{cgi}{dr_target_store_location}."\" style=\"width: ".($width - 110)."px;\">",
+			column2		=>	$dr_target_store_type_select." <input type=\"text\" name=\"dr_target_store_location\" id=\"dr_target_store_location\" value=\"".$an->data->{cgi}{dr_target_store_location}."\" style=\"width: ${text_width}px;\">",
 			column3_class	=>	"input_explain",
 			column3		=>	"#!string!explain_0221!#",
 			column4_class	=>	"input_url",
-			column4		=>	"#!string!url_0013!#",
+			column4		=>	$an->Web->more_info_link({url => "#!string!url_0013!#"}),
 		}});
 	
 	# Copies to store
@@ -7481,6 +7486,9 @@ sub _initialize_an
 			},
 			'striker-push-ssh'	=>	{
 				enabled			=>	0,
+			},
+			disaster_recovery	=>	{
+				cache_signature		=>	".dr_cache",
 			},
 		},
 		# Config values needed to managing strings
