@@ -1,0 +1,137 @@
+#!/usr/bin/perl
+# 
+# This program searches for drives on the local system. Optionally, a signature can be specified and only 
+# disks with that signature will be reported.
+# 
+# (c) Alteeve's Niche! Inc, 2016 - https://alteeve.ca
+# 
+# This program is released under the GPL v2+
+# 
+# Return Codes
+# 0  = Successful run
+#
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+use Data::Dumper;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+
+my $an = AN::Tools->new({data => {
+		devices		=>	{
+			
+		},
+		path		=>	{
+			log_file		=>	"/var/log/striker.log",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+		},
+		switches	=>	{
+			signature		=>	"",
+			mount			=>	1,
+		},
+		sys		=>	{
+			language		=>	"en_CA",
+			log_language		=>	"en_CA",
+			log_level		=>	2,
+			program_name		=>	$program_name,
+		},
+		$THIS_FILE 	=>	{
+			log_db_transactions	=>	0,
+		},
+	},
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+$an->Log->db_transactions(1) if $an->data->{$THIS_FILE}{log_db_transactions};
+$an->Readable->base2(1);
+
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or 
+    ($an->data->{switches}{help}))
+{
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+if ($an->data->{switches}{'no-mount'})
+{
+	$an->data->{switches}{mount} = 0;
+}
+
+# This looks for block devices under 'path::sysfs_block'.
+find_disks($an);
+
+
+$an->nice_exit({exit_code => 0});
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This looks for block devices under '/dev/X*' where 'X' is any of the 'sys::search_device_paths' entries.
+# Discovered devices will be stored under 'devices::<device_name>'.
+sub find_disks
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $an->data->{path}{sysfs_block});
+	while(my $file = readdir(DIRECTORY))
+	{
+		# Everything here that we care about is a symlink
+		next if $file eq ".";
+		next if $file eq "..";
+		my $full_path = "$directory/$file";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "full_path", value1 => $full_path, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (-l $full_path)
+		{
+			# Get the target it points at.
+			
+		}
+	}
+	
+	return(0);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $an->String->get({key => "afd_message_0001"})."\n";
+	close $file_handle;
+	
+	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");
+
+	return(0);
+}

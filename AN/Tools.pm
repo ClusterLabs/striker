@@ -672,6 +672,9 @@ sub _set_paths
 	$an->data->{path}{proc_sysrq}   = "/proc/sysrq-trigger";
 	$an->data->{path}{proc_uptime}  = "/proc/uptime";
 	$an->data->{path}{proc_virbr0}  = "/proc/sys/net/ipv4/conf/virbr0";
+	
+	# /sys stuff
+	$an->data->{path}{sysfs_block} = "/sys/block";
 
 	# Directories
 	$an->data->{path}{alert_emails}       = "/var/log/alert_emails";

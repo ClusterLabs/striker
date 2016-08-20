@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 # 
-# This ISO takes an Anvil! installer ISO and writes it to a USB drive suitable for a USB-based install of 
-# Striker dashboard machines.
+# This program takes an Anvil! ISO and writes it to a USB drive suitable for a USB-based install of a Striker
+# dashboard machines. From there, other dashboards and Anvil! nodes can be installed via PXE booting the 
+# first Striker dashboard using the 'Install Target' feature.
 # 
 # (c) Alteeve's Niche! Inc, 2016 - https://alteeve.ca
 # 

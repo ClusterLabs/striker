@@ -435,6 +435,13 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0215"><![CDATA[You can select an existing disaster recovery target,<br />or enter a new one below and it will be added to the list.]]></key>
 		<key name="explain_0216"><![CDATA[This is a descriptive name of the disaster recovery target.<br />You can set this to any name you want.]]></key>
 		<key name="explain_0217"><![CDATA[This is the IP address or <b>resolvable</b> hostname of the target machine.]]></key>
+		<key name="explain_0218"><![CDATA[The TCP port to use for <span class="highlight_detail">ssh</span> access to the DR target.<br />The default is <span class="highlight_detail">22</span>.]]></key>
+		<key name="explain_0219"><![CDATA[This is the '<span class="highlight_detail">root</span>' user's password.<br /><span class="highlight_note_bold">Note</span>: The password will be displayed in plain text!]]></key>
+		<key name="explain_0220"><![CDATA[If selected, DR jobs will check to see if one or more drives with the '<span class="highlight_detail">#!data!tools::dr::cache_signature!#<span>' signature file exists.<br />If found (on either the source nodes or the DR target), images will be written to cache prior to transmission or final processing.]]></key>
+		<key name="explain_0221"><![CDATA[The type and location where server images will be stored.]]></key>
+		<key name="explain_0222"><![CDATA[How many copies to store of each server.<br /><span class="highlight_note_bold">Note</span>: Be mindful of how much space will be required on the DR target!<br />You will to have at least (size of all servers * copies). If there is insufficient space, the backup jobs will fail.]]></key>
+		<key name="explain_0223"><![CDATA[This places an upper limit on the bandwidth used when transmitting a server's image over the network to the DR target.<br />If set to '0', no rate limiting is used and the transfer will occur as qickly as possible.]]></key>
+		<key name="explain_0224">A place for you to keep any notes you wish about this DR target.</key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -511,6 +518,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="url_0009"><![CDATA[https://alteeve.ca/w/TLUG_Talk:_Storage_Technologies_and_Theory#Level_#!variable!raid_level!#]]></key>
 		<key name="url_0010"><![CDATA[https://alteeve.ca/w/Failed_Server]]></key>
 		<key name="url_0011"><![CDATA[https://alteeve.ca/w/Disaster_Recovery]]></key>
+		<key name="url_0012"><![CDATA[https://alteeve.ca/w/Disaster_Recovery#Caching]]></key>
+		<key name="url_0013"><![CDATA[https://alteeve.ca/w/Disaster_Recovery#DR_Stores]]></key>
 		
 		<!-- Fields used in <select ...> blocks. -->
 		<key name="select_0001">No Security</key>
@@ -525,6 +534,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="select_0010">No</key>
 		<key name="select_0011">New</key>
 		<key name="select_0012">New (or none)</key>
+		<key name="select_0013">File System</key>
+		<key name="select_0014">LVM</key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -842,17 +853,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0313">Manifest</key>
 		<key name="row_0314">Backup Mail Server</key>
 		<key name="row_0315">Disabled</key>
-		<key name="row_0316">Use USB for Cache</key>
+		<key name="row_0316">Use Caching</key>
 		<key name="row_0317">Target IP or Hostname</key>
 		<key name="row_0318">TCP Port</key>
 		<key name="row_0319">Bandwidth Limit</key>
 		<key name="row_0320">Target Store</key>
-		<key name="row_0321">Copies</key>
+		<key name="row_0321">Image Copies</key>
 		<key name="row_0322">Servers</key>
 		<key name="row_0323">Job Name</key>
 		<key name="row_0324">Auto-Prune</key>
 		<key name="row_0325">Schedule</key>
 		<key name="row_0326">Target Name</key>
+		<key name="row_0327">Target Password</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -1427,6 +1439,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0201">Edit Raw Install Manifest</key>
 		<key name="title_0202"><![CDATA[Fencing <span class="fixed_width">#!variable!node_name!#</span> node directly...]]></key>
 		<key name="title_0203">The new Anvil! was successfully saved.</key>
+		<key name="title_0204">Add, edit or delete a disaster recovery target server.</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -3360,6 +3373,61 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
+	
+		<!-- Anvil! find drives -->
+		<!-- logs -->
+		<key name="afd_log_0001">#!variable!this_file!# has started.</key>
+		
+		<!-- messages -->
+		<key name="afd_message_0001"><![CDATA[
+ -=] Find Drives
+
+DESCRIPTION
+
+This program returns a list of local block devices on the system. Optical 
+drives, tape drives and other non-standard block devices are ignored. 
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+ --signature <string>
+
+	When set, only drives with a file in the root of the disk with this 
+	string as it's name will be reported.
+
+ --no-mount
+ 
+	By default, if a block device is found and not mounted, it will be
+	mounted momentarily so that a check can be made to see if the drive has
+	a signature file as well as to report on the size of the disk and the 
+	amount of free space (when the disk has a supported file system on it). 
+	This switch prevents this behavious causing unmounted disks to be 
+	ignored.
+
+
+EXAMPLE
+
+Get a list of all servers on all configured Anvil! systems.
+
+ ./anvil-server-summary
+ 
+Restict the list of servers to the 'an-anvil-05' Anvil!.
+
+ ./anvil-server-summary --anvil an-anvil-05
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		
 	</lang>
 
 	<!-- Japanese -->

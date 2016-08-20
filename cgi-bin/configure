@@ -84,6 +84,10 @@ sub process_task
 	{
 		dr_target_menu($an);
 	}
+	elsif ($an->data->{cgi}{task} eq "dr_job")
+	{
+		dr_job_menu($an);
+	}
 	elsif ($an->data->{cgi}{task} eq "backup")
 	{
 		
@@ -4603,6 +4607,17 @@ WHERE
 }
 
 # This handles the management of DR target machines.
+sub dr_job_menu
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "dr_job_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### TODO once 'dr_target_menu' is tested, clone it for this menu.
+	
+	return(0);
+}
+
+# This handles the management of DR target machines.
 sub dr_target_menu
 {
 	my ($an) = @_;
@@ -4765,16 +4780,174 @@ sub dr_target_menu
 			column4		=>	"&nbsp;",
 		}});
 	
-	### TODO: Fields to add
-# 	dr_target_password, 
-# 	dr_target_tcp_port, 
-# 	dr_target_use_cache, 
-# 	dr_target_store, 
-# 	dr_target_copies, 
-# 	dr_target_bandwidth_limit, 
-# 	dr_target_note, 
+	# DR Target ssh TCP port.
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0318!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"dr_target_tcp_port\" id=\"dr_target_tcp_port\" value=\"".$an->data->{cgi}{dr_target_tcp_port}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0218!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
 	
+	# DR Target root password
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0327!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"dr_target_password\" id=\"dr_target_password\" value=\"".$an->data->{cgi}{dr_target_password}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0219!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
 	
+	# Use cache check box
+	my $say_cache_checked = $an->data->{cgi}{dr_target_use_cache} ? "checked" : "";
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0316!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"checkbox\" name=\"dr_target_use_cache\" id=\"dr_target_use_cache\" $say_cache_checked>",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0220!#",
+			column4_class	=>	"input_url",
+			column4		=>	"#!string!url_0012!#",
+		}});
+	
+	### NOTE: The DR store is a little more complicated as it is divided into a selection box for the 
+	###       type and a string for the location.
+	# DR Store
+	if ($an->data->{cgi}{dr_target_store} =~ /^(.*?):(.*)$/)
+	{
+		$an->data->{cgi}{dr_target_store_type}     = $1;
+		$an->data->{cgi}{dr_target_store_location} = $2;
+	}
+	my $dr_target_store_type_select = $an->Web->build_select({
+		name     => "dr_target_store_type", 
+		options  => ["fs:#!string!select_0013!#", "lvm:#!string!select_0014!#"], 
+		blank    => 0,
+		selected => $an->data->{cgi}{dr_target_store_type},
+		width    => 100,
+	});
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0320!#",
+			column2_class	=>	"input_select",
+			column2		=>	$dr_target_store_type_select." <input type=\"text\" name=\"dr_target_store_location\" id=\"dr_target_store_location\" value=\"".$an->data->{cgi}{dr_target_store_location}."\" style=\"width: ".($width - 110)."px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0221!#",
+			column4_class	=>	"input_url",
+			column4		=>	"#!string!url_0013!#",
+		}});
+	
+	# Copies to store
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0321!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"dr_target_copies\" id=\"dr_target_copies\" value=\"".$an->data->{cgi}{dr_target_copies}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0222!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	### NOTE: Only 'rsync' (that I can tell thus far) uses rate limiting. Unless SSH can be limited, this
+	###       won't be useful except when going local cache to target cache (or target FS, when selected).
+	# Rate limiting
+# 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+# 			column1_class	=>	"highlight_row_bold",
+# 			column1		=>	"#!string!row_0319!#",
+# 			column2_class	=>	"input_select",
+# 			column2		=>	"<input type=\"text\" name=\"dr_target_bandwidth_limit\" id=\"dr_target_bandwidth_limit\" value=\"".$an->data->{cgi}{dr_target_bandwidth_limit}."\" style=\"width: ${width}px;\">",
+# 			column3_class	=>	"input_explain",
+# 			column3		=>	"#!string!explain_0223!#",
+# 			column4_class	=>	"input_url",
+# 			column4		=>	"&nbsp;",
+# 		}});
+	
+	# Create the text field for the DR target's note
+	my $textarea = $an->Web->template({file => "web.html", template => "textarea_input", replace => { 
+		name	=>	"dr_target_note",
+		id	=>	"dr_target_note",
+		value	=>	$an->data->{cgi}{dr_target_note},
+	}, no_comment => 1});; 
+	$menu_items .= $an->Web->template({file => "web.html", template => "textarea-4column-menu-entry", replace => {
+			row_class	=>	"highlight_row_bold",
+			row_body	=>	"#!string!row_0032!#",
+			message_class	=>	"input_select",
+			message_body	=>	"#!string!explain_0224!#",
+			textarea	=>	$textarea,
+			url_class	=>	"",
+			url_body	=>	"",
+		}});
+	
+	# The 'Save' button
+	my $save_button = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+		name	=>	"save",
+		id	=>	"save",
+		value	=>	"#!string!button_0045!#",
+	}, no_comment => 1});
+	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	$save_button,
+			class	=>	"",
+			colspan	=>	4,
+		}});
+	
+	# Put the menu template together
+	my $menu = $an->Web->template({file => "web.html", template => "generic-4column-menu", replace => {
+			title		=>	"#!string!title_0204!#",
+			menu_items	=>	$menu_items,
+		}});
+	# Wrap it in a <form>
+	$menu = $an->Web->template({file => "web.html", template => "form-wrapper", replace => { body => $menu }});
+	
+	# Put together the page's frame...
+	my $back_image = $an->Web->template({file => "common.html", template => "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
+			alt_text     => "#!string!button_0001!#",
+			id           => "back_icon",
+		}});
+	
+	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
+			alt_text     => "#!string!button_0002!#",
+			id           => "refresh_icon",
+		}});
+	my $back_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"back",
+			id	=>	"back",
+			alt	=>	"#!string!button_0001!#",
+			value	=>	$back_image,
+			url	=>	"?",
+		}, no_comment => 1});
+	my $refresh_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"refresh",
+			id	=>	"refresh",
+			alt	=>	"#!string!button_0002!#",
+			value	=>	$refresh_image,
+			url	=>	$refresh_link,
+		}, no_comment => 1});
+	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
+			back	=>	$back_anchor,
+			refresh	=>	$refresh_anchor,
+		}});
+	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
+	
+	# Print it!
+	print $an->Web->template({
+			file		=>	"configure.html",
+			template	=>	"configure-main-page",
+			replace		=>	{
+				header		=>	$header, 
+				notices		=>	$notice_message,
+				body		=>	$menu, 
+				footer		=>	$footer, 
+			},
+		});
 	
 	return(0);
 }
