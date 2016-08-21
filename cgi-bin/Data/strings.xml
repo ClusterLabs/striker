@@ -442,6 +442,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0222"><![CDATA[How many copies to store of each server.<br /><span class="highlight_note_bold">Note</span>: Be mindful of how much space will be required on the DR target!<br />You will to have at least (size of all servers * copies). If there is insufficient space, the backup jobs will fail.]]></key>
 		<key name="explain_0223"><![CDATA[This places an upper limit on the bandwidth used when transmitting a server's image over the network to the DR target.<br />If set to '0', no rate limiting is used and the transfer will occur as qickly as possible.]]></key>
 		<key name="explain_0224">A place for you to keep any notes you wish about this DR target.</key>
+		<key name="explain_0225">There are no existing disaster recovery targets yet.</key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -1909,7 +1910,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0451"><![CDATA[The #!string!brand_0003!#: [<span class="highlight_detail">#!variable!anvil!#</span>] was deleted.]]></key>
 		<key name="message_0452">seconds after:</key> <!-- This is used between the 'boot delay' and 'boot after' select box. -->
 		<key name="message_0453"><![CDATA[The: [<span class="highlight_detail">#!variable!smtp!#</span>] SMTP server has been deleted.]]></key>
-		<key name="message_0454"><![CDATA[Are you certain that you want to delete: [<span class="highlight_detail">#!variable!target!#</span>] notification target?]]></key>
+		<key name="message_0454"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!target!#</span>] notification target?]]></key>
 		<key name="message_0455"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!target!#</span>] notification target failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!targets!#</span>] target(s) remained.]]></key>
 		<key name="message_0456"><![CDATA[The: [<span class="highlight_detail">#!variable!target!#</span>] notification target has been deleted.]]></key>
 		<key name="message_0457"><![CDATA[Enabling the install target feature means that this #!string!brand_0020!# will start offering IP addresses.<br />These IP addresses will be on the <a href="#!string!url_0005!#" target="_new" class="highlight_detail">#!string!brand_0005!#</a>, which should be isolated and cause no issues.<br />If your network doesn't isolate the #!string!brand_0006!#, this might cause a conflict with devices requesting a network address.<br /> Are you ready to enable this feature?]]></key>
@@ -1946,6 +1947,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0488"><![CDATA[System call started at: [<span class="highlight_detail">#!variable!timestamp!#</span>]. Output, if any, will be below:]]></key>
 		<key name="message_0489"><![CDATA[The: [<span class="highlight_detail">#!variable!dr_target!#</span>] DR target has been deleted.]]></key>
 		<key name="message_0490"><![CDATA[The: [<span class="highlight_detail">#!variable!anvil_name!#</span>] install manifest has been deleted.]]></key>
+		<key name="message_0491"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!target!#</span>] disaster recovery target?]]></key>
+		<key name="message_0492"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!dr_target!#</span>] DR target failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!count!#</span>] DR target(s) remained.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

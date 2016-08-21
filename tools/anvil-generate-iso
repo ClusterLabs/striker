@@ -3891,6 +3891,7 @@ sub get_package_list
 		"tibetan-machine-uni-fonts.noarch",
 		"tog-pegasus-libs.x86_64",
 		"tog-pegasus.x86_64",
+		"trickle.x86_64",
 		"tuned.noarch",
 		"tzdata.noarch",
 		"udev.x86_64",

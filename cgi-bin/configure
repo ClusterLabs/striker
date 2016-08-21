@@ -181,6 +181,29 @@ sub load_dr_target_form
 				$an->data->{cgi}{dr_target_store}           = $hash_ref->{dr_target_store};
 				$an->data->{cgi}{dr_target_copies}          = $hash_ref->{dr_target_copies};
 				$an->data->{cgi}{dr_target_bandwidth_limit} = $hash_ref->{dr_target_bandwidth_limit};
+				$an->data->{cgi}{dr_target_store_type}      = "fs";
+				$an->data->{cgi}{dr_target_store_location}  = "";
+				if ($an->data->{cgi}{dr_target_store} =~ /^(.*?):(.*)$/)
+				{
+					$an->data->{cgi}{dr_target_store_type}     = $1;
+					$an->data->{cgi}{dr_target_store_location} = $2;
+				}
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+					name1  => "cgi::dr_target_uuid",            value1  => $an->data->{cgi}{dr_target_uuid},
+					name2  => "cgi::dr_target_name",            value2  => $an->data->{cgi}{dr_target_name},
+					name3  => "cgi::dr_target_note",            value3  => $an->data->{cgi}{dr_target_note},
+					name4  => "cgi::dr_target_ip_or_name",      value4  => $an->data->{cgi}{dr_target_ip_or_name},
+					name5  => "cgi::dr_target_tcp_port",        value5  => $an->data->{cgi}{dr_target_tcp_port},
+					name6  => "cgi::dr_target_use_cache",       value6  => $an->data->{cgi}{dr_target_use_cache},
+					name7  => "cgi::dr_target_store",           value7  => $an->data->{cgi}{dr_target_store},
+					name8  => "cgi::dr_target_store_type",      value8  => $an->data->{cgi}{dr_target_store_type},
+					name9  => "cgi::dr_target_store_location",  value9  => $an->data->{cgi}{dr_target_store_location},
+					name10 => "cgi::dr_target_copies",          value10 => $an->data->{cgi}{dr_target_copies},
+					name11 => "cgi::dr_target_bandwidth_limit", value11 => $an->data->{cgi}{dr_target_bandwidth_limit},
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "cgi::dr_target_password", value1 => $an->data->{cgi}{dr_target_password},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -192,11 +215,26 @@ sub load_dr_target_form
 		$an->data->{cgi}{dr_target_note}            = "";
 		$an->data->{cgi}{dr_target_ip_or_name}      = "";
 		$an->data->{cgi}{dr_target_password}        = "";
-		$an->data->{cgi}{dr_target_tcp_port}        = "";
+		$an->data->{cgi}{dr_target_tcp_port}        = "22";
 		$an->data->{cgi}{dr_target_use_cache}       = "";
-		$an->data->{cgi}{dr_target_store}           = "";
-		$an->data->{cgi}{dr_target_copies}          = "";
+		$an->data->{cgi}{dr_target_store_type}      = "fs";
+		$an->data->{cgi}{dr_target_store_location}  = "";
+		$an->data->{cgi}{dr_target_copies}          = "2";
 		$an->data->{cgi}{dr_target_bandwidth_limit} = "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			name1  => "cgi::dr_target_uuid",            value1  => $an->data->{cgi}{dr_target_uuid},
+			name2  => "cgi::dr_target_name",            value2  => $an->data->{cgi}{dr_target_name},
+			name3  => "cgi::dr_target_note",            value3  => $an->data->{cgi}{dr_target_note},
+			name4  => "cgi::dr_target_ip_or_name",      value4  => $an->data->{cgi}{dr_target_ip_or_name},
+			name5  => "cgi::dr_target_password",        value5  => $an->data->{cgi}{dr_target_password},
+			name6  => "cgi::dr_target_tcp_port",        value6  => $an->data->{cgi}{dr_target_tcp_port},
+			name7  => "cgi::dr_target_use_cache",       value7  => $an->data->{cgi}{dr_target_use_cache},
+			name8  => "cgi::dr_target_store",           value8  => $an->data->{cgi}{dr_target_store},
+			name9  => "cgi::dr_target_store_type",      value9  => $an->data->{cgi}{dr_target_store_type},
+			name10 => "cgi::dr_target_store_location",  value10 => $an->data->{cgi}{dr_target_store_location},
+			name11 => "cgi::dr_target_copies",          value11 => $an->data->{cgi}{dr_target_copies},
+			name12 => "cgi::dr_target_bandwidth_limit", value12 => $an->data->{cgi}{dr_target_bandwidth_limit},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -875,6 +913,15 @@ sub save_dr_target_form
 	# Save the form (either INSERT or UPDATE if something has changed.
 	if (not $error_count)
 	{
+		# Merge the 'dr_target_store' CGI variables.
+		if ((not $an->data->{cgi}{dr_target_store}) && ($an->data->{cgi}{dr_target_store_type} && $an->data->{cgi}{dr_target_store_location}))
+		{
+			$an->data->{cgi}{dr_target_store} = $an->data->{cgi}{dr_target_store_type}.":".$an->data->{cgi}{dr_target_store_location};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::dr_target_store", value1 => $an->data->{cgi}{dr_target_store},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
 		$an->data->{cgi}{dr_target_uuid} = save_dr_target($an);
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::dr_target_uuid", value1 => $an->data->{cgi}{dr_target_uuid},
@@ -1965,7 +2012,7 @@ sub confirm_action
 				row_class	=>	"highlight_warning_bold",
 				row_body	=>	"#!string!row_0306!#",
 				message_class	=>	"",
-				message_body	=>	$an->String->get({key => "message_0454", variables => { target => $dr_target_data->{dr_target_ip_or_name} }}),
+				message_body	=>	$an->String->get({key => "message_0491", variables => { target => $dr_target_data->{dr_target_name} }}),
 				button		=>	$confirm_button,
 			}});
 	}
@@ -1979,10 +2026,8 @@ sub delete_dr_target
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_dr_target" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Get the Anvil! name and the dr target data before we delete it.
-	my $return     = $an->Get->dr_target_data({uuid => $an->data->{cgi}{dr_target_uuid}});
-	my $anvil_name = $an->data->{cgi}{anvil_name};
-	
+	# Get the DR target name before we delete it.
+	my $dr_target_name = $an->data->{cgi}{dr_target_name};
 	my $notice_message = "";
 	
 	# Send the queries as an array
@@ -2034,9 +2079,9 @@ WHERE
 	if ($dr_target_count)
 	{
 		# What is this!?
-		my $error_message = $an->String->get({key => "message_0461", variables => { 
-			anvil     => $anvil_name,
-			dr_targets => $dr_target_count, 
+		my $error_message = $an->String->get({key => "message_0492", variables => { 
+			dr_target => $dr_target_name, 
+			count     => $dr_target_count, 
 		}});
 		my $error_body = $an->Web->template({file => "web.html", template => "error-entry", replace => {
 					row_class	=>	"highlight_warning",
@@ -2061,7 +2106,7 @@ WHERE
 				row_class	=>	"highlight_good_bold",
 				row_body	=>	"#!string!row_0083!#",
 				message_class	=>	"",
-				message_body	=>	$an->String->get({key => "dr_target", variables => { dr_target => $return->{dr_target_ip_or_name} }}),
+				message_body	=>	$an->String->get({key => "message_0489", variables => { dr_target => $dr_target_name }}),
 			}});
 	}
 	
@@ -4699,7 +4744,7 @@ sub dr_target_menu
 	
 	# Get a list of existing notification targets, if any.
 	my $dr_target_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
-	my $dr_target_explain = "#!string!explain_0196!#";
+	my $dr_target_explain = "#!string!explain_0225!#";
 	my $dr_target_row     = "&nbsp;";	# Actually the 'Load' button
 	my $dr_target_url     = "&nbsp;";	# Actually the 'delete' button
 	if (@{$dr_targets} > 0)
@@ -4724,12 +4769,12 @@ sub dr_target_menu
 				name1 => "hash_ref->dr_job_dr_target_uuid", value1 => $hash_ref->{dr_job_dr_target_uuid},
 				name2 => "cgi::dr_target_uuid",             value2 => $an->data->{cgi}{dr_target_uuid},
 			}, file => $THIS_FILE, line => __LINE__});
-# 			if ($hash_ref->{dr_job_dr_target_uuid} eq $an->data->{cgi}{dr_target_uuid})
-# 			{
-# 				# Disable it.
-# 				$smtp_url =~ s/<input (.*?)>/<input $1 disabled>/;
-# 				$smtp_url =~ s/class="(.*?)"/class="bold_button_disabled"/;
-# 			}
+			if ($hash_ref->{dr_job_dr_target_uuid} eq $an->data->{cgi}{dr_target_uuid})
+			{
+				# Disable it.
+				$dr_target_url =~ s/<input (.*?)>/<input $1 disabled>/;
+				$dr_target_url =~ s/class="(.*?)"/class="bold_button_disabled"/;
+			}
 		}
 		
 		my $options = [];
@@ -4888,6 +4933,14 @@ sub dr_target_menu
 			textarea	=>	$textarea,
 			url_class	=>	"",
 			url_body	=>	"",
+		}});
+	
+	### Hidden stuff
+	# Task
+	$menu_items .= $an->Web->template({file => "web.html", template => "hidden_input", replace => { 
+			name	=>	"task",
+			id	=>	"task",
+			value	=>	$an->data->{cgi}{task},
 		}});
 	
 	# The 'Save' button
