@@ -1088,7 +1088,7 @@ CREATE TABLE dr_targets (
 	dr_target_uuid			uuid				not null	primary key,	-- 
 	dr_target_name			text				not null,			-- A human-friendly target name
 	dr_target_note			text,								-- An optional notes section
-	dr_target_ip_or_name		text				not null,			-- This is the IP or (resolvable) host name of the target machine.
+	dr_target_address		text				not null,			-- This is the IP or (resolvable) host name of the target machine.
 	dr_target_password		text,								-- This is the target's root user's password. It can be left blank if passwordless SSH has been configured on both nodes.
 	dr_target_tcp_port		numeric,							-- This is the target's SSH TCP port to use. 22 will be used if this is not set.
 	dr_target_use_cache		boolean				not null	default TRUE,	-- If true, a dr will first look for a USB drive plugged into either node with enough space to store the image. if that is not found, but there is enough space on the cluster storage, a temporary LV will be created and used. Otherwise, the dr will directly dd over SSH to the target.
@@ -1104,7 +1104,7 @@ CREATE TABLE history.dr_targets (
 	dr_target_uuid			uuid, 
 	dr_target_name			text, 
 	dr_target_note			text, 
-	dr_target_ip_or_name		text, 
+	dr_target_address		text, 
 	dr_target_password		text, 
 	dr_target_tcp_port		numeric, 
 	dr_target_use_cache		boolean, 
@@ -1125,7 +1125,7 @@ BEGIN
 		(dr_target_uuid, 
 		 dr_target_name, 
 		 dr_target_note, 
-		 dr_target_ip_or_name, 
+		 dr_target_address, 
 		 dr_target_password, 
 		 dr_target_tcp_port, 
 		 dr_target_use_cache, 
@@ -1137,7 +1137,7 @@ BEGIN
 		(history_dr_targets.dr_target_uuid,
 		 history_dr_targets.dr_target_name, 
 		 history_dr_targets.dr_target_note, 
-		 history_dr_targets.dr_target_ip_or_name, 
+		 history_dr_targets.dr_target_address, 
 		 history_dr_targets.dr_target_password, 
 		 history_dr_targets.dr_target_tcp_port, 
 		 history_dr_targets.dr_target_use_cache, 
@@ -1161,6 +1161,7 @@ CREATE TRIGGER trigger_dr_targets
 CREATE TABLE dr_jobs (
 	dr_job_uuid			uuid				not null	primary key,	-- 
 	dr_job_dr_target_uuid		uuid				not null,			-- This is the target to use for this dr job.
+	dr_job_anvil_uuid		uuid				not null,			-- This is the Anvil! to work on for this dr job.
 	dr_job_name			text				not null,			-- A human-friendly job name
 	dr_job_note			text,								-- An optional notes section
 	dr_job_servers			text				not null,			-- One or more server UUIDs to back up. If more than one, the UUIDs must be CSV. When two or more servers are defined, all will be shut down at the same time and none will boot until all are backed up. 
@@ -1168,7 +1169,8 @@ CREATE TABLE dr_jobs (
 	dr_job_schedule			text				not null,			-- This is the schedule for the drs to run. It is stored internally using 'cron' timing format (.
 	modified_date			timestamp with time zone	not null, 
 	
-	FOREIGN KEY(dr_job_dr_target_uuid) REFERENCES dr_targets(dr_target_uuid)
+	FOREIGN KEY(dr_job_dr_target_uuid) REFERENCES dr_targets(dr_target_uuid),
+	FOREIGN KEY(dr_job_anvil_uuid) REFERENCES anvils(anvil_uuid)
 );
 ALTER TABLE dr_jobs OWNER TO #!variable!user!#;
 
@@ -1176,6 +1178,7 @@ CREATE TABLE history.dr_jobs (
 	history_id			bigserial, 
 	dr_job_uuid			uuid, 
 	dr_job_dr_target_uuid		uuid, 
+	dr_job_anvil_uuid		uuid,
 	dr_job_name			text, 
 	dr_job_note			text, 
 	dr_job_servers			text, 
@@ -1194,6 +1197,7 @@ BEGIN
 	INSERT INTO history.dr_jobs
 		(dr_job_uuid, 
 		 dr_job_dr_target_uuid, 
+		 dr_job_anvil_uuid, 
 		 dr_job_name, 
 		 dr_job_note, 
 		 dr_job_servers, 
@@ -1203,6 +1207,7 @@ BEGIN
 	VALUES
 		(history_dr_jobs.dr_job_uuid,
 		 history_dr_jobs.dr_job_dr_target_uuid, 
+		 history_dr_jobs.dr_job_anvil_uuid, 
 		 history_dr_jobs.dr_job_name, 
 		 history_dr_jobs.dr_job_note, 
 		 history_dr_jobs.dr_job_servers, 

@@ -163,6 +163,7 @@ sub get_dr_jobs
 SELECT 
     dr_job_uuid, 
     dr_job_dr_target_uuid, 
+    dr_job_anvil_uuid, 
     dr_job_name, 
     dr_job_note, 
     dr_job_servers, 
@@ -187,25 +188,28 @@ FROM
 	{
 		my $dr_job_uuid           =         $row->[0]; 
 		my $dr_job_dr_target_uuid =         $row->[1];
-		my $dr_job_name           =         $row->[2];
-		my $dr_job_note           = defined $row->[3] ? $row->[3] : "";
-		my $dr_job_servers        =         $row->[4];
-		my $dr_job_auto_prune     =         $row->[5];
-		my $dr_job_schedule       =         $row->[6];
-		my $modified_date         =         $row->[7];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		my $dr_job_anvil_uuid     =         $row->[2];
+		my $dr_job_name           =         $row->[3];
+		my $dr_job_note           = defined $row->[4] ? $row->[4] : "";
+		my $dr_job_servers        =         $row->[5];
+		my $dr_job_auto_prune     =         $row->[6];
+		my $dr_job_schedule       =         $row->[7];
+		my $modified_date         =         $row->[8];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 			name1 => "dr_job_uuid",           value1 => $dr_job_uuid, 
 			name2 => "dr_job_dr_target_uuid", value2 => $dr_job_dr_target_uuid, 
-			name3 => "dr_job_name",           value3 => $dr_job_name, 
-			name4 => "dr_job_note",           value4 => $dr_job_note, 
-			name5 => "dr_job_servers",        value5 => $dr_job_servers, 
-			name6 => "dr_job_auto_prune",     value6 => $dr_job_auto_prune, 
-			name7 => "dr_job_schedule",       value7 => $dr_job_schedule, 
-			name8 => "modified_date",         value8 => $modified_date, 
+			name3 => "dr_job_anvil_uuid",     value3 => $dr_job_anvil_uuid, 
+			name4 => "dr_job_name",           value4 => $dr_job_name, 
+			name5 => "dr_job_note",           value5 => $dr_job_note, 
+			name6 => "dr_job_servers",        value6 => $dr_job_servers, 
+			name7 => "dr_job_auto_prune",     value7 => $dr_job_auto_prune, 
+			name8 => "dr_job_schedule",       value8 => $dr_job_schedule, 
+			name9 => "modified_date",         value9 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$return}, {
 			dr_job_uuid		=>	$dr_job_uuid,
 			dr_job_dr_target_uuid	=>	$dr_job_dr_target_uuid, 
+			dr_job_anvil_uuid	=>	$dr_job_anvil_uuid, 
 			dr_job_name		=>	$dr_job_name, 
 			dr_job_note		=>	$dr_job_note, 
 			dr_job_servers		=>	$dr_job_servers, 
@@ -233,7 +237,7 @@ SELECT
     dr_target_uuid, 
     dr_target_name, 
     dr_target_note, 
-    dr_target_ip_or_name, 
+    dr_target_address, 
     dr_target_password, 
     dr_target_tcp_port, 
     dr_target_use_cache, 
@@ -260,7 +264,7 @@ FROM
 		my $dr_target_uuid            =         $row->[0]; 
 		my $dr_target_name            =         $row->[1];
 		my $dr_target_note            = defined $row->[2] ? $row->[2] : ""; 
-		my $dr_target_ip_or_name      =         $row->[3]; 
+		my $dr_target_address         =         $row->[3]; 
 		my $dr_target_password        = defined $row->[4] ? $row->[4] : ""; 
 		my $dr_target_tcp_port        = defined $row->[5] ? $row->[5] : ""; 
 		my $dr_target_use_cache       =         $row->[6]; 
@@ -272,7 +276,7 @@ FROM
 			name1  => "dr_target_uuid",            value1  => $dr_target_uuid, 
 			name2  => "dr_target_name",            value2  => $dr_target_name, 
 			name3  => "dr_target_note",            value3  => $dr_target_note, 
-			name4  => "dr_target_ip_or_name",      value4  => $dr_target_ip_or_name, 
+			name4  => "dr_target_address",         value4  => $dr_target_address, 
 			name5  => "dr_target_tcp_port",        value5  => $dr_target_tcp_port, 
 			name6  => "dr_target_use_cache",       value6  => $dr_target_use_cache, 
 			name7  => "dr_target_store",           value7  => $dr_target_store, 
@@ -287,7 +291,7 @@ FROM
 			dr_target_uuid		=>	$dr_target_uuid,
 			dr_target_name		=>	$dr_target_name, 
 			dr_target_note		=>	$dr_target_note, 
-			dr_target_ip_or_name	=>	$dr_target_ip_or_name, 
+			dr_target_address	=>	$dr_target_address, 
 			dr_target_password	=>	$dr_target_password, 
 			dr_target_tcp_port	=>	$dr_target_tcp_port, 
 			dr_target_use_cache	=>	$dr_target_use_cache, 
@@ -1493,19 +1497,21 @@ sub insert_or_update_dr_jobs
 	
 	my $dr_job_uuid           = $parameter->{dr_job_uuid}           ? $parameter->{dr_job_uuid}           : "";
 	my $dr_job_dr_target_uuid = $parameter->{dr_job_dr_target_uuid} ? $parameter->{dr_job_dr_target_uuid} : "";
+	my $dr_job_anvil_uuid     = $parameter->{dr_job_anvil_uuid}     ? $parameter->{dr_job_anvil_uuid}     : "";
 	my $dr_job_name           = $parameter->{dr_job_name}           ? $parameter->{dr_job_name}           : "";
 	my $dr_job_note           = $parameter->{dr_job_note}           ? $parameter->{dr_job_note}           : "NULL";
 	my $dr_job_servers        = $parameter->{dr_job_servers}        ? $parameter->{dr_job_servers}        : "";
 	my $dr_job_auto_prune     = $parameter->{dr_job_auto_prune}     ? $parameter->{dr_job_auto_prune}     : "";
 	my $dr_job_schedule       = $parameter->{dr_job_schedule}       ? $parameter->{dr_job_schedule}       : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 		name1 => "dr_job_uuid",           value1 => $dr_job_uuid, 
 		name2 => "dr_job_dr_target_uuid", value2 => $dr_job_dr_target_uuid, 
-		name3 => "dr_job_name",           value3 => $dr_job_name, 
-		name4 => "dr_job_note",           value4 => $dr_job_note, 
-		name5 => "dr_job_servers",        value5 => $dr_job_servers, 
-		name6 => "dr_job_auto_prune",     value6 => $dr_job_auto_prune, 
-		name7 => "dr_job_schedule",       value7 => $dr_job_schedule, 
+		name3 => "dr_job_anvil_uuid",     value3 => $dr_job_anvil_uuid, 
+		name4 => "dr_job_name",           value4 => $dr_job_name, 
+		name5 => "dr_job_note",           value5 => $dr_job_note, 
+		name6 => "dr_job_servers",        value6 => $dr_job_servers, 
+		name7 => "dr_job_auto_prune",     value7 => $dr_job_auto_prune, 
+		name8 => "dr_job_schedule",       value8 => $dr_job_schedule, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If we don't have a UUID, see if we can find one for the given host UUID.
@@ -1553,6 +1559,7 @@ INSERT INTO
 (
     dr_job_uuid,
     dr_job_dr_target_uuid, 
+    dr_job_anvil_uuid, 
     dr_job_name, 
     dr_job_note, 
     dr_job_servers, 
@@ -1562,6 +1569,7 @@ INSERT INTO
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($dr_job_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($dr_job_dr_target_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_anvil_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($dr_job_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($dr_job_note).", 
     ".$an->data->{sys}{use_db_fh}->quote($dr_job_servers).", 
@@ -1582,6 +1590,7 @@ INSERT INTO
 		my $query = "
 SELECT 
     dr_job_dr_target_uuid, 
+    dr_job_anvil_uuid, 
     dr_job_name, 
     dr_job_note, 
     dr_job_servers, 
@@ -1605,22 +1614,25 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			my $old_dr_job_dr_target_uuid =         $row->[0];
-			my $old_dr_job_name           =         $row->[1];
-			my $old_dr_job_note           = defined $row->[2] ? $row->[2] : "";
-			my $old_dr_job_servers        =         $row->[3];
-			my $old_dr_job_auto_prune     =         $row->[4];
-			my $old_dr_job_schedule       =         $row->[5];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			my $old_dr_job_anvil_uuid     =         $row->[1];
+			my $old_dr_job_name           =         $row->[2];
+			my $old_dr_job_note           = defined $row->[3] ? $row->[3] : "";
+			my $old_dr_job_servers        =         $row->[4];
+			my $old_dr_job_auto_prune     =         $row->[5];
+			my $old_dr_job_schedule       =         $row->[6];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "old_dr_job_dr_target_uuid", value1 => $old_dr_job_dr_target_uuid, 
-				name2 => "old_dr_job_name",           value2 => $old_dr_job_name, 
-				name3 => "old_dr_job_note",           value3 => $old_dr_job_note, 
-				name4 => "old_dr_job_servers",        value4 => $old_dr_job_servers, 
-				name5 => "old_dr_job_auto_prune",     value5 => $old_dr_job_auto_prune, 
-				name6 => "old_dr_job_schedule",       value6 => $old_dr_job_schedule, 
+				name2 => "old_dr_job_anvil_uuid",     value2 => $old_dr_job_anvil_uuid, 
+				name3 => "old_dr_job_name",           value3 => $old_dr_job_name, 
+				name4 => "old_dr_job_note",           value4 => $old_dr_job_note, 
+				name5 => "old_dr_job_servers",        value5 => $old_dr_job_servers, 
+				name6 => "old_dr_job_auto_prune",     value6 => $old_dr_job_auto_prune, 
+				name7 => "old_dr_job_schedule",       value7 => $old_dr_job_schedule, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Anything change?
 			if (($old_dr_job_dr_target_uuid ne $dr_job_dr_target_uuid) or 
+			    ($old_dr_job_anvil_uuid     ne $dr_job_anvil_uuid)     or 
 			    ($old_dr_job_name           ne $dr_job_name)           or 
 			    ($old_dr_job_note           ne $dr_job_note)           or 
 			    ($old_dr_job_servers        ne $dr_job_servers)        or 
@@ -1633,6 +1645,7 @@ UPDATE
     dr_jobs 
 SET 
     dr_job_dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($dr_job_dr_target_uuid).", 
+    dr_job_anvil_uuid     = ".$an->data->{sys}{use_db_fh}->quote($dr_job_anvil_uuid).", 
     dr_job_name           = ".$an->data->{sys}{use_db_fh}->quote($dr_job_name).", 
     dr_job_note           = ".$an->data->{sys}{use_db_fh}->quote($dr_job_note).", 
     dr_job_servers        = ".$an->data->{sys}{use_db_fh}->quote($dr_job_servers).", 
@@ -1665,7 +1678,7 @@ sub insert_or_update_dr_targets
 	my $dr_target_uuid            = $parameter->{dr_target_uuid}            ? $parameter->{dr_target_uuid}            : "";
 	my $dr_target_name            = $parameter->{dr_target_name}            ? $parameter->{dr_target_name}            : "";
 	my $dr_target_note            = $parameter->{dr_target_note}            ? $parameter->{dr_target_note}            : "NULL";
-	my $dr_target_ip_or_name      = $parameter->{dr_target_ip_or_name}      ? $parameter->{dr_target_ip_or_name}      : "";
+	my $dr_target_address         = $parameter->{dr_target_address}         ? $parameter->{dr_target_address}         : "";
 	my $dr_target_password        = $parameter->{dr_target_password}        ? $parameter->{dr_target_password}        : "NULL";
 	my $dr_target_tcp_port        = $parameter->{dr_target_tcp_port}        ? $parameter->{dr_target_tcp_port}        : "NULL";
 	my $dr_target_use_cache       = $parameter->{dr_target_use_cache}       ? $parameter->{dr_target_use_cache}       : "";
@@ -1676,7 +1689,7 @@ sub insert_or_update_dr_targets
 		name1 => "dr_target_uuid",            value1 => $dr_target_uuid, 
 		name2 => "dr_target_name",            value2 => $dr_target_name, 
 		name3 => "dr_target_note",            value3 => $dr_target_note, 
-		name4 => "dr_target_ip_or_name",      value4 => $dr_target_ip_or_name, 
+		name4 => "dr_target_address",         value4 => $dr_target_address, 
 		name5 => "dr_target_tcp_port",        value5 => $dr_target_tcp_port, 
 		name6 => "dr_target_use_cache",       value6 => $dr_target_use_cache, 
 		name7 => "dr_target_store",           value7 => $dr_target_store, 
@@ -1729,7 +1742,7 @@ INSERT INTO
     dr_target_uuid,
     dr_target_name, 
     dr_target_note, 
-    dr_target_ip_or_name, 
+    dr_target_address, 
     dr_target_password, 
     dr_target_tcp_port, 
     dr_target_use_cache, 
@@ -1741,7 +1754,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($dr_target_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($dr_target_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($dr_target_note).", 
-    ".$an->data->{sys}{use_db_fh}->quote($dr_target_ip_or_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_address).", 
     ".$an->data->{sys}{use_db_fh}->quote($dr_target_password).", 
     ".$an->data->{sys}{use_db_fh}->quote($dr_target_tcp_port).", 
     ".$an->data->{sys}{use_db_fh}->quote($dr_target_use_cache).", 
@@ -1764,7 +1777,7 @@ INSERT INTO
 SELECT 
     dr_target_name, 
     dr_target_note, 
-    dr_target_ip_or_name, 
+    dr_target_address, 
     dr_target_password, 
     dr_target_tcp_port, 
     dr_target_use_cache, 
@@ -1790,7 +1803,7 @@ WHERE
 		{
 			my $old_dr_target_name            =         $row->[0];
 			my $old_dr_target_note            = defined $row->[1] ? $row->[1] : ""; 
-			my $old_dr_target_ip_or_name      =         $row->[2]; 
+			my $old_dr_target_address         =         $row->[2]; 
 			my $old_dr_target_password        = defined $row->[3] ? $row->[3] : ""; 
 			my $old_dr_target_tcp_port        = defined $row->[4] ? $row->[4] : ""; 
 			my $old_dr_target_use_cache       =         $row->[5]; 
@@ -1800,7 +1813,7 @@ WHERE
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "old_dr_target_name",            value1 => $old_dr_target_name, 
 				name2 => "old_dr_target_note",            value2 => $old_dr_target_note, 
-				name3 => "old_dr_target_ip_or_name",      value3 => $old_dr_target_ip_or_name, 
+				name3 => "old_dr_target_address",         value3 => $old_dr_target_address, 
 				name4 => "old_dr_target_tcp_port",        value4 => $old_dr_target_tcp_port, 
 				name5 => "old_dr_target_use_cache",       value5 => $old_dr_target_use_cache, 
 				name6 => "old_dr_target_store",           value6 => $old_dr_target_store, 
@@ -1814,7 +1827,7 @@ WHERE
 			# Anything change?
 			if (($old_dr_target_name            ne $dr_target_name)       or 
 			    ($old_dr_target_note            ne $dr_target_note)       or 
-			    ($old_dr_target_ip_or_name      ne $dr_target_ip_or_name) or 
+			    ($old_dr_target_address         ne $dr_target_address)    or 
 			    ($old_dr_target_password        ne $dr_target_password)   or 
 			    ($old_dr_target_tcp_port        ne $dr_target_tcp_port)   or 
 			    ($old_dr_target_use_cache       ne $dr_target_use_cache)  or 
@@ -1829,7 +1842,7 @@ UPDATE
 SET 
     dr_target_name            = ".$an->data->{sys}{use_db_fh}->quote($dr_target_name).", 
     dr_target_note            = ".$an->data->{sys}{use_db_fh}->quote($dr_target_note).", 
-    dr_target_ip_or_name      = ".$an->data->{sys}{use_db_fh}->quote($dr_target_ip_or_name).", 
+    dr_target_address         = ".$an->data->{sys}{use_db_fh}->quote($dr_target_address).", 
     dr_target_password        = ".$an->data->{sys}{use_db_fh}->quote($dr_target_password).", 
     dr_target_tcp_port        = ".$an->data->{sys}{use_db_fh}->quote($dr_target_tcp_port).", 
     dr_target_use_cache       = ".$an->data->{sys}{use_db_fh}->quote($dr_target_use_cache).", 

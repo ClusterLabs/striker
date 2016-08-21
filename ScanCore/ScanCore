@@ -4482,6 +4482,8 @@ sub update_db
 		update_db_ram_used($an);
 		update_db_shared($an);
 		update_db_servers($an);
+		update_db_dr_targets($an);
+		update_db_dr_jobs($an);
 		update_db_manifests($an);
 		update_db_variables($an);
 		
@@ -7460,6 +7462,569 @@ INSERT INTO
 				} # Seen temperature_agent_name?
 			} # foreach my $id 
 		} # foreach my $temperature_agent_name ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'dr_targets' table.
+sub update_db_dr_targets
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_dr_targets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'dr_target' table records
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		### NOTE: This table is special in that it does NOT link back to a specific host.
+		# Read in the history schema
+		my $query = "
+SELECT 
+    dr_target_uuid, 
+    dr_target_name, 
+    dr_target_note, 
+    dr_target_address, 
+    dr_target_password, 
+    dr_target_tcp_port, 
+    dr_target_use_cache, 
+    dr_target_store, 
+    dr_target_copies, 
+    dr_target_bandwidth_limit, 
+    modified_date 
+FROM 
+    history.dr_targets 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $dr_target_uuid            =         $row->[0]; 
+			my $dr_target_name            =         $row->[1];
+			my $dr_target_note            = defined $row->[2] ? $row->[2] : ""; 
+			my $dr_target_address         =         $row->[3]; 
+			my $dr_target_password        = defined $row->[4] ? $row->[4] : ""; 
+			my $dr_target_tcp_port        = defined $row->[5] ? $row->[5] : ""; 
+			my $dr_target_use_cache       =         $row->[6]; 
+			my $dr_target_store           =         $row->[7]; 
+			my $dr_target_copies          =         $row->[8]; 
+			my $dr_target_bandwidth_limit = defined $row->[9] ? $row->[9] : ""; 
+			my $modified_date             =         $row->[10];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+				name1  => "dr_target_uuid",            value1  => $dr_target_uuid, 
+				name2  => "dr_target_name",            value2  => $dr_target_name, 
+				name3  => "dr_target_note",            value3  => $dr_target_note, 
+				name4  => "dr_target_address",         value4  => $dr_target_address, 
+				name5  => "dr_target_tcp_port",        value5  => $dr_target_tcp_port, 
+				name6  => "dr_target_use_cache",       value6  => $dr_target_use_cache, 
+				name7  => "dr_target_store",           value7  => $dr_target_store, 
+				name8  => "dr_target_copies",          value8  => $dr_target_copies, 
+				name9  => "dr_target_bandwidth_limit", value9  => $dr_target_bandwidth_limit, 
+				name10 => "modified_date",             value10 => $modified_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "dr_target_password", value1 => $dr_target_password, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid} = {
+				dr_target_name		=>	$dr_target_name, 
+				dr_target_note		=>	$dr_target_note, 
+				dr_target_address	=>	$dr_target_address, 
+				dr_target_password	=>	$dr_target_password, 
+				dr_target_tcp_port	=>	$dr_target_tcp_port, 
+				dr_target_use_cache	=>	$dr_target_use_cache, 
+				dr_target_store		=>	$dr_target_store, 
+				dr_target_copies	=>	$dr_target_copies, 
+				dr_target_bandwidth_limit =>	$dr_target_bandwidth_limit, 
+			};
+			
+			$an->data->{db_data}{$id}{dr_targets}{dr_target_uuid}{$dr_target_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{dr_targets}{dr_target_uuid}{$dr_target_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid} = {
+				dr_target_name		=>	$dr_target_name, 
+				dr_target_note		=>	$dr_target_note, 
+				dr_target_address	=>	$dr_target_address, 
+				dr_target_password	=>	$dr_target_password, 
+				dr_target_tcp_port	=>	$dr_target_tcp_port, 
+				dr_target_use_cache	=>	$dr_target_use_cache, 
+				dr_target_store		=>	$dr_target_store, 
+				dr_target_copies	=>	$dr_target_copies, 
+				dr_target_bandwidth_limit =>	$dr_target_bandwidth_limit, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{dr_targets}{modified_date}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $dr_target_uuid (keys %{$an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}})
+		{
+			my $dr_target_name            = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_name}; 
+			my $dr_target_note            = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_note}; 
+			my $dr_target_address         = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_address}; 
+			my $dr_target_password        = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_password}; 
+			my $dr_target_tcp_port        = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_tcp_port}; 
+			my $dr_target_use_cache       = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_use_cache}; 
+			my $dr_target_store           = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_store}; 
+			my $dr_target_copies          = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_copies}; 
+			my $dr_target_bandwidth_limit = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_bandwidth_limit}; 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "dr_target_uuid",            value1 => $dr_target_uuid, 
+				name2 => "dr_target_name",            value2 => $dr_target_name, 
+				name3 => "dr_target_note",            value3 => $dr_target_note, 
+				name4 => "dr_target_address",         value4 => $dr_target_address, 
+				name5 => "dr_target_tcp_port",        value5 => $dr_target_tcp_port, 
+				name6 => "dr_target_use_cache",       value6 => $dr_target_use_cache, 
+				name7 => "dr_target_store",           value7 => $dr_target_store, 
+				name8 => "dr_target_copies",          value8 => $dr_target_copies, 
+				name9 => "dr_target_bandwidth_limit", value9 => $dr_target_bandwidth_limit, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'dr_target_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::dr_target::dr_target_uuid::${dr_target_uuid}::seen", value1 => $an->data->{db_data}{$id}{dr_targets}{dr_target_uuid}{$dr_target_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{dr_targets}{dr_target_uuid}{$dr_target_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{dr_targets}{dr_target_uuid}{$dr_target_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::dr_target::dr_target_uuid::${dr_target_uuid}::exists", value1 => $an->data->{db_data}{$id}{dr_targets}{dr_target_uuid}{$dr_target_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{dr_targets}{dr_target_uuid}{$dr_target_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::dr_target::modified_date::${modified_date}::dr_target_uuid::${dr_target_uuid}", value1 => $an->data->{db_data}{$id}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.dr_targets 
+SET
+    dr_target_name            = ".$an->data->{sys}{use_db_fh}->quote($dr_target_name).", 
+    dr_target_note            = ".$an->data->{sys}{use_db_fh}->quote($dr_target_note).", 
+    dr_target_address         = ".$an->data->{sys}{use_db_fh}->quote($dr_target_address).", 
+    dr_target_password        = ".$an->data->{sys}{use_db_fh}->quote($dr_target_password).", 
+    dr_target_tcp_port        = ".$an->data->{sys}{use_db_fh}->quote($dr_target_tcp_port).", 
+    dr_target_use_cache       = ".$an->data->{sys}{use_db_fh}->quote($dr_target_use_cache).", 
+    dr_target_store           = ".$an->data->{sys}{use_db_fh}->quote($dr_target_store).", 
+    dr_target_copies          = ".$an->data->{sys}{use_db_fh}->quote($dr_target_copies).", 
+    dr_target_bandwidth_limit = ".$an->data->{sys}{use_db_fh}->quote($dr_target_bandwidth_limit).", 
+    modified_date             = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    dr_target_uuid            = ".$an->data->{sys}{use_db_fh}->quote($dr_target_uuid)." 
+;";
+							# Now record the query in the array
+							$query =~ s/'NULL'/NULL/g;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.dr_targets 
+(
+    dr_target_uuid,
+    dr_target_name, 
+    dr_target_note, 
+    dr_target_address, 
+    dr_target_password, 
+    dr_target_tcp_port, 
+    dr_target_use_cache, 
+    dr_target_store, 
+    dr_target_copies, 
+    dr_target_bandwidth_limit, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_address).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_password).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_tcp_port).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_use_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_store).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_copies).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_bandwidth_limit).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$query =~ s/'NULL'/NULL/g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'dr_target_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.dr_targets 
+(
+    dr_target_uuid,
+    dr_target_name, 
+    dr_target_note, 
+    dr_target_address, 
+    dr_target_password, 
+    dr_target_tcp_port, 
+    dr_target_use_cache, 
+    dr_target_store, 
+    dr_target_copies, 
+    dr_target_bandwidth_limit, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_address).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_password).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_tcp_port).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_use_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_store).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_copies).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_target_bandwidth_limit).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$query =~ s/'NULL'/NULL/g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen dr_target_uuid?
+			} # foreach my $id 
+		} # foreach my $dr_target_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'dr_jobs' table.
+sub update_db_dr_jobs
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_dr_jobs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'dr_job' table records
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		### NOTE: This table is special in that it does NOT link back to a specific host.
+		# Read in the history schema
+		my $query = "
+SELECT 
+    dr_job_uuid, 
+    dr_job_dr_target_uuid, 
+    dr_job_anvil_uuid, 
+    dr_job_name, 
+    dr_job_note, 
+    dr_job_servers, 
+    dr_job_auto_prune, 
+    dr_job_schedule, 
+    modified_date 
+FROM 
+    history.dr_jobs 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $dr_job_uuid           =         $row->[0]; 
+			my $dr_job_dr_target_uuid =         $row->[1];
+			my $dr_job_anvil_uuid     =         $row->[2];
+			my $dr_job_name           =         $row->[3];
+			my $dr_job_note           = defined $row->[4] ? $row->[4] : "";
+			my $dr_job_servers        =         $row->[5];
+			my $dr_job_auto_prune     =         $row->[6];
+			my $dr_job_schedule       =         $row->[7];
+			my $modified_date         =         $row->[8];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+				name1 => "dr_job_uuid",           value1 => $dr_job_uuid, 
+				name2 => "dr_job_dr_target_uuid", value2 => $dr_job_dr_target_uuid, 
+				name3 => "dr_job_anvil_uuid",     value3 => $dr_job_anvil_uuid, 
+				name4 => "dr_job_name",           value4 => $dr_job_name, 
+				name5 => "dr_job_note",           value5 => $dr_job_note, 
+				name6 => "dr_job_servers",        value6 => $dr_job_servers, 
+				name7 => "dr_job_auto_prune",     value7 => $dr_job_auto_prune, 
+				name8 => "dr_job_schedule",       value8 => $dr_job_schedule, 
+				name9 => "modified_date",         value9 => $modified_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid} = {
+				dr_job_dr_target_uuid	=>	$dr_job_dr_target_uuid, 
+				dr_job_anvil_uuid	=>	$dr_job_anvil_uuid, 
+				dr_job_name		=>	$dr_job_name, 
+				dr_job_note		=>	$dr_job_note, 
+				dr_job_servers		=>	$dr_job_servers, 
+				dr_job_auto_prune	=>	$dr_job_auto_prune, 
+				dr_job_schedule		=>	$dr_job_schedule, 
+			};
+			
+			$an->data->{db_data}{$id}{dr_jobs}{dr_job_uuid}{$dr_job_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{dr_jobs}{dr_job_uuid}{$dr_job_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid} = {
+				dr_job_dr_target_uuid	=>	$dr_job_dr_target_uuid, 
+				dr_job_anvil_uuid	=>	$dr_job_anvil_uuid, 
+				dr_job_name		=>	$dr_job_name, 
+				dr_job_note		=>	$dr_job_note, 
+				dr_job_servers		=>	$dr_job_servers, 
+				dr_job_auto_prune	=>	$dr_job_auto_prune, 
+				dr_job_schedule		=>	$dr_job_schedule, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{dr_jobs}{modified_date}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $dr_job_uuid (keys %{$an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}})
+		{
+			my $dr_job_dr_target_uuid = $an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}{dr_job_dr_target_uuid}; 
+			my $dr_job_anvil_uuid     = $an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}{dr_job_anvil_uuid}; 
+			my $dr_job_name           = $an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}{dr_job_name}; 
+			my $dr_job_note           = $an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}{dr_job_note}; 
+			my $dr_job_servers        = $an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}{dr_job_servers}; 
+			my $dr_job_auto_prune     = $an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}{dr_job_auto_prune}; 
+			my $dr_job_schedule       = $an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}{dr_job_schedule}; 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "dr_job_uuid",           value1 => $dr_job_uuid, 
+				name2 => "dr_job_dr_target_uuid", value2 => $dr_job_dr_target_uuid, 
+				name3 => "dr_job_anvil_uuid",     value3 => $dr_job_anvil_uuid, 
+				name4 => "dr_job_name",           value4 => $dr_job_name, 
+				name5 => "dr_job_note",           value5 => $dr_job_note, 
+				name6 => "dr_job_servers",        value6 => $dr_job_servers, 
+				name7 => "dr_job_auto_prune",     value7 => $dr_job_auto_prune, 
+				name8 => "dr_job_schedule",       value8 => $dr_job_schedule, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'dr_job_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::dr_job::dr_job_uuid::${dr_job_uuid}::seen", value1 => $an->data->{db_data}{$id}{dr_jobs}{dr_job_uuid}{$dr_job_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{dr_jobs}{dr_job_uuid}{$dr_job_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{dr_jobs}{dr_job_uuid}{$dr_job_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::dr_job::dr_job_uuid::${dr_job_uuid}::exists", value1 => $an->data->{db_data}{$id}{dr_jobs}{dr_job_uuid}{$dr_job_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{dr_jobs}{dr_job_uuid}{$dr_job_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::dr_job::modified_date::${modified_date}::dr_job_uuid::${dr_job_uuid}", value1 => $an->data->{db_data}{$id}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.dr_jobs 
+SET
+    dr_job_dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($dr_job_dr_target_uuid).", 
+    dr_job_anvil_uuid     = ".$an->data->{sys}{use_db_fh}->quote($dr_job_anvil_uuid).", 
+    dr_job_name           = ".$an->data->{sys}{use_db_fh}->quote($dr_job_name).", 
+    dr_job_note           = ".$an->data->{sys}{use_db_fh}->quote($dr_job_note).", 
+    dr_job_servers        = ".$an->data->{sys}{use_db_fh}->quote($dr_job_servers).", 
+    dr_job_auto_prune     = ".$an->data->{sys}{use_db_fh}->quote($dr_job_auto_prune).", 
+    dr_job_schedule       = ".$an->data->{sys}{use_db_fh}->quote($dr_job_schedule).", 
+    modified_date         = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    dr_job_uuid           = ".$an->data->{sys}{use_db_fh}->quote($dr_job_uuid)." 
+;";
+							# Now record the query in the array
+							$query =~ s/'NULL'/NULL/g;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.dr_jobs 
+(
+    dr_job_uuid,
+    dr_job_dr_target_uuid, 
+    dr_job_anvil_uuid, 
+    dr_job_name, 
+    dr_job_note, 
+    dr_job_servers, 
+    dr_job_auto_prune, 
+    dr_job_schedule, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_dr_target_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_anvil_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_servers).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_auto_prune).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_schedule).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$query =~ s/'NULL'/NULL/g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'dr_job_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.dr_jobs 
+(
+    dr_job_uuid,
+    dr_job_dr_target_uuid, 
+    dr_job_anvil_uuid, 
+    dr_job_name, 
+    dr_job_note, 
+    dr_job_servers, 
+    dr_job_auto_prune, 
+    dr_job_schedule, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_dr_target_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_anvil_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_servers).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_auto_prune).", 
+    ".$an->data->{sys}{use_db_fh}->quote($dr_job_schedule).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$query =~ s/'NULL'/NULL/g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen dr_job_uuid?
+			} # foreach my $id 
+		} # foreach my $dr_job_uuid ...
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.

@@ -130,11 +130,22 @@ sub load_dr_job_form
 			{
 				$an->data->{cgi}{dr_job_uuid}           = $hash_ref->{dr_job_uuid};
 				$an->data->{cgi}{dr_job_dr_target_uuid} = $hash_ref->{dr_job_dr_target_uuid};
+				$an->data->{cgi}{dr_job_anvil_uuid}     = $hash_ref->{dr_job_anvil_uuid};
 				$an->data->{cgi}{dr_job_name}           = $hash_ref->{dr_job_name};
 				$an->data->{cgi}{dr_job_note}           = $hash_ref->{dr_job_note};
 				$an->data->{cgi}{dr_job_servers}        = $hash_ref->{dr_job_servers};
 				$an->data->{cgi}{dr_job_auto_prune}     = $hash_ref->{dr_job_auto_prune};
 				$an->data->{cgi}{dr_job_schedule}       = $hash_ref->{dr_job_schedule};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+					name1 => "cgi::dr_job_uuid",           value1 => $an->data->{cgi}{dr_job_uuid},
+					name2 => "cgi::dr_job_dr_target_uuid", value2 => $an->data->{cgi}{dr_job_dr_target_uuid},
+					name3 => "cgi::dr_job_anvil_uuid",     value3 => $an->data->{cgi}{dr_job_anvil_uuid},
+					name4 => "cgi::dr_job_name",           value4 => $an->data->{cgi}{dr_job_name},
+					name5 => "cgi::dr_job_note",           value5 => $an->data->{cgi}{dr_job_note},
+					name6 => "cgi::dr_job_servers",        value6 => $an->data->{cgi}{dr_job_servers},
+					name7 => "cgi::dr_job_auto_prune",     value7 => $an->data->{cgi}{dr_job_auto_prune},
+					name8 => "cgi::dr_job_schedule",       value8 => $an->data->{cgi}{dr_job_schedule},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -143,11 +154,22 @@ sub load_dr_job_form
 		# Blank the values
 		$an->data->{cgi}{dr_job_uuid}           = "";
 		$an->data->{cgi}{dr_job_dr_target_uuid} = "";
+		$an->data->{cgi}{dr_job_anvil_uuid}     = "";
 		$an->data->{cgi}{dr_job_name}           = "";
 		$an->data->{cgi}{dr_job_note}           = "";
 		$an->data->{cgi}{dr_job_servers}        = "";
 		$an->data->{cgi}{dr_job_auto_prune}     = "";
 		$an->data->{cgi}{dr_job_schedule}       = "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "cgi::dr_job_uuid",           value1 => $an->data->{cgi}{dr_job_uuid},
+			name2 => "cgi::dr_job_dr_target_uuid", value2 => $an->data->{cgi}{dr_job_dr_target_uuid},
+			name3 => "cgi::dr_job_anvil_uuid",     value3 => $an->data->{cgi}{dr_job_anvil_uuid},
+			name4 => "cgi::dr_job_name",           value4 => $an->data->{cgi}{dr_job_name},
+			name5 => "cgi::dr_job_note",           value5 => $an->data->{cgi}{dr_job_note},
+			name6 => "cgi::dr_job_servers",        value6 => $an->data->{cgi}{dr_job_servers},
+			name7 => "cgi::dr_job_auto_prune",     value7 => $an->data->{cgi}{dr_job_auto_prune},
+			name8 => "cgi::dr_job_schedule",       value8 => $an->data->{cgi}{dr_job_schedule},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -174,7 +196,7 @@ sub load_dr_target_form
 				$an->data->{cgi}{dr_target_uuid}            = $hash_ref->{dr_target_uuid};
 				$an->data->{cgi}{dr_target_name}            = $hash_ref->{dr_target_name};
 				$an->data->{cgi}{dr_target_note}            = $hash_ref->{dr_target_note};
-				$an->data->{cgi}{dr_target_ip_or_name}      = $hash_ref->{dr_target_ip_or_name};
+				$an->data->{cgi}{dr_target_address}         = $hash_ref->{dr_target_address};
 				$an->data->{cgi}{dr_target_password}        = $hash_ref->{dr_target_password};
 				$an->data->{cgi}{dr_target_tcp_port}        = $hash_ref->{dr_target_tcp_port};
 				$an->data->{cgi}{dr_target_use_cache}       = $hash_ref->{dr_target_use_cache};
@@ -192,7 +214,7 @@ sub load_dr_target_form
 					name1  => "cgi::dr_target_uuid",            value1  => $an->data->{cgi}{dr_target_uuid},
 					name2  => "cgi::dr_target_name",            value2  => $an->data->{cgi}{dr_target_name},
 					name3  => "cgi::dr_target_note",            value3  => $an->data->{cgi}{dr_target_note},
-					name4  => "cgi::dr_target_ip_or_name",      value4  => $an->data->{cgi}{dr_target_ip_or_name},
+					name4  => "cgi::dr_target_address",         value4  => $an->data->{cgi}{dr_target_address},
 					name5  => "cgi::dr_target_tcp_port",        value5  => $an->data->{cgi}{dr_target_tcp_port},
 					name6  => "cgi::dr_target_use_cache",       value6  => $an->data->{cgi}{dr_target_use_cache},
 					name7  => "cgi::dr_target_store",           value7  => $an->data->{cgi}{dr_target_store},
@@ -213,7 +235,7 @@ sub load_dr_target_form
 		$an->data->{cgi}{dr_target_uuid}            = "";
 		$an->data->{cgi}{dr_target_name}            = "";
 		$an->data->{cgi}{dr_target_note}            = "";
-		$an->data->{cgi}{dr_target_ip_or_name}      = "";
+		$an->data->{cgi}{dr_target_address}         = "";
 		$an->data->{cgi}{dr_target_password}        = "";
 		$an->data->{cgi}{dr_target_tcp_port}        = "22";
 		$an->data->{cgi}{dr_target_use_cache}       = "";
@@ -225,7 +247,7 @@ sub load_dr_target_form
 			name1  => "cgi::dr_target_uuid",            value1  => $an->data->{cgi}{dr_target_uuid},
 			name2  => "cgi::dr_target_name",            value2  => $an->data->{cgi}{dr_target_name},
 			name3  => "cgi::dr_target_note",            value3  => $an->data->{cgi}{dr_target_note},
-			name4  => "cgi::dr_target_ip_or_name",      value4  => $an->data->{cgi}{dr_target_ip_or_name},
+			name4  => "cgi::dr_target_address",         value4  => $an->data->{cgi}{dr_target_address},
 			name5  => "cgi::dr_target_password",        value5  => $an->data->{cgi}{dr_target_password},
 			name6  => "cgi::dr_target_tcp_port",        value6  => $an->data->{cgi}{dr_target_tcp_port},
 			name7  => "cgi::dr_target_use_cache",       value7  => $an->data->{cgi}{dr_target_use_cache},
@@ -868,7 +890,7 @@ sub save_dr_target_form
 	my $notice_message = "";
 	
 	# Do I have an dr_target_name/IP?
-	if (not $an->data->{cgi}{dr_target_ip_or_name})
+	if (not $an->data->{cgi}{dr_target_address})
 	{
 		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0317!#" }});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -876,7 +898,7 @@ sub save_dr_target_form
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		push @{$notices},      $notice;
-		push @{$error_fields}, "dr_target_ip_or_name";
+		push @{$error_fields}, "dr_target_address";
 	}
 	# Do I have at a target name?
 	if (not $an->data->{cgi}{dr_target_name})
@@ -1517,6 +1539,7 @@ sub save_dr_job
 	$an->data->{cgi}{dr_job_uuid} = $an->ScanCore->insert_or_update_dr_jobs({
 		dr_job_uuid		=>	$an->data->{cgi}{dr_job_uuid},
 		dr_job_dr_target_uuid	=>	$an->data->{cgi}{dr_job_dr_target_uuid}, 
+		dr_job_anvil_uuid	=>	$an->data->{cgi}{dr_job_anvil_uuid}, 
 		dr_job_name		=>	$an->data->{cgi}{dr_job_name},
 		dr_job_note		=>	$an->data->{cgi}{dr_job_note}, 
 		dr_job_servers		=>	$an->data->{cgi}{dr_job_servers}, 
@@ -1542,7 +1565,7 @@ sub save_dr_target
 		dr_target_uuid		=>	$an->data->{cgi}{dr_target_uuid},
 		dr_target_name		=>	$an->data->{cgi}{dr_target_name},
 		dr_target_note		=>	$an->data->{cgi}{dr_target_note}, 
-		dr_target_ip_or_name	=>	$an->data->{cgi}{dr_target_ip_or_name}, 
+		dr_target_address	=>	$an->data->{cgi}{dr_target_address}, 
 		dr_target_password	=>	$an->data->{cgi}{dr_target_password}, 
 		dr_target_tcp_port	=>	$an->data->{cgi}{dr_target_tcp_port}, 
 		dr_target_use_cache	=>	$an->data->{cgi}{dr_target_use_cache}, 
@@ -2005,7 +2028,7 @@ sub confirm_action
 			url	=>	"?task=dr_target&dr_target_uuid=".$an->data->{cgi}{dr_target_uuid}."&delete=true&confirm=true",
 		}, no_comment => 1});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "dr_target_data->dr_target_ip_or_name", value1 => $dr_target_data->{dr_target_ip_or_name},
+			name1 => "dr_target_data->dr_target_address", value1 => $dr_target_data->{dr_target_address},
 		}, file => $THIS_FILE, line => __LINE__});
 		$notice_message = $an->Web->template({file => "web.html", template => "confirm-message", replace => {
 				title		=>	"#!string!title_0195!#",
@@ -4821,7 +4844,7 @@ sub dr_target_menu
 			column1_class	=>	"highlight_row_bold",
 			column1		=>	"#!string!row_0317!#",
 			column2_class	=>	"input_select",
-			column2		=>	"<input type=\"text\" name=\"dr_target_ip_or_name\" id=\"dr_target_ip_or_name\" value=\"".$an->data->{cgi}{dr_target_ip_or_name}."\" style=\"width: ${width}px;\">",
+			column2		=>	"<input type=\"text\" name=\"dr_target_address\" id=\"dr_target_address\" value=\"".$an->data->{cgi}{dr_target_address}."\" style=\"width: ${width}px;\">",
 			column3_class	=>	"input_explain",
 			column3		=>	"#!string!explain_0217!#",
 			column4_class	=>	"input_url",
