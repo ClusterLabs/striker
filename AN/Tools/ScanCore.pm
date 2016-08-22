@@ -83,7 +83,7 @@ sub get_anvils
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_anvils" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_anvils" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -3321,11 +3321,15 @@ sub parse_anvil_data
 		my $anvil_owner_uuid = $hash_ref->{anvil_owner_uuid};
 		my $anvil_smtp_uuid  = defined $hash_ref->{anvil_smtp_uuid} ? $hash_ref->{anvil_smtp_uuid} : "";
 		
-		if (($anvil_count == 1) && (not $an->data->{cgi}{anvil_uuid}))
+		### NOTE: This is set before we read the CGI variables. So we'll mark this as having been set
+		###       here so that, if the CGI variable was set, we'll override this.
+		if ($anvil_count == 1)
 		{
-			$an->data->{cgi}{anvil_uuid} = $anvil_uuid;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid}, 
+			$an->data->{cgi}{anvil_uuid}     = $anvil_uuid;
+			$an->data->{sys}{anvil_uuid_set} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "cgi::anvil_uuid",     value1 => $an->data->{cgi}{anvil_uuid}, 
+				name2 => "sys::anvil_uuid_set", value2 => $an->data->{sys}{anvil_uuid_set}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		

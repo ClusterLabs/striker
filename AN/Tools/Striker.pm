@@ -4527,7 +4527,7 @@ sub _confirm_provision_server
 		select_ram_suffix	=>	$select_ram_suffix,
 		select_cpu_cores	=>	$select_cpu_cores,
 		selects			=>	$say_selects,
-		anvil			=>	$an->data->{cgi}{anvil_uuid},
+		anvil_uuid		=>	$an->data->{cgi}{anvil_uuid},
 		task			=>	$an->data->{cgi}{task},
 		max_ram			=>	$an->data->{cgi}{max_ram},
 		max_cores		=>	$an->data->{cgi}{max_cores},

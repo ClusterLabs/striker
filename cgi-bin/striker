@@ -72,7 +72,7 @@ $an->Storage->read_hosts();
 $an->Storage->read_ssh_config();
 
 # Read in our Anvil! systems. If only one anvil is found, it will be auto-set in 'cgi::anvil'.
-$an->ScanCore->parse_anvil_data();
+#$an->ScanCore->parse_anvil_data();
 
 # Check for passed-in CGI variables.
 $an->Web->check_all_cgi();
@@ -132,7 +132,7 @@ else
 	print $an->Web->template({file => "configure.html", template => "redirect-to-configure"});
 }
 
-exit (0);
+$an->nice_exit({exit_code => 0});
 
 
 ### NOTE: These two functions are duplicated in 'mediaLibrary' and 'configure' to allow Common.pm to be 
