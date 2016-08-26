@@ -877,6 +877,63 @@ CREATE TRIGGER trigger_temperature
 	FOR EACH ROW EXECUTE PROCEDURE history_temperature();
 
 
+-- This stores weighted health of nodes. Agents can set one or more health values. After a scan sweep 
+-- completes, ScanCore will sum these weights and the node with the *highest* value is considered the
+-- *least* healthy and any servers on it will be migrated to the peer.
+CREATE TABLE health (
+	health_uuid		uuid				primary key,
+	health_host_uuid	uuid				not null,			-- The name of the node or dashboard that this health came from.
+	health_agent_name	text				not null,
+	health_source_name	text				not null,
+	health_source_weight	numeric				not null,
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(health_host_uuid) REFERENCES hosts(host_uuid)
+);
+ALTER TABLE health OWNER TO #!variable!user!#;
+
+CREATE TABLE history.health (
+	history_id		bigserial,
+	health_uuid		uuid				not null,
+	health_host_uuid	uuid				not null,
+	health_agent_name	text				not null,
+	health_source_name	text				not null,
+	health_source_weight	numeric				not null,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.health OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_health() RETURNS trigger
+AS $$
+DECLARE
+	history_health RECORD;
+BEGIN
+	SELECT INTO history_health * FROM health WHERE health_uuid = new.health_uuid;
+	INSERT INTO history.health
+		(health_uuid,
+		 health_host_uuid,
+		 health_agent_name,
+		 health_source_name,
+		 health_source_weight,
+		 modified_date)
+	VALUES
+		(history_health.health_uuid,
+		 history_health.health_host_uuid,
+		 history_health.health_agent_name,
+		 history_health.health_source_name,
+		 history_health.health_source_weight,
+		 history_health.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_health() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_health
+	AFTER INSERT OR UPDATE ON health
+	FOR EACH ROW EXECUTE PROCEDURE history_health();
+
+
 -- This stores information about the scan agents on this system
 CREATE TABLE agents (
 	agent_uuid		uuid				primary key,

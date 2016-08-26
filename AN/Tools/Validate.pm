@@ -19,6 +19,10 @@ my $THIS_FILE = "Validate.pm";
 # is_url
 # is_uuid
 
+### NOTE: In 'configure' -> save_dr_job_form() is a complete sanity check of crontab strings. It needs to
+###       know why a crontab string is invalid so we didn't write it here (yet). If we need to validate 
+###       crontab strings later, use it as the basis for 'is_crontab'.
+
 
 #############################################################################################################
 # House keeping methods                                                                                     #

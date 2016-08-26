@@ -1949,6 +1949,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0490"><![CDATA[The: [<span class="highlight_detail">#!variable!anvil_name!#</span>] install manifest has been deleted.]]></key>
 		<key name="message_0491"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!target!#</span>] disaster recovery target?]]></key>
 		<key name="message_0492"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!dr_target!#</span>] DR target failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!count!#</span>] DR target(s) remained.]]></key>
+		<key name="message_0493"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!count!#</span>] DR job(s) remained.]]></key>
+		<key name="message_0494"><![CDATA[The: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job has been deleted.]]></key>
+		<key name="message_0495"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!job!#</span>] disaster recovery job?]]></key>
+		<key name="message_0496"><![CDATA[The schedule nickname '<span class="highlight_detail">#!data!cgi::dr_job_schedule!#</span>' is a valid cron table nickname, but it is not supported by Striker.]]></key>
+		<key name="message_0497"><![CDATA[The schedule string: [<span class="highlight_detail">#!data!cgi::dr_job_schedule!#</span>] is malformed. There should be five sections (separated by spaces).]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

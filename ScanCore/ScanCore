@@ -76,6 +76,7 @@ my $an = AN::Tools->new({data =>
 				load_shedding		=>	0,
 				power_shutdown		=>	0,
 				thermal_shutdown	=>	0,
+				preventative_migration	=>	0,
 			},
 			# This gets set to 'dashboard' if we determine this is a dashboard machine.
 			i_am_a			=>	"",
@@ -1651,8 +1652,10 @@ WHERE
 	return(0);
 }
 
-# This will check the 'power' and 'temperature' tables. If the UPSes found in the local '/etc/hosts' file are
-# both running on batteries, their remaining run time is checked. 
+# This will check the 'power', 'temperature' and 'health' tables. If the UPSes found in the local 
+# '/etc/hosts' file are both running on batteries, their remaining run time is checked. If the sum of the 
+# health weights on one node exceeds the other node, hosted servers will be live-migrated to the healthier
+# (lower sum weight) node.
 sub do_post_scan_node_tasks
 {
 	my ($an) = @_;
@@ -1697,9 +1700,20 @@ sub do_post_scan_node_tasks
 		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Check the node's health. If we're healthier than our peer, we'll live migrate nodes off. If we're 
+	# sicker than our peer, we will do nothing (so that we don't get dueling migration commands).
+	# Values are:
+	# 1 = Both nodes have the same health.
+	# 2 = We're healther than our peer (migrate)
+	# 3 = We're sicker than our peer (do nothing)
+	my ($node_health_ok) = check_node_health($an);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_health_ok", value1 => $node_health_ok,
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	# OK, if both are '1', make sure our health is set to 'OK'. If either returned '2', make sure our 
 	# health is set to 'Warning'. If either returned '3', set the health to 'Critical' and set the hosts
-	#  -> host_emergency_stop to TRUE and then call 'anvil-safe-stop --local'.
+	# -> host_emergency_stop to TRUE and then call 'anvil-safe-stop --local'.
 	if (($node_power_ok eq "3") or ($node_temperature_ok eq "3"))
 	{
 		# Set the health to 'Critical'.
@@ -2009,6 +2023,109 @@ WHERE
 			$an->data->{sys}{reported}{temperature_is_warning}  = 0;
 		}
 	}
+	
+	# Finally, migrate servers if necessary. 
+	# 1 = Both nodes have the same health.
+	# 2 = We're healther than our peer (migrate)
+	# 3 = We're sicker than our peer (do nothing)
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_health_ok",                            value1 => $node_health_ok, 
+		name2 => "scancore::disable::preventative_migration", value2 => $an->data->{scancore}{disable}{preventative_migration}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($node_health_ok == 2) && (not $an->data->{scancore}{disable}{preventative_migration}))
+	{
+		# Migrate all servers to us.
+		migrate_all_servers_to_here($an);
+	}
+	
+	return(0);
+}
+
+### NOTE: Thos is only called by nodes.
+# This finds all servers currently running on the peer and migrates them to this node.
+sub migrate_all_servers_to_here
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "migrate_all_servers_to_here" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Who is my peer again?
+	my $node_name = $an->hostname;
+	my $peer_key  = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
+	my $peer_name = $an->data->{sys}{anvil}{$peer_key}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "node_name", value1 => $node_name, 
+		name2 => "peer_key",  value2 => $peer_key, 
+		name3 => "peer_name", value3 => $peer_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### NOTE: We DO NOT migrate directly! We will use 'anvil-migrate-server' because we WANT it to abort
+	###       if the peer is not healthy.
+	
+	# Find the servers running on our peer. We'll call 'clustat' here to be sure we have the most current
+	# view of system.
+	my $to_migate  = [];
+	my $shell_call = $an->data->{path}{clustat};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/\s+/ /g;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^vm:(.*?) (.*?) (.*)/)
+		{
+			my $server = $1;
+			my $host   = $2;
+			my $state  = $3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "server", value1 => $server, 
+				name2 => "host",   value2 => $host, 
+				name3 => "state",  value3 => $state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($host eq $peer_name) && ($state eq "started"))
+			{
+				# Migrate it.
+				push @{$to_migrate}, $server;
+			}
+		}
+	}
+	close $file_handle;
+	
+	# Well?
+	if (@{$to_migrate} > 0)
+	{
+		### TODO: Send an alert if we migrate any servers!
+		# Migrate!
+		foreach my $server (sort {$a cmp $b} @{$to_migrate})
+		{
+			my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+		}
+	}
+	
+	### TODO: Update cluster.conf to set this node as the node with the 'delay' (or have scan-clustat 
+	###       do it).
 	
 	return(0);
 }
@@ -2413,6 +2530,150 @@ AND
 		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($node_temperature_ok);
+}
+
+### TODO: If server waffling becomes a problem, we'll want to record when we do a precautionary migration and
+###       then, here, check to see when the last precautionary migration happened and NOT migrate again 
+###       within some set time.
+# This pulls all of the health entries for this node and the peer node, sums them and determines if this node
+# is equal in health, sicker or healthier.
+sub check_node_health
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $node_health_ok     = 1;
+	my $my_health_weight   = 0;
+	my $peer_health_weight = 0;
+	my $node_name          = $an->hostname;
+	my $node_key           = $an->data->{sys}{node_name}{$node_name}{node_key};
+	my $peer_key           = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
+	my $peer_name          = $an->data->{sys}{anvil}{$peer_key}{name};
+	my $peer_uuid          = $an->data->{sys}{anvil}{$peer_key}{uuid};
+	my $peer_online        = $an->data->{sys}{anvil}{$node_key}{online};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "node_name",   value1 => $node_name, 
+		name2 => "node_key",    value2 => $node_key, 
+		name3 => "peer_key",    value3 => $peer_key, 
+		name4 => "peer_name",   value4 => $peer_name, 
+		name5 => "peer_uuid",   value5 => $peer_uuid, 
+		name6 => "peer_online", value6 => $peer_online, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If the peer isn't online, there is no sense summing weights.
+	if (not $peer_online)
+	{
+		$node_health_ok = 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_health_ok", value1 => $node_health_ok, 
+		}, file => $THIS_FILE, line => __LINE__});
+		return($node_health_ok);
+	}
+	
+	# Read and sum my health weights. The agent and source name is for logging purposes only.
+	my $query = "
+SELECT 
+    health_agent_name, 
+    health_source_name, 
+    health_source_weight 
+FROM 
+    health 
+WHERE 
+    health_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+		
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $health_agent_name    = $row->[0]; 
+		my $health_source_name   = $row->[1]; 
+		my $health_source_weight = $row->[2];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "health_agent_name",    value1 => $health_agent_name, 
+			name2 => "health_source_name",   value2 => $health_source_name, 
+			name3 => "health_source_weight", value3 => $health_source_weight, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$my_health_weight += $health_source_weight;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "my_health_weight", value1 => $my_health_weight, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Read in my peer's health.
+	my $query = "
+SELECT 
+    health_agent_name, 
+    health_source_name, 
+    health_source_weight 
+FROM 
+    health 
+WHERE 
+    health_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($peer_uuid)."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+		
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $health_agent_name    = $row->[0]; 
+		my $health_source_name   = $row->[1]; 
+		my $health_source_weight = $row->[2];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "health_agent_name",    value1 => $health_agent_name, 
+			name2 => "health_source_name",   value2 => $health_source_name, 
+			name3 => "health_source_weight", value3 => $health_source_weight, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$peer_health_weight += $health_source_weight;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_health_weight", value1 => $peer_health_weight, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# NOTE: We don't check the readiness of the peer to because 'anvil-migrate-server' has the health 
+	#       check logic and will refuse to  migrate if the peer isn't healthy, regardless of what we do 
+	#       here (and no, we will NOT use '--force'. We want this behaviour).
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "my_health_weight",   value1 => $my_health_weight, 
+		name2 => "peer_health_weight", value2 => $peer_health_weight, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($my_health_weight < $peer_health_weight)
+	{
+		# We're healthier.
+		$node_health_ok = 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_health_ok", value1 => $node_health_ok, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($my_health_weight > $peer_health_weight)
+	{
+		# We're sicker.
+		$node_health_ok = 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_health_ok", value1 => $node_health_ok, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Values are:
+	# 1 = Both nodes have the same health.
+	# 2 = We're healther than our peer (migrate)
+	# 3 = We're sicker than our peer (do nothing)
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_health_ok", value1 => $node_health_ok, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($node_health_ok);
 }
 
 # This pulls the data on the UPSes associated with this node and returns '1' if at least one of the UPSes has
@@ -4478,6 +4739,7 @@ sub update_db
 		update_db_alerts($an);
 		update_db_power($an);
 		update_db_temperature($an);
+		update_db_health($an);
 		update_db_agents($an);
 		update_db_ram_used($an);
 		update_db_shared($an);
@@ -7462,6 +7724,234 @@ INSERT INTO
 				} # Seen temperature_agent_name?
 			} # foreach my $id 
 		} # foreach my $temperature_agent_name ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the special 'health' table.
+sub update_db_health
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'health' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    health_uuid, 
+    health_agent_name, 
+    health_source_name,
+    health_source_weight,
+    modified_date 
+FROM 
+    history.health 
+WHERE 
+    health_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $health_uuid          = $row->[0];
+			my $health_agent_name    = $row->[1]; 
+			my $health_source_name   = $row->[2]; 
+			my $health_source_weight = $row->[3];
+			my $modified_date        = $row->[4];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "health_uuid",          value1 => $health_uuid, 
+				name2 => "health_agent_name",    value2 => $health_agent_name, 
+				name3 => "health_source_name",   value3 => $health_source_name, 
+				name4 => "health_source_weight", value4 => $health_source_weight, 
+				name5 => "modified_date",        value5 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name} = {
+				health_uuid		=>	$health_uuid, 
+				health_source_name	=>	$health_source_name,
+				health_source_weight	=>	$health_source_weight,
+			};
+			$an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{'exists'} = 1;
+			$an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{seen}     = 0;
+			$an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name} = {
+				health_uuid		=>	$health_uuid, 
+				health_source_name	=>	$health_source_name,
+				health_source_weight	=>	$health_source_weight,
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{health}{modified_date}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $health_agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}})
+		{
+			my $health_uuid          = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}{health_uuid};
+			my $health_source_name   = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}{health_source_name};
+			my $health_source_weight = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}{health_source_weight};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "health_uuid",          value1 => $health_uuid, 
+				name2 => "health_agent_name",    value2 => $health_agent_name, 
+				name3 => "health_source_name",   value3 => $health_source_name, 
+				name4 => "health_source_weight", value4 => $health_source_weight, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'health_agent_name' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::health::health_agent_name::${health_agent_name}::seen", value1 => $an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::health::health_agent_name::${health_agent_name}::exists", value1 => $an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::health::modified_date::${modified_date}::health_agent_name::${health_agent_name}", value1 => $an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.health
+SET
+    health_agent_name    = ".$an->data->{sys}{use_db_fh}->quote($health_agent_name).", 
+    health_source_name   = ".$an->data->{sys}{use_db_fh}->quote($health_source_name).", 
+    health_source_weight = ".$an->data->{sys}{use_db_fh}->quote($health_source_weight).", 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    health_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    health_uuid          = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)." 
+;";
+							# Now record the query in the array
+							$query =~ s/'NULL'/NULL/g;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.health
+(
+    health_uuid, 
+    health_agent_name, 
+    health_host_uuid, 
+    health_source_name, 
+    health_source_weight, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($health_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_agent_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_source_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_source_weight).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$query =~ s/'NULL'/NULL/g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'health_agent_name' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.health
+(
+    health_uuid, 
+    health_agent_name, 
+    health_host_uuid, 
+    health_source_name, 
+    health_source_weight, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($health_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_agent_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_source_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_source_weight).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$query =~ s/'NULL'/NULL/g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen health_agent_name?
+			} # foreach my $id 
+		} # foreach my $health_agent_name ...
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.

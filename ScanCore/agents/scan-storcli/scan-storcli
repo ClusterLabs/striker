@@ -26,6 +26,10 @@
 # TODO:
 # - Check the cache policy and reset it to 'writeback' if the BBU/FBU is healthy and the cache changes to 
 #   write-through.
+# - Set 'health::new::X' in the scan itself and also check the temperatures against their ranges even when
+#   they haven't changed so that our health weight will remain persistent. This isn't a super high priority
+#   though because, normally, the servers should migrate the first time a node's health falters. However,
+#   doing this *might* reduce repeated server migration.
 # 
 # NOTE:
 # - LSI seems to flip between "Virtual Drive" and "Virtual Disk". We're standardizing on "Virtual Drive".
@@ -55,6 +59,10 @@ my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0
 # Get the handle to the AN::Tools and preset some variables I will use.
 my $an = AN::Tools->new({data => 
 	{
+		health			=>	{
+			old			=>	{},
+			new			=>	{},
+		},
 		path			=>	{
 			core_strings		=>	"$scancore_directory/ScanCore.xml",
 			sql			=>	"$running_directory/$THIS_FILE.sql",
@@ -229,6 +237,9 @@ update_db($an);
 # Look for changes.
 find_changes($an);
 
+# Process health weights.
+process_health($an);
+
 # Finally, process temperatures!
 process_temperatures($an);
 
@@ -239,6 +250,54 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Function below                                                                                            #
 #############################################################################################################
+
+# This reads in all health wieghts previously set, alters ones as needed, INSERTs new ones and DELETEs old
+# ones.
+sub process_health
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read in previous health values.
+	my $query = "
+SELECT 
+    health_agent_name,
+    health_source_name,
+    health_source_weight 
+FROM 
+    health 
+WHERE 
+    health_host_uuid  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+    
+    health_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+		
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $health_agent_name    = $row->[0]; 
+		my $health_source_name   = $row->[1]; 
+		my $health_source_weight = $row->[2];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "health_agent_name",    value1 => $health_agent_name, 
+			name2 => "health_source_name",   value2 => $health_source_name, 
+			name3 => "health_source_weight", value3 => $health_source_weight, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{health}{old}{$health_source_name} = $health_source_weight;
+	}
+	
+	$an->data->{health}{new}{$variable} = 5;
+	
+	
+	return(0);
+}
 
 # This reads in the various temperature sensors we read from this run and will set the temperature table 
 # and/or set/clear warnings/critical states.
@@ -5836,6 +5895,9 @@ INSERT INTO
 								$title_key   = "an_alert_title_0005";
 								$message_key = "scan_storcli_note_0022";
 							}
+							
+							# Note this sensor for our health weight.
+							$an->data->{health}{new}{$variable} = 2;
 						}
 						elsif ($value > $high_warning)
 						{
@@ -5857,6 +5919,9 @@ INSERT INTO
 								$title_key   = "an_alert_title_0004";
 								$message_key = "scan_storcli_note_0023";
 							}
+							
+							# Note this sensor for our health weight.
+							$an->data->{health}{new}{$variable} = 1;
 						}
 						elsif ($value < $low_critical)
 						{
@@ -5878,6 +5943,9 @@ INSERT INTO
 								$title_key   = "an_alert_title_0005";
 								$message_key = "scan_storcli_note_0024";
 							}
+							
+							# Note this sensor for our health weight.
+							$an->data->{health}{new}{$variable} = 2;
 						}
 						elsif ($value < $low_warning)
 						{
@@ -5899,6 +5967,9 @@ INSERT INTO
 								$title_key   = "an_alert_title_0004";
 								$message_key = "scan_storcli_note_0025";
 							}
+							
+							# Note this sensor for our health weight.
+							$an->data->{health}{new}{$variable} = 1;
 						}
 					}
 					
@@ -6008,6 +6079,12 @@ INSERT INTO
 					if ($new_alarm_state =~ /off/i)
 					{
 						$title_key = "an_alert_title_0004";
+					}
+					else
+					{
+						### TODO: We might want to tune this based on the actual alert.
+						# Note this sensor for our health weight.
+						$an->data->{health}{new}{'controller-alarm-state'} = 1;
 					}
 				}
 				$an->data->{sys}{alert_sort}++; 
@@ -6147,6 +6224,9 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
+										
+										# Note this sensor for our health weight.
+										$an->data->{health}{new}{$variable} = 2;
 									}
 									elsif ($new_variable_value > $high_warning)
 									{
@@ -6178,6 +6258,9 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
+										
+										# Note this sensor for our health weight.
+										$an->data->{health}{new}{$variable} = 1;
 									}
 									elsif ($new_variable_value > $clear_low_warning)
 									{
@@ -6256,6 +6339,9 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
+										
+										# Note this sensor for our health weight.
+										$an->data->{health}{new}{$variable} = 1;
 									}
 									elsif ($jumped > $jump)
 									{
@@ -6306,6 +6392,9 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
+										
+										# Note this sensor for our health weight.
+										$an->data->{health}{new}{$variable} = 2;
 									}
 									elsif ($new_variable_value < $low_warning)
 									{
@@ -6340,6 +6429,9 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
+										
+										# Note this sensor for our health weight.
+										$an->data->{health}{new}{$variable} = 1;
 									}
 									elsif ($new_variable_value < $clear_high_warning)
 									{
@@ -6416,6 +6508,9 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
+										
+										# Note this sensor for our health weight.
+										$an->data->{health}{new}{$variable} = 1;
 									}
 									elsif ($jumped > $jump)
 									{
@@ -6445,6 +6540,10 @@ AND
 							}, file => $THIS_FILE, line => __LINE__});
 						}
 						
+						### TODO: Check to see if the new state of certain key 
+						###       variables are worthy of setting a health weight. 
+						###       We can't check just on changes.
+						
 						# Now actually generate an alert and save the changes if something 
 						# changed. 
 						if (($new_variable_value ne $old_variable_value))
@@ -6469,18 +6568,29 @@ AND
 									$alert_level = "warning";
 									$title_key   = "an_alert_title_0004";
 									$message_key = "scan_storcli_warning_0046";
+									
+									# Note this sensor for our health weight.
+									$an->data->{health}{new}{$variable} = 1;
 								}
 								elsif ($variable =~ /memory_uncorrectable_errors/)
 								{
 									$alert_level = "critical";
 									$title_key   = "an_alert_title_0005";
 									$message_key = "scan_storcli_warning_0047";
+									
+									# Ya, time to get the servers the 
+									# heck off this node.
+									$an->data->{health}{new}{$variable} = 5;
 								}
 								elsif ($variable =~ /controller_status/)
 								{
 									$alert_level = "critical";
 									$title_key   = "an_alert_title_0004";
 									$message_key = "scan_storcli_warning_0048";
+									
+									# Ya, time to get the servers the 
+									# heck off this node.
+									$an->data->{health}{new}{$variable} = 5;
 								}
 								# There more of interest... See: SELECT a.host_name, b.storcli_controller_serial_number AS sn, b.storcli_controller_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_controllers b, storcli_variables c WHERE a.host_uuid = b.storcli_controller_host_uuid AND b.storcli_controller_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a07n01.alteeve.ca';
 							}

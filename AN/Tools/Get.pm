@@ -559,9 +559,9 @@ sub date_seperator
 	my $symbol = shift;
 	my $an     = $self->parent;
 	
-	if ( defined $symbol )
+	if (defined $symbol)
 	{
-		$self->{SEPERATOR}->{DATE}=$symbol;
+		$self->{SEPERATOR}->{DATE} = $symbol;
 	}
 	
 	return $self->{SEPERATOR}->{DATE};
