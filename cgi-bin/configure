@@ -838,6 +838,43 @@ sub save_dr_job_form
 		push @{$error_fields}, "dr_job_servers";
 	}
 	
+	# Make sure at least one server was selected. We'll loop through all servers and check to see which 
+	# were selected for the active Anvil! system. Any that were checked will have their UUIDs added to
+	# the 'dr_job_servers' value. If none were selected, we'll error out.
+	my $server_data = $an->ScanCore->get_servers();
+	foreach my $hash_ref (@{$anvil_data})
+	{
+		# Does this server belong to the active Anvil! system?
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "hash_ref->server_anvil_uuid", value1 => $hash_ref->{server_anvil_uuid},
+			name2 => "cgi::anvil_uuid",             value2 => $an->data->{cgi}{anvil_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+		next if ($hash_ref->{server_anvil_uuid} ne $an->data->{cgi}{anvil_uuid});
+		
+		### TODO: Left off here.
+		
+		push @{$cgi}, "dr_job_server_uuid_".$hash_ref->{server_uuid};
+	}
+	if (not $an->data->{cgi}{dr_job_server_list})
+	{
+		# No servers were event available to be selected.
+		my $notice = $an->String->get({key => "message_0500", variables => { field => "#!string!row_0325!#" }});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice", value1 => $notice,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$notices},      $notice;
+		push @{$error_fields}, "dr_job_servers";
+	}
+	else
+	{
+		# Split up the list, read in the CGI variables and loop through them looking for selected 
+		# servers. Anything that was selected will be added to the servers list.
+		my $dr_job_servers = "";
+		my $server_keys    = split/,/, $an->data->{cgi}{dr_job_server_list};
+		foreach my $server_key (sort {$a cmp $b} @{$server_keys
+	}
+	
 	my $error_count = @{$error_fields};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "error_count", value1 => $error_count,
@@ -846,6 +883,7 @@ sub save_dr_job_form
 	# Save the form (either INSERT or UPDATE if something has changed.
 	if (not $error_count)
 	{
+		
 		$an->data->{cgi}{dr_job_uuid} = save_dr_job($an);
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::dr_job_uuid", value1 => $an->data->{cgi}{dr_job_uuid},
@@ -924,207 +962,41 @@ sub save_dr_job_form
 	}
 	else
 	{
-		### Sanity check (man 5 crontab)
+		# We don't support '@reboot', despite it being valid, so check for it manually.
 		my $ok = 1;
-		
-		### TODO: Move this to 'Validate->is_crontab' with an option to fail on 'reboot' and return 
-		###       error codes to indicate how it failed.
-		# First, is this a nickname? 
-		if ($an->data->{cgi}{dr_job_schedule} =~ /^@(.*)$/)
+		if (lc($an->data->{cgi}{dr_job_schedule}) eq '@reboot')
 		{
-			# Yup. Convert it to the normal string though.
-			my $nickname = $1;
+			# We don't support this.
+			   $ok     = 0;
+			my $notice = $an->String->get({key => "message_0496"});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "nickname", value1 => $nickname,
+				name1 => "notice", value1 => $notice,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# @reboot    :    Run once after reboot.
-			# @yearly    :    Run once a year, ie.  "0 0 1 1 *".
-			# @annually  :    Run once a year, ie.  "0 0 1 1 *".
-			# @monthly   :    Run once a month, ie. "0 0 1 * *".
-			# @weekly    :    Run once a week, ie.  "0 0 * * 0".
-			# @daily     :    Run once a day, ie.   "0 0 * * *".
-			# @hourly    :    Run once an hour, ie. "0 * * * *".
-			if (lc($nickname) eq "reboot")
-			{
-				# We don't support this.
-				   $ok     = 0;
-				my $notice = $an->String->get({key => "message_0496"});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "notice", value1 => $notice,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				push @{$notices},      $notice;
-				push @{$error_fields}, "dr_job_schedule";
-			}
-			elsif ((lc($nickname) eq "yearly") or (lc($nickname) eq "annually"))
-			{
-				$an->data->{cgi}{dr_job_schedule} = "0 0 1 1 *";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "cgi::dr_job_schedule", value1 => $an->data->{cgi}{dr_job_schedule},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			elsif (lc($nickname) eq "monthly")
-			{
-				$an->data->{cgi}{dr_job_schedule} = "0 0 1 * *";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "cgi::dr_job_schedule", value1 => $an->data->{cgi}{dr_job_schedule},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			elsif (lc($nickname) eq "weekly")
-			{
-				$an->data->{cgi}{dr_job_schedule} = "0 0 * * 0";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "cgi::dr_job_schedule", value1 => $an->data->{cgi}{dr_job_schedule},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			elsif (lc($nickname) eq "daily")
-			{
-				$an->data->{cgi}{dr_job_schedule} = "0 0 * * *";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "cgi::dr_job_schedule", value1 => $an->data->{cgi}{dr_job_schedule},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			elsif (lc($nickname) eq "hourly")
-			{
-				# Really?! Oooookay.,,
-				$an->data->{cgi}{dr_job_schedule} = "0 * * * *";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "cgi::dr_job_schedule", value1 => $an->data->{cgi}{dr_job_schedule},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
+			push @{$notices},      $notice;
+			push @{$error_fields}, "dr_job_schedule";
 		}
 		else
 		{
-			# This is specified in standard five-part notation.
-			if ($an->data->{cgi}{dr_job_schedule} =~ /^(.*?) (.*?) (.*?) (.*?) (.*?)$/)
+			# Validate it. If it is valid, we'll rewrite the CGI variable to normalize it.
+			($ok, my $normalized_schedule) = $an->Validate->is_crontab_schedule({schedule => $an->data->{cgi}{dr_job_schedule}});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ok",                  value1 => $ok,
+				name2 => "normalized_schedule", value2 => $normalized_schedule,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($ok)
 			{
-				# field          allowed values
-				# -----          --------------
-				# minute         0-59
-				# hour           0-23
-				# day of month   1-31
-				# month          1-12 (or names)
-				# day of week    0-7 (0 or 7 is Sunday, or use names)
-				my $minute       = $1;
-				my $hour         = $2;
-				my $day_of_month = $3;
-				my $month        = $4;
-				my $day_of_week  = $5;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-					name1 => "minute",       value1 => $minute,
-					name2 => "hour",         value2 => $hour,
-					name3 => "day_of_month", value3 => $day_of_month,
-					name4 => "month",        value4 => $month,
-					name5 => "day_of_week",  value5 => $day_of_week,
-				}, file => $THIS_FILE, line => __LINE__});
 				
-				### NOTE: Months and days can be named. In both cases, cron expects just the 
-				###       first three letters. We'll be less strict, but in all cases, we 
-				###       will translate  the names to numbers,
-				# Transform the month, if needed.
-				if    ($month =~ /^jan/i) { $month = 1; }
-				elsif ($month =~ /^feb/i) { $month = 2; }
-				elsif ($month =~ /^mar/i) { $month = 3; }
-				elsif ($month =~ /^apr/i) { $month = 4; }
-				elsif ($month =~ /^may/i) { $month = 5; }
-				elsif ($month =~ /^jun/i) { $month = 6; }
-				elsif ($month =~ /^jul/i) { $month = 7; }
-				elsif ($month =~ /^aug/i) { $month = 8; }
-				elsif ($month =~ /^sep/i) { $month = 9; }
-				elsif ($month =~ /^oct/i) { $month = 10; }
-				elsif ($month =~ /^nov/i) { $month = 11; }
-				elsif ($month =~ /^dec/i) { $month = 12; }
+				# Rewrite the CGI variable
+				$an->data->{cgi}{dr_job_schedule} = $normalized_schedule;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "month", value1 => $month,
+					name1 => "cgi::dr_job_schedule", value1 => $an->data->{cgi}{dr_job_schedule},
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Transform the day, if needed. Note that '7' is valid for 'Sunday', but 
-				# we'll normalize it to '0'.
-				if    ($day_of_week =~ /^sun/i) { $day_of_week = 0; }
-				elsif ($day_of_week =~ /^mon/i) { $day_of_week = 1; }
-				elsif ($day_of_week =~ /^tue/i) { $day_of_week = 2; }
-				elsif ($day_of_week =~ /^wed/i) { $day_of_week = 3; }
-				elsif ($day_of_week =~ /^thu/i) { $day_of_week = 4; }
-				elsif ($day_of_week =~ /^fri/i) { $day_of_week = 5; }
-				elsif ($day_of_week =~ /^sat/i) { $day_of_week = 6; }
-				elsif ($day_of_week eq "7")     { $day_of_week = 0; }
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "day_of_week", value1 => $day_of_week,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Check the 'minute' field
-				# minute         0-59
-				if ($minute =~ /^(.*?)\/(.*)$/)
-				{
-					my $left_side  = $1;
-					my $right_side = $2;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "left_side",  value1 => $left_side,
-						name2 => "right_side", value2 => $right_side,
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					# The left side is allowed to be '*' or a range, the right side is not.
-					if ($left_side =~ /^(\d+)-(\d+)/)
-					{
-						my $start = $1;
-						my $end   = $2;
-						if (($start > 59) or ($end > 59))
-						{
-							# The minute range is invalid
-							$ok = 0;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-								name1 => "ok", value1 => $ok,
-							}, file => $THIS_FILE, line => __LINE__});
-						}
-					}
-					elsif ($left_side =~ /^(\d+)$/)
-					{
-						# Left side is a single value
-						if ($left_side > 59)
-						{
-							# The minute is invalid
-							$ok = 0;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-								name1 => "ok", value1 => $ok,
-							}, file => $THIS_FILE, line => __LINE__});
-						}
-					}
-					elsif ($left_side ne "*")
-					{
-						# Not sure what the left side is, but it isn't valid.
-						$ok = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "ok", value1 => $ok,
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-					
-					# The right side can only be a digit. I'm not sure what a sane 
-					# maximum is. So we'll only verify that it is a digit and leave it at
-					# that. Though anything over '30' doesn't make much sense...
-					if ($right_side =~ /\D/)
-					{
-						$ok = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "ok", value1 => $ok,
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-				} 
-				elsif ($minute =~ /^(\d+)/)
-				{
-					
-				}
-				
-				# hour           0-23
-				# day of month   1-31
-				# month          1-12 (or names)
-				# day of week    0-7 (0 or 7 is Sunday, or use names)
-				
 			}
 			else
 			{
 				# Malformed.
-				   $ok     = 0;
 				my $notice = $an->String->get({key => "message_0497"});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "notice", value1 => $notice,
@@ -1134,18 +1006,6 @@ sub save_dr_job_form
 				push @{$error_fields}, "dr_job_schedule";
 			}
 		}
-		
-		foreach my $component (split/,/, $an->data->{cgi}{dr_job_schedule})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "component", value1 => $component,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($component =~ /^@(.*
-		
-		### TODO: Sanity-check the variable. See 'cron 5 crontab'
-		# Values can be a range (x-y), a csv (ie: x,y,...,z), a combination of ranges and CSV, a '*',
-		# or step value '*/x'. Days and months can be names. Note also allowed extensions!
 	}
 	
 	my $error_count = @{$error_fields};
@@ -2471,6 +2331,99 @@ WHERE
 				row_body	=>	"#!string!row_0083!#",
 				message_class	=>	"",
 				message_body	=>	$an->String->get({key => "message_0489", variables => { dr_job => $dr_job_name }}),
+			}});
+	}
+	
+	return($notice_message);
+}
+
+# This deletes the given DR Job.
+sub delete_dr_job
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_dr_job" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Get the DR job name before we delete it.
+	my $dr_job_name    = $an->data->{cgi}{dr_job_name};
+	my $notice_message = "";
+	
+	# Send the queries as an array
+	my $queries = [];
+	push @{$queries}, "
+UPDATE 
+    dr_jobs 
+SET 
+    dr_job_note = 'DELETED' 
+WHERE 
+    dr_job_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_job_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    dr_jobs 
+WHERE 
+    dr_job_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_job_uuid})."
+;";
+	
+	# Log the queries
+	foreach my $query (@{$queries})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Pass the array in.
+	$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
+	
+	# Make sure they're gone.
+	my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    dr_jobs 
+WHERE 
+    dr_job_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_job_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $dr_job_count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "dr_job_count", value1 => $dr_job_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($dr_job_count)
+	{
+		# What is this!?
+		my $error_message = $an->String->get({key => "message_0498", variables => { 
+			dr_job => $dr_job_name, 
+			count  => $dr_job_count, 
+		}});
+		my $error_body = $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning",
+					row_message	=>	"#!string!row_0133!#",
+					body_class	=>	"",
+					body_message	=>	$error_message,
+				}});
+		
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0197!#",
+				errors	=>	$error_body,
+			}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# All gone
+		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
+				title		=>	"#!string!title_0196!#",
+				row_class	=>	"highlight_good_bold",
+				row_body	=>	"#!string!row_0083!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0499", variables => { dr_job => $dr_job_name }}),
 			}});
 	}
 	
@@ -5118,7 +5071,7 @@ sub dr_job_menu
 	my $notice_message = "";
 	my $error_fields   = [];
 	my $refresh_link   = $an->data->{sys}{cgi_string};
-	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{dr_target_uuid}))
+	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{dr_job_uuid}))
 	{
 		# Has the user confirmed?
 		if ($an->data->{cgi}{confirm})
@@ -5145,7 +5098,7 @@ sub dr_job_menu
 	if ($an->data->{cgi}{save})
 	{
 		# Save, if something changed.
-		($notice_message, $error_fields) = save_dr_jobs_form($an);
+		($notice_message, $error_fields) = save_dr_job_form($an);
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -5157,27 +5110,29 @@ sub dr_job_menu
 	else
 	{
 		# Set defaults if not set already.
-		$an->data->{cgi}{dr_jobs_tcp_port}        = 22 if not $an->data->{cgi}{dr_jobs_tcp_port};
-		$an->data->{cgi}{dr_jobs_copies}          = 2  if not $an->data->{cgi}{dr_jobs_copies};
-		$an->data->{cgi}{dr_jobs_bandwidth_limit} = 0  if not $an->data->{cgi}{dr_jobs_bandwidth_limit};
+		$an->data->{cgi}{dr_job_dr_target_uuid} = $an->data->{cgi}{dr_target_uuid} ? $an->data->{cgi}{dr_target_uuid} : "";
+		$an->data->{cgi}{dr_job_anvil_uuid}     = $an->data->{cgi}{anvil_uuid}     ? $an->data->{cgi}{anvil_uuid} : "";
+		$an->data->{cgi}{dr_job_auto_prune}     = 1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "cgi::dr_jobs_tcp_port",        value1 => $an->data->{cgi}{dr_jobs_tcp_port},
-			name2 => "cgi::dr_jobs_copies",          value2 => $an->data->{cgi}{dr_jobs_copies},
-			name3 => "cgi::dr_jobs_bandwidth_limit", value3 => $an->data->{cgi}{dr_jobs_bandwidth_limit},
+			name1 => "cgi::dr_job_dr_target_uuid", value1 => $an->data->{cgi}{dr_job_dr_target_uuid},
+			name2 => "cgi::dr_job_anvil_uuid",     value2 => $an->data->{cgi}{dr_job_anvil_uuid},
+			name3 => "cgi::dr_job_auto_prune",     value3 => $an->data->{cgi}{dr_job_auto_prune},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Load information from the databases, then we'll tease out data if 'load' was set.
-	my $dr_jobss = $an->ScanCore->get_dr_jobss();
+	my $anvils     = $an->ScanCore->get_anvils();
+	my $servers    = $an->ScanCore->get_servers();
+	my $dr_targets = $an->ScanCore->get_dr_targets();
 	my $dr_jobs    = $an->ScanCore->get_dr_jobs();
 	
-	# Load a specific notification jobs, if requested.
+	# Load a specific job, if requested.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::load_dr_jobs", value1 => $an->data->{cgi}{load_dr_jobs},
+		name1 => "cgi::load_dr_job", value1 => $an->data->{cgi}{load_dr_job},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{cgi}{load_dr_jobs})
+	if ($an->data->{cgi}{load_dr_job})
 	{
-		load_dr_jobs_form($an, $dr_jobss, $an->data->{cgi}{dr_job_uuid});
+		load_dr_job_form($an, $dr_jobs, $an->data->{cgi}{dr_job_uuid});
 	}
 	
 	# Create a list of existing smtp.
@@ -5188,18 +5143,18 @@ sub dr_job_menu
 			colspan	=>	4,
 		}});
 	
-	# Get a list of existing notification jobss, if any.
+	# Get a list of existing DR jobs, if any.
 	my $dr_jobs_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
-	my $dr_jobs_explain = "#!string!explain_0225!#";
+	my $dr_jobs_explain = "#!string!explain_0226!#";
 	my $dr_jobs_row     = "&nbsp;";	# Actually the 'Load' button
 	my $dr_jobs_url     = "&nbsp;";	# Actually the 'delete' button
-	if (@{$dr_jobss} > 0)
+	if (@{$dr_jobs} > 0)
 	{
 		# Build an array to pass to 'build_select'
-		$dr_jobs_explain = "#!string!explain_0215!#";
+		$dr_jobs_explain = "#!string!explain_0227!#";
 		$dr_jobs_row     = $an->Web->template({file => "web.html", template => "button_input", replace => { 
-			name	=>	"load_dr_jobs",
-			id	=>	"load_dr_jobs",
+			name	=>	"load_dr_job",
+			id	=>	"load_dr_job",
 			value	=>	"#!string!button_0048!#",
 		}, no_comment => 1});
 		$dr_jobs_url = $an->Web->template({file => "web.html", template => "button_input", replace => { 
@@ -5212,8 +5167,8 @@ sub dr_job_menu
 		foreach my $hash_ref (@{$dr_jobs})
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "hash_ref->dr_job_dr_job_uuid", value1 => $hash_ref->{dr_job_dr_job_uuid},
-				name2 => "cgi::dr_job_uuid",             value2 => $an->data->{cgi}{dr_job_uuid},
+				name1 => "hash_ref->dr_job_uuid", value1 => $hash_ref->{dr_job_uuid},
+				name2 => "cgi::dr_job_uuid",      value2 => $an->data->{cgi}{dr_job_uuid},
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($hash_ref->{dr_job_dr_job_uuid} eq $an->data->{cgi}{dr_job_uuid})
 			{
@@ -5224,11 +5179,11 @@ sub dr_job_menu
 		}
 		
 		my $options = [];
-		foreach my $hash_ref (@{$dr_jobss})
+		foreach my $hash_ref (@{$dr_jobs})
 		{
-			my $dr_job_uuid = $hash_ref->{dr_job_uuid};
-			my $dr_jobs_name = $hash_ref->{dr_jobs_name};
-			my $this_option    = $dr_job_uuid."#!#".$dr_jobs_name;
+			my $dr_job_uuid  = $hash_ref->{dr_job_uuid};
+			my $dr_job_name  = $hash_ref->{dr_job_name};
+			my $this_option  = $dr_job_uuid."#!#".$dr_job_name;
 			push @{$options}, $this_option;
 		}
 		$dr_jobs_select = $an->Web->build_select({
@@ -5250,12 +5205,100 @@ sub dr_job_menu
 			column4		=>	"$dr_jobs_url",
 		}});
 	
-	# DR Target name
+	# Build a list of Anvil! systems. Selecting one will change the list of servers presented to the user.
+	my $anvil_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
+	my $anvil_explain = "#!string!explain_0228!#";
+	my $anvil_row     = "&nbsp;";	# Actually the 'Load' button
+	if (@{$anvils} > 0)
+	{
+		# Build an array to pass to 'build_select'
+		$anvil_explain = "#!string!explain_0229!#";
+		$anvil_row     = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"load_anvil",
+			id	=>	"load_anvil",
+			value	=>	"#!string!button_0048!#",
+		}, no_comment => 1});
+		
+		my $options = [];
+		foreach my $hash_ref (@{$anvils})
+		{
+			my $anvil_uuid  = $hash_ref->{anvil_uuid};
+			my $anvil_name  = $hash_ref->{anvil_name};
+			my $this_option = $anvil_uuid."#!#".$anvil_name;
+			push @{$options}, $this_option;
+		}
+		$anvil_select = $an->Web->build_select({
+			name      => "anvil_uuid", 
+			options   => $options, 
+			blank     => 0,
+			selected  => $an->data->{cgi}{anvil_uuid},
+			width     => ($width + 10),
+		});
+	}
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"",
+			column1		=>	"$anvil_row",
+			column2_class	=>	"input_select",
+			column2		=>	$anvil_select,
+			column3_class	=>	"input_explain",
+			column3		=>	$anvil_explain,
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# Now build a check-box list of servers for the currently active Anvil!. If no servers are found 
+	# (either because no Anvil! was selected or no servers exist under the selected Anvil!), this will be
+	# disabled.
+	my $server_key_list = "";
+	if ($an->data->{cgi}{anvil_uuid})
+	{
+		# We've got an Anvil!. Before we load the servers though, lets see if we've 
+		
+		
+		if (@{$servers} > 0)
+		{
+			# Yup!
+		}
+		
+		# Did we find any servers?
+		if ($server_key_list)
+		{
+			# Yup! Record the list so that we can dig out what the user (un)selects.
+			$menu_items .= $an->Web->template({file => "web.html", template => "hidden_input", replace => { 
+					name	=>	"dr_job_server_list",
+					id	=>	"dr_job_server_list",
+					value	=>	$an->data->{cgi}{dr_job_server_list},
+				}});
+		}
+		else
+		{
+			# Nope. Explain why nothing was presented to the user.
+		}
+	}
+	else
+	{
+		# No Anvil! selected.
+	}
+	if (not 
+			#my $anvil_explain   = "#!string!explain_0230!#";
+
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"",
+			column1		=>	"$anvil_row",
+			column2_class	=>	"input_select",
+			column2		=>	$anvil_select,
+			column3_class	=>	"input_explain",
+			column3		=>	$anvil_explain,
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# DR Job name
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
 			column1_class	=>	"highlight_row_bold",
 			column1		=>	"#!string!row_0326!#",
 			column2_class	=>	"input_select",
-			column2		=>	"<input type=\"text\" name=\"dr_jobs_name\" id=\"dr_jobs_name\" value=\"".$an->data->{cgi}{dr_jobs_name}."\" style=\"width: ${width}px;\">",
+			column2		=>	"<input type=\"text\" name=\"dr_job_name\" id=\"dr_job_name\" value=\"".$an->data->{cgi}{dr_job_name}."\" style=\"width: ${width}px;\">",
 			column3_class	=>	"input_explain",
 			column3		=>	"#!string!explain_0216!#",
 			column4_class	=>	"input_url",
@@ -5519,7 +5562,7 @@ sub dr_target_menu
 	my $dr_targets = $an->ScanCore->get_dr_targets();
 	my $dr_jobs    = $an->ScanCore->get_dr_jobs();
 	
-	# Load a specific notification target, if requested.
+	# Load a specific DR target, if requested.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::load_dr_target", value1 => $an->data->{cgi}{load_dr_target},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5536,7 +5579,7 @@ sub dr_target_menu
 			colspan	=>	4,
 		}});
 	
-	# Get a list of existing notification targets, if any.
+	# Get a list of existing DR targets, if any.
 	my $dr_target_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
 	my $dr_target_explain = "#!string!explain_0225!#";
 	my $dr_target_row     = "&nbsp;";	# Actually the 'Load' button

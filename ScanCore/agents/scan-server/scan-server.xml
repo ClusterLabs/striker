@@ -103,6 +103,7 @@ Old: [#!variable!old!#]
 New: [#!variable!new!#]
 Old: [#!variable!old!#]
 		</key>
+		<key name="scan_server_message_0013">The server: [#!variable!server!#]'s has moved to a new Anvil! system: [#!variable!anvil_name!#]:</key>
 		
 		<!-- These are state strings added to other strings. -->
 		<key name="scan_server_state_0001">Live</key>

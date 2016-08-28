@@ -1054,6 +1054,7 @@ CREATE TRIGGER trigger_shared
 -- This stores information about the server.
 CREATE TABLE servers (
 	server_uuid			uuid				not null	primary key,	-- This comes from the server's XML definition file.
+	server_anvil_uuid		uuid				not null,
 	server_name			text				not null,
 	server_stop_reason		text,								-- Set by Striker to 'clean' when stopped via the webui. This prevents anvil-safe-start from starting it on node boot.
 	server_start_after		uuid,								-- This can be the UUID of another server. If set, this server will boot 'server_start_delay' seconds after the referenced server boots. A value of '00000000-0000-0000-0000-000000000000' will tell 'anvil-safe-start' to not boot the server at all.
@@ -1074,6 +1075,7 @@ ALTER TABLE servers OWNER TO #!variable!user!#;
 CREATE TABLE history.servers (
 	history_id			bigserial,
 	server_uuid			uuid,
+	server_anvil_uuid		uuid,
 	server_name			text,
 	server_stop_reason		text,
 	server_start_after		uuid,
@@ -1099,6 +1101,7 @@ BEGIN
 	SELECT INTO history_servers * FROM servers WHERE server_uuid = new.server_uuid;
 	INSERT INTO history.servers
 		(server_uuid,
+		 server_anvil_uuid, 
 		 server_name, 
 		 server_stop_reason, 
 		 server_start_after, 
@@ -1115,6 +1118,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_servers.server_uuid, 
+		 history_servers.server_anvil_uuid, 
 		 history_servers.server_name, 
 		 history_servers.server_stop_reason, 
 		 history_servers.server_start_after, 

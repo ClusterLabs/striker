@@ -12,16 +12,13 @@ our $VERSION  = "0.1.001";
 my $THIS_FILE = "Validate.pm";
 
 ### Methods;
+# is_cron_schedule
 # is_email
 # is_domain_name
 # is_integer_or_unsigned_float
 # is_ipv4
 # is_url
 # is_uuid
-
-### NOTE: In 'configure' -> save_dr_job_form() is a complete sanity check of crontab strings. It needs to
-###       know why a crontab string is invalid so we didn't write it here (yet). If we need to validate 
-###       crontab strings later, use it as the basis for 'is_crontab'.
 
 
 #############################################################################################################
@@ -56,6 +53,633 @@ sub parent
 #############################################################################################################
 # Provided methods                                                                                          #
 #############################################################################################################
+
+### TODO: This needs a LOT of testing!
+# Checks to see if the string is a valid crontab schedule. It returns a transformed/normalized scheduke for
+# callers who might want to use it.
+sub is_cron_schedule
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_email" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $is_valid = 1;
+	my $schedule = $parameter->{schedule} ? $parameter->{schedule} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "schedule", value1 => $schedule,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($schedule =~ /^@(.*)$/)
+	{
+		# Yup. Convert it to the normal string though.
+		my $nickname = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "nickname", value1 => $nickname,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# @reboot..: Run once after reboot.
+		# @yearly..: Run once a year  = "0 0 1 1 *".
+		# @annually: Run once a year  = "0 0 1 1 *".
+		# @monthly.: Run once a month = "0 0 1 * *".
+		# @weekly..: Run once a week  = "0 0 * * 0".
+		# @daily...: Run once a day   = "0 0 * * *".
+		# @hourly..: Run once an hour = "0 * * * *".
+		if (lc($nickname) eq "reboot")
+		{
+			# Valid and no transformation needed
+		}
+		elsif ((lc($nickname) eq "yearly") or (lc($nickname) eq "annually"))
+		{
+			$schedule = "0 0 1 1 *";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "schedule", value1 => $schedule,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (lc($nickname) eq "monthly")
+		{
+			$schedule = "0 0 1 * *";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "schedule", value1 => $schedule,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (lc($nickname) eq "weekly")
+		{
+			$schedule = "0 0 * * 0";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "schedule", value1 => $schedule,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (lc($nickname) eq "daily")
+		{
+			$schedule = "0 0 * * *";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "schedule", value1 => $schedule,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (lc($nickname) eq "hourly")
+		{
+			# Really?! Oooookay.,,
+			$schedule = "0 * * * *";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "schedule", value1 => $schedule,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Not valid.
+			$is_valid = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "is_valid", value1 => $is_valid,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	elsif ($schedule =~ /^(.*?) (.*?) (.*?) (.*?) (.*?)$/)
+	{
+		### NOTE: All fields may be CSVs, so we'll split on ',' for all five fields. Entries without
+		###       commas will be processed as if they were a list of one.
+		# field          allowed values
+		# -----          --------------
+		# minute         0-59
+		# hour           0-23
+		# day of month   1-31
+		# month          1-12 (or names)
+		# day of week    0-7 (0 or 7 is Sunday, or use names)
+		my $minutes       = $1;
+		my $hours         = $2;
+		my $days_of_month = $3;
+		my $months        = $4;
+		my $days_of_week  = $5;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "minutes",       value1 => $minutes,
+			name2 => "hours",         value2 => $hours,
+			name3 => "days_of_month", value3 => $days_of_month,
+			name4 => "months",        value4 => $months,
+			name5 => "days_of_week",  value5 => $days_of_week,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Minutes.
+		foreach my $minute (split/,/, $minutes)
+		{
+			# The 'minute' field can be '0-59', ranges and steps.
+			if ($minute =~ /^(.*?)\/(.*)$/)
+			{
+				my $left_side  = $1;
+				my $right_side = $2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "left_side",  value1 => $left_side,
+					name2 => "right_side", value2 => $right_side,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# The left side is allowed to be '*' or a range, the right side is not.
+				if ($left_side =~ /^(\d+)-(\d+)/)
+				{
+					my $start = $1;
+					my $end   = $2;
+					if (($start > 59) or ($end > 59))
+					{
+						# The minute range is invalid
+						$is_valid = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "is_valid", value1 => $is_valid,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif ($left_side =~ /^(\d+)$/)
+				{
+					# Left side is a single value
+					if ($left_side > 59)
+					{
+						# The minute is invalid
+						$is_valid = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "is_valid", value1 => $is_valid,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif ($left_side ne "*")
+				{
+					# Not sure what the left side is, but it isn't valid.
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# The right side can only be a digit. I'm not sure what a sane 
+				# maximum is. So we'll only verify that it is a digit and leave it at
+				# that. Though anything over '30' doesn't make much sense...
+				if ($right_side =~ /\D/)
+				{
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			} 
+			elsif ($minute =~ /^(\d+)-(\d+)/)
+			{
+				# Range.
+				my $start = $1;
+				my $end   = $2;
+				if (($start > 59) or ($end > 59))
+				{
+					# The minute range is invalid
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			elsif ($minute =~ /^(\d+)/)
+			{
+				# It's not a step, evaluate normally
+				if ($minute > 59)
+				{
+					# The minute is invalid
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# Invalid
+				$is_valid = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "is_valid", value1 => $is_valid,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Hours.
+		foreach my $hour (split/,/, $hours)
+		{
+			# The 'hour' field can be '0-23', ranges and steps.
+			if ($hour =~ /^(.*?)\/(.*)$/)
+			{
+				my $left_side  = $1;
+				my $right_side = $2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "left_side",  value1 => $left_side,
+					name2 => "right_side", value2 => $right_side,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# The left side is allowed to be '*' or a range, the right side is not.
+				if ($left_side =~ /^(\d+)-(\d+)/)
+				{
+					my $start = $1;
+					my $end   = $2;
+					if (($start > 23) or ($end > 23))
+					{
+						# The hour range is invalid
+						$is_valid = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "is_valid", value1 => $is_valid,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif ($left_side =~ /^(\d+)$/)
+				{
+					# Left side is a single value
+					if ($left_side > 23)
+					{
+						# The hour is invalid
+						$is_valid = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "is_valid", value1 => $is_valid,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif ($left_side ne "*")
+				{
+					# Not sure what the left side is, but it isn't valid.
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# The right side can only be a digit. I'm not sure what a sane maximum is. So
+				# we'll only verify that it is a digit and leave it at that. Though anything 
+				# over '6' doesn't make much sense...
+				if ($right_side =~ /\D/)
+				{
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			} 
+			elsif ($hour =~ /^(\d+)-(\d+)/)
+			{
+				# Range.
+				my $start = $1;
+				my $end   = $2;
+				if (($start > 23) or ($end > 23))
+				{
+					# The hour range is invalid
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			elsif ($hour =~ /^(\d+)/)
+			{
+				# It's not a step, evaluate normally
+				if ($hour > 23)
+				{
+					# The hour is invalid
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# Invalid
+				$is_valid = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "is_valid", value1 => $is_valid,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Days of the month
+		foreach my $day_of_month (split/,/, $days_of_month)
+		{
+			# The 'day_of_month' field can be '1-31', ranges and steps.
+			if ($day_of_month =~ /^(.*?)\/(.*)$/)
+			{
+				my $left_side  = $1;
+				my $right_side = $2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "left_side",  value1 => $left_side,
+					name2 => "right_side", value2 => $right_side,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# The left side is allowed to be '*' or a range, the right side is not.
+				if ($left_side =~ /^(\d+)-(\d+)/)
+				{
+					my $start = $1;
+					my $end   = $2;
+					if ((not $start) or (not $end) or ($start > 31) or ($end > 31))
+					{
+						# The day_of_month range is invalid
+						$is_valid = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "is_valid", value1 => $is_valid,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif ($left_side =~ /^(\d+)$/)
+				{
+					# Left side is a single value
+					if ((not $left_side) or ($left_side > 12))
+					{
+						# The day_of_month is invalid
+						$is_valid = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "is_valid", value1 => $is_valid,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif ($left_side ne "*")
+				{
+					# Not sure what the left side is, but it isn't valid.
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# The right side can only be a digit. I'm not sure what a sane maximum is. So
+				# we'll only verify that it is a digit and leave it at that. Though anything 
+				# over '15' doesn't make much sense...
+				if ($right_side =~ /\D/)
+				{
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			} 
+			elsif ($day_of_month =~ /^(\d+)-(\d+)/)
+			{
+				# Range.
+				my $start = $1;
+				my $end   = $2;
+				if ((not $start) or (not $end) or ($start > 31) or ($end > 31))
+				{
+					# The day_of_month range is invalid
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			elsif ($day_of_month =~ /^(\d+)/)
+			{
+				# It's not a step, evaluate normally
+				if ((not $day_of_month) or ($day_of_month > 31))
+				{
+					# The day_of_month is invalid
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# Invalid
+				$is_valid = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "is_valid", value1 => $is_valid,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Months.
+		foreach my $month (split/,/, $months)
+		{
+			### NOTE: Cron expects just the first three letters. We'll be less strict. In any
+			###       case, we will transform the names to numbers,
+			# Transform the month, if needed.
+			if    ($month =~ /^jan/i) { $month = 1; }
+			elsif ($month =~ /^feb/i) { $month = 2; }
+			elsif ($month =~ /^mar/i) { $month = 3; }
+			elsif ($month =~ /^apr/i) { $month = 4; }
+			elsif ($month =~ /^may/i) { $month = 5; }
+			elsif ($month =~ /^jun/i) { $month = 6; }
+			elsif ($month =~ /^jul/i) { $month = 7; }
+			elsif ($month =~ /^aug/i) { $month = 8; }
+			elsif ($month =~ /^sep/i) { $month = 9; }
+			elsif ($month =~ /^oct/i) { $month = 10; }
+			elsif ($month =~ /^nov/i) { $month = 11; }
+			elsif ($month =~ /^dec/i) { $month = 12; }
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "month", value1 => $month,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# The 'month' field can be '1-12', ranges and steps.
+			if ($month =~ /^(.*?)\/(.*)$/)
+			{
+				my $left_side  = $1;
+				my $right_side = $2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "left_side",  value1 => $left_side,
+					name2 => "right_side", value2 => $right_side,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# The left side is allowed to be '*' or a range, the right side is not.
+				if ($left_side =~ /^(\d+)-(\d+)/)
+				{
+					my $start = $1;
+					my $end   = $2;
+					if ((not $start) or (not $end) or ($start > 12) or ($end > 12))
+					{
+						# The month range is invalid
+						$is_valid = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "is_valid", value1 => $is_valid,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif ($left_side =~ /^(\d+)$/)
+				{
+					# Left side is a single value
+					if ((not $left_side) or ($left_side > 12))
+					{
+						# The month is invalid
+						$is_valid = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "is_valid", value1 => $is_valid,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif ($left_side ne "*")
+				{
+					# Not sure what the left side is, but it isn't valid.
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# The right side can only be a digit. I'm not sure what a sane maximum is. So
+				# we'll only verify that it is a digit and leave it at that. Though anything 
+				# over '6' doesn't make much sense...
+				if ($right_side =~ /\D/)
+				{
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			} 
+			elsif ($month =~ /^(\d+)-(\d+)/)
+			{
+				# Range.
+				my $start = $1;
+				my $end   = $2;
+				if ((not $start) or (not $end) or ($start > 12) or ($end > 12))
+				{
+					# The month range is invalid
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			elsif ($month =~ /^(\d+)/)
+			{
+				# It's not a step, evaluate normally
+				if ((not $month) or ($month > 12))
+				{
+					# The month is invalid
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# Invalid
+				$is_valid = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "is_valid", value1 => $is_valid,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Days of the week.
+		foreach my $day_of_week (split/,/, $days_of_week)
+		{
+			# Transform the day, if needed. Note that '7' is valid for 'Sunday', but we'll 
+			# normalize it to '0'.
+			if    ($day_of_week =~ /^sun/i) { $day_of_week = 0; }
+			elsif ($day_of_week =~ /^mon/i) { $day_of_week = 1; }
+			elsif ($day_of_week =~ /^tue/i) { $day_of_week = 2; }
+			elsif ($day_of_week =~ /^wed/i) { $day_of_week = 3; }
+			elsif ($day_of_week =~ /^thu/i) { $day_of_week = 4; }
+			elsif ($day_of_week =~ /^fri/i) { $day_of_week = 5; }
+			elsif ($day_of_week =~ /^sat/i) { $day_of_week = 6; }
+			elsif ($day_of_week eq "7")     { $day_of_week = 0; }
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "day_of_week", value1 => $day_of_week,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# The 'day_of_week' field can be '0-6', ranges and steps.
+			if ($day_of_week =~ /^(.*?)\/(.*)$/)
+			{
+				my $left_side  = $1;
+				my $right_side = $2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "left_side",  value1 => $left_side,
+					name2 => "right_side", value2 => $right_side,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# The left side is allowed to be '*' or a range, the right side is not.
+				if ($left_side =~ /^(\d+)-(\d+)/)
+				{
+					my $start = $1;
+					my $end   = $2;
+					if (($start > 6) or ($end > 6))
+					{
+						# The day_of_week range is invalid
+						$is_valid = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "is_valid", value1 => $is_valid,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif ($left_side =~ /^(\d+)$/)
+				{
+					# Left side is a single value
+					if ($left_side > 6)
+					{
+						# The day_of_week is invalid
+						$is_valid = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "is_valid", value1 => $is_valid,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif ($left_side ne "*")
+				{
+					# Not sure what the left side is, but it isn't valid.
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# The right side can only be a digit. I'm not sure what a sane maximum is. So
+				# we'll only verify that it is a digit and leave it at that. Though anything 
+				# over '6' doesn't make much sense...
+				if ($right_side =~ /\D/)
+				{
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			} 
+			elsif ($day_of_week =~ /^(\d+)-(\d+)/)
+			{
+				# Range.
+				my $start = $1;
+				my $end   = $2;
+				if (($start > 6) or ($end > 6)
+				{
+					# The day_of_week range is invalid
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			elsif ($day_of_week =~ /^(\d+)/)
+			{
+				# It's not a step, evaluate normally
+				if ($day_of_week > 6)
+				{
+					# The day_of_week is invalid
+					$is_valid = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "is_valid", value1 => $is_valid,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# Invalid
+				$is_valid = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "is_valid", value1 => $is_valid,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	else
+	{
+		# Malformed.
+		$is_valid = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "is_valid", value1 => $is_valid,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "is_valid", value1 => $is_valid,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($is_valid);
+}
 
 # Check to see if the string is a valid email
 sub is_email

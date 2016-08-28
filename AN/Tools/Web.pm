@@ -361,6 +361,7 @@ sub check_all_cgi
 		"dr_job_dr_target_uuid",
 		"dr_job_anvil_uuid",
 		"dr_job_schedule",
+		"dr_job_server_list", 
 		"dr_job_servers",
 		"dr_job_uuid",
 		"dr_target",
@@ -493,10 +494,19 @@ sub check_all_cgi
 	];
 	# When saving notifications, the user can select a specific alert level per configured Anvil!. This 
 	# adds the potential CGI variables to the array.
-	my $anvil_data = $an->ScanCore->get_anvils();
+	my $anvil_data  = $an->ScanCore->get_anvils();
 	foreach my $hash_ref (@{$anvil_data})
 	{
 		push @{$cgi}, "notify_anvil_".$hash_ref->{anvil_uuid};
+	}
+	$an->Web->get_cgi({variables => $cgi});
+	
+	# When saving DR jobs, the user can select one or more servers for the given job. This adds the 
+	# potential CGI variables to the array.
+	my $server_data = $an->ScanCore->get_servers();
+	foreach my $hash_ref (@{$anvil_data})
+	{
+		push @{$cgi}, "dr_job_server_uuid_".$hash_ref->{server_uuid};
 	}
 	$an->Web->get_cgi({variables => $cgi});
 	

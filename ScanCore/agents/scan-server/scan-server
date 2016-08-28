@@ -113,9 +113,7 @@ if (not -e $an->data->{path}{cluster_conf})
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({ log_level => 2, message_key => "notice_message_0013", message_variables => {
-	connections	=>	$connections,
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({ log_level => 2, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
 
 # If 'libvirtd' isn't running (locally or on the peer, if we can connect to it), exit.
 if (not scan_servers($an))
@@ -206,11 +204,13 @@ sub scan_servers
 	$an->data->{sys}{local_node}     = $return->{local_node};
 	$an->data->{sys}{peer_node}      = $return->{peer_node};
 	$an->data->{sys}{anvil_name}     = $return->{anvil_name};
+	$an->data->{sys}{anvil_uuid}     = $return->{anvil_uuid};
 	$an->data->{sys}{anvil_password} = $return->{anvil_password};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
 		name2 => "sys::peer_node",  value2 => $an->data->{sys}{peer_node}, 
 		name3 => "sys::anvil_name", value3 => $an->data->{sys}{anvil_name}, 
+		name4 => "sys::anvil_uuid", value4 => $an->data->{sys}{anvil_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
@@ -218,7 +218,7 @@ sub scan_servers
 	
 	# Only proceed if I am in an Anvil!
 	my $local_access = 1;
-	if ($an->data->{sys}{anvil_name})
+	if ($an->data->{sys}{anvil_uuid})
 	{
 		# First, check for local servers.
 		my $shell_call = $an->data->{path}{virsh}." list --all";
@@ -539,32 +539,37 @@ sub find_changes
 			my $new_server_definition = $an->data->{server_uuid}{$server_uuid}{definition};
 			
 			# Old values
+			my $old_server_anvil_uuid = $an->data->{sql}{$server_uuid}{server_anvil_uuid};
 			my $old_server_name       = $an->data->{sql}{$server_uuid}{server_name};
 			my $old_server_host       = $an->data->{sql}{$server_uuid}{server_host};
 			my $old_server_state      = $an->data->{sql}{$server_uuid}{server_state};
 			my $old_server_definition = $an->data->{sql}{$server_uuid}{server_definition};
 			
 			# Diff?
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-				name1 => "old_server_name",       value1 => $old_server_name, 
-				name2 => "new_server_name",       value2 => $new_server_name, 
-				name3 => "old_server_host",       value3 => $old_server_host, 
-				name4 => "new_server_host",       value4 => $new_server_host, 
-				name5 => "old_server_state",      value5 => $old_server_state, 
-				name6 => "new_server_state",      value6 => $new_server_state, 
-				name7 => "old_server_definition", value7 => $old_server_definition, 
-				name8 => "new_server_definition", value8 => $new_server_definition, 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+				name1  => "old_server_anvil_uuid", value1  => $old_server_anvil_uuid, 
+				name2  => "sys::anvil_uuid",       value2  => $an->data->{sys}{anvil_uuid}, 
+				name3  => "old_server_name",       value3  => $old_server_name, 
+				name4  => "new_server_name",       value4  => $new_server_name, 
+				name5  => "old_server_host",       value5  => $old_server_host, 
+				name6  => "new_server_host",       value6  => $new_server_host, 
+				name7  => "old_server_state",      value7  => $old_server_state, 
+				name8  => "new_server_state",      value8  => $new_server_state, 
+				name9  => "old_server_definition", value9  => $old_server_definition, 
+				name10 => "new_server_definition", value10 => $new_server_definition, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if (($new_server_name       ne $old_server_name)  or 
-			    ($new_server_host       ne $old_server_host)  or 
-			    ($new_server_state      ne $old_server_state) or 
-			    ($new_server_definition ne $old_server_definition))
+			if (($an->data->{sys}{anvil_uuid} ne $old_server_anvil_uuid) or 
+			    ($new_server_name             ne $old_server_name)       or 
+			    ($new_server_host             ne $old_server_host)       or 
+			    ($new_server_state            ne $old_server_state)      or 
+			    ($new_server_definition       ne $old_server_definition))
 			{
 				# Something has changed.
 				my $query = "
 UPDATE 
     servers 
 SET 
+    server_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{anvil_uuid}).", 
     server_name       = ".$an->data->{sys}{use_db_fh}->quote($new_server_name).", 
     server_host       = ".$an->data->{sys}{use_db_fh}->quote($new_server_host).", 
     server_state      = ".$an->data->{sys}{use_db_fh}->quote($new_server_state).", 
@@ -580,6 +585,27 @@ WHERE
 				push @{$an->data->{sys}{sql}}, $query;
 				
 				### Now what actually changed?
+				# The host Anvil! system?
+				if ($an->data->{sys}{anvil_uuid} ne $old_server_anvil_uuid)
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1  => "old_server_anvil_uuid", value1  => $old_server_anvil_uuid, 
+						name2  => "sys::anvil_uuid",       value2  => $an->data->{sys}{anvil_uuid}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# This should be a rare event, and almost certainly triggered by an 
+					# admin.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_server_message_0013",
+						alert_message_variables	=>	{
+							server			=>	$new_server_name, 
+							anvil_name		=>	$an->data->{sys}{anvil_name},
+						},
+					});
+				}
 				# The server name?
 				if ($new_server_name ne $old_server_name)
 				{
@@ -720,6 +746,7 @@ INSERT INTO
     servers 
 (
     server_uuid, 
+    server_anvil_uuid, 
     server_name, 
     server_stop_reason, 
     server_start_after, 
@@ -731,6 +758,7 @@ INSERT INTO
     modified_date
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($server_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{anvil_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_start_after).", 
@@ -818,6 +846,7 @@ sub read_last_scan
 	# function won't bother looking for changes and directly INSERT the scanned data.
 	my $query = "
 SELECT 
+    server_anvil_uuid, 
     server_name, 
     server_stop_reason, 
     server_start_after, 
@@ -843,27 +872,30 @@ WHERE
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
 	{
-		my $server_name        = $row->[0];
-		my $server_stop_reason = $row->[1];
-		my $server_start_after = $row->[2];
-		my $server_start_delay = $row->[3];
-		my $server_note        = $row->[4];
-		my $server_definition  = $row->[5];
-		my $server_host        = $row->[6];
-		my $server_state       = $row->[7];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
-			name1 => "server_uuid",        value1 => $server_uuid, 
-			name2 => "server_name",        value2 => $server_name, 
-			name3 => "server_stop_reason", value3 => $server_stop_reason, 
-			name4 => "server_start_after", value4 => $server_start_after, 
-			name5 => "server_start_delay", value5 => $server_start_delay, 
-			name6 => "server_note",        value6 => $server_note, 
-			name7 => "server_definition",  value7 => $server_definition, 
-			name8 => "server_host",        value8 => $server_host, 
-			name9 => "server_state",       value9 => $server_state, 
+		my $server_anvil_uuid  =         $row->[0];
+		my $server_name        =         $row->[1];
+		my $server_stop_reason = defined $row->[2] ? $row->[2] : "";
+		my $server_start_after = defined $row->[3] ? $row->[3] : "";
+		my $server_start_delay =         $row->[4];
+		my $server_note        = defined $row->[5] ? $row->[5] : "";
+		my $server_definition  =         $row->[6];
+		my $server_host        = defined $row->[7] ? $row->[7] : "";
+		my $server_state       = defined $row->[8] ? $row->[8] : "";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			name1  => "server_anvil_uuid",  value1  => $server_anvil_uuid, 
+			name2  => "server_uuid",        value2  => $server_uuid, 
+			name3  => "server_name",        value3  => $server_name, 
+			name4  => "server_stop_reason", value4  => $server_stop_reason, 
+			name5  => "server_start_after", value5  => $server_start_after, 
+			name6  => "server_start_delay", value6  => $server_start_delay, 
+			name7  => "server_note",        value7  => $server_note, 
+			name8  => "server_definition",  value8  => $server_definition, 
+			name9  => "server_host",        value9  => $server_host, 
+			name10 => "server_state",       value10 => $server_state, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Push the data into the hash for later comparison
+		$an->data->{sql}{$server_uuid}{server_anvil_uuid}  = $server_anvil_uuid;
 		$an->data->{sql}{$server_uuid}{server_name}        = $server_name;
 		$an->data->{sql}{$server_uuid}{server_stop_reason} = $server_stop_reason;
 		$an->data->{sql}{$server_uuid}{server_start_after} = $server_start_after;
@@ -873,10 +905,11 @@ WHERE
 		$an->data->{sql}{$server_uuid}{server_host}        = $server_host, 
 		$an->data->{sql}{$server_uuid}{server_state}       = $server_state, 
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
-			name1 => "sql::${server_uuid}::server_name",        value1 => $an->data->{sql}{$server_uuid}{server_name}, 
-			name2 => "sql::${server_uuid}::server_stop_reason", value2 => $an->data->{sql}{$server_uuid}{server_stop_reason}, 
-			name3 => "sql::${server_uuid}::server_start_after", value3 => $an->data->{sql}{$server_uuid}{server_start_after}, 
-			name4 => "sql::${server_uuid}::server_start_delay", value4 => $an->data->{sql}{$server_uuid}{server_start_delay}, 
+			name1 => "sql::${server_uuid}::server_anvil_uuid",  value1 => $an->data->{sql}{$server_uuid}{server_anvil_uuid}, 
+			name2 => "sql::${server_uuid}::server_name",        value2 => $an->data->{sql}{$server_uuid}{server_name}, 
+			name3 => "sql::${server_uuid}::server_stop_reason", value3 => $an->data->{sql}{$server_uuid}{server_stop_reason}, 
+			name4 => "sql::${server_uuid}::server_start_after", value4 => $an->data->{sql}{$server_uuid}{server_start_after}, 
+			name5 => "sql::${server_uuid}::server_start_delay", value5 => $an->data->{sql}{$server_uuid}{server_start_delay}, 
 			name6 => "sql::${server_uuid}::server_note",        value6 => $an->data->{sql}{$server_uuid}{server_note}, 
 			name7 => "sql::${server_uuid}::server_definition",  value7 => $an->data->{sql}{$server_uuid}{server_definition}, 
 			name8 => "sql::${server_uuid}::server_host",        value8 => $an->data->{sql}{$server_uuid}{server_host}, 

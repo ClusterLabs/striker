@@ -443,6 +443,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0223"><![CDATA[This places an upper limit on the bandwidth used when transmitting a server's image over the network to the DR target.<br />If set to '0', no rate limiting is used and the transfer will occur as qickly as possible.]]></key>
 		<key name="explain_0224">A place for you to keep any notes you wish about this DR target.</key>
 		<key name="explain_0225">There are no existing disaster recovery targets yet.</key>
+		<key name="explain_0226">There are no existing disaster recovery jobs yet.</key>
+		<key name="explain_0227"><![CDATA[You can select an existing disaster recovery job,<br />or enter a new one below and it will be created.]]></key>
+		<key name="explain_0228"><![CDATA[There are no existing #!string!brand_0003!# systems yet.<br />You will not be able to save a DR job until one exists.]]></key>
+		<key name="explain_0229"><![CDATA[Select an existing #!string!brand_0003!# system and click '#!string!button_0048!#,<br />to update the list of servers available to select for this job.]]></key>
+		<key name="explain_0230"><![CDATA[There are no servers to select for this job yet.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -1954,6 +1959,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0495"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!job!#</span>] disaster recovery job?]]></key>
 		<key name="message_0496"><![CDATA[The schedule nickname '<span class="highlight_detail">#!data!cgi::dr_job_schedule!#</span>' is a valid cron table nickname, but it is not supported by Striker.]]></key>
 		<key name="message_0497"><![CDATA[The schedule string: [<span class="highlight_detail">#!data!cgi::dr_job_schedule!#</span>] is malformed. There should be five sections (separated by spaces).]]></key>
+		<key name="message_0498"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!count!#</span>] DR target(s) remained.]]></key>
+		<key name="message_0499"><![CDATA[The: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job has been deleted.]]></key>
+		<key name="message_0500"><![CDATA[There were no available servers to select for this DR job.<br />Please select an #!string!brand_0003!# hosting servers.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

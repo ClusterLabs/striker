@@ -21,6 +21,13 @@
 # - Update the string processing from the '!!x!name=a,value=b,units=c!!' method to the new method here:
 #   https://alteeve.ca/w/ScanCore#Unit_Parsing
 # 
+# NOTE: 
+# - Health values
+#   - IPMI BMC    - Hung       = 10
+#   - Temperature - Critical   = 2
+#   - Temperature - Warning    = 1
+#   - Fan         - Failed     = 5
+#   - PSU         - Lost Input = 5
 =pod
 
 A Hung/crashed BMC will fail to reset with this:
@@ -86,6 +93,10 @@ my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0
 # Get the handle to the AN::Tools and preset some variables I will use.
 my $an = AN::Tools->new({data => 
 	{
+		health			=>	{
+			old			=>	{},
+			new			=>	{},
+		},
 		path			=>	{
 			core_strings		=>	"$scancore_directory/ScanCore.xml",
 			sql			=>	"$running_directory/$THIS_FILE.sql",
@@ -227,6 +238,9 @@ update_db($an);
 # Look for changes.
 find_changes($an);
 
+# Finally, process health weights.
+process_health($an);
+
 # Update the database
 $an->DB->update_time({file => $THIS_FILE});
 
@@ -237,6 +251,155 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This reads in all health wieghts previously set, alters ones as needed, INSERTs new ones and DELETEs old
+# ones.
+sub process_health
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# This will hold our updates.
+	$an->data->{sys}{sql} = [];
+	
+	# Read in previous health values.
+	my $query = "
+SELECT 
+    health_uuid,
+    health_agent_name,
+    health_source_name,
+    health_source_weight 
+FROM 
+    health 
+WHERE 
+    health_host_uuid  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+    
+    health_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+		
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $health_uuid          = $row->[0]; 
+		my $health_agent_name    = $row->[1]; 
+		my $health_source_name   = $row->[2]; 
+		my $health_source_weight = $row->[3];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "health_uuid",          value1 => $health_uuid, 
+			name2 => "health_agent_name",    value2 => $health_agent_name, 
+			name3 => "health_source_name",   value3 => $health_source_name, 
+			name4 => "health_source_weight", value4 => $health_source_weight, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{health}{old}{$health_source_name}{uuid}  = $health_uuid;
+		$an->data->{health}{old}{$health_source_name}{value} = $health_source_weight;
+	}
+	
+	# Read in the new ones
+	foreach my $health_source_name (sort {$a cmp $b} keys %{$an->data->{health}{new}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (exists $an->data->{health}{old}{$health_source_name})
+		{
+			# We've seen this before. Has it changed?
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "health::old::${health_source_name}::value", value1 => $an->data->{health}{old}{$health_source_name}{value}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($an->data->{health}{new}{$health_source_name} ne $an->data->{health}{old}{$health_source_name}{value})
+			{
+				# It has changed, update it.
+				my $query = "
+UPDATE 
+    health 
+SET 
+    health_source_weight = ".$an->data->{sys}{use_db_fh}->quote($an->data->{health}{new}{$health_source_name}).", 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    health_uuid          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{health}{old}{$health_source_name}{uuid})."
+;";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+			
+			# Delete the new old key, regardless of whether it has changed now.
+			delete $an->data->{health}{old}{$health_source_name};
+		}
+		else
+		{
+			# New entry, INSERT it.
+			my $query = "
+INSERT INTO 
+    health
+(
+    health_uuid,
+    health_host_uuid,
+    health_agent_name,
+    health_source_name,
+    health_source_weight,
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_source_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{health}{new}{$health_source_name}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$an->data->{sys}{sql}}, $query;
+		}
+	}
+	
+	# Delete any old entries that are left.
+	foreach my $health_source_name (sort {$a cmp $b} keys %{$an->data->{health}{new}})
+	{
+		# Well set the source name to 'DELETED'.
+		my $query = "
+UPDATE 
+    health 
+SET 
+    health_source_name = 'DELETED', 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    health_uuid        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{health}{old}{$health_source_name}{uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+		
+		$query = "
+DELETE FROM 
+    health 
+WHERE 
+    health_uuid        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{health}{old}{$health_source_name}{uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+	}
+	
+	# Now commit the changes.
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
 
 # This reads in the last scan data from one of the databases and compares it against the just-read data. If 
 # anything changed, register an alert.
@@ -814,6 +977,25 @@ AND
 			name5 => "new_temperature_is",      value5 => $new_temperature_is,
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		# If the state is 'warning', set  a health weight of 1 and set critical to 2.
+		if ($new_temperature_state = "warning")
+		{
+			my $health_source_name                           = "temperature:".$serial_number;
+			   $an->data->{health}{new}{$health_source_name} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($new_temperature_state = "critical")
+		{
+			my $health_source_name                           = "temperature:".$serial_number;
+			   $an->data->{health}{new}{$health_source_name} = 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Now see if the variable was seen before and, if so, if it changed.
 		if (ref($an->data->{old}{$machine}{temperature}{$ipmitool_sensor_name}))
 		{
 			# Update the existing entry, if needed.
@@ -2299,13 +2481,15 @@ sub query_ipmi_targets
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
+			### TODO: If we determine that the IPMI BMC is hung, set the health to '10'
+			###       $an->data->{health}{new}{'ipmi:bmc_controller'} = 10;
 			# Catch errors:
 			if ($line =~ /Activate Session command failed/)
 			{
 				# Failed to connect.
 				$an->Log->entry({log_level => 1, message_key => "scan_ipmitool_log_0003", message_variables => {
-					machine	=> $machine, 
-					call	=> $ipmitool_command, 
+					machine => $machine, 
+					call    => $ipmitool_command, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
@@ -2398,6 +2582,10 @@ sub query_ipmi_targets
 				name6 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_sensor_low_critical",  value6 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_low_critical}, 
 				name7 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_sensor_low_warning",   value7 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_low_warning}, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			### TODO: Test various failures (pull PSU, FAN, slow fan, etc) and use the output to 
+			###       set the health values.
+			###       $an->data->{health}{new}{$health_source_name} = ...
 			
 			# If this is a temperature, check to see if it is outside it's nominal range and, if
 			# so, record it into a hash for loading into ScanCore's 'temperature' table.

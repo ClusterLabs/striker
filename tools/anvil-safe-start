@@ -375,6 +375,7 @@ sub start_servers
 		return(0);
 	}
 	
+	### TODO: Left off here. We can now use 'server_anvil_uuid' to select only servers from this Anvil! system...
 	# Now call up the servers from the server table. We'll read all and decide what to skip later.
 	my $query = "
 SELECT 

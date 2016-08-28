@@ -994,6 +994,7 @@ sub get_servers
 	my $query = "
 SELECT 
     server_uuid, 
+    server_anvil_uuid, 
     server_name, 
     server_stop_reason, 
     server_start_after, 
@@ -1025,39 +1026,42 @@ FROM
 	foreach my $row (@{$results})
 	{
 		my $server_uuid                     = $row->[0];
-		my $server_name                     = $row->[1];
-		my $server_stop_reason              = $row->[2];
-		my $server_start_after              = $row->[3];
-		my $server_start_delay              = $row->[4];
-		my $server_note                     = $row->[5] ? $row->[5] : "";
-		my $server_definition               = $row->[6];
-		my $server_host                     = $row->[7];
-		my $server_state                    = $row->[8];
-		my $server_migration_type           = $row->[9];
-		my $server_pre_migration_script     = $row->[10];
-		my $server_pre_migration_arguments  = $row->[11];
-		my $server_post_migration_script    = $row->[12];
-		my $server_post_migration_arguments = $row->[13];
-		my $modified_date                   = $row->[14];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+		my $server_anvil_uuid               = $row->[1];
+		my $server_name                     = $row->[2];
+		my $server_stop_reason              = $row->[3];
+		my $server_start_after              = $row->[4];
+		my $server_start_delay              = $row->[5];
+		my $server_note                     = $row->[6] ? $row->[6] : "";
+		my $server_definition               = $row->[7];
+		my $server_host                     = $row->[8];
+		my $server_state                    = $row->[9];
+		my $server_migration_type           = $row->[10];
+		my $server_pre_migration_script     = $row->[11];
+		my $server_pre_migration_arguments  = $row->[12];
+		my $server_post_migration_script    = $row->[13];
+		my $server_post_migration_arguments = $row->[14];
+		my $modified_date                   = $row->[15];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
 			name1  => "server_uuid",                     value1  => $server_uuid, 
-			name2  => "server_name",                     value2  => $server_name, 
-			name3  => "server_stop_reason",              value3  => $server_stop_reason, 
-			name4  => "server_start_after",              value4  => $server_start_after, 
-			name5  => "server_start_delay",              value5  => $server_start_delay, 
-			name6  => "server_note",                     value6  => $server_note, 
-			name7  => "server_definition",               value7  => $server_definition, 
-			name8  => "server_host",                     value8  => $server_host, 
-			name9  => "server_state",                    value9  => $server_state, 
-			name10 => "server_migration_type",           value10 => $server_migration_type, 
-			name11 => "server_pre_migration_script",     value11 => $server_pre_migration_script, 
-			name12 => "server_pre_migration_arguments",  value12 => $server_pre_migration_arguments, 
-			name13 => "server_post_migration_script",    value13 => $server_post_migration_script, 
-			name14 => "server_post_migration_arguments", value14 => $server_post_migration_arguments, 
-			name15 => "modified_date",                   value15 => $modified_date, 
+			name2  => "server_anvil_uuid",               value2  => $server_anvil_uuid, 
+			name3  => "server_name",                     value3  => $server_name, 
+			name4  => "server_stop_reason",              value4  => $server_stop_reason, 
+			name5  => "server_start_after",              value5  => $server_start_after, 
+			name6  => "server_start_delay",              value6  => $server_start_delay, 
+			name7  => "server_note",                     value7  => $server_note, 
+			name8  => "server_definition",               value8  => $server_definition, 
+			name9  => "server_host",                     value9  => $server_host, 
+			name10 => "server_state",                    value10 => $server_state, 
+			name11 => "server_migration_type",           value11 => $server_migration_type, 
+			name12 => "server_pre_migration_script",     value12 => $server_pre_migration_script, 
+			name13 => "server_pre_migration_arguments",  value13 => $server_pre_migration_arguments, 
+			name14 => "server_post_migration_script",    value14 => $server_post_migration_script, 
+			name15 => "server_post_migration_arguments", value15 => $server_post_migration_arguments, 
+			name16 => "modified_date",                   value16 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$return}, {
 			server_uuid			=>	$server_uuid,
+			server_anvil_uuid		=>	$server_anvil_uuid, 
 			server_name			=>	$server_name, 
 			server_stop_reason		=>	$server_stop_reason, 
 			server_start_after		=>	$server_start_after, 

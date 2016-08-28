@@ -26,17 +26,21 @@
 # TODO:
 # - Check the cache policy and reset it to 'writeback' if the BBU/FBU is healthy and the cache changes to 
 #   write-through.
-# - Set 'health::new::X' in the scan itself and also check the temperatures against their ranges even when
-#   they haven't changed so that our health weight will remain persistent. This isn't a super high priority
-#   though because, normally, the servers should migrate the first time a node's health falters. However,
-#   doing this *might* reduce repeated server migration.
 # 
 # NOTE:
 # - LSI seems to flip between "Virtual Drive" and "Virtual Disk". We're standardizing on "Virtual Drive".
 # 
-
-# Disable this for now.
-# $an->nice_exit({exit_code => 0});
+# NOTE: 
+# - Health values
+#   - Controller  - Correctable errors   = 1
+#   - Controller  - Uncorrectable errors = 5
+#   - Controller  - Status changes       = 5
+#   - Drive group - partially degraded   = 5
+#   - Drive group - degraded             = 10
+#   - Cachevault  - Replacement needed   = 5
+#   - BBU         - Replacement needed   = 5
+#   - Temperature - Critical             = 2
+#   - Temperature - Warning              = 1
 
 # Use my modules.
 use strict;
@@ -237,11 +241,15 @@ update_db($an);
 # Look for changes.
 find_changes($an);
 
-# Process health weights.
+# Process temperatures! This also sets health values for warning and critical temperatures so make sure we
+# always call this before process_health().
+process_temperatures($an);
+
+# Finally, process health weights.
 process_health($an);
 
-# Finally, process temperatures!
-process_temperatures($an);
+# Update the database
+$an->DB->update_time({file => $THIS_FILE});
 
 # Clean up and go away.
 $an->nice_exit({exit_code => 0});
@@ -258,9 +266,13 @@ sub process_health
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# This will hold our updates.
+	$an->data->{sys}{sql} = [];
+	
 	# Read in previous health values.
 	my $query = "
 SELECT 
+    health_uuid,
     health_agent_name,
     health_source_name,
     health_source_weight 
@@ -281,20 +293,117 @@ WHERE
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
 	{
-		my $health_agent_name    = $row->[0]; 
-		my $health_source_name   = $row->[1]; 
-		my $health_source_weight = $row->[2];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "health_agent_name",    value1 => $health_agent_name, 
-			name2 => "health_source_name",   value2 => $health_source_name, 
-			name3 => "health_source_weight", value3 => $health_source_weight, 
+		my $health_uuid          = $row->[0]; 
+		my $health_agent_name    = $row->[1]; 
+		my $health_source_name   = $row->[2]; 
+		my $health_source_weight = $row->[3];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "health_uuid",          value1 => $health_uuid, 
+			name2 => "health_agent_name",    value2 => $health_agent_name, 
+			name3 => "health_source_name",   value3 => $health_source_name, 
+			name4 => "health_source_weight", value4 => $health_source_weight, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$an->data->{health}{old}{$health_source_name} = $health_source_weight;
+		$an->data->{health}{old}{$health_source_name}{uuid}  = $health_uuid;
+		$an->data->{health}{old}{$health_source_name}{value} = $health_source_weight;
 	}
 	
-	$an->data->{health}{new}{$variable} = 5;
+	# Read in the new ones
+	foreach my $health_source_name (sort {$a cmp $b} keys %{$an->data->{health}{new}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (exists $an->data->{health}{old}{$health_source_name})
+		{
+			# We've seen this before. Has it changed?
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "health::old::${health_source_name}::value", value1 => $an->data->{health}{old}{$health_source_name}{value}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($an->data->{health}{new}{$health_source_name} ne $an->data->{health}{old}{$health_source_name}{value})
+			{
+				# It has changed, update it.
+				my $query = "
+UPDATE 
+    health 
+SET 
+    health_source_weight = ".$an->data->{sys}{use_db_fh}->quote($an->data->{health}{new}{$health_source_name}).", 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    health_uuid          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{health}{old}{$health_source_name}{uuid})."
+;";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+			
+			# Delete the new old key, regardless of whether it has changed now.
+			delete $an->data->{health}{old}{$health_source_name};
+		}
+		else
+		{
+			# New entry, INSERT it.
+			my $query = "
+INSERT INTO 
+    health
+(
+    health_uuid,
+    health_host_uuid,
+    health_agent_name,
+    health_source_name,
+    health_source_weight,
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_source_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{health}{new}{$health_source_name}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$an->data->{sys}{sql}}, $query;
+		}
+	}
 	
+	# Delete any old entries that are left.
+	foreach my $health_source_name (sort {$a cmp $b} keys %{$an->data->{health}{new}})
+	{
+		# Well set the source name to 'DELETED'.
+		my $query = "
+UPDATE 
+    health 
+SET 
+    health_source_name = 'DELETED', 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    health_uuid        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{health}{old}{$health_source_name}{uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+		
+		$query = "
+DELETE FROM 
+    health 
+WHERE 
+    health_uuid        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{health}{old}{$health_source_name}{uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+	}
+	
+	# Now commit the changes.
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -355,6 +464,7 @@ AND
 		};
 	}
 	
+	# Loop through the temperature from this scan.
 	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{new}{temperature}})
 	{
 		foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{new}{temperature}{$variable}})
@@ -370,6 +480,25 @@ AND
 				name5 => "new_temperature_is",      value5 => $new_temperature_is, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
+			# If the state is 'warning', set  a health weight of 1 and set critical to 2.
+			if ($new_temperature_state = "warning")
+			{
+				my $health_source_name                           = "temperature:".$serial_number;
+				   $an->data->{health}{new}{$health_source_name} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($new_temperature_state = "critical")
+			{
+				my $health_source_name                           = "temperature:".$serial_number;
+				   $an->data->{health}{new}{$health_source_name} = 2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Now see if the variable was seen before and, if so, if it changed.
 			if (ref($an->data->{old}{temperature}{$variable}{$serial_number}))
 			{
 				# Update the existing entry, if needed.
@@ -3421,7 +3550,7 @@ sub process_cachevaults
 			{
 				$new_state = delete $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "new_model", value1 => $new_model,
+					name1 => "new_state", value1 => $new_state,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
@@ -3447,6 +3576,16 @@ sub process_cachevaults
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_replacement_needed", value1 => $new_replacement_needed,
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				# We'll also set our health here if the FBU needs to be replaced.
+				if (lc($new_replacement_needed) eq "yes")
+				{
+					my $health_source_name                           = "cachevault:".$cachevault_serial_number.":".$variable;
+					   $an->data->{health}{new}{$health_source_name} = 5;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 				next;
 			}
 		}
@@ -4640,6 +4779,16 @@ sub process_bbus
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_replacement_needed", value1 => $new_replacement_needed,
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				# We'll also set our health here if the FBU needs to be replaced.
+				if (lc($new_replacement_needed) eq "yes")
+				{
+					my $health_source_name                           = "bbu:".$cachevault_serial_number.":".$variable;
+					   $an->data->{health}{new}{$health_source_name} = 5;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 				next;
 			}
 		}
@@ -5895,9 +6044,6 @@ INSERT INTO
 								$title_key   = "an_alert_title_0005";
 								$message_key = "scan_storcli_note_0022";
 							}
-							
-							# Note this sensor for our health weight.
-							$an->data->{health}{new}{$variable} = 2;
 						}
 						elsif ($value > $high_warning)
 						{
@@ -5919,9 +6065,6 @@ INSERT INTO
 								$title_key   = "an_alert_title_0004";
 								$message_key = "scan_storcli_note_0023";
 							}
-							
-							# Note this sensor for our health weight.
-							$an->data->{health}{new}{$variable} = 1;
 						}
 						elsif ($value < $low_critical)
 						{
@@ -5943,9 +6086,6 @@ INSERT INTO
 								$title_key   = "an_alert_title_0005";
 								$message_key = "scan_storcli_note_0024";
 							}
-							
-							# Note this sensor for our health weight.
-							$an->data->{health}{new}{$variable} = 2;
 						}
 						elsif ($value < $low_warning)
 						{
@@ -5967,9 +6107,6 @@ INSERT INTO
 								$title_key   = "an_alert_title_0004";
 								$message_key = "scan_storcli_note_0025";
 							}
-							
-							# Note this sensor for our health weight.
-							$an->data->{health}{new}{$variable} = 1;
 						}
 					}
 					
@@ -6084,7 +6221,7 @@ INSERT INTO
 					{
 						### TODO: We might want to tune this based on the actual alert.
 						# Note this sensor for our health weight.
-						$an->data->{health}{new}{'controller-alarm-state'} = 1;
+						$an->data->{health}{new}{'controller:alarm-state'} = 1;
 					}
 				}
 				$an->data->{sys}{alert_sort}++; 
@@ -6224,9 +6361,6 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
-										
-										# Note this sensor for our health weight.
-										$an->data->{health}{new}{$variable} = 2;
 									}
 									elsif ($new_variable_value > $high_warning)
 									{
@@ -6258,9 +6392,6 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
-										
-										# Note this sensor for our health weight.
-										$an->data->{health}{new}{$variable} = 1;
 									}
 									elsif ($new_variable_value > $clear_low_warning)
 									{
@@ -6339,9 +6470,6 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
-										
-										# Note this sensor for our health weight.
-										$an->data->{health}{new}{$variable} = 1;
 									}
 									elsif ($jumped > $jump)
 									{
@@ -6392,9 +6520,6 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
-										
-										# Note this sensor for our health weight.
-										$an->data->{health}{new}{$variable} = 2;
 									}
 									elsif ($new_variable_value < $low_warning)
 									{
@@ -6429,9 +6554,6 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
-										
-										# Note this sensor for our health weight.
-										$an->data->{health}{new}{$variable} = 1;
 									}
 									elsif ($new_variable_value < $clear_high_warning)
 									{
@@ -6508,9 +6630,6 @@ AND
 											name1 => "temperature_state", value1 => $temperature_state, 
 											name2 => "temperature_is",    value2 => $temperature_is, 
 										}, file => $THIS_FILE, line => __LINE__});
-										
-										# Note this sensor for our health weight.
-										$an->data->{health}{new}{$variable} = 1;
 									}
 									elsif ($jumped > $jump)
 									{
@@ -10442,7 +10561,7 @@ sub process_vg_overview_data
 	if ($line =~ /^(\d+)\/(\d+)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*? \wB)$/i)
 	{
 		$drive_group                 = $1;
-		$virtual_drive                = $2;
+		$virtual_drive               = $2;
 		$raid_type                   = $3;
 		$array_state                 = $4;
 		$access                      = $5;
@@ -10454,7 +10573,7 @@ sub process_vg_overview_data
 		$id_string                   = $serial_number."-vd".$virtual_drive;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 			name1  => "drive_group",                 value1  => $drive_group, 
-			name2  => "virtual_drive",                value2  => $virtual_drive, 
+			name2  => "virtual_drive",               value2  => $virtual_drive, 
 			name3  => "raid_type",                   value3  => $raid_type, 
 			name4  => "array_state",                 value4  => $array_state, 
 			name5  => "access",                      value5  => $access, 
@@ -10470,7 +10589,7 @@ sub process_vg_overview_data
 	elsif ($line =~ /^(d+)\/(d+)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*? \wB)\s+(.*)$/)
 	{
 		$drive_group                 = $1;
-		$virtual_drive                = $2;
+		$virtual_drive               = $2;
 		$raid_type                   = $3;
 		$array_state                 = $4;
 		$access                      = $5;
@@ -10483,7 +10602,7 @@ sub process_vg_overview_data
 		$id_string                   = $serial_number."-vd".$virtual_drive;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 			name1  => "drive_group",                 value1  => $drive_group, 
-			name2  => "virtual_drive",                value2  => $virtual_drive, 
+			name2  => "virtual_drive",               value2  => $virtual_drive, 
 			name3  => "raid_type",                   value3  => $raid_type, 
 			name4  => "array_state",                 value4  => $array_state, 
 			name5  => "access",                      value5  => $access, 
@@ -10577,12 +10696,26 @@ sub process_vg_overview_data
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We'll also set our health here.
+			my $health_source_name                           = "drive_group:".$id_string,"-".$drive_group.":".$variable;
+			   $an->data->{health}{new}{$health_source_name} = 5;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^dgrd$/i)
 		{
 			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Degraded";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We'll also set our health here.
+			my $health_source_name                           = "drive_group:".$id_string,"-".$drive_group.":".$variable;
+			   $an->data->{health}{new}{$health_source_name} = 10;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^Optl$/i)

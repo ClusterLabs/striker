@@ -8554,6 +8554,7 @@ sub update_db_servers
 		my $query = "
 SELECT 
     server_uuid,
+    server_anvil_uuid, 
     server_name, 
     server_stop_reason, 
     server_start_after, 
@@ -8584,40 +8585,43 @@ FROM
 		foreach my $row (@{$results})
 		{
 			my $server_uuid                     =         $row->[0];
-			my $server_name                     =         $row->[1];
-			my $server_stop_reason              = defined $row->[2]  ? $row->[2]  : "";
-			my $server_start_after              = defined $row->[3]  ? $row->[3]  : "NULL";
-			my $server_start_delay              = defined $row->[4]  ? $row->[4]  : "NULL";
-			my $server_note                     = defined $row->[5]  ? $row->[5]  : "";
-			my $server_definition               = defined $row->[6]  ? $row->[6]  : "";
-			my $server_host                     = defined $row->[7]  ? $row->[7]  : "";
-			my $server_state                    = defined $row->[8]  ? $row->[8]  : "";
-			my $server_migration_type           = defined $row->[9]  ? $row->[9]  : "";
-			my $server_pre_migration_script     = defined $row->[10] ? $row->[10] : "";
-			my $server_pre_migration_arguments  = defined $row->[11] ? $row->[11] : "";
-			my $server_post_migration_script    = defined $row->[12] ? $row->[12] : "";
-			my $server_post_migration_arguments = defined $row->[13] ? $row->[13] : "";
-			my $modified_date                   =          $row->[14];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
+			my $server_anvil_uuid               =         $row->[1];
+			my $server_name                     =         $row->[2];
+			my $server_stop_reason              = defined $row->[3]  ? $row->[3]  : "";
+			my $server_start_after              = defined $row->[4]  ? $row->[4]  : "NULL";
+			my $server_start_delay              = defined $row->[5]  ? $row->[5]  : "NULL";
+			my $server_note                     = defined $row->[6]  ? $row->[6]  : "";
+			my $server_definition               = defined $row->[7]  ? $row->[7]  : "";
+			my $server_host                     = defined $row->[8]  ? $row->[8]  : "";
+			my $server_state                    = defined $row->[9]  ? $row->[9]  : "";
+			my $server_migration_type           = defined $row->[10] ? $row->[10] : "";
+			my $server_pre_migration_script     = defined $row->[11] ? $row->[11] : "";
+			my $server_pre_migration_arguments  = defined $row->[12] ? $row->[12] : "";
+			my $server_post_migration_script    = defined $row->[13] ? $row->[13] : "";
+			my $server_post_migration_arguments = defined $row->[14] ? $row->[14] : "";
+			my $modified_date                   =         $row->[15];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
 				name1  => "server_uuid",                     value1  => $server_uuid, 
-				name2  => "server_name",                     value2  => $server_name, 
-				name3  => "server_stop_reason",              value3  => $server_stop_reason, 
-				name4  => "server_start_after",              value4  => $server_start_after, 
-				name5  => "server_start_delay",              value5  => $server_start_delay, 
-				name6  => "server_note",                     value6  => $server_note, 
-				name7  => "server_definition",               value7  => $server_definition, 
-				name8  => "server_host",                     value8  => $server_host, 
-				name9  => "server_state",                    value9  => $server_state, 
-				name10 => "server_migration_type",           value10 => $server_migration_type,
-				name11 => "server_pre_migration_script",     value11 => $server_pre_migration_script,
-				name12 => "server_pre_migration_arguments",  value12 => $server_pre_migration_arguments,
-				name13 => "server_post_migration_script",    value13 => $server_post_migration_script,
-				name14 => "server_post_migration_arguments", value14 => $server_post_migration_arguments,
-				name15 => "modified_date",                   value15 => $modified_date
+				name2  => "server_anvil_uuid",               value2  => $server_anvil_uuid, 
+				name3  => "server_name",                     value3  => $server_name, 
+				name4  => "server_stop_reason",              value4  => $server_stop_reason, 
+				name5  => "server_start_after",              value5  => $server_start_after, 
+				name6  => "server_start_delay",              value6  => $server_start_delay, 
+				name7  => "server_note",                     value7  => $server_note, 
+				name8  => "server_definition",               value8  => $server_definition, 
+				name9  => "server_host",                     value9  => $server_host, 
+				name10 => "server_state",                    value10 => $server_state, 
+				name11 => "server_migration_type",           value11 => $server_migration_type,
+				name12 => "server_pre_migration_script",     value12 => $server_pre_migration_script,
+				name13 => "server_pre_migration_arguments",  value13 => $server_pre_migration_arguments,
+				name14 => "server_post_migration_script",    value14 => $server_post_migration_script,
+				name15 => "server_post_migration_arguments", value15 => $server_post_migration_arguments,
+				name16 => "modified_date",                   value16 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
 			$an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid} = {
+				server_anvil_uuid		=>	$server_anvil_uuid, 
 				server_name			=>	$server_name, 
 				server_stop_reason		=>	$server_stop_reason, 
 				server_start_after		=>	$server_start_after, 
@@ -8636,6 +8640,7 @@ FROM
 			$an->data->{db_data}{$id}{servers}{server_uuid}{$server_uuid}{'exists'} = 1;
 			$an->data->{db_data}{$id}{servers}{server_uuid}{$server_uuid}{seen}     = 0;
 			$an->data->{db_data}{$id}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid} = {
+				server_anvil_uuid		=>	$server_anvil_uuid, 
 				server_name			=>	$server_name, 
 				server_stop_reason		=>	$server_stop_reason, 
 				server_start_after		=>	$server_start_after, 
@@ -8662,6 +8667,7 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $server_uuid (keys %{$an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}})
 		{
+			my $server_anvil_uuid               = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_anvil_uuid}; 
 			my $server_name                     = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_name}; 
 			my $server_stop_reason              = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_stop_reason};
 			my $server_start_after              = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_after};
@@ -8675,21 +8681,22 @@ FROM
 			my $server_pre_migration_arguments  = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_pre_migration_arguments};
 			my $server_post_migration_script    = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_script};
 			my $server_post_migration_arguments = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_arguments};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0015", message_variables => {
 				name1  => "server_uuid",                     value1  => $server_uuid, 
-				name2  => "server_name",                     value2  => $server_name, 
-				name3  => "server_stop_reason",              value3  => $server_stop_reason, 
-				name4  => "server_start_after",              value4  => $server_start_after, 
-				name5  => "server_start_delay",              value5  => $server_start_delay, 
-				name6  => "server_note",                     value6  => $server_note, 
-				name7  => "server_definition",               value7  => $server_definition, 
-				name8  => "server_host",                     value8  => $server_host, 
-				name9  => "server_state",                    value9  => $server_state, 
-				name10 => "server_migration_type",           value10 => $server_migration_type,
-				name11 => "server_pre_migration_script",     value11 => $server_pre_migration_script,
-				name12 => "server_pre_migration_arguments",  value12 => $server_pre_migration_arguments,
-				name13 => "server_post_migration_script",    value13 => $server_post_migration_script,
-				name14 => "server_post_migration_arguments", value14 => $server_post_migration_arguments,
+				name2  => "server_anvil_uuid",               value2  => $server_anvil_uuid, 
+				name3  => "server_name",                     value3  => $server_name, 
+				name4  => "server_stop_reason",              value4  => $server_stop_reason, 
+				name5  => "server_start_after",              value5  => $server_start_after, 
+				name6  => "server_start_delay",              value6  => $server_start_delay, 
+				name7  => "server_note",                     value7  => $server_note, 
+				name8  => "server_definition",               value8  => $server_definition, 
+				name9  => "server_host",                     value9  => $server_host, 
+				name10 => "server_state",                    value10 => $server_state, 
+				name11 => "server_migration_type",           value11 => $server_migration_type,
+				name12 => "server_pre_migration_script",     value12 => $server_pre_migration_script,
+				name13 => "server_pre_migration_arguments",  value13 => $server_pre_migration_arguments,
+				name14 => "server_post_migration_script",    value14 => $server_post_migration_script,
+				name15 => "server_post_migration_arguments", value15 => $server_post_migration_arguments,
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -8727,6 +8734,7 @@ FROM
 UPDATE 
     public.servers 
 SET
+    server_anvil_uuid               = ".$an->data->{sys}{use_db_fh}->quote($server_anvil_uuid).", 
     server_name                     = ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
     server_stop_reason              = ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
     server_start_after              = ".$an->data->{sys}{use_db_fh}->quote($server_start_after).", 
@@ -8761,6 +8769,7 @@ INSERT INTO
     public.servers 
 (
     server_uuid, 
+    server_anvil_uuid, 
     server_name, 
     server_stop_reason, 
     server_start_after, 
@@ -8777,6 +8786,7 @@ INSERT INTO
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($server_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_anvil_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_start_after).", 
@@ -8814,6 +8824,7 @@ INSERT INTO
     history.servers 
 (
     server_uuid, 
+    server_anvil_uuid, 
     server_name, 
     server_stop_reason, 
     server_start_after, 
@@ -8830,6 +8841,7 @@ INSERT INTO
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($server_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_anvil_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_start_after).", 

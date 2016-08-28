@@ -60,6 +60,7 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
+### TODO: Abort if the server is off because of a DR job (or, eventually, a migration to a new Anvil!).
 ### NOTE: This requires being invoked on the node.
 # This boots a server and tries to handle common errors. It will boot on the healthiest node if one host is
 # not ready (ie: The VM's backing storage is on a DRBD resource that is Inconsistent on one of the nodes).
