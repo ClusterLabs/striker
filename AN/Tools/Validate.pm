@@ -635,7 +635,7 @@ sub is_cron_schedule
 				# Range.
 				my $start = $1;
 				my $end   = $2;
-				if (($start > 6) or ($end > 6)
+				if (($start > 6) or ($end > 6))
 				{
 					# The day_of_week range is invalid
 					$is_valid = 0;

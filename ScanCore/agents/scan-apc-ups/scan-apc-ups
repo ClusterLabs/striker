@@ -328,7 +328,7 @@ AND
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# If the state is 'warning', set  a health weight of 1 and set critical to 2.
-			if ($new_temperature_state = "warning")
+			if ($new_temperature_state eq "warning")
 			{
 				my $health_source_name                           = "temperature:".$serial_number;
 				   $an->data->{health}{new}{$health_source_name} = 1;
@@ -336,7 +336,7 @@ AND
 					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($new_temperature_state = "critical")
+			elsif ($new_temperature_state eq "critical")
 			{
 				my $health_source_name                           = "temperature:".$serial_number;
 				   $an->data->{health}{new}{$health_source_name} = 2;
@@ -578,7 +578,7 @@ sub find_changes
 		###       We'll handle alerts later.
 		# These are thresholds. We'll compare our current temp against these 
 		my $alert_temperature = ($new_apc_ups_battery_alarm_temperature - $an->data->{'scan-apc-ups'}{temperature_warning_delta});
-		my $sensor_host_key   = "ups:".$ups_serial_number.":battery";
+		my $sensor_host_key   = "ups:".$new_apc_ups_serial_number.":battery";
 		my $variable          = "apc_ups_battery_temperature";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "alert_temperature", value1 => $alert_temperature,

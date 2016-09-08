@@ -266,14 +266,13 @@ sub process_health
 	my $query = "
 SELECT 
     health_uuid,
-    health_agent_name,
     health_source_name,
     health_source_weight 
 FROM 
     health 
 WHERE 
     health_host_uuid  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-    
+AND 
     health_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)."
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -287,14 +286,12 @@ WHERE
 	foreach my $row (@{$results})
 	{
 		my $health_uuid          = $row->[0]; 
-		my $health_agent_name    = $row->[1]; 
-		my $health_source_name   = $row->[2]; 
-		my $health_source_weight = $row->[3];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		my $health_source_name   = $row->[1]; 
+		my $health_source_weight = $row->[2];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "health_uuid",          value1 => $health_uuid, 
-			name2 => "health_agent_name",    value2 => $health_agent_name, 
-			name3 => "health_source_name",   value3 => $health_source_name, 
-			name4 => "health_source_weight", value4 => $health_source_weight, 
+			name2 => "health_source_name",   value2 => $health_source_name, 
+			name3 => "health_source_weight", value3 => $health_source_weight, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$an->data->{health}{old}{$health_source_name}{uuid}  = $health_uuid;
@@ -978,17 +975,17 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If the state is 'warning', set  a health weight of 1 and set critical to 2.
-		if ($new_temperature_state = "warning")
+		if ($new_temperature_state eq "warning")
 		{
-			my $health_source_name                           = "temperature:".$serial_number;
+			my $health_source_name                           = "temperature:".$ipmitool_sensor_name;
 			   $an->data->{health}{new}{$health_source_name} = 1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($new_temperature_state = "critical")
+		elsif ($new_temperature_state eq "critical")
 		{
-			my $health_source_name                           = "temperature:".$serial_number;
+			my $health_source_name                           = "temperature:".$ipmitool_sensor_name;
 			   $an->data->{health}{new}{$health_source_name} = 2;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 

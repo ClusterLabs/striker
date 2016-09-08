@@ -795,7 +795,7 @@ sub save_smtp_form
 	return($notice_message, $error_fields);
 }
 
-# This saves the changes to an Anvil! DR job.
+# This saves the changes to an Anvil! DR target.
 sub save_dr_job_form
 {
 	my ($an) = @_;
@@ -806,128 +806,7 @@ sub save_dr_job_form
 	my $error_fields   = [];
 	my $notice_message = "";
 	
-	# Do I have at a job name?
-	if (not $an->data->{cgi}{dr_job_name})
-	{
-		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0323!#" }});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "notice", value1 => $notice,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		push @{$notices},      $notice;
-		push @{$error_fields}, "dr_job_name";
-	}
-	if (not $an->data->{cgi}{dr_job_servers})
-	{
-		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0322!#" }});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "notice", value1 => $notice,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		push @{$notices},      $notice;
-		push @{$error_fields}, "dr_job_servers";
-	}
-	if (not $an->data->{cgi}{dr_job_servers})
-	{
-		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0325!#" }});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "notice", value1 => $notice,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		push @{$notices},      $notice;
-		push @{$error_fields}, "dr_job_servers";
-	}
-	
-	# Make sure at least one server was selected. We'll loop through all servers and check to see which 
-	# were selected for the active Anvil! system. Any that were checked will have their UUIDs added to
-	# the 'dr_job_servers' value. If none were selected, we'll error out.
-	my $server_data = $an->ScanCore->get_servers();
-	foreach my $hash_ref (@{$anvil_data})
-	{
-		# Does this server belong to the active Anvil! system?
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "hash_ref->server_anvil_uuid", value1 => $hash_ref->{server_anvil_uuid},
-			name2 => "cgi::anvil_uuid",             value2 => $an->data->{cgi}{anvil_uuid},
-		}, file => $THIS_FILE, line => __LINE__});
-		next if ($hash_ref->{server_anvil_uuid} ne $an->data->{cgi}{anvil_uuid});
-		
-		### TODO: Left off here.
-		
-		push @{$cgi}, "dr_job_server_uuid_".$hash_ref->{server_uuid};
-	}
-	if (not $an->data->{cgi}{dr_job_server_list})
-	{
-		# No servers were event available to be selected.
-		my $notice = $an->String->get({key => "message_0500", variables => { field => "#!string!row_0325!#" }});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "notice", value1 => $notice,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		push @{$notices},      $notice;
-		push @{$error_fields}, "dr_job_servers";
-	}
-	else
-	{
-		# Split up the list, read in the CGI variables and loop through them looking for selected 
-		# servers. Anything that was selected will be added to the servers list.
-		my $dr_job_servers = "";
-		my $server_keys    = split/,/, $an->data->{cgi}{dr_job_server_list};
-		foreach my $server_key (sort {$a cmp $b} @{$server_keys
-	}
-	
-	my $error_count = @{$error_fields};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "error_count", value1 => $error_count,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Save the form (either INSERT or UPDATE if something has changed.
-	if (not $error_count)
-	{
-		
-		$an->data->{cgi}{dr_job_uuid} = save_dr_job($an);
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::dr_job_uuid", value1 => $an->data->{cgi}{dr_job_uuid},
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Process errors now, if any.
-	if ($error_count > 0)
-	{
-		# Print the error header.
-		my $error_body = "";
-		foreach my $notice (@{$notices})
-		{
-			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
-					row_class	=>	"highlight_warning_bold",
-					row_message	=>	"#!string!row_0305!#",
-					body_class	=>	"",
-					body_message	=>	$notice,
-				}});
-		}
-		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
-				title	=>	"#!string!title_0194!#",
-				errors	=>	$error_body,
-			}});
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "notice_message", value1 => $notice_message,
-	}, file => $THIS_FILE, line => __LINE__});
-	return($notice_message, $error_fields);
-}
-
-# This saves the changes to an Anvil! DR job.
-sub save_dr_job_form
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_dr_job_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	### Some sanity checks before we begin.
-	my $notices        = [];
-	my $error_fields   = [];
-	my $notice_message = "";
-	
-	# Do I have a DR target??
+	# Do I have a DR target?
 	if (not $an->data->{cgi}{dr_job_servers})
 	{
 		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0322!#" }});
@@ -2244,7 +2123,7 @@ sub confirm_action
 	return($notice_message);
 }
 
-# This deletes the given DR job
+# This deletes the given DR target
 sub delete_dr_job
 {
 	my ($an) = @_;
@@ -2331,99 +2210,6 @@ WHERE
 				row_body	=>	"#!string!row_0083!#",
 				message_class	=>	"",
 				message_body	=>	$an->String->get({key => "message_0489", variables => { dr_job => $dr_job_name }}),
-			}});
-	}
-	
-	return($notice_message);
-}
-
-# This deletes the given DR Job.
-sub delete_dr_job
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_dr_job" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# Get the DR job name before we delete it.
-	my $dr_job_name    = $an->data->{cgi}{dr_job_name};
-	my $notice_message = "";
-	
-	# Send the queries as an array
-	my $queries = [];
-	push @{$queries}, "
-UPDATE 
-    dr_jobs 
-SET 
-    dr_job_note = 'DELETED' 
-WHERE 
-    dr_job_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_job_uuid})."
-;";
-	push @{$queries}, "
-DELETE FROM  
-    dr_jobs 
-WHERE 
-    dr_job_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_job_uuid})."
-;";
-	
-	# Log the queries
-	foreach my $query (@{$queries})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1  => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Pass the array in.
-	$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
-	
-	# Make sure they're gone.
-	my $query = "
-SELECT 
-    COUNT(*) 
-FROM 
-    dr_jobs 
-WHERE 
-    dr_job_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_job_uuid})."
-;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1  => "query", value1 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $dr_job_count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "dr_job_count", value1 => $dr_job_count, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	if ($dr_job_count)
-	{
-		# What is this!?
-		my $error_message = $an->String->get({key => "message_0498", variables => { 
-			dr_job => $dr_job_name, 
-			count  => $dr_job_count, 
-		}});
-		my $error_body = $an->Web->template({file => "web.html", template => "error-entry", replace => {
-					row_class	=>	"highlight_warning",
-					row_message	=>	"#!string!row_0133!#",
-					body_class	=>	"",
-					body_message	=>	$error_message,
-				}});
-		
-		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
-				title	=>	"#!string!title_0197!#",
-				errors	=>	$error_body,
-			}});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "notice_message", value1 => $notice_message,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# All gone
-		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
-				title		=>	"#!string!title_0196!#",
-				row_class	=>	"highlight_good_bold",
-				row_body	=>	"#!string!row_0083!#",
-				message_class	=>	"",
-				message_body	=>	$an->String->get({key => "message_0499", variables => { dr_job => $dr_job_name }}),
 			}});
 	}
 	
@@ -5279,7 +5065,7 @@ sub dr_job_menu
 	{
 		# No Anvil! selected.
 	}
-	if (not 
+# 	if (not 
 			#my $anvil_explain   = "#!string!explain_0230!#";
 
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {

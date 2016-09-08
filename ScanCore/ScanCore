@@ -2063,7 +2063,7 @@ sub migrate_all_servers_to_here
 	
 	# Find the servers running on our peer. We'll call 'clustat' here to be sure we have the most current
 	# view of system.
-	my $to_migate  = [];
+	my $to_migrate = [];
 	my $shell_call = $an->data->{path}{clustat};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
@@ -2607,7 +2607,7 @@ WHERE
 	}
 	
 	# Read in my peer's health.
-	my $query = "
+	$query = "
 SELECT 
     health_agent_name, 
     health_source_name, 
@@ -2621,7 +2621,7 @@ WHERE
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 		
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});

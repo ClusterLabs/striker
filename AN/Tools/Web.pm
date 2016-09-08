@@ -506,7 +506,10 @@ sub check_all_cgi
 	my $server_data = $an->ScanCore->get_servers();
 	foreach my $hash_ref (@{$anvil_data})
 	{
-		push @{$cgi}, "dr_job_server_uuid_".$hash_ref->{server_uuid};
+		if (exists $hash_ref->{server_uuid})
+		{
+			push @{$cgi}, "dr_job_server_uuid_".$hash_ref->{server_uuid};
+		}
 	}
 	$an->Web->get_cgi({variables => $cgi});
 	
