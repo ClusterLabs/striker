@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Striker - The Anvil! Cluster Dashboard
+# Striker - The Anvil! Dashboard
 # 
 # This software is released under the GNU GPL v2+ license.
 # 
@@ -47,7 +47,7 @@ $an->default_log_language($an->data->{scancore}{log_language});
 $an->default_log_file    ($an->data->{path}{log_file});
 
 # Read my stuff
-$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+$an->Storage->read_conf ({file => $an->data->{path}{striker_config}});
 $an->Storage->read_words({file => $an->data->{path}{scancore_strings}});
 $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
@@ -71,9 +71,6 @@ $an->data->{sys}{db_connections} = $an->DB->connect_to_databases({
 $an->Storage->read_hosts();
 $an->Storage->read_ssh_config();
 
-# Read in our Anvil! systems. If only one anvil is found, it will be auto-set in 'cgi::anvil'.
-#$an->ScanCore->parse_anvil_data();
-
 # Check for passed-in CGI variables.
 $an->Web->check_all_cgi();
 
@@ -89,6 +86,7 @@ if ($an->data->{cgi}{vg_list})
 	}
 	$an->Web->get_cgi({variables => \@more_vars});
 }
+
 # Pick up the list of optical devices.
 if ($an->data->{cgi}{device_keys})
 {
@@ -103,10 +101,30 @@ if ($an->data->{cgi}{device_keys})
 	$an->Web->get_cgi({variables => \@more_vars});
 }
 
-# Do I have an Anvil! UUID?
+# Do I have an Anvil! system UUID? If not, and if only one Anvil! exists in the database, set it.
 $an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 	name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
 }, file => $THIS_FILE, line => __LINE__});
+if (not $an->data->{cgi}{anvil_uuid})
+{
+	my $anvil_data  = $an->ScanCore->get_anvils();
+	my $anvil_count = @{$anvil_data};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_count", value1 => $anvil_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($anvil_count == 1)
+	{
+		$an->data->{cgi}{anvil_uuid}     = $anvil_data->[0]->{anvil_uuid};
+		$an->data->{sys}{anvil_uuid_set} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "cgi::anvil_uuid",     value1 => $an->data->{cgi}{anvil_uuid}, 
+			name2 => "sys::anvil_uuid_set", value2 => $an->data->{sys}{anvil_uuid_set}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+}
+
+# Now, if I have an Anvil! UUID, load it's data. If I still don't, show the selection menu.
 if ($an->data->{cgi}{anvil_uuid})
 {
 	# Print the header.

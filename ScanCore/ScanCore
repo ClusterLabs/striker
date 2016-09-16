@@ -29,14 +29,10 @@
 #   then exit.
 # 
 # - Write a 'scan-usb' agent that monitored USB ports for things being plugged in or removed.
-# - Write an agent that monitors the XML definition files and barks on change, too.
-# - An agent to monitor LVM and another for DRBD would be good, too.
+# - An agent to monitor LVM and another for DRBD would be good.
 # - When examining UPS charge percentage when deciding if it's OK to boot, pull the last X readings and
 #   average them. It's possible for a stray reading to report an unrealistically high charge percent on a
 #   given scan.
-#         
-# BUG:
-# - 
 #       
 
 # Use my modules.
@@ -922,6 +918,9 @@ sub do_post_scan_dashboard_tasks
 	# have a cache file.
 	read_cache($an);
 	
+	# Make sure shorewall is not set to run on boot.
+	check_shorewall($an);
+	
 	### TODO: Switch this to $an->ScanCore->get_hosts()'.
 	# Now read in all the nodes we know about.
 	my $query = "
@@ -1194,6 +1193,42 @@ ORDER BY
 			}
 		}
 		
+	}
+	
+	return(0);
+}
+
+# This checks to ensure that shorewall is not set to start on boot, which can be set after an OS update.
+sub check_shorewall
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_shorewall", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $state = $an->System->daemon_boot_config({daemon => "shorewall"});
+	my $rc3   = $state->{3};
+	my $rc5   = $state->{5};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "rc3", value1 => $rc3, 
+		name2 => "rc5", value2 => $rc5, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($rc3 eq "on") or ($rc5 eq "on"))
+	{
+		# Turn it off.
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0095", message_variables => {
+			'3' => $rc3, 
+			'5' => $rc5, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $state = $an->System->daemon_boot_config({
+				daemon => "shorewall",
+				set    => "off",
+			});
+		my $rc3   = $state->{3};
+		my $rc5   = $state->{5};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "rc3", value1 => $rc3, 
+			name2 => "rc5", value1 => $rc5, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);

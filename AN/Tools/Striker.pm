@@ -4899,6 +4899,12 @@ sub _delete_server
 			}
 		}
 		
+		# Read in the server data for our messaging below, before we actually blow away the file.
+		my $server_data = $an->Get->server_data({
+			server => $server, 
+			anvil  => $anvil_name, 
+		});
+		
 		### NOTE: Yes, the actual path is in '$an->data->{server}{$server}{definition_file}', but 
 		###       we're doing an 'rm -f' so we're going to be paranoid.
 		# Regardless of whether the LV removal(s) succeeded, delete the definition file.
@@ -4960,10 +4966,6 @@ fi;
 		}
 		
 		# Mark it as deleted.
-		my $server_data = $an->Get->server_data({
-			server => $server, 
-			anvil  => $anvil_name, 
-		});
 		my $server_uuid = $server_data->{uuid};
 		my $query       = "
 UPDATE 

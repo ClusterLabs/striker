@@ -18,7 +18,6 @@
 # TODO: 
 #  - Check each pass if the server is running and, if so, update /shared/definition. Do this before looking
 #    for changes!
-#  - Add a check to see if libvirtd is set to start on boot and disable it, if so.
 #  - Add a 'maintenance mode' where the VM is no longer monitored by the cluster. When in maintenance mode,
 #    we will not touch it. Otherwise, if it is found to be running on a node but not in clustat, use 
 #    clusvcadm to add it to the cluster control.
@@ -156,9 +155,144 @@ sub check_for_removed_files
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_for_removed_files", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Read '/shared/definitions' and only check the servers found there (which immediately means
-	###       this won't run on dashboards, which is what we want).
+	# This should only ever run on a node in an Anvil!.
+	$an->data->{scancore}{i_am_a} = $an->Get->what_am_i();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::i_am_a", value1 => $an->data->{scancore}{i_am_a}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not -e $an->data->{path}{shared_files}) or ($an->data->{scancore}{i_am_a} ne "node"))
+	{
+		return(1);
+	}
 	
+	### Still alive?
+	# Get the Anvil! data.
+	my $anvil_name = $an->data->{sys}{anvil_name};
+	my $anvil_uuid = $an->data->{sys}{anvil_uuid};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name, 
+		name2 => "anvil_uuid", value2 => $anvil_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Get a list of files
+	my ($files, $partition) = $an->Get->shared_files();
+	foreach my $file (sort {$a cmp $b} keys %{$files})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			name1  => "${file}::type",       value1  => $files->{$file}{type},
+			name2  => "${file}::mode",       value2  => $files->{$file}{mode},
+			name3  => "${file}::owner",      value3  => $files->{$file}{user},
+			name4  => "${file}::group",      value4  => $files->{$file}{group},
+			name5  => "${file}::size",       value5  => $files->{$file}{size},
+			name6  => "${file}::modified",   value6  => $files->{$file}{month},
+			name7  => "${file}::day",        value7  => $files->{$file}{day},
+			name8  => "${file}::time",       value8  => $files->{$file}{'time'},
+			name9  => "${file}::year",       value9  => $files->{$file}{year},
+			name10 => "${file}::target",     value10 => $files->{$file}{target},
+			name11 => "${file}::optical",    value11 => $files->{$file}{optical},
+			name12 => "${file}::executable", value12 => $files->{$file}{executable},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	### NOTE: For now, we don't delete pre/post migration scripts as them missing isn't critical.
+	# Now loop through each server on this Anvil! and parse their XML files to see if they have a mounted
+	# ISO that no longer exists. If so, eject it.
+	my $server_data = $an->ScanCore->get_servers();
+	foreach my $hash_ref (@{$server_data})
+	{
+		my $server_uuid                     = $hash_ref->{server_uuid};
+		my $server_name                     = $hash_ref->{server_name};
+		my $server_definition               = $hash_ref->{server_definition};
+		my $server_pre_migration_script     = $hash_ref->{server_pre_migration_script};
+		my $server_pre_migration_arguments  = $hash_ref->{server_pre_migration_arguments};
+		my $server_post_migration_script    = $hash_ref->{server_post_migration_script};
+		my $server_post_migration_arguments = $hash_ref->{server_post_migration_arguments};
+		my $server_anvil_uuid               = $hash_ref->{server_anvil_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "server_uuid",                     value1 => $server_uuid,
+			name2 => "server_name",                     value2 => $server_name,
+			name3 => "server_definition",               value3 => $server_definition,
+			name4 => "server_pre_migration_script",     value4 => $server_pre_migration_script,
+			name5 => "server_pre_migration_arguments",  value5 => $server_pre_migration_arguments,
+			name6 => "server_post_migration_script",    value6 => $server_post_migration_script,
+			name7 => "server_post_migration_arguments", value7 => $server_post_migration_arguments,
+			name8 => "server_anvil_uuid",               value8 => $server_anvil_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Skip this server if it isn't on this Anvil!.
+		next if $anvil_uuid ne $server_anvil_uuid;
+		
+		# OK, now look for mounted ISOs. 
+		my $in_cdrom = 0;
+		foreach my $line (split/\n/, $server_definition)
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($line =~ /type='file'/) && ($line =~ /device='cdrom'/))
+			{
+				# Found an optical disk (DVD/CD).
+				$in_cdrom = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_cdrom", value1 => $in_cdrom, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($in_cdrom)
+			{
+				if ($line =~ /<\/disk>/)
+				{
+					$in_cdrom = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "in_cdrom", value1 => $in_cdrom, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($line =~ /file='(.*?)'\/>/)
+				{
+					# Found media
+					my $file = $1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "files->{$file}{type}", value1 => $files->{$file}{type}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if (not $files->{$file}{type})
+					{
+						# Eject this disk
+						my $server_is_running = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "server::${server}::current_host", value1 => $an->data->{server}{$server}{current_host},
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($an->data->{server}{$server}{current_host})
+						{
+							# Read the current server config from virsh.
+							$server_is_running = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "server_is_running", value1 => $server_is_running,
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						$an->Striker->_server_eject_media({
+							target            => $target,
+							port              => $port,
+							password          => $password,
+							server_is_running => $server_is_running,
+							quiet             => 1,
+						});
+						
+						# Register an alert
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_message_key	=>	"scan_server_message_0014",
+							alert_message_variables	=>	{
+								server			=>	$server_name, 
+								file			=>	$file,
+							},
+						});
+					}
+				}
+			}
+		}
+	}
 	
 	return(0);
 }

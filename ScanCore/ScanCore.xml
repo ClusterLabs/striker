@@ -162,6 +162,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0092">Another instance of ScanCore is currently resynchronizing the database. Will check periodically and proceed once it is done.</key>
 		<key name="scancore_log_0093">#!string!scancore_brand_0001!# invoked with '--clear-resync-flag'. Will now connect to all available databases and clear the resync flag.</key>
 		<key name="scancore_log_0094">Failed to connect to any ScanCore databases. Unable to clear the resync flag.</key>
+		<key name="scancore_log_0095">The 'shorewall' daemon was set to start on boot in run-level 3 and/or 5 (3: [#!variable!3!#], 5: [#!variable!5!#]), turning it off again.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

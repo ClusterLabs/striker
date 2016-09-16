@@ -558,22 +558,22 @@ sub get_cgi
 			name1 => "variable", value1 => $variable, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		### TODO: We now set 'sys::anvil_uuid_set' when auto-selecting an Anvil! UUID when only one
-		###       exists. If 'anvil_uuid' is set in CGI though, override it. Sort out the logic to
-		###       handle this properly below...
-		# I auto-select the 'anvil' variable if only one is checked. Because of this, I don't want
-		# to overwrite the empty CGI value. This prevents that. Note that sometimes the 'anvil_uuid'
-		# passed in will be 'NULL'. In those cases, we overwrite the selected UUID.
-		if (($variable eq "anvil_uuid") && ($cgi->param($variable) ne "NULL") && ($cgi->param($variable) ne "new") && ($an->data->{cgi}{anvil_uuid}))
-		#if (($variable eq "anvil_uuid") && (defined $cgi->param($variable)) && (not $an->validate->is_uuid({uuid => $cgi->param($variable)})) && ($an->data->{cgi}{anvil_uuid}))
-		{
-			$an->data->{sys}{cgi_string} .= "$variable=".$an->data->{cgi}{$variable}."&";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "variable", value1 => $variable, 
-				name2 => "value",    value2 => $an->data->{cgi}{$variable},
-			}, file => $THIS_FILE, line => __LINE__});
-			next;
-		}
+# 		### TODO: We now set 'sys::anvil_uuid_set' when auto-selecting an Anvil! UUID when only one
+# 		###       exists. If 'anvil_uuid' is set in CGI though, override it. Sort out the logic to
+# 		###       handle this properly below...
+# 		# I auto-select the 'anvil' variable if only one is checked. Because of this, I don't want
+# 		# to overwrite the empty CGI value. This prevents that. Note that sometimes the 'anvil_uuid'
+# 		# passed in will be 'NULL'. In those cases, we overwrite the selected UUID.
+# 		if (($variable eq "anvil_uuid") && ($cgi->param($variable) ne "NULL") && ($cgi->param($variable) ne "new") && ($an->data->{cgi}{anvil_uuid}))
+# 		#if (($variable eq "anvil_uuid") && (defined $cgi->param($variable)) && (not $an->validate->is_uuid({uuid => $cgi->param($variable)})) && ($an->data->{cgi}{anvil_uuid}))
+# 		{
+# 			$an->data->{sys}{cgi_string} .= "$variable=".$an->data->{cgi}{$variable}."&";
+# 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+# 				name1 => "variable", value1 => $variable, 
+# 				name2 => "value",    value2 => $an->data->{cgi}{$variable},
+# 			}, file => $THIS_FILE, line => __LINE__});
+# 			next;
+# 		}
 		
 		# Avoid "uninitialized" warning messages.
 		$an->data->{cgi}{$variable} = "";
@@ -688,8 +688,6 @@ sub get_cgi
 			name1 => "cgi::$say_variable", value1 => $an->data->{cgi}{$variable},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	
-	#die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	return(0);
 }
