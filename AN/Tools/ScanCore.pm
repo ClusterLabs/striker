@@ -36,6 +36,7 @@ my $THIS_FILE = "ScanCore.pm";
 # insert_or_update_notifications
 # insert_or_update_owners
 # insert_or_update_recipients
+# insert_or_update_servers
 # insert_or_update_smtp
 # insert_or_update_variables
 # parse_anvil_data
@@ -2702,6 +2703,354 @@ WHERE
 	}
 	
 	return($recipient_uuid);
+}
+
+# This updates (or inserts) a record in the 'servers' table. This is a little different from the other 
+# similar methods in that a user can request that only the definition be updated.
+sub insert_or_update_servers
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $server_uuid                     = $parameter->{server_uuid}                     ? $parameter->{server_uuid}                     : "";
+	my $server_anvil_uuid               = $parameter->{server_anvil_uuid}               ? $parameter->{server_anvil_uuid}               : "";
+	my $server_name                     = $parameter->{server_name}                     ? $parameter->{server_name}                     : "";
+	my $server_stop_reason              = $parameter->{server_stop_reason}              ? $parameter->{server_stop_reason}              : "";
+	my $server_start_after              = $parameter->{server_start_after}              ? $parameter->{server_start_after}              : "NULL";
+	my $server_start_delay              = $parameter->{server_start_delay}              ? $parameter->{server_start_delay}              : 0;
+	my $server_note                     = $parameter->{server_note}                     ? $parameter->{server_note}                     : "";
+	my $server_definition               = $parameter->{server_definition}               ? $parameter->{server_definition}               : "";
+	my $server_host                     = $parameter->{server_host}                     ? $parameter->{server_host}                     : "";
+	my $server_state                    = $parameter->{server_state}                    ? $parameter->{server_state}                    : "";
+	my $server_migration_type           = $parameter->{server_migration_type}           ? $parameter->{server_migration_type}           : "";
+	my $server_pre_migration_script     = $parameter->{server_pre_migration_script}     ? $parameter->{server_pre_migration_script}     : "";
+	my $server_pre_migration_arguments  = $parameter->{server_pre_migration_arguments}  ? $parameter->{server_pre_migration_arguments}  : "";
+	my $server_post_migration_script    = $parameter->{server_post_migration_script}    ? $parameter->{server_post_migration_script}    : "";
+	my $server_post_migration_arguments = $parameter->{server_post_migration_arguments} ? $parameter->{server_post_migration_arguments} : "";
+	my $just_definition                 = $parameter->{just_definition}                 ? $parameter->{just_definition}                 : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
+		name1  => "server_uuid",                     value1  => $server_uuid, 
+		name2  => "server_anvil_uuid",               value2  => $server_anvil_uuid, 
+		name3  => "server_name",                     value3  => $server_name, 
+		name4  => "server_stop_reason",              value4  => $server_stop_reason, 
+		name5  => "server_start_after",              value5  => $server_start_after, 
+		name6  => "server_start_delay",              value6  => $server_start_delay, 
+		name7  => "server_note",                     value7  => $server_note, 
+		name8  => "server_definition",               value8  => $server_definition, 
+		name9  => "server_host",                     value9  => $server_host, 
+		name10 => "server_state",                    value10 => $server_state, 
+		name11 => "server_migration_type",           value11 => $server_migration_type, 
+		name12 => "server_pre_migration_script",     value12 => $server_pre_migration_script, 
+		name13 => "server_pre_migration_arguments",  value13 => $server_pre_migration_arguments, 
+		name14 => "server_post_migration_script",    value14 => $server_post_migration_script, 
+		name15 => "server_post_migration_arguments", value15 => $server_post_migration_arguments, 
+		name16 => "just_definition",                 value16 => $just_definition, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure I have the essentials
+	if ((not $server_name) && (not $server_uuid))
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0181", code => 181, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	if (not $server_anvil_uuid)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0182", code => 182, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	if (not $server_definition)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0183", code => 183, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# If we don't have a UUID, see if we can find one for the given SMTP server name.
+	if (not $server_uuid)
+	{
+		my $query = "
+SELECT 
+    server_uuid 
+FROM 
+    server 
+WHERE 
+    server_name       = ".$an->data->{sys}{use_db_fh}->quote($server_name)." 
+AND 
+    server_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_anvil_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$server_uuid = $row->[0] ? $row->[0] : "";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server_uuid", value1 => $server_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I don't have a migration time, use the default.
+	if (not $server_migration_type)
+	{
+		$server_migration_type = $an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "cold" : "live"
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "server_migration_type", value1 => $server_migration_type, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	### NOTE: For now, this generates an alert to replicate the now-deleted 
+	###       'Striker->_update_server_definition_in_db()' method.
+	# If 'just_definition' is set, make sure we have a valid server UUID now. 
+	if ($just_definition)
+	{
+		if (not $server_uuid)
+		{
+			# Error out.
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0184", code => 184, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
+		
+		# OK, now see if the definition file changed.
+		my $query = "
+SELECT 
+    server_definition, 
+FROM 
+    servers 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_server_definition = defined $row->[0] ? $row->[0] : "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "old_server_definition", value1 => $old_server_definition, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($old_server_definition ne $server_definition)
+			{
+				# Update.
+				my $query = "
+UPDATE 
+    server 
+SET 
+    server_definition = ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 
+    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_uuid       = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+				
+				# This will happen whenever the virsh ID changes, disks are inserted/ejected,
+				# etc. So it's a notice-level event. It won't be sent until one of the nodes 
+				# scan though.
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_server_message_0007",
+					alert_message_variables	=>	{
+						server			=>	$server_name, 
+						new			=>	$server_definition,
+						diff			=>	diff \$old_server_definition, \$server_definition, { STYLE => 'Unified' },
+					},
+				});
+			}
+		}
+		
+		# Return now.
+		return($server_uuid);
+	}
+	
+	# If I still don't have an server_uuid, we're INSERT'ing .
+	if (not $server_uuid)
+	{
+		# INSERT
+		   $server_uuid = $an->Get->uuid();
+		my $query     = "
+INSERT INTO 
+    servers 
+(
+    server_uuid, 
+    server_anvil_uuid, 
+    server_name, 
+    server_stop_reason, 
+    server_start_after, 
+    server_start_delay, 
+    server_note, 
+    server_definition, 
+    server_host, 
+    server_state, 
+    server_migration_type, 
+    server_pre_migration_script, 
+    server_pre_migration_arguments, 
+    server_post_migration_script, 
+    server_post_migration_arguments, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($server_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_anvil_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_after).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_delay).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_host).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_migration_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_pre_migration_script).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_pre_migration_arguments).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_post_migration_script).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_post_migration_arguments).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    server_anvil_uuid, 
+    server_name, 
+    server_stop_reason, 
+    server_start_after, 
+    server_start_delay, 
+    server_note, 
+    server_definition, 
+    server_host, 
+    server_state, 
+    server_migration_type, 
+    server_pre_migration_script, 
+    server_pre_migration_arguments, 
+    server_post_migration_script, 
+    server_post_migration_arguments, 
+FROM 
+    servers 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_server_anvil_uuid               =         $row->[0];
+			my $old_server_name                     =         $row->[1];
+			my $old_server_stop_reason              = defined $row->[2]  ? $row->[2]  : "";
+			my $old_server_start_after              = defined $row->[3]  ? $row->[3]  : "NULL";
+			my $old_server_start_delay              = defined $row->[4]  ? $row->[4]  : "0";
+			my $old_server_note                     = defined $row->[5]  ? $row->[5]  : "";
+			my $old_server_definition               = defined $row->[6]  ? $row->[6]  : "";
+			my $old_server_host                     = defined $row->[7]  ? $row->[7]  : "";
+			my $old_server_state                    = defined $row->[8]  ? $row->[8]  : "";
+			my $old_server_migration_type           = defined $row->[9]  ? $row->[9]  : "";
+			my $old_server_pre_migration_script     = defined $row->[10] ? $row->[10] : "";
+			my $old_server_pre_migration_arguments  = defined $row->[11] ? $row->[11] : "";
+			my $old_server_post_migration_script    = defined $row->[12] ? $row->[12] : "";
+			my $old_server_post_migration_arguments = defined $row->[13] ? $row->[13] : "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+				name1  => "old_server_anvil_uuid",               value1  => $old_server_anvil_uuid, 
+				name2  => "old_server_name",                     value2  => $old_server_name, 
+				name3  => "old_server_stop_reason",              value3  => $old_server_stop_reason, 
+				name4  => "old_server_start_after",              value4  => $old_server_start_after, 
+				name5  => "old_server_start_delay",              value5  => $old_server_start_delay, 
+				name6  => "old_server_note",                     value6  => $old_server_note, 
+				name7  => "old_server_definition",               value7  => $old_server_definition, 
+				name8  => "old_server_host",                     value8  => $old_server_host, 
+				name9  => "old_server_state",                    value9  => $old_server_state, 
+				name10 => "old_server_migration_type",           value10 => $old_server_migration_type,
+				name11 => "old_server_pre_migration_script",     value11 => $old_server_pre_migration_script,
+				name12 => "old_server_pre_migration_arguments",  value12 => $old_server_pre_migration_arguments,
+				name13 => "old_server_post_migration_script",    value13 => $old_server_post_migration_script,
+				name14 => "old_server_post_migration_arguments", value14 => $old_server_post_migration_arguments,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_server_anvil_uuid               ne $server_anvil_uuid)              or 
+			    ($old_server_name                     ne $server_name)                    or 
+			    ($old_server_stop_reason              ne $server_stop_reason)             or 
+			    ($old_server_start_after              ne $server_start_after)             or 
+			    ($old_server_start_delay              ne $server_start_delay)             or 
+			    ($old_server_note                     ne $server_note)                    or 
+			    ($old_server_definition               ne $server_definition)              or 
+			    ($old_server_host                     ne $server_host)                    or 
+			    ($old_server_state                    ne $server_state)                   or 
+			    ($old_server_migration_type           ne $server_migration_type)          or 
+			    ($old_server_pre_migration_script     ne $server_pre_migration_script)    or 
+			    ($old_server_pre_migration_arguments  ne $server_pre_migration_arguments) or 
+			    ($old_server_post_migration_script    ne $server_post_migration_script)   or 
+			    ($old_server_post_migration_arguments ne $server_post_migration_arguments))
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    server 
+SET 
+    server_anvil_uuid               = ".$an->data->{sys}{use_db_fh}->quote($server_anvil_uuid).", 
+    server_name                     = ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
+    server_stop_reason              = ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
+    server_start_after              = ".$an->data->{sys}{use_db_fh}->quote($server_start_after).", 
+    server_start_delay              = ".$an->data->{sys}{use_db_fh}->quote($server_start_delay).", 
+    server_note                     = ".$an->data->{sys}{use_db_fh}->quote($server_note).", 
+    server_definition               = ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 
+    server_host                     = ".$an->data->{sys}{use_db_fh}->quote($server_host).", 
+    server_state                    = ".$an->data->{sys}{use_db_fh}->quote($server_state).", 
+    server_migration_type           = ".$an->data->{sys}{use_db_fh}->quote($server_migration_type).", 
+    server_pre_migration_script     = ".$an->data->{sys}{use_db_fh}->quote($server_pre_migration_script).", 
+    server_pre_migration_arguments  = ".$an->data->{sys}{use_db_fh}->quote($server_pre_migration_arguments).", 
+    server_post_migration_script    = ".$an->data->{sys}{use_db_fh}->quote($server_post_migration_script).", 
+    server_post_migration_arguments = ".$an->data->{sys}{use_db_fh}->quote($server_post_migration_arguments).", 
+    modified_date                   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_uuid                     = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($server_uuid);
 }
 
 # This updates (or inserts) a record in the 'smtp' table.

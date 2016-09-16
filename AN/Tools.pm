@@ -712,6 +712,9 @@ sub _set_paths
 	# Lock files
 	$an->data->{path}{gfs2_lock} = "/var/lock/subsys/gfs2";
 	
+	# Sockets
+	$an->data->{path}{libvirtd_socket} = "/var/run/libvirt/libvirt-sock";
+	
 	return(0);
 }
 

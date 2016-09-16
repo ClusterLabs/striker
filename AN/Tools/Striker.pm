@@ -98,7 +98,6 @@ my $THIS_FILE = "Striker.pm";
 # _stop_server
 # _update_network_driver
 # _update_server_definition
-# _update_server_definition_in_db
 # _verify_server_config
 # _withdraw_node
 
@@ -8322,9 +8321,8 @@ sub _manage_server
 	}
 	
 	# Use the new method to parse the server data and then feed it into the old hash keys
-	my $server_data = $an->Get->server_data({server => $server});
-	
-	$an->data->{server}{$server}{definition} = $server_data->{definition};
+	my $server_data                             = $an->Get->server_data({server => $server});
+	   $an->data->{server}{$server}{definition} = $server_data->{definition};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "server::${server}::definition", value1 => $an->data->{server}{$server}{definition},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -8391,7 +8389,8 @@ sub _manage_server
 		}
 	}
 	
-	### TODO: Merge insert and eject into one function.
+	# Insert or eject media
+	my $update_definition = 0;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "do_insert",    value1 => $do_insert,
 		name2 => "insert_drive", value2 => $insert_drive,
@@ -8407,6 +8406,7 @@ sub _manage_server
 			insert_drive      => $insert_drive,
 			server_is_running => $server_is_running,
 		});
+		$update_definition = 1;
 	}
 	
 	# If I've been asked to eject a disc, do so now.
@@ -8418,6 +8418,17 @@ sub _manage_server
 			password          => $password,
 			server_is_running => $server_is_running,
 		});
+		$update_definition = 1;
+	}
+	
+	# If I inserted or ejected a disk, update the definition in our hash.
+	if ($update_definition)
+	{
+		my $server_data                             = $an->Get->server_data({server => $server});
+		   $an->data->{server}{$server}{definition} = $server_data->{definition};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "server::${server}::definition", value1 => $an->data->{server}{$server}{definition},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Find the list of bootable devices and present them in a selection box. Also pull out the server's
@@ -13241,20 +13252,25 @@ sub _server_eject_media
 	my $target            = $parameter->{target}            ? $parameter->{target}            : "";
 	my $port              = $parameter->{port}              ? $parameter->{port}              : "";
 	my $password          = $parameter->{password}          ? $parameter->{password}          : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
-		name1 => "anvil_uuid",        value1 => $anvil_uuid, 
-		name2 => "anvil_name",        value2 => $anvil_name, 
-		name3 => "server",            value3 => $server, 
-		name4 => "device",            value4 => $device, 
-		name5 => "drive",             value5 => $drive, 
-		name6 => "server_is_running", value6 => $server_is_running, 
-		name7 => "definition_file",   value7 => $definition_file, 
-		name8 => "target",            value8 => $target, 
-		name9 => "port",              value9 => $port, 
+	my $quiet             = $parameter->{quiet}             ? $parameter->{quiet}             : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		name1  => "anvil_uuid",        value1  => $anvil_uuid, 
+		name2  => "anvil_name",        value2  => $anvil_name, 
+		name3  => "server",            value3  => $server, 
+		name4  => "device",            value4  => $device, 
+		name5  => "drive",             value5  => $drive, 
+		name6  => "server_is_running", value6  => $server_is_running, 
+		name7  => "definition_file",   value7  => $definition_file, 
+		name8  => "target",            value8  => $target, 
+		name9  => "port",              value9  => $port, 
+		name10 => "quiet",             value10 => $quiet, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $title = $an->String->get({key => "title_0031", variables => { device => $an->data->{cgi}{device} }});
-	print $an->Web->template({file => "server.html", template => "eject-media-header", replace => { title => $title }});
+	if (not $quiet)
+	{
+		print $an->Web->template({file => "server.html", template => "eject-media-header", replace => { title => $title }});
+	}
 	
 	my ($backup) = $an->Striker->_archive_file({
 			target   => $target,
@@ -13299,32 +13315,41 @@ sub _server_eject_media
 			}
 			else
 			{
-				print $an->Web->template({file => "common.html", template => "shell-call-output", replace => { line => $line }});
+				if (not $quiet)
+				{
+					print $an->Web->template({file => "common.html", template => "shell-call-output", replace => { line => $line }});
+				}
 			}
 		}
 		if ($virsh_exit_code eq "1")
 		{
 			# Someone already ejected it.
-			print $an->Web->template({file => "server.html", template => "eject-media-failed-already-ejected"});
+			if (not $quiet)
+			{
+				print $an->Web->template({file => "server.html", template => "eject-media-failed-already-ejected"});
+			}
 			
 			# Update the definition file in case it was missed by .
 			$an->Striker->_update_server_definition({
-				server   => $server,
-				target   => $target,
-				port     => $port,
-				password => $password, 
+				server_name => $server,
+				target      => $target,
+				port        => $port,
+				password    => $password, 
 			});
 		}
 		elsif ($virsh_exit_code eq "0")
 		{
-			print $an->Web->template({file => "server.html", template => "eject-media-success"});
+			if (not $quiet)
+			{
+				print $an->Web->template({file => "server.html", template => "eject-media-success"});
+			}
 			
 			# Update the definition file.
 			$an->Striker->_update_server_definition({
-				server   => $server,
-				target   => $target,
-				port     => $port,
-				password => $password, 
+				server_name => $server,
+				target      => $target,
+				port        => $port,
+				password    => $password, 
 			});
 		}
 		else
@@ -13334,14 +13359,20 @@ sub _server_eject_media
 					drive		=>	$drive,
 					virsh_exit_code	=>	$virsh_exit_code,
 				}});
-			print $an->Web->template({file => "server.html", template => "eject-media-failed-bad-exit-code", replace => { error => $say_error }});
+			if (not $quiet)
+			{
+				print $an->Web->template({file => "server.html", template => "eject-media-failed-bad-exit-code", replace => { error => $say_error }});
+			}
 		}
 	}
 	else
 	{
 		# The server isn't running. Directly re-write the XML file.
 		my $message = $an->String->get({key => "message_0070", variables => { server => $server }});
-		print $an->Web->template({file => "server.html", template => "eject-media-server-off", replace => { message => $message }});
+		if (not $quiet)
+		{
+			print $an->Web->template({file => "server.html", template => "eject-media-server-off", replace => { message => $message }});
+		}
 		my $in_cdrom       = 0;
 		my $this_media     = "";
 		my $this_device    = "";
@@ -13429,7 +13460,10 @@ sub _server_eject_media
 		$new_definition = $an->Striker->_update_network_driver({xml => $new_definition});
 		
 		# Write the new definition file.
-		print $an->Web->template({file => "server.html", template => "saving-server-config"});
+		if (not $quiet)
+		{
+			print $an->Web->template({file => "server.html", template => "saving-server-config"});
+		}
 		$shell_call = $an->data->{path}{echo}." \"$new_definition\" > $definition_file && ".$an->data->{path}{'chmod'}." 644 $definition_file";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
@@ -13447,18 +13481,24 @@ sub _server_eject_media
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			print $an->Web->template({file => "common.html", template => "shell-call-output", replace => { line => $line }});
+			if (not $quiet)
+			{
+				print $an->Web->template({file => "common.html", template => "shell-call-output", replace => { line => $line }});
+			}
 		}
-		print $an->Web->template({file => "server.html", template => "eject-media-footer"});
+		if (not $quiet)
+		{
+			print $an->Web->template({file => "server.html", template => "eject-media-footer"});
+		}
 		
 		# Update the server's definition file in the database, if it actually changed, and register 
 		# an alert.
 		if ($an->Validate->is_uuid({uuid => $server_uuid}))
 		{
-			$an->Striker->_update_server_definition_in_db({
-				server_name    => $server,
-				server_uuid    => $server_uuid, 
-				new_definition => $new_definition
+			$an->ScanCore->_insert_or_update_servers({
+				server_uuid       => $server_uuid,
+				server_definition => $new_definition,
+				just_definition   => 1,
 			});
 		}
 		
@@ -13559,22 +13599,23 @@ sub _server_insert_media
 
 			# Update the definition file in case it was missed earlier.
 			$an->Striker->_update_server_definition({
-				server   => $server,
-				target   => $target,
-				port     => $port,
-				password => $password, 
+				server_name => $server,
+				target      => $target,
+				port        => $port,
+				password    => $password, 
 			});
 		}
 		elsif ($virsh_exit_code eq "0")
 		{
 			print $an->Web->template({file => "server.html", template => "insert-media-success"});
 			
+			
 			# Update the definition file.
 			$an->Striker->_update_server_definition({
-				server   => $server,
-				target   => $target,
-				port     => $port,
-				password => $password, 
+				server_name => $server,
+				target      => $target,
+				port        => $port,
+				password    => $password, 
 			});
 		}
 		else
@@ -13664,10 +13705,10 @@ sub _server_insert_media
 		# an alert.
 		if ($an->Validate->is_uuid({uuid => $server_uuid}))
 		{
-			$an->Striker->_update_server_definition_in_db({
-				server_name    => $server,
-				server_uuid    => $server_uuid, 
-				new_definition => $new_definition
+			$an->ScanCore->_insert_or_update_servers({
+				server_uuid       => $server_uuid,
+				server_definition => $new_definition,
+				just_definition   => 1,
 			});
 		}
 		
@@ -14013,7 +14054,7 @@ sub _update_network_driver
 	return($new_xml);
 }
 
-# This calls 'virsh dumpxml' against the given server.
+# This calls 'virsh dumpxml' against the given server and updates scancore's 'server' database table.
 sub _update_server_definition
 {
 	my $self      = shift;
@@ -14021,14 +14062,14 @@ sub _update_server_definition
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_update_server_definition" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
-	my $server          = $parameter->{server}   ? $parameter->{server}   : 0;
-	my $target          = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port            = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password        = $parameter->{password} ? $parameter->{password} : "";
+	my $server_name     = $parameter->{server_name} ? $parameter->{server_name} : "";
+	my $target          = $parameter->{target}      ? $parameter->{target}      : "";
+	my $port            = $parameter->{port}        ? $parameter->{port}        : "";
+	my $password        = $parameter->{password}    ? $parameter->{password}    : "";
 	my $definition_file = $an->data->{server}{$server}{definition_file};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "definition_file", value1 => $definition_file, 
-		name2 => "server",          value2 => $server, 
+		name2 => "server_name",     value2 => $server_name, 
 		name3 => "target",          value3 => $target, 
 		name4 => "port",            value4 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -14036,6 +14077,7 @@ sub _update_server_definition
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# We'll get the server's UUID directly from the definition file, as that is the most authoritative.
 	my $server_uuid    = "";
 	my $new_definition = "";
 	my $shell_call     = $an->data->{path}{virsh}." dumpxml $server";
@@ -14062,6 +14104,9 @@ sub _update_server_definition
 		if ($line =~ /<uuid>(.*?)<\/uuid>/)
 		{
 			$server_uuid = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server_uuid", value1 => $server_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -14099,81 +14144,14 @@ sub _update_server_definition
 	# and register an alert.
 	if ($an->Validate->is_uuid({uuid => $server_uuid}))
 	{
-		$an->Striker->_update_server_definition_in_db({
-			server_name    => $server,
-			server_uuid    => $server_uuid, 
-			new_definition => $new_definition
+		$an->ScanCore->_insert_or_update_servers({
+			server_uuid       => $server_uuid,
+			server_definition => $new_definition,
+			just_definition   => 1,
 		});
 	}
 	
-	return(0);
-}
-
-# This updates the server definition in the ScanCore database, if it has changed, and triggers an alert.
-sub _update_server_definition_in_db
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_update_server_definition_in_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-
-	my $server_name    = $parameter->{server_name}    ? $parameter->{server_name}    : "";
-	my $server_uuid    = $parameter->{server_uuid}    ? $parameter->{server_uuid}    : "";
-	my $new_definition = $parameter->{new_definition} ? $parameter->{new_definition} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "server_name",    value1 => $server_name, 
-		name2 => "server_uuid",    value2 => $server_uuid, 
-		name3 => "new_definition", value3 => $new_definition, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $query = "
-SELECT 
-    server_definition 
-FROM 
-    servers 
-WHERE 
-    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
-;";
-	my $old_definition = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-		$old_definition = "" if not defined $old_definition;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "old_definition", value1 => $old_definition, 
-		name2 => "new_definition", value2 => $new_definition, 
-		name3 => "diff",           value3 => diff \$old_definition, \$new_definition, { STYLE => 'Unified' },
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	if (($old_definition) && ($old_definition ne $new_definition))
-	{
-		# This will happen whenever the virsh ID changes, disks are inserted/ejected, etc. So it's a
-		# notice-level event. It won't be sent until one of the nodes scan though.
-		$an->Alert->register_alert({
-			alert_level		=>	"notice", 
-			alert_agent_name	=>	$THIS_FILE,
-			alert_title_key		=>	"an_alert_title_0003",
-			alert_message_key	=>	"scan_server_message_0007",
-			alert_message_variables	=>	{
-				server			=>	$server_name, 
-				new			=>	$new_definition,
-				diff			=>	diff \$old_definition, \$new_definition, { STYLE => 'Unified' },
-			},
-		});
-		
-		my $query = "
-UPDATE 
-    servers 
-SET 
-    server_definition = ".$an->data->{sys}{use_db_fh}->quote($new_definition).", 
-    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-WHERE 
-    server_uuid       = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
-;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	}
-	
-	return(0);
+	return($new_definition);
 }
 
 # This sanity-checks the requested server config prior to creating the server itself.

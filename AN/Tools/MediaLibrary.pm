@@ -133,7 +133,7 @@ sub _check_local_dvd
 	return(0);
 }
 
-# This asks the user to confirm that s/he wants to delete the image.
+# This asks the user to confirm that s/he wants to delete the file.
 sub _confirm_delete_file
 {
 	my $self      = shift;
@@ -149,6 +149,117 @@ sub _confirm_delete_file
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "name",       value3 => $name,
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# See if this file is currently used by any servers. If so, we can proceed, but warn that migration 
+	# scripts will be automatically deleted and ISOs will be automatically ejected.
+	my $warning     = "";
+	my $server_data = $an->ScanCore->get_servers();
+	foreach my $hash_ref (@{$server_data})
+	{
+		my $server_uuid                     = $hash_ref->{server_uuid};
+		my $server_name                     = $hash_ref->{server_name};
+		my $server_definition               = $hash_ref->{server_definition};
+		my $server_pre_migration_script     = $hash_ref->{server_pre_migration_script};
+		my $server_pre_migration_arguments  = $hash_ref->{server_pre_migration_arguments};
+		my $server_post_migration_script    = $hash_ref->{server_post_migration_script};
+		my $server_post_migration_arguments = $hash_ref->{server_post_migration_arguments};
+		my $server_anvil_uuid               = $hash_ref->{server_anvil_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "server_uuid",                     value1 => $server_uuid,
+			name2 => "server_name",                     value2 => $server_name,
+			name3 => "server_definition",               value3 => $server_definition,
+			name4 => "server_pre_migration_script",     value4 => $server_pre_migration_script,
+			name5 => "server_pre_migration_arguments",  value5 => $server_pre_migration_arguments,
+			name6 => "server_post_migration_script",    value6 => $server_post_migration_script,
+			name7 => "server_post_migration_arguments", value7 => $server_post_migration_arguments,
+			name8 => "server_anvil_uuid",               value8 => $server_anvil_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Skip this server if it isn't on this Anvil!.
+		next if $anvil_uuid ne $server_anvil_uuid;
+		
+		# Is the file to be deleted one of the scripts?
+		if ($file eq $server_pre_migration_script)
+		{
+			# File is set as a pre-migration script for this server.
+			my $say_script =  $server_pre_migration_arguments ? $server_pre_migration_script." ".$server_pre_migration_arguments : $server_pre_migration_script;
+			   $warning    .= $an->String->get({key => "warning_0003", variables => { 
+				server_name => $server_name,
+				script      => $say_script,
+			}});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "warning", value1 => $warning, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($file eq $server_post_migration_script)
+		{
+			# File is set as a post-migration script for this server.
+			my $say_script =  $server_pre_migration_arguments ? $server_pre_migration_script." ".$server_pre_migration_arguments : $server_pre_migration_script;
+			   $warning    .= $an->String->get({key => "warning_0004", variables => { 
+				server_name => $server_name,
+				script      => $say_script,
+			}});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "warning", value1 => $warning, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# See if this file is a mounted ISO.
+			my $in_cdrom = 0;
+			foreach my $line (split/\n/, $server_definition)
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (($line =~ /type='file'/) && ($line =~ /device='cdrom'/))
+				{
+					# Found an optical disk (DVD/CD).
+					$in_cdrom = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "in_cdrom", value1 => $in_cdrom, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($in_cdrom)
+				{
+					if ($line =~ /<\/disk>/)
+					{
+						$in_cdrom = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "in_cdrom", value1 => $in_cdrom, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					elsif ($line =~ /file='(.*?)'\/>/)
+					{
+						# Found media
+						$this_media = $1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "this_media", value1 => $this_media, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						if ($file eq $this_media)
+						{
+							# This file is an ISO mounted on this server.
+							$warning .= $an->String->get({key => "warning_0005", variables => { server_name => $server_name }});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "warning", value1 => $warning, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	# If I have any warnings, add the warning footer
+	if ($warning)
+	{
+		$warning .= $an->String->get({key => "warning_0006"});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "warning", value1 => $warning, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	my $say_title = $an->String->get({key => "title_0134", variables => { 
 			name	=>	$name,
@@ -170,12 +281,13 @@ sub _confirm_delete_file
 		title		=>	$say_title,
 		say_delete	=>	$say_delete,
 		confirm_button	=>	$confirm_button,
+		warning		=>	$warning,
 	}});
 	
 	return (0);
 }
 
-# This deletes a file from the cluster.
+# This deletes a file from the Anvil! system.
 sub _delete_file
 {
 	my $self      = shift;
@@ -225,6 +337,148 @@ sub _delete_file
 		my $say_title = $an->String->get({key => "title_0135", variables => { name => $name }});
 		print $an->Web->template({file => "media-library.html", template => "file-delete-header", replace => { title => $say_title }});
 		
+		# First, update any servers that use this file.
+		my $warning     = "";
+		my $server_data = $an->ScanCore->get_servers();
+		foreach my $hash_ref (@{$server_data})
+		{
+			my $server_uuid                     = $hash_ref->{server_uuid};
+			my $server_name                     = $hash_ref->{server_name};
+			my $server_definition               = $hash_ref->{server_definition};
+			my $server_pre_migration_script     = $hash_ref->{server_pre_migration_script};
+			my $server_pre_migration_arguments  = $hash_ref->{server_pre_migration_arguments};
+			my $server_post_migration_script    = $hash_ref->{server_post_migration_script};
+			my $server_post_migration_arguments = $hash_ref->{server_post_migration_arguments};
+			my $server_anvil_uuid               = $hash_ref->{server_anvil_uuid};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "server_uuid",                     value1 => $server_uuid,
+				name2 => "server_name",                     value2 => $server_name,
+				name3 => "server_definition",               value3 => $server_definition,
+				name4 => "server_pre_migration_script",     value4 => $server_pre_migration_script,
+				name5 => "server_pre_migration_arguments",  value5 => $server_pre_migration_arguments,
+				name6 => "server_post_migration_script",    value6 => $server_post_migration_script,
+				name7 => "server_post_migration_arguments", value7 => $server_post_migration_arguments,
+				name8 => "server_anvil_uuid",               value8 => $server_anvil_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Skip this server if it isn't on this Anvil!.
+			next if $anvil_uuid ne $server_anvil_uuid;
+			
+			# Is the file to be deleted one of the scripts?
+			if ($file eq $server_pre_migration_script)
+			{
+				# Remove it.
+				my $query = "
+UPDATE 
+    servers 
+SET 
+    server_pre_migration_script    = NULL, 
+    server_pre_migration_arguments = NULL, 
+    modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_uuid                    = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});q
+				
+				$warning .= $an->String->get({key => "warning_0007", variables => { server_name => $server_name }});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "warning", value1 => $warning, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($file eq $server_post_migration_script)
+			{
+				my $query = "
+UPDATE 
+    servers 
+SET 
+    server_post_migration_script    = NULL, 
+    server_post_migration_arguments = NULL, 
+    modified_date                   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_uuid                     = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+				
+				$warning .= $an->String->get({key => "warning_0008", variables => { server_name => $server_name }});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "warning", value1 => $warning, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# See if this file is a mounted ISO.
+				my $in_cdrom = 0;
+				foreach my $line (split/\n/, $server_definition)
+				{
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if (($line =~ /type='file'/) && ($line =~ /device='cdrom'/))
+					{
+						# Found an optical disk (DVD/CD).
+						$in_cdrom = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "in_cdrom", value1 => $in_cdrom, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					if ($in_cdrom)
+					{
+						if ($line =~ /<\/disk>/)
+						{
+							$in_cdrom = 0;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "in_cdrom", value1 => $in_cdrom, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif ($line =~ /file='(.*?)'\/>/)
+						{
+							# Found media
+							$this_media = $1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "this_media", value1 => $this_media, 
+							}, file => $THIS_FILE, line => __LINE__});
+							
+							if ($file eq $this_media)
+							{
+								# Eject this disk
+								my $server_is_running = 0;
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "server::${server}::current_host", value1 => $an->data->{server}{$server}{current_host},
+								}, file => $THIS_FILE, line => __LINE__});
+								if ($an->data->{server}{$server}{current_host})
+								{
+									# Read the current server config from virsh.
+									$server_is_running = 1;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "server_is_running", value1 => $server_is_running,
+									}, file => $THIS_FILE, line => __LINE__});
+								}
+								$an->Striker->_server_eject_media({
+									target            => $target,
+									port              => $port,
+									password          => $password,
+									server_is_running => $server_is_running,
+									quiet             => 1,
+								});
+								
+								$warning .= $an->String->get({key => "warning_0009", variables => { server_name => $server_name }});
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "warning", value1 => $warning, 
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+						}
+					}
+				}
+			}
+		}
+		
 		my $shell_call = $an->data->{path}{rm}." -f \"".$an->data->{path}{shared_files}."/$name\"";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
@@ -244,7 +498,7 @@ sub _delete_file
 			
 			print $an->Web->template({file => "common.html", template => "shell-call-output", replace => { line => $line }});
 		}
-		print $an->Web->template({file => "media-library.html", template => "file-delete-footer"});
+		print $an->Web->template({file => "media-library.html", template => "file-delete-footer", replace => { warning => $warning }});
 	}
 	else
 	{
@@ -988,7 +1242,6 @@ sub _read_shared
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
-	
 	
 	print $an->Web->template({file => "media-library.html", template => "read-shared-header"});
 	if ($target)

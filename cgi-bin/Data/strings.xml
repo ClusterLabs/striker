@@ -1966,6 +1966,13 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>
 		<key name="warning_0002"><![CDATA[The install target function failed to be disabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>
+		<key name="warning_0003"><![CDATA[The server: [<span class="highlight_detail">#!variable!server_name!#</span>] is using this file as a pre-migration script: [<span class="highlight_detail">#!variable!script!#</span>].<br />]]></key>
+		<key name="warning_0004"><![CDATA[The server: [<span class="highlight_detail">#!variable!server_name!#</span>] is using this file as a post-migration script: [<span class="highlight_detail">#!variable!script!#</span>].<br />]]></key>
+		<key name="warning_0005"><![CDATA[The server: [<span class="highlight_detail">#!variable!server_name!#</span>] has this file mounted as an optical disk.<br />]]></key>
+		<key name="warning_0006"><![CDATA[If you proceed, the server(s) will be automatically be updated to remove this file.]]></key>
+		<key name="warning_0007"><![CDATA[The server: [<span class="highlight_detail">#!variable!server_name!#</span>] is no longer using this pre-migration script.<br />]]></key>
+		<key name="warning_0008"><![CDATA[The server: [<span class="highlight_detail">#!variable!server_name!#</span>] is no longer using this post-migration script.<br />]]></key>
+		<key name="warning_0009"><![CDATA[The server: [<span class="highlight_detail">#!variable!server_name!#</span>] has ejected this disk image.<br />]]></key>
 		
 		<!-- Configuration variable descriptions -->
 		<key name="config_title_0001">Owner Name</key>

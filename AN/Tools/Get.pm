@@ -4149,7 +4149,7 @@ sub shared_files
 			}
 			# These are so crude...
 			my $is_iso = 0;
-			if ($file =~ /\.iso/i)
+			if ($file =~ /\.iso$/i)
 			{
 				$is_iso = 1;
 			}
@@ -4180,7 +4180,7 @@ sub shared_files
 				name13 => "is_executable", value13 => $is_executable, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$files->{$file}	= {
+			$files->{$file} = {
 				type       => $type, 
 				mode       => $mode, 
 				user       => $user, 

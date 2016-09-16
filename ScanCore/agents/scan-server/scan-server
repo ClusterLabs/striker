@@ -22,7 +22,7 @@
 #  - Add a 'maintenance mode' where the VM is no longer monitored by the cluster. When in maintenance mode,
 #    we will not touch it. Otherwise, if it is found to be running on a node but not in clustat, use 
 #    clusvcadm to add it to the cluster control.
-#  - If a VM becomes 'defined', undefine it. (virsh dominfo <server> | grep Persistent) -> yes|no
+#  - If a server becomes 'defined', undefine it. (virsh dominfo <server> | grep Persistent) -> yes|no
 # 
 
 # Use my modules.
@@ -47,17 +47,13 @@ my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0
 my $an = AN::Tools->new({data => 
 	{
 		path		=>	{
-			cluster_conf		=>	"/etc/cluster/cluster.conf",
 			core_strings		=>	"$scancore_directory/ScanCore.xml",
 			# This stores this node's UUID. It is used to track all our sensor data in the 
 			# database. If you change this here, change it ScanCore, too.
-			host_uuid		=>	"/etc/striker/host.uuid",
-			libvirtd_socket		=>	"/var/run/libvirt/libvirt-sock", 
 			strings			=>	"$running_directory/$THIS_FILE.xml",
 			sql			=>	"$running_directory/$THIS_FILE.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
-			virsh			=>	"/usr/bin/virsh",
 		},
 		# This is used so that the user can set the language in on striker.conf variable.
 		'scan-server'		=>	{
@@ -106,7 +102,7 @@ $an->Log->adjust_log_level({key => $THIS_FILE});
 print $an->String->get({key => "scan_server_message_0001"})."\n";
 
 # Don't bother proceeding if there is no cluster.conf.
-if (not -e $an->data->{path}{cluster_conf})
+if (not -e $an->data->{path}{cman_config})
 {
 	$an->nice_exit({exit_code => 1});
 }
@@ -138,6 +134,10 @@ find_changes($an);
 # This checks to ensure that libvirtd is not set to start on boot, which can be set after an OS update.
 check_libvirtd($an);
 
+# This makes sure that the pre/post migration scripts and inserted ISO disk images exist in /shared/files/ 
+# still and removed/ejects them, if not.
+check_for_removed_files($an);
+
 # Update the database
 $an->DB->update_time({file => $THIS_FILE});
 
@@ -148,6 +148,20 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This makes sure that the pre/post migration scripts and inserted ISO disk images exist in /shared/files/ 
+# still and removed/ejects them, if not.
+sub check_for_removed_files
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_for_removed_files", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: Read '/shared/definitions' and only check the servers found there (which immediately means
+	###       this won't run on dashboards, which is what we want).
+	
+	
+	return(0);
+}
 
 # This checks to ensure that libvirtd is not set to start on boot, which can be set after an OS update.
 sub check_libvirtd
@@ -199,7 +213,7 @@ sub scan_servers
 	my $return = $an->Get->local_anvil_details({
 		hostname_full	=>	$an->hostname,
 		hostname_short	=>	$an->short_hostname,
-		config_file	=>	$an->data->{path}{cluster_conf},
+		config_file	=>	$an->data->{path}{cman_config}},
 	});
 	$an->data->{sys}{local_node}     = $return->{local_node};
 	$an->data->{sys}{peer_node}      = $return->{peer_node};

@@ -7462,32 +7462,32 @@ sub show_main_menu
 # 			url		=>	"",
 # 		}})."\n";
 	
-	### Disaster recovery options
+	### Disaster recovery options - Disabled until v2.1
 	# DR Targets
-	my $task_dr_target_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-			name	=>	"dr_target",
-			id	=>	"dr_target",
-			alt	=>	"#!string!button_0078!#",
-			value	=>	"#!string!button_0078!#",
-			url	=>	"?task=dr_target",
-		}, no_comment => 1});
-	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	$task_dr_target_anchor,
-			description	=>	"#!string!explain_0213!#",
-			url		=>	"",
-		}})."\n";
-	my $task_dr_job_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-			name	=>	"dr_job",
-			id	=>	"dr_job",
-			alt	=>	"#!string!button_0079!#",
-			value	=>	"#!string!button_0079!#",
-			url	=>	"?task=dr_job",
-		}, no_comment => 1});
-	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	$task_dr_job_anchor,
-			description	=>	"#!string!explain_0214!#",
-			url		=>	"",
-		}})."\n";
+# 	my $task_dr_target_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+# 			name	=>	"dr_target",
+# 			id	=>	"dr_target",
+# 			alt	=>	"#!string!button_0078!#",
+# 			value	=>	"#!string!button_0078!#",
+# 			url	=>	"?task=dr_target",
+# 		}, no_comment => 1});
+# 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+# 			button		=>	$task_dr_target_anchor,
+# 			description	=>	"#!string!explain_0213!#",
+# 			url		=>	"",
+# 		}})."\n";
+# 	my $task_dr_job_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+# 			name	=>	"dr_job",
+# 			id	=>	"dr_job",
+# 			alt	=>	"#!string!button_0079!#",
+# 			value	=>	"#!string!button_0079!#",
+# 			url	=>	"?task=dr_job",
+# 		}, no_comment => 1});
+# 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+# 			button		=>	$task_dr_job_anchor,
+# 			description	=>	"#!string!explain_0214!#",
+# 			url		=>	"",
+# 		}})."\n";
 	
 	# Get the list of existing Anvil! systems, if any
 	my $anvil_count = 0;
