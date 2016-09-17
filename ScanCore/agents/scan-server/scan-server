@@ -259,9 +259,9 @@ sub check_for_removed_files
 						# Eject this disk
 						my $server_is_running = 0;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "server::${server}::current_host", value1 => $an->data->{server}{$server}{current_host},
+							name1 => "server::${server_name}::current_host", value1 => $an->data->{server}{$server_name}{current_host},
 						}, file => $THIS_FILE, line => __LINE__});
-						if ($an->data->{server}{$server}{current_host})
+						if ($an->data->{server}{$server_name}{current_host})
 						{
 							# Read the current server config from virsh.
 							$server_is_running = 1;
@@ -270,9 +270,6 @@ sub check_for_removed_files
 							}, file => $THIS_FILE, line => __LINE__});
 						}
 						$an->Striker->_server_eject_media({
-							target            => $target,
-							port              => $port,
-							password          => $password,
 							server_is_running => $server_is_running,
 							quiet             => 1,
 						});
@@ -347,7 +344,7 @@ sub scan_servers
 	my $return = $an->Get->local_anvil_details({
 		hostname_full	=>	$an->hostname,
 		hostname_short	=>	$an->short_hostname,
-		config_file	=>	$an->data->{path}{cman_config}},
+		config_file	=>	$an->data->{path}{cman_config},
 	});
 	$an->data->{sys}{local_node}     = $return->{local_node};
 	$an->data->{sys}{peer_node}      = $return->{peer_node};

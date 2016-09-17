@@ -162,8 +162,8 @@ my $conf = {
 		name		=>	{
 			centos		=>	"CentOS",
 			rhel		=>	"RHEL",
-			release		=>	"6.7",
-			suffix		=>	"alpha",
+			release		=>	"6.8",
+			suffix		=>	"beta",
 			mark		=>	"m2",
 		},
 		# This is will be set to '1' if the source ISO is not mounted.
@@ -3891,7 +3891,6 @@ sub get_package_list
 		"tibetan-machine-uni-fonts.noarch",
 		"tog-pegasus-libs.x86_64",
 		"tog-pegasus.x86_64",
-		"trickle.x86_64",
 		"tuned.noarch",
 		"tzdata.noarch",
 		"udev.x86_64",
@@ -4049,6 +4048,7 @@ sub get_package_list
 		"postgresql95-server.x86_64",
 		"shorewall.noarch",
 		"shorewall-core.noarch",
+		"trickle.x86_64",
 	];
 	
 	# If the user is using RHEL, we will append these packages to get them from AN!Repo as we can't get

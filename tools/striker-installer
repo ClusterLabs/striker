@@ -1980,7 +1980,7 @@ fi";
 	logger($conf, $THIS_FILE, __LINE__, "- Reading in 'root's cron table.", 1);
 	my $dashboard  = $conf->{executable}{scancore};
 	my $raw_cron   = "";
-	$shell_call = "$conf->{path}{cron_root}";
+	   $shell_call = "$conf->{path}{cron_root}";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call].", 3);
 	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
@@ -6727,20 +6727,20 @@ sub install_packages
 		my $shell_call = "
 if [ -e '$conf->{executable}{MegaCli64}' ]; 
 then 
-	if [ -e '$conf->{executable}{MegaCli64_link}' ]
-	then
-		echo '$conf->{executable}{MegaCli64_link} symlink exists';
-	else
-		ln -s $conf->{executable}{MegaCli64} $conf->{executable}{MegaCli64_link}
-		if [ -e '$conf->{executable}{MegaCli64_link}' ]
-		then
-			echo '$conf->{executable}{MegaCli64_link} symlink created';
-		else
-			echo 'Failed to create $conf->{executable}{MegaCli64_link} symlink';
-		fi
-	fi
+    if [ -e '$conf->{executable}{MegaCli64_link}' ]
+    then
+        echo '$conf->{executable}{MegaCli64_link} symlink exists';
+    else
+        ln -s $conf->{executable}{MegaCli64} $conf->{executable}{MegaCli64_link}
+        if [ -e '$conf->{executable}{MegaCli64_link}' ]
+        then
+            echo '$conf->{executable}{MegaCli64_link} symlink created';
+        else
+            echo 'Failed to create $conf->{executable}{MegaCli64_link} symlink';
+        fi
+    fi
 else
-	echo 'MegaCli64 not installed.'
+    echo 'MegaCli64 not installed.'
 fi";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";

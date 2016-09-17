@@ -179,7 +179,7 @@ sub _confirm_delete_file
 		next if $anvil_uuid ne $server_anvil_uuid;
 		
 		# Is the file to be deleted one of the scripts?
-		if ($file eq $server_pre_migration_script)
+		if ($name eq $server_pre_migration_script)
 		{
 			# File is set as a pre-migration script for this server.
 			my $say_script =  $server_pre_migration_arguments ? $server_pre_migration_script." ".$server_pre_migration_arguments : $server_pre_migration_script;
@@ -191,7 +191,7 @@ sub _confirm_delete_file
 				name1 => "warning", value1 => $warning, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($file eq $server_post_migration_script)
+		elsif ($name eq $server_post_migration_script)
 		{
 			# File is set as a post-migration script for this server.
 			my $say_script =  $server_pre_migration_arguments ? $server_pre_migration_script." ".$server_pre_migration_arguments : $server_pre_migration_script;
@@ -233,12 +233,12 @@ sub _confirm_delete_file
 					elsif ($line =~ /file='(.*?)'\/>/)
 					{
 						# Found media
-						$this_media = $1;
+						my $this_media = $1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "this_media", value1 => $this_media, 
 						}, file => $THIS_FILE, line => __LINE__});
 						
-						if ($file eq $this_media)
+						if ($name eq $this_media)
 						{
 							# This file is an ISO mounted on this server.
 							$warning .= $an->String->get({key => "warning_0005", variables => { server_name => $server_name }});
@@ -365,7 +365,7 @@ sub _delete_file
 			next if $anvil_uuid ne $server_anvil_uuid;
 			
 			# Is the file to be deleted one of the scripts?
-			if ($file eq $server_pre_migration_script)
+			if ($name eq $server_pre_migration_script)
 			{
 				# Remove it.
 				my $query = "
@@ -381,14 +381,14 @@ WHERE
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});q
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 				
 				$warning .= $an->String->get({key => "warning_0007", variables => { server_name => $server_name }});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "warning", value1 => $warning, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($file eq $server_post_migration_script)
+			elsif ($name eq $server_post_migration_script)
 			{
 				my $query = "
 UPDATE 
@@ -440,19 +440,19 @@ WHERE
 						elsif ($line =~ /file='(.*?)'\/>/)
 						{
 							# Found media
-							$this_media = $1;
+							my $this_media = $1;
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 								name1 => "this_media", value1 => $this_media, 
 							}, file => $THIS_FILE, line => __LINE__});
 							
-							if ($file eq $this_media)
+							if ($name eq $this_media)
 							{
 								# Eject this disk
 								my $server_is_running = 0;
 								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-									name1 => "server::${server}::current_host", value1 => $an->data->{server}{$server}{current_host},
+									name1 => "server::${server_name}::current_host", value1 => $an->data->{server}{$server_name}{current_host},
 								}, file => $THIS_FILE, line => __LINE__});
-								if ($an->data->{server}{$server}{current_host})
+								if ($an->data->{server}{$server_name}{current_host})
 								{
 									# Read the current server config from virsh.
 									$server_is_running = 1;

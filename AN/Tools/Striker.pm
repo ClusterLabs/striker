@@ -2336,16 +2336,40 @@ sub _archive_file
 	my $cp_exit_code   = 255;
 	my $header_printed = 0;
 	my $shell_call     = $an->data->{path}{cp}." $file $destination; ".$an->data->{path}{echo}." cp:\$?";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "target",     value1 => $target,
-		name2 => "shell_call", value2 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__});
-	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$target,
-		port		=>	$port, 
-		password	=>	$password,
-		shell_call	=>	$shell_call,
-	});
+	my $return         = [];
+	if ($target)
+	{
+		# Remote call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
 	foreach my $line (@{$return})
 	{
 		next if not $line;
@@ -13268,9 +13292,9 @@ sub _server_eject_media
 		name10 => "quiet",             value10 => $quiet, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $title = $an->String->get({key => "title_0031", variables => { device => $an->data->{cgi}{device} }});
 	if (not $quiet)
 	{
+		my $title = $an->String->get({key => "title_0031", variables => { device => $an->data->{cgi}{device} }});
 		print $an->Web->template({file => "server.html", template => "eject-media-header", replace => { title => $title }});
 	}
 	
@@ -13291,16 +13315,40 @@ sub _server_eject_media
 		# It is, so I will use 'virsh'.
 		my $virsh_exit_code = 255;
 		my $shell_call      = $an->data->{path}{virsh}." change-media $server $device --eject; ".$an->data->{path}{echo}." virsh:\$?";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "shell_call", value2 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			shell_call	=>	$shell_call,
-		});
+		my $return          = [];
+		if ($target)
+		{
+			# Remote call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+		}
+		else
+		{
+			# Local call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$return}, $line;
+			}
+			close $file_handle;
+		}
 		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
@@ -14068,7 +14116,7 @@ sub _update_server_definition
 	my $target          = $parameter->{target}      ? $parameter->{target}      : "";
 	my $port            = $parameter->{port}        ? $parameter->{port}        : "";
 	my $password        = $parameter->{password}    ? $parameter->{password}    : "";
-	my $definition_file = $an->data->{server}{$server}{definition_file};
+	my $definition_file = $an->data->{server}{$server_name}{definition_file};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "definition_file", value1 => $definition_file, 
 		name2 => "server_name",     value2 => $server_name, 
@@ -14082,17 +14130,41 @@ sub _update_server_definition
 	# We'll get the server's UUID directly from the definition file, as that is the most authoritative.
 	my $server_uuid    = "";
 	my $new_definition = "";
-	my $shell_call     = $an->data->{path}{virsh}." dumpxml $server";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "target",     value1 => $target,
-		name2 => "shell_call", value2 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__});
-	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$target,
-		port		=>	$port, 
-		password	=>	$password,
-		shell_call	=>	$shell_call,
-	});
+	my $shell_call     = $an->data->{path}{virsh}." dumpxml $server_name";
+	my $return         = [];
+	if ($target)
+	{
+		# Remote call.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
 	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
@@ -14117,16 +14189,40 @@ sub _update_server_definition
 	
 	# Write out the new one.
 	$shell_call = $an->data->{path}{cat}." > $definition_file << EOF\n$new_definition\nEOF";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "target",     value1 => $target,
-		name2 => "shell_call", value2 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__});
-	($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$target,
-		port		=>	$port, 
-		password	=>	$password,
-		shell_call	=>	$shell_call,
-	});
+	$return     = [];
+	if ($target)
+	{
+		# Remote call.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
 	foreach my $line (@{$return})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -14134,12 +14230,12 @@ sub _update_server_definition
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# Rebuild the $an->data->{server}{$server}{xml} array.
-	undef $an->data->{server}{$server}{xml};
-	      $an->data->{server}{$server}{xml} = [];
+	# Rebuild the $an->data->{server}{$server_name}{xml} array.
+	undef $an->data->{server}{$server_name}{xml};
+	      $an->data->{server}{$server_name}{xml} = [];
 	foreach my $line (split/\n/, $new_definition)
 	{
-		push @{$an->data->{server}{$server}{xml}}, $line;
+		push @{$an->data->{server}{$server_name}{xml}}, $line;
 	}
 	
 	# Read in the old definition from the database and, if it has changed, update the definition file 

@@ -6,6 +6,7 @@ package AN::Tools::ScanCore;
 use strict;
 use warnings;
 use Data::Dumper;
+use Text::Diff;
 
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "ScanCore.pm";
@@ -2804,7 +2805,7 @@ AND
 	# If I don't have a migration time, use the default.
 	if (not $server_migration_type)
 	{
-		$server_migration_type = $an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "cold" : "live"
+		$server_migration_type = $an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "cold" : "live";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_migration_type", value1 => $server_migration_type, 
 		}, file => $THIS_FILE, line => __LINE__});
