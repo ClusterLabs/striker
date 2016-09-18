@@ -9506,6 +9506,11 @@ common {
 		after-sb-1pri discard-secondary;
 		after-sb-2pri disconnect;
 		
+		# Set the network timeout to '10' seconds (10 == 1 second) to
+		# match corosync's default timeout.
+		ping-timeout 100;
+		timeout 100;
+		
 		### TODO: Experiment with 'max-buffers' of 20 ~ 40k.
 		\n";
 	if ($an->data->{cgi}{'anvil_drbd_net_max-buffers'})
