@@ -301,6 +301,10 @@ while(1)
 		# Wait if another instance is updating the database
 		$an->DB->wait_if_db_is_updating();
 		
+		# ### New method
+		#$an->DB->wait_if_requested();
+		#$an->DB->mark_running({running => 1});
+		
 		# Look to see if any databases need to be updated.
 		update_db($an);
 		
@@ -1029,9 +1033,7 @@ ORDER BY
 			}
 			
 			# No need to check if it should be booted.
-			$an->Log->entry({log_level => 1, message_key => "scancore_log_0085", message_variables => {
-				node => $host_name, 
-			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0085", message_variables => { node => $host_name }, file => $THIS_FILE, line => __LINE__});
 			
 			# Check to see if there is a time-type stop reason and, if so, see if it's stale.
 			my $clear   = 1;
@@ -3053,17 +3055,17 @@ ORDER BY
 	foreach my $row (@{$results})
 	{
 		# One or more records were found.
-		my $alert_uuid              = $row->[0]; 
-		my $alert_agent_name        = $row->[1]; 
-		my $alert_level             = $row->[2]; 
-		my $alert_title_key         = $row->[3]; 
-		my $alert_title_variables   = $row->[4]; 
-		my $alert_message_key       = $row->[5]; 
-		my $alert_message_variables = $row->[6]; 
-		my $alert_header            = $row->[7]; 
+		my $alert_uuid              =         $row->[0]; 
+		my $alert_agent_name        =         $row->[1]; 
+		my $alert_level             =         $row->[2]; 
+		my $alert_title_key         =         $row->[3]; 
+		my $alert_title_variables   =         $row->[4]; 
+		my $alert_message_key       =         $row->[5]; 
+		my $alert_message_variables =         $row->[6]; 
+		my $alert_header            =         $row->[7]; 
 		my $alert_sort              = defined $row->[8] ? $row->[8] : 9999; 
-		my $modified_date           = $row->[9]; 
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+		my $modified_date           =         $row->[9]; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 			name1  => "alert_uuid",              value1  => $alert_uuid, 
 			name2  => "alert_agent_name",        value2  => $alert_agent_name, 
 			name3  => "alert_level",             value3  => $alert_level, 
@@ -3086,7 +3088,7 @@ ORDER BY
 			alert_header 		=> $alert_header,
 			modified_date           => $modified_date
 		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 			name1 => "db::alerts::agent_name::${alert_agent_name}::alert_sort::${alert_sort}::alert_uuid::${alert_uuid}::alert_level",             value1 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_level},
 			name2 => "db::alerts::agent_name::${alert_agent_name}::alert_sort::${alert_sort}::alert_uuid::${alert_uuid}::alert_title_key",         value2 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_title_key},
 			name3 => "db::alerts::agent_name::${alert_agent_name}::alert_sort::${alert_sort}::alert_uuid::${alert_uuid}::alert_title_variables",   value3 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_title_variables},

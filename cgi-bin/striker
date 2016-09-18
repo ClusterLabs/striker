@@ -412,6 +412,9 @@ sub _initialize_an
 			date_seperator		=>	"-",			# Should put these in the strings.xml file
 			dd_block_size		=>	"1M",
 			debug			=>	1,
+			'default'		=>	{
+				migration_type		=>	"live",
+			},
 			# When set to '1', (almost) all external links will be disabled. Useful for sites 
 			# without an Internet connection.
 			disable_links		=>	0,

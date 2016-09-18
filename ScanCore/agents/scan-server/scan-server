@@ -64,6 +64,9 @@ my $an = AN::Tools->new({data =>
 		},
 		server		=>	{},
 		sys		=>	{
+			'default'	=>	{
+				migration_type	=>	"live",
+			},
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			sql			=>	[],
 			# This is the source name of anything added to 'shared' by this agent.
@@ -208,7 +211,8 @@ sub check_for_removed_files
 		my $server_post_migration_script    = $hash_ref->{server_post_migration_script};
 		my $server_post_migration_arguments = $hash_ref->{server_post_migration_arguments};
 		my $server_anvil_uuid               = $hash_ref->{server_anvil_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		my $server_host                     = $hash_ref->{server_host};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 			name1 => "server_uuid",                     value1 => $server_uuid,
 			name2 => "server_name",                     value2 => $server_name,
 			name3 => "server_definition",               value3 => $server_definition,
@@ -217,13 +221,17 @@ sub check_for_removed_files
 			name6 => "server_post_migration_script",    value6 => $server_post_migration_script,
 			name7 => "server_post_migration_arguments", value7 => $server_post_migration_arguments,
 			name8 => "server_anvil_uuid",               value8 => $server_anvil_uuid,
+			name9 => "server_host",                     value9 => $server_host,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Skip this server if it isn't on this Anvil!.
 		next if $anvil_uuid ne $server_anvil_uuid;
 		
 		# OK, now look for mounted ISOs. 
-		my $in_cdrom = 0;
+		my $in_cdrom    = 0;
+		my $this_device = "";
+		my $do_eject    = 0;
+		my $file        = "";
 		foreach my $line (split/\n/, $server_definition)
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -242,26 +250,22 @@ sub check_for_removed_files
 			{
 				if ($line =~ /<\/disk>/)
 				{
+					# Done. Eject if needed.
 					$in_cdrom = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "in_cdrom", value1 => $in_cdrom, 
+						name2 => "do_eject", value2 => $do_eject, 
 					}, file => $THIS_FILE, line => __LINE__});
-				}
-				elsif ($line =~ /file='(.*?)'\/>/)
-				{
-					# Found media
-					my $file = $1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "files->{$file}{type}", value1 => $files->{$file}{type}, 
-					}, file => $THIS_FILE, line => __LINE__});
-					if (not $files->{$file}{type})
+					
+					if ($do_eject)
 					{
-						# Eject this disk
+						# I don't have a scanned Anvil!, so I need to directly see if
+						# the server is running or not.
 						my $server_is_running = 0;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "server::${server_name}::current_host", value1 => $an->data->{server}{$server_name}{current_host},
+							name1 => "server_host", value1 => $server_host,
 						}, file => $THIS_FILE, line => __LINE__});
-						if ($an->data->{server}{$server_name}{current_host})
+						if ($server_host)
 						{
 							# Read the current server config from virsh.
 							$server_is_running = 1;
@@ -269,6 +273,18 @@ sub check_for_removed_files
 								name1 => "server_is_running", value1 => $server_is_running,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
+						
+						# This method was originally designed for use via web apps, 
+						# so we need to set a few CGI variables.
+						$an->data->{cgi}{anvil_uuid} = $server_anvil_uuid;
+						$an->data->{cgi}{server}     = $server_name;
+						$an->data->{cgi}{device}     = $this_device;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid}, 
+							name2 => "cgi::server",     value2 => $an->data->{cgi}{server}, 
+							name3 => "cgi::device",     value3 => $an->data->{cgi}{device}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
 						$an->Striker->_server_eject_media({
 							server_is_running => $server_is_running,
 							quiet             => 1,
@@ -285,6 +301,50 @@ sub check_for_removed_files
 								file			=>	$file,
 							},
 						});
+					}
+					$do_eject    = 0;
+					$this_device = "";
+					$file        = "";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "do_eject",    value1 => $do_eject, 
+						name2 => "this_device", value2 => $this_device, 
+						name3 => "file",        value3 => $file, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($line =~ /dev='(.*?)'/)
+				{
+					# Found the device.
+					$this_device = $1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "this_device", value1 => $this_device, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($line =~ /file='(.*?)'\/>/)
+				{
+					# Found media
+					$file = $1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "file", value1 => $file, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Take the path off.
+					my $shared_files = $an->data->{path}{shared_files};
+					$file =~ s/^$shared_files\///;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "shared_files", value1 => $shared_files, 
+						name2 => "file",         value2 => $file, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "files->{$file}{type}", value1 => $files->{$file}{type}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if (not $files->{$file}{type})
+					{
+						# Eject this disk
+						$do_eject = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "do_eject", value1 => $do_eject, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 			}
@@ -576,7 +636,7 @@ sub scan_servers
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $server_xml = "";
-			my $shell_call = "virsh dumpxml $server_name";
+			my $shell_call = $an->data->{path}{virsh}." dumpxml $server_name";
 			if ($server_host eq $an->data->{sys}{local_node})
 			{
 				# Locally hosted, call virsh directly
@@ -594,6 +654,7 @@ sub scan_servers
 					$server_xml .= "$line\n";
 				}
 				close $file_handle;
+				$server_xml =~ s/\n$//m;
 			}
 			elsif ($server_host eq $an->data->{sys}{peer_node})
 			{
@@ -612,6 +673,7 @@ sub scan_servers
 				});
 				foreach my $line (@{$return})
 				{
+					next if not $line;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});

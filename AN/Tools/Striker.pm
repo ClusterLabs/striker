@@ -1414,7 +1414,7 @@ sub scan_servers
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# This is a bit expensive, but read the server's running definition.
-			my $shell_call =  $an->data->{path}{virsh}." dumpxml $server";
+			my $shell_call = $an->data->{path}{virsh}." dumpxml $server";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "node_target", value1 => $this_target,
 				name2 => "shell_call",  value2 => $shell_call,
@@ -1427,9 +1427,11 @@ sub scan_servers
 			});
 			foreach my $line (@{$return})
 			{
-				$line =~ s/^\s+//;
-				$line =~ s/\s+$//;
-				$line =~ s/\s+/ /g;
+				### TODO: Why did I do this?
+				#$line =~ s/^\s+//;
+				#$line =~ s/\s+$//;
+				#$line =~ s/\s+/ /g;
+				next if not $line;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2381,7 +2383,7 @@ sub _archive_file
 		{
 			$cp_exit_code = $1;
 		}
-		else
+		elsif (not $quiet)
 		{
 			if (not $header_printed)
 			{
@@ -2437,12 +2439,15 @@ sub _archive_file
 	else
 	{
 		# Failure
-		my $message = $an->String->get({key => "message_0212", variables => { 
-			file		=>	$file,
-			destination	=>	$destination,
-			cp_exit_code	=>	$cp_exit_code,
-		}});
-		print $an->Web->template({file => "server.html", template => "archive-file-failed", replace => { message => $message }});
+		if (not $quiet)
+		{
+			my $message = $an->String->get({key => "message_0212", variables => { 
+				file		=>	$file,
+				destination	=>	$destination,
+				cp_exit_code	=>	$cp_exit_code,
+			}});
+			print $an->Web->template({file => "server.html", template => "archive-file-failed", replace => { message => $message }});
+		}
 		$destination = 0;
 	}
 	
@@ -8322,9 +8327,10 @@ sub _manage_server
 		# Read the current server config from virsh.
 		$server_is_running = 1;
 		$node_name         = $an->data->{server}{$server}{current_host};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node_name",                          value1 => $node_name,
-			name2 => "server::${server}::definition_file", value2 => $an->data->{server}{$server}{definition_file},
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "server_is_running",                  value1 => $server_is_running,
+			name2 => "node_name",                          value2 => $node_name,
+			name3 => "server::${server}::definition_file", value3 => $an->data->{server}{$server}{definition_file},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -8334,11 +8340,17 @@ sub _manage_server
 		{
 			# Node 1 is up.
 			$node_name = $node1_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_name", value1 => $node_name,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			# Node 2 must be up.
 			$node_name = $node2_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_name", value1 => $node_name,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "server::${server}::definition_file", value1 => $an->data->{server}{$server}{definition_file},
@@ -8417,7 +8429,7 @@ sub _manage_server
 	
 	# Insert or eject media
 	my $update_definition = 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "do_insert",    value1 => $do_insert,
 		name2 => "insert_drive", value2 => $insert_drive,
 		name3 => "insert_media", value3 => $insert_media,
@@ -13273,8 +13285,8 @@ sub _server_eject_media
 	my $server            = $an->data->{cgi}{server};
 	my $device            = $an->data->{cgi}{device};
 	my $drive             = $an->data->{cgi}{device};
-	my $server_is_running = $parameter->{server_is_running} ? $parameter->{server_is_running} : "";
 	my $definition_file   = $an->data->{path}{shared_definitions}."/${server}.xml";
+	my $server_is_running = $parameter->{server_is_running} ? $parameter->{server_is_running} : "";
 	my $target            = $parameter->{target}            ? $parameter->{target}            : "";
 	my $port              = $parameter->{port}              ? $parameter->{port}              : "";
 	my $password          = $parameter->{password}          ? $parameter->{password}          : "";
@@ -13292,6 +13304,13 @@ sub _server_eject_media
 		name10 => "quiet",             value10 => $quiet, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Die if I wasn't passed a server name.
+	if (not $server)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0125", code => 125, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
 	if (not $quiet)
 	{
 		my $title = $an->String->get({key => "title_0031", variables => { device => $an->data->{cgi}{device} }});
@@ -13303,7 +13322,7 @@ sub _server_eject_media
 			port     => $port, 
 			password => $password,
 			file     => $definition_file, 
-			quiet    => 1
+			quiet    => 1,
 		});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "backup", value1 => $backup,
@@ -13429,16 +13448,40 @@ sub _server_eject_media
 		my $new_definition = "";
 		my $server_uuid    = "";
 		my $shell_call     = $an->data->{path}{cat}." $definition_file";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "shell_call", value2 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			shell_call	=>	$shell_call,
-		});
+		my $return         = [];
+		if ($target)
+		{
+			# Remote call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+		}
+		else
+		{
+			# Local call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$return}, $line;
+			}
+			close $file_handle;
+		}
 		foreach my $line (@{$return})
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -13515,16 +13558,40 @@ sub _server_eject_media
 			print $an->Web->template({file => "server.html", template => "saving-server-config"});
 		}
 		$shell_call = $an->data->{path}{echo}." \"$new_definition\" > $definition_file && ".$an->data->{path}{'chmod'}." 644 $definition_file";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "shell_call", value2 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			shell_call	=>	$shell_call,
-		});
+		$return     = [];
+		if ($target)
+		{
+			# Remote call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+		}
+		else
+		{
+			# Local call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$return}, $line;
+			}
+			close $file_handle;
+		}
 		foreach my $line (@{$return})
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -13545,7 +13612,7 @@ sub _server_eject_media
 		# an alert.
 		if ($an->Validate->is_uuid({uuid => $server_uuid}))
 		{
-			$an->ScanCore->_insert_or_update_servers({
+			$an->ScanCore->insert_or_update_servers({
 				server_uuid       => $server_uuid,
 				server_definition => $new_definition,
 				just_definition   => 1,
@@ -13578,7 +13645,7 @@ sub _server_insert_media
 	my $target            = $parameter->{target}            ? $parameter->{target}            : "";
 	my $port              = $parameter->{port}              ? $parameter->{port}              : "";
 	my $password          = $parameter->{password}          ? $parameter->{password}          : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 		name1 => "anvil_uuid",        value1 => $anvil_uuid, 
 		name2 => "anvil_name",        value2 => $anvil_name, 
 		name3 => "server",            value3 => $server, 
@@ -13595,7 +13662,7 @@ sub _server_insert_media
 			port     => $port, 
 			password => $password,
 			file     => $definition_file, 
-			quiet    => 1
+			quiet    => 1,
 		});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "backup", value1 => $backup,
@@ -13658,7 +13725,6 @@ sub _server_insert_media
 		elsif ($virsh_exit_code eq "0")
 		{
 			print $an->Web->template({file => "server.html", template => "insert-media-success"});
-			
 			
 			# Update the definition file.
 			$an->Striker->_update_server_definition({
@@ -13755,7 +13821,7 @@ sub _server_insert_media
 		# an alert.
 		if ($an->Validate->is_uuid({uuid => $server_uuid}))
 		{
-			$an->ScanCore->_insert_or_update_servers({
+			$an->ScanCore->insert_or_update_servers({
 				server_uuid       => $server_uuid,
 				server_definition => $new_definition,
 				just_definition   => 1,
@@ -14127,6 +14193,15 @@ sub _update_server_definition
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# If the definition_file isn't set, set it manually.
+	if (not $definition_file)
+	{
+		$definition_file = $an->data->{path}{shared_definitions}."/${server_name}.xml";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "definition_file", value1 => $definition_file, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	# We'll get the server's UUID directly from the definition file, as that is the most authoritative.
 	my $server_uuid    = "";
 	my $new_definition = "";
@@ -14167,9 +14242,11 @@ sub _update_server_definition
 	}
 	foreach my $line (@{$return})
 	{
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
+		### TODO: Why was I doing this?
+		#$line =~ s/^\s+//;
+		#$line =~ s/\s+$//;
+		#$line =~ s/\s+/ /g;
+		next if not $line;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -14193,7 +14270,7 @@ sub _update_server_definition
 	if ($target)
 	{
 		# Remote call.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -14210,12 +14287,13 @@ sub _update_server_definition
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		### NOTE: Don't use '2>&1' here!
+		open (my $file_handle, "$shell_call |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -14242,7 +14320,7 @@ sub _update_server_definition
 	# and register an alert.
 	if ($an->Validate->is_uuid({uuid => $server_uuid}))
 	{
-		$an->ScanCore->_insert_or_update_servers({
+		$an->ScanCore->insert_or_update_servers({
 			server_uuid       => $server_uuid,
 			server_definition => $new_definition,
 			just_definition   => 1,

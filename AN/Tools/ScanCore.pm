@@ -2757,12 +2757,6 @@ sub insert_or_update_servers
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0181", code => 181, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
-	if (not $server_anvil_uuid)
-	{
-		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0182", code => 182, file => $THIS_FILE, line => __LINE__});
-		return("");
-	}
 	if (not $server_definition)
 	{
 		# Throw an error and exit.
@@ -2826,7 +2820,7 @@ AND
 		# OK, now see if the definition file changed.
 		my $query = "
 SELECT 
-    server_definition, 
+    server_definition 
 FROM 
     servers 
 WHERE 
@@ -2853,7 +2847,7 @@ WHERE
 				# Update.
 				my $query = "
 UPDATE 
-    server 
+    servers 
 SET 
     server_definition = ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 
     modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
@@ -2885,6 +2879,14 @@ WHERE
 		
 		# Return now.
 		return($server_uuid);
+	}
+	
+	# If I am still alive, I need to make sure we have the server_anvil_uuid.
+	if (not $server_anvil_uuid)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0182", code => 182, file => $THIS_FILE, line => __LINE__});
+		return("");
 	}
 	
 	# If I still don't have an server_uuid, we're INSERT'ing .

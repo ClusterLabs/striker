@@ -976,6 +976,10 @@ The 'AN::Tools::ScanCore' module's 'insert_or_update_servers()' method was calle
 
 The 'AN::Tools::ScanCore' module's 'insert_or_update_servers()' method was called with 'just_definition', but no server UUID or name was passed in.
 
+=head2 C<185>
+
+The 'AN::Tools::Striker' module's '_server_eject_media()' method was called without a server name being set.
+
 
 =head2 C<999>
 

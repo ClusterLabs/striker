@@ -926,6 +926,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0182"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_servers()' method was called without passing in an Anvil! name.]]></key>
 		<key name="error_message_0183"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_servers()' method was called without passing in the XML definition.]]></key>
 		<key name="error_message_0184"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_servers()' method was called with 'just_definition', but no server UUID or name was passed in.]]></key>
+		<key name="error_message_0185"><![CDATA[The 'AN::Tools::Striker' module's '_server_eject_media()' method was called without a server name being set.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
