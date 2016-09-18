@@ -4195,18 +4195,11 @@ sub parse_install_manifest
 				$anvil_kick_apc_ups =~ s/false/0/i; 
 				$anvil_kick_apc_ups =~ s/no/0/i;
 				
-				$scancore           =~ s/true/1/i;  
-				$scancore           =~ s/yes/1/i;
-				$scancore           =~ s/false/0/i; 
-				$scancore           =~ s/no/0/i;
-				
 				$an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{'anvil-safe-start'}   = defined $anvil_safe_start   ? $anvil_safe_start   : $an->data->{sys}{install_manifest}{'default'}{'use_anvil-safe-start'};
 				$an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = defined $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $an->data->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
-				$an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{scancore}             = defined $scancore           ? $scancore           : $an->data->{sys}{install_manifest}{'default'}{use_scancore};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "install_manifest::${uuid}::common::cluster::tools::use::anvil-safe-start",   value1 => $an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{'anvil-safe-start'},
 					name2 => "install_manifest::${uuid}::common::cluster::tools::use::anvil-kick-apc-ups", value2 => $an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'},
-					name3 => "install_manifest::${uuid}::common::cluster::tools::use::scancore",           value3 => $an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{scancore},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($b eq "media_library")
@@ -4671,11 +4664,9 @@ sub parse_install_manifest
 	# Tools
 	$an->data->{sys}{install_manifest}{'use_anvil-safe-start'}   = defined $an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{'anvil-safe-start'}   ? $an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{'anvil-safe-start'}   : $an->data->{sys}{install_manifest}{'default'}{'use_anvil-safe-start'};
 	$an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} = defined $an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} ? $an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} : $an->data->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
-	$an->data->{sys}{install_manifest}{use_scancore}             = defined $an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{scancore}             ? $an->data->{install_manifest}{$uuid}{common}{cluster}{tools}{'use'}{scancore}             : $an->data->{sys}{install_manifest}{'default'}{use_scancore};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "sys::install_manifest::use_anvil-safe-start",   value1 => $an->data->{sys}{install_manifest}{'use_anvil-safe-start'},
 		name2 => "sys::install_manifest::use_anvil-kick-apc-ups", value2 => $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
-		name3 => "sys::install_manifest::use_scancore",           value3 => $an->data->{sys}{install_manifest}{use_scancore},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Shared Variables

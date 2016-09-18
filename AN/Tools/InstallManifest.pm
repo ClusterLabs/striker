@@ -17969,6 +17969,9 @@ sub update_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Skip if the user has decided not to run OS updates.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::update_os", value1 => $an->data->{sys}{update_os}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return(1) if not $an->data->{sys}{update_os};
 	
 	my $shell_call = $an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." update";
