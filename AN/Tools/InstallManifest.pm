@@ -16147,13 +16147,16 @@ sub show_summary_manifest
 	}});
 	
 	# PTSes
-	print $an->Web->template({file => "config.html", template => "install-manifest-summay-four-column-entry", replace => { 
-		row		=>	"#!string!row_0225!#",
-		column1		=>	$an->data->{cgi}{anvil_pts1_name},
-		column2		=>	$an->data->{cgi}{anvil_pts1_ip},
-		column3		=>	$an->data->{cgi}{anvil_pts2_name},
-		column4		=>	$an->data->{cgi}{anvil_pts2_ip},
-	}});
+	if (($an->data->{cgi}{anvil_pts1_name}) or ($an->data->{cgi}{anvil_pts1_ip}) or ($an->data->{cgi}{anvil_pts2_name}) or ($an->data->{cgi}{anvil_pts2_ip}))
+	{
+		print $an->Web->template({file => "config.html", template => "install-manifest-summay-four-column-entry", replace => { 
+			row		=>	"#!string!row_0225!#",
+			column1		=>	$an->data->{cgi}{anvil_pts1_name},
+			column2		=>	$an->data->{cgi}{anvil_pts1_ip},
+			column3		=>	$an->data->{cgi}{anvil_pts2_name},
+			column4		=>	$an->data->{cgi}{anvil_pts2_ip},
+		}});
+	}
 	
 	### PDUs are, surprise, a little more complicated.
 	my $say_apc        = $an->String->get({key => "brand_0017"});
@@ -16300,11 +16303,12 @@ sub show_summary_manifest
 		column2		=>	"&nbsp;",
 	}});
 	
+	### Disabled now.
 	# Repositories.
-	print $an->Web->template({file => "config.html", template => "install-manifest-summay-one-column-entry", replace => { 
-		row		=>	"#!string!row_0244!#",
-		column1		=>	"$say_repos",
-	}});
+# 	print $an->Web->template({file => "config.html", template => "install-manifest-summay-one-column-entry", replace => { 
+# 		row		=>	"#!string!row_0244!#",
+# 		column1		=>	"$say_repos",
+# 	}});
 	print $an->Web->template({file => "config.html", template => "install-manifest-summay-spacer"});
 	
 	# The footer has all the values recorded as hidden values for the form.
@@ -18135,13 +18139,14 @@ sub verify_drbd_resources_are_connected
 		if ($line =~ /^0: /)
 		{
 			my $connected_state = ($line =~ /cs:(.*?)\s/)[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "connected_state", value1 => $connected_state, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if (($connected_state =~ /Connected/i) or ($connected_state =~ /Sync/i))
 			{
 				# Connected
 				$r0_connected = 1;
-				$an->Log->entry({log_level => 2, message_key => "log_0081", message_variables => {
-					resource => "r0", 
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "log_0081", message_variables => { resource => "r0" }, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -18155,13 +18160,14 @@ sub verify_drbd_resources_are_connected
 		if ($line =~ /^1: /)
 		{
 			my $connected_state = ($line =~ /cs:(.*?)\s/)[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "connected_state", value1 => $connected_state, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if (($connected_state =~ /Connected/i) or ($connected_state =~ /Sync/i))
 			{
 				# Connected
 				$r1_connected = 1;
-				$an->Log->entry({log_level => 2, message_key => "log_0081", message_variables => {
-					resource => "r1", 
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "log_0081", message_variables => { resource => "r1" }, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{

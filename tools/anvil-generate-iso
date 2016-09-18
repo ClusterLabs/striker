@@ -770,7 +770,6 @@ cat > /root/example_striker-installer.txt << EOF
  -p $dhcp_range \\\\
  --peer-dashboard hostname=$conf->{sys}{ks}{prefix}-striker0${peer_number}.$conf->{sys}{ks}{domain},bcn_ip=$peer_ip \\\\
  --router-mode \\\\
- --gui \\\\
 ";
 		# Use '--rhn' on RHEL only.
 		if ($conf->{sys}{os_type} eq "rhel")

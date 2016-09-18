@@ -5588,7 +5588,7 @@ Striker Version: ".$an->data->{sys}{version}."
 		<anvil prefix=\"".$an->data->{cgi}{anvil_prefix}."\" sequence=\"".$an->data->{cgi}{anvil_sequence}."\" domain=\"".$an->data->{cgi}{anvil_domain}."\" password=\"".$an->data->{cgi}{anvil_password}."\" striker_user=\"".$an->data->{cgi}{striker_user}."\" striker_database=\"".$an->data->{cgi}{striker_database}."\" />
 		<ssh keysize=\"8191\" />
 		<cluster name=\"".$an->data->{cgi}{anvil_name}."\">
-			<!-- Set the order to 'kvm' if building on KVM-backed VMs -->
+			<!-- Set the order to 'kvm' if building on KVM-backed VMs. Also set each node's 'port=' above and '<kvm>' element attributes below. -->
 			<fence order=\"ipmi,pdu\" post_join_delay=\"90\" delay=\"15\" delay_node=\"".$an->data->{cgi}{anvil_node1_name}."\" />
 		</cluster>
 		<drbd>
@@ -5638,18 +5638,15 @@ Striker Version: ".$an->data->{sys}{version}."
 			<pdu reference=\"pdu04\" name=\"".$an->data->{cgi}{anvil_pdu4_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu4_ip}."\" agent=\"$pdu4_agent\" />";
 		}
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "sys::install_manifest::use_anvil-kick-apc-ups", value1 => $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
 			name2 => "sys::install_manifest::use_anvil-safe-start",   value2 => $an->data->{sys}{install_manifest}{'use_anvil-safe-start'},
-			name3 => "sys::install_manifest::use_scancore",           value3 => $an->data->{sys}{install_manifest}{use_scancore},
 		}, file => $THIS_FILE, line => __LINE__});
 		my $say_use_anvil_kick_apc_ups = $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
 		my $say_use_anvil_safe_start   = $an->data->{sys}{install_manifest}{'use_anvil-safe-start'}   ? "true" : "false";
-		my $say_use_scancore           = $an->data->{sys}{install_manifest}{use_scancore}             ? "true" : "false";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "say_use_anvil_kick_apc_ups", value1 => $say_use_anvil_kick_apc_ups,
 			name2 => "say_use_anvil-safe-start",   value2 => $say_use_anvil_safe_start,
-			name3 => "say_use_scancore",           value3 => $say_use_scancore,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$xml .= "
@@ -5674,7 +5671,7 @@ Striker Version: ".$an->data->{sys}{version}."
 			<!-- <provision use_spice_graphics=\"0\" /> -->
 		</servers>
 		<tools>
-			<use anvil-safe-start=\"$say_use_anvil_safe_start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" scancore=\"$say_use_scancore\" />
+			<use anvil-safe-start=\"$say_use_anvil_safe_start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" />
 		</tools>
 	</common>
 </config>

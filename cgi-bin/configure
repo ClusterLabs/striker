@@ -7246,7 +7246,7 @@ sub show_main_menu
 		if ($an->data->{cgi}{subtask} eq "enable")
 		{
 			# Confirmed?
-			if ($an->data->{cgi}{confirm})
+			if (($an->data->{cgi}{confirm}) or ($an->data->{sys}{install_target}{no_warning}))
 			{
 				# Baleted!
 				$notice_message = manage_install_target($an);

@@ -49,7 +49,7 @@ until ($drbd_loaded)
 }
 
 # Get the resources.
-my $shell_call = "$conf->{path}{drbdadm}";
+my $shell_call = "$conf->{path}{drbdadm} dump";
 open (my $file_handle, "$shell_call 2>&1 |") or die "failed to call: [$shell_call]\n";
 while(<$file_handle>)
 {
@@ -75,9 +75,13 @@ until ($all_primary)
 	while(<$file_handle>)
 	{
 		chomp;
-		my $line = $_;
-		#print __LINE__."; line: [$line]\n";
-		if ($line =~ /(\d+):(\S+)\s+\S\s+(\S+)\/(\S+)\s+/)
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		print __LINE__."; line: [$line]\n";
+		
+		if ($line =~ /(\d+):(\S+).*?(\S+)\/(\S+)\s/)
 		{
 			my $minor      = $1;
 			my $resource   = $2;
@@ -88,7 +92,7 @@ until ($all_primary)
 			if (($this_state eq "Primary") && ($peer_state eq "Primary"))
 			{
 				$conf->{resource}{$resource}{primary} = 1;
-				#print __LINE__."; resource::${resource}::primary: [$conf->{resource}{$resource}{primary}]\n";
+				print __LINE__."; resource::${resource}::primary: [$conf->{resource}{$resource}{primary}]\n";
 			}
 		}
 	}
@@ -97,11 +101,11 @@ until ($all_primary)
 	my $down = 0;
 	foreach my $resource (sort {$a cmp $b} keys %{$conf->{resource}})
 	{
-		#print __LINE__."; resource::${resource}::primary: [$conf->{resource}{$resource}{primary}]\n";
+		print __LINE__."; resource::${resource}::primary: [$conf->{resource}{$resource}{primary}]\n";
 		if (not $conf->{resource}{$resource}{primary})
 		{
 			$down = 1;
-			#print __LINE__."; down: [$down]\n";
+			print __LINE__."; down: [$down]\n";
 		}
 	}
 	
@@ -112,7 +116,7 @@ until ($all_primary)
 	else
 	{
 		$all_primary = 1;
-		#print __LINE__."; all_primary: [$all_primary]\n";
+		print __LINE__."; all_primary: [$all_primary]\n";
 	}
 }
 

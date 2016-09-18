@@ -1206,7 +1206,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0094"><![CDATA[Failed to update SELinux context on '<span class="highlight_detail">#!data!path::shared!#</span>']]></key>
 		<key name="state_0095">UUID for the GFS2 partition not recorded</key>
 		<key name="state_0096">Timed out</key>
-		<key name="state_0097"><![CDATA[Manual Reboot Needed.<br /><span class="subtle_text">Node is active in the #!string!brand_0003!#</span>]]></key>
+		<key name="state_0097"><![CDATA[Manual Reboot Needed.<br /><span class="subtle_text">Node is active in the #!string!brand_0003!#</span><br />Please manually reboot the node.<br />Once rebooted, click '<span class="button_reference">#!string!button_0063!#</span>' below.]]></key>
 		<key name="state_0098"><![CDATA[Error parsing: [<span class="highlight_detail">cluster.conf</span>]]]></key>
 		<key name="state_0099">Partition Warning</key>
 		<key name="state_0100">Local IPs unknown</key>
@@ -1945,7 +1945,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0482"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] was already on, no action taken.]]></key>
 		<key name="message_0483"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown power state. It can't be booted.]]></key>
 		<key name="message_0484"><![CDATA[No #!string!brand_0003!# selected (or configured) yet, redirecting, one moment...]]></key>
-		<key name="message_0485"><![CDATA[The new: [<span class="highlight_detail">#!variable!anvil!#</span>] Anvil! system has been saved.<br /><a href="#!string!notification_url!#">Click here</a> to manage alert recipients.<br /><a href="#!variable!manage_url!#">Click here</a> to start using it!]]></key>
+		<key name="message_0485"><![CDATA[The new: [<span class="highlight_detail">#!variable!anvil!#</span>] Anvil! system has been saved.<br /><a href="#!variable!notification_url!#" target="_new">Click here</a> to manage alert recipients.<br /><a href="#!variable!manage_url!#">Click here</a> to start using it!]]></key>
 		<key name="message_0486"><![CDATA[The sending email server password must be set unless '<span class="highlight_detail">#!string!row_0303!#</span>' is set to '<span class="highlight_detail">#!string!select_0004!#</span>'.]]></key>
 		<key name="message_0487"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been aborted because one or more UPSes is not accessible.]]></key>
 		<key name="message_0488"><![CDATA[System call started at: [<span class="highlight_detail">#!variable!timestamp!#</span>]. Output, if any, will be below:]]></key>
@@ -2127,7 +2127,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0079">Failed to install 'wait-for-drbd' into '/etc/init.d/'.</key>
 		<key name="log_0080">One or more DRBD resource failed to attach.</key>
 		<key name="log_0081">The DRBD resource: [#!variable!resource!#] is connected.</key>
-		<key name="log_0082">The DRBD resource: [#!variable!resource!#] is NOT connected! The connection state is: [#!variable!connected_state!#].</key>
+		<key name="log_0082">The DRBD resource: [#!variable!resource!#] is NOT connected! The connection state is: [#!variable!connection_state!#].</key>
 		<key name="log_0083">One or both of the DRBD resources is not connected.</key>
 		<key name="log_0084">Forcing: [#!variable!resource!#] to 'Primary' and overwriting data on peer!</key>
 		<key name="log_0085">Node: [#!variable!node!#], resource: [#!variable!resource!#] promoted to 'Primary' successfully.</key>
