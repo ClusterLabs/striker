@@ -8026,9 +8026,7 @@ sub do_node_reboot
 	{
 		# Reboot needed, but the user has to do it.
 		$return_code = 5;
-		$an->Log->entry({log_level => 1, message_key => "log_0158", message_variables => {
-			node => $node, 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 1, message_key => "log_0158", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
@@ -9956,7 +9954,7 @@ sub get_daemon_state
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -9973,7 +9971,7 @@ sub get_daemon_state
 		if ($line =~ /^rc:(\d+)/)
 		{
 			my $rc = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "rc",      value1 => $rc,
 				name2 => "stopped", value2 => $stopped_rc,
 				name3 => "running", value3 => $running_rc,
@@ -9990,7 +9988,7 @@ sub get_daemon_state
 			{
 				$state = "undefined:$rc";
 			}
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "rc",    value1 => $rc,
 				name2 => "state", value2 => $state,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -12672,7 +12670,6 @@ sub reboot_nodes
 	# 3 = Reboot failed, node is not pingable.
 	# 4 = Reboot failed, server didn't shut down before timeout.
 	# 5 = Reboot needed, but manual reboot required.
-	
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0046!#";
 	my $node2_class   = "highlight_good_bold";
@@ -13343,7 +13340,7 @@ sub run_new_install_manifest
 		name3 => "sys::anvil::node2::password", value3 => $an->data->{sys}{anvil}{node2}{password},
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $message = $an->String->get({key => "message_0272", variables => { anvil => $anvil_name }});
+	my $message = $an->String->get({key => "message_0501", variables => { anvil => $anvil_name }});
 	print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
 		anvil_message	=>	$message,
 	}});
@@ -18406,16 +18403,18 @@ sub verify_perl_is_installed
 		$node2_message = "#!string!state_0036!#",
 		$ok            = 0;
 	}
-	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
-		row		=>	"#!string!row_0243!#",
-		node1_class	=>	$node1_class,
-		node1_message	=>	$node1_message,
-		node2_class	=>	$node2_class,
-		node2_message	=>	$node2_message,
-	}});
 	
+	# Now only print this if there was a problem.
 	if (not $ok)
 	{
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
+			row		=>	"#!string!row_0243!#",
+			node1_class	=>	$node1_class,
+			node1_message	=>	$node1_message,
+			node2_class	=>	$node2_class,
+			node2_message	=>	$node2_message,
+		}});
+		
 		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 			message	=>	"#!string!message_0386!#",
 			row	=>	"#!string!state_0037!#",

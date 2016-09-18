@@ -135,10 +135,34 @@ $(function() {
 		<td>
 			<b>#!string!title_0113!#</b><br />
 			#!replace!anvil_message!#<br />
-			#!string!message_0273!#<br />
 		</td>
 		<td>
-			<img src="#!conf!url::skins!#/#!conf!sys::skin!#/images/gather_info.gif" border="0">
+			<!--<img src="#!conf!url::skins!#/#!conf!sys::skin!#/images/gather_info.gif" border="0">-->
+			<!-- This is based on a loader from http://loading.io/ -->
+			<style type='text/css'>
+@-webkit-keyframes uil-default-anim { 0% { opacity: 1} 100% {opacity: 0} }
+@keyframes uil-default-anim { 0% { opacity: 1} 100% {opacity: 0} }
+.uil-default-css > div:nth-of-type(1){-webkit-animation: uil-default-anim 1s linear infinite;animation: uil-default-anim 1s linear infinite;-webkit-animation-delay: -0.5s;animation-delay: -0.5s;}
+.uil-default-css { position: relative;background:none;width:30px;height:35px;}
+.uil-default-css > div:nth-of-type(2){-webkit-animation: uil-default-anim 1s linear infinite;animation: uil-default-anim 1s linear infinite;-webkit-animation-delay: -0.33333333333333337s;animation-delay: -0.33333333333333337s;}
+.uil-default-css { position: relative;background:none;width:30px;height:35px;}
+.uil-default-css > div:nth-of-type(3){-webkit-animation: uil-default-anim 1s linear infinite;animation: uil-default-anim 1s linear infinite;-webkit-animation-delay: -0.16666666666666669s;animation-delay: -0.16666666666666669s;}
+.uil-default-css { position: relative;background:none;width:30px;height:35px;}
+.uil-default-css > div:nth-of-type(4){-webkit-animation: uil-default-anim 1s linear infinite;animation: uil-default-anim 1s linear infinite;-webkit-animation-delay: 0s;animation-delay: 0s;}
+.uil-default-css { position: relative;background:none;width:30px;height:35px;}
+.uil-default-css > div:nth-of-type(5){-webkit-animation: uil-default-anim 1s linear infinite;animation: uil-default-anim 1s linear infinite;-webkit-animation-delay: 0.16666666666666663s;animation-delay: 0.16666666666666663s;}
+.uil-default-css { position: relative;background:none;width:30px;height:35px;}
+.uil-default-css > div:nth-of-type(6){-webkit-animation: uil-default-anim 1s linear infinite;animation: uil-default-anim 1s linear infinite;-webkit-animation-delay: 0.33333333333333337s;animation-delay: 0.33333333333333337s;}
+.uil-default-css { position: relative;background:none;width:30px;height:35px;}
+			</style>
+			<div class='uil-default-css' style='transform:scale(0.6);'>
+				<div style='top:12px;left:5px;width:20px;height:8px;background:#e70000;-webkit-transform:rotate(0deg) translate(0,-20px);transform:rotate(0deg) translate(0,-20px);border-radius:6px;position:absolute;'></div>
+				<div style='top:12px;left:5px;width:20px;height:8px;background:#e70000;-webkit-transform:rotate(60deg) translate(0,-20px);transform:rotate(60deg) translate(0,-20px);border-radius:6px;position:absolute;'></div>
+				<div style='top:12px;left:5px;width:20px;height:8px;background:#e70000;-webkit-transform:rotate(120deg) translate(0,-20px);transform:rotate(120deg) translate(0,-20px);border-radius:6px;position:absolute;'></div>
+				<div style='top:12px;left:5px;width:20px;height:8px;background:#e70000;-webkit-transform:rotate(180deg) translate(0,-20px);transform:rotate(180deg) translate(0,-20px);border-radius:6px;position:absolute;'></div>
+				<div style='top:12px;left:5px;width:20px;height:8px;background:#e70000;-webkit-transform:rotate(240deg) translate(0,-20px);transform:rotate(240deg) translate(0,-20px);border-radius:6px;position:absolute;'></div>
+				<div style='top:12px;left:5px;width:20px;height:8px;background:#e70000;-webkit-transform:rotate(300deg) translate(0,-20px);transform:rotate(300deg) translate(0,-20px);border-radius:6px;position:absolute;'></div>
+			</div>
 		</td>
 	</tr>
 </table>

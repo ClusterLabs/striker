@@ -950,7 +950,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0034"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Unable to bring up the interface: [<span class="code">#!variable!nic!#</span>]!]]></key>
 		<key name="script_0035"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Please bring it up manually and try again.]]></key>
 		<key name="script_0036"><![CDATA[Configuring network to enable access to #!string!brand_0003!# systems.<br />]]></key>
-		<key name="script_0037"><![CDATA[<span class="highlight_ready_bold">Ready</span>: Please unplug, wait a moment, and then plug back in the interface you want to make:<br />]]></key>
+		<key name="script_0037"><![CDATA[- Please cycle: ]]></key>
 		<key name="script_0038"><![CDATA[Please plug in all network cables to proceed.<br />]]></key>
 		<key name="script_0039"><![CDATA[<b>#!variable!nic!#, Link #!variable!link!#</b>: ]]></key>
 		<key name="script_0040"><![CDATA[The NIC with MAC address: [<span class="code">#!variable!mac!#</span>] is already allocated to: [<span class="code">#!variable!conflict!#</span>]<br />]]></key>
@@ -1074,7 +1074,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0066"><![CDATA[#!variable!name!#: [<span class="code">#!variable!file!#</span>]]]></key>
 		<key name="script_0067">Interface summary:</key>
 		<key name="script_0068"><![CDATA[Done, thank you.]]></key>
-		<key name="script_0069"><![CDATA[<span class="highlight_note_bold">Note</span>: There will be a delay when you reseat the cable currently used to talk to the node.<br />Please be patient and wait for the prompt before reseating the next cable.<br />]]></key>
+		<key name="script_0069"><![CDATA[<span class="highlight_good_bold">Ready</span>: Please wait <b>five seconds</b> between unplugging and plugging the cables.<br /><span class="highlight_note_bold">Note</span>: There will be a delay when you reseat the cable currently used to talk to the node.<br />]]></key>
 		<key name="script_0070">#!variable!interface!#, Link #!variable!link!#</key>
 		
 		<!-- Symbols, digits, etc. -->
@@ -1163,7 +1163,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0052">Storage Pool Mismatch</key>
 		<key name="state_0053">Not enough space</key>
 		<key name="state_0054"><![CDATA[Pool 1: [<span class="fixed_width">#!variable!pool1_device!#</span>, <span class="fixed_width">#!variable!pool1_size!#</span>]<br />Pool 2: [<span class="fixed_width">#!variable!pool2_device!#</span>, <span class="fixed_width">#!variable!pool2_size!#</span>]<br /><span class="subtle_text">Pool 1 inc. [<span class="fixed_width">#!variable!media_size!#</span>] Media Libraray.</span>]]></key> <!-- Not used now -->
-		<key name="state_0054"><![CDATA[Servers: [<span class="highlight_detail">#!variable!pool1_size!#</span>],<br />Media Library: [<span class="highlight_detail">#!variable!media_size!#</span>].</span>]]></key>
+		<key name="state_0054"><![CDATA[Servers: [<span class="highlight_detail">#!variable!pool1_size!#</span>], Library: [<span class="highlight_detail">#!variable!media_size!#</span>].</span>]]></key>
 		<key name="state_0055"><![CDATA[Backing device: [<span class="highlight_detail">#!variable!device!#</span>] Not Found.]]></key>
 		<key name="state_0056">No backing device specified</key>
 		<key name="state_0057"><![CDATA[Non-DRBD data found on [<span class="highlight_detail">#!variable!device!#</span>]]]></key>
@@ -1206,7 +1206,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0094"><![CDATA[Failed to update SELinux context on '<span class="highlight_detail">#!data!path::shared!#</span>']]></key>
 		<key name="state_0095">UUID for the GFS2 partition not recorded</key>
 		<key name="state_0096">Timed out</key>
-		<key name="state_0097">Manual Reboot Needed</key>
+		<key name="state_0097"><![CDATA[Manual Reboot Needed.<br /><span class="subtle_text">Node is active in the #!string!brand_0003!#</span>]]></key>
 		<key name="state_0098"><![CDATA[Error parsing: [<span class="highlight_detail">cluster.conf</span>]]]></key>
 		<key name="state_0099">Partition Warning</key>
 		<key name="state_0100">Local IPs unknown</key>
@@ -1354,7 +1354,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0110">Power</key>
 		<key name="title_0111">Membership</key>
 		<key name="title_0112">Special</key>
-		<key name="title_0113">Please be patient.</key>
+		<key name="title_0113">Please be patient</key>
 		<key name="title_0114">Program Error</key>
 		<key name="title_0115"><![CDATA[Provisioning the new <span class="fixed_width">#!variable!server!#</span> server...]]></key>
 		<key name="title_0116"><![CDATA[Unable to connect to the <span class="highlight_detail">#!variable!anvil!#</span> cluster!]]></key>
@@ -1444,7 +1444,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0200">Confirmation of potential conflict required</key>
 		<key name="title_0201">Edit Raw Install Manifest</key>
 		<key name="title_0202"><![CDATA[Fencing <span class="fixed_width">#!variable!node_name!#</span> node directly...]]></key>
-		<key name="title_0203">The new Anvil! was successfully saved.</key>
+		<key name="title_0203">The new #!string!brand_0003!# was successfully saved.</key>
 		<key name="title_0204">Add, edit or delete a disaster recovery target server.</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
@@ -1733,7 +1733,6 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0270">on</key> <!-- Used to 'vg *on* pv'... -->
 		<key name="message_0271"><![CDATA[I found a server with the name <span class="fixed_width">#!variable!server!#</span> which is not managed by the #!string!brand_0003!# yet.<br /><b>If this is a new server that is still being installed, please ignore this message.</b><br />If you do not have the original dashboard install window open anymore, you can <a href="#!variable!url!#"><b>click here to add it</b></a> to this #!string!brand_0003!# now.]]></key>
 		<key name="message_0272"><![CDATA[Gathering information from <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>
-		<key name="message_0272"><![CDATA[Gathering information...]]></key>
 		<key name="message_0273">This could take a minute to complete.</key>
 		<key name="message_0274"><![CDATA[I was asked to call: '<span class="fixed_width">#!variable!shell_call!#</span>' but no node was defined.<br />This is probably a program error, sorry about the inconvenience. Please <a href="#!string!brand_0012!#" target="_new">contact support</a> and we will try to help fix this.]]></key>
 		<key name="message_0275"><![CDATA[Unable to connect to either node in the #!string!brand_0003!#.]]></key>
@@ -1946,7 +1945,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0482"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] was already on, no action taken.]]></key>
 		<key name="message_0483"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown power state. It can't be booted.]]></key>
 		<key name="message_0484"><![CDATA[No #!string!brand_0003!# selected (or configured) yet, redirecting, one moment...]]></key>
-		<key name="message_0485"><![CDATA[The new: [<span class="highlight_detail">#!variable!anvil!#</span>] Anvil! system has been saved.<br /><a href="#!variable!manage_url!#">Click here</a> to start using it!]]></key>
+		<key name="message_0485"><![CDATA[The new: [<span class="highlight_detail">#!variable!anvil!#</span>] Anvil! system has been saved.<br /><a href="#!string!notification_url!#">Click here</a> to manage alert recipients.<br /><a href="#!variable!manage_url!#">Click here</a> to start using it!]]></key>
 		<key name="message_0486"><![CDATA[The sending email server password must be set unless '<span class="highlight_detail">#!string!row_0303!#</span>' is set to '<span class="highlight_detail">#!string!select_0004!#</span>'.]]></key>
 		<key name="message_0487"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been aborted because one or more UPSes is not accessible.]]></key>
 		<key name="message_0488"><![CDATA[System call started at: [<span class="highlight_detail">#!variable!timestamp!#</span>]. Output, if any, will be below:]]></key>
@@ -1962,6 +1961,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0498"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!count!#</span>] DR target(s) remained.]]></key>
 		<key name="message_0499"><![CDATA[The: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job has been deleted.]]></key>
 		<key name="message_0500"><![CDATA[There were no available servers to select for this DR job.<br />Please select an #!string!brand_0003!# hosting servers.]]></key>
+		<key name="message_0501"><![CDATA[Running the install for <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

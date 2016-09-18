@@ -1438,8 +1438,9 @@ sub save_anvil_form
 	{
 		# All was good!
 		my $message = $an->String->get({key => "message_0485", variables => {
-				anvil      => $an->data->{cgi}{anvil_name},
-				manage_url => "/cgi-bin/striker?anvil_uuid=".$an->data->{cgi}{anvil_uuid},
+				anvil            => $an->data->{cgi}{anvil_name},
+				manage_url       => "/cgi-bin/striker?anvil_uuid=".$an->data->{cgi}{anvil_uuid},
+				notification_url => "/cgi-bin/configure?task=notify",
 			}});
 		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
 				title		=>	"#!string!title_0203!#",
@@ -5880,6 +5881,7 @@ sub notify_menu
 	if (@{$anvils} > 0)
 	{
 		my $break_printed = 0;
+		
 		# Loop through each Anvil!
 		foreach my $hash_ref (@{$anvils})
 		{
@@ -5887,9 +5889,9 @@ sub notify_menu
 			my $anvil_name        = $hash_ref->{anvil_name};
 			my $anvil_description = $hash_ref->{anvil_description};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "cgi::anvil_uuid",        value1 => $an->data->{cgi}{anvil_uuid},
-				name2 => "cgi::anvil_name",        value2 => $an->data->{cgi}{anvil_name},
-				name3 => "cgi::anvil_description", value3 => $an->data->{cgi}{anvil_description},
+				name1 => "anvil_uuid",        value1 => $anvil_uuid,
+				name2 => "anvil_name",        value2 => $anvil_name,
+				name3 => "anvil_description", value3 => $anvil_description,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if (not $break_printed)
