@@ -1646,6 +1646,10 @@ sub _add_server_to_anvil
 		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# First, find the failover domain...
+	my $failover_domain = "";
+	$an->data->{sys}{ignore_missing_server} = 1;
+	
 	# If this is being called after provisioning a server, we'll skip scanning the Anvil! and we'll not 
 	# print the opening header. 
 	if (not $skip_scan)
@@ -1654,10 +1658,6 @@ sub _add_server_to_anvil
 		$an->Log->entry({log_level => 2, message_key => "log_0231", file => $THIS_FILE, line => __LINE__});
 		print $an->Web->template({file => "server.html", template => "add-server-to-anvil-header"});
 	}
-	
-	# First, find the failover domain...
-	my $failover_domain;
-	$an->data->{sys}{ignore_missing_server} = 1;
 	
 	# Find the failover domain.
 	foreach my $fod (keys %{$an->data->{failoverdomain}})
@@ -1776,7 +1776,7 @@ sub _add_server_to_anvil
 	### Lets get started!
 	# On occasion, the installed server will power off, not reboot. So this checks to see if the server 
 	# needs to be kicked awake.
-	my $host = $an->data->{new_server}{host_node};
+	my $host = $an->data->{new_server}{host_node} ? $an->data->{new_server}{host_node} : $an->data->{cgi}{node_name};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "server", value1 => $server,
 		name2 => "host",   value2 => $host,
@@ -1893,13 +1893,22 @@ sub _add_server_to_anvil
 	elsif ($host eq $node_name)
 	{
 		# Already running
+		$target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		$port     = $an->data->{sys}{anvil}{$node_key}{use_port};
+		$password = $an->data->{sys}{anvil}{$node_key}{password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node_name", value1 => $node_name,
+			name2 => "target",    value2 => $target,
+			name3 => "port",      value3 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		print $an->Web->template({file => "server.html", template => "general-message", replace => { 
 			row	=>	"&nbsp;",
 			message	=>	"#!string!message_0095!#",
 		}});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "node_name", value1 => $node_name,
-		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{

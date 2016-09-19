@@ -492,6 +492,7 @@ sub check_all_cgi
 		"vm",
 		"vm_ram",
 	];
+	
 	# When saving notifications, the user can select a specific alert level per configured Anvil!. This 
 	# adds the potential CGI variables to the array.
 	my $anvil_data  = $an->ScanCore->get_anvils();
