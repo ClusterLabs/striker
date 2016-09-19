@@ -1150,7 +1150,7 @@ sub start_gfs2
 	start_daemons($an, "gfs2", 0);
 	
 	# Verify
-	my $proceed = check_shared($an);
+	my $proceed = check_shared($an, "both");
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "proceed", value1 => $proceed, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1499,7 +1499,7 @@ sub start_drbd
 		if ($line =~ /resource (.*) {/)
 		{
 			my $resource = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "resource", value1 => $resource, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -1522,7 +1522,7 @@ sub start_drbd
 			name1 => "local_resource", value1 => $local_resource, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $peer_resource  = $an->Check->drbd_resource({
+		my $peer_resource = $an->Check->drbd_resource({
 			resource	=>	$resource,
 			target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip}, 
 			port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port},
@@ -1644,6 +1644,19 @@ sub start_drbd
 				$local_resource = $an->Check->drbd_resource({resource => $resource});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "local_resource->{resource_is_up}", value1 => $local_resource->{resource_is_up}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Wait here until the connection state is NOT WFConnection
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "local_resource->{connection_state}", value1 => $local_resource->{connection_state}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			until ($local_resource->{connection_state} ne "WFConnection")
+			{
+				sleep 5;
+				$local_resource = $an->Check->drbd_resource({resource => $resource});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "local_resource->{connection_state}", value1 => $local_resource->{connection_state}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			

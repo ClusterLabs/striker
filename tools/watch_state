@@ -1,0 +1,1 @@
+watch "if [ -e '/var/lock/subsys/cman' ]; then clustat; echo; fi; if [ -e '/proc/drbd' ]; then cat /proc/drbd; fi"

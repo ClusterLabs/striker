@@ -478,8 +478,6 @@ sub drbd_resource
 			target		=>	$target,
 			port		=>	$port, 
 			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
 	}
@@ -535,7 +533,7 @@ sub drbd_resource
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record the detail for when we parse /proc/drbd
-			$an->data->{drbd}{$resource}{minor_number}     = $state->{minor_number};
+			$an->data->{drbd}{$resource}{minor_number} = $state->{minor_number};
 		}
 	}
 	
@@ -554,8 +552,6 @@ sub drbd_resource
 			target		=>	$target,
 			port		=>	$port, 
 			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
 	}
