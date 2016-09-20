@@ -24,6 +24,8 @@ my $THIS_FILE = "DB.pm";
 # get_sql_schema
 # initialize_db
 # load_schema
+# locking
+# mark_active
 # set_update_db_flag
 # update_time
 # verify_host_uuid
@@ -163,27 +165,6 @@ sub connect_to_databases
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "postgres_password", value1 => $postgres_password, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		### NOTE: This slows things down a lot when a dashboard is offline, so I am disabling it.
-		### TODO: Note that it's possible some time in the future, a server might be available but 
-		###       not pingable. Add a switch to ignore pings.
-		# Before I try to connect, verify that I can ping.
-# 		my $ping = $an->Check->ping({ping => $host, count => 3});
-# 		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-# 			name1 => "ping", value1 => $ping
-# 		}, file => $THIS_FILE, line => __LINE__});
-# 		if (not $ping)
-# 		{
-# 			$an->Alert->warning({ message_key => "warning_message_0015", message_variables => {
-# 				host	=>	$host,
-# 			}, file => $THIS_FILE, line => __LINE__});
-# 			push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0015", message_variables => {
-# 				host	=>	$host,
-# 			}};
-# 			$an->data->{scancore}{db}{$id}{connection_error} = [];
-# 			push @{$failed_connections}, $id;
-# 			next;
-# 		}
 		
 		# Assemble my connection string
 		my $db_connect_string = "$driver:dbname=$name;host=$host;port=$port";
@@ -504,8 +485,12 @@ sub connect_to_databases
 	# date.
 	$an->DB->find_behind_databases({file => $file});
 	
-	# Now look to see if our hostname has changed.
-	#$an->DB->check_hostname();
+	# Hold if a lock has been requested.
+	my $wait_on_lock = 1;
+	while ($wait_on_lock)
+	{
+		# Connect to all databases and see if 
+	}
 	
 	return($connections);
 }
@@ -1348,6 +1333,201 @@ sub load_schema
 	return(0);
 }
 
+# This handles requesting, releasing and waiting on locks.
+sub locking
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $request     = defined $parameter->{request}     ? $parameter->{request}     : 0;
+	my $release     = defined $parameter->{release}     ? $parameter->{release}     : 0;
+	my $renew       = defined $parameter->{renew}       ? $parameter->{renew}       : 0;
+	my $source_name =         $parameter->{source_name} ? $parameter->{source_name} : $an->hostname;
+	my $source_uuid =         $parameter->{source_uuid} ? $parameter->{source_uuid} : $an->data->{sys}{host_uuid};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "request",     value1 => $request, 
+		name2 => "release",     value2 => $release, 
+		name3 => "renew",       value3 => $renew, 
+		name4 => "source_name", value4 => $source_name, 
+		name5 => "source_uuid", value5 => $source_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $set            = 0;
+	my $variable_name  = "lock_request";
+	my $variable_value = $source_name."::".$source_uuid."::".time;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "variable_name",  value1 => $variable_name, 
+		name2 => "variable_value", value2 => $variable_value, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure we have a sane lock age
+	if ((not $an->data->{scancore}{locking}{reap_age}) or ($an->data->{scancore}{locking}{reap_age} =~ /\D/))
+	{
+		$an->data->{scancore}{locking}{reap_age} = 300;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::locking::reap_age", value1 => $an->data->{scancore}{locking}{reap_age}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# If I've been asked to clear a lock, do so now.
+	if ($release)
+	{
+		### NOTE: This blindly clears all locks. We might want to varify the lock we're clearing is 
+		###       ours at some point, though to be fair, there should only ever be one lock at a time
+		###       and we have no business clearing a lock unless the caller was the one holding the 
+		###       active lock.
+		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+			variable_name     => $variable_name,
+			variable_value    => "",
+			update_value_only => 1,
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable_uuid", value1 => $variable_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		return($set);
+	}
+	
+	# If I've been asked to renew, do so now.
+	if ($renew)
+	{
+		# Yup, do it.
+		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+			variable_name     => $variable_name,
+			variable_value    => $variable_value,
+			update_value_only => 1,
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable_uuid", value1 => $variable_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($variable_uuid)
+		{
+			$set = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "set", value1 => $set, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		return($set);
+	}
+	
+	# No matter what, we always check for, and then wait for, locks. Read in the locks, if any. If any 
+	# are set and they are younger than scancore::locking::reap_age, we'll hold.
+	my $waiting = 1;
+	while ($waiting)
+	{
+		# Set the 'waiting' to '0'. If we find a lock, we'll set it back to '1'.
+		$waiting = 0;
+		
+		# See if we had a lock.
+		my $lock_value = $an->ScanCore->read_variable({variable_name => $variable_name});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "lock_value", value1 => $lock_value, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($lock_value) or ($lock_value =~ /^(.*?)::(.*?)::(\d+)/))
+		{
+			my $lock_source_name = $1;
+			my $lock_source_uuid = $2;
+			my $lock_time        = $3;
+			my $timeout_time     = $lock_time + $an->data->{scancore}{locking}{reap_age};
+			my $lock_age         = time - $lock_time;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "lock_source_name", value1 => $lock_source_name, 
+				name2 => "lock_source_uuid", value2 => $lock_source_uuid, 
+				name3 => "lock_time",        value3 => $lock_time, 
+				name4 => "timeout_time",     value4 => $timeout_time, 
+				name5 => "lock_age",         value5 => $lock_age, 
+				name6 => "time",             value6 => time, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# If the lock is stale, delete it.
+			if ($timeout_time > time)
+			{
+				# The lock is stale.
+				my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+					variable_name     => $variable_name,
+					variable_value    => "",
+					update_value_only => 1,
+				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "variable_uuid", value1 => $variable_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			# Only wait if this isn't our own lock.
+			elsif ($lock_source_uuid ne $source_uuid)
+			{
+				# Mark 'wait' and sleep.
+				$waiting = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "waiting", value1 => $waiting, 
+				}, file => $THIS_FILE, line => __LINE__});
+				sleep 5;
+			}
+		}
+	}
+	
+	# If I am here, there are no pending locks. Have I been asked to set one?
+	if ($request)
+	{
+		# Yup, do it.
+		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+			variable_name     => $variable_name,
+			variable_value    => $variable_value,
+			update_value_only => 1,
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable_uuid", value1 => $variable_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($variable_uuid)
+		{
+			$set = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "set", value1 => $set, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# Now return.
+	return($set);
+}
+
+# This sets or clears that the caller is about to work on the database
+sub mark_active
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "mark_active", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $set = defined $parameter->{set} ? $parameter->{set} : 1;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "set",  value1 => $set, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $value = "false";
+	if ($set)
+	{
+		$value = "true";
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "value",  value1 => $value, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $state_uuid = $an->ScanCore->insert_or_update_states({
+		state_name      = "db_in_use",
+		state_host_uuid = $an->data->{sys}{host_uuid};
+		state_note      = "true",
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "state_uuid",  value1 => $state_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($state_uuid);
+}
+
 # This sets the 'db_resync_in_progress' variable to be the timestamp that a db sync starts or '0' when a
 # resync is finished.
 sub set_update_db_flag
@@ -1355,7 +1535,6 @@ sub set_update_db_flag
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Alert->_set_error;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_flag", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $set  = defined $parameter->{set}    ? $parameter->{set}    : 0;

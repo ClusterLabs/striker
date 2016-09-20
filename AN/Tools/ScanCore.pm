@@ -38,6 +38,7 @@ my $THIS_FILE = "ScanCore.pm";
 # insert_or_update_owners
 # insert_or_update_recipients
 # insert_or_update_servers
+# insert_or_update_states
 # insert_or_update_smtp
 # insert_or_update_variables
 # parse_anvil_data
@@ -3056,6 +3057,160 @@ WHERE
 	return($server_uuid);
 }
 
+# This updates (or inserts) a record in the 'states' table.
+sub insert_or_update_states
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_states" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $state_uuid      = $parameter->{state_uuid}      ? $parameter->{state_uuid}      : "";
+	my $state_name      = $parameter->{state_name}      ? $parameter->{state_name}      : "";
+	my $state_host_uuid = $parameter->{state_host_uuid} ? $parameter->{state_host_uuid} : $an->data->{sys}{host_uuid};
+	my $state_note      = $parameter->{state_note}      ? $parameter->{state_note}      : "NULL";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "state_uuid",      value1 => $state_uuid, 
+		name2 => "state_name",      value2 => $state_name, 
+		name3 => "state_host_uuid", value3 => $state_host_uuid, 
+		name4 => "state_note",      value4 => $state_note, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $state_name)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0186", code => 186, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	if (not $state_host_uuid)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0187", code => 187, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# If we don't have a UUID, see if we can find one for the given state server name.
+	if (not $state_uuid)
+	{
+		my $query = "
+SELECT 
+    state_uuid 
+FROM 
+    states 
+WHERE 
+    state_name      = ".$an->data->{sys}{use_db_fh}->quote($state_name)." 
+AND 
+    state_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($state_host_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$state_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "state_uuid", value1 => $state_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have an state_uuid, we're INSERT'ing .
+	if (not $state_uuid)
+	{
+		# INSERT
+		   $state_uuid = $an->Get->uuid();
+		my $query          = "
+INSERT INTO 
+    states 
+(
+    state_uuid, 
+    state_name,
+    state_host_uuid, 
+    state_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($state_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($state_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($state_host_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($state_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    state_name,
+    state_host_uuid, 
+    state_note 
+FROM 
+    states 
+WHERE 
+    state_uuid = ".$an->data->{sys}{use_db_fh}->quote($state_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_state_name         = $row->[0];
+			my $old_state_host_uuid    = $row->[1];
+			my $old_state_note         = $row->[2] ? $row->[2] : "NULL";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "old_state_name",      value1 => $old_state_name, 
+				name2 => "old_state_host_uuid", value2 => $old_state_host_uuid, 
+				name3 => "old_state_note",      value3 => $old_state_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_state_name      ne $state_name)      or 
+			    ($old_state_host_uuid ne $state_host_uuid) or 
+			    ($old_state_note      ne $state_note))
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    states 
+SET 
+    state_name       = ".$an->data->{sys}{use_db_fh}->quote($state_name).", 
+    state_host_uuid  = ".$an->data->{sys}{use_db_fh}->quote($state_host_uuid).",  
+    state_note       = ".$an->data->{sys}{use_db_fh}->quote($state_note).", 
+    modified_date    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    state_uuid       = ".$an->data->{sys}{use_db_fh}->quote($state_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($state_uuid);
+}
+
 # This updates (or inserts) a record in the 'smtp' table.
 sub insert_or_update_smtp
 {
@@ -5317,6 +5472,7 @@ sub read_variable
 	my $variable_name         = $parameter->{variable_name}         ? $parameter->{variable_name}         : "";
 	my $variable_source_uuid  = $parameter->{variable_source_uuid}  ? $parameter->{variable_source_uuid}  : "NULL";
 	my $variable_source_table = $parameter->{variable_source_table} ? $parameter->{variable_source_table} : "NULL";
+	my $id                    = $parameter->{id}                    ? $parameter->{id}                    : $an->data->{sys}{read_db_id};
 	### NOTE: Customer requested, move to 2 before v2.0 release
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "variable_uuid",         value1 => $variable_uuid, 
@@ -5364,7 +5520,7 @@ AND
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $variable_value = "";
-	my $results        = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $results        = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count          = @{$results};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 

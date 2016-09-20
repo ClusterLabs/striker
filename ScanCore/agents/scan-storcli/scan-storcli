@@ -84,14 +84,15 @@ my $an = AN::Tools->new({data =>
 				by_serial		=>	{},
 				by_uuid			=>	{},
 			},
-			bbus		=>	{
+			bbus			=>	{
 				by_serial		=>	{},
 				by_uuid			=>	{},
 			},
-			physical_drives	=>	{
+			physical_drives		=>	{
 				by_serial		=>	{},
 				by_uuid			=>	{},
 			},
+			disable			=>	0,
 			language		=>	"en_CA",
 			log_level		=>	1,
 			log_language		=>	"en_CA",
@@ -210,6 +211,12 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 # Get the switches before printing anything in case the user is asking for help.
 $an->Get->switches();
 $an->Log->adjust_log_level({key => $THIS_FILE});
+
+# Exit if we're disabled.
+if ($an->data->{'scan-storcli'}{disable})
+{
+	$an->nice_exit({exit_code => 1});
+}
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
@@ -7513,10 +7520,13 @@ sub update_db
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
 	{
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
 		# Make a note in the databases that we're starting an update and ask it to wait 10 seconds 
 		# before returning to give other instances time to finish their scans. (our scans end quickly
 		# enough).
-		$an->DB->set_update_db_flag({set => time, 'wait' => 10});
+		#$an->DB->set_update_db_flag({set => time, 'wait' => 10});
 		
 		# Update Controllers and the various dangly bits hanging off them.
 		update_db_controllers($an);
@@ -7526,9 +7536,12 @@ sub update_db
 		update_db_drive_groups($an);
 		update_db_physical_drives($an);
 		update_db_variables($an);
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
 	
 		# Clear the update flag.
-		$an->DB->set_update_db_flag({set => 0});
+		#$an->DB->set_update_db_flag({set => 0});
 	}
 	
 	return(0);
@@ -12083,7 +12096,7 @@ sub get_controller_info
 			}
 			elsif ($variable =~ /\(Degree Celsius\)/i)
 			{
-				$variable =~ s/\(Degree Celsius\)/ C/i;
+# 				$variable =~ s/\(Degree Celsius\)/ C/i;
 				$variable =~ s/^\s+//;
 				$variable =~ s/\s+$//;
 				$variable =~ s/\s+/ /;

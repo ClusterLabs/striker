@@ -246,6 +246,9 @@ load_agent_strings($an);
 # Update the database before we do anything else.
 update_db($an);
 
+# Mark that we're now running.
+$an->DB->mark_active({set => 1});
+
 # Update our view of the anvil we're a part of
 update_anvil_data($an);
 
@@ -4754,29 +4757,31 @@ sub update_db
 		# Something somewhere is out of sync. So start with updating the core tables. The agents will
 		# take care of their own.
 		
-		### TODO: Set a global flag and clear this block if an error is hit. 
-		# Make a note in the databases that we're starting an update and ask it to wait 30 seconds 
-		# before returning to give other instances time to finish their scans.
-		$an->DB->set_update_db_flag({set => time, 'wait' => 30});
+		# Request a lock.
+		$an->DB->locking({request => 1});
 		
 		# Update (and commit) the hosts table
 		update_db_hosts($an);
 		
 		### NOTE: The order that these are updated is important because of constraints. Don't re-order them.
-		# Now update the rest of the ScanCore tables.
+		# Now update the rest of the ScanCore tables, renewing the locks periodically (after tables 
+		# that can get large).
 		update_db_owners($an);
 		update_db_smtp($an);
 		update_db_anvils($an);
-		update_db_nodes($an);
+		update_db_nodes($an);         
 		update_db_notifications($an);
 		update_db_recipients($an);
 		update_db_states($an);
 		update_db_nodes_cache($an);
+		$an->DB->locking({renew => 1});
 		
 		update_db_alerts($an);
 		update_db_power($an);
 		update_db_temperature($an);
+		$an->DB->locking({renew => 1});
 		update_db_health($an);
+		$an->DB->locking({renew => 1});
 		update_db_agents($an);
 		update_db_ram_used($an);
 		update_db_shared($an);
@@ -4788,9 +4793,12 @@ sub update_db
 		
 		# Record the time
 		$an->DB->update_time({file => $THIS_FILE});
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
 	
 		# Clear the update flag.
-		$an->DB->set_update_db_flag({set => 0});
+		#$an->DB->set_update_db_flag({set => 0});
 	}
 	
 	return(0);

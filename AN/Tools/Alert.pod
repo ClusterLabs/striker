@@ -980,6 +980,14 @@ The 'AN::Tools::ScanCore' module's 'insert_or_update_servers()' method was calle
 
 The 'AN::Tools::Striker' module's '_server_eject_media()' method was called without a server name being set.
 
+=head2 C<186>
+
+The 'AN::Tools::ScanCore' module's 'insert_or_update_states()' method was called without state name being set.
+
+=head2 C<187>
+
+The 'AN::Tools::ScanCore' module's 'insert_or_update_states()' method was called without state host uuid being set.
+
 
 =head2 C<999>
 

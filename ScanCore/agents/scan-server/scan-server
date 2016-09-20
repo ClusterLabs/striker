@@ -56,6 +56,7 @@ my $an = AN::Tools->new({data =>
 		},
 		# This is used so that the user can set the language in on striker.conf variable.
 		'scan-server'		=>	{
+			disable			=>	0,
 			language		=>	"en_CA",
 			log_file		=>	"/var/log/ScanCore.log",
 			log_level		=>	2,
@@ -100,6 +101,12 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 # Get the switches before printing anything in case the user is asking for help.
 $an->Get->switches();
 $an->Log->adjust_log_level({key => $THIS_FILE});
+
+# Exit if we're disabled.
+if ($an->data->{'scan-server'}{disable})
+{
+	$an->nice_exit({exit_code => 1});
+}
 
 print $an->String->get({key => "scan_server_message_0001"})."\n";
 

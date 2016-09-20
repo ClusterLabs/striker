@@ -75,6 +75,7 @@ my $an = AN::Tools->new({data =>
 		},
 		# This is used so that the user can set the language in on striker.conf variable.
 		'scan-clustat'		=>	{
+			disable			=>	0,
 			language		=>	"en_CA",
 			log_file		=>	"/var/log/ScanCore.log",
 			log_level		=>	1,
@@ -109,6 +110,12 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 # Get the switches before printing anything in case the user is asking for help.
 $an->Get->switches();
 $an->Log->adjust_log_level({key => $THIS_FILE});
+
+# Exit if we're disabled.
+if ($an->data->{'scan-clustat'}{disable})
+{
+	$an->nice_exit({exit_code => 1});
+}
 
 print $an->String->get({key => "scan_clustat_message_0001"})."\n";
 
@@ -172,6 +179,9 @@ sub update_db
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
 	{
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
 		# Make a note in the databases that we're starting an update and ask it to wait 10 seconds 
 		# before returning to give other instances time to finish their scans. (our scans end quickly
 		# enough).
@@ -180,9 +190,12 @@ sub update_db
 		update_db_clustat($an);
 		update_db_clustat_node($an);
 		update_db_clustat_service($an);
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
 	
 		# Clear the update flag.
-		$an->DB->set_update_db_flag({set => 0});
+		#$an->DB->set_update_db_flag({set => 0});
 	}
 	
 	return(0);
