@@ -535,6 +535,10 @@ sub nice_exit
 	# Close database connections
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
+		# Clear locks
+		### TODO...
+		
+		# Disconnect.
 		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
 	}
 	

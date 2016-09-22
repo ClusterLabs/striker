@@ -68,6 +68,10 @@ my $an = AN::Tools->new({data =>
 			'default'	=>	{
 				migration_type	=>	"live",
 			},
+			# When a lock is requested, this is set to the time the lock was set. 
+			# DB->do_db_write() and DB->do_db_read() will check this and if it's age is >50% of
+			# scancore::locking::reap_age, it will renew the lock.
+			local_lock_active	=>	0,
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			sql			=>	[],
 			# This is the source name of anything added to 'shared' by this agent.

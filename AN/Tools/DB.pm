@@ -14,6 +14,7 @@ our $VERSION  = "0.1.001";
 my $THIS_FILE = "DB.pm";
 
 ### Methods;
+# check_lock_age
 # check_hostname
 # commit_sql
 # connect_to_databases
@@ -64,6 +65,58 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
+# This checks to see if 'sys::local_lock_active' is set. If it is, it's age is checked and if the age is >50%
+# of scancore::locking::reap_age, it will renew the lock.
+sub check_lock_age
+{
+	my $self = shift;
+	my $an   = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_lock_age", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure we've got the 'local_lock_active' and 'reap_age' variables set.
+	if ((not defined $an->data->{sys}{local_lock_active}) or ($an->data->{sys}{local_lock_active} =~ /\D/))
+	{
+		$an->data->{sys}{local_lock_active} = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::local_lock_active", value1 => $an->data->{sys}{local_lock_active}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{locking}{reap_age}) or ($an->data->{scancore}{locking}{reap_age} =~ /\D/))
+	{
+		$an->data->{scancore}{locking}{reap_age} = 300;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::locking::reap_age", value1 => $an->data->{scancore}{locking}{reap_age}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# If I have an active lock, check it's age.
+	my $renewed = 0;
+	if ($an->data->{sys}{local_lock_active})
+	{
+		my $current_time  = time;
+		my $lock_age      = $current_time - $an->data->{sys}{local_lock_active};
+		my $hald_reap_age = int($an->data->{scancore}{locking}{reap_age} / 2);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "current_time",  value1 => $current_time, 
+			name2 => "lock_age",      value2 => $lock_age, 
+			name3 => "hald_reap_age", value3 => $hald_reap_age, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($lock_age > $hald_reap_age)
+		{
+			$an->DB->locking({renew => 1});
+			$renewed                            = 1;
+			$an->data->{sys}{local_lock_active} = time;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "renewed",                value1 => $renewed, 
+				name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return($renewed);
+}
+
 ### TODO: This isn't done...
 # This checks to see if the hostname changed and, if so, update the hosts table so that we don't accidentally
 # create a separate entry for this host.
@@ -71,7 +124,6 @@ sub check_hostname
 {
 	my $self = shift;
 	my $an   = $self->parent;
-	$an->Alert->_set_error;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_hostname", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	#$an->hostname();
@@ -486,11 +538,7 @@ sub connect_to_databases
 	$an->DB->find_behind_databases({file => $file});
 	
 	# Hold if a lock has been requested.
-	my $wait_on_lock = 1;
-	while ($wait_on_lock)
-	{
-		# Connect to all databases and see if 
-	}
+	$an->DB->locking();
 	
 	return($connections);
 }
@@ -557,6 +605,11 @@ sub do_db_query
 			server => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 		}, code => 4, file => "$THIS_FILE", line => __LINE__});
 	}
+	
+	# If I am still alive check if any locks need to be renewed.
+	$an->DB->check_lock_age;
+	
+	# Do I need to log the transaction?
 	if ($an->Log->db_transactions())
 	{
 		$an->Log->entry({log_level => 0, message_key => "an_variables_0004", message_variables => {
@@ -566,6 +619,8 @@ sub do_db_query
 			name4 => "line",   value4 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
+	
+	# Do the query.
 	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0029", message_variables => { 
 		query    => $query, 
 		server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name},
@@ -612,6 +667,9 @@ sub do_db_write
 		}})."\n";
 		$an->nice_exit({exit_code => 1});
 	}
+	
+	# If I am still alive check if any locks need to be renewed.
+	$an->DB->check_lock_age;
 	
 	# This array will hold either just the passed DB ID or all of them, if no ID was specified.
 	my @db_ids;
@@ -1339,7 +1397,7 @@ sub locking
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $request     = defined $parameter->{request}     ? $parameter->{request}     : 0;
 	my $release     = defined $parameter->{release}     ? $parameter->{release}     : 0;
@@ -1383,8 +1441,10 @@ sub locking
 			variable_value    => "",
 			update_value_only => 1,
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "variable_uuid", value1 => $variable_uuid, 
+		$an->data->{sys}{local_lock_active} = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "variable_uuid",          value1 => $variable_uuid, 
+			name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		return($set);
@@ -1410,6 +1470,11 @@ sub locking
 				name1 => "set", value1 => $set, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		$an->data->{sys}{local_lock_active} = time;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "variable_uuid",          value1 => $variable_uuid, 
+			name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		return($set);
 	}
@@ -1485,8 +1550,11 @@ sub locking
 		if ($variable_uuid)
 		{
 			$set = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "set", value1 => $set, 
+			$an->data->{sys}{local_lock_active} = time;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "set",                    value1 => $set, 
+				name2 => "variable_uuid",          value2 => $variable_uuid, 
+				name3 => "sys::local_lock_active", value3 => $an->data->{sys}{local_lock_active}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -1517,9 +1585,9 @@ sub mark_active
 		name1 => "value",  value1 => $value, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $state_uuid = $an->ScanCore->insert_or_update_states({
-		state_name      = "db_in_use",
-		state_host_uuid = $an->data->{sys}{host_uuid};
-		state_note      = "true",
+		state_name      => "db_in_use",
+		state_host_uuid => $an->data->{sys}{host_uuid},
+		state_note      => "true",
 	});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "state_uuid",  value1 => $state_uuid, 

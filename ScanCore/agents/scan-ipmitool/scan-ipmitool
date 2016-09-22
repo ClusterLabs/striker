@@ -105,6 +105,10 @@ my $an = AN::Tools->new({data =>
 			strings			=>	"$running_directory/$THIS_FILE.xml",
 		},
 		sys			=>	{
+			# When a lock is requested, this is set to the time the lock was set. 
+			# DB->do_db_write() and DB->do_db_read() will check this and if it's age is >50% of
+			# scancore::locking::reap_age, it will renew the lock.
+			local_lock_active	=>	0,
 			sql			=>	[],
 		},
 		# These are values the user might set in striker.conf
