@@ -67,8 +67,7 @@ my $an = AN::Tools->new({data =>
 			log_language		=>	"en_CA",
 			log_db_transactions	=>	0,
 		},
-		sql		=>	{
-		},
+		sql		=>	{},
 		sys		=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			bond_uuid_query		=>	"",
@@ -148,6 +147,7 @@ $an->DB->update_time({file => $THIS_FILE});
 # Clean up and go away.
 $an->nice_exit({exit_code => 0});
 
+
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
@@ -175,10 +175,10 @@ sub update_db
 		# Update bond and interfaces
 		update_db_bond($an);
 		update_db_bond_interface($an);
-	
+		
 		# Release the lock
 		$an->DB->locking({release => 1});
-	
+		
 		# Clear the update flag.
 		#$an->DB->set_update_db_flag({set => 0});
 	}

@@ -420,7 +420,7 @@ sub clear_resync_flag
 	}
 
 	# Clear the update flag.
-	$an->DB->set_update_db_flag({set => 0});
+	#$an->DB->set_update_db_flag({set => 0});
 	
 	# Disconnect from databases.
 	$an->DB->disconnect_from_databases();

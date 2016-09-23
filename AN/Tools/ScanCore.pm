@@ -5528,7 +5528,7 @@ AND
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
 	{
-		$variable_value = $row->[0];
+		$variable_value = defined $row->[0] ? $row->[0] : "";
 		### NOTE: Customer requested, move to 2 before v2.0 release
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "variable_name",  value1 => $variable_name, 

@@ -801,7 +801,7 @@ AND
 			$query .= ";";
 		}
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -816,7 +816,7 @@ AND
 		{
 			$an->data->{scancore}{sql}{source_updated_time} = $last_updated;
 			$an->data->{scancore}{sql}{source_db_id}        = $id;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "scancore::sql::source_db_id",        value1 => $an->data->{scancore}{sql}{source_db_id}, 
 				name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1489,27 +1489,29 @@ sub locking
 		
 		# See if we had a lock.
 		my $lock_value = $an->ScanCore->read_variable({variable_name => $variable_name});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "lock_value", value1 => $lock_value, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "waiting",    value1 => $waiting, 
+			name2 => "lock_value", value2 => $lock_value, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($lock_value) or ($lock_value =~ /^(.*?)::(.*?)::(\d+)/))
+		if ($lock_value =~ /^(.*?)::(.*?)::(\d+)/)
 		{
 			my $lock_source_name = $1;
 			my $lock_source_uuid = $2;
 			my $lock_time        = $3;
+			my $current_time     = time;
 			my $timeout_time     = $lock_time + $an->data->{scancore}{locking}{reap_age};
-			my $lock_age         = time - $lock_time;
+			my $lock_age         = $current_time - $lock_time;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "lock_source_name", value1 => $lock_source_name, 
 				name2 => "lock_source_uuid", value2 => $lock_source_uuid, 
-				name3 => "lock_time",        value3 => $lock_time, 
-				name4 => "timeout_time",     value4 => $timeout_time, 
-				name5 => "lock_age",         value5 => $lock_age, 
-				name6 => "time",             value6 => time, 
+				name3 => "current_time",     value3 => $current_time, 
+				name4 => "lock_time",        value4 => $lock_time, 
+				name5 => "timeout_time",     value5 => $timeout_time, 
+				name6 => "lock_age",         value6 => $lock_age, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# If the lock is stale, delete it.
-			if ($timeout_time > time)
+			if ($current_time > $timeout_time)
 			{
 				# The lock is stale.
 				my $variable_uuid = $an->ScanCore->insert_or_update_variables({
