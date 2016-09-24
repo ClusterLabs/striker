@@ -4962,6 +4962,15 @@ sub uuid
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "uuid", value1 => $uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in 'sys::host_uuid', if not yet recorded.
+			if (not $an->data->{sys}{host_uuid})
+			{
+				$an->data->{sys}{host_uuid} = $uuid;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			last;
 		}
 		close $file_handle;

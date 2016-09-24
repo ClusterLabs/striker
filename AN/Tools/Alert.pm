@@ -303,36 +303,14 @@ sub error
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "error" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Setup default values
-	my ($fatal, $title_key, $title_variables, $message_key, $message_variables, $code, $file, $line);
-	
-	# See if I am getting parameters is a hash reference or directly as
-	# element arrays.
-	if (ref($parameter))
-	{
-		# Called via a hash ref, good.
-		$fatal             = $parameter->{fatal}             ? $parameter->{fatal}             : 1;
-		$title_key         = $parameter->{title_key}         ? $parameter->{title_key}         : $an->String->get({key => "an_0004"});
-		$title_variables   = $parameter->{title_variables}   ? $parameter->{title_variables}   : "";
-		$message_key       = $parameter->{message_key}       ? $parameter->{message_key}       : $an->String->get({key => "an_0005"});
-		$message_variables = $parameter->{message_variables} ? $parameter->{message_variables} : "";
-		$code              = $parameter->{code}              ? $parameter->{code}              : 1;
-		$file              = $parameter->{file}              ? $parameter->{file}              : $an->String->get({key => "an_0006"});
-		$line              = $parameter->{line}              ? $parameter->{line}              : "";
-		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], code: [$code], file: [$file], line: [$line]\n";
-	}
-	else
-	{
-		# Called directly.
-		$fatal			= $parameter ? $parameter : 1;
-		$title_key		= shift;
-		$title_variables	= shift;
-		$message_key		= shift;
-		$message_variables	= shift;
-		$code			= shift;
-		$file			= shift;
-		$line			= shift;
-		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], code: [$code], file: [$file], line: [$line]\n";
-	}
+	my $title_key         = $parameter->{title_key}         ? $parameter->{title_key}         : $an->String->get({key => "an_0004"});
+	my $title_variables   = $parameter->{title_variables}   ? $parameter->{title_variables}   : "";
+	my $message_key       = $parameter->{message_key}       ? $parameter->{message_key}       : $an->String->get({key => "an_0005"});
+	my $message_variables = $parameter->{message_variables} ? $parameter->{message_variables} : "";
+	my $code              = $parameter->{code}              ? $parameter->{code}              : 1;
+	my $file              = $parameter->{file}              ? $parameter->{file}              : $an->String->get({key => "an_0006"});
+	my $line              = $parameter->{line}              ? $parameter->{line}              : "";
+	#print "$THIS_FILE ".__LINE__."; title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], code: [$code], file: [$file], line: [$line]\n";
 	
 	# It is possible for this to become a run-away call, so this helps
 	# catch when that happens.
@@ -340,7 +318,6 @@ sub error
 	if ($an->_error_count > $an->_error_limit)
 	{
 		print "Infinite loop detected while trying to print an error:\n";
-		print "- fatal:             [$fatal]\n";
 		print "- title_key:         [$title_key]\n";
 		print "- title_variables:   [$title_variables]\n";
 		print "- message_key:       [$message_key]\n";
@@ -383,7 +360,7 @@ sub error
 	}
 	
 	# Set my error string
-	my $fatal_heading = $fatal ? $an->String->get({key => "an_0002"}) : $an->String->get({key => "an_0003"});
+	my $fatal_heading = $an->String->get({key => "an_0002"});
 	#print "$THIS_FILE ".__LINE__."; fatal_heading: [$fatal_heading]\n";
 	
 	my $readable_line = $an->Readable->comma($line);
@@ -409,19 +386,14 @@ sub error
 	$an->Alert->_set_error_code($code);
 	
 	# Append "exiting" to the error string if it is fatal.
-	if ($fatal)
-	{
-		# Don't append this unless I really am exiting.
-		$error .= $an->String->get({key => "an_0008"})."\n";
-	}
+	$error .= $an->String->get({key => "an_0008"})."\n";
 	
 	# Write a copy of the error to the log.
 	$an->Log->entry({file => $THIS_FILE, level => 0, raw => $error});
 	
 	# Don't actually die, but do print the error, if fatal errors have been globally disabled (as is done
 	# in the tests).
-	#if (($fatal) && (not $an->Alert->no_fatal_errors))
-	if ($fatal)
+	if (not $an->Alert->no_fatal_errors)
 	{
 		if ($ENV{'HTTP_REFERER'})
 		{

@@ -505,20 +505,6 @@ sub connect_to_databases
 			}
 		}
 	}
-	
-	# This is needed by everything in the database, so read it now.
-	my $shell_call = $an->data->{path}{host_uuid};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		$an->data->{sys}{host_uuid} = lc($_);
-		last;
-	}
-	close $file_handle;
 
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
@@ -540,6 +526,9 @@ sub connect_to_databases
 	# Hold if a lock has been requested.
 	$an->DB->locking();
 	
+	# Mark that we're not active.
+	$an->DB->mark_active({set => 1});
+	
 	return($connections);
 }
 
@@ -549,11 +538,22 @@ sub disconnect_from_databases
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Alert->_set_error;
 	
+	my $marked_inactive = 0;
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id} =~ /^DBI::db=HASH/;
+		# Don't do anything if there isn't an active file handle for this DB.
+		next if ((not $an->data->{dbh}{$id}) or ($an->data->{dbh}{$id} !~ /^DBI::db=HASH/));
+		
+		# Clear locks and mark that we're done running.
+		if (not $marked_inactive)
+		{
+			$an->DB->mark_active({set => 0});
+			$an->DB->locking({release => 1});
+			$marked_inactive = 1;
+		}
+		
+		$an->data->{dbh}{$id}->disconnect;
 		delete $an->data->{dbh}{$id};
 	}
 	
@@ -1526,7 +1526,9 @@ sub locking
 			# Only wait if this isn't our own lock.
 			elsif ($lock_source_uuid ne $source_uuid)
 			{
-				# Mark 'wait' and sleep.
+				# Mark 'wait', set inactive and sleep.
+				$an->DB->mark_active({set => 0});
+				
 				$waiting = 1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "waiting", value1 => $waiting, 
@@ -1577,6 +1579,12 @@ sub mark_active
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "set",  value1 => $set, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I haven't connected to a database yet, why am I here?
+	if (not $an->data->{sys}{read_db_id})
+	{
+		return(0);
+	}
 	
 	my $value = "false";
 	if ($set)

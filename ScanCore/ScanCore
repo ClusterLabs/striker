@@ -250,9 +250,6 @@ load_agent_strings($an);
 # Update the database before we do anything else.
 update_db($an);
 
-# Mark that we're now running.
-$an->DB->mark_active({set => 1});
-
 # Update our view of the anvil we're a part of
 update_anvil_data($an);
 
@@ -278,6 +275,8 @@ $an->Log->entry({log_level => 2, title_key => "scancore_title_0005", message_key
 
 # Disconnect from databases... We'll reconnect inside the loop.
 $an->DB->disconnect_from_databases();
+
+# Now the run loop.
 while(1)
 {
 	# Note the time
@@ -305,13 +304,6 @@ while(1)
 	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 	if ($connections)
 	{
-		# Wait if another instance is updating the database
-		$an->DB->wait_if_db_is_updating();
-		
-		# ### New method
-		#$an->DB->wait_if_requested();
-		#$an->DB->mark_running({running => 1});
-		
 		# Look to see if any databases need to be updated.
 		update_db($an);
 		

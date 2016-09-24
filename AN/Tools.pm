@@ -532,15 +532,8 @@ sub nice_exit
 	my $exit_code = defined $parameter->{exit_code} ? $parameter->{exit_code} : 999;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => $exit_code}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
 	
-	# Close database connections
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-	{
-		# Clear locks
-		### TODO...
-		
-		# Disconnect.
-		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
-	}
+	# Close database connections (if any).
+	$an->DB->disconnect_from_databases();
 	
 	exit($exit_code);
 }

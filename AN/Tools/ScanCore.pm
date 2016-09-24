@@ -436,7 +436,7 @@ sub get_migration_target
 	my $server = $parameter->{server} ? $parameter->{server} : "";
 	if (not $server)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0101", code => 101, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0101", code => 101, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -1202,7 +1202,7 @@ sub host_state
 		if (not $valid)
 		{
 			# No host 
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0099", message_variables => { target => $parameter->{target} }, code => 99, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0099", message_variables => { target => $parameter->{target} }, code => 99, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 	}
@@ -1229,7 +1229,7 @@ WHERE
 	# If the count is '0', the host wasn't found and we've hit a program error.
 	if (not $count)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0100", message_variables => { target => $target }, code => 100, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0100", message_variables => { target => $target }, code => 100, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	my $current_health = "";
@@ -1318,7 +1318,7 @@ sub insert_or_update_anvils
 	if (not $anvil_name)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0079", code => 79, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0079", code => 79, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -1358,13 +1358,13 @@ WHERE
 		# INSERT, *if* we have an owner and smtp UUID.
 		if (not $anvil_owner_uuid)
 		{
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0080", code => 80, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0080", code => 80, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 		### NOTE: SMTP UUID is no longer required.
 		#if (not $anvil_smtp_uuid)
 		#{
-		#	$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0081", code => 81, file => $THIS_FILE, line => __LINE__});
+		#	$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0081", code => 81, file => $THIS_FILE, line => __LINE__});
 		#	return("");
 		#}
 		
@@ -1941,12 +1941,12 @@ WHERE
 		# INSERT, *if* we have an owner and smtp UUID.
 		if (not $node_anvil_uuid)
 		{
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 		if (not $node_host_uuid)
 		{
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 		   $node_uuid = $an->Get->uuid();
@@ -2104,17 +2104,17 @@ sub insert_or_update_nodes_cache
 	# We need a host_uuid, node_uuid and name
 	if (not $node_cache_host_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_cache_node_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_cache_name)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -2279,7 +2279,7 @@ sub insert_or_update_notifications
 	if (not $notify_target)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0088", code => 88, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0088", code => 88, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -2439,7 +2439,7 @@ sub insert_or_update_owners
 	if (not $owner_name)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0078", code => 78, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0078", code => 78, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -2573,7 +2573,7 @@ sub insert_or_update_recipients
 	if ((not $recipient_anvil_uuid) or (not $recipient_notify_uuid))
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0091", code => 91, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0091", code => 91, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -2755,13 +2755,13 @@ sub insert_or_update_servers
 	if ((not $server_name) && (not $server_uuid))
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0181", code => 181, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0181", code => 181, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $server_definition)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0183", code => 183, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0183", code => 183, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -2814,7 +2814,7 @@ AND
 		if (not $server_uuid)
 		{
 			# Error out.
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0184", code => 184, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0184", code => 184, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 		
@@ -2886,7 +2886,7 @@ WHERE
 	if (not $server_anvil_uuid)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0182", code => 182, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0182", code => 182, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -3078,13 +3078,13 @@ sub insert_or_update_states
 	if (not $state_name)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0186", code => 186, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0186", code => 186, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $state_host_uuid)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0187", code => 187, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0187", code => 187, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -3233,7 +3233,7 @@ sub insert_or_update_smtp
 	if (not $smtp_server)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0077", code => 77, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0077", code => 77, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -3442,7 +3442,7 @@ sub insert_or_update_variables
 	if ((not $variable_name) && (not $variable_uuid))
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0164", code => 164, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0164", code => 164, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -4013,7 +4013,7 @@ sub parse_install_manifest
 	### TODO: Support getting a UUID
 	if (not $parameter->{uuid})
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0093", code => 93, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0093", code => 93, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -4033,7 +4033,7 @@ sub parse_install_manifest
 	
 	if (not $manifest_data)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0094", message_variables => { uuid => $parameter->{uuid} }, code => 94, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0094", message_variables => { uuid => $parameter->{uuid} }, code => 94, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -5484,7 +5484,7 @@ sub read_variable
 	if (not $variable_name)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0165", code => 165, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0165", code => 165, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -5897,19 +5897,19 @@ sub target_power
 	if (($task ne "status") && ($task ne "on") && ($task ne "off"))
 	{
 		# Bad task.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0111", message_variables => { task => $task }, code => 111, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0111", message_variables => { task => $task }, code => 111, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $target)
 	{
 		# No target UUID
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0112", code => 112, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0112", code => 112, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	elsif (not $an->Validate->is_uuid({uuid => $target}))
 	{
 		# Not a valid UUID.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0113", message_variables => { target => $target }, code => 113, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0113", message_variables => { target => $target }, code => 113, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -6005,7 +6005,7 @@ sub target_power
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -6073,7 +6073,7 @@ sub update_server_stop_reason
 	# Die if I wasn't passed a server name or stop reason.
 	if (not $server_name)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0158", code => 159, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0158", code => 159, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
