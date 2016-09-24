@@ -362,6 +362,9 @@ while(1)
 	# Check RAM usage and bail if it looks like we're leaking.
 	check_ram_usage($an);
 	
+	# Archive, if needed.
+	archive_if_needed($an);
+	
 	# Disconnect from databases.
 	$an->DB->disconnect_from_databases();
 	
@@ -393,9 +396,38 @@ while(1)
 # This should never be hit...
 $an->nice_exit({exit_code => 0});
 
+
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This will archive stuff in the 'history' schema, if needed.
+sub archive_if_needed
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_resync_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: Set a state 'archive_date' -> '<host_uuid>:<modified_date>' so that, if a database connects
+	###       later that needs to sync, it archives the old records before beginning the resync process.
+	###       
+	### TODO: Also, update 'update_db()' to check for 'archive_date' and if it's found, see if there is a
+	###       record in any history schema table with a record older that that. If there is, do the 
+	###       archive/delete.
+	
+	### Process:
+	# 1. Count the records in history for each table, restricting the results to those from this host 
+	#    (save for special tables like 'server') and if the number of records is greater than 
+	#    'scancore::archive::trigger', start an archive.
+	# 2. Set/update the 'archive_date' state.
+	# 3. Lock the database.
+	# 4. Select 'modified_date' from history.foo, offset by 
+	#    ('scancore::archive::trigger' - 'scancore::archive::count').
+	# 5. Make sure the 'scancore::archive::directory' exists, creating it if needed.
+	# 6. Select all records older that the 'modified_date', write them to a file and then DELETE those
+	#    records from the database.
+	
+	return(0);
+}
 
 # This connects to the available databases and clears the "resync" flag.
 sub clear_resync_flag
