@@ -162,35 +162,35 @@ $an->Log->entry({log_level => 2, message_key => "aft_log_0001", message_variable
 # Make sure the user had told us where to test.
 if (not $an->data->{switches}{location})
 {
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "aft_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "aft_error_0001", code => 1, file => $THIS_FILE, line => __LINE__});
 }
 if ($an->data->{switches}{loops})
 {
 	if ($an->data->{switches}{loops} =~ /\D/)
 	{
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "aft_error_0002", code => 2, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "aft_error_0002", code => 2, file => $THIS_FILE, line => __LINE__});
 	}
 }
 if ($an->data->{switches}{runtime})
 {
 	if ($an->data->{switches}{runtime} =~ /\D/)
 	{
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "aft_error_0005", code => 3, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "aft_error_0005", code => 3, file => $THIS_FILE, line => __LINE__});
 	}
 }
 
 # Make sure I have storcli64 and fio installed.
 if (not -x $an->data->{path}{storcli64})
 {
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "aft_error_0003", message_variables => {
+	$an->Alert->error({title_key => "an_0003", message_key => "aft_error_0003", message_variables => {
 		path	=>	$an->data->{path}{storcli64}, 
-	}, code => 3, file => "$THIS_FILE", line => __LINE__});
+	}, code => 3, file => $THIS_FILE, line => __LINE__});
 }
 if (not -x $an->data->{path}{fio})
 {
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "aft_error_0004", message_variables => {
+	$an->Alert->error({title_key => "an_0003", message_key => "aft_error_0004", message_variables => {
 		path	=>	$an->data->{path}{fio}, 
-	}, code => 4, file => "$THIS_FILE", line => __LINE__});
+	}, code => 4, file => $THIS_FILE, line => __LINE__});
 }
 
 # Tell the user that we're starting.
@@ -268,7 +268,7 @@ sub report_deadline_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -283,7 +283,7 @@ sub report_deadline_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -298,7 +298,7 @@ sub report_deadline_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -313,7 +313,7 @@ sub report_deadline_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -328,7 +328,7 @@ sub report_deadline_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -363,7 +363,7 @@ sub report_os_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -389,7 +389,7 @@ sub report_os_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -406,7 +406,7 @@ sub report_os_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -423,7 +423,7 @@ sub report_os_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -462,7 +462,7 @@ sub report_vd_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -595,7 +595,7 @@ sub call_fio
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while (<$file_handle>)
 		{
 			chomp;
@@ -659,7 +659,7 @@ sub control_virtual_disk_background_process
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while (<$file_handle>)
 		{
 			chomp;
@@ -680,7 +680,7 @@ sub control_virtual_disk_background_process
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while (<$file_handle>)
 		{
 			chomp;
@@ -714,7 +714,7 @@ sub control_virtual_disk_background_process
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while (<$file_handle>)
 			{
 				chomp;

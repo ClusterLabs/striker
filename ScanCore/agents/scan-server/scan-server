@@ -69,7 +69,7 @@ my $an = AN::Tools->new({data =>
 				migration_type	=>	"live",
 			},
 			# When a lock is requested, this is set to the time the lock was set. 
-			# DB->do_db_write() and DB->do_db_read() will check this and if it's age is >50% of
+			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
 			local_lock_active	=>	0,
 			# This will get set by AN::Tools::DB->connect_to_databases()
@@ -136,7 +136,7 @@ if (not scan_servers($an))
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
 		uuid => $an->data->{sys}{host_uuid},
 	}, code => 255, file => $THIS_FILE, line => __LINE__});
 }
@@ -587,14 +587,14 @@ sub scan_servers
 					}, file => $THIS_FILE, line => __LINE__});
 					if (not $already_found)
 					{
-						# Read in the definition file and record it's data.
+						# Read in the definition file and record its data.
 						my $definition  = "";
 						my $server_uuid = "";
 						my $shell_call  = $full_path;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "shell_call", value1 => $shell_call,
 						}, file => $THIS_FILE, line => __LINE__});
-						open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
+						open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
 						while(<$file_handle>)
 						{
 							chomp;
@@ -619,7 +619,7 @@ sub scan_servers
 						if ($server_uuid)
 						{
 							# We're not setting the host or state because we 
-							# don't know if it's running on another Anvil!.
+							# don't know if it is running on another Anvil!.
 							$an->data->{server_uuid}{$server_uuid} = {
 								name		=>	$this_server,
 								host		=>	"",
@@ -915,7 +915,7 @@ WHERE
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# This will happen whenever the virsh ID changes, disks are 
-					# inserted/ejected, etc. So it's a notice-level event.
+					# inserted/ejected, etc. So it is a notice-level event.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
 						alert_agent_name	=>	$THIS_FILE,

@@ -403,7 +403,7 @@ text
 ";
 	if ($target eq "pxe")
 	{
-		# If it's a dashboard, install from the peer. If it's a node, install from the source.
+		# If it is a dashboard, install from the peer. If it is a node, install from the source.
 		if ($machine eq "node")
 		{
 			$ks_body .= "
@@ -485,7 +485,7 @@ $packages
 	{
 		# Nodes are easier because they're only ever PXE.
 		$ks_body .= "
-# Now it's time for the first chroot'ed configuration steps.
+# Now it is time for the first chroot'ed configuration steps.
 \%post --log=/tmp/post-install_chroot.log
 
 $common_post
@@ -723,7 +723,7 @@ rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/$os_dir/x86
 \%end
 
 
-# Now it's time for the first chroot'ed configuration steps.
+# Now it is time for the first chroot'ed configuration steps.
 \%post --log=/tmp/post-install_chroot.log
 
 $common_post
@@ -2150,7 +2150,7 @@ sub download_anrepo_tools
 	return(0);
 }
 
-# This downloads the give file, if it's not already downloaded, and verifies that it is not a curl failure 
+# This downloads the give file, if it is not already downloaded, and verifies that it is not a curl failure
 # message.
 sub download_file
 {
@@ -2214,7 +2214,7 @@ sub download_file
 		my $file_ok = 0;
 		if (-e $target)
 		{
-			# Downloaded, but is it binary or text? If it's text, make sure it's not a failure 
+			# Downloaded, but is it binary or text? If it is text, make sure it is not a failure 
 			# message.
 			if (-B $target)
 			{
@@ -2223,7 +2223,7 @@ sub download_file
 			}
 			else
 			{
-				# If the file is less than 1024 bytes, read it in to make sure it's not a 
+				# If the file is less than 1024 bytes, read it in to make sure it is not a 
 				# failure message.
 				my $size = (stat($target))[7];
 				if ($size < 1024)
@@ -2270,7 +2270,7 @@ sub download_file
 			if (-e $target)
 			{
 				# Remove the sadness
-				unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it's a failed download message, not the file). The error was: $!\n";
+				unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it is a failed download message, not the file). The error was: $!\n";
 			}
 			exit(7);
 		}
@@ -2389,7 +2389,7 @@ sub download_anrepo_rpms
 			}
 		}
 		
-		### It's normal for there to be multiple matches, so we don't fail on too many here.
+		### It is normal for there to be multiple matches, so we don't fail on too many here.
 		# If I didn't finf a match, or if I found too many matches, die.
 		die __LINE__."; [ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch])! Is the Internet connection working?\n" if not $found;
 	}
@@ -2442,7 +2442,7 @@ sub download_anrepo_rpms
 				}
 			}
 			
-			### It's normal for there to be multiple matches, so we don't fail on too many here.
+			### It is normal for there to be multiple matches, so we don't fail on too many here.
 			# If I didn't finf a match, or if I found too many matches, die.
 			die __LINE__."; [ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch])! Is the Internet connection working?\n" if not $found;
 		}

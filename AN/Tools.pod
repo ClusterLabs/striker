@@ -16,7 +16,7 @@ Serves only to load all other AN::Tools::* modules in a common object and provid
   my $an = AN::Tools->new();
   
   # Again, but this time tell the AN::Tools::String module to force the use of
-  # UTF-8 mode when reading it's built-in XML words file and to set the default
+  # UTF-8 mode when reading its built-in XML words file and to set the default
   # language as Japanese.
   my $an = AN::Tools->new({
   	default_language	=>	'jp',
@@ -45,7 +45,7 @@ Tell AN::Tools::Readable to translate between byte sizes and human readable size
 
 =item C<String::force_utf8>
 
-Tell AN::Tools to force the use of UTF-8 mode when reading it's internal XML words file. The format is: C<{String}{force_utf8} = [0|1]>.
+Tell AN::Tools to force the use of UTF-8 mode when reading its internal XML words file. The format is: C<{String}{force_utf8} = [0|1]>.
 
 =back
 

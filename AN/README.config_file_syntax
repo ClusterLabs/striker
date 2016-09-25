@@ -4,7 +4,7 @@
 -=] Overview
 
   AN!Tools uses a configuration file format that most people should feel
-comfortable with. At it's core, variables are defined using this format:
+comfortable with. At its core, variables are defined using this format:
 
 # Variable comment.
 variable = value
@@ -80,7 +80,7 @@ some::var = My favourite animal is #!data!foo::bar::baz!#.
   Then the value stored in '$hash_ref->{some}{var}' would be
 "My favourite animal is #!data!foo::bar::baz!#".
 
-  Now, let's pretend we have a words string with it's own variable substitution
+  Now, let's pretend we have a words string with its own variable substitution
 '#!variable!0!#':
 
 <key name="test_0000">Testing: [#!variable!x!#]</key>

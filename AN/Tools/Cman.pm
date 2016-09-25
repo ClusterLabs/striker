@@ -91,7 +91,7 @@ sub boot_server
 	# If we weren't given a server name, then why were we called?
 	if (not $server)
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0059", code => 59, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0059", code => 59, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Get this node's cluster name
@@ -138,7 +138,7 @@ sub boot_server
 		return(2);
 	}
 	
-	### TODO: Check with 'virsh' on both nodes. If it's running on either, immediately start it on that
+	### TODO: Check with 'virsh' on both nodes. If it is running on either, immediately start it on that
 	###       node.
 	# Is it already running?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -527,7 +527,7 @@ sub check_for_pending_fence
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -611,7 +611,7 @@ sub cluster_conf_data
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -963,7 +963,7 @@ sub get_clustat_data
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1083,7 +1083,7 @@ sub get_clustat_data
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# If the host is bracketed, it's not running and it is showing where it last ran. 
+			# If the host is bracketed, it is not running and it is showing where it last ran. 
 			# This doesn't matter to us.
 			if ($host =~ /^\(.*\)$/)
 			{
@@ -1122,7 +1122,7 @@ sub get_clustat_data
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# If the host is bracketed, it's not running and it is showing where it last ran. 
+			# If the host is bracketed, it is not running and it is showing where it last ran. 
 			# This doesn't matter to us.
 			if ($host =~ /^\(.*\)$/)
 			{
@@ -1144,7 +1144,7 @@ sub get_clustat_data
 	return($details);
 }
 
-### TODO: Why does this exist? It's a lesser duplicate of what 'get_clustat_data()' does already. Remove this.
+### TODO: Why does this exist? It is a lesser duplicate of what 'get_clustat_data()' does already...
 # This returns an array reference of the servers found on this Anvil!
 sub get_cluster_server_list
 {
@@ -1158,7 +1158,7 @@ sub get_cluster_server_list
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1200,7 +1200,7 @@ sub migrate_server
 	my $server = $parameter->{server} ? $parameter->{server} : "";
 	if (not $server)
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0003", message_key => "error_message_0120", code => 120, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0003", message_key => "error_message_0120", code => 120, file => $THIS_FILE, line => __LINE__});
 		return ("");
 	}
 	
@@ -1209,7 +1209,7 @@ sub migrate_server
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1316,14 +1316,14 @@ sub peer_hostname
 		if (not $peer_hostname)
 		{
 			# Found myself, but not my peer.
-			$an->Alert->error({fatal => 1, title_key => "error_title_0025", message_key => "error_message_0045", message_variables => { file => $an->data->{path}{cman_config} }, code => 42, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({title_key => "error_title_0025", message_key => "error_message_0045", message_variables => { file => $an->data->{path}{cman_config} }, code => 42, file => $THIS_FILE, line => __LINE__});
 			return ("");
 		}
 	}
 	else
 	{
 		# I didn't find myself, so I can't trust the peer was found or is accurate.
-		$an->Alert->error({fatal => 1, title_key => "error_title_0025", message_key => "error_message_0046", message_variables => { file => $an->data->{path}{cman_config} }, code => 46, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0025", message_key => "error_message_0046", message_variables => { file => $an->data->{path}{cman_config} }, code => 46, file => $THIS_FILE, line => __LINE__});
 		return ("");
 	}
 	
@@ -1376,7 +1376,7 @@ sub stop_server
 	# If we weren't given a server name, then why were we called?
 	if (not $server)
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0071", code => 71, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0071", code => 71, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -1404,7 +1404,7 @@ sub stop_server
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1515,7 +1515,7 @@ sub withdraw_node
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1579,7 +1579,7 @@ sub withdraw_node
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 				while(<$file_handle>)
 				{
 					chomp;
@@ -1621,7 +1621,7 @@ sub withdraw_node
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -1681,7 +1681,7 @@ sub withdraw_node
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 				while(<$file_handle>)
 				{
 					chomp;
@@ -1802,7 +1802,7 @@ sub _do_server_boot
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1863,7 +1863,7 @@ WHERE
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -1953,7 +1953,7 @@ sub _recover_rgmanager
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;

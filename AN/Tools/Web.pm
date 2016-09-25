@@ -543,7 +543,7 @@ sub get_cgi
 	if (not $variables)
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0069", code => 69, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0069", code => 69, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Needed to read in passed CGI variables
@@ -807,11 +807,11 @@ sub template
 	# Make sure we got a file and template name.
 	if (not $parameter->{file})
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0073", code => 73, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0073", code => 73, file => $THIS_FILE, line => __LINE__});
 	}
 	if (not $parameter->{template})
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0074", code => 74, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0074", code => 74, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	my $file       = $parameter->{file};
@@ -830,15 +830,15 @@ sub template
 	# Make sure the file exists.
 	if (not -e $template_file)
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0075", message_variables => { file => $template_file }, code => 75, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0075", message_variables => { file => $template_file }, code => 75, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif (not -r $template_file)
 	{
 		my $user = getpwuid($<);
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0075", message_variables => { 
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0075", message_variables => { 
 			file => $template_file,
 			user => $user,
-		}, code => 75, file => "$THIS_FILE", line => __LINE__});
+		}, code => 75, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Read in the raw template.
@@ -847,7 +847,7 @@ sub template
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	#binmode $file_handle, ":utf8:";
 	### WARNING: DO NOT USE $an->Log->entry() below here, it will create an infinite loop!
 	while (<$file_handle>)

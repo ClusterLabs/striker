@@ -267,7 +267,7 @@ text
 ";
 	if ($target eq "pxe")
 	{
-		# If it's a dashboard, install from the peer. If it's a node, install from the source.
+		# If it is a dashboard, install from the peer. If it is a node, install from the source.
 		if ($machine eq "node")
 		{
 			$content .= "
@@ -349,7 +349,7 @@ $packages
 	{
 		# Nodes are easier because they're only ever PXE.
 		$content .= "
-# Now it's time for the first chroot'ed configuration steps.
+# Now it is time for the first chroot'ed configuration steps.
 \%post --log=/tmp/post-install_chroot.log
 
 $common_post
@@ -567,7 +567,7 @@ rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/$os_dir/x86
 \%end
 
 
-# Now it's time for the first chroot'ed configuration steps.
+# Now it is time for the first chroot'ed configuration steps.
 \%post --log=/tmp/post-install_chroot.log
 
 $common_post

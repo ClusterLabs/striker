@@ -73,7 +73,7 @@ When you are ready to simulate an over-heating event, run:
 
 /sbin/striker/anvil-load-cpu
 
-That program will not close on it's own. Let it run until the system shuts 
+That program will not close on its own. Let it run until the system shuts 
 itself down. If you do want to abort, pressing any key will cause the program
 to shut down.
 

@@ -171,9 +171,9 @@ sub db_transactions
 	
 	if ((defined $set) && (($set ne "0") && ($set ne "1")))
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0009", message_key => "error_message_0057", message_variables => {
+		$an->Alert->error({title_key => "error_title_0009", message_key => "error_message_0057", message_variables => {
 			set	=>	$set,
-		}, code => 57, file => "$THIS_FILE", line => __LINE__});
+		}, code => 57, file => $THIS_FILE, line => __LINE__});
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
@@ -315,9 +315,9 @@ sub level
 	
 	if ((defined $set) && ($set =~ /\D/))
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0009", message_key => "error_message_0012", message_variables => {
+		$an->Alert->error({title_key => "error_title_0009", message_key => "error_message_0012", message_variables => {
 			set	=>	$set,
-		}, code => 19, file => "$THIS_FILE", line => __LINE__});
+		}, code => 19, file => $THIS_FILE, line => __LINE__});
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}

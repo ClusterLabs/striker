@@ -17,18 +17,16 @@ This module provides access to error handling methods.
   
   # Trigger a fatal error.
   $an->Alert->error({
-  	fatal		=>	1,
   	title		=>	"Something went boom",
   	message		=>	"Details on what went boom",
   	code		=>	<some integer representing what went boom>,
-  	file		=>	"$THIS_FILE",
+  	file		=>	$THIS_FILE,
   	line		=>	__LINE__,
   	log_to		=>	"/var/log/app_error.log",
   });
   
   # Trigger a translatable fatal error.
   $an->Alert->error({
-  	fatal		=>	1,
   	title_key	=>	"err_0001",	# Something went: [#!variable!bang!#]
   	title_vars	=>	{
   		 bang		=>	"$boom"
@@ -39,7 +37,7 @@ This module provides access to error handling methods.
   		oops		=>	"$reason",
   	},
   	code		=>	<some integer representing what went boom>,
-  	file		=>	"$THIS_FILE",
+  	file		=>	$THIS_FILE,
   	line		=>	__LINE__
   	log_to		=>	"/var/log/app_error.log",
   });
@@ -120,12 +118,12 @@ If you're getting a warning and you want to prevent it from being printed to STD
   	title		=>	"Something went pop",
   	message		=>	"Details on what went pop",
   	code		=>	<some integer representing what went pop>,
-  	file		=>	"$THIS_FILE",
+  	file		=>	$THIS_FILE,
   	line		=>	__LINE__
   });
   
   # The alternative, short-form of calling this method is:
-  $an->Alert->warning("Something went pop", "Details on what went pop", <some integer representing what went pop>, "$THIS_FILE", __LINE__);
+  $an->Alert->warning("Something went pop", "Details on what went pop", <some integer representing what went pop>, $THIS_FILE, __LINE__);
 
 =head3 Details
 
@@ -163,26 +161,12 @@ This is the line in the file where the warning was triggered.
 
   # Calling this method triggers an error event.
   $an->Alert->error({
-  	fatal		=>	1,
   	title		=>	"Something went boom",
   	message		=>	"Details on what went boom",
   	code		=>	<some integer representing what went boom>,
-  	file		=>	"$THIS_FILE",
+  	file		=>	$THIS_FILE,
   	line		=>	__LINE__
   });
-  
-  # The alternative, short-form of calling this method is by using a simple
-  # array of arguments. Arguments are expected in this order:
-  # 1. Fatal
-  # 2. Title
-  # 3. Title arguments (used when C<title> is a word key)
-  # 4. Message body
-  # 5. Message argumens (used when C<message> is a word key)
-  # 6. Error code. When C<message> is a C<error_####> word key and this is
-  #    blank, the digit from the key is used as the error code.
-  # 7. The name of the file triggering the error.
-  # 8. The line number from the file triggering the error.
-  $an->Alert->error(1, "Something went boom", "", "Details on what went boom", "", <some integer representing what went boom>, "$THIS_FILE", __LINE__);
 
 =head3 Details
 
@@ -192,19 +176,9 @@ This method takes several parameters.
 
 =head3 Parameters
 
-=head4 C<fatal>
-
-default: 1
-
-if 'no_fatal_errors' was set, this parameter is ignored, the error that would have been printed is set in '$an->error' and the method returns undef.
-
-If set to 1, an error string will be built using the other parameters and then be printed to STDOUT and the method terminate the calling program.
-
-If set to 0, the error will simply print to the error message to STDOUT and return undef.
-
 =head4 C<title>
 
-This is a short "Title" used for the alert message. If it's detected as a key, C<title_vars> will be consulted and the two will be used to translate the title. If the string is not a key, it will be recorded as-is.
+This is a short "Title" used for the alert message. If it is detected as a key, C<title_vars> will be consulted and the two will be used to translate the title. If the string is not a key, it will be recorded as-is.
 
 =head4 C<title_vars>
 
@@ -212,7 +186,7 @@ This is an array reference containing the arguments to feed into the C<title> st
 
 =head4 C<message>
 
-This is the alert message body. If it's detected as a key, C<message_vars> will be consulted and the two will be used to translate the title. If the string is not a key, it will be recorded as-is.
+This is the alert message body. If it is detected as a key, C<message_vars> will be consulted and the two will be used to translate the title. If the string is not a key, it will be recorded as-is.
 
 =head4 C<message_vars>
 

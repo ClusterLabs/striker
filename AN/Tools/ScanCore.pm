@@ -465,7 +465,7 @@ AND
 	return($target);
 }
 
-# This takes a node UUID and returns it's node (host) name.
+# This takes a node UUID and returns its node (host) name.
 sub get_node_name_from_node_uuid
 {
 	my $self      = shift;
@@ -2862,7 +2862,7 @@ WHERE
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 				
 				# This will happen whenever the virsh ID changes, disks are inserted/ejected,
-				# etc. So it's a notice-level event. It won't be sent until one of the nodes 
+				# etc. So it is a notice-level event. It won't be sent until one of the nodes
 				# scan though.
 				$an->Alert->register_alert({
 					alert_level		=>	"notice", 
@@ -6055,7 +6055,7 @@ sub target_power
 	return($state);
 }
 
-# This updates the server's stop_reason (if it's changed)
+# This updates the server's stop_reason (if it has changed)
 sub update_server_stop_reason
 {
 	my $self      = shift;

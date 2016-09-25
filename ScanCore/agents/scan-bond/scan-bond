@@ -72,7 +72,7 @@ my $an = AN::Tools->new({data =>
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			bond_uuid_query		=>	"",
 			# When a lock is requested, this is set to the time the lock was set. 
-			# DB->do_db_write() and DB->do_db_read() will check this and if it's age is >50% of
+			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
 			local_lock_active	=>	0,
 			sql			=>	[],
@@ -127,9 +127,9 @@ $an->Log->entry({ log_level => 2, message_key => "notice_message_0013", message_
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
 		uuid => $an->data->{sys}{host_uuid},
-	}, code => 255, file => "$THIS_FILE", line => __LINE__});
+	}, code => 255, file => $THIS_FILE, line => __LINE__});
 }
 
 # Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
@@ -397,7 +397,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'bond_interface_name' before, so it's just a question
+					# We've seen this 'bond_interface_name' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{bond_interface}{modified_date}{$modified_date}{bond_interface_name}{$bond_interface_name})
@@ -700,7 +700,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'bond_uuid' before, so it's just a question
+					# We've seen this 'bond_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{bond}{modified_date}{$modified_date}{bond_uuid}{$bond_uuid})
@@ -773,7 +773,7 @@ sub prep_databases
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='bond' AND schemaname='public';";
@@ -792,7 +792,7 @@ sub prep_databases
 			# Send an alert telling the user that we've initialized this database.
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"notice_message_0002",
 				alert_message_variables	=>	{
@@ -958,7 +958,7 @@ sub find_changes
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$alert_title_key,
 						alert_message_key	=>	$alert_message_key,
 						alert_message_variables	=>	$alert_message_variables,
@@ -978,7 +978,7 @@ sub find_changes
 					# Tell the user.
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0004",
 						alert_message_key	=>	"scan_bond_warning_0003",
 						alert_message_variables	=>	{
@@ -1028,7 +1028,7 @@ sub find_changes
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$alert_title_key,
 						alert_message_key	=>	$alert_message_key,
 						alert_message_variables	=>	$alert_message_variables,
@@ -1068,7 +1068,7 @@ sub find_changes
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$alert_title_key,
 						alert_message_key	=>	$alert_message_key,
 						alert_message_variables	=>	$alert_message_variables,
@@ -1117,7 +1117,7 @@ sub find_changes
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	"critical", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$alert_title_key,
 						alert_message_key	=>	$alert_message_key,
 						alert_message_variables	=>	$alert_message_variables,
@@ -1136,7 +1136,7 @@ sub find_changes
 					# Tell the user
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0004",
 						alert_message_key	=>	"scan_bond_warning_0014",
 						alert_message_variables	=>	{
@@ -1159,7 +1159,7 @@ sub find_changes
 					# Tell the user
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0004",
 						alert_message_key	=>	"scan_bond_warning_0015",
 						alert_message_variables	=>	{
@@ -1196,7 +1196,7 @@ sub find_changes
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	"critical", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$alert_title_key,
 						alert_message_key	=>	$alert_message_key,
 						alert_message_variables	=>	$alert_message_variables,
@@ -1307,11 +1307,11 @@ AND
 						#     what the fastest it was in the past. 
 						#     * If it is lower, then the network cable might be 
 						#       failing.
-						#     * If it is the same, it's returned to normal.
+						#     * If it is the same, it is returned to normal.
 						#     * If it is faster, the NIC was probably upgraded.
 						# * Link duplex has changed, this is a warning level alert.
 						#   * If the MII state is 'down', this will be 'unknown'.
-						#   * If the duplex is now 'full', then it's fine.
+						#   * If the duplex is now 'full', then it is fine.
 						#   * If the duplex is now 'half', then the cable is probably
 						#     failing.
 						# * Link failure count has changed.
@@ -1415,7 +1415,7 @@ AND
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	"warning", 
-								alert_agent_name	=>	"$THIS_FILE",
+								alert_agent_name	=>	$THIS_FILE,
 								alert_title_key		=>	$alert_title_key,
 								alert_message_key	=>	$alert_message_key,
 								alert_message_variables	=>	$alert_message_variables,
@@ -1428,7 +1428,7 @@ AND
 						#     what the fastest it was in the past. 
 						#     * If it is lower, then the network cable might be 
 						#       failing.
-						#     * If it is the same, it's returned to normal.
+						#     * If it is the same, it is returned to normal.
 						#     * If it is faster, the NIC was probably upgraded.
 						if ($new_bond_interface_speed ne $old_bond_interface_speed)
 						{
@@ -1531,7 +1531,7 @@ LIMIT 1
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	$alert_level, 
-								alert_agent_name	=>	"$THIS_FILE",
+								alert_agent_name	=>	$THIS_FILE,
 								alert_title_key		=>	$alert_title_key,
 								alert_message_key	=>	$alert_message_key,
 								alert_message_variables	=>	$alert_message_variables,
@@ -1540,7 +1540,7 @@ LIMIT 1
 						
 						# * Link duplex has changed, this is a warning level alert.
 						#   * If the MII state is 'down', this will be 'unknown'.
-						#   * If the duplex is now 'full', then it's fine.
+						#   * If the duplex is now 'full', then it is fine.
 						#   * If the duplex is now 'half', then the cable is probably
 						#     failing.
 						if ($new_bond_interface_duplex ne $old_bond_interface_duplex)
@@ -1590,7 +1590,7 @@ LIMIT 1
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	$alert_level, 
-								alert_agent_name	=>	"$THIS_FILE",
+								alert_agent_name	=>	$THIS_FILE,
 								alert_title_key		=>	$alert_title_key,
 								alert_message_key	=>	$alert_message_key,
 								alert_message_variables	=>	$alert_message_variables,
@@ -1629,7 +1629,7 @@ LIMIT 1
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	"warning", 
-								alert_agent_name	=>	"$THIS_FILE",
+								alert_agent_name	=>	$THIS_FILE,
 								alert_title_key		=>	$alert_title_key,
 								alert_message_key	=>	$alert_message_key,
 								alert_message_variables	=>	$alert_message_variables,
@@ -1648,7 +1648,7 @@ LIMIT 1
 							# Tell the user
 							$an->Alert->register_alert({
 								alert_level		=>	"notice", 
-								alert_agent_name	=>	"$THIS_FILE",
+								alert_agent_name	=>	$THIS_FILE,
 								alert_title_key		=>	"an_alert_title_0003",
 								alert_message_key	=>	"scan_bond_warning_0038",
 								alert_message_variables	=>	{
@@ -1675,7 +1675,7 @@ LIMIT 1
 							# Tell the user
 							$an->Alert->register_alert({
 								alert_level		=>	"notice", 
-								alert_agent_name	=>	"$THIS_FILE",
+								alert_agent_name	=>	$THIS_FILE,
 								alert_title_key		=>	"an_alert_title_0003",
 								alert_message_key	=>	"scan_bond_warning_0039",
 								alert_message_variables	=>	{
@@ -1745,7 +1745,7 @@ WHERE
 					# Create the alert
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_bond_warning_0040",
 						alert_message_variables	=>	{
@@ -1803,7 +1803,7 @@ INSERT INTO
 				# Iz gone back to itz peoples...
 				$an->Alert->register_alert({
 					alert_level		=>	"warning", 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_title_key		=>	"an_alert_title_0004",
 					alert_message_key	=>	"scan_bond_warning_0041",
 					alert_message_variables	=>	{
@@ -1846,9 +1846,9 @@ WHERE
 		}
 		else
 		{
-			### It's a new bond, INSERT it and all its slaved interfaces.
+			### It is a new bond, INSERT it and all its slaved interfaces.
 			# Generate a new UUID for this bond.
-			my $new_bond_uuid = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
+			my $new_bond_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});;
 			
 			# Mode
 			my $say_new_bond_mode = "#!string!scan_bond_mode_${new_bond_mode}!#";
@@ -1864,7 +1864,7 @@ WHERE
 			# Tell 
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"scan_bond_warning_0042",
 				alert_message_variables	=>	{
@@ -1952,7 +1952,7 @@ INSERT INTO
 				# Create the alert
 				$an->Alert->register_alert({
 					alert_level		=>	"notice", 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"scan_bond_warning_0040",
 					alert_message_variables	=>	{
@@ -2010,7 +2010,7 @@ INSERT INTO
 		my $bond_uuid = $an->data->{sql}{$bond_name}{bond_uuid};
 		$an->Alert->register_alert({
 			alert_level		=>	"warning", 
-			alert_agent_name	=>	"$THIS_FILE",
+			alert_agent_name	=>	$THIS_FILE,
 			alert_title_key		=>	"an_alert_title_0004",
 			alert_message_key	=>	"scan_bond_warning_0043",
 			alert_message_variables	=>	{
@@ -2324,7 +2324,7 @@ sub parse_bonds
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => "$shell_call", 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+				open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 				while(<$file_handle>)
 				{
 					chomp;
@@ -2524,7 +2524,7 @@ sub convert_to_bps
 	return($speed);
 }
 
-# This translates the reselect policy name to it's numerical equivalent.
+# This translates the reselect policy name to its numerical equivalent.
 sub translate_reselect_policy_name_to_number
 {
 	my ($an, $reselect_name) = @_;
@@ -2548,7 +2548,7 @@ sub translate_reselect_policy_name_to_number
 	return($reselect_number);
 }
 
-# This translates the bond mode name to it's numberical equivalent.
+# This translates the bond mode name to its numberical equivalent.
 sub translate_mode_name_to_number
 {
 	my ($an, $mode_name) = @_;

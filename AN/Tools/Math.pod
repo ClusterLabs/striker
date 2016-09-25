@@ -6,7 +6,7 @@
 
 AN::Tools::Math
 
-This is the mathmatical (and general number-based methods) module in the AN::Tools suite. Please do not directly access it, but instead access it's methods via the parent AN::Tools module. The methods provided by this method are described below.
+This is the mathmatical (and general number-based methods) module in the AN::Tools suite. Please do not directly access it, but instead access its methods via the parent AN::Tools module. The methods provided by this method are described below.
 
 =head1 SYNOPSIS
 
@@ -54,13 +54,13 @@ Below are the detailed usage instructions for the methods provided by this modul
 
 =head3 Details
 
-Takes a number (signed float) with an arbitrary number of digits after the decimal place and a number of places after the decimal to round it to (default is '0') and return a properly rounded value. This methods works by looking at each digit, from least significant and working back, and deciding whether the preceding value needs to be incremented or not. As such, it's probably quite slow compared to 'ceil' or 'floor', or other types of rounding/truncating functions, but it is financially accurate and it has no limit on the number of places after the decimal you give it.
+Takes a number (signed float) with an arbitrary number of digits after the decimal place and a number of places after the decimal to round it to (default is '0') and return a properly rounded value. This methods works by looking at each digit, from least significant and working back, and deciding whether the preceding value needs to be incremented or not. As such, it is probably quite slow compared to 'ceil' or 'floor', or other types of rounding/truncating functions, but it is financially accurate and it has no limit on the number of places after the decimal you give it.
 
 =head3 Parameters
 
 =head4 C<number>
 
-This can be any signed real number. It may have commas, however, the returned rounded number will have it's commas removed. It may contain one period denoting the decimal place and may contain a sign at the beginning of the number; (-) to denote negative number and (+) or no prefix to denote a positive number. Any other character found in this paramete will trigger a fatal error.
+This can be any signed real number. It may have commas, however, the returned rounded number will have its commas removed. It may contain one period denoting the decimal place and may contain a sign at the beginning of the number; (-) to denote negative number and (+) or no prefix to denote a positive number. Any other character found in this paramete will trigger a fatal error.
 
 =head4 C<places>
 

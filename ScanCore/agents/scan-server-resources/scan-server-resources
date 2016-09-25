@@ -100,7 +100,7 @@ $an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
 }
 
 print $an->String->get({key => "scan_server_resources_message_0001"})."\n";

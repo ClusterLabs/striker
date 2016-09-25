@@ -56,7 +56,7 @@ my $an = AN::Tools->new({data => {
 		sys		=>	{
 			language	=>	"en_CA",
 			log_language	=>	"en_CA",
-			log_level	=>	1,
+			log_level	=>	2,
 		},
 	},
 });
@@ -118,7 +118,7 @@ if ($connections)
 }
 else
 {
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "abs_error_0002", code => 2, file => "$THIS_FILE", line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "abs_error_0002", code => 2, file => $THIS_FILE, line => __LINE__});
 	$an->nice_exit({exit_code => 2});
 }
 

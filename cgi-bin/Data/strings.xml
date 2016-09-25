@@ -119,76 +119,7 @@
 #                                                                             #
 ###############################################################################
 		</key>
-		<key name="text_0002">
-### Global - These values apply to all #!string!brand_0004!# systems, unless overridden.
-
-# This configures how email is sent from this machine. Please be sure to set
-# the values below to the values given to you by your mail administrator (if
-# that's not you).
-#
-# This is the mail server to connect to when sending email.
-smtp::server				=	#!variable!smtp__server!#
-
-# This is the TCP port used to connect to the mail server.
-smtp::port				=	#!variable!smtp__port!#
-
-# This is the email address/IMAP user to send to the mail server. It is also
-# the address used in the 'From: ' field for emails sent from this machine.
-# NOTE: If you IMAP user name is not an email address, this may not work (it
-# has not been tested). If you have trouble, please let us know:
-# - #!string!brand_0012!#
-smtp::username				=	#!variable!smtp__username!#
-
-# This is the password used for the email account above. This can be the
-# password directly, or a file that contains the password.
-#smtp::password				=	file:./email_pw.txt
-smtp::password				=	#!variable!smtp__password!#
-
-# This is the security level to use when connecting to the peer, if needed.
-smtp::security				=	#!variable!smtp__security!#
-
-# This tells us to use an encrypted connection to the mail server. Set to '0'
-# to send email plain-text (not recommended!).
-smtp::encrypt_pass			=	#!variable!smtp__encrypt_pass!#
-
-# This is the domain given to the mail server when establishing the connection.
-smtp::helo_domain			=	#!variable!smtp__helo_domain!#
-
-# This is a comma-separated list of email recipients. Please use bare email
-# addresses only.
-mail_data::to				=	#!variable!mail_data__to!#
-
-# This sets the 'sending domain' when sending email. It should match
-# smtp::server in most cases.
-mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
-
-
-### Per-#!string!brand_0004!# Configurations
-
-# This defines each #!string!brand_0004!#. If you want to defined multiple #!string!brand_0004!#s in #!string!brand_0002!#,
-# copy an entry in this section and increment the variable integer. The order
-# and value do not matter. It's simply a differentiator. If only one entry
-# exists, #!string!brand_0002!#'s #!string!brand_0004!# selection screen will not show and the sole entry
-# will be auto-selected.
-#
-# name:        Must match the name set in the #!string!brand_0004!#'s 'cluster.conf' file. 
-# nodes:       A comma-separated list of nodes. On the #!string!brand_0002!# server, this must
-#              be resolvable to the target machine (ie: via /etc/hosts +
-#              /etc/ssh/ssh_config)
-# company:     A free-form field used to show the owner of the #!string!brand_0004!#. 
-#              Particularly useful for resellers and companies with divisions.
-# description: Also a free-form field used to describe the purpose of the
-#              particular #!string!brand_0004!#.
-# url:         If defined, a link to the given URL will be shown beside the
-#              #!string!brand_0004!#'s name in the Dashboard's #!string!brand_0004!# selection screen. Useful
-#              for linking to internal documentation or similar.
-# ricci_pw:    This is the password used by the 'ricci' user on the #!string!brand_0004!#'s
-#              nodes. It must be set accurately in order to add or remove
-#              servers. If the 'root_pw' is not set below, this password will
-#              be used.
-# root_pw:     This password is used by the dashboard to log into this #!string!brand_0004!#'s
-#              nodes.
-		</key>
+		<key name="text_0002">...free...</key>
  		<!-- TODO: text_0003 with '[#!variable!date!#' breaks an-cluster.lib... Fix it. -->
 		<key name="text_0003">### Last updated: #!variable!date!#</key> <!-- This string is used in a regex. Please leave the variable in square-brackets. -->
 		<key name="text_0004">
@@ -231,7 +162,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0012"><![CDATA[When connecting to the mail server address above, a specific "port" number must be specified.<br />Your ISP should mention what this port number along with the address.<br />Typically, this is "25" for unencrypted connections and "587" for encrypted connections.]]></key>
 		<key name="explain_0013">Edit, add or delete #!string!brand_0003!# owners.</key>
 		<key name="explain_0014"><![CDATA[Some mail server require a user name and password. Usually, the user name will be you email address.<br /> Some ISPs do not require authentication, and in those cases, this can be left blank.<br /> Please check the information given to you by your ISP to see if this is needed and, if so, what user name to user here.]]></key>
-		<key name="explain_0015"><![CDATA[If you entered a user name above, please enter it's password here.]]></key>
+		<key name="explain_0015"><![CDATA[If you entered a user name above, please enter its password here.]]></key>
 		<key name="explain_0016"><![CDATA[This controls how, if at all, to encrypt the email traffic between you and the mail server.<br />As with the other mail settings, which to use will depends on your Internet service provider.<br />If in doubt, try 'STARTTLS'. If that doesn't work, try 'SSL/TLS'. If that still doesn't work, try 'None'.]]></key>
 		<key name="explain_0017"><![CDATA[This controls whether your password is sent to the mail server in plain text or encrypted.<br />Most modern mail servers support encrypted passwords, so 'Yes' should work here.]]></key>
 		<key name="explain_0018"><![CDATA[This is the person or list of people who will get alert emails. Please enter just the email address. <br />Separate multiple email addresses with a comma please.<br />Example: '<span class="fixed_width">foo@example.com, bar@example.com</span>'.]]></key>
@@ -240,7 +171,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0021">The server is shut off.</key>
 		<key name="explain_0022">I am sorry, but without this information, I can not continue.</key>
 		<key name="explain_0023">Configure mail server(s) to use when sending alert emails.</key>
-		<key name="explain_0024"><![CDATA[This can be whatever you want, but it must be unique.<br />It's good to keep this short.]]></key>
+		<key name="explain_0024"><![CDATA[This can be whatever you want, but it must be unique.<br />It is good to keep this short.]]></key>
 		<key name="explain_0025"><![CDATA[This fine-tunes the hypervisor for your operating system.<br />If your OS is not listed, choose the one that is the closest match.]]></key>
 		<key name="explain_0026"><![CDATA[This will open a new window where you can upload new disc images.<br />Once finished, please reload this page to see them.]]></key>
 		<key name="explain_0027">You server will boot and install of this disc.</key>
@@ -300,9 +231,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0080"><![CDATA[This is the host name for the second <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.]]></key>
 		<key name="explain_0081"><![CDATA[The IP address of the second switched PDU.<br />This is the other part of the backup fence method, so making sure this is right is also very important.<br />Also carefully note which outlet powers which node, you will need to enter that information further below.]]></key>
 		<key name="explain_0082"><![CDATA[This is the host name for the first network switch.<br />If you manage your switches using a serial interface, or if your switches are unmanaged, you can leave this blank.]]></key>
-		<key name="explain_0083"><![CDATA[The IP address of the first network switch.<br />This isn't very important and can safely be left blank.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.]]></key>
+		<key name="explain_0083"><![CDATA[The IP address of the first network switch.<br />This isn't very important and can safely be left blank.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using its host name.]]></key>
 		<key name="explain_0084"><![CDATA[This is the host name for the second network switch.<br />It may only be useful if you break the switch stack, and can often be safely omitted.]]></key>
-		<key name="explain_0085"><![CDATA[The IP address of the second network switch.<br />This isn't very important and can safely be left blank, particularly in stacked switch environments.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.]]></key>
+		<key name="explain_0085"><![CDATA[The IP address of the second network switch.<br />This isn't very important and can safely be left blank, particularly in stacked switch environments.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using its host name.]]></key>
 		<key name="explain_0086"><![CDATA[This is the host name for the first <a href="https://alteeve.ca/w/Striker" target="_new">#!string!brand_0002!#</a> dashboard.<br />This name, along with the IP addresses below, is used to populate each node's "<span class="code">/etc/hosts</span>" file.<br />It serves no other purpose and can be left blank if you prefer not to set it.]]></key>
 		<key name="explain_0087"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="#!string!url_0005!#" target="_new">#!string!brand_0005!#</a> connection.]]></key>
 		<key name="explain_0088"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="#!string!url_0007!#" target="_new">#!string!brand_0009!#</a> connection.]]></key>
@@ -1482,9 +1413,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0032"><![CDATA[The passed byte size <span class="fixed_width">#!variable!size!#</span> in the string: [sign: <span class="fixed_width">#!variable!sign!#</span>, size: <span class="fixed_width">#!variable!size!#</span>, type: <span class="fixed_width">#!variable!type!#</span>] contains an illegal value.<br />Sizes can only be integers or real numbers. It may also have commas in it which will be removed automatically.<br />This is probably a program error (<span class="fixed_width">#!variable!file!#</span>, line <span class="fixed_width">#!variable!line!#</span>)]]></key>
 		<key name="message_0033"><![CDATA[The passed size: <span class="fixed_width">#!variable!size!#</span>, type: <span class="fixed_width">#!variable!type!#</span> is not recognized.<br />Either an invalid size type was passed or I failed to properly parse the size type.<br />Valid size types are: '<span class="fixed_width">b</span>', '<span class="fixed_width">k</span>', '<span class="fixed_width">m</span>', '<span class="fixed_width">g</span>', '<span class="fixed_width">t</span>', '<span class="fixed_width">p</span>', '<span class="fixed_width">e</span>', '<span class="fixed_width">z</span>' or '<span class="fixed_width">y</span>'.<br />This is probably a program error (<span class="fixed_width">#!variable!file!#</span>, line <span class="fixed_width">#!variable!line!#</span>)]]></key>
 		<key name="message_0034"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, but it is reported as being powered on.<br />If you just powered on this system, please wait a moment for it to boot.<br />If you just powered off this node, it might still be shutting down.<br /> Otherwise, the node may have crashed.]]></key>
-		<key name="message_0035"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The out of band management interface's address, user name or password may have changed since it was last cached.<br />Please manually check the Anvil's cluster and update the cluster's fencing information if needed.<br />]]></key>
-		<key name="message_0036"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />The machine running the dashboard is not on the same subnet as the out of band management, so the node's current state is unknown.<br />]]></key>
-		<key name="message_0037"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact it's out of band management interface to determine it's current power state.<br />Please check the network connections between this machine and the nodes.<br />If the power feeding the node was cut at the PDUs, fencing the node may restore access.<br />]]></key>
+		<key name="message_0035"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact its out of band management interface to determine its current power state.<br />The out of band management interface's address, user name or password may have changed since it was last cached.<br />Please manually check the Anvil's cluster and update the cluster's fencing information if needed.<br />]]></key>
+		<key name="message_0036"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact its out of band management interface to determine its current power state.<br />The machine running the dashboard is not on the same subnet as the out of band management, so the node's current state is unknown.<br />]]></key>
+		<key name="message_0037"><![CDATA[I was unable to talk to: <span class="fixed_width">#!variable!node!#</span>, nor can I contact its out of band management interface to determine its current power state.<br />Please check the network connections between this machine and the nodes.<br />If the power feeding the node was cut at the PDUs, fencing the node may restore access.<br />]]></key>
 		<key name="message_0038"><![CDATA[Host name <span class="highlight_detail">#!variable!node!#</span> does not resolve to an IP address.]]></key>
 		<key name="message_0039"><![CDATA[Connection to <span class="highlight_detail">#!variable!node!#</span> on port <span class="highlight_detail">#!variable!port!#</span> as the user <span class="highlight_detail">#!variable!user!#</span> was refused.<br />If you recently booted this server, it may be just about finished booting.<br />It is normal for the connection to be refused for a brief time during the boot process.]]></key>
 		<key name="message_0040"><![CDATA[No route to: <span class="highlight_detail">#!variable!node!#</span>.<br />Is the machine in the process of booting up or powering off?<br />Is this dashboard server on the same network?]]></key>
@@ -1494,7 +1425,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0044"><![CDATA[One of more of the storage daemons are running on <span class="fixed_width">#!variable!node!#</span> while the #!string!brand_0003!#'s cluster is down.<br />#!string!brand_0011!#]]></key>
 		<key name="message_0045"><![CDATA[The logical volume <span class="fixed_width">#!variable!lv!#</span> on node <span class="highlight_detail">#!variable!node!#</span> is inactive.<br />The system will likely activate the LV shortly. If not, please <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
 		<key name="message_0046"><![CDATA[There was a problem when scanning the storage. The nodes report different sizes and/or volume groups for the logical volume <span class="fixed_width">#!variable!lv!#</span>. Saw sizes <span class="fixed_width">#!variable!size!#</span> vs. <span class="fixed_width">#!variable!bytes!#</span> and the backing volume group is <span class="fixed_width">#!variable!vg_1!#</span> vs. <span class="fixed_width">#!variable!vg_2!#</span>.]]></key>
-		<key name="message_0047"><![CDATA[I was asked to check the power staus of <span class="fixed_width">#!variable!node!#</span> via it's peer <span class="fixed_width">#!variable!peer!#</span>, but the power check command is empty.<br />This is likely a program error.]]></key>
+		<key name="message_0047"><![CDATA[I was asked to check the power staus of <span class="fixed_width">#!variable!node!#</span> via its peer <span class="fixed_width">#!variable!peer!#</span>, but the power check command is empty.<br />This is likely a program error.]]></key>
 		<key name="message_0048"><![CDATA[I was trying to resolve the host name <span class="fixed_width">#!variable!target_host!#</span> but was unable to do so.<br />Is this a valid host name? If so, do you have an entry in DNS or in your <span class="fixed_width">/etc/hosts</span> file?]]></key>
 		<key name="message_0049">I was trying to resolve a host name, but no name was given. This is likely a program error.</key>
 		<key name="message_0050"><![CDATA[Failed to write <span class="fixed_width">#!variable!cache_file!#</span> as UID <span class="fixed_width">#!variable!uid!#</span>.<br />The error was: <span class="fixed_width">#!variable!errer!#</span>]]></key>
@@ -1633,9 +1564,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0170">The server will have no chance to react and will be instantly turned off. A moment later, the #!string!brand_0003!# will restart this server.</key>
 		<key name="message_0171">This should be done as a last resort, when all other attempts to gain control of the server have failed.</key>
 		<key name="message_0172">This is a permanent and irreversable action!</key>
-		<key name="message_0173">The server, along with all of it's data, will be deleted.</key>
+		<key name="message_0173">The server, along with all of its data, will be deleted.</key>
 		<key name="message_0174">It will be removed from the #!string!brand_0003!#'s management and forced off, if necessary.</key>
-		<key name="message_0175">The definition file will be deleted and it's backing storage will be removed.</key>
+		<key name="message_0175">The definition file will be deleted and its backing storage will be removed.</key>
 		<key name="message_0176">Ensure you have backed up any data on the machine before proceeding!</key>
 		<key name="message_0177"><![CDATA[The server named <span class="highlight_detail">#!variable!server!#</span> will be <span class="highlight_dangerous">cold migrated</span> to the node <span class="highlight_detail">#!variable!target!#</span>.<br />Cold migration means that the server will be gracefully <span class="highlight_dangerous">shut down</span>, then rebooted on the target node.]]></key>
 		<key name="message_0178"><![CDATA[The server named <span class="highlight_detail">#!variable!server!#</span> will be <span class="highlight_dangerous"><b>destroyed and deleted!</b></span>]]></key>
@@ -1660,7 +1591,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0197">The server has been successfully removed.</key>
 		<key name="message_0198"><![CDATA[The removal call should have exited with exit code <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!ccs_exit_code!#</span> was received.]]></key>
 		<key name="message_0199">The server has been forced off.</key>
-		<key name="message_0200"><![CDATA[The call to destroy the server should have exited with exit code '<span class="fixed_width">0</span>', but '<span class="fixed_width">#!variable!virsh_exit_code!#</span>' was received instead.<br />Is it possible that the server shut down on it's own?<br />Proceeding with the delete process.]]></key>
+		<key name="message_0200"><![CDATA[The call to destroy the server should have exited with exit code '<span class="fixed_width">0</span>', but '<span class="fixed_width">#!variable!virsh_exit_code!#</span>' was received instead.<br />Is it possible that the server shut down on its own?<br />Proceeding with the delete process.]]></key>
 		<key name="message_0201"><![CDATA[Deleting <span class="fixed_width">#!variable!lv!#</span>...]]></key>
 		<key name="message_0202">Removed successfully</key>
 		<key name="message_0203"><![CDATA[The '<span class="highlight_detail">#!string!row_0282!#</span>' must be a digit (was passed: [<span class="fixed_width">#!variable!value!#</span>].) By default, this is '<span class="fixed_width">1</span>'.]]></key>
@@ -1678,7 +1609,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0215"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but the command to do so was not found in the cache. Manual power up is required.]]></key>
 		<key name="message_0216"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but it appears to already be running. Start up aborted.]]></key>
 		<key name="message_0217"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but I am not able to log into the taget node's out of band management interface <span class="fixed_width">#!variable!target_host!#</span>.<br />Please check to see if the address, user or password has changed. Unable to continue.]]></key>
-		<key name="message_0218"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but I am not on the same subnet as it's out of band management interface at <span class="fixed_width">#!variable!target_host!#</span>.<br />Please restore access to the target subnet. Unable to continue.]]></key>
+		<key name="message_0218"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but I am not on the same subnet as its out of band management interface at <span class="fixed_width">#!variable!target_host!#</span>.<br />Please restore access to the target subnet. Unable to continue.]]></key>
 		<key name="message_0219"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but I don't have a recorded method of checking or changing the power state for <span class="fixed_width">#!variable!target_host!#</span>.<br />Please restore access to the target subnet. Unable to continue.]]></key>
 		<key name="message_0220"><![CDATA[I will now try to power on both nodes in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="message_0221">It may take a few minutes before the dashboard can log into either node.</key>
@@ -1687,12 +1618,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0224"><![CDATA[An unknown error has occured. Is <span class="fixed_width">#!variable!node!#</span>'s IPMI interface reachable?]]></key>
 		<key name="message_0225"><![CDATA[The node <span class="fixed_width">#!variable!node_name!#</span> is already reported as being powered up.]]></key>
 		<key name="message_0226"><![CDATA[The node <span class="fixed_width">#!variable!node_name!#</span>'s out of band management interface is currently unreachable.]]></key>
-		<key name="message_0227"><![CDATA[I was asked to power on #!variable!node!# via it's peer #!variable!peer!#, but the power command is empty.<br />This is likely a program error.]]></key>
+		<key name="message_0227"><![CDATA[I was asked to power on #!variable!node!# via its peer #!variable!peer!#, but the power command is empty.<br />This is likely a program error.]]></key>
 		<key name="message_0228"><![CDATA[I wasn't able to find the command needed to power on <span class="fixed_width">#!variable!node_name!#</span>.]]></key>
 		<key name="message_0229">Either this node has not been seen before or the cache for this node was deleted.</key>
 		<key name="message_0230">You can not power on the node from the dashboard at this time.</key>
 		<key name="message_0231">Unable to determine the commands needed to fence #!variable!node!#. One of the nodes need to be accessible or the cache file must exist with the correct command.</key>
-		<key name="message_0232"><![CDATA[Trying to fence <span class="fixed_width">#!variable!node!#</span>, but it's peer, <span class="fixed_width">#!variable!peer!#</span>, is also offline and the fence device at <span class="fixed_width">#!variable!address!#</span> is not accessible from this machine.<br />Unable to proceed with fence action.]]></key>
+		<key name="message_0232"><![CDATA[Trying to fence <span class="fixed_width">#!variable!node!#</span>, but its peer, <span class="fixed_width">#!variable!peer!#</span>, is also offline and the fence device at <span class="fixed_width">#!variable!address!#</span> is not accessible from this machine.<br />Unable to proceed with fence action.]]></key>
 		<key name="message_0233"><![CDATA[I will now attempt to fence <span class="fixed_width">#!variable!node_name!#</span>.]]></key>
 		<key name="message_0234"><![CDATA[Fencing using the <span class="fixed_width">#!variable!method_name!#</span> method succeeded. Proceeding with unfence action.]]></key>
 		<key name="message_0235"><![CDATA[Fencing using the <span class="fixed_width">#!variable!method_name!#</span> method failed. Will try next method, if available.]]></key>
@@ -1811,7 +1742,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0348"><![CDATA[Failed to delete the manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].<br />It does not appear to exist. Did someone else delete it already?]]></key>
 		<key name="message_0349"><![CDATA[Successfully deleted the install manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].]]></key>
 		<key name="message_0350"><![CDATA[Failed to load the manifest file: [<span class="code"><span class="highlight_ready">#!variable!manifest_file!#</span></span>].<br />Was it deleted, perhaps?]]></key>
-		<key name="message_0351"><![CDATA[Please <b>carefully</b> review the information below.<br />If you are happy with the values, enter the current IP address and password for the nodes below.<br />If this is being run to replace a lost node, enter the healthy node's IP.<br />It's data will be used to populate the other node (overriding manifest values as needed).]]></key>
+		<key name="message_0351"><![CDATA[Please <b>carefully</b> review the information below.<br />If you are happy with the values, enter the current IP address and password for the nodes below.<br />If this is being run to replace a lost node, enter the healthy node's IP.<br />Its data will be used to populate the other node (overriding manifest values as needed).]]></key>
 		<key name="message_0352"><![CDATA[&lt;prompt&gt;]]></key>
 		<key name="message_0353">Script?</key>
 		<key name="message_0354"><![CDATA[[ <span class="highlight_bad_bold">Error</span> ] - ]]></key>
@@ -2284,7 +2215,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0236">The server: [#!variable!server!#] appears to be off. Checking the peer to see if it is running there.</key>
 		<key name="log_0237">The server: [#!variable!server!#] is running.</key>
 		<key name="log_0238">Looking for the server: [#!variable!server!#] on the peer node: [#!variable!peer!#].</key>
-		<key name="log_0239">Found the server: [#!variable!server!#] on the peer: [#!variable!peer!#]. Checking if it's running.</key>
+		<key name="log_0239">Found the server: [#!variable!server!#] on the peer: [#!variable!peer!#]. Checking if it is running.</key>
 		<key name="log_0240">It is not running on the peer.</key>
 		<key name="log_0241">I did not find it on the peer node.</key>
 		<key name="log_0242">The file: [#!variable!file!#] has been archived as: [#!variable!destination!#].</key>
@@ -3330,7 +3261,7 @@ DESCRIPTION
 
 This program boots the requested server. It uses the logic in 
 AN::Tools::Cman->boot_server() to determine where, and if, to actually boot 
-the server. It does nothing more on it's own.
+the server. It does nothing more on its own.
 
 
 SWITCHES
@@ -3420,7 +3351,7 @@ SWITCHES
  --signature <string>
 
 	When set, only drives with a file in the root of the disk with this 
-	string as it's name will be reported.
+	string as its name will be reported.
 
  --no-mount
  

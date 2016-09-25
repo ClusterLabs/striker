@@ -55,7 +55,7 @@ my $an = AN::Tools->new({data =>
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			host_uuid_query		=>	"",
 			# When a lock is requested, this is set to the time the lock was set. 
-			# DB->do_db_write() and DB->do_db_read() will check this and if it's age is >50% of
+			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
 			local_lock_active	=>	0,
 			sql			=>	[],
@@ -69,7 +69,7 @@ my $an = AN::Tools->new({data =>
 			log_language		=>	"en_CA",
 			log_db_transactions	=>	0,
 			# CSV of UPSes to scan. If set, /etc/hosts will not be processed. If not set, hosts
-			# will be searched for any entry with 'ups' in it's name and added to this.
+			# will be searched for any entry with 'ups' in its name and added to this.
 			upses			=>	"",
 			# Once parsed, the UPSes will be scanned using this hash where the key is the UPS 
 			# name and the value is the IP address.
@@ -231,9 +231,9 @@ find_upses($an);
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
 		uuid => $an->data->{sys}{host_uuid},
-	}, code => 255, file => "$THIS_FILE", line => __LINE__});
+	}, code => 255, file => $THIS_FILE, line => __LINE__});
 }
 
 # Gather details on UPSes. Returns '1' if no UPSes were found.
@@ -509,7 +509,7 @@ sub find_changes
 	my $id        = $an->data->{sys}{read_db_id};
 	my $host_name = $an->hostname;
 	
-	# If a UPS crosses it's shutdown threshold, it will be added to this array. If both/all UPSes need 
+	# If a UPS crosses its shutdown threshold, it will be added to this array. If both/all UPSes need 
 	# to be shutdown, the Anvil! will be stopped.
 	my $shutdown_ups = [];
 	foreach my $ups_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-ups'}{ups}})
@@ -814,7 +814,7 @@ sub find_changes
 					# This is a 'notice' level alert.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0001",
 						alert_message_variables	=>	{
@@ -836,7 +836,7 @@ sub find_changes
 					# This is a 'notice' level alert.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0002",
 						alert_message_variables	=>	{
@@ -858,7 +858,7 @@ sub find_changes
 					# This is a 'notice' level alert.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0003",
 						alert_message_variables	=>	{
@@ -880,7 +880,7 @@ sub find_changes
 					# This is a 'notice' level alert.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0004",
 						alert_message_variables	=>	{
@@ -902,7 +902,7 @@ sub find_changes
 					# This is a 'notice' level alert.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0005",
 						alert_message_variables	=>	{
@@ -930,7 +930,7 @@ sub find_changes
 					### (* == warning, rest are notice):
 					# *1 - The UPS's health is in an unknown state.
 					#  2 - The UPS is operating normally.
-					# *3 - The UPS is running on it's batteries. It is likely that the input power feeding the UPS has failed.
+					# *3 - The UPS is running on its batteries. It is likely that the input power feeding the UPS has failed.
 					#  4 - The UPS is compensating for low input power.
 					#  5 - The UPS is in a timed sleep. It will power back on when the timer has expired.
 					#  6 - The UPS is in bypass-mode and was placed in this mode by software. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.
@@ -942,7 +942,7 @@ sub find_changes
 					#  12 - The UPS is compensating for high input voltage.
 					#  13 - The UPS is operating in low-power mode. In this mode, the UPS is in static bypass mode and it is drawing very little power. If a fault is detected, it will switch to either normal operation or forced static bypass mode.
 					#  14 - The UPS is operating in hot-standby mode.
-					#  15 - The UPS is performing a test of it's batteries.
+					#  15 - The UPS is performing a test of its batteries.
 					# *16 - The UPS has been placed in emergency static bypass mode. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.
 					#  17 - The UPS is in static bypass standby mode. It is not currently providing power to downstream devices.
 					#  18 - The UPS is in power saving mode. The front panel display will be off but the UPS is operating normally.
@@ -976,7 +976,7 @@ sub find_changes
 					
 					$an->Alert->register_alert({
 						alert_level		=>	$level, 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	"scan_apc_ups_note_0006",
 						alert_message_variables	=>	{
@@ -1004,7 +1004,7 @@ sub find_changes
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
@@ -1032,7 +1032,7 @@ sub find_changes
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
@@ -1095,7 +1095,7 @@ sub find_changes
 					
 					$an->Alert->register_alert({
 						alert_level		=>	$level, 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	"scan_apc_ups_note_0011",
 						alert_message_variables	=>	{
@@ -1118,7 +1118,7 @@ sub find_changes
 					# happen and it probably a sign of a bigger problem.
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0004",
 						alert_message_key	=>	"scan_apc_ups_note_0012",
 						alert_message_variables	=>	{
@@ -1141,7 +1141,7 @@ sub find_changes
 					# happen and it probably a sign of a bigger problem.
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0004",
 						alert_message_key	=>	"scan_apc_ups_note_0013",
 						alert_message_variables	=>	{
@@ -1163,7 +1163,7 @@ sub find_changes
 					# This should not impact the user at all.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0014",
 						alert_message_variables	=>	{
@@ -1185,7 +1185,7 @@ sub find_changes
 					# This is a 'notice' level alert.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0015",
 						alert_message_variables	=>	{
@@ -1209,7 +1209,7 @@ sub find_changes
 					# likely already know about it.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0016",
 						alert_message_variables	=>	{
@@ -1233,7 +1233,7 @@ sub find_changes
 					# likely already know about it.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0017",
 						alert_message_variables	=>	{
@@ -1311,7 +1311,7 @@ AND
 					# likely already know about it.
 					$an->Alert->register_alert({
 						alert_level		=>	"info", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_apc_ups_note_0018",
 						alert_message_variables	=>	{
@@ -1353,7 +1353,7 @@ AND
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	$level, 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
@@ -1377,7 +1377,7 @@ AND
 					# likely already know about it.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0021",
 						alert_message_variables	=>	{
@@ -1468,7 +1468,7 @@ AND
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	$level, 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
@@ -1491,7 +1491,7 @@ AND
 					# likely already know about it.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0027",
 						alert_message_variables	=>	{
@@ -1535,7 +1535,7 @@ AND
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	$level, 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
@@ -1715,7 +1715,7 @@ AND
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	$level, 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
@@ -1740,7 +1740,7 @@ AND
 					# likely already know about it.
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0037",
 						alert_message_variables	=>	{
@@ -1764,7 +1764,7 @@ AND
 					# fluctuating.
 					$an->Alert->register_alert({
 						alert_level		=>	"info", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_apc_ups_note_0038",
 						alert_message_variables	=>	{
@@ -1839,7 +1839,7 @@ WHERE
 					# fluctuating.
 					$an->Alert->register_alert({
 						alert_level		=>	"info", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_apc_ups_note_0039",
 						alert_message_variables	=>	{
@@ -1862,7 +1862,7 @@ WHERE
 					# change
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0040",
 						alert_message_variables	=>	{
@@ -1920,7 +1920,7 @@ WHERE
 							});
 							if ($cleared)
 							{
-								# It's over the clear low-transfer level, 
+								# It is over the clear low-transfer level, 
 								# clear the alert if needed.
 								$level       = "warning";
 								$title_key   = "an_alert_title_0006";
@@ -1956,7 +1956,7 @@ WHERE
 							});
 							if ($cleared)
 							{
-								# It's over the clear low-transfer level, 
+								# It is over the clear low-transfer level, 
 								# clear the alert if needed.
 								$level       = "warning";
 								$title_key   = "an_alert_title_0006";
@@ -1990,7 +1990,7 @@ WHERE
 						}
 						elsif ($new_apc_ups_input_voltage < $low_transfer_voltage)
 						{
-							# It's below the low-transfer limit, set an alert if 
+							# It is below the low-transfer limit, set an alert if 
 							# needed.
 							my $set = $an->Alert->check_alert_sent({
 								type			=>	"warning",
@@ -2026,7 +2026,7 @@ WHERE
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	$level, 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
@@ -2049,7 +2049,7 @@ WHERE
 					# This is an info level alert as it changes all the time.
 					$an->Alert->register_alert({
 						alert_level		=>	"info", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_apc_ups_note_0047",
 						alert_message_variables	=>	{
@@ -2071,7 +2071,7 @@ WHERE
 					# This is an info level alert as it changes all the time.
 					$an->Alert->register_alert({
 						alert_level		=>	"info", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_apc_ups_note_0048",
 						alert_message_variables	=>	{
@@ -2143,7 +2143,7 @@ WHERE
 					# This is an info level alert as it changes all the time.
 					$an->Alert->register_alert({
 						alert_level		=>	"info", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_apc_ups_note_0049",
 						alert_message_variables	=>	{
@@ -2194,7 +2194,7 @@ WHERE
 					
 					$an->Alert->register_alert({
 						alert_level		=>	$level, 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
@@ -2217,7 +2217,7 @@ WHERE
 					# ScanCore.
 					$an->Alert->register_alert({
 						alert_level		=>	"info", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_apc_ups_note_0053",
 						alert_message_variables	=>	{
@@ -2240,7 +2240,7 @@ WHERE
 					# This is an info level alert as it changes frequently
 					$an->Alert->register_alert({
 						alert_level		=>	"info", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_apc_ups_note_0054",
 						alert_message_variables	=>	{
@@ -2264,7 +2264,7 @@ WHERE
 					# This is an info level alert as it changes frequently
 					$an->Alert->register_alert({
 						alert_level		=>	"info", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_apc_ups_note_0055",
 						alert_message_variables	=>	{
@@ -2287,7 +2287,7 @@ WHERE
 					# every scan...
 					$an->Alert->register_alert({
 						alert_level		=>	"debug", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0001",
 						alert_message_key	=>	"scan_apc_ups_note_0058",
 						alert_message_variables	=>	{
@@ -2339,7 +2339,7 @@ WHERE
 			### No record found, INSERT everything.
 			# I'll need a new UUID
 			#die "$THIS_FILE ".__LINE__."; UPS: [$new_apc_ups_name] has no serial number and I was about to INSERT..." if $new_apc_ups_nmc_serial_number eq "--";
-			my $apc_ups_uuid = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
+			my $apc_ups_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});;
 			my $query = "
 INSERT INTO 
     apc_ups 
@@ -2481,7 +2481,7 @@ INSERT INTO
 			my $say_time_on_batteries = $new_apc_ups_output_time_on_batteries ? "#!string!scan_apc_ups_message_0007!#" : "#!string!scan_apc_ups_message_0006!#";
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_title_key		=>	"scan_apc_ups_message_0008",
 				alert_title_variables	=>	{
 					name			=>	$new_apc_ups_name,
@@ -2765,7 +2765,7 @@ AND
 		else
 		{
 			# No existing entry, do an INSERT.
-			my $power_uuid = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});
+			my $power_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
 			my $query      = "
 INSERT INTO  
     power 
@@ -3384,7 +3384,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'apc_ups_battery_apc_ups_uuid' before, so it's just
+					# We've seen this 'apc_ups_battery_apc_ups_uuid' before, so it is just
 					# a question of whether the entry for the current timestamp exists in
 					# the history schema.
 					if (not $an->data->{db_data}{$id}{apc_ups_battery}{modified_date}{$modified_date}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid})
@@ -3672,7 +3672,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'apc_ups_output_apc_ups_uuid' before, so it's just 
+					# We've seen this 'apc_ups_output_apc_ups_uuid' before, so it is just 
 					# a question of whether the entry for the current timestamp exists in
 					# the history schema.
 					if (not $an->data->{db_data}{$id}{apc_ups_output}{modified_date}{$modified_date}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid})
@@ -3942,7 +3942,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'apc_ups_input_apc_ups_uuid' before, so it's just a
+					# We've seen this 'apc_ups_input_apc_ups_uuid' before, so it is just a
 					# question of whether the entry for the current timestamp exists in 
 					# the history schema.
 					if (not $an->data->{db_data}{$id}{apc_ups_input}{modified_date}{$modified_date}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid})
@@ -4307,7 +4307,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'apc_ups_uuid' before, so it's just a question of 
+					# We've seen this 'apc_ups_uuid' before, so it is just a question of 
 					# whether the entry for the current timestamp exists in the history 
 					# schema.
 					if (not $an->data->{db_data}{$id}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}{$apc_ups_uuid})
@@ -4394,7 +4394,7 @@ sub prep_databases
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='apc_ups' AND schemaname='public';";
@@ -4413,7 +4413,7 @@ sub prep_databases
 			# Send an alert telling the user that we've initialized this database.
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"notice_message_0002",
 				alert_message_variables	=>	{
@@ -4488,7 +4488,7 @@ sub gather_ups_data
 				# This is a new loss of comms.
 				$an->Alert->register_alert({
 					alert_level		=>	"warning", 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_title_key		=>	"an_alert_title_0004",
 					alert_message_key	=>	"scan_apc_ups_note_0059",
 					alert_message_variables	=>	{
@@ -4519,7 +4519,7 @@ sub gather_ups_data
 				# There was an alert and it has now been cleared.
 				$an->Alert->register_alert({
 					alert_level		=>	"warning", 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_title_key		=>	"an_alert_title_0006",
 					alert_message_key	=>	"scan_apc_ups_note_0060",
 					alert_message_variables	=>	{
@@ -4558,10 +4558,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_ac_restore_delay", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_output_total_output}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4576,10 +4576,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_shutdown_delay", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4703,10 +4703,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_battery_percentage_charge", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4737,10 +4737,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_battery_temperature} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_battery_temperature", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_battery_temperature}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4772,10 +4772,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_battery_voltage} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_battery_voltage", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_battery_voltage}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4795,10 +4795,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_input_frequency} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_input_frequency", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_input_frequency}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4823,10 +4823,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_input_voltage} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_input_voltage", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_input_voltage}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4841,10 +4841,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_input_1m_maximum_input_voltage", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4854,10 +4854,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_input_1m_minimum_input_voltage", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4878,10 +4878,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_output_load_percentage} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_output_load_percentage", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_output_load_percentage}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4897,10 +4897,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_output_time_on_batteries", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4915,10 +4915,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_output_estimated_runtime", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4933,10 +4933,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_output_frequency} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_output_frequency", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_output_frequency}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4951,10 +4951,10 @@ sub gather_ups_data
 		if ($an->data->{ups}{$ups_name}{apc_ups_output_voltage} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_output_voltage", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_output_voltage}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -4975,10 +4975,10 @@ sub gather_ups_data
 		elsif ($an->data->{ups}{$ups_name}{apc_ups_output_total_output} =~ /\D/)
 		{
 			# This should have been an integer...
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_output_total_output", 
 				value => $an->data->{ups}{$ups_name}{apc_ups_output_total_output}
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -5013,7 +5013,7 @@ sub read_oid
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => "$shell_call"
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -5122,7 +5122,7 @@ sub find_upses
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, $shell_call) or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5150,7 +5150,7 @@ sub find_upses
 				name2 => "names", value2 => $names,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# It's crude, but we'll use the longest host name.
+			# It is crude, but we'll use the longest host name.
 			my $ups_name = "";
 			foreach my $name (split/ /, $names)
 			{

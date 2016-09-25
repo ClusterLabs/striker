@@ -24,14 +24,13 @@
 #   anomolous readings, and instead print a summary of all data in a nice screen.
 # 
 # - Have DB.pm return an error code and have ScanCore exit if a query fails.
-# - Add a '--status' option to report if it's enabled in striker.conf.
 # - Add a '--restart' option that touches a temp file and, if in a loop that file is found, delete it and 
 #   then exit.
 # 
 # - Write a 'scan-usb' agent that monitored USB ports for things being plugged in or removed.
 # - An agent to monitor LVM and another for DRBD would be good.
-# - When examining UPS charge percentage when deciding if it's OK to boot, pull the last X readings and
-#   average them. It's possible for a stray reading to report an unrealistically high charge percent on a
+# - When examining UPS charge percentage when deciding if it is OK to boot, pull the last X readings and
+#   average them. It is possible for a stray reading to report an unrealistically high charge percent on a
 #   given scan.
 #       
 
@@ -126,7 +125,7 @@ my $an = AN::Tools->new({data =>
 			# This gets set to '1' once we know this host is in the DB.
 			host_is_in_db		=>	0,
 			# When a lock is requested, this is set to the time the lock was set. 
-			# DB->do_db_write() and DB->do_db_read() will check this and if it's age is >50% of
+			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
 			local_lock_active	=>	0,
 			# This looks like a lot, but 'pmap' kinda sucks and reports shared memory, so to even
@@ -410,7 +409,7 @@ sub archive_if_needed
 	### TODO: Set a state 'archive_date' -> '<host_uuid>:<modified_date>' so that, if a database connects
 	###       later that needs to sync, it archives the old records before beginning the resync process.
 	###       
-	### TODO: Also, update 'update_db()' to check for 'archive_date' and if it's found, see if there is a
+	### TODO: Also, update 'update_db()' to check for 'archive_date' and if it is found, see if there is a
 	###       record in any history schema table with a record older that that. If there is, do the 
 	###       archive/delete.
 	
@@ -442,9 +441,6 @@ sub clear_resync_flag
 		$an->Log->entry({log_level => 1, message_key => "scancore_log_0094", file => $THIS_FILE, line => __LINE__});
 		$an->nice_exit({exit_code => 1});
 	}
-
-	# Clear the update flag.
-	#$an->DB->set_update_db_flag({set => 0});
 	
 	# Disconnect from databases.
 	$an->DB->disconnect_from_databases();
@@ -459,7 +455,7 @@ sub update_anvil_data
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_anvil_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Update this to work on dashboards as well
-	# Load the information about the Anvil! this node is a part of (if it's been added to the database 
+	# Load the information about the Anvil! this node is a part of (if it has been added to the database
 	# yet).
 	if ((not $an->data->{sys}{anvil_uuid}) && (-e $an->data->{path}{cman_config}))
 	{
@@ -710,7 +706,7 @@ sub do_post_scan_checks
 	# 
 	# If we're a node, we will withdraw and shut down if the UPS power is depleted past a certain point
 	# or if temperatures go outside acceptible ranges. If any sensor deviates, we set our "sick" flag and
-	# ensure it's clear if we're A-OK.
+	# ensure it is clear if we're A-OK.
 	# 
 	# If this is a dashboard, we never shutdown. Instead, we will watch the nodes configured in our 
 	# /etc/striker/striker.conf and if they're offline and the host shut itself down, we'll watch the
@@ -940,8 +936,8 @@ fi
 	return($reboot);
 }
 
-# This will read in all nodes in 'hosts' and for each node it sees, it will reference it's cache to check 
-# it's power status. If the node if off, it will check hosts -> host_emergency_stop and if it is TRUE, check
+# This will read in all nodes in 'hosts' and for each node it sees, it will reference its cache to check 
+# its power status. If the node if off, it will check hosts -> host_emergency_stop and if it is TRUE, check
 # to see if it is safe to boot the nodes back up. If the node is on, it will clear the 'host_emergency_stop'
 # and 'host_stop_reason', if set.
 sub do_post_scan_dashboard_tasks
@@ -1026,8 +1022,8 @@ ORDER BY
 			next;
 		}
 		
-		# If it's on, clear its 'host_emergency_stop' and 'host_stop_reason', if set. The exception
-		# being when the 'host_stop_reason' is a time stamp or if it's 'clean' and less than two 
+		# If it is on, clear its 'host_emergency_stop' and 'host_stop_reason', if set. The exception
+		# being when the 'host_stop_reason' is a time stamp or if it is 'clean' and less than two 
 		# minutes old.
 		if ($state eq "on")
 		{
@@ -1066,7 +1062,7 @@ ORDER BY
 			# No need to check if it should be booted.
 			$an->Log->entry({log_level => 2, message_key => "scancore_log_0085", message_variables => { node => $host_name }, file => $THIS_FILE, line => __LINE__});
 			
-			# Check to see if there is a time-type stop reason and, if so, see if it's stale.
+			# Check to see if there is a time-type stop reason and, if so, see if it is stale.
 			my $clear   = 1;
 			my $time    = time;
 			my $set_age = $time - $unix_modified_date;
@@ -1084,7 +1080,7 @@ ORDER BY
 				}, file => $THIS_FILE, line => __LINE__});
 				if (time <= $host_stop_reason)
 				{
-					# It's active, don't clear it.
+					# It is active, don't clear it.
 					$clear = 0;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "clear", value1 => $clear, 
@@ -1093,11 +1089,11 @@ ORDER BY
 			}
 			elsif ($host_stop_reason eq "clean")
 			{
-				# It's clean off, how long ago was it set? If it's less than two minutes 
-				# old, don't clear it in case it's still shutting down.
+				# It is clean off, how long ago was it set? If it is less than two minutes 
+				# old, don't clear it in case it is still shutting down.
 				if ($set_age < 120)
 				{
-					# It's too recent, wait.
+					# It is too recent, wait.
 					$clear = 0;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "clear", value1 => $clear, 
@@ -1498,19 +1494,16 @@ AND
 		}
 	}
 	
-	### Make sure that, if the sensors are OK, that we've waited the 
-	### required amount of time. If not, set the 'temperature_is_safe' to
-	### '0' to prevent booting.
+	### Make sure that, if the sensors are OK, that we've waited the required amount of time. If not, set
+	### the 'temperature_is_safe' to '0' to prevent booting.
 	
-	# When a node has gone into emergency stop because of an 
-	# over-temperature event, we want to give it time to cool down before
-	# we boot it back up.
+	# When a node has gone into emergency stop because of an over-temperature event, we want to give it 
+	# time to cool down before we boot it back up.
 	# 
-	# Likewise, if we rebooted it and it went back down quickly, give it
-	# more time before starting it back up. We do this by reading in how
-	# many times the node went into thermal shutdown over the last six 
-	# hours. The number of returned shut-downs will determine how long I
-	# wait before booting the node back up.
+	# Likewise, if we rebooted it and it went back down quickly, give it more time before starting it 
+	# back up. We do this by reading in how many times the node went into thermal shutdown over the last
+	# six hours. The number of returned shut-downs will determine how long I wait before booting the node
+	# back up.
 	# 
 	# The default schedule is:
 	# Reboots | Wait until boot
@@ -1522,24 +1515,20 @@ AND
 	#  >4     | 6h
 	# --------+-----------------
 	# 
-	# NOTE: When a node is off, we can't read most of it's sensors, but I
-	#       usually can read 'Ambient' and 'Systemboard'. So before
-	#       starting the node, check with these values and make sure 
-	#       they're ok. If either are still in warning territory, stay off
-	#       no matter what.
+	# NOTE: When a node is off, we can't read most of its sensors, but I usually can read 'Ambient' and
+	#       'Systemboard'. So before starting the node, check with these values and make sure they're ok.
+	#       If either are still in warning territory, stay off no matter what.
 	#       
 	# To determine the number or reboots, do the following query:
 	# 
-	# TODO: This will catch power-loss reboots. For now, we aren't going to
-	#       worry about this because it is unlikely it would happen at the
-	#       same time and even if it did, the consequences aren't that big.
-	#       This could be a wrong assumption though, so revisit this later
-	#       once testing is under way.
+	# TODO: This will catch power-loss reboots. For now, we aren't going to worry about this because it
+	#       is unlikely it would happen at the same time and even if it did, the consequences aren't that
+	#       big. This could be a wrong assumption though, so revisit this later once testing is under 
+	#       way.
 	#     
-	# NOTE: As time passes, we may slip into a period where the node starts
-	#       rebooting more often until the count goes back up. We may need
-	#       to read the time stamps of the last day and analyze the reboot
-	#       times later.
+	# NOTE: As time passes, we may slip into a period where the node starts rebooting more often until 
+	#       the count goes back up. We may need to read the time stamps of the last day and analyze the 
+	#       reboot times later.
 	# 
 	if ($temperature_is_safe)
 	{
@@ -1859,7 +1848,7 @@ WHERE
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -1882,7 +1871,7 @@ WHERE
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 				while(<$file_handle>)
 				{
 					chomp;
@@ -1900,7 +1889,7 @@ WHERE
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -1951,7 +1940,7 @@ WHERE
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2136,7 +2125,7 @@ sub migrate_all_servers_to_here
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -2179,7 +2168,7 @@ sub migrate_all_servers_to_here
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -3330,7 +3319,7 @@ sub send_email
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				
-				# Record the alert level if it's higher than we saw before.
+				# Record the alert level if it is higher than we saw before.
 				$subject = $alert_level if $subject > $alert_level;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "subject", value1 => $subject, 
@@ -3467,7 +3456,7 @@ sub send_email
 			{
 				# Given the precision of the date coming from pgsql, there must be something
 				# wrong.
-				$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0014", message_variables => { file => $email_file }, code => 2, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0014", message_variables => { file => $email_file }, code => 2, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		else
@@ -3484,7 +3473,7 @@ sub send_email
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	print $file_handle $email_body;
 	close $file_handle;
 	
@@ -3495,7 +3484,7 @@ sub send_email
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -3603,7 +3592,7 @@ sub record_alert_to_file
 	
 	# Append to the log file.
 	my $shell_call = ">>$file";
-	open (my $filehandle, "$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $filehandle, "$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	print $filehandle $messages;
 	close $filehandle;
 	
@@ -3638,7 +3627,7 @@ sub check_email_configuration
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3717,7 +3706,7 @@ sub check_email_configuration
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -3788,7 +3777,7 @@ sub check_email_configuration
 			name1 => "postfix_line", value1 => $postfix_line,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		print $file_handle "$postfix_line\n";
 		close $file_handle;
 		
@@ -3799,7 +3788,7 @@ sub check_email_configuration
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3830,7 +3819,7 @@ sub check_email_configuration
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -3856,7 +3845,7 @@ sub check_email_configuration
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3913,14 +3902,14 @@ sub check_email_configuration
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		print $file_handle $postfix_main;
 		close $file_handle;
 		
 		# Reload postfix
 		$an->Log->entry({log_level => 1, message_key => "scancore_log_0044", file => $THIS_FILE, line => __LINE__});
 		$shell_call = $an->data->{path}{initd}."/postfix restart";
-		open ($file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3948,7 +3937,7 @@ sub check_email_configuration
 		# Need to create it.
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0045", message_variables => { email_directory => $an->data->{path}{alert_emails} }, file => $THIS_FILE, line => __LINE__});
 		
-		mkdir $an->data->{path}{alert_emails} or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0019", message_variables => {
+		mkdir $an->data->{path}{alert_emails} or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0019", message_variables => {
 								directory => $an->data->{path}{alert_emails}, 
 								error     => $! 
 							}, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -4053,7 +4042,7 @@ sub get_string_from_double_bang
 			# This catches any value in the format 'X Y'.
 			elsif ($value =~ /(.*?) (.*)$/)
 			{
-				# NOTE: This will split on *anything* with a space. So it's possible that 
+				# NOTE: This will split on *anything* with a space. So it is possible that 
 				#       we're NOT looking at a 'value units' pair!
 				my $left_hand_side  = $1;
 				my $right_hand_side = $2;
@@ -4119,8 +4108,8 @@ sub get_string_from_double_bang
 	return($string);
 }
 
-# This and translate_sensor_value() are special functions used to translate 
-# PMI sensor data into a user's chosen language and units (metric v. imperial).
+# This and translate_sensor_value() are special functions used to translate IPMI sensor data into a user's 
+# chosen language and units (metric v. imperial).
 sub translate_sensor_name
 {
 	my ($an, $ipmitool_sensor_name, $ipmitool_sensor_units) = @_;
@@ -4131,8 +4120,8 @@ sub translate_sensor_name
 	
 	my $say_sensor_name = $ipmitool_sensor_name;
 	
-	# Now, if it's a sensor we know, we'll not use the base units but
-	# instead five it a proper name. We'll translate the value after.
+	# Now, if it is a sensor we know, we'll not use the base units but instead five it a proper name. 
+	# We'll translate the value after.
 	my $say_units = $ipmitool_sensor_units;
 	if ($ipmitool_sensor_units eq "C")
 	{
@@ -5011,7 +5000,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'node_cache_uuid' before, so it's just a question
+					# We've seen this 'node_cache_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid})
@@ -5310,7 +5299,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'smtp_uuid' before, so it's just a question
+					# We've seen this 'smtp_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid})
@@ -5585,7 +5574,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'variable_uuid' before, so it's just a question
+					# We've seen this 'variable_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid})
@@ -5804,7 +5793,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'manifest_uuid' before, so it's just a question
+					# We've seen this 'manifest_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{manifests}{modified_date}{$modified_date}{manifest_uuid}{$manifest_uuid})
@@ -6033,7 +6022,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'recipient_uuid' before, so it's just a question
+					# We've seen this 'recipient_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid})
@@ -6286,7 +6275,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'notify_uuid' before, so it's just a question
+					# We've seen this 'notify_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{notifications}{modified_date}{$modified_date}{notify_uuid}{$notify_uuid})
@@ -6576,7 +6565,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'node_uuid' before, so it's just a question
+					# We've seen this 'node_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid})
@@ -6843,7 +6832,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'anvil_uuid' before, so it's just a question
+					# We've seen this 'anvil_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid})
@@ -7060,7 +7049,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'owner_uuid' before, so it's just a question
+					# We've seen this 'owner_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{owners}{modified_date}{$modified_date}{owner_uuid}{$owner_uuid})
@@ -7279,7 +7268,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'state_uuid' before, so it's just a question
+					# We've seen this 'state_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid})
@@ -7493,7 +7482,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'ram_used_uuid' before, so it's just a question
+					# We've seen this 'ram_used_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{ram_used}{modified_date}{$modified_date}{ram_used_uuid}{$ram_used_uuid})
@@ -7752,7 +7741,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'temperature_agent_name' before, so it's just a question
+					# We've seen this 'temperature_agent_name' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name})
@@ -7986,7 +7975,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'health_agent_name' before, so it's just a question
+					# We've seen this 'health_agent_name' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name})
@@ -8270,7 +8259,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'dr_target_uuid' before, so it's just a question
+					# We've seen this 'dr_target_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid})
@@ -8543,7 +8532,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'dr_job_uuid' before, so it's just a question
+					# We've seen this 'dr_job_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid})
@@ -8882,7 +8871,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'server_uuid' before, so it's just a question
+					# We've seen this 'server_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid})
@@ -9136,7 +9125,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'shared_uuid' before, so it's just a question
+					# We've seen this 'shared_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid})
@@ -9396,7 +9385,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'power_agent_name' before, so it's just a question
+					# We've seen this 'power_agent_name' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name})
@@ -9823,7 +9812,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'agent_uuid' before, so it's just a question
+					# We've seen this 'agent_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_uuid}{$agent_uuid})
@@ -10074,7 +10063,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'host_uuid' before, so it's just a question
+					# We've seen this 'host_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid})
@@ -10193,9 +10182,8 @@ sub add_hostname_to_databases
 	# Do I need to add or update?
 	if (not $host_name)
 	{
-		### TODO: For now, we determine if this host is a node
-		###       or dashboard by analyzing it's hostname. We
-		###       will make this smarter later.
+		### TODO: For now, we determine if this host is a node or dashboard by analyzing it is 
+		###       hostname. We will make this smarter later.
 		my $host_name = $an->hostname;
 		my $host_type = $an->Get->what_am_i();
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -10332,7 +10320,7 @@ sub call_agents
 			$shell_call = "$agent ".$an->data->{scancore}{user_set_log_level}."; echo rc:\$?";
 		}
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -10525,7 +10513,7 @@ AND
 	{
 		# Much, too much, much music!
 		# err, too much RAM...
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0013", message_variables => { 
+		$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0013", message_variables => { 
 			used_ram    => $an->Readable->bytes_to_hr({'bytes' => $used_ram}), 
 			maximum_ram => $an->Readable->bytes_to_hr({'bytes' => $an->data->{scancore}{maximum_ram}})
 		}, code => 5, file => $THIS_FILE, line => __LINE__});
@@ -10645,7 +10633,7 @@ sub avoid_duplicate_run
 	my $other_pids      = [];
 	my $shell_call      = $an->data->{path}{ps}." aux | ".$an->data->{path}{'grep'}." -v grep | ".$an->data->{path}{'grep'}." -v tail | ".$an->data->{path}{'grep'}." -v '\/bin\/sh' | ".$an->data->{path}{'grep'}." $THIS_FILE";
 	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -10706,7 +10694,7 @@ AND
 		
 		if ($difference > $an->data->{scancore}{update_age_limit})
 		{
-			# Kill it and then exit. We could keep running, but it's safer to wait for cron to 
+			# Kill it and then exit. We could keep running, but it is safer to wait for cron to 
 			# re-fire ScanCore.
 			$an->Log->entry({log_level => 0, message_key => "scancore_log_0089", message_variables => { difference => $difference }, file => $THIS_FILE, line => __LINE__});
 			foreach my $pid (sort {$a cmp $b} @{$other_pids})
@@ -10719,7 +10707,7 @@ AND
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 				while(<$file_handle>)
 				{
 					chomp;

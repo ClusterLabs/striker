@@ -65,7 +65,7 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
-# This checks to see if 'sys::local_lock_active' is set. If it is, it's age is checked and if the age is >50%
+# This checks to see if 'sys::local_lock_active' is set. If it is, its age is checked and if the age is >50%
 # of scancore::locking::reap_age, it will renew the lock.
 sub check_lock_age
 {
@@ -89,7 +89,7 @@ sub check_lock_age
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# If I have an active lock, check it's age.
+	# If I have an active lock, check its age.
 	my $renewed = 0;
 	if ($an->data->{sys}{local_lock_active})
 	{
@@ -581,7 +581,7 @@ sub do_db_query
 	
 	if (not $id)
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0098", code => 98, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0098", code => 98, file => $THIS_FILE, line => __LINE__});
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
@@ -601,9 +601,9 @@ sub do_db_query
 	if (not defined $an->data->{dbh}{$id})
 	{
 		# Can't proceed on an undefined connection...
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0028", message_variables => {
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0028", message_variables => {
 			server => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
-		}, code => 4, file => "$THIS_FILE", line => __LINE__});
+		}, code => 4, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# If I am still alive check if any locks need to be renewed.
@@ -621,15 +621,15 @@ sub do_db_query
 	}
 	
 	# Do the query.
-	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0029", message_variables => { 
+	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0029", message_variables => { 
 		query    => $query, 
 		server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name},
 		db_error => $DBI::errstr, 
-	}, code => 2, file => "$THIS_FILE", line => __LINE__});
+	}, code => 2, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: If a target DB becomes unavailable, call a disconnect and remove its ID from the list of DBs.
 	# Execute on the query
-	$DBreq->execute() or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
+	$DBreq->execute() or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
 					query    => $query, 
 					server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 					db_error => $DBI::errstr
@@ -730,16 +730,16 @@ sub do_db_write
 			
 			if (not $an->data->{dbh}{$id})
 			{
-				$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0072", message_variables => { 
+				$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0072", message_variables => { 
 					id     => $id, 
 					query  => $query, 
 					server => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
-				}, code => 72, file => "$THIS_FILE", line => __LINE__});
+				}, code => 72, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			### TODO: If a target DB becomes unavailable, call a disconnect and remove its ID from the list of DBs.
 			# Do the do.
-			$an->data->{dbh}{$id}->do($query) or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
+			$an->data->{dbh}{$id}->do($query) or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
 								query    => $query, 
 								server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 								db_error => $DBI::errstr
@@ -914,7 +914,7 @@ sub get_sql_schema
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
 	print $file_handle "$host:*:*:$user:$password\n";
 	close $file_handle;
 	
@@ -929,7 +929,7 @@ sub get_sql_schema
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call") or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -977,7 +977,7 @@ sub get_sql_schema
 		if ($line =~ /CREATE TABLE (.*?) \(/)
 		{
 			$this_table = $1;
-			# Stick the schema onto the table name if it's not 'public'.
+			# Stick the schema onto the table name if its not 'public'.
 			$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{body} = "SET search_path = $this_schema, pg_catalog;\n";
 			$an->data->{scancore}{sql}{schema}{table}{$this_table}{$this_schema}{body} .= "$line\n";
 			next;
@@ -1228,7 +1228,7 @@ sub initialize_db
 	{
 		# This is likely caused by running an agent directly on a system where ScanCore has never run
 		# before.
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0048", code => 48, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "error_message_0048", code => 48, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -1237,7 +1237,7 @@ sub initialize_db
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -1357,7 +1357,7 @@ sub load_schema
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;

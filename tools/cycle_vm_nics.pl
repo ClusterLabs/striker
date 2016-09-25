@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Simple little program that takes the name of VM, parses it's XML to find the
+# Simple little program that takes the name of VM, parses its XML to find the
 # 'vnetx' bridge links, determines which bridge they're connected to and then
 # takes the interfaces down, waits a couple seconds, and brings them back up.
 # It cycles the interfaces connected to the BCN, then the SN and finally the

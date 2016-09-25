@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # 
 # This looks for hard drives on the system, checks to see if they have free
-# space (> 100 MiB) and, if so, reports the drive, it's total size and the
+# space (> 100 MiB) and, if so, reports the drive, its total size and the
 # amount of free space.
 # 
 # This software was created by Alteeve's Niche! Inc. and has been released

@@ -190,7 +190,7 @@ sub new
 	# Call methods that need to be loaded at invocation of the module.
 	if (($an->{DEFAULT}{STRINGS} =~ /^\.\//) && (not -e $an->{DEFAULT}{STRINGS}))
 	{
-		# Try to find the location of this module (I can't use Dir::Self' because it's not provided
+		# Try to find the location of this module (I can't use Dir::Self' because it is not provided
 		# by RHEL 6)
 		my $root = ($INC{'AN/Tools.pm'} =~ /^(.*?)\/AN\/Tools.pm/)[0];
 		my $file = ($an->{DEFAULT}{STRINGS} =~ /^\.\/(.*)/)[0];
@@ -293,7 +293,7 @@ sub hostname
 		if (-r $an->data->{path}{hostname})
 		{
 			my $shell_call = $an->data->{path}{hostname};
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
 			while(<$file_handle>)
 			{
 				chomp;
@@ -339,7 +339,7 @@ sub short_hostname
 	return($short_host_name);
 }
 
-# Makes my handle to AN::Tools::Alert clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Alert clearer when using this module to access its methods.
 sub Alert
 {
 	my $self = shift;
@@ -347,7 +347,7 @@ sub Alert
 	return ($self->{HANDLE}{ALERT});
 }
 
-# Makes my handle to AN::Tools::Check clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Check clearer when using this module to access its methods.
 sub Check
 {
 	my $self = shift;
@@ -355,7 +355,7 @@ sub Check
 	return ($self->{HANDLE}{CHECK});
 }
 
-# Makes my handle to AN::Tools::Cman clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Cman clearer when using this module to access its methods.
 sub Cman
 {
 	my $self = shift;
@@ -363,7 +363,7 @@ sub Cman
 	return ($self->{HANDLE}{CMAN});
 }
 
-# Makes my handle to AN::Tools::Convert clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Convert clearer when using this module to access its methods.
 sub Convert
 {
 	my $self = shift;
@@ -371,7 +371,7 @@ sub Convert
 	return ($self->{HANDLE}{CONVERT});
 }
 
-# Makes my handle to AN::Tools::DB clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::DB clearer when using this module to access its methods.
 sub DB
 {
 	my $self = shift;
@@ -379,7 +379,7 @@ sub DB
 	return ($self->{HANDLE}{DB});
 }
 
-# Makes my handle to AN::Tools::Get clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Get clearer when using this module to access its methods.
 sub Get
 {
 	my $self = shift;
@@ -387,7 +387,7 @@ sub Get
 	return ($self->{HANDLE}{GET});
 }
 
-# Makes my handle to AN::Tools::HardwareLSI clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::HardwareLSI clearer when using this module to access its methods.
 sub HardwareLSI
 {
 	my $self = shift;
@@ -395,7 +395,7 @@ sub HardwareLSI
 	return ($self->{HANDLE}{HARDWARELSI});
 }
 
-# Makes my handle to AN::Tools::InstallManifest clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::InstallManifest clearer when using this module to access its methods.
 sub InstallManifest
 {
 	my $self = shift;
@@ -426,7 +426,7 @@ sub environment
 	return ($self->{ENV_VALUES}{ENVIRONMENT});
 }
 
-# Makes my handle to AN::Tools::Log clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Log clearer when using this module to access its methods.
 sub Log
 {
 	my $self = shift;
@@ -434,7 +434,7 @@ sub Log
 	return ($self->{HANDLE}{LOG});
 }
 
-# Makes my handle to AN::Tools::Math clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Math clearer when using this module to access its methods.
 sub Math
 {
 	my $self = shift;
@@ -442,7 +442,7 @@ sub Math
 	return ($self->{HANDLE}{MATH});
 }
 
-# Makes my handle to AN::Tools::MediaLibrary clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::MediaLibrary clearer when using this module to access its methods.
 sub MediaLibrary
 {
 	my $self = shift;
@@ -450,7 +450,7 @@ sub MediaLibrary
 	return ($self->{HANDLE}{MEDIALIBRARY});
 }
 
-# Makes my handle to AN::Tools::Readable clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Readable clearer when using this module to access its methods.
 sub Readable
 {
 	my $self = shift;
@@ -458,7 +458,7 @@ sub Readable
 	return ($self->{HANDLE}{READABLE});
 }
 
-# Makes my handle to AN::Tools::Remote clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Remote clearer when using this module to access its methods.
 sub Remote
 {
 	my $self = shift;
@@ -466,7 +466,7 @@ sub Remote
 	return ($self->{HANDLE}{REMOTE});
 }
 
-# Makes my handle to AN::Tools::Storage clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Storage clearer when using this module to access its methods.
 sub Storage
 {
 	my $self = shift;
@@ -474,7 +474,7 @@ sub Storage
 	return ($self->{HANDLE}{STORAGE});
 }
 
-# Makes my handle to AN::Tools::Striker clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Striker clearer when using this module to access its methods.
 sub Striker
 {
 	my $self = shift;
@@ -482,7 +482,7 @@ sub Striker
 	return ($self->{HANDLE}{STRIKER});
 }
 
-# Makes my handle to AN::Tools::String clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::String clearer when using this module to access its methods.
 sub String
 {
 	my $self = shift;
@@ -490,7 +490,7 @@ sub String
 	return ($self->{HANDLE}{STRING});
 }
 
-# Makes my handle to AN::Tools::Validate clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Validate clearer when using this module to access its methods.
 sub Validate
 {
 	my $self = shift;
@@ -498,7 +498,7 @@ sub Validate
 	return ($self->{HANDLE}{VALIDATE});
 }
 
-# Makes my handle to AN::Tools::Web clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::Web clearer when using this module to access its methods.
 sub Web
 {
 	my $self = shift;
@@ -506,7 +506,7 @@ sub Web
 	return ($self->{HANDLE}{WEB});
 }
 
-# Makes my handle to AN::Tools::ScanCore clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::ScanCore clearer when using this module to access its methods.
 sub ScanCore
 {
 	my $self = shift;
@@ -514,7 +514,7 @@ sub ScanCore
 	return ($self->{HANDLE}{SCANCORE});
 }
 
-# Makes my handle to AN::Tools::System clearer when using this module to access it's methods.
+# Makes my handle to AN::Tools::System clearer when using this module to access its methods.
 sub System
 {
 	my $self = shift;
@@ -530,7 +530,7 @@ sub nice_exit
 	my $an        = $self;
 	
 	my $exit_code = defined $parameter->{exit_code} ? $parameter->{exit_code} : 999;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => $exit_code}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit" }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => $exit_code}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
 	
 	# Close database connections (if any).
 	$an->DB->disconnect_from_databases();
@@ -859,21 +859,10 @@ sub _load_fcntl
 # 	eval 'use Fcntl;';
 	if ($@)
 	{
-		$self->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0013",
-			title_variables		=>	{
-				module			=>	"Fcntl",
-			},
-			message_key		=>	"error_message_0021",
-			message_variables	=>	{
-				module			=>	"Fcntl",
-				error			=>	$@,
-			},
-			code			=>	31,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
+		$self->Alert->error({title_key => "error_title_0013", title_variables => { module => "Fcntl" }, message_key => "error_message_0021", message_variables => { 
+			module	=>	"Fcntl",
+			error	=>	$@,
+		}, code => 31, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	else
@@ -893,23 +882,11 @@ sub _load_io_handle
 	eval 'use IO::Handle;';
 	if ($@)
 	{
-		$self->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0013",
-			title_variables		=>	{
-				module			=>	"IO::Handle",
-			},
-			message_key		=>	"error_message_0021",
-			message_variables	=>	{
-				module			=>	"IO::Handle",
-				error			=>	$@,
-			},
-			code			=>	13,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		$self->Alert->error({title_key => "error_title_0013", title_variables => { module => "IO::Handle" }, message_key => "error_message_0021", message_variables => {
+			module	=>	"IO::Handle",
+			error	=>	$@,
+		}, code => 13, file => $THIS_FILE, line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
 	else
@@ -929,23 +906,11 @@ sub _load_math_bigint
 	eval 'use Math::BigInt;';
 	if ($@)
 	{
-		$self->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0013",
-			title_variables		=>	{
-				module			=>	"Math::BigInt",
-			},
-			message_key		=>	"error_message_0021",
-			message_variables	=>	{
-				module			=>	"Math::BigInt",
-				error			=>	$@,
-			},
-			code			=>	9,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		$self->Alert->error({title_key => "error_title_0013", title_variables => { module => "Math::BigInt" }, message_key => "error_message_0021", message_variables => {
+			module	=>	"Math::BigInt",
+			error	=>	$@,
+		}, code => 13, file => $THIS_FILE, line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
 	else

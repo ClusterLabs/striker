@@ -87,9 +87,9 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 		<key name="scancore_log_0022">The DB table [#!variable!table!#] needs to be updated.</key>
 		<key name="scancore_log_0023">The DB table [#!variable!table!#] has not changed and does not need to be updated.</key>
 		<key name="scancore_log_0024">The DB table: [#!variable!table!#] needs to have: [#!variable!entry!#] added.</key>
-		<key name="scancore_log_0025">The DB table: [#!variable!table!#] needs to have it's: [#!variable!entry!#] entry updated.</key>
-		<key name="scancore_log_0026">The DB table: [#!variable!table!#] does not need to have it's: [#!variable!entry!#] entry updated; nothing changed.</key>
-		<key name="scancore_log_0027">Checking to see if the DB table: [#!variable!table!#] needs to have it's: [#!variable!entry!#] entry updated...</key>
+		<key name="scancore_log_0025">The DB table: [#!variable!table!#] needs to have its: [#!variable!entry!#] entry updated.</key>
+		<key name="scancore_log_0026">The DB table: [#!variable!table!#] does not need to have its: [#!variable!entry!#] entry updated; nothing changed.</key>
+		<key name="scancore_log_0027">Checking to see if the DB table: [#!variable!table!#] needs to have its: [#!variable!entry!#] entry updated...</key>
 		<key name="scancore_log_0028">
 Updating DB with ID: [#!variable!id!#].
 - The most up to date DB is:   [#!variable!source_db_id!#]
@@ -125,7 +125,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0055">The email directory: [#!variable!email_directory!#] exists already.</key>
 		<key name="scancore_log_0056">There are no nodes in emergency-stop, so no recovery is needed.</key>
 		<key name="scancore_log_0057">There are no cache files on this machine, so it is not possible to boot the emergency-stop nodes.</key>
-		<key name="scancore_log_0058">I was asked to boot the node: [#!variable!node!#] but I wasn't able to read the 'power_check_command' from it's cache file. Does the cache file exist? If not, next time the node is online, use this #!string!scancore_brand_0001!# dashboard to view its #!string!brand_0004!#. This will cause the cache file to be generated for future use.</key>
+		<key name="scancore_log_0058">I was asked to boot the node: [#!variable!node!#] but I wasn't able to read the 'power_check_command' from its cache file. Does the cache file exist? If not, next time the node is online, use this #!string!scancore_brand_0001!# dashboard to view its #!string!brand_0004!#. This will cause the cache file to be generated for future use.</key>
 		<key name="scancore_log_0059">The node: [#!variable!node!#] was booted back up successfully.</key>
 		<key name="scancore_log_0060">Failed to boot the node: [#!variable!node!#]. Tried using the shell call: [#!variable!shell_call!#] which should have returned the code '0' but: [#!variable!rc!#] was returned.</key>
 		<key name="scancore_log_0061">Post-scan checks and tasks completed.</key>
@@ -203,7 +203,7 @@ The error was:
 		<key name="scancore_warning_0011">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] was refused. Is the database server running?</key>
 		<key name="scancore_warning_0012">
 The node: [#!variable!node!#] has entered a 'warning' state. 
-Warning: If the peer goes critical, it will not migrate to this node and instead gracefully shut down it's server.</key>
+Warning: If the peer goes critical, it will not migrate to this node and instead gracefully shut down its server.</key>
 		<key name="scancore_warning_0013">The node: [#!variable!node!#] has returned to being healthy. It is again a migration target should the peer go into emergency shutdown.</key>
 		<key name="scancore_warning_0014">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] failed because the name could not be translated to an IP address. Is this database setup in '/etc/hosts'?</key>
 		<key name="scancore_warning_0015">Failed to disable #!string!scancore_brand_0001!#!</key>

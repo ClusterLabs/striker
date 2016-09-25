@@ -99,7 +99,7 @@ sub cleanup_gfs2
 	else
 	{
 		# Local call
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -150,7 +150,7 @@ sub cleanup_gfs2
 		else
 		{
 			# Local call
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -240,7 +240,7 @@ sub find
 	if ($fatal)
 	{
 		print "$THIS_FILE ".__LINE__."; Failed to find: [$file]\n";
-		$an->Alert->error({fatal => 1, title_key => "error_title_0002", message_key => "error_message_0002", message_variables => { file => $file }, code => 44, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0002", message_key => "error_message_0002", message_variables => { file => $file }, code => 44, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# If I am here, I failed but fatal errors are disabled.
@@ -324,7 +324,7 @@ UUID=\$(".$an->data->{path}{cat}." ".$an->data->{path}{host_uuid}.")
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -429,7 +429,7 @@ sub read_conf
 		# I have a file. Is it relative to the install dir or fully qualified?
 		if (($file =~ /^\.\//) || ($file !~ /^\//))
 		{
-			# It's in or relative to this directory.
+			# It is in or relative to this directory.
 			if ($ENV{PWD})
 			{
 				# Can expand using the environment variable.
@@ -517,7 +517,7 @@ sub read_hosts
 	
 	# Now read in the file
 	my $shell_call = $an->data->{path}{etc_hosts};
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -591,7 +591,7 @@ sub read_ssh_config
 	# Now read in the file
 	my $this_host  = "";
 	my $shell_call = $an->data->{path}{ssh_config};
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -639,12 +639,12 @@ sub read_words
 	#print "$THIS_FILE ".__LINE__."; words file: [$file]\n";
 	if (not -e $file)
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0006", message_key => "error_message_0009", message_variables => { file => $file }, code => 11, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0006", message_key => "error_message_0009", message_variables => { file => $file }, code => 11, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	if (not -r $file)
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0007", message_key => "error_message_0010", message_variables => { file => $file }, code => 12, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0007", message_key => "error_message_0010", message_variables => { file => $file }, code => 12, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	
@@ -663,7 +663,7 @@ sub read_words
 	# Read in the XML file with the word strings to load.
 	my $read       = IO::Handle->new;
 	my $shell_call = "<$file";
-	open ($read, $shell_call) or $an->Alert->error({fatal => 1, title_key => "error_title_0008", message_key => "error_message_0011", message_variables => { file => $file, error => $! }, code => 28, file => "$THIS_FILE", line => __LINE__});
+	open ($read, $shell_call) or $an->Alert->error({title_key => "error_title_0008", message_key => "error_message_0011", message_variables => { file => $file, error => $! }, code => 28, file => $THIS_FILE, line => __LINE__});
 	
 	# If I have been asked to read in UTF-8 mode, do so.
 	if ($an->String->force_utf8)
@@ -931,7 +931,7 @@ sub read_xml_file
 		if (not -e $file)
 		{
 			# Nope :(
-			$an->Alert->error({fatal => 1, title_key => "error_title_0023", message_key => "error_message_0042", message_variables => { file => $file }, code => 39, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({title_key => "error_title_0023", message_key => "error_message_0042", message_variables => { file => $file }, code => 39, file => $THIS_FILE, line => __LINE__});
 			
 			# Return nothing in case the user is blocking fatal errors.
 			return (undef);
@@ -940,7 +940,7 @@ sub read_xml_file
 	else
 	{
 		# What file?
-		$an->Alert->error({fatal => 1, title_key => "error_title_0023", message_key => "error_message_0043", code => 40, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0023", message_key => "error_message_0043", code => 40, file => $THIS_FILE, line => __LINE__});
 		
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
@@ -955,7 +955,7 @@ sub read_xml_file
 	elsif (ref($hash) ne "HASH")
 	{
 		# The user passed ... something.
-		$an->Alert->error({fatal => 1, title_key => "error_title_0024", message_key => "error_message_0044", message_variables => { hash => $hash }, code => 41, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0024", message_key => "error_message_0044", message_variables => { hash => $hash }, code => 41, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	
@@ -1012,13 +1012,13 @@ sub rsync
 	if (not $source)
 	{
 		# No source
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0037", code => 27, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0037", code => 27, file => $THIS_FILE, line => __LINE__});
 		$failed = 1;
 	}
 	if (not $destination)
 	{
 		# No destination
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0038", code => 32, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0038", code => 32, file => $THIS_FILE, line => __LINE__});
 		$failed = 1;
 	}
 	
@@ -1057,14 +1057,14 @@ sub rsync
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "target", value1 => $target, 
 			}, file => $THIS_FILE, line => __LINE__});
-			#$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => "$THIS_FILE", line => __LINE__});
+			#$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => $THIS_FILE, line => __LINE__});
 			$failed = 1;
 		}
 		# TODO: Make sure this works with passwordless SSH
 		if (not $password)
 		{
 			# No password
-			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0036", code => 23, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0036", code => 23, file => $THIS_FILE, line => __LINE__});
 			$failed = 1;
 		}
 	}
@@ -1089,7 +1089,7 @@ sub rsync
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		# There should never be any output, but just in case...
@@ -1134,18 +1134,7 @@ sub search_dirs
 		if ($array)
 		{
 			# Something non-sensical was passed.
-			$an->Alert->error({
-				fatal			=>	1,
-				title_key		=>	"error_title_0003",
-				message_key		=>	"error_message_0003",
-				message_variables	=>	{
-					array			=>	$array,
-				},
-				code		=>	45,
-				file		=>	"$THIS_FILE",
-				line		=>	__LINE__
-			});
-			
+			$an->Alert->error({title_key => "error_title_0003", message_key => "error_message_0003", message_variables => { array => $array }, code => 45, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -1184,7 +1173,7 @@ sub _create_rsync_wrapper
 	if ((not $target) || (not $password))
 	{
 		# Can't do much without a target or password.
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0034", code => 21, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0034", code => 21, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	my $wrapper    = "/tmp/rsync.$target";

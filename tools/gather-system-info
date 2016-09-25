@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # 
 # This reads information about the system... Host name, IPs, etc. It records
-# it's findings in a CSV text file that the caller reads when this exits.
+# its findings in a CSV text file that the caller reads when this exits.
 #
 
 use strict;

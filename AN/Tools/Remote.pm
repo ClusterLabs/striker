@@ -297,7 +297,7 @@ sub generate_rsa_public_key
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -372,7 +372,7 @@ sub remote_call
 	if (not $target)
 	{
 		# No target...
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0174", code => 174, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0174", code => 174, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -389,10 +389,10 @@ sub remote_call
 		}, file => $THIS_FILE, line => __LINE__});
 		if (($port < 0) or ($port > 65536))
 		{
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0175", message_variables => {
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0175", message_variables => {
 				target	=>	$target, 
 				port	=>	"$port",
-			}, code => 175, file => "$THIS_FILE", line => __LINE__});
+			}, code => 175, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 	}
@@ -693,13 +693,13 @@ sub wait_on_peer
 	if (not $parameter->{program})
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0096", code => 96, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0096", code => 96, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $parameter->{target})
 	{
 		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0097", code => 97, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0097", code => 97, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	my $program  = $parameter->{program}  ? $parameter->{program}  : "";
@@ -717,7 +717,8 @@ sub wait_on_peer
 	}, file => $THIS_FILE, line => __LINE__});
 
 	### TODO: Change this; Wait until we can reach node 1, sleep 30 seconds, then go into a loop that
-	###       waits while this program is running on the peer. Once it's done, we'll run as a precaution.
+	###       waits while this program is running on the peer. Once it is done, we'll run as a 
+	###       precaution.
 	sleep 30;
 	my $pids = $an->Get->pids({
 		program_name	=>	$program, 
@@ -797,7 +798,7 @@ sub _call_ssh_keyscan
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -828,7 +829,7 @@ sub _check_known_hosts_for_target
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;

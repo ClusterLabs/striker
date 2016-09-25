@@ -1056,7 +1056,7 @@ sub _image_and_upload
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $header_printed = 0;
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 			my $error;
 			while(<$file_handle>)
 			{
@@ -1319,7 +1319,7 @@ sub _read_shared
 					}});
 			}
 			
-			# Add an optical disk icon if it's an ISO
+			# Add an optical disk icon if it is an ISO
 			my $iso_icon = "&nbsp;";
 			if ($files->{$file}{optical})
 			{

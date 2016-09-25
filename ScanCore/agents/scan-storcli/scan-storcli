@@ -187,7 +187,7 @@ my $an = AN::Tools->new({data =>
 				virtual_drive_data	=>	"/vall show all",
 			},
 			# When a lock is requested, this is set to the time the lock was set. 
-			# DB->do_db_write() and DB->do_db_read() will check this and if it's age is >50% of
+			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
 			lock_active		=>	0,
 			sql			=>	[],
@@ -231,7 +231,7 @@ $an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
 }
 
 print $an->String->get({key => "scan_storcli_message_0001"})."\n";
@@ -741,12 +741,12 @@ sub process_drive_groups
 		if (not $host_controller_serial_number)
 		{
 			# Error!
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0011", message_variables => { id_string => $storcli_virtual_drive_id_string }, code => 11, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0011", message_variables => { id_string => $storcli_virtual_drive_id_string }, code => 11, file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 11});
 		}
 		if (not $controller_uuid)
 		{
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 8});
 		}
 		
@@ -1492,12 +1492,12 @@ sub process_virtual_drives
 		if (not $host_controller_serial_number)
 		{
 			# Error!
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0010", message_variables => { id_string => $storcli_virtual_drive_id_string }, code => 10, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0010", message_variables => { id_string => $storcli_virtual_drive_id_string }, code => 10, file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 10});
 		}
 		if (not $controller_uuid)
 		{
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 8});
 		}
 		
@@ -2380,7 +2380,7 @@ sub process_a_physical_disk
 	if (not $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller})
 	{
 		# Error!
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0012", message_variables => { serial_number => $storcli_physical_drive_serial_number }, code => 12, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0012", message_variables => { serial_number => $storcli_physical_drive_serial_number }, code => 12, file => $THIS_FILE, line => __LINE__});
 		$an->nice_exit({exit_code => 12});
 	}
 	
@@ -2392,7 +2392,7 @@ sub process_a_physical_disk
 	# Now make sure I can translate this to a UUID.
 	if (not $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number})
 	{
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
 		$an->nice_exit({exit_code => 8});
 	}
 	my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
@@ -3509,7 +3509,7 @@ sub process_cachevaults
 		if (not $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{host_controller_serial_number})
 		{
 			# Error!
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0009", message_variables => { serial_number => $cachevault_serial_number }, code => 9, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0009", message_variables => { serial_number => $cachevault_serial_number }, code => 9, file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 9});
 		}
 		my $host_controller_serial_number = $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{host_controller_serial_number};
@@ -3519,7 +3519,7 @@ sub process_cachevaults
 		
 		if (not $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number})
 		{
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 8});
 		}
 		my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
@@ -4712,7 +4712,7 @@ sub process_bbus
 		if (not $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number})
 		{
 			# Error!
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0007", message_variables => { serial_number => $bbu_serial_number }, code => 7, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0007", message_variables => { serial_number => $bbu_serial_number }, code => 7, file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 7});
 		}
 		my $host_controller_serial_number = $an->data->{bbu}{serial_number}{$bbu_serial_number}{host_controller_serial_number};
@@ -4722,7 +4722,7 @@ sub process_bbus
 		
 		if (not $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number})
 		{
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0008", message_variables => { serial_number => $host_controller_serial_number }, code => 8, file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 8});
 		}
 		my $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$host_controller_serial_number};
@@ -7783,7 +7783,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'storcli_physical_drive_uuid' before, so it's just a question
+					# We've seen this 'storcli_physical_drive_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid})
@@ -8121,7 +8121,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'storcli_drive_group_uuid' before, so it's just a question
+					# We've seen this 'storcli_drive_group_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{storcli_drive_groups}{modified_date}{$modified_date}{storcli_drive_group_uuid}{$storcli_drive_group_uuid})
@@ -8447,7 +8447,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'storcli_virtual_drive_uuid' before, so it's just a question
+					# We've seen this 'storcli_virtual_drive_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid})
@@ -8739,7 +8739,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'storcli_bbu_uuid' before, so it's just a question
+					# We've seen this 'storcli_bbu_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{storcli_bbus}{modified_date}{$modified_date}{storcli_bbu_uuid}{$storcli_bbu_uuid})
@@ -9015,7 +9015,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'storcli_cachevault_uuid' before, so it's just a question
+					# We've seen this 'storcli_cachevault_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{storcli_cachevaults}{modified_date}{$modified_date}{storcli_cachevault_uuid}{$storcli_cachevault_uuid})
@@ -9269,7 +9269,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'storcli_variable_uuid' before, so it's just a question
+					# We've seen this 'storcli_variable_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid})
@@ -9509,7 +9509,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'storcli_controller_uuid' before, so it's just a question
+					# We've seen this 'storcli_controller_uuid' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{storcli_controllers}{modified_date}{$modified_date}{storcli_controller_uuid}{$storcli_controller_uuid})
@@ -9674,7 +9674,7 @@ sub get_physical_disk_data
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -10133,7 +10133,7 @@ sub get_virtual_drive_data
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -10881,7 +10881,7 @@ sub get_bbu_data
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -10989,7 +10989,7 @@ sub get_bbu_data
 				
 				# Because LSI is either evil or amazingly incompetent, we have the variable
 				# "Absolute State of charge" listed twice, but once with 'State' and the 
-				# other with 'state' (capital versus small 'S'). We fix it because it's the
+				# other with 'state' (capital versus small 'S'). We fix it because it is the
 				# same data and we don't want two records, so the second copy will now just
 				# overwrite the first one.
 				if ($variable eq "Absolute State of charge")
@@ -11140,7 +11140,7 @@ sub get_cachevault_data
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -11360,7 +11360,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -11886,7 +11886,7 @@ sub get_controller_info
 	if (not $serial_number)
 	{
 		# Error out.
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_storcli_error_0006", message_variables => { adapter => $adapter }, code => 6, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0006", message_variables => { adapter => $adapter }, code => 6, file => $THIS_FILE, line => __LINE__});
 		$an->nice_exit({exit_code => 6});
 	}
 	
@@ -11895,7 +11895,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -11925,7 +11925,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -11955,7 +11955,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -11985,7 +11985,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -12015,7 +12015,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -12045,7 +12045,7 @@ sub get_controller_info
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -12359,7 +12359,7 @@ sub find_lsi_controllers
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;

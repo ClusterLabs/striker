@@ -21,7 +21,7 @@ This module handles all types of system and internal checks.
   	title		=>	"Something went boom",
   	message		=>	"Details on what went boom",
   	code		=>	<some integer representing what went boom>,
-  	file		=>	"$THIS_FILE",
+  	file		=>	$THIS_FILE,
   	line		=>	__LINE__
   });
 

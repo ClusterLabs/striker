@@ -316,7 +316,7 @@ sub _clear_foreign_state
 	return(0);
 }
 
-# This is the old health page that only displayed the health status of the LSI controller and it's 
+# This is the old health page that only displayed the health status of the LSI controller and its 
 # devices/arrays.
 sub _display_node_health
 {

@@ -3,7 +3,7 @@
 # This is the finest quality duct tape... It calls 'drbdadm dump', parses out
 # the resources and then waits until all resources have become primary. It is
 # designed to live in cluser.conf between DRBD and clvmd so that clustered LVM
-# doesn't throw a fit when it tries to find it's PVs before the backing device
+# doesn't throw a fit when it tries to find its PVs before the backing device
 # is accessible.
 # 
 # THIS DOES NOT START DRBD!
@@ -31,6 +31,12 @@ my $conf = {
 		stop_time	=>	(time + 60),
 	},
 };
+
+# Exit immediately if there is no DRBD on this system.
+if (not -e $conf->{path}{drbdadm})
+{
+	exit(1);
+}
 
 # Wait for drbd module to load.
 my $drbd_loaded = 0;

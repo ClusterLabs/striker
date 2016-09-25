@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # 
-# This reports the current host of a server and the TCP port it's VNC connection is listening on.
+# This reports the current host of a server and the TCP port its VNC connection is listening on.
 # 
 # This software was created by Alteeve's Niche! Inc. and has been released under the terms of the GNU GPL 
 # version 2.
@@ -79,7 +79,7 @@ $an->Log->entry({log_level => 3, message_key => "arv_log_0001", message_variable
 # Exit if no Anvil! or server name was passed in.
 if ((not $an->data->{switches}{anvil}) or (not $an->data->{switches}{server}))
 {
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arv_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "arv_error_0001", code => 1, file => $THIS_FILE, line => __LINE__});
 }
 
 $an->Log->entry({log_level => 2, message_key => "arv_log_0001", message_variables => {
@@ -128,9 +128,9 @@ if ($an->data->{anvil}{id})
 else
 {
 	# Well foo. 
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arv_error_0002", message_variables => {
+	$an->Alert->error({title_key => "an_0003", message_key => "arv_error_0002", message_variables => {
 		anvil	=>	$an->data->{switches}{anvil},
-	}, code => 2, file => "$THIS_FILE", line => __LINE__});
+	}, code => 2, file => $THIS_FILE, line => __LINE__});
 }
 
 # Now find the server
@@ -311,9 +311,9 @@ sub find_server
 		if (read_clustat($an, $an->data->{anvil}{node1}))
 		{
 			# Well shucks.
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arv_error_0003", message_variables => {
+			$an->Alert->error({title_key => "an_0003", message_key => "arv_error_0003", message_variables => {
 				anvil	=>	$an->data->{switches}{anvil},
-			}, code => 3, file => "$THIS_FILE", line => __LINE__});
+			}, code => 3, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -324,19 +324,19 @@ sub find_server
 		if (read_virsh_dumpxml($an, $an->data->{server}{host}, $an->data->{switches}{server}))
 		{
 			# Failed.
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arv_error_0005", message_variables => {
+			$an->Alert->error({title_key => "an_0003", message_key => "arv_error_0005", message_variables => {
 				server	=>	$an->data->{switches}{server},
 				host	=>	$an->data->{server}{host}, 
-			}, code => 5, file => "$THIS_FILE", line => __LINE__});
+			}, code => 5, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	else
 	{
 		# Sad trombone...
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arv_error_0004", message_variables => {
+		$an->Alert->error({title_key => "an_0003", message_key => "arv_error_0004", message_variables => {
 			server	=>	$an->data->{switches}{server},
 			anvil	=>	$an->data->{switches}{anvil},
-		}, code => 4, file => "$THIS_FILE", line => __LINE__});
+		}, code => 4, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);

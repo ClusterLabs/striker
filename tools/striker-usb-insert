@@ -1055,7 +1055,7 @@ fi;";
 						my $return_code = $1;
 						if ($return_code eq "0")
 						{
-							# It's not running.
+							# It is not running.
 							$start_nfs = 1;
 							logger($conf, $THIS_FILE, __LINE__, "NFS is NOT running, it will be started now.");
 						}

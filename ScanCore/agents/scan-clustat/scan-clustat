@@ -86,7 +86,7 @@ my $an = AN::Tools->new({data =>
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			clustat_uuid_query	=>	"",
 			# When a lock is requested, this is set to the time the lock was set. 
-			# DB->do_db_write() and DB->do_db_read() will check this and if it's age is >50% of
+			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
 			local_lock_active	=>	0,
 			sql			=>	[],
@@ -141,9 +141,9 @@ $an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
 		uuid => $an->data->{sys}{host_uuid},
-	}, code => 255, file => "$THIS_FILE", line => __LINE__});
+	}, code => 255, file => $THIS_FILE, line => __LINE__});
 }
 
 # Setup some repeatedly used subqueries for easier use later.
@@ -396,7 +396,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'clustat_service_name' before, so it's just a question
+					# We've seen this 'clustat_service_name' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name})
@@ -636,7 +636,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'clustat_node_name' before, so it's just a question
+					# We've seen this 'clustat_node_name' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
 					if (not $an->data->{db_data}{$id}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name})
@@ -764,7 +764,7 @@ WHERE
 		}
 	}
 	
-	### TODO: Convert this away from using 'first_record' so that it's closer in style to the rest of 
+	### TODO: Convert this away from using 'first_record' so that it is closer in style to the rest of 
 	###       ScanCore.
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
@@ -927,7 +927,7 @@ sub prep_databases
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='clustat' AND schemaname='public';";
@@ -981,7 +981,7 @@ sub find_changes
 	if (read_last_scan($an))
 	{
 		# No record found, INSERT everything.
-		   $an->data->{sql}{clustat}{clustat_uuid} = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
+		   $an->data->{sql}{clustat}{clustat_uuid} = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});;
 		my $query = "
 INSERT INTO 
     clustat 
@@ -1485,7 +1485,7 @@ WHERE
 				my $say_message = "scan_clustat_note_0013";
 				if ($an->data->{clustat}{service}{$service}{is_server} eq "TRUE")
 				{
-					# It's a new server.
+					# it is a new server.
 					$say_message = "scan_clustat_note_0014";
 				}
 				$an->Alert->register_alert({
@@ -1554,7 +1554,7 @@ WHERE
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{clustat}{service}{$service}{is_server} eq "TRUE")
 					{
-						### It's a server.
+						### it is a server.
 						# Possible state changes:
 						# - https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/High_Availability_Add-On_Overview/s2-rgmanager-opstates-states.html
 						# 
@@ -2240,7 +2240,7 @@ sub recover_server
 		# debug logging.
 		my $shell_call = $an->data->{path}{'anvil-recover-server'}." -d -b 2>&1 |";
 		$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, $shell_call) or $an->Alert->error({title_key => "scancore_title_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2600,7 +2600,7 @@ sub parse_clustat
 		# Found it!
 		my $shell_call  = $an->data->{path}{clustat};
 		$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "scancore_title_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;

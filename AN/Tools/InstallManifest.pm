@@ -1197,7 +1197,7 @@ sub check_drbd_if_force_primary_is_needed
 		
 		if ($line =~ /^0: /)
 		{
-			# Resource found, check disk state, but unless it's "Diskless", we're already 
+			# Resource found, check disk state, but unless it is "Diskless", we're already 
 			# attached because unattached disks cause the entry
 			if ($line =~ /ds:(.*?)\/(.*?)\s/)
 			{
@@ -1227,7 +1227,7 @@ sub check_drbd_if_force_primary_is_needed
 		}
 		if ($line =~ /^1: /)
 		{
-			# Resource found, check disk state, but unless it's "Diskless", we're already 
+			# Resource found, check disk state, but unless it is "Diskless", we're already 
 			# attached because unattached disks cause the entry
 			if ($line =~ /ds:(.*?)\/(.*?)\s/)
 			{
@@ -1702,7 +1702,7 @@ fi";
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($rc eq "0")
 				{
-					# It's in a cluster.
+					# It is in a cluster.
 					$an->data->{node}{$node}{in_cluster} = 1;
 				}
 			}
@@ -1748,7 +1748,7 @@ fi";
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($rc eq "0")
 				{
-					# It's in a cluster.
+					# It is in a cluster.
 					$an->data->{node}{$node}{in_cluster} = 1;
 				}
 			}
@@ -1779,7 +1779,7 @@ sub check_local_repo
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -3032,7 +3032,7 @@ sub configure_ipmi_on_node
 	}
 	else
 	{
-		# If we're still alive, then it's safe to say IPMI is running. Find the LAN channel
+		# If we're still alive, then it is safe to say IPMI is running. Find the LAN channel
 		my $lan_found = 0;
 		my $channel   = 0;
 		while (not $lan_found)
@@ -4251,8 +4251,8 @@ COMMIT";
 	### And finally, iptables. 
 	### NOTE: DON'T restart iptables! It could break the connection as the rules are for the new network
 	###       config, which may differ from the active one.
-	# First, get a word count on the current iptables in-memory config. If it's smaller than 13 lines,
-	# it's probably the original one and we'll need a reboot.
+	# First, get a word count on the current iptables in-memory config. If it is smaller than 13 lines,
+	# it is probably the original one and we'll need a reboot.
 	$shell_call = $an->data->{path}{echo}." \"lines:\$(".$an->data->{path}{'iptables-save'}." | ".$an->data->{path}{wc}." -l)\"\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
@@ -5689,7 +5689,7 @@ sub configure_storage_stage1
 		}
 		else
 		{
-			### TODO: Determine if it's better to always make the size of pool 2 "all".
+			### TODO: Determine if it is better to always make the size of pool 2 "all".
 			# Create node 1, pool 2.0
 			my ($rc) = $an->InstallManifest->create_partition_on_node({
 					node           => $node1, 
@@ -5793,7 +5793,7 @@ sub configure_storage_stage1
 		}
 		else
 		{
-			### TODO: Determine if it's better to always make the size of pool 2 "all".
+			### TODO: Determine if it is better to always make the size of pool 2 "all".
 			# Create node 2, pool 2.
 			my ($rc) = $an->InstallManifest->create_partition_on_node({
 					node           => $node2,
@@ -6354,7 +6354,7 @@ sub confirm_install_manifest_run
 	$an->data->{sys}{anvil}{node2}{use_ip}       = $an->data->{cgi}{anvil_node2_bcn_ip} if not $an->data->{sys}{anvil}{node2}{use_ip};
 	$an->data->{sys}{anvil}{node2}{password} = $an->data->{sys}{anvil}{password}     if not $an->data->{sys}{anvil}{node2}{password};
 	
-	# I don't ask the user for the port range at this time, so it's possible the number of ports to open
+	# I don't ask the user for the port range at this time, so it is possible the number of ports to open
 	# isn't in the manifest.
 	$an->data->{cgi}{anvil_open_vnc_ports} = $an->data->{sys}{install_manifest}{open_vnc_ports} if not $an->data->{cgi}{anvil_open_vnc_ports};
 	
@@ -6964,7 +6964,7 @@ sub create_partition_on_node
 	my $start   = 0;
 	my $end     = 0;
 	my $size    = 0;
-	### NOTE: Parted, in it's infinite wisdom, doesn't show the partition type when called with --machine
+	### NOTE: Parted, in its infinite wisdom, doesn't show the partition type when called with --machine
 	#my $shell_call = "parted --machine /dev/$disk unit GiB print free";
 	my $shell_call = $an->data->{path}{parted}." /dev/$disk unit GiB print free";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -7450,8 +7450,8 @@ fi;
 				
 				if ($line =~ /^$resource: /)
 				{
-					# Resource found, check disk state, but unless it's "Diskless", we're
-					# already attached because unattached disks cause the entry
+					# Resource found, check disk state, but unless it is "Diskless", 
+					# we're already attached because unattached disks cause the entry.
 					my $disk_state = ($line =~ /ds:(.*?)\//)[0];
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 						name1 => "node",       value1 => $node,
@@ -8179,7 +8179,7 @@ sub do_node_reboot
 				$return_code = 0;
 				$an->Log->entry({log_level => 2, message_key => "log_0161", file => $THIS_FILE, line => __LINE__});
 				
-				# Rescan it's (new) partition data.
+				# Rescan its (new) partition data.
 				my ($node_disk) = $an->InstallManifest->get_partition_data({
 						node     => $node, 
 						target   => $target, 
@@ -9711,7 +9711,7 @@ resource r1 {
 	return (0);
 }
 
-# This reads in node 1's lvm.conf, makes sure it's configured for clvmd and stores in.
+# This reads in node 1's lvm.conf, makes sure it is configured for clvmd and stores in.
 sub generate_lvm_conf
 {
 	my $self      = shift;
@@ -10173,10 +10173,10 @@ sub get_node_os_version
 		name3 => "minor", value3 => $minor,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# If it's RHEL, see if it's registered.
+	# If it is RHEL, see if it is registered.
 	if ($an->data->{node}{$node}{os}{brand} =~ /Red Hat Enterprise Linux Server/i)
 	{
-		# See if it's been registered already.
+		# See if it has been registered already.
 		$an->data->{node}{$node}{os}{registered} = 0;
 		my $shell_call = $an->data->{path}{rhn_check}."; ".$an->data->{path}{echo}." exit:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -10546,7 +10546,7 @@ sub get_partition_data_from_node
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### NOTE: Parted, in it's infinite wisdom, doesn't show the partition type when called with --machine
+	### NOTE: Parted, in its infinite wisdom, doesn't show the partition type when called with --machine
 	my $shell_call = $an->data->{path}{parted}." /dev/$disk unit GiB print free";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
@@ -10691,9 +10691,9 @@ sub get_storage_pool_partitions
 		if ($disk =~ /da$/)
 		{
 			# I need to know the label type to determine the partition numbers to use:
-			# * If it's 'msdos', I need an extended partition and then two logical partitions. 
+			# * If it is 'msdos', I need an extended partition and then two logical partitions. 
 			#   (4, 5 and 6)
-			# * If it's 'gpt', I just use two logical partition. (4 and 5).
+			# * If it is 'gpt', I just use two logical partition. (4 and 5).
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node::${node}::disk::${disk}::label", value1 => $an->data->{node}{$node}{disk}{$disk}{label},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -11453,7 +11453,7 @@ sub map_network
 		}
 	}
 	
-	# Now determine if a remap is needed. If ifn_bridge1 exists, assume it's configured and skip.
+	# Now determine if a remap is needed. If ifn_bridge1 exists, assume it is configured and skip.
 	my $node1_remap_needed = 0;
 	my $node2_remap_needed = 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11739,7 +11739,7 @@ fi";
 		{
 			# wat?
 			$return_code = 7;
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0159", code => 159, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0159", code => 159, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 		
@@ -11987,7 +11987,7 @@ sub populate_authorized_keys_on_node
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# If a node is being rebuilt, it's old keys will no longer be valid. To deal with this, we simply 
+	# If a node is being rebuilt, its old keys will no longer be valid. To deal with this, we simply 
 	# remove existing keys and re-add them.
 	my $ok = 1;
 	foreach my $name (@{$an->data->{sys}{node_names}})
@@ -12315,7 +12315,7 @@ sub read_cluster_conf
 	
 	if (not $node)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0160", code => 160, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0160", code => 160, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -12473,7 +12473,7 @@ fi;";
 		if ($in_r1) { $an->data->{node}{$node}{drbd_file}{r1} .= "$line\n"; }
 	}
 	
-	# Wipe out the global_common if it's generic.
+	# Wipe out the global_common if it is generic.
 	$an->data->{node}{$node}{drbd_file}{global_common} = "" if $generic_global_common;
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -12935,7 +12935,7 @@ sub register_with_rhn
 		}});
 	}
 	
-	# If it's not RHEL, no sense going further.
+	# If it is not RHEL, no sense going further.
 	if (($an->data->{node}{$node1}{os}{brand} !~ /Red Hat Enterprise Linux Server/) && ($an->data->{node}{$node2}{os}{brand} !~ /Red Hat Enterprise Linux Server/))
 	{
 		return(1);
@@ -12964,7 +12964,7 @@ sub register_with_rhn
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
 	{
-		# See if it's been registered already.
+		# See if it has been registered already.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node::${node1}::os::registered", value1 => $an->data->{node}{$node1}{os}{registered},
 			name2 => "node::${node1}::internet",       value2 => $an->data->{node}{$node1}{internet},
@@ -13000,7 +13000,7 @@ sub register_with_rhn
 	}
 	if ($an->data->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
 	{
-		# See if it's been registered already.
+		# See if it has been registered already.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node::${node2}::os::registered", value1 => $an->data->{node}{$node2}{os}{registered},
 			name2 => "node::${node2}::internet",       value2 => $an->data->{node}{$node2}{internet},
@@ -13645,7 +13645,7 @@ sub run_new_install_manifest
 		# Enable (or disable) tools.
 		$an->InstallManifest->enable_tools() or return(1);
 		
-		### If we're not dead, it's time to celebrate!
+		### If we're not dead, it is time to celebrate!
 		# Is this Anvil! already in the database?
 		my ($anvil_configured) = $an->InstallManifest->check_config_for_anvil();
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -14050,7 +14050,7 @@ sub sanity_check_manifest_answers
 	# Check NTP 1
 	if ($an->data->{cgi}{anvil_ntp1})
 	{
-		# It's defined, so it has to be either a domain name or an IPv4 IP.
+		# it is defined, so it has to be either a domain name or an IPv4 IP.
 		if ((not $an->Validate->is_ipv4({ip => $an->data->{cgi}{anvil_ntp1}})) && (not $an->Validate->is_domain_name({name => $an->data->{cgi}{anvil_ntp1}})))
 		{
 			$an->data->{form}{anvil_ntp1_star} = "#!string!symbol_0012!#";
@@ -14063,7 +14063,7 @@ sub sanity_check_manifest_answers
 	# Check NTP 2
 	if ($an->data->{cgi}{anvil_ntp2})
 	{
-		# It's defined, so it has to be either a domain name or an IPv4 IP.
+		# it is defined, so it has to be either a domain name or an IPv4 IP.
 		if ((not $an->Validate->is_ipv4({ip => $an->data->{cgi}{anvil_ntp2}})) && (not $an->Validate->is_domain_name({name => $an->data->{cgi}{anvil_ntp2}})))
 		{
 			$an->data->{form}{anvil_ntp2_star} = "#!string!symbol_0012!#";
@@ -14308,7 +14308,7 @@ sub sanity_check_manifest_answers
 				# Make sure this PDU is defined.
 				if (not $pdus->[$i])
 				{
-					# It's not.
+					# it is not.
 					$an->data->{form}{$outlet_star_key} = "#!string!symbol_0012!#";
 					my $message = $an->String->get({key => "explain_0144", variables => { 
 							node	=>	$say_node,
@@ -16436,7 +16436,7 @@ sub summarize_build_plan
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
 	{
-		# See if it's been registered already.
+		# See if it has been registered already.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node::${node1}::os::registered", value1 => $an->data->{node}{$node1}{os}{registered},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -16479,7 +16479,7 @@ sub summarize_build_plan
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
 	{
-		# See if it's been registered already.
+		# See if it has been registered already.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node::${node2}::os::registered", value1 => $an->data->{node}{$node2}{os}{registered},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -16620,7 +16620,7 @@ sub summarize_build_plan
 	return(0);
 }
 
-# This starts 'clvmd' on a node if it's not already running.
+# This starts 'clvmd' on a node if it is not already running.
 sub start_clvmd_on_node
 {
 	my $self      = shift;
@@ -17434,7 +17434,7 @@ sub test_internet_connection
 	
 	# After installing, sometimes/often the system will come up with multiple interfaces on the same 
 	# subnet, causing default route problems. So the first thing to do is look for the interface the IP
-	# we're using to connect is on, see it's subnet and see if anything else is on the same subnet. If 
+	# we're using to connect is on, see its subnet and see if anything else is on the same subnet. If 
 	# so, delete the other interface(s) from the route table.
 	my $dg_device  = "";
 	my $shell_call = $an->data->{path}{route}." -n";
@@ -18438,7 +18438,7 @@ sub verify_perl_is_installed
 	return($ok);
 }
 
-# This will check to see if perl is installed and, if it's not, it will try to install it.
+# This will check to see if perl is installed and, if it is not, it will try to install it.
 sub verify_perl_is_installed_on_node
 {
 	my $self      = shift;
@@ -18583,7 +18583,7 @@ sub watch_clustat
 					name2 => "state",   value2 => $state, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				# If it's not started or failed, I am not interested in it.
+				# If it is not started or failed, I am not interested in it.
 				next if (($state ne "failed") && ($state ne "disabled") && ($state ne "started") && ($state ne "stopped"));
 				if ($state eq "stopped")
 				{
@@ -18888,7 +18888,7 @@ sub write_cluster_conf
 	
 	if (not $node)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0161", code => 161, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0161", code => 161, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	

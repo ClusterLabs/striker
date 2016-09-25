@@ -76,7 +76,7 @@ sub force_utf8
 		else
 		{
 			my $an = $self->parent;
-			$an->Alert->error({fatal => 1, title_key => "error_title_0001", message_key => "error_message_0004", message_variables => { set => $set }, code => 14, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "error_title_0001", message_key => "error_message_0004", message_variables => { set => $set }, code => 14, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -100,7 +100,7 @@ sub get
 	# Make sure we got a key.
 	if (not $parameter->{key})
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0001", message_key => "error_message_0001", code => 20, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0001", message_key => "error_message_0001", code => 20, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	
@@ -112,7 +112,7 @@ sub get
 	# Make sure that 'hash' is a hash reference
 	if (ref($hash) ne "HASH")
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0001", message_key => "error_message_0005", message_variables => { hash => $hash }, code => 15, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0001", message_key => "error_message_0005", message_variables => { hash => $hash }, code => 15, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	
@@ -128,7 +128,7 @@ sub get
 	print "$THIS_FILE ".__LINE__."; variables: [$variables]\n" if $debug;
 	if (($variables) && (ref($variables) ne "HASH"))
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0001", message_key => "error_message_0006", message_variables => { variables => $variables }, code => 16, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0001", message_key => "error_message_0006", message_variables => { variables => $variables }, code => 16, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	
@@ -151,7 +151,7 @@ sub get
 	if (not exists $hash->{strings}{lang}{$language}{key}{$key}{content})
 	{
 		print "$THIS_FILE ".__LINE__."; language: [$language], key: [$key], no string key.\n";
-		$an->Alert->error({fatal => 1, title_key => "error_title_0004", message_key => "error_message_0007", message_variables => {
+		$an->Alert->error({title_key => "error_title_0004", message_key => "error_message_0007", message_variables => {
 			key		=>	$key,
 			language	=>	$language,
 		}, code => 18, file => $THIS_FILE, line => __LINE__});
@@ -181,7 +181,7 @@ sub get
 		{
 			# Other variable key, so this is fatal.
 			print "$THIS_FILE ".__LINE__."; String key: [$key], containing: [$string] has a variable substitution, but no variables were passed in.\n";
-			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0008", code => 36, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0008", code => 36, file => $THIS_FILE, line => __LINE__});
 			return (undef);
 		}
 	}
@@ -240,7 +240,7 @@ sub _format_mode
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	# I don't think I need this now as I only wrap the string after it's been processed by 
+	# I don't think I need this now as I only wrap the string after it has been processed by 
 	# 'print_template'. It may have future use though.
 	return ($parameter->{string});
 }
@@ -355,7 +355,7 @@ sub _insert_variables_into_string
 		if (not defined $parameter->{variables}{$variable})
 		{
 			# I can't expect there to always be a defined value in the variables array at any 
-			# given position so if it's blank I blank the key.
+			# given position so if it is blank I blank the key.
 			$parameter->{string} =~ s/#!variable!$variable!#//;
 		}
 		else
@@ -368,7 +368,7 @@ sub _insert_variables_into_string
 		# Die if I've looped too many times.
 		if ($i > $an->_error_limit)
 		{
-			die "$THIS_FILE ".__LINE__."; Infitie loop detected will inserting variables into the string: [$parameter->{string}].\n";
+			die "$THIS_FILE ".__LINE__."; Infitie loop detected while inserting variables into the string: [$parameter->{string}].\n";
 		}
 		$i++;
 	}
@@ -378,7 +378,7 @@ sub _insert_variables_into_string
 
 # This takes a string and substitutes out the various replacement keys as needed until the string is ready 
 # for display. The only thing it doesn't handle is substituting '#!variable!x!#' keys into a string. For 
-# that, call the 'get' method with it's given variable array reference and store the results in a string. 
+# that, call the 'get' method with its given variable array reference and store the results in a string. 
 # This is requried because there is currently no way for any of the called methods within here to know which
 # string the variables in the array reference belong in.
 sub _process_string
@@ -456,10 +456,10 @@ sub _process_string_replace
 		# Die if I've looped too many times.
 		if ($i > $an->data->{sys}{error_limit})
 		{
-			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0076", message_variables => {
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0076", message_variables => {
 				file     => $file, 
 				template => $template, 
-			}, code => 76, file => "$THIS_FILE", line => __LINE__});
+			}, code => 76, file => $THIS_FILE, line => __LINE__});
 		}
 		$i++;
 	}

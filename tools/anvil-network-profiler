@@ -105,7 +105,7 @@ if (not $an->data->{switches}{peer})
 	
 	if (not $an->data->{switches}{peer})
 	{
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "anp_error_0001", code => 1, file => $THIS_FILE, line => __LINE__});
 		exit(1);
 	}
 	$an->data->{switches}{peer} .= ".sn";
@@ -150,7 +150,7 @@ if (not $an->data->{switches}{password})
 if (not $an->data->{switches}{password})
 {
 	# We're done.
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0003", code => 3, file => "$THIS_FILE", line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "anp_error_0003", code => 3, file => $THIS_FILE, line => __LINE__});
 	exit(3);
 }
 
@@ -421,7 +421,7 @@ sub get_local_interface_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -446,7 +446,7 @@ sub get_local_interface_info
 		next if $bond eq ".";
 		next if $bond eq "..";
 		
-		# Note that if 'bond0' shows 'MII Status: down' and no slaves, it's not actually configured
+		# Note that if 'bond0' shows 'MII Status: down' and no slaves, it is not actually configured
 		# and just an annoying ghost bond that we can ignore.
 		my $bond_path = $an->data->{path}{bonding}."/$bond";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -462,7 +462,7 @@ sub get_local_interface_info
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -491,7 +491,7 @@ sub get_local_interface_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -599,7 +599,7 @@ sub get_peer_interface_info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	(my $error, $an->data->{sys}{ssh_fh}, my $return) = $an->Remote->remote_call({
+	($error, $an->data->{sys}{ssh_fh}, $return) = $an->Remote->remote_call({
 		target		=>	$an->data->{network}{peer_ip},
 		password	=>	$an->data->{switches}{password},
 		ssh_fh		=>	$an->data->{sys}{ssh_fh},
@@ -632,7 +632,7 @@ sub get_interface_info
 	get_peer_interface_info($an);
 	
 	# Now I should know about bridges, bonds and slaves. If the peer's interface or our interface is a
-	# bridge, we'll need to adjust all connected devices. If it's a bond, or if a bond is attached to a 
+	# bridge, we'll need to adjust all connected devices. If it is a bond, or if a bond is attached to a 
 	# bridge, we'll need to adjust all slaves.
 	my $peer_interface  = $an->data->{network}{peer_interface},
 	my $local_interface = $an->data->{network}{local_interface},
@@ -694,7 +694,7 @@ sub find_peer_interface
 	if (not $an->data->{network}{peer_interface})
 	{
 		# No good. :(
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0007", message_variables => { peer_ip => $an->data->{network}{peer_ip} }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "anp_error_0007", message_variables => { peer_ip => $an->data->{network}{peer_ip} }, code => 2, file => $THIS_FILE, line => __LINE__});
 		exit(7);
 	}
 	
@@ -735,7 +735,7 @@ sub check_iperf3
 	
 	if (not -x $an->data->{path}{iperf3})
 	{
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0004", code => 4, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "anp_error_0004", code => 4, file => $THIS_FILE, line => __LINE__});
 		exit(4);
 	}
 	# How about on the peer? (also a test of whether we can ssh into the peer)
@@ -750,10 +750,10 @@ sub check_iperf3
 	if ($error)
 	{
 		# We can't reach the peer.
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0005", message_variables => {
+		$an->Alert->error({title_key => "an_0003", message_key => "anp_error_0005", message_variables => {
 			peer_ip	=>	$an->data->{network}{peer_ip},
 			error	=>	$error, 
-		}, code => 5, file => "$THIS_FILE", line => __LINE__});
+		}, code => 5, file => $THIS_FILE, line => __LINE__});
 		exit(5);
 	}
 	foreach my $line (@{$return})
@@ -771,7 +771,7 @@ sub check_iperf3
 			
 			if (not $installed)
 			{
-				$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0006", code => 6, file => "$THIS_FILE", line => __LINE__});
+				$an->Alert->error({title_key => "an_0003", message_key => "anp_error_0006", code => 6, file => $THIS_FILE, line => __LINE__});
 				exit(6);
 			}
 		}
@@ -789,7 +789,7 @@ sub find_ips
 	if (not $an->data->{network}{peer_ip})
 	{
 		# Welp, no go.
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "anp_error_0001", code => 1, file => $THIS_FILE, line => __LINE__});
 		exit(1);
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -805,7 +805,7 @@ sub find_ips
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -881,7 +881,7 @@ sub find_ips
 	if (not $an->data->{network}{local_interface})
 	{
 		# Woops
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0002", message_variables => { peer_ip => $an->data->{network}{peer_ip} }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "anp_error_0002", message_variables => { peer_ip => $an->data->{network}{peer_ip} }, code => 2, file => $THIS_FILE, line => __LINE__});
 		exit(2);
 	}
 	

@@ -1061,7 +1061,7 @@ CREATE TABLE servers (
 	server_start_delay		integer				not null	default 0,	-- How many seconds to delay booting for after the last server in the previous group boots.
 	server_note			text,								-- User's place to keep notes about their server.
 	server_definition		text				not null,			-- The XML definition file for the server.
-	server_host			text,								-- This is the current host for this server, which may be empty if it's off.
+	server_host			text,								-- This is the current host for this server, which may be empty if it is off.
 	server_state			text,								-- This is the current state of this server.
 	server_migration_type		text				not null	default 'live',	-- This is either 'live' or 'cold'. Cold migration involves "shut down" -> "Boot" on the peer.
 	server_pre_migration_script	text,								-- This is set to the name of a script to run before migrating a server. This must match an entry in /shared/files/.
@@ -1291,7 +1291,7 @@ CREATE TRIGGER trigger_dr_jobs
 --       the tables in this schema need to be updated.                                                     --
 -- ------------------------------------------------------------------------------------------------------- --
 
--- This stores information about the RAM used by ScanCore and it's agents.
+-- This stores information about the RAM used by ScanCore and its agents.
 CREATE TABLE ram_used (
 	ram_used_uuid		bigserial,
 	ram_used_host_uuid	uuid				not null,

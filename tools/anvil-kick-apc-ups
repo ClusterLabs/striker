@@ -386,7 +386,7 @@ if ($conf->{switches}{cancel})
 # Figure out what UPS(es) we're using.
 get_ups_ips($conf);
 
-# If the user is using timing, check that it's time to kick each UPS.
+# If the user is using timing, check that it is time to kick each UPS.
 logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::kick_frequency: [$conf->{sys}{apc}{ups}{kick_frequency}].");
 if (($conf->{sys}{apc}{ups}{kick_frequency}) && (not $conf->{switches}{force}))
 {
@@ -716,7 +716,7 @@ sub energize_upses
 					get_current_settings($conf, $ups, "old");
 					if ($current_state_ups ne "8")
 					{
-						# TODO: Make sure it's actually on.
+						# TODO: Make sure it is actually on.
 						logger($conf, $THIS_FILE, __LINE__, "- The UPS: [$ups] is no longer rebooting, proceeding.");
 						$wait = 0;
 					}
@@ -1332,7 +1332,7 @@ sub get_ups_ips
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ups: [$ups]");
 			if (is_string_ipv4($conf, $ups))
 			{
-				# It's already an IP.
+				# It is already an IP.
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - IP address given, recording.");
 				push @{$conf->{sys}{apc}{ups}{devices}}, $ups;
 			}
@@ -1391,7 +1391,7 @@ sub parse_hosts
 		{
 			# Oh looky looky!
 			my ($ip, $names) = ($line =~ /^(\d+\.\d+\.\d+\.\d+) (.*)/);
-			next if ((not $ip) || (not $names));
+			next if ((not $ip) or (not $names));
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ip: [$ip], names: [$names]");
 			foreach my $name (split/ /, $names)
 			{
@@ -1450,7 +1450,7 @@ sub get_host_ip
 	# Make sure the IP is sane.
 	if (not is_string_ipv4($conf, $ip))
 	{
-		# It's already an IP.
+		# It is already an IP.
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Returned IP address is not valid.");
 		$ip = 0;
 	}
@@ -1468,16 +1468,16 @@ sub is_string_ipv4
 	
 	if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
 	{
-		# It's in the right format.
+		# It is in the right format.
 		my $first_octal  = $1;
 		my $second_octal = $2;
 		my $third_octal  = $3;
 		my $fourth_octal = $4;
 		
-		if (($first_octal  < 0) || ($first_octal  > 255) ||
-		    ($second_octal < 0) || ($second_octal > 255) ||
-		    ($third_octal  < 0) || ($third_octal  > 255) ||
-		    ($fourth_octal < 0) || ($fourth_octal > 255))
+		if (($first_octal  < 0) or ($first_octal  > 255) or
+		    ($second_octal < 0) or ($second_octal > 255) or
+		    ($third_octal  < 0) or ($third_octal  > 255) or
+		    ($fourth_octal < 0) or ($fourth_octal > 255))
 		{
 			# One of the octals is out of range.
 			$valid = 0;

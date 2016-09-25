@@ -63,7 +63,7 @@ sub access
 	
 	if (not $parameter->{target})
 	{
-		$an->Alert->warning({title_key => "warning_title_0004", message_key => "warning_title_0009", quiet => 1, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->warning({title_key => "warning_title_0004", message_key => "warning_title_0009", quiet => 1, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -111,7 +111,7 @@ sub access
 	return($access);
 }
 
-# This takes a host name (or IP) and sees if it's reachable from the machine running this program.
+# This takes a host name (or IP) and sees if it is reachable from the machine running this program.
 sub on_same_network
 {
 	my $self      = shift;
@@ -123,7 +123,7 @@ sub on_same_network
 	if (not $remote)
 	{
 		# I think we're alone now...
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0145", code => 145, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0145", code => 145, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -146,17 +146,17 @@ sub on_same_network
 			else
 			{
 				# The returned value isn't an ip...
-				$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0147", message_variables => { 
+				$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0147", message_variables => { 
 					remote => $remote,
 					ip     => $ip,
-				}, code => 147, file => "$THIS_FILE", line => __LINE__});
+				}, code => 147, file => $THIS_FILE, line => __LINE__});
 				return("");
 			}
 		}
 		else
 		{
 			# No IP, can't compare
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0146", message_variables => { remote => $remote }, code => 146, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0146", message_variables => { remote => $remote }, code => 146, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 	}
@@ -306,7 +306,7 @@ sub daemon
 	my $state = 2;
 	if (not $parameter->{daemon})
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0054", code => 54, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0054", code => 54, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -354,7 +354,7 @@ sub daemon
 	else
 	{
 		# Local call
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -435,7 +435,7 @@ sub drbd_resource
 	
 	if (not $parameter->{resource})
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0056", code => 56, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0056", code => 56, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -487,7 +487,7 @@ sub drbd_resource
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -561,7 +561,7 @@ sub drbd_resource
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -671,7 +671,7 @@ sub kernel_module
 	my $state = 0;
 	if (not $parameter->{module})
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0055", code => 55, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0055", code => 55, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -714,7 +714,7 @@ sub kernel_module
 	else
 	{
 		# Local call
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -759,7 +759,7 @@ sub ping
 	
 	if (not $parameter->{ping})
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0172", code => 172, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0172", code => 172, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -835,7 +835,7 @@ sub ping
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -949,7 +949,7 @@ sub _os
 # 			message_variables	=>	{
 # 				os			=>	$^O,
 # 			},
-# 			file			=>	"$THIS_FILE",
+# 			file			=>	$THIS_FILE,
 # 			line			=>	__LINE__
 # 		});
 		$an->_directory_delimiter("/");

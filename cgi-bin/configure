@@ -1849,7 +1849,7 @@ sub manage_install_target
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3309,8 +3309,7 @@ WHERE
 			if (not $an->data->{cgi}{anvil_open_vnc_ports})     { $an->data->{cgi}{anvil_open_vnc_ports}     = $an->data->{sys}{install_manifest}{'default'}{open_vnc_ports}; }
 			if (not $an->data->{cgi}{anvil_mtu_size})           { $an->data->{cgi}{anvil_mtu_size}           = $an->data->{sys}{install_manifest}{'default'}{mtu_size}; }
 			
-			# It's possible for the user to set default values in
-			# the install manifest.
+			# It is possible for the user to set default values in the install manifest.
 			if (not $an->data->{cgi}{anvil_name})               { $an->data->{cgi}{anvil_name}               = $an->data->{sys}{install_manifest}{'default'}{name}; }
 			if (not $an->data->{cgi}{anvil_ifn_gateway})        { $an->data->{cgi}{anvil_ifn_gateway}        = $an->data->{sys}{install_manifest}{'default'}{ifn_gateway}; }
 			if (not $an->data->{cgi}{anvil_dns1})               { $an->data->{cgi}{anvil_dns1}               = $an->data->{sys}{install_manifest}{'default'}{dns1}; }

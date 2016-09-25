@@ -188,7 +188,7 @@ sub shed_load
 	{
 		# We're done.
 		print $an->String->get({key => "assp_message_0005"})."\n";
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0002", message_variables => { peer => $an->data->{sys}{peer_node} }, code => 3, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "assp_error_0002", message_variables => { peer => $an->data->{sys}{peer_node} }, code => 3, file => $THIS_FILE, line => __LINE__});
 		$an->nice_exit({exit_code => 3});
 	}
 	
@@ -274,7 +274,7 @@ sub shed_load
 		}, file => $THIS_FILE, line => __LINE__});
 		if (($i_am_synctarget) && ($peer_is_synctarget))
 		{
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0003", code => 4, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({title_key => "an_0003", message_key => "assp_error_0003", code => 4, file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 4});
 		}
 		
@@ -729,14 +729,14 @@ sub local_shut_down
 			}, file => $THIS_FILE, line => __LINE__});
 			if (($i_am_synctarget) && ($peer_is_synctarget))
 			{
-				$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0003", code => 4, file => "$THIS_FILE", line => __LINE__});
+				$an->Alert->error({title_key => "an_0003", message_key => "assp_error_0003", code => 4, file => $THIS_FILE, line => __LINE__});
 				$an->nice_exit({exit_code => 4});
 			}
 			
 			# If we're sync target (or the peer is diskless), abort.
 			if ($i_am_synctarget)
 			{
-				$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0004", code => 5, file => "$THIS_FILE", line => __LINE__});
+				$an->Alert->error({title_key => "an_0003", message_key => "assp_error_0004", code => 5, file => $THIS_FILE, line => __LINE__});
 				$an->nice_exit({exit_code => 5});
 			}
 			
@@ -762,7 +762,7 @@ sub local_shut_down
 	
 	### TODO: This might be racy if the other node is also shutting down. Might be worth making this a 
 	###       loop that doesn't exit until all servers are on the peer or off.
-	# If we're not dead, the peer can run on it's own. That said, it may be critical and shutting down, 
+	# If we're not dead, the peer can run on its own. That said, it may be critical and shutting down, 
 	# too. So despite planning to migrate, we'll check the peer's health before each migration starts and
 	# switch to shutting down servers if it goes critical.
 	my $local_clustat_data = $an->Cman->get_clustat_data({
@@ -786,7 +786,7 @@ sub local_shut_down
 		}
 		if ($host eq $an->hostname)
 		{
-			# It's on us, deal with it.
+			# It is on us, deal with it.
 			if ($migrate_servers)
 			{
 				# Make sure the target is still OK.
@@ -826,7 +826,7 @@ sub local_shut_down
 		}
 		else
 		{
-			# It's on the peer, see if it is being migrated to us and shut it down if so.
+			# It is on the peer, see if it is being migrated to us and shut it down if so.
 			my $migration_target = $an->ScanCore->get_migration_target({server => $server});
 			if ($migration_target eq $an->hostname)
 			{
@@ -907,7 +907,7 @@ sub do_migration
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;

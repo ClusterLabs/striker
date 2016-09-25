@@ -38,7 +38,7 @@ my $conf = {
 };
 read_configuration($conf);
 
-my $passphrase = $ARGV[0];
+my $passphrase = defined $ARGV[0] ? $ARGV[0] : "";
 
 if (length($passphrase) < $conf->{tools}{'anvil-self-destruct'}{minimum_length})
 {

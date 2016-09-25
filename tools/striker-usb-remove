@@ -98,7 +98,7 @@ sub find_missing_devices
 		# Clean up stray device mapper devices.
 		if (cleanup_dm($conf, $device_name))
 		{
-			# This will happen if it's a LUKS device and the DM was removed.
+			# This will happen if it is a LUKS device and the DM was removed.
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The device: [$device ($device_name)] was a stale device-mapped device and was cleaned up. Now cleaning up remote machine mounts that point to: [$conf->{device}{$device}{local_mount}].");
 		}
 	}
@@ -155,10 +155,10 @@ sub find_missing_devices
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device is gone, we'll clean it up.");
 			
-			# Sleep for a few moments to make sure the kernel has done it's thing...                        
+			# Sleep for a few moments to make sure the kernel has done its thing...                        
 			sleep 5;
 			
-			# now, make sure it's unmounted.
+			# now, make sure it is unmounted.
 			my $shell_call = "$conf->{path}{umount} -lf /dev/mapper/$device";
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]; $!\n";

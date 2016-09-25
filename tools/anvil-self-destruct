@@ -57,7 +57,7 @@ exit;
 ###       need for a passphrase entirely. We could add a check against the passphrase against the controller
 ###       but that would be no better. In the end, the commands to send to the controller are not secured so
 ###       any attempt at security here is little more than a delay tactice against a malicious attacker.
-# Sum the passed in passphrase to make sure it's right.
+# Sum the passed in passphrase to make sure it is right.
 sub check_passphrase
 {
 	my ($conf) = @_;

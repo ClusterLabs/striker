@@ -127,7 +127,7 @@ AND
 		### New alert
 		# Make sure this host is in the database... It might not be on the very first run of ScanCore
 		# before the peer exists (tried to connect to the peer, fails, tries to send an alert, but
-		# this host hasn't been added because it's the very first attempt to connect...)
+		# this host hasn't been added because it is the very first attempt to connect...)
 		if (not $an->data->{sys}{host_is_in_db})
 		{
 			my $query = "

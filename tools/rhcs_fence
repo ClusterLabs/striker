@@ -426,7 +426,7 @@ sub get_local_resource_state
 		to_log(LOG_ERR(), $conf, __LINE__, "Resource minor number not defined! Unable to proceed.");
 	}
 
-	# minor can be a space delimited list. Assume it's always a list and iterate over it
+	# minor can be a space delimited list. Assume it is always a list and iterate over it
 	my @minor = split / /, $minor;
 
 	to_log(LOG_DEBUG(), $conf, __LINE__, "DEBUG: minor: [$minor]");

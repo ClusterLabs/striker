@@ -73,7 +73,7 @@ $an->Log->entry({log_level => 3, message_key => "assv_log_0001", message_variabl
 # Exit if no Anvil! defined.
 if (not $an->data->{switches}{server})
 {
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assv_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "assv_error_0001", code => 1, file => $THIS_FILE, line => __LINE__});
 	$an->nice_exit({exit_code => 1});
 }
 
@@ -105,7 +105,7 @@ if ($connections)
 }
 else
 {
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "abs_error_0002", code => 2, file => "$THIS_FILE", line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "abs_error_0002", code => 2, file => $THIS_FILE, line => __LINE__});
 	$an->nice_exit({exit_code => 2});
 }
 

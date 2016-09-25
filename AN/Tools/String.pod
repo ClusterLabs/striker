@@ -211,8 +211,8 @@ You can also embed variables into strings in any order you wish. This allows for
                   #!string!an_0000!# which would substitute the same language's
                   value found in the given key (an_0000 in this case).
   		  NOTE: You CAN NOT substitute in a string that has #!variable!x!#
-  		        values of it's own. This would cause AN::Tools to now
-  		        know where put the values in it's 'var' array
+  		        values of its own. This would cause AN::Tools to now
+  		        know where put the values in its 'var' array
   		        reference. If you need this, pre-process your string
   		        and pass it in as another variable.
 

@@ -61,7 +61,7 @@
 # 42 - Failed to enable or disable ScanCore.
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
-#         boot. Can't use /tmp as it's usually too small.
+#         boot. Can't use /tmp as it is usually too small.
 #       - Configure avahi to announce newly build nodes and strikers and have
 #         striker listen for newly built nodes. 
 #         (broadcast 'I am $hostname on ip $ip' once per second, and then have
@@ -1620,7 +1620,7 @@ sub configure_scancore
 	close $file_handle;
 	
 	# Rewrite the config if something changed.
-	if (($add_bcn) || ($add_ifn) || ($secure_local))
+	if (($add_bcn) or ($add_ifn) or ($secure_local))
 	{
 		# Loop through the raw config and insert the missing network
 		my $new_config = "";
@@ -2346,7 +2346,7 @@ sub freeze_networkmanager
 			# an IP address, I can ignore it.
 			if (($link_state eq "1") && ($ip))
 			{
-				# Link is up. Check it's config file.
+				# Link is up. Check its config file.
 				my $nm_controlled = "";
 				   $shell_call    = "cat $conf->{path}{network_configs}/ifcfg-$iface";
 				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -2500,7 +2500,7 @@ sub add_repo
 			if (-e $full_repo_path)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- Success!", 1);
-				# If it's using a GPG key, make sure it exits.
+				# If it is using a GPG key, make sure it exits.
 				open (my $file_handle, "<", $full_repo_path) or die "$THIS_FILE ".__LINE__."; Failed to read: [$full_repo_path], the error was: $!\n";
 				while(<$file_handle>)
 				{
@@ -2544,7 +2544,7 @@ sub add_repo
 									# Well crap...
 									logger($conf, $THIS_FILE, __LINE__, "[ Error ] - GPG key file was not downloaded and doesn't exist! The repository:", 0);
 									logger($conf, $THIS_FILE, __LINE__, "[ Error ]   [$url]", 0);
-									logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Requires a local copy of it's GPG key to exist here:", 0);
+									logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Requires a local copy of its GPG key to exist here:", 0);
 									logger($conf, $THIS_FILE, __LINE__, "[ Error ]   [$local_key]", 0);
 									logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Often, this key is found in the same web address as the .repo file", 0);
 									logger($conf, $THIS_FILE, __LINE__, "[ Error ]   so we tried to download:", 0);
@@ -3618,7 +3618,7 @@ sub configure_shorewall
 	if (not $bcn_interface)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "sys::create_bonds: [$conf->{sys}{create_bonds}], sys::bonds_exist: [$conf->{sys}{bonds_exist}]", 3);
-		if (($conf->{sys}{create_bonds}) || ($conf->{sys}{bonds_exist}))
+		if (($conf->{sys}{create_bonds}) or ($conf->{sys}{bonds_exist}))
 		{
 			$bcn_interface = "bcn_bond1";
 			$ifn_interface = "ifn_bond1";
@@ -4401,7 +4401,7 @@ sub generate_iso
 			}
 			close $file_handle;
 			
-			# Make sure it's at least 50 MiB
+			# Make sure it is at least 50 MiB
 			if (-e $file_name)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "iso_size: [$iso_size]", 3);
@@ -4609,7 +4609,7 @@ firstboot --disable
 # depending on a rudamentary test for available storage devices.
 \%include /tmp/part-include
 
-# This is a very, very minimal installation. It's suitable for testing install
+# This is a very, very minimal installation. It is suitable for testing install
 # programs or for machines with the minimal attack surface area.
 \%packages
 \@core
@@ -4671,7 +4671,7 @@ EOF
 #!/bin/sh
 
 # Prepare the disks in the script below. It checks '/proc/partitions' to see
-# what configuration to use. It's obviously just a basic script, and should 
+# what configuration to use. It is obviously just a basic script, and should 
 # be customized for each use-case. IE: RAID 5 doesn't make sense with disks >
 # 1 TB... etc.
 ";
@@ -5151,7 +5151,7 @@ sub configure_dhcp
 option domain-name \"$domain_name\";
 $say_dns
  
-# Tell the server that it's authoritative on our network.
+# Tell the server that it is authoritative on our network.
 authoritative;
  
 # This controls how dynamic DNS updating is handled. In our case, we aren't
@@ -5291,7 +5291,7 @@ sub set_file_ownership_and_modes
 	my ($conf) = @_;
 	
 	logger($conf, $THIS_FILE, __LINE__, "Setting ownership and permissions/modes on Striker files.", 1);
-	# I make shell calls here because it's too tricky to handle the
+	# I make shell calls here because it is too tricky to handle the
 	# recursive calls in native perl.
 	foreach my $file (sort {$a cmp $b} keys %{$conf->{permissions}})
 	{
@@ -5684,7 +5684,7 @@ sub download_striker
 	# Download, if needed
 	if ($download)
 	{
-		# See if it's already downloaded.
+		# See if it is already downloaded.
 		if (-e "./$extract")
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- The source: [$extract] already exists, skipping.", 1);
@@ -6495,7 +6495,7 @@ sub verify_os
 {
 	my ($conf) = @_;
 	
-	# If the release file doesn't exist, it's most likely not EL.
+	# If the release file doesn't exist, it is most likely not EL.
 	logger($conf, $THIS_FILE, __LINE__, "Checking the operating system to ensure it is compatible.", 1);
 	if (not -e $conf->{path}{os_release})
 	{
@@ -7365,32 +7365,32 @@ sub update_network_config_files
 		### will be up in an oops.
 		## Start writing!
 		# BCN Bond 1
-		open (my $file_handle, '>', "$ifcfg_bcn_bond1_file") || warn "Failed to write: [$ifcfg_bcn_bond1_file], error was: $!\n";
+		open (my $file_handle, '>', "$ifcfg_bcn_bond1_file") or warn "Failed to write: [$ifcfg_bcn_bond1_file], error was: $!\n";
 		print $file_handle $ifcfg_bcn_bond1;
 		close $file_handle;
 		
 		# BCN Link 1
-		open ($file_handle, '>', "$ifcfg_bcn_link1_file") || warn "Failed to write: [$ifcfg_bcn_link1_file], error was: $!\n";
+		open ($file_handle, '>', "$ifcfg_bcn_link1_file") or warn "Failed to write: [$ifcfg_bcn_link1_file], error was: $!\n";
 		print $file_handle $ifcfg_bcn_link1;
 		close $file_handle;
 		
 		# BCN Link 2
-		open ($file_handle, '>', "$ifcfg_bcn_link2_file") || warn "Failed to write: [$ifcfg_bcn_link2_file], error was: $!\n";
+		open ($file_handle, '>', "$ifcfg_bcn_link2_file") or warn "Failed to write: [$ifcfg_bcn_link2_file], error was: $!\n";
 		print $file_handle $ifcfg_bcn_link2;
 		close $file_handle;
 		
 		# IFN Bond 1
-		open ($file_handle, '>', "$ifcfg_ifn_bond1_file") || warn "Failed to write: [$ifcfg_ifn_bond1_file], error was: $!\n";
+		open ($file_handle, '>', "$ifcfg_ifn_bond1_file") or warn "Failed to write: [$ifcfg_ifn_bond1_file], error was: $!\n";
 		print $file_handle $ifcfg_ifn_bond1;
 		close $file_handle;
 		
 		# IFN Link 1
-		open ($file_handle, '>', "$ifcfg_ifn_link1_file") || warn "Failed to write: [$ifcfg_ifn_link1_file], error was: $!\n";
+		open ($file_handle, '>', "$ifcfg_ifn_link1_file") or warn "Failed to write: [$ifcfg_ifn_link1_file], error was: $!\n";
 		print $file_handle $ifcfg_ifn_link1;
 		close $file_handle;
 		
 		# IFN Link 2
-		open ($file_handle, '>', "$ifcfg_ifn_link2_file") || warn "Failed to write: [$ifcfg_ifn_link2_file], error was: $!\n";
+		open ($file_handle, '>', "$ifcfg_ifn_link2_file") or warn "Failed to write: [$ifcfg_ifn_link2_file], error was: $!\n";
 		print $file_handle $ifcfg_ifn_link2;
 		close $file_handle;
 	}
@@ -7772,7 +7772,7 @@ sub sanity_check_switches
 	{
 		($bad_value) = sanity_check_dhcp($conf, $bad_value);
 	}
-	elsif (($conf->{switches}{'centos-iso'}) || ($conf->{switches}{'rhel-iso'}))
+	elsif (($conf->{switches}{'centos-iso'}) or ($conf->{switches}{'rhel-iso'}))
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The DHCP lease range must be defined for PXE-based installs to", 0);
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   work. Note that the DHCP server will *only* run when enabled via", 0);
@@ -7822,8 +7822,8 @@ sub sanity_check_switches
 		$conf->{sys}{install_version} =  $conf->{switches}{d};
 		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
 		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
-		if (($conf->{switches}{d} eq "1.1.4") || 
-		    ($conf->{switches}{d} eq "1.1.5") ||
+		if (($conf->{switches}{d} eq "1.1.4") or 
+		    ($conf->{switches}{d} eq "1.1.5") or
 		    ($conf->{switches}{d} eq "1.1.6"))
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Will install version: [$conf->{switches}{d}]", 1);
@@ -7994,7 +7994,7 @@ sub sanity_check_dhcp
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   '-p <start_ip>:<end_ip>'", 0);
 		$bad_value = 1;
 	}
-	elsif ((not $conf->{switches}{lease_start}) || (not $conf->{switches}{lease_end}))
+	elsif ((not $conf->{switches}{lease_start}) or (not $conf->{switches}{lease_end}))
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Both '<start_ip>:<end_ip>' are needed with the '-p' switch.", 0);
 		$bad_value = 1;
@@ -8049,7 +8049,7 @@ sub sanity_check_hostname
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   but it is not allowed here.", 0);
 			$bad_value = 1;
 		}
-		elsif (($port < 1) || ($port > 65535))
+		elsif (($port < 1) or ($port > 65535))
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The port number: [$port] is out of range!", 0);
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Port numbers must be between 1 and 65535.", 0);
@@ -8314,10 +8314,10 @@ sub validate_ip_address
 		my $third_octal  = $3;
 		my $fourth_octal = $4;
 		# First octal has to be >= 1. The rest can be 0.
-		if (($first_octal < 1)  || ($first_octal > 255)  ||
-		    ($second_octal < 0) || ($second_octal > 255) ||
-		    ($third_octal < 0)  || ($third_octal > 255)  ||
-		    ($fourth_octal < 0) || ($fourth_octal > 255))
+		if (($first_octal < 1)  or ($first_octal > 255)  or
+		    ($second_octal < 0) or ($second_octal > 255) or
+		    ($third_octal < 0)  or ($third_octal > 255)  or
+		    ($fourth_octal < 0) or ($fourth_octal > 255))
 		{
 			$ip = "#!INVALID!#";
 		}
@@ -8332,14 +8332,14 @@ sub validate_ip_address
 }
 
 # This takes an integer and, if it is a valid CIDR range, returns the 
-# dotted-decimal equivalent. If it's not, it returns '#!INVALID!#'.
+# dotted-decimal equivalent. If it is not, it returns '#!INVALID!#'.
 sub convert_cidr_to_dotted_decimal
 {
 	my ($conf, $netmask) = @_;
 	
 	if ($netmask =~ /^\d{1,2}$/)
 	{
-		# Make sure it's a (useful) CIDR
+		# Make sure it is a (useful) CIDR
 		if (($netmask >= 1) && ($netmask <= 29))
 		{
 			# Yes, I know that technically '0' and '30-32' are 
@@ -9152,7 +9152,7 @@ sub check_nic_states
 		my $this_iface = $conf->{nic}{mac}{$this_mac}{current_name};
 		
 		# I don't care about localhost, wireless or bonded interfaces.
-		if (($this_iface eq "lo") || ($this_iface =~ /wlan/) || ($this_iface =~ /bond/))
+		if (($this_iface eq "lo") or ($this_iface =~ /wlan/) or ($this_iface =~ /bond/))
 		{
 			logger($conf, $THIS_FILE, __LINE__, "Skipping interface: [$this_iface]", 3);
 		}
@@ -9233,16 +9233,16 @@ sub is_string_ipv4
 	
 	if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
 	{
-		# It's in the right format.
+		# It is in the right format.
 		my $first_octal  = $1;
 		my $second_octal = $2;
 		my $third_octal  = $3;
 		my $fourth_octal = $4;
 		
-		if (($first_octal  < 0) || ($first_octal  > 255) ||
-		    ($second_octal < 0) || ($second_octal > 255) ||
-		    ($third_octal  < 0) || ($third_octal  > 255) ||
-		    ($fourth_octal < 0) || ($fourth_octal > 255))
+		if (($first_octal  < 0) or ($first_octal  > 255) or
+		    ($second_octal < 0) or ($second_octal > 255) or
+		    ($third_octal  < 0) or ($third_octal  > 255) or
+		    ($fourth_octal < 0) or ($fourth_octal > 255))
 		{
 			# One of the octals is out of range.
 			$valid = 0;
@@ -9276,8 +9276,8 @@ sub is_domain_name
 	return($valid);
 }
 
-# This takes a dotted-decimal subnet mask and converts it to it's CIDR
-# equivalent. If it's not, it returns '#!INVALID!#'.
+# This takes a dotted-decimal subnet mask and converts it to it is CIDR equivalent. If it is not, it returns
+# '#!INVALID!#'.
 sub convert_dotted_decimal_to_cidr
 {
 	my ($conf, $netmask) = @_;

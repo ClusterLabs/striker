@@ -16,7 +16,7 @@
 # TODO:
 # - Decide if we should parse 'ipmitool sel list'
 # - Detect a hung BMC by trying to talk to ourselves and, if that fails, send 'ipmitool bmc reset cold'. 
-#   Possibly try pinging the IPMI from the peer as it's not always possible to ping our own interface when
+#   Possibly try pinging the IPMI from the peer as it is not always possible to ping our own interface when
 #   the IPMI and eth device share the same physical connector.
 # - Update the string processing from the '!!x!name=a,value=b,units=c!!' method to the new method here:
 #   https://alteeve.ca/w/ScanCore#Unit_Parsing
@@ -106,7 +106,7 @@ my $an = AN::Tools->new({data =>
 		},
 		sys			=>	{
 			# When a lock is requested, this is set to the time the lock was set. 
-			# DB->do_db_write() and DB->do_db_read() will check this and if it's age is >50% of
+			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
 			local_lock_active	=>	0,
 			sql			=>	[],
@@ -232,9 +232,9 @@ if (not find_ipmi_targets($an))
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
 		uuid => $an->data->{sys}{host_uuid},
-	}, code => 255, file => "$THIS_FILE", line => __LINE__});
+	}, code => 255, file => $THIS_FILE, line => __LINE__});
 }
 
 # Query IPMI targets. Unreachable targets will simply be ignored.
@@ -520,7 +520,7 @@ WHERE
 						### NOTE: These are set in 'process_temperature_change()' as 
 						###       well, so change the values there if you change it 
 						###       here, too.
-						# This is an info-level alert, provided it's not gone above
+						# This is an info-level alert, provided it is not gone above
 						# or below tolerances.
 						my $level       = "info";
 						my $title_key   = "an_alert_title_0002";
@@ -544,7 +544,7 @@ WHERE
 							($level, $title_key, $message_key) = process_temperature_change($an, $machine, $ipmitool_sensor_name);
 							$an->Alert->register_alert({
 								alert_level		=>	$level, 
-								alert_agent_name	=>	"$THIS_FILE",
+								alert_agent_name	=>	$THIS_FILE,
 								alert_title_key		=>	$title_key,
 								alert_message_key	=>	$message_key,
 								alert_message_variables	=>	{
@@ -571,7 +571,7 @@ WHERE
 							#       thresholds here.
 							$an->Alert->register_alert({
 								alert_level		=>	$level, 
-								alert_agent_name	=>	"$THIS_FILE",
+								alert_agent_name	=>	$THIS_FILE,
 								alert_title_key		=>	$title_key,
 								alert_message_key	=>	$message_key,
 								alert_message_variables	=>	{
@@ -658,7 +658,7 @@ AND
 						}
 						$an->Alert->register_alert({
 							alert_level		=>	$level, 
-							alert_agent_name	=>	"$THIS_FILE",
+							alert_agent_name	=>	$THIS_FILE,
 							alert_title_key		=>	$title_key,
 							alert_message_key	=>	$message_key,
 							alert_message_variables	=>	{
@@ -687,7 +687,7 @@ AND
 				{
 					### New record, INSERT it and sent an 'notice' level alert.
 					# Generate a new UUID for this ipmi target.
-					my $ipmitool_uuid = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
+					my $ipmitool_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});;
 					$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid} = $ipmitool_uuid;
 					my $query = "
 INSERT INTO 
@@ -748,7 +748,7 @@ INSERT INTO
 					my $sensor_value = "value=$new_ipmitool_value_sensor_value:units=$new_ipmitool_sensor_units";
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"scan_ipmitool_title_0001",
 						alert_title_variables	=>	{
 							machine			=>	$machine,
@@ -772,7 +772,7 @@ INSERT INTO
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	$level, 
-						alert_agent_name	=>	"$THIS_FILE",
+						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
@@ -798,7 +798,7 @@ INSERT INTO
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Generate and record the UUID
-				my $ipmitool_uuid                     = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});
+				my $ipmitool_uuid                     = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
 				$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid} = $ipmitool_uuid;
 				
 				my $new_ipmitool_value_sensor_value   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value};
@@ -889,7 +889,7 @@ INSERT INTO
 				}
 				$an->Alert->register_alert({
 					alert_level		=>	$level, 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_title_key		=>	$title_key,
 					alert_message_key	=>	$message_key,
 					alert_message_variables	=>	{
@@ -1054,7 +1054,7 @@ WHERE
 		{
 			### New entry
 			# Generate and store the UUID.
-			my $ipmitool_uuid = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
+			my $ipmitool_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});;
 			$an->data->{new}{$machine}{temperature}{$ipmitool_sensor_name}{ipmitool_uuid} = $ipmitool_uuid;
 			my $query         = "
 INSERT INTO 
@@ -1497,7 +1497,7 @@ sub process_temperature_change
 		name8 => "buffer",               value8 => $buffer,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Now, has the value climbed, fallen or stayed the same? Pretend it's rising if it's a new sensor.
+	# Now, has the value climbed, fallen or stayed the same? Pretend it is rising if it is a new sensor.
 	if (($new_ipmitool_value_sensor_value > $old_ipmitool_value_sensor_value) || (not $old_ipmitool_value_sensor_value))
 	{
 		### Rising.
@@ -1507,10 +1507,10 @@ sub process_temperature_change
 		# 
 		# If it is over the high warning, check and set the warning.
 		# 
-		# If it's over the low warning, check and clear both critical and warning, and clear the
+		# If it is over the low warning, check and clear both critical and warning, and clear the
 		# 'temperature' entry, if needed.
 		#
-		# If it's over the low critical, but not low warning, clear the critical and set the warning.
+		# If it is over the low critical, but not low warning, clear the critical and set the warning.
 		# Clear the 'temperature' entry, if it exists.
 		# 
 		# If the temperature jumped above the set per-cycle change limit, trigger an alarm no matter
@@ -1622,7 +1622,7 @@ sub process_temperature_change
 		}
 		else
 		{
-			# It's floating in the safe area.
+			# it is floating in the safe area.
 		}
 		
 		# Check for a jump now, if we have an old value.
@@ -1637,7 +1637,7 @@ sub process_temperature_change
 				my $old_sensor_value = "value=$old_ipmitool_value_sensor_value:units=C";
 				$an->Alert->register_alert({
 					alert_level		=>	"warning", 
-					alert_agent_name	=>	"$THIS_FILE",
+					alert_agent_name	=>	$THIS_FILE,
 					alert_title_key		=>	"an_alert_title_0004",
 					alert_message_key	=>	"scan_ipmitool_message_0007",
 					alert_message_variables	=>	{
@@ -1653,10 +1653,10 @@ sub process_temperature_change
 	{
 		### Falling.
 		#
-		# If it's below the high critical, but not high warning, clear the critical and set the 
+		# If it is below the high critical, but not high warning, clear the critical and set the 
 		# warning. Clear the 'temperature' entry, if it exists.
 		# 
-		# If it's below the high warning, check and clear both critical and warning, and clear the
+		# If it is below the high warning, check and clear both critical and warning, and clear the
 		# 'temperature' entry, if needed.
 		# 
 		# If it is below the low critical level, clear the 'warning', set the 'critical' and, if 
@@ -1770,7 +1770,7 @@ sub process_temperature_change
 		}
 		else
 		{
-			# It's floating in the safe area.
+			# it is floating in the safe area.
 		}
 	}
 	
@@ -2043,7 +2043,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'ipmitool_value_ipmitool_uuid' before, so it's just
+					# We've seen this 'ipmitool_value_ipmitool_uuid' before, so it is just
 					# a question of whether the entry for the current timestamp exists in
 					# the history schema.
 					if (not $an->data->{db_data}{$id}{ipmitool_value}{modified_date}{$modified_date}{ipmitool_value_ipmitool_uuid}{$ipmitool_value_ipmitool_uuid})
@@ -2323,7 +2323,7 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'ipmitool_uuid' before, so it's just a question of 
+					# We've seen this 'ipmitool_uuid' before, so it is just a question of 
 					# whether the entry for the current timestamp exists in the history 
 					# schema.
 					if (not $an->data->{db_data}{$id}{ipmitool}{modified_date}{$modified_date}{ipmitool_uuid}{$ipmitool_uuid})
@@ -2394,7 +2394,7 @@ sub prep_databases
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='ipmitool' AND schemaname='public';";
@@ -2413,7 +2413,7 @@ sub prep_databases
 			# Send an alert telling the user that we've initialized this database.
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
+				alert_agent_name	=>	$THIS_FILE,
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"notice_message_0002",
 				alert_message_variables	=>	{
@@ -2461,7 +2461,7 @@ sub query_ipmi_targets
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			print $file_handle $ipmi_password;
 			close $file_handle;
 		}
@@ -2481,7 +2481,7 @@ sub query_ipmi_targets
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2601,7 +2601,7 @@ sub query_ipmi_targets
 			###       set the health values.
 			###       $an->data->{health}{new}{$health_source_name} = ...
 			
-			# If this is a temperature, check to see if it is outside it's nominal range and, if
+			# If this is a temperature, check to see if it is outside its nominal range and, if
 			# so, record it into a hash for loading into ScanCore's 'temperature' table.
 			if ($units eq "C")
 			{
@@ -2712,7 +2712,7 @@ sub find_ipmi_targets
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;

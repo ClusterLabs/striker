@@ -68,7 +68,7 @@ sub base2
 		else
 		{
 			my $an = $self->parent;
-			$an->Alert->error({fatal => 1, title_key => "error_title_0009", message_key => "error_message_0013", message_variables => { set => $set }, code => 3, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "error_title_0009", message_key => "error_message_0013", message_variables => { set => $set }, code => 3, file => $THIS_FILE, line => __LINE__});
 			return(undef);
 		}
 	}
@@ -117,7 +117,7 @@ sub bytes_to_hr
 	# Die if either the 'time' or 'float' has a non-digit character in it.	
 	if ($hr_size =~ /\D/)
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->bytes_to_hr()", }, message_key => "error_message_0016", message_variables => { size => $size }, code => 6, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->bytes_to_hr()", }, message_key => "error_message_0016", message_variables => { size => $size }, code => 6, file => $THIS_FILE, line => __LINE__});
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
@@ -401,7 +401,7 @@ sub comma
 	if (($whole =~ /\D/) or ($decimal =~ /\D/))
 	{
 		my $an = $self->parent;
-		$an->Alert->error({fatal => 1, title_key => "error_title_0010", message_key => "error_message_0014", message_variables => { number => $number }, code => 4, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0010", message_key => "error_message_0014", message_variables => { number => $number }, code => 4, file => $THIS_FILE, line => __LINE__});
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
@@ -455,7 +455,7 @@ sub hr_to_bytes
 	# Make sure that 'size' is now an integer or float.
 	if ($size !~ /\d+[\.\d+]?/)
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->hr_to_bytes()" }, message_key => "error_message_0017", message_variables => { size => $size, sign => $sign, type => $type }, code => 7, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->hr_to_bytes()" }, message_key => "error_message_0017", message_variables => { size => $size, sign => $sign, type => $type }, code => 7, file => $THIS_FILE, line => __LINE__});
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
@@ -468,7 +468,7 @@ sub hr_to_bytes
 	{
 		if ($size =~ /\D/)
 		{
-			$an->Alert->error({fatal => 1, title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->hr_to_bytes()" }, message_key => "error_message_0018", message_variables => { size => $size, sign => $sign, type => $type }, code => 8, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->hr_to_bytes()" }, message_key => "error_message_0018", message_variables => { size => $size, sign => $sign, type => $type }, code => 8, file => $THIS_FILE, line => __LINE__});
 			return(undef);
 		}
 		return ($sign.$size);
@@ -505,7 +505,7 @@ sub hr_to_bytes
 	# require it.
 	if (($type eq "p") or ($type eq "e") or ($type eq "z") or ($type eq "y"))
 	{
-		# If this is a big size needing "Math::BigInt", check if it's loaded yet and load it, if not.
+		# If this is a big size needing "Math::BigInt", check if it is loaded yet and load it, if not.
 		if (not $an->_math_bigint_loaded)
 		{
 			$an->_load_math_bigint();
@@ -515,7 +515,7 @@ sub hr_to_bytes
 	{
 		# If we're here, we didn't match one of the large sizes or any of the other sizes, so die.
 
-		$an->Alert->error({fatal => 1, title_key => "error_title_0012", message_key => "error_message_0168", message_variables => { 
+		$an->Alert->error({title_key => "error_title_0012", message_key => "error_message_0168", message_variables => { 
 			value => $value,
 			size  => $size, 
 			type  => $type,
@@ -550,7 +550,7 @@ sub hr_to_bytes
 		elsif ($type eq "k") { $bytes = ($size * (10 ** 3)) }					# Kilobyte
 	}
 	
-	# Last, round off the byte size if it's a float.
+	# Last, round off the byte size if it is a float.
 	if ($bytes =~ /\./)
 	{
 		$bytes = $an->Math->round({
@@ -602,7 +602,7 @@ sub time
 	# Die if either the 'time' or 'float' has a non-digit character in it.
 	if (($time =~ /\D/) or ($float =~ /\D/))
 	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->time()", }, message_key => "error_message_0015", message_variables => { old_time => $old_time }, code => 5, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->time()", }, message_key => "error_message_0015", message_variables => { old_time => $old_time }, code => 5, file => $THIS_FILE, line => __LINE__});
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}

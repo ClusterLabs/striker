@@ -104,7 +104,7 @@ Below are the detailed usage instructions for the methods provided by this modul
 
 When called with no arguments, this method returns the current date and time as two seperate variables. The format is currently restricted to always being "YYYY-MM-DD" and "HH:MM:SS" (ISO 8601 format). If there is microseconds, then the format of the time will be "HH:MM:SS.ms".
 
-You can pass a UNIX time to this method and it's date and time will be returned. Alternatively, or in addition, you can pass an "offset" value which is a number of seconds before or after the time passed (again, defaulting to the current time when no time is given). To get a time X number of seconds before the time, pass a positive value. To get a time X number of seconds *after* the time, pass a negative value.
+You can pass a UNIX time to this method and its date and time will be returned. Alternatively, or in addition, you can pass an "offset" value which is a number of seconds before or after the time passed (again, defaulting to the current time when no time is given). To get a time X number of seconds before the time, pass a positive value. To get a time X number of seconds *after* the time, pass a negative value.
 
 To specify a time, use "time => X". To pass an offset value, use "offset => [X|-X]". Specifically, pass a hash reference or an anonymous hash with either or both of these values.
 

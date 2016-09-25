@@ -59,7 +59,7 @@ $an->Get->switches();
 # Exit if no program name given.
 if (not $an->data->{switches}{program})
 {
-	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arm_error_0001", code => 2, file => "$THIS_FILE", line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "arm_error_0001", code => 2, file => $THIS_FILE, line => __LINE__});
 }
 
 $an->Log->entry({log_level => 3, message_key => "arm_log_0001", message_variables => {
@@ -110,7 +110,7 @@ sub read_smaps
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -169,10 +169,10 @@ sub get_pids
 		if ($line =~ /\D/)
 		{
 			# WTF?
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arm_error_0002", message_variables => {
+			$an->Alert->error({title_key => "an_0003", message_key => "arm_error_0002", message_variables => {
 				program		=>	$an->data->{switches}{program},
 				line		=>	$line
-			}, code => 3, file => "$THIS_FILE", line => __LINE__});
+			}, code => 3, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{

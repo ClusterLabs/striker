@@ -569,7 +569,7 @@ sub diff_local_and_peer_hosts
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+				open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 				print $file_handle $new_file;
 				close $file_handle;
 			}
@@ -620,7 +620,7 @@ fi";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+				open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 				print $file_handle $new_file;
 				close $file_handle;
 				
@@ -725,7 +725,7 @@ sub diff_local_and_peer_config
 	if (($an->data->{config}{'local'}{missing}) && ($an->data->{config}{peer}{missing}))
 	{
 		# wat?
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0008", code => 7, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "an_0003", message_key => "smd_error_0008", code => 7, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($an->data->{config}{'local'}{missing})
 	{
@@ -949,7 +949,7 @@ sub diff_local_and_peer_config
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -968,7 +968,7 @@ sub diff_local_and_peer_config
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open ($file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		print $file_handle $an->data->{config}{'local'}{new};
 		close $file_handle;
 	}
@@ -1014,7 +1014,7 @@ sub diff_local_and_peer_config
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		print $file_handle $an->data->{config}{peer}{new};
 		close $file_handle;
 		
@@ -1076,7 +1076,7 @@ sub read_peers_hosts
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1108,7 +1108,7 @@ sub read_local_hosts
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1148,7 +1148,7 @@ sub read_local_striker_config
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1208,9 +1208,9 @@ fi;";
 	if ($error)
 	{
 		# Well, we're dead.
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0007", message_variables => {
+		$an->Alert->error({title_key => "an_0003", message_key => "smd_error_0007", message_variables => {
 			error	=>	$error, 
-		}, code => 6, file => "$THIS_FILE", line => __LINE__});
+		}, code => 6, file => $THIS_FILE, line => __LINE__});
 	}
 	foreach my $line (@{$return})
 	{
@@ -1239,7 +1239,7 @@ fi;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	print $file_handle $an->data->{config}{peer}{raw};
 	close $file_handle;
 	
@@ -1325,10 +1325,10 @@ sub prepare_for_run
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($db_count ne "2")
 		{
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0002", message_variables => {
+			$an->Alert->error({title_key => "an_0003", message_key => "smd_error_0002", message_variables => {
 				this_file	=>	$THIS_FILE,
 				count		=>	$db_count, 
-			}, code => 1, file => "$THIS_FILE", line => __LINE__});
+			}, code => 1, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# If I didn't find myself, exit.
@@ -1337,9 +1337,9 @@ sub prepare_for_run
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{node}{id}{'local'} eq "")
 		{
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0003", message_variables => {
+			$an->Alert->error({title_key => "an_0003", message_key => "smd_error_0003", message_variables => {
 				this_file	=>	$THIS_FILE,
-			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}, code => 2, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Now I know who I am, find the peer.
@@ -1370,9 +1370,9 @@ sub prepare_for_run
 		if (not $an->data->{run}{peer_hostname})
 		{
 			# >_<
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0004", message_variables => {
+			$an->Alert->error({title_key => "an_0003", message_key => "smd_error_0004", message_variables => {
 				this_file	=>	$THIS_FILE,
-			}, code => 3, file => "$THIS_FILE", line => __LINE__});
+			}, code => 3, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -1397,11 +1397,11 @@ sub prepare_for_run
 	if (not $an->data->{run}{peer_password})
 	{
 		# boo.
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0005", message_variables => {
+		$an->Alert->error({title_key => "an_0003", message_key => "smd_error_0005", message_variables => {
 			this_file	=>	$THIS_FILE,
 			hostname	=>	$an->data->{run}{peer_hostname}, 
 			id		=>	$an->data->{node}{id}{peer}, 
-		}, code => 4, file => "$THIS_FILE", line => __LINE__});
+		}, code => 4, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# If I'm alive, we're good. Last thing to check is who to take as the preferred node.
@@ -1420,9 +1420,9 @@ sub prepare_for_run
 		else
 		{
 			# Bad value.
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0006", message_variables => {
+			$an->Alert->error({title_key => "an_0003", message_key => "smd_error_0006", message_variables => {
 				prefer	=>	$an->data->{switches}{prefer}, 
-			}, code => 5, file => "$THIS_FILE", line => __LINE__});
+			}, code => 5, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	

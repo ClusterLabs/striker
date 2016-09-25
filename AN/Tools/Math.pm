@@ -49,8 +49,8 @@ sub parent
 
 
 ### TODO: Does this handle "x.95" type rounding properly?
-# This takes a number and rounds it to a given number of places after the
-# decimal (defaulting to an even integer). This does financial-type rounding.
+# This takes a number and rounds it to a given number of places after the decimal (defaulting to an even 
+# integer). This does financial-type rounding.
 sub round
 {
 	my $self  = shift;
@@ -66,8 +66,7 @@ sub round
 	my $num    = 0;
 	my $places = 0;
 	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
+	# Now see if the user passed the values in a hash reference or directly.
 	if (ref($param) eq "HASH")
 	{
 		# Values passed in a hash, good.
@@ -90,39 +89,23 @@ sub round
 	# Take out any commas.
 	$rounded_num =~ s/,//g;
 	
-	# If there is a decimal place in the number, do the smart math.
-	# Otherwise, just pad the number with the requested number of zeros
-	# after the decimal place.
+	# If there is a decimal place in the number, do the smart math. Otherwise, just pad the number with 
+	# the requested number of zeros after the decimal place.
 	if ( $rounded_num =~ /\./ )
 	{
 		# Split up the number.
 		my ($real, $decimal) = split/\./, $rounded_num, 2;
 		
 		# If there is anything other than one ',' and digits, error.
-		if (($real =~ /\D/) || ($decimal =~ /\D/))
+		if (($real =~ /\D/) or ($decimal =~ /\D/))
 		{
-			$an->Alert->error({
-				fatal		=>	1,
-				title_key	=>	"error_title_0011",
-				title_variables	=>	{
-					method		=>	"AN::Tools::Math->round()",
-				},
-				message_key	=>	"error_message_0020",
-				message_variables	=>	{
-					number		=>	$num,
-				},
-				code		=>	2,
-				file		=>	"$THIS_FILE",
-				line		=>	__LINE__
-			});
-			# Return nothing in case the user is blocking fatal
-			# errors.
+			$an->Alert->error({title_key => "error_title_0011", title_variables => { method => "AN::Tools::Math->round()" }, message_key => "error_message_0020", message_variables => { number => $num }, code => 2, file => $THIS_FILE, line => __LINE__});
+			# Return nothing in case the user is blocking fatal errors.
 			return (undef);
 		}
 		
-		# If the number is already equal to the requested number of
-		# places after the decimal, just return. If it's less, pad the
-		# needed number of zeros. Otherwise, start rounding.
+		# If the number is already equal to the requested number of places after the decimal, just 
+		# return. If it is less, pad the needed number of zeros. Otherwise, start rounding.
 		if ( length($decimal) == $places )
 		{
 			# Equal, return.
@@ -135,16 +118,14 @@ sub round
 		}
 		else
 		{
-			# Greater than; I need to round the number. Start by
-			# getting the number of places I need to round.
+			# Greater than; I need to round the number. Start by getting the number of places I 
+			# need to round.
 			my $round_diff = length($decimal) - $places;
 			
-			# This keeps track of whether the next (left) digit
-			# needs to be incremented.
+			# This keeps track of whether the next (left) digit needs to be incremented.
 			my $increase = 0;
 			
-			# Now loop the number of times needed to round to the
-			# requested number of places.
+			# Now loop the number of times needed to round to the requested number of places.
 			for (1..$round_diff)
 			{
 				# Reset 'increase'.

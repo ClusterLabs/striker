@@ -48,7 +48,7 @@ else
 ### WARNING: Some switches might thing this is a flood and get angry with us!
 # A straight nmap call of all 65,636 IPs on a /16 takes about 40+ minutes. So
 # to speed things up, we break it into 256 jobs, each scanning 256 IPs. Each
-# child process is told to wait $i seconds, where $i is equal to it's segment
+# child process is told to wait $i seconds, where $i is equal to its segment
 # value. This is done to avoid running out of buffer, which causes output like:
 # WARNING:  eth_send of ARP packet returned -1 rather than expected 42 (errno=105: No buffer space available)
 # By staggering the child processes, we have early children exiting as new

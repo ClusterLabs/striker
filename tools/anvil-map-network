@@ -85,7 +85,7 @@ find_executables($conf);
 # module expects the backups to exist already.
 backup_original_files($conf);
 
-# If it's just a request for a summary, print what we see and exit.
+# If it is just a request for a summary, print what we see and exit.
 if ($conf->{switches}{summary})
 {
 	print_summary($conf);
@@ -804,7 +804,7 @@ SWITCHES
 
 	This tells the program to simply list the current interfaces and their
 	MAC addresses, then exit. It does not activate deactivated interfaces,
-	make backups or prompt the user. It's main purpose is to let a caller
+	make backups or prompt the user. Its main purpose is to let a caller
 	know if the MAC addresses match those on file (thus avoiding the user
 	prompts to cycle cables, if so).
 

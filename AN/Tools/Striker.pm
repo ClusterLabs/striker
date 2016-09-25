@@ -243,7 +243,7 @@ sub configure_ssh_local
 	if (not $parameter->{anvil_name})
 	{
 		# Nothing passed in or set in CGI
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0123", code => 123, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0123", code => 123, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	my $anvil_name = $parameter->{anvil_name} ? $parameter->{anvil_name} : "";
@@ -254,7 +254,7 @@ sub configure_ssh_local
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "Calling", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -334,7 +334,7 @@ sub load_anvil
 		if (not $anvil_uuid)
 		{
 			# Nope ;_;
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0102", code => 102, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0102", code => 102, file => $THIS_FILE, line => __LINE__});
 			return(1);
 		}
 	}
@@ -345,7 +345,7 @@ sub load_anvil
 	if (not $an->Validate->is_uuid({uuid => $anvil_uuid}))
 	{
 		# Value read, but it isn't a UUID.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0103", message_variables => { uuid => $anvil_uuid }, code => 103, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0103", message_variables => { uuid => $anvil_uuid }, code => 103, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 	elsif (not $an->data->{anvils}{$anvil_uuid}{name})
@@ -358,12 +358,12 @@ sub load_anvil
 		if (not $an->data->{anvils}{$anvil_uuid}{name})
 		{
 			# Valid UUID, but it doesn't match a known Anvil!.
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0104", message_variables => { uuid => $anvil_uuid }, code => 104, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0104", message_variables => { uuid => $anvil_uuid }, code => 104, file => $THIS_FILE, line => __LINE__});
 			return(1);
 		}
 	}
 	
-	# Last test; Do I know about my nodes? If this is the root user calling us, don't die (because it's 
+	# Last test; Do I know about my nodes? If this is the root user calling us, don't die (because it is 
 	# ScanCore).
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvils::${anvil_uuid}::node1::name", value1 => $an->data->{anvils}{$anvil_uuid}{node1}{name},
@@ -374,7 +374,7 @@ sub load_anvil
 		if (($>) or ($<))
 		{
 			# Remind the user to run ScanCore on the nodes.
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0176", code => 176, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0176", code => 176, file => $THIS_FILE, line => __LINE__});
 			return(1);
 		}
 		else
@@ -517,13 +517,13 @@ sub mark_node_as_clean_off
 	if (not $node_uuid)
 	{
 		# Nothing passed in or set in CGI
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0114", code => 114, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0114", code => 114, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 	elsif (not $an->Validate->is_uuid({uuid => $node_uuid}))
 	{
 		# Value read, but it isn't a UUID.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0115", message_variables => { uuid => $node_uuid }, code => 115, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0115", message_variables => { uuid => $node_uuid }, code => 115, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 	
@@ -536,7 +536,7 @@ sub mark_node_as_clean_off
 	if (not $node_name)
 	{
 		# Valid UUID, but it doesn't match a known Anvil!.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0116", message_variables => { uuid => $node_uuid }, code => 116, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0116", message_variables => { uuid => $node_uuid }, code => 116, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 
@@ -597,7 +597,7 @@ sub mark_node_as_clean_on
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_on" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Fix this mess...
-	### NOTE: I made this confusing by calling this 'node_uuid' when it's really the 'host_uuid'. So 
+	### NOTE: I made this confusing by calling this 'node_uuid' when it is really the 'host_uuid'. So
 	###       we'll check the UUID against both nodes and hosts for now.
 	my $host_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -606,13 +606,13 @@ sub mark_node_as_clean_on
 	if (not $host_uuid)
 	{
 		# Nothing passed in or set in CGI
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0117", code => 117, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0117", code => 117, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 	elsif (not $an->Validate->is_uuid({uuid => $host_uuid}))
 	{
 		# Value read, but it isn't a UUID.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0118", message_variables => { uuid => $host_uuid }, code => 118, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0118", message_variables => { uuid => $host_uuid }, code => 118, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 	
@@ -684,7 +684,7 @@ sub mark_node_as_clean_on
 	if (not $node_name)
 	{
 		# Valid UUID, but it doesn't match a known Anvil!.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0119", message_variables => { uuid => $host_uuid }, code => 119, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0119", message_variables => { uuid => $host_uuid }, code => 119, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 	
@@ -872,19 +872,19 @@ sub scan_node
 	if (not $node_uuid)
 	{
 		# Nothing passed in or set in CGI
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0105", code => 105, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0105", code => 105, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 	elsif (not $an->Validate->is_uuid({uuid => $node_uuid}))
 	{
 		# Value read, but it isn't a UUID.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0106", message_variables => { uuid => $node_uuid }, code => 106, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0106", message_variables => { uuid => $node_uuid }, code => 106, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 	elsif (not $an->data->{db}{nodes}{$node_uuid}{name})
 	{
 		# Valid UUID, but it doesn't match a known Anvil!.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0107", message_variables => { uuid => $node_uuid }, code => 107, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0107", message_variables => { uuid => $node_uuid }, code => 107, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 	
@@ -950,7 +950,7 @@ sub scan_node
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{anvil}{$node_key}{online})
 	{
-		# Make sure it's marked as up (if I am a dashboard).
+		# Make sure it is marked as up (if I am a dashboard).
 		my $i_am_a = $an->Get->what_am_i();
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "i_am_a",         value1 => $i_am_a, 
@@ -1498,7 +1498,7 @@ sub update_peers
 	# No Anvil! name is fatal
 	if (not $parameter->{anvil_name})
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0124", code => 124, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0124", code => 124, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	my $anvil_name = $parameter->{anvil_name} ? $parameter->{anvil_name} : "";
@@ -2368,7 +2368,7 @@ sub _archive_file
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2555,7 +2555,7 @@ sub _change_server
 	my $old_server_pre_migration_arguments  = $return->{pre_migration_arguments};
 	my $old_server_post_migration_script    = $return->{post_migration_script};
 	my $old_server_post_migration_arguments = $return->{post_migration_arguments};
-	# Log the server definition on its own because it's big
+	# Log the server definition on its own because it is big
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_definition", value1 => $server_definition,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3191,7 +3191,7 @@ sub _check_node_daemons
 	return($ready);
 }
 
-# This checks a node to see if it's ready to run a given server.
+# This checks a node to see if it is ready to run a given server.
 sub _check_node_readiness
 {
 	my $self      = shift;
@@ -3250,7 +3250,7 @@ sub _check_node_readiness
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{active})
 			{
-				# It's active, so now check the backing storage.
+				# It is active, so now check the backing storage.
 				foreach my $resource (sort {$a cmp $b} keys %{$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}})
 				{
 					# For easier reading...
@@ -3648,12 +3648,12 @@ fi;
 					# Error out if we failed to get the node name.
 					if (not $node_name)
 					{
-						$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0142", code => 142, file => "$THIS_FILE", line => __LINE__});
+						$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0142", code => 142, file => $THIS_FILE, line => __LINE__});
 						return("");
 					}
 					if (not $node_uuid)
 					{
-						$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0157", message_variables => { node_name => $node_name }, code => 157, file => "$THIS_FILE", line => __LINE__});
+						$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0157", message_variables => { node_name => $node_name }, code => 157, file => $THIS_FILE, line => __LINE__});
 						return("");
 					}
 					
@@ -3861,7 +3861,7 @@ fi;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3925,7 +3925,7 @@ fi;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -4658,8 +4658,8 @@ sub _confirm_withdraw_node
 	return (0);
 }
 
-# This stops the VM, if it's running, edits the cluster.conf to remove the VM's entry, pushes the changed 
-# Anvil! out, deletes the VM's definition file and finally deletes the LV.
+# This stops the server, if it is running, edits the cluster.conf to remove the server's entry, pushes the 
+# changed config out, deletes the server's definition file and finally deletes the logical volume.
 sub _delete_server
 {
 	my $self      = shift;
@@ -4679,7 +4679,7 @@ sub _delete_server
 	if (not $anvil_uuid)
 	{
 		# Hey user, don't be cheeky!
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0134", code => 134, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0134", code => 134, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -4754,7 +4754,7 @@ sub _delete_server
 	if (not $target)
 	{
 		# Couldn't log into either node.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0135", message_variables => { server => $server }, code => 135, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0135", message_variables => { server => $server }, code => 135, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -5338,7 +5338,7 @@ sub _display_free_resources
 	my $vg_link="";
 	foreach my $vg (sort {$a cmp $b} keys %{$an->data->{resources}{vg}})
 	{
-		# If it's not a clustered VG, I don't care about it.
+		# If it is not a clustered volume group, I don't care about it.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "resources::vg::${vg}::clustered", value1 => $an->data->{resources}{vg}{$vg}{clustered},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -6507,7 +6507,7 @@ sub _dual_boot
 	
 	if (not $anvil_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0154", code => 154, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0154", code => 154, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -6579,7 +6579,7 @@ sub _dual_boot
 		}
 		elsif ($state eq "on")
 		{
-			# It's already on
+			# It is already on
 			my $message = $an->String->get({key => "message_0482", variables => { node_name => $node_name }});
 			print $an->Web->template({file => "server.html", template => "dual-boot-shell-output", replace => { 
 				status	=>	"#!string!state_0050!#",
@@ -6620,7 +6620,7 @@ sub _dual_join
 	
 	if (not $anvil_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0141", code => 141, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0141", code => 141, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -6793,12 +6793,12 @@ sub _fence_node
 	
 	if (not $anvil_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0143", code => 143, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0143", code => 143, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_name)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0144", code => 144, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0144", code => 144, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -6955,7 +6955,7 @@ sub _fence_node
 		}
 		elsif ($state eq "on")
 		{
-			# Something went wrong. We got it's state but it is on.
+			# Something went wrong. We got its state but it is on.
 			my $message = $an->String->get({key => "message_0475", variables => { node_name => $node_name }});
 			my $status  = $an->String->get({key => "state_0018"});
 			print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { 
@@ -7039,7 +7039,7 @@ sub _force_off_server
 	if (not $anvil_uuid)
 	{
 		# Hey user, don't be cheeky!
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0132", code => 132, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0132", code => 132, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -7052,7 +7052,7 @@ sub _force_off_server
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($server_host eq "none")
 	{
-		# It's already off.
+		# It is already off.
 		my $say_message = $an->String->get({key => "message_0471", variables => { server => $an->data->{cgi}{server} }});
 		print $an->Web->template({file => "server.html", template => "force-off-server-aborted", replace => { message => $say_message }});
 		return("");
@@ -7079,10 +7079,10 @@ sub _force_off_server
 	if (not $node_key)
 	{
 		# What the deuce?!
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0133", message_variables => {
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0133", message_variables => {
 			server => $server, 
 			host   => $server_host,
-		}, code => 133, file => "$THIS_FILE", line => __LINE__});
+		}, code => 133, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -7154,7 +7154,7 @@ sub _force_off_server
 	return(0);
 }
 
-### NOTE: This is ugly, but it's basically a port of the old function so ya, whatever.
+### NOTE: This is ugly, but it is basically a port of the old function so ya, whatever.
 # This does the actual calls out to get the data and parse the returned data.
 sub _gather_node_details
 {
@@ -7486,12 +7486,12 @@ sub _get_storage_data
 	
 	if (not $anvil_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0139", code => 139, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0139", code => 139, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_name)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0140", code => 140, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0140", code => 140, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -7762,7 +7762,7 @@ sub _header
 				my $link =  $an->data->{sys}{cgi_string};
 				   $link =~ s/generate=true//;
 				   $link =~ s/anvil_password=.*?&//;
-				   $link =~ s/anvil_password=.*?$//;	# Catch the password if it's the last variable in the URL
+				   $link =~ s/anvil_password=.*?$//;	# Catch the password if it is the last variable in the URL
 				   $link =~ s/&&+/&/g;
 				if ($an->data->{cgi}{confirm})
 				{
@@ -8069,12 +8069,12 @@ sub _join_anvil
 	
 	if (not $anvil_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0139", code => 139, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0139", code => 139, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_name)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0140", code => 140, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0140", code => 140, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -8104,7 +8104,7 @@ sub _join_anvil
 	### TODO: Should we abort if cman is not running on the peer but the peer is otherwise accessible? 
 	###       One the one hand, it is not hosting any servers so the user's servers won't be impacted if
 	###       it gets fenced. On the otherhand, the peer will get fenced after a delay... Maybe just
-	###       print a warning that it will take a bit and that the peer will be fenced shortly if it's
+	###       print a warning that it will take a bit and that the peer will be fenced shortly if it is
 	###       cman isn't started separately?
 	# Proceed only if all of the storage components, cman and rgmanager are off.
 	my $proceed = 0;
@@ -8254,7 +8254,7 @@ sub _manage_server
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_manage_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# I need to get a list of the running VM's resource/media, read the VM's current XML if it's up, 
+	# I need to get a list of the running VM's resource/media, read the VM's current XML if it is up, 
 	# otherwise read the stored XML, read the available ISOs and then display everything in a form. If
 	# the user submits the form and something is different, re-write the stored config and, if possible,
 	# make the required changes immediately.
@@ -8709,7 +8709,7 @@ sub _manage_server
 			my $target = "";
 			if ($type eq "l")
 			{
-				# It's a symlink, strip off the destination.
+				# It is a symlink, strip off the destination.
 				($file, $target) = ($file =~ /^(.*?) -> (.*)$/);
 			}
 			$an->data->{files}{shared}{$file}{type}   = $type;
@@ -9186,7 +9186,7 @@ sub _migrate_server
 	if (not $server)
 	{
 		# Error...
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0130", code => 130, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0130", code => 130, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -9204,7 +9204,7 @@ sub _migrate_server
 	if (not $target)
 	{
 		# Couldn't log into either node.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0126", message_variables => { server => $server }, code => 126, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0126", message_variables => { server => $server }, code => 126, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -9366,7 +9366,7 @@ sub _parse_cluster_conf
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -9881,7 +9881,7 @@ sub _parse_clustat
 				}
 				elsif ($state eq "failed")
 				{
-					# Don't do anything here now, it's possible the server is still 
+					# Don't do anything here now, it is possible the server is still 
 					# running. Set the host to 'Unknown' and let the user decide what to 
 					# do. This can happen if, for example, the XML file is temporarily
 					# removed or corrupted.
@@ -10335,7 +10335,7 @@ sub _parse_drbdadm_dumpxml
 						my $drbd_device    = $c->{volume}->[0]->{device}->[0]->{content};
 						my $backing_device = $c->{volume}->[0]->{device}->[0]->{content};
 						
-						# This is used for locating a resource by it's minor number
+						# This is used for locating a resource by its minor number
 						$an->data->{node}{$node_name}{drbd}{minor_number}{$minor_number}{resource} = $resource;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "node::${node_name}::drbd::minor_number::${minor_number}::resource", value1 => $an->data->{node}{$node_name}{drbd}{minor_number}{$minor_number}{resource},
@@ -10463,7 +10463,7 @@ sub _parse_dmidecode
 	$an->data->{resources}{total_ram}     = 0;
 	# In some cases, like in servers, the CPU core count is not provided. So this keeps a running tally 
 	# of how many times we've gone in and out of 'in_cpu' and will be used as the core count if, when 
-	# it's all done, we have 0 cores listed.
+	# it is all done, we have 0 cores listed.
 	$an->data->{resources}{total_cpus} = 0;
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -11735,7 +11735,7 @@ sub _write_node_cache
 		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# It's a program error to try and write the cache file when the node is down.
+	# It is a program error to try and write the cache file when the node is down.
 	my @lines;
 	my $cache_file = $an->data->{path}{'striker_cache'}."/cache_".$anvil_name."_".$node_name.".striker";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -12015,13 +12015,13 @@ sub _poweroff_node
 	
 	if (not $anvil_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0148", code => 148, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0148", code => 148, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
 	if (not $node_name)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0149", code => 149, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0149", code => 149, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -12048,7 +12048,7 @@ sub _poweroff_node
 	my $node_key = $an->data->{sys}{node_name}{$node_name}{node_key};
 	if (not $node_key)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0150", message_variables => { node_name => $node_name }, code => 150, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0150", message_variables => { node_name => $node_name }, code => 150, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -12170,12 +12170,12 @@ sub _poweron_node
 	
 	if (not $anvil_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0151", code => 151, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0151", code => 151, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_name)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0152", code => 152, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0152", code => 152, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -12205,7 +12205,7 @@ sub _poweron_node
 	
 	if (not $node_key)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0150", message_variables => { node_name => $node_name }, code => 150, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0150", message_variables => { node_name => $node_name }, code => 150, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -12312,13 +12312,13 @@ sub _poweron_node
 			}
 			elsif ($state eq "off")
 			{
-				# Something went wrong. We got it's state but it is still off.
+				# Something went wrong. We got its state but it is still off.
 				my $line = $an->String->get({key => "message_0480", variables => { node_name => $node_name }});
 				print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 			}
 			else
 			{
-				# It's in an unknown state
+				# It is in an unknown state
 				my $line = $an->String->get({key => "message_0481", variables => { node_name => $node_name }});
 				print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 			}
@@ -13316,7 +13316,7 @@ sub _server_eject_media
 	# Die if I wasn't passed a server name.
 	if (not $server)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0125", code => 125, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0125", code => 125, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -13364,7 +13364,7 @@ sub _server_eject_media
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -13478,7 +13478,7 @@ sub _server_eject_media
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -13588,7 +13588,7 @@ sub _server_eject_media
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -13866,7 +13866,7 @@ sub _start_server
 	if (not $server)
 	{
 		# Error...
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0125", code => 125, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0125", code => 125, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -13881,7 +13881,7 @@ sub _start_server
 	if (not $target)
 	{
 		# Couldn't log into either node.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0126", message_variables => { server => $server }, code => 126, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0126", message_variables => { server => $server }, code => 126, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -13951,7 +13951,7 @@ sub _stop_server
 	if (not $server)
 	{
 		# Error...
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0127", code => 127, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0127", code => 127, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -13978,7 +13978,7 @@ sub _stop_server
 	if (not $target)
 	{
 		# Couldn't log into either node.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0128", message_variables => { server => $server }, code => 128, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0128", message_variables => { server => $server }, code => 128, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -14236,7 +14236,7 @@ sub _update_server_definition
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -14297,7 +14297,7 @@ sub _update_server_definition
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		### NOTE: Don't use '2>&1' here!
-		open (my $file_handle, "$shell_call |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, "$shell_call |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -14388,7 +14388,7 @@ sub _verify_server_config
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{name})
 		{
-			# Normally, it's safer to only allow a subset of characters, but it would be nice to
+			# Normally, it is safer to only allow a subset of characters, but it would be nice to
 			# allow users to name their servers using non-latin characters, so for now, we look 
 			# for bad characters only.
 			$an->data->{cgi}{name} =~ s/^\s+//;
@@ -14796,13 +14796,13 @@ sub _withdraw_node
 	
 	if (not $anvil_uuid)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0136", code => 136, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0136", code => 136, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
 	if (not $node_name)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0137", code => 137, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0137", code => 137, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -14812,7 +14812,7 @@ sub _withdraw_node
 	my $node_key = $an->data->{sys}{node_name}{$node_name}{node_key};
 	if (not $node_key)
 	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0138", message_variables => { node_name => $node_name }, code => 138, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0138", message_variables => { node_name => $node_name }, code => 138, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -14834,7 +14834,7 @@ sub _withdraw_node
 			name1 => "password", value1 => $password,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Stop rgmanager and then check it's status.
+		# Stop rgmanager and then check its status.
 		my $say_title = $an->String->get({key => "title_0070", variables => { node_name => $node_name }});
 		print $an->Web->template({file => "server.html", template => "withdraw-node-header", replace => { title => $say_title }});
 		

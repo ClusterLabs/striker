@@ -316,7 +316,7 @@ my $shell_call = $an->data->{path}{'striker-push-ssh'};
 $an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 	name1 => "shell_call", value1 => $shell_call, 
 }, file => $THIS_FILE, line => __LINE__});
-open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
 while(<$file_handle>)
 {
 	chomp;
@@ -361,7 +361,7 @@ fi";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
 	while(<$file_handle>)
 	{
 		chomp;
@@ -425,7 +425,7 @@ sub manage_gdm_presession
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -474,7 +474,7 @@ sub manage_gdm_presession
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		print $file_handle $raw_file;
 		close $file_handle;
 	}
@@ -541,9 +541,9 @@ sub setup_virtual_machine_manager_config
 			};
 			print $an->String->get({key => "scv_message_0003", variables => $variables})."\n";
 			$an->Log->entry({log_level => 2, message_key => "scv_message_0003", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-			mkdir $path             or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0017", message_variables => { directory => $path, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-			chown $uid, $gid, $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0021", message_variables => { directory => $path, user => $uid, group => $gid, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-			chmod oct($mode), $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0022", message_variables => { directory => $path, mode => $mode, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+			mkdir $path             or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0017", message_variables => { directory => $path, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
+			chown $uid, $gid, $path or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0021", message_variables => { directory => $path, user => $uid, group => $gid, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
+			chmod oct($mode), $path or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0022", message_variables => { directory => $path, mode => $mode, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
 		}
 	}
 	
@@ -594,7 +594,7 @@ sub setup_virtual_machine_manager_config
 		if (-e $path)
 		{
 			my $shell_call = $path;
-			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
 			my $in_autoconnect = 0;
 			my $in_uris        = 0;
 			while(<$file_handle>)
@@ -732,7 +732,7 @@ sub setup_virtual_machine_manager_config
 						{
 							if ((not exists $an->data->{uri}{$uri}) && ($an->data->{node}{$uri}{autoconnect}))
 							{
-								# It's new, insert it.
+								# It is new, insert it.
 								my $node = ($uri =~ /qemu\+ssh:\/\/root\@(.*?)\/system/)[0];
 								if ($node)
 								{
@@ -853,7 +853,7 @@ sub setup_virtual_machine_manager_config
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+				open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 				print $file_handle $body;
 				close $file_handle;
 			}
@@ -878,7 +878,7 @@ sub setup_virtual_machine_manager_config
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 				while (<$file_handle>)
 				{
 					chomp;
@@ -894,8 +894,8 @@ sub setup_virtual_machine_manager_config
 		# Set the owner and mode
 		if (-e $path)
 		{
-			chown $uid, $gid, $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0021", message_variables => { directory => $path, user => $uid, group => $gid, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-			chmod oct($mode), $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0022", message_variables => { directory => $path, mode => $mode, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+			chown $uid, $gid, $path or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0021", message_variables => { directory => $path, user => $uid, group => $gid, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
+			chmod oct($mode), $path or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0022", message_variables => { directory => $path, mode => $mode, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
 		}
 	}
 	

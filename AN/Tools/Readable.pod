@@ -21,7 +21,7 @@ This modules provides methods for converting machine readible values into more h
 
 =head1 DESCRIPTION
 
-This is the human readable module. It's purpose is to provide methods meant to benefit humans (and others) reading output from various methods or other data soures. It serves this purpose by converting, generally large numbers, into smaller or formatted versions easier to understand by the reader.
+This is the human readable module. Its purpose is to provide methods meant to benefit humans (and others) reading output from various methods or other data soures. It serves this purpose by converting, generally large numbers, into smaller or formatted versions easier to understand by the reader.
   
 Likewise, this module also provides methods for translating human readable format into their machine friendly versions. When this can't be done with precision, these methods will return the most accurate expanded data possible.
 
@@ -81,7 +81,7 @@ This method returns C<1> when Base 2 notation is in use and C<0> when Base 10 no
 
 Below is a quick reference to see how setting C<base2> notation will effect how large numbers are interpreted. 
 
-Each line for both C<base2> and C<base10> shows; The short-form notation followed by it's English long-form name. Then it shows in the braces the X to the power of Y value that it represents followed, finally, by the exact number of bytes represented.
+Each line for both C<base2> and C<base10> shows; The short-form notation followed by its English long-form name. Then it shows in the braces the X to the power of Y value that it represents followed, finally, by the exact number of bytes represented.
 
 =over
 

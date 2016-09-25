@@ -233,7 +233,7 @@ sub is_cron_schedule
 			}
 			elsif ($minute =~ /^(\d+)/)
 			{
-				# It's not a step, evaluate normally
+				# It is not a step, evaluate normally
 				if ($minute > 59)
 				{
 					# The minute is invalid
@@ -328,7 +328,7 @@ sub is_cron_schedule
 			}
 			elsif ($hour =~ /^(\d+)/)
 			{
-				# It's not a step, evaluate normally
+				# It is not a step, evaluate normally
 				if ($hour > 23)
 				{
 					# The hour is invalid
@@ -423,7 +423,7 @@ sub is_cron_schedule
 			}
 			elsif ($day_of_month =~ /^(\d+)/)
 			{
-				# It's not a step, evaluate normally
+				# It is not a step, evaluate normally
 				if ((not $day_of_month) or ($day_of_month > 31))
 				{
 					# The day_of_month is invalid
@@ -537,7 +537,7 @@ sub is_cron_schedule
 			}
 			elsif ($month =~ /^(\d+)/)
 			{
-				# It's not a step, evaluate normally
+				# It is not a step, evaluate normally
 				if ((not $month) or ($month > 12))
 				{
 					# The month is invalid
@@ -646,7 +646,7 @@ sub is_cron_schedule
 			}
 			elsif ($day_of_week =~ /^(\d+)/)
 			{
-				# It's not a step, evaluate normally
+				# It is not a step, evaluate normally
 				if ($day_of_week > 6)
 				{
 					# The day_of_week is invalid
@@ -763,7 +763,7 @@ sub is_integer_or_unsigned_float
 	my $valid = 1;
 	if ($number =~ /^\D/)
 	{
-		# Non-digit could mean it's signed or just garbage.
+		# Non-digit could mean it is signed or just garbage.
 		$valid = 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "valid", value1 => $valid,
@@ -800,7 +800,7 @@ sub is_ipv4
 	my $valid = 1;
 	if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
 	{
-		# It's in the right format.
+		# It is in the right format.
 		my $first_octal  = $1;
 		my $second_octal = $2;
 		my $third_octal  = $3;

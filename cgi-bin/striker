@@ -5,7 +5,7 @@
 # This software is released under the GNU GPL v2+ license.
 # 
 # No warranty is provided. Do not use this software unless you are willing and able to take full liability 
-# for it's use. The authors take care to prevent unexpected side effects when using this program. However, no
+# for its use. The authors take care to prevent unexpected side effects when using this program. However, no
 # software is perfect and bugs may exist which could lead to hangs or crashes in the program, in your cluster
 # and possibly even data loss.
 # 
@@ -124,7 +124,7 @@ if (not $an->data->{cgi}{anvil_uuid})
 	}
 }
 
-# Now, if I have an Anvil! UUID, load it's data. If I still don't, show the selection menu.
+# Now, if I have an Anvil! UUID, load its data. If I still don't, show the selection menu.
 if ($an->data->{cgi}{anvil_uuid})
 {
 	# Print the header.

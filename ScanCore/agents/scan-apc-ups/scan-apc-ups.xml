@@ -42,7 +42,7 @@ The UPS: [#!variable!ups_name!#] start time after input power is restored has ch
 		<key name="scan_apc_ups_note_0004">
 The UPS: [#!variable!ups_name!#] shutdown delay time has changed:
 - [#!variable!old_value!#s] -> [#!variable!new_value!#s]
-  Note: This controls how long the UPS will wait after being asked to power down before actually disabling it's output power.
+  Note: This controls how long the UPS will wait after being asked to power down before actually disabling its output power.
 		</key>
 		<key name="scan_apc_ups_note_0005">
 The UPS: [#!variable!ups_name!#] firmware has been updated:
@@ -80,13 +80,13 @@ The UPS: [#!variable!ups_name!#] has a new "last transfer to batteries" reason:
 		<key name="scan_apc_ups_note_0012">
 The UPS: [#!variable!ups_name!#] has a new manufactured date:
 - [#!variable!old_value!#] -> [#!variable!new_value!#] (yyyy/mm/dd)
-  Warning: This really should never happen and might be a symptom of a problem with the #!string!scan_apc_ups_brand_0001!#. As such, it's a warning level alert.
+  Warning: This really should never happen and might be a symptom of a problem with the #!string!scan_apc_ups_brand_0001!#. As such, it is a warning level alert.
            Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that it can be investigated.
 		</key>
 		<key name="scan_apc_ups_note_0013">
 The UPS: [#!variable!ups_name!#] has a new model number:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
-  Warning: This really should never happen and might be a symptom of a problem with the #!string!scan_apc_ups_brand_0001!#. As such, it's a warning level alert.
+  Warning: This really should never happen and might be a symptom of a problem with the #!string!scan_apc_ups_brand_0001!#. As such, it is a warning level alert.
            Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that it can be investigated.
 		</key>
 		<key name="scan_apc_ups_note_0014">
@@ -112,7 +112,7 @@ The UPS: [#!variable!ups_name!#] network interface's MAC address has changed:
 		<key name="scan_apc_ups_note_0018">
 The UPS: [#!variable!ups_name!#] battery's estimated replacement date has changed:
 - [#!variable!old_value!#] -> [#!variable!new_value!#] (yyyy/mm/dd)
-  Note: If the date has changed significantly, it is probably because an administrator has replaced the batteries. If the change was minor, it probably was caused by a change in how often the UPS has run on it's batteries.
+  Note: If the date has changed significantly, it is probably because an administrator has replaced the batteries. If the change was minor, it probably was caused by a change in how often the UPS has run on its batteries.
 		</key>
 		<key name="scan_apc_ups_note_0019">
 The UPS: [#!variable!ups_name!#] battery has failed!:
@@ -308,7 +308,7 @@ Connection to the UPS: [#!variable!ups_name!#] has been restored.
 		<key name="scan_apc_ups_health_0000">Communication with the UPS has been lost.</key>
 		<key name="scan_apc_ups_health_0001">The UPS's health is in an unknown state.</key>
 		<key name="scan_apc_ups_health_0002">The UPS is operating normally.</key>
-		<key name="scan_apc_ups_health_0003">The UPS is running on it's batteries. It is likely that the input power feeding the UPS has failed.</key>
+		<key name="scan_apc_ups_health_0003">The UPS is running on its batteries. It is likely that the input power feeding the UPS has failed.</key>
 		<key name="scan_apc_ups_health_0004">The UPS is compensating for low input power.</key>
 		<key name="scan_apc_ups_health_0005">The UPS is in a timed sleep. It will power back on when the timer has expired.</key>
 		<key name="scan_apc_ups_health_0006">The UPS is in bypass-mode and was placed in this mode by software. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.</key>
@@ -320,7 +320,7 @@ Connection to the UPS: [#!variable!ups_name!#] has been restored.
 		<key name="scan_apc_ups_health_0012">The UPS is compensating for high input voltage.</key>
 		<key name="scan_apc_ups_health_0013">The UPS is operating in low-power mode. In this mode, the UPS is in static bypass mode and it is drawing very little power. If a fault is detected, it will switch to either normal operation or forced static bypass mode.</key>
 		<key name="scan_apc_ups_health_0014">The UPS is operating in hot-standby mode.</key>
-		<key name="scan_apc_ups_health_0015">The UPS is performing a test of it's batteries.</key>
+		<key name="scan_apc_ups_health_0015">The UPS is performing a test of its batteries.</key>
 		<key name="scan_apc_ups_health_0016">The UPS has been placed in emergency static bypass mode. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.</key>
 		<key name="scan_apc_ups_health_0017">The UPS is in static bypass standby mode. It is not currently providing power to downstream devices.</key>
 		<key name="scan_apc_ups_health_0018">The UPS is in power saving mode. The front panel display will be off but the UPS is operating normally.</key>
