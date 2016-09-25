@@ -291,7 +291,7 @@ FROM
     health 
 WHERE 
     health_host_uuid  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-    
+AND 
     health_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)."
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1086,7 +1086,7 @@ INSERT INTO
 			my $old_drive_group_scheduled_cc       = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_scheduled_cc};
 			my $old_drive_group_write_cache        = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_write_cache};
 			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0026", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0026", message_variables => {
 				name1  => "storcli_drive_group_id_string",          value1  => $storcli_drive_group_id_string,
 				name2  => "old_drive_group_id_string",              value2  => $old_drive_group_id_string,
 				name3  => "storcli_drive_group_virtual_drive_uuid", value3  => $storcli_drive_group_virtual_drive_uuid,
@@ -2876,14 +2876,14 @@ WHERE
 		### Process the rest of the variables now. 
 		foreach my $type ("variable", "temperature")
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}})
 			{
 				my $new_variable_value = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable};
 				my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable",    value1 => $variable,
 					name2 => "temperature", value2 => $temperature,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2892,7 +2892,7 @@ WHERE
 					# Look for changes
 					my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_value};
 					my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 						name1 => "variable",           value1 => $variable,
 						name2 => "new_variable_value", value2 => $new_variable_value,
 						name3 => "old_variable_value", value3 => $old_variable_value,
@@ -2912,6 +2912,8 @@ WHERE
 					my $temperature_is    = "nominal";
 					if ($type eq "temperature")
 					{
+						# It's a temperature, so change the default message.
+						$message_key = "scan_storcli_note_0064";
 						if (($new_variable_value ne $old_variable_value))
 						{
 							# If the temperature is rising, see if we need to set
@@ -2956,6 +2958,11 @@ WHERE
 										$alert_level = "critical";
 										$title_key   = "an_alert_title_0005";
 										$message_key = "scan_storcli_note_0008";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level,
+											name2 => "title_key",   value2 => $title_key,
+											name3 => "message_key", value3 => $message_key,
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 									$temperature_state = "critical";
 									$temperature_is    = "high";
@@ -2984,6 +2991,11 @@ WHERE
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0004";
 										$message_key = "scan_storcli_note_0009";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level,
+											name2 => "title_key",   value2 => $title_key,
+											name3 => "message_key", value3 => $message_key,
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 									$temperature_state = "warning";
 									$temperature_is    = "high";
@@ -3020,6 +3032,11 @@ WHERE
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0007";
 										$message_key = "scan_storcli_note_0016";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level,
+											name2 => "title_key",   value2 => $title_key,
+											name3 => "message_key", value3 => $message_key,
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 									elsif ($cleared_warning)
 									{
@@ -3028,6 +3045,11 @@ WHERE
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0006";
 										$message_key = "scan_storcli_note_0016";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level,
+											name2 => "title_key",   value2 => $title_key,
+											name3 => "message_key", value3 => $message_key,
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 								}
 								elsif ($new_variable_value > $clear_low_critical)
@@ -3061,6 +3083,11 @@ WHERE
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0006";
 										$message_key = "scan_storcli_note_0017";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level,
+											name2 => "title_key",   value2 => $title_key,
+											name3 => "message_key", value3 => $message_key,
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 									$temperature_state = "warning";
 									$temperature_is    = "low";
@@ -3076,6 +3103,11 @@ WHERE
 									$alert_level = "warning";
 									$title_key   = "an_alert_title_0004";
 									$message_key = "scan_storcli_note_0018";
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+										name1 => "alert_level", value1 => $alert_level,
+										name2 => "title_key",   value2 => $title_key,
+										name3 => "message_key", value3 => $message_key,
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 							}
 							else
@@ -3107,6 +3139,11 @@ WHERE
 										$alert_level = "critical";
 										$title_key   = "an_alert_title_0005";
 										$message_key = "scan_storcli_note_0010";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level,
+											name2 => "title_key",   value2 => $title_key,
+											name3 => "message_key", value3 => $message_key,
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 									$temperature_state = "critical";
 									$temperature_is    = "low";
@@ -3137,6 +3174,11 @@ WHERE
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0004";
 										$message_key = "scan_storcli_note_0011";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level,
+											name2 => "title_key",   value2 => $title_key,
+											name3 => "message_key", value3 => $message_key,
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 									$temperature_state = "warning";
 									$temperature_is    = "low";
@@ -3171,6 +3213,11 @@ WHERE
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0007";
 										$message_key = "scan_storcli_note_0019";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level,
+											name2 => "title_key",   value2 => $title_key,
+											name3 => "message_key", value3 => $message_key,
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 									elsif ($cleared_warning)
 									{
@@ -3179,6 +3226,11 @@ WHERE
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0006";
 										$message_key = "scan_storcli_note_0019";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level,
+											name2 => "title_key",   value2 => $title_key,
+											name3 => "message_key", value3 => $message_key,
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 								}
 								elsif ($new_variable_value < $clear_high_critical)
@@ -3212,6 +3264,11 @@ WHERE
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0006";
 										$message_key = "scan_storcli_note_0020";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level,
+											name2 => "title_key",   value2 => $title_key,
+											name3 => "message_key", value3 => $message_key,
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 									$temperature_state = "warning";
 									$temperature_is    = "high";
@@ -3227,6 +3284,11 @@ WHERE
 									$alert_level = "warning";
 									$title_key   = "an_alert_title_0004";
 									$message_key = "scan_storcli_note_0021";
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+										name1 => "alert_level", value1 => $alert_level,
+										name2 => "title_key",   value2 => $title_key,
+										name3 => "message_key", value3 => $message_key,
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 							}
 						}
@@ -3273,12 +3335,22 @@ WHERE
 								$alert_level = "warning";
 								$title_key   = "an_alert_title_0004";
 								$message_key = "scan_storcli_warning_0044";
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+									name1 => "alert_level", value1 => $alert_level,
+									name2 => "title_key",   value2 => $title_key,
+									name3 => "message_key", value3 => $message_key,
+								}, file => $THIS_FILE, line => __LINE__});
 							}
 							elsif ($variable =~ /fail/)
 							{
 								$alert_level = "warning";
 								$title_key   = "an_alert_title_0004";
 								$message_key = "scan_storcli_warning_0045";
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+									name1 => "alert_level", value1 => $alert_level,
+									name2 => "title_key",   value2 => $title_key,
+									name3 => "message_key", value3 => $message_key,
+								}, file => $THIS_FILE, line => __LINE__});
 							}
 						}
 						$an->Alert->register_alert({
@@ -4016,6 +4088,8 @@ WHERE
 						my $temperature_is    = "nominal";
 						if ($type eq "temperature")
 						{
+							# It's a temperature, so change the default message.
+							$message_key = "scan_storcli_note_0064";
 							if (($new_variable_value ne $old_variable_value))
 							{
 								# If the temperature is rising, see if we 
@@ -5217,6 +5291,8 @@ WHERE
 						my $temperature_is    = "nominal";
 						if ($type eq "temperature")
 						{
+							# It's a temperature, so change the default message.
+							$message_key = "scan_storcli_note_0066";
 							if (($new_variable_value ne $old_variable_value))
 							{
 								# If the temperature is rising, see if we 
@@ -6197,7 +6273,7 @@ INSERT INTO
 			my $old_model          = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_model};
 			my $old_alarm_state    = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_alarm_state};
 			my $old_cache_size     = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_cache_size};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 				name1 => "serial_number",     value1 => $serial_number,
 				name2 => "old_serial_number", value2 => $old_serial_number,
 				name3 => "new_model",         value3 => $new_model,
@@ -6233,6 +6309,9 @@ INSERT INTO
 						### TODO: We might want to tune this based on the actual alert.
 						# Note this sensor for our health weight.
 						$an->data->{health}{new}{'controller:alarm-state'} = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				$an->data->{sys}{alert_sort}++; 
@@ -6281,7 +6360,7 @@ AND
 			### Process the rest of the variables now. 
 			foreach my $type ("variable", "temperature")
 			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "type", value1 => $type,
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{$type}})
@@ -6289,7 +6368,7 @@ AND
 					# Being in the 'variable' hash, 'is_temperature' is 'FALSE'.
 					my $new_variable_value = delete $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable};
 					my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "variable",    value1 => $variable,
 						name2 => "temperature", value2 => $temperature,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -6298,7 +6377,7 @@ AND
 						# Look for changes
 						my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_value};
 						my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_controllers'}{source_uuid}{$controller_uuid}{$type}{$variable}{storcli_variable_uuid};
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 							name1 => "new_variable_value", value1 => $new_variable_value,
 							name2 => "old_variable_value", value2 => $old_variable_value,
 							name3 => "variable_uuid",      value3 => $variable_uuid,
@@ -6318,6 +6397,8 @@ AND
 						my $temperature_is    = "nominal";
 						if ($type eq "temperature")
 						{
+							# It's a temperature, so change the default message.
+							$message_key = "scan_storcli_note_0067";
 							if (($new_variable_value ne $old_variable_value))
 							{
 								# If the temperature is rising, see if we 
@@ -6333,11 +6414,14 @@ AND
 									###       is unlikely to be needed.
 									# Temperature is back.
 									$message_key = "scan_storcli_warning_0006";
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "message_key", value1 => $message_key, 
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 								elsif ($old_variable_value > $new_variable_value)
 								{
 									# Rising
-									my $jumped = $new_variable_value - $old_variable_value;
+									my $jumped = ($new_variable_value - $old_variable_value);
 									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 										name1 => "jumped", value1 => $jumped, 
 									}, file => $THIS_FILE, line => __LINE__});
@@ -6365,6 +6449,11 @@ AND
 											$alert_level = "critical";
 											$title_key   = "an_alert_title_0005";
 											$message_key = "scan_storcli_note_0026";
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+												name1 => "alert_level", value1 => $alert_level, 
+												name2 => "title_key",   value2 => $title_key, 
+												name3 => "message_key", value3 => $message_key, 
+											}, file => $THIS_FILE, line => __LINE__});
 										}
 										$temperature_state = "critical";
 										$temperature_is    = "high";
@@ -6396,6 +6485,11 @@ AND
 											$alert_level = "warning";
 											$title_key   = "an_alert_title_0004";
 											$message_key = "scan_storcli_note_0027";
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+												name1 => "alert_level", value1 => $alert_level, 
+												name2 => "title_key",   value2 => $title_key, 
+												name3 => "message_key", value3 => $message_key, 
+											}, file => $THIS_FILE, line => __LINE__});
 										}
 										$temperature_state = "warning";
 										$temperature_is    = "high";
@@ -6432,6 +6526,11 @@ AND
 											$alert_level = "warning";
 											$title_key   = "an_alert_title_0007";
 											$message_key = "scan_storcli_note_0028";
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+												name1 => "alert_level", value1 => $alert_level, 
+												name2 => "title_key",   value2 => $title_key, 
+												name3 => "message_key", value3 => $message_key, 
+											}, file => $THIS_FILE, line => __LINE__});
 										}
 										elsif ($cleared_warning)
 										{
@@ -6441,6 +6540,11 @@ AND
 											$alert_level = "warning";
 											$title_key   = "an_alert_title_0006";
 											$message_key = "scan_storcli_note_0028";
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+												name1 => "alert_level", value1 => $alert_level, 
+												name2 => "title_key",   value2 => $title_key, 
+												name3 => "message_key", value3 => $message_key, 
+											}, file => $THIS_FILE, line => __LINE__});
 										}
 									}
 									elsif ($new_variable_value > $clear_low_critical)
@@ -6474,6 +6578,11 @@ AND
 											$alert_level = "warning";
 											$title_key   = "an_alert_title_0006";
 											$message_key = "scan_storcli_note_0029";
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+												name1 => "alert_level", value1 => $alert_level, 
+												name2 => "title_key",   value2 => $title_key, 
+												name3 => "message_key", value3 => $message_key, 
+											}, file => $THIS_FILE, line => __LINE__});
 										}
 										$temperature_state = "warning";
 										$temperature_is    = "low";
@@ -6489,6 +6598,11 @@ AND
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0004";
 										$message_key = "scan_storcli_note_0030";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level, 
+											name2 => "title_key",   value2 => $title_key, 
+											name3 => "message_key", value3 => $message_key, 
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 								}
 								else
@@ -6524,6 +6638,11 @@ AND
 											$alert_level = "critical";
 											$title_key   = "an_alert_title_0005";
 											$message_key = "scan_storcli_note_0031";
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+												name1 => "alert_level", value1 => $alert_level, 
+												name2 => "title_key",   value2 => $title_key, 
+												name3 => "message_key", value3 => $message_key, 
+											}, file => $THIS_FILE, line => __LINE__});
 										}
 										$temperature_state = "critical";
 										$temperature_is    = "low";
@@ -6558,6 +6677,11 @@ AND
 											$alert_level = "warning";
 											$title_key   = "an_alert_title_0004";
 											$message_key = "scan_storcli_note_0032";
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+												name1 => "alert_level", value1 => $alert_level, 
+												name2 => "title_key",   value2 => $title_key, 
+												name3 => "message_key", value3 => $message_key, 
+											}, file => $THIS_FILE, line => __LINE__});
 										}
 										$temperature_state = "warning";
 										$temperature_is    = "low";
@@ -6592,6 +6716,11 @@ AND
 											$alert_level = "warning";
 											$title_key   = "an_alert_title_0007";
 											$message_key = "scan_storcli_note_0033";
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+												name1 => "alert_level", value1 => $alert_level, 
+												name2 => "title_key",   value2 => $title_key, 
+												name3 => "message_key", value3 => $message_key, 
+											}, file => $THIS_FILE, line => __LINE__});
 										}
 										elsif ($cleared_warning)
 										{
@@ -6601,6 +6730,11 @@ AND
 											$alert_level = "warning";
 											$title_key   = "an_alert_title_0006";
 											$message_key = "scan_storcli_note_0033";
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+												name1 => "alert_level", value1 => $alert_level, 
+												name2 => "title_key",   value2 => $title_key, 
+												name3 => "message_key", value3 => $message_key, 
+											}, file => $THIS_FILE, line => __LINE__});
 										}
 									}
 									elsif ($new_variable_value < $clear_high_critical)
@@ -6634,6 +6768,11 @@ AND
 											$alert_level = "warning";
 											$title_key   = "an_alert_title_0006";
 											$message_key = "scan_storcli_note_0034";
+											$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+												name1 => "alert_level", value1 => $alert_level, 
+												name2 => "title_key",   value2 => $title_key, 
+												name3 => "message_key", value3 => $message_key, 
+											}, file => $THIS_FILE, line => __LINE__});
 										}
 										$temperature_state = "warning";
 										$temperature_is    = "high";
@@ -6649,6 +6788,11 @@ AND
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0004";
 										$message_key = "scan_storcli_note_0035";
+										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+											name1 => "alert_level", value1 => $alert_level, 
+											name2 => "title_key",   value2 => $title_key, 
+											name3 => "message_key", value3 => $message_key, 
+										}, file => $THIS_FILE, line => __LINE__});
 									}
 								}
 							}
@@ -6690,6 +6834,9 @@ AND
 								if ($old_variable_value eq "VANISHED")
 								{
 									$message_key = "scan_storcli_warning_0006";
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "message_key", value1 => $message_key, 
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 								
 								# Check for some important issues
@@ -6698,29 +6845,53 @@ AND
 									$alert_level = "warning";
 									$title_key   = "an_alert_title_0004";
 									$message_key = "scan_storcli_warning_0046";
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+										name1 => "alert_level", value1 => $alert_level, 
+										name2 => "title_key",   value2 => $title_key, 
+										name3 => "message_key", value3 => $message_key, 
+									}, file => $THIS_FILE, line => __LINE__});
 									
 									# Note this sensor for our health weight.
 									$an->data->{health}{new}{$variable} = 1;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "health::new::$variable", value1 => $an->data->{health}{new}{$variable}, 
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 								elsif ($variable =~ /memory_uncorrectable_errors/)
 								{
 									$alert_level = "critical";
 									$title_key   = "an_alert_title_0005";
 									$message_key = "scan_storcli_warning_0047";
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+										name1 => "alert_level", value1 => $alert_level, 
+										name2 => "title_key",   value2 => $title_key, 
+										name3 => "message_key", value3 => $message_key, 
+									}, file => $THIS_FILE, line => __LINE__});
 									
 									# Ya, time to get the servers the 
 									# heck off this node.
 									$an->data->{health}{new}{$variable} = 5;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "health::new::$variable", value1 => $an->data->{health}{new}{$variable}, 
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 								elsif ($variable =~ /controller_status/)
 								{
 									$alert_level = "critical";
 									$title_key   = "an_alert_title_0004";
 									$message_key = "scan_storcli_warning_0048";
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+										name1 => "alert_level", value1 => $alert_level, 
+										name2 => "title_key",   value2 => $title_key, 
+										name3 => "message_key", value3 => $message_key, 
+									}, file => $THIS_FILE, line => __LINE__});
 									
 									# Ya, time to get the servers the 
 									# heck off this node.
 									$an->data->{health}{new}{$variable} = 5;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "health::new::$variable", value1 => $an->data->{health}{new}{$variable}, 
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 								# There more of interest... See: SELECT a.host_name, b.storcli_controller_serial_number AS sn, b.storcli_controller_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_controllers b, storcli_variables c WHERE a.host_uuid = b.storcli_controller_host_uuid AND b.storcli_controller_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a07n01.alteeve.ca';
 							}
@@ -6732,7 +6903,7 @@ AND
 								alert_title_key		=>	$title_key,
 								alert_message_key	=>	$message_key,
 								alert_message_variables	=>	{
-									serial_number		=>	$serial_number,
+									controller		=>	$serial_number,
 									name			=>	$variable,
 									old_value		=>	$old_variable_value ? $old_variable_value : "--",
 									new_value		=>	$new_variable_value,

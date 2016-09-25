@@ -10583,51 +10583,13 @@ sub avoid_duplicate_run
 		name1 => "my_pid", value1 => $my_pid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Make sure the update expire age is sane.
-	if ((not $an->data->{scancore}{update_age_limit}) or ($an->data->{scancore}{update_age_limit} =~ /\D/))
-	{
-		$an->data->{scancore}{update_age_limit} = 1200;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "scancore::update_age_limit", value1 => $an->data->{scancore}{update_age_limit},
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# See if another instance is in the 
-	my $last_peer_state = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
+	# See if there is a pending lock. If there is, we won't do anything because the other instance might
+	# be waiting on the lock. We don't worry about lock age because any other node or dashboard will reap
+	# the lock if it gets too old.
+	my $lock = $an->DB->locking({check => 1});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "last_peer_state", value1 => $last_peer_state,
+		name1 => "lock", value1 => $lock,
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($last_peer_state) && ($last_peer_state =~ /^\d+$/))
-	{
-		# An update is running. If it is less than scancore::update_age_limit seconds old, simply 
-		# exit.
-		my $current_time = time;
-		my $update_age   = $current_time - $last_peer_state;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "current_time",               value1 => $current_time,
-			name2 => "update_age",                 value2 => $update_age,
-			name3 => "scancore::update_age_limit", value3 => $an->data->{scancore}{update_age_limit},
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($update_age > $an->data->{scancore}{update_age_limit})
-		{
-			# The other instance is taking too long... Set an alert and proceed.
-			my $variables = { age => $update_age };
-			$an->Alert->register_alert({
-				alert_level		=>	"warning", 
-				alert_agent_name	=>	$THIS_FILE,
-				alert_title_key		=>	"an_alert_title_0004",
-				alert_message_key	=>	"scancore_warning_0029",
-				alert_message_variables	=>	$variables,
-			});
-			$an->Log->entry({log_level => 1, message_key => "scancore_warning_0029", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-		}
-		else
-		{
-			# Nothing to worry about yet, just exit.
-			$an->nice_exit({exit_code => 6});
-		}
-	}
 	
 	my $already_running = 0;
 	my $other_pids      = [];
@@ -10663,9 +10625,9 @@ sub avoid_duplicate_run
 	}
 	close $file_handle;
 	
-	# If another copy is running, see when it last finished a scan. If it was more than five minutes ago,
-	# kill it because it might be hung.
-	if ($already_running)
+	# If another copy is running, and there is no lock, see when it last finished a scan. If it was more
+	# than five minutes ago, kill it because it might be hung.
+	if (($already_running) && (not $lock))
 	{
 		my $query = "
 SELECT 

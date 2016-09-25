@@ -374,7 +374,7 @@ INSERT INTO
 	}
 	
 	# Delete any old entries that are left.
-	foreach my $health_source_name (sort {$a cmp $b} keys %{$an->data->{health}{new}})
+	foreach my $health_source_name (sort {$a cmp $b} keys %{$an->data->{health}{old}})
 	{
 		# Well set the source name to 'DELETED'.
 		my $query = "
@@ -633,9 +633,9 @@ SET
     ipmitool_sensor_low_warning   = ".$an->data->{sys}{use_db_fh}->quote($new_ipmitool_sensor_low_warning).", 
     modified_date                 = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
-    ipmitool_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
+    ipmitool_sensor_host          = ".$an->data->{sys}{use_db_fh}->quote($machine)."
 AND 
-    ipmitool_uuid = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_uuid)."
+    ipmitool_uuid                 = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_uuid)."
 ;";
 						$query =~ s/'NULL'/NULL/g;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -648,6 +648,11 @@ AND
 						my $level       = "notice";
 						my $title_key   = "an_alert_title_0003";
 						my $message_key = "scan_ipmitool_message_0012";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "level",       value1 => $level, 
+							name2 => "title_key",   value2 => $title_key, 
+							name3 => "message_key", value3 => $message_key, 
+						}, file => $THIS_FILE, line => __LINE__});
 						if (($new_ipmitool_sensor_status ne $old_ipmitool_sensor_status) && 
 						    ($new_ipmitool_sensor_status ne "ns") &&
 						    ($old_ipmitool_sensor_status ne "ns"))
@@ -655,6 +660,11 @@ AND
 							$level       = "warning";
 							$title_key   = "an_alert_title_0004";
 							$message_key = "scan_ipmitool_message_0012";
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+								name1 => "level",       value1 => $level, 
+								name2 => "title_key",   value2 => $title_key, 
+								name3 => "message_key", value3 => $message_key, 
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						$an->Alert->register_alert({
 							alert_level		=>	$level, 
@@ -764,11 +774,29 @@ INSERT INTO
 					my $level       = "notice";
 					my $title_key   = "an_alert_title_0003";
 					my $message_key = "scan_ipmitool_message_0013";
-					if ($new_ipmitool_sensor_status ne "ok")
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "level",       value1 => $level, 
+						name2 => "title_key",   value2 => $title_key, 
+						name3 => "message_key", value3 => $message_key, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($new_ipmitool_sensor_status eq "ok")
+					{
+						# Alert cleared.
+						$title_key = "an_alert_title_0006";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "title_key", value1 => $title_key, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					else
 					{
 						$level       = "warning";
 						$title_key   = "an_alert_title_0004";
 						$message_key = "scan_ipmitool_message_0013";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "level",       value1 => $level, 
+							name2 => "title_key",   value2 => $title_key, 
+							name3 => "message_key", value3 => $message_key, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					$an->Alert->register_alert({
 						alert_level		=>	$level, 
@@ -907,10 +935,93 @@ INSERT INTO
 		
 		### Now add, update and delete 'temperature' entries.
 		process_temperature($an, $machine);
+		
+		# Now look for any sensors that are in a bad state and set the health accordingly.
+		check_sensor_health($an, $machine);
 	}
 	
 	# Now commit the changes.
 	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+# This looks at various sensors, except temperature (handled in process_temperature() below) and sets the 
+# health table as needed for sensors out of scope.
+sub check_sensor_health
+{
+	my ($an, $machine) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_sensor_health" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "machine", value1 => $machine, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	foreach my $ipmitool_sensor_name (sort {$a cmp $b} keys %{$an->data->{ipmi}{$machine}{ipmitool_sensor_name}})
+	{
+		# Put the new values into variables
+		my $ipmitool_value_sensor_value   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value};
+		my $ipmitool_sensor_units         = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units};
+		my $ipmitool_sensor_status        = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status};
+		my $ipmitool_sensor_high_critical = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical};
+		my $ipmitool_sensor_high_warning  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning};
+		my $ipmitool_sensor_low_critical  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical};
+		my $ipmitool_sensor_low_warning   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			name1 => "ipmitool_value_sensor_value",   value1 => $ipmitool_value_sensor_value, 
+			name2 => "ipmitool_sensor_units",         value2 => $ipmitool_sensor_units, 
+			name3 => "ipmitool_sensor_status",        value3 => $ipmitool_sensor_status, 
+			name4 => "ipmitool_sensor_high_critical", value4 => $ipmitool_sensor_high_critical, 
+			name5 => "ipmitool_sensor_high_warning",  value5 => $ipmitool_sensor_high_warning, 
+			name6 => "ipmitool_sensor_low_critical",  value6 => $ipmitool_sensor_low_critical, 
+			name7 => "ipmitool_sensor_low_warning",   value7 => $ipmitool_sensor_low_warning, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ((lc($ipmitool_sensor_units) eq "c") or (lc($ipmitool_sensor_units) eq "f"))
+		{
+			# Temperatures will be handled in process_temperature().
+			next;
+		}
+		if ($ipmitool_sensor_status ne "ok")
+		{
+			my $health_source_name = $ipmitool_sensor_units.":".$ipmitool_sensor_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "health_source_name", value1 => $health_source_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (lc($ipmitool_sensor_units) eq "v")
+			{
+				$health_source_name = "voltage:".$ipmitool_sensor_name;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health_source_name", value1 => $health_source_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif (lc($ipmitool_sensor_units) eq "w")
+			{
+				$health_source_name = "wattage:".$ipmitool_sensor_name;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health_source_name", value1 => $health_source_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif (lc($ipmitool_sensor_units) eq "rpm")
+			{
+				$health_source_name = "fan:".$ipmitool_sensor_name;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health_source_name", value1 => $health_source_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($ipmitool_sensor_units eq "%")
+			{
+				$health_source_name = "percentage:".$ipmitool_sensor_name;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health_source_name", value1 => $health_source_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Record it.
+			$an->data->{health}{new}{$health_source_name} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
 	
 	return(0);
 }
@@ -1376,6 +1487,11 @@ sub process_temperature_change
 	my $level       = "info";
 	my $title_key   = "an_alert_title_0002";
 	my $message_key = "scan_ipmitool_message_0012";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "level",       value1 => $level, 
+		name2 => "title_key",   value2 => $title_key, 
+		name3 => "message_key", value3 => $message_key, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# New values
 	my $new_ipmitool_value_sensor_value   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value};
@@ -1546,6 +1662,11 @@ sub process_temperature_change
 				$level       = "critical";
 				$title_key   = "an_alert_title_0005";
 				$message_key = "scan_ipmitool_message_0004";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "level",       value1 => $level, 
+					name2 => "title_key",   value2 => $title_key, 
+					name3 => "message_key", value3 => $message_key, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		elsif ($new_ipmitool_value_sensor_value > $high_warning)
@@ -1572,6 +1693,11 @@ sub process_temperature_change
 				$level       = "warning";
 				$title_key   = "an_alert_title_0005";
 				$message_key = "scan_ipmitool_message_0005";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "level",       value1 => $level, 
+					name2 => "title_key",   value2 => $title_key, 
+					name3 => "message_key", value3 => $message_key, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		elsif ($new_ipmitool_value_sensor_value > ($low_warning + $buffer))
@@ -1600,6 +1726,11 @@ sub process_temperature_change
 				$level       = $clear_critical ? "critical" : "warning";
 				$title_key   = "an_alert_title_0006";
 				$message_key = "scan_ipmitool_message_0006";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "level",       value1 => $level, 
+					name2 => "title_key",   value2 => $title_key, 
+					name3 => "message_key", value3 => $message_key, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		elsif ($new_ipmitool_value_sensor_value > ($low_critical + $buffer))
@@ -1618,6 +1749,11 @@ sub process_temperature_change
 				$level       = "critical";
 				$title_key   = "an_alert_title_0006";
 				$message_key = "scan_ipmitool_message_0010";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "level",       value1 => $level, 
+					name2 => "title_key",   value2 => $title_key, 
+					name3 => "message_key", value3 => $message_key, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		else
@@ -1720,6 +1856,11 @@ sub process_temperature_change
 				$level       = "warning";
 				$title_key   = "an_alert_title_0005";
 				$message_key = "scan_ipmitool_message_0009";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "level",       value1 => $level, 
+					name2 => "title_key",   value2 => $title_key, 
+					name3 => "message_key", value3 => $message_key, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		elsif ($new_ipmitool_value_sensor_value < ($high_warning - $buffer))
@@ -1748,6 +1889,11 @@ sub process_temperature_change
 				$level       = $clear_critical ? "critical" : "warning";
 				$title_key   = "an_alert_title_0006";
 				$message_key = "scan_ipmitool_message_0006";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "level",       value1 => $level, 
+					name2 => "title_key",   value2 => $title_key, 
+					name3 => "message_key", value3 => $message_key, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		elsif ($new_ipmitool_value_sensor_value < ($high_critical - $buffer))
@@ -1766,6 +1912,11 @@ sub process_temperature_change
 				$level       = "critical";
 				$title_key   = "an_alert_title_0006";
 				$message_key = "scan_ipmitool_message_0011";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "level",       value1 => $level, 
+					name2 => "title_key",   value2 => $title_key, 
+					name3 => "message_key", value3 => $message_key, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		else
@@ -1875,20 +2026,12 @@ sub update_db
 		# Request a lock.
 		$an->DB->locking({request => 1});
 		
-		# Make a note in the databases that we're starting an update and ask it to wait 15 seconds 
-		# before returning to give other instances time to finish their scans. (our scans end quickly
-		# enough).
-		#$an->DB->set_update_db_flag({set => time, 'wait' => 15});
-		
 		# Update apc_ups and interfaces
 		update_db_ipmitool($an);
 		update_db_ipmitool_value($an);
 	
 		# Release the lock
 		$an->DB->locking({release => 1});
-		
-		# Clear the update flag.
-		#$an->DB->set_update_db_flag({set => 0});
 	}
 	
 	return(0);
@@ -2596,10 +2739,6 @@ sub query_ipmi_targets
 				name6 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_sensor_low_critical",  value6 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_low_critical}, 
 				name7 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_sensor_low_warning",   value7 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_low_warning}, 
 			}, file => $THIS_FILE, line => __LINE__});
-			
-			### TODO: Test various failures (pull PSU, FAN, slow fan, etc) and use the output to 
-			###       set the health values.
-			###       $an->data->{health}{new}{$health_source_name} = ...
 			
 			# If this is a temperature, check to see if it is outside its nominal range and, if
 			# so, record it into a hash for loading into ScanCore's 'temperature' table.

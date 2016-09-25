@@ -1402,14 +1402,16 @@ sub locking
 	my $request     = defined $parameter->{request}     ? $parameter->{request}     : 0;
 	my $release     = defined $parameter->{release}     ? $parameter->{release}     : 0;
 	my $renew       = defined $parameter->{renew}       ? $parameter->{renew}       : 0;
+	my $check       = defined $parameter->{check}       ? $parameter->{check}       : 0;
 	my $source_name =         $parameter->{source_name} ? $parameter->{source_name} : $an->hostname;
 	my $source_uuid =         $parameter->{source_uuid} ? $parameter->{source_uuid} : $an->data->{sys}{host_uuid};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "request",     value1 => $request, 
 		name2 => "release",     value2 => $release, 
 		name3 => "renew",       value3 => $renew, 
-		name4 => "source_name", value4 => $source_name, 
-		name5 => "source_uuid", value5 => $source_uuid, 
+		name4 => "check",       value4 => $check, 
+		name5 => "source_name", value5 => $source_name, 
+		name6 => "source_uuid", value6 => $source_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $set            = 0;
@@ -1427,6 +1429,17 @@ sub locking
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::locking::reap_age", value1 => $an->data->{scancore}{locking}{reap_age}, 
 		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# If I have been asked to check, we will return the variable_uuid if a lock is set.
+	if ($check)
+	{
+		my $lock_value = $an->ScanCore->read_variable({variable_name => $variable_name});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "lock_value", value1 => $lock_value, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		return($lock_value);
 	}
 	
 	# If I've been asked to clear a lock, do so now.
