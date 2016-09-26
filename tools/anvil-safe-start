@@ -922,7 +922,7 @@ sub wait_for_storage
 		
 		# Call clustat;
 		my $storage_enabled = 0;
-		my $storge_count    = 0;
+		my $storage_count   = 0;
 		my $shell_call      = $an->data->{path}{clustat};
 		### NOTE: Customer requested, move to 2 before v2.0 release
 		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
@@ -952,10 +952,10 @@ sub wait_for_storage
 				
 				if ($state eq "started")
 				{
-					$storge_count++;
+					$storage_count++;
 					### NOTE: Customer requested, move to 2 before v2.0 release
 					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-						name1 => "storge_count", value1 => $storge_count, 
+						name1 => "storage_count", value1 => $storage_count, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($who eq "local")
@@ -987,9 +987,9 @@ sub wait_for_storage
 					{
 						# This is the peer's storage and we're only watching local so pretend
 						# it is up.
-						$storge_count++;
+						$storage_count++;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "storge_count", value1 => $storge_count, 
+							name1 => "storage_count", value1 => $storage_count, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -998,9 +998,9 @@ sub wait_for_storage
 		close $file_handle;
 		
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "storge_count", value1 => $storge_count, 
+			name1 => "storage_count", value1 => $storage_count, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($storge_count == 2)
+		if ($storage_count == 2)
 		{
 			# Now verify that '/shared/ is mounted on both nodes.
 			my $shared_up = check_shared($an, $who);

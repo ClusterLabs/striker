@@ -313,6 +313,48 @@ sub check_sensor_health
 		}
 	}
 	
+	# Cachevaults.
+	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
+	{
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $value = $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable};
+			if (($variable eq "replacement_required") && (lc($value) eq "yes"))
+			{
+				my $health_source_name                           = "cachevault:".$cachevault_serial_number.":".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 5;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# BBUs
+	
+			if ($variable eq "replacement_required")
+			{
+				$new_replacement_needed = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_replacement_needed", value1 => $new_replacement_needed,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# We'll also set our health here if the FBU needs to be replaced.
+				if (lc($new_replacement_needed) eq "yes")
+				{
+					my $health_source_name                           = "bbu:".$bbu_serial_number.":".$variable;
+					   $an->data->{health}{new}{$health_source_name} = 5;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				next;
+			}
+	
 	return(0);
 }
 

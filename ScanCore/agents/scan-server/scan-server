@@ -896,7 +896,7 @@ SET
     server_stop_reason = '', 
     modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
-    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
+    server_uuid        = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
 						$query =~ s/'NULL'/NULL/g;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

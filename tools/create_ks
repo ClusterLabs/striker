@@ -253,7 +253,7 @@ sub generate_ks
 	my $copy_logs      = get_copy_logs($conf);
 	
 	# (De)branding doesn't apply to the kickstart comment header.
-	my $content = "### Alteeve's Niche! Inc. - Anvil! High Availability Platform
+	my $content = "### Alteeve's Niche! Inc. - Anvil! Intelligent Availability(tm) Platform
 # License: GPLv2
 # Built:   ".get_date($conf)."
 # Target:  $say_target
