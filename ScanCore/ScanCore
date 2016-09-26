@@ -10648,6 +10648,7 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $last_updated = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		   $last_updated = 0 if not defined $last_updated;
 		my $current_time = time;
 		my $difference   = $current_time - $last_updated;
 		### NOTE: Customer requested, move to 2 before v2.0 release

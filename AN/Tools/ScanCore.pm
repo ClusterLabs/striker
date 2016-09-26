@@ -3123,9 +3123,23 @@ AND
 	# If I still don't have an state_uuid, we're INSERT'ing .
 	if (not $state_uuid)
 	{
+		# It's possible that this is called before the host is recorded in the database. So to be
+		# safe, we'll return without doing anything if there is no host_uuid in the database.
+		my $hosts      = $an->ScanCore->get_hosts();
+		my $host_count = @{$hosts};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "hosts",      value1 => $hosts, 
+			name2 => "host_count", value1 => $host_count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $host_count)
+		{
+			# We're out.
+			return(0);
+		}
+		
 		# INSERT
 		   $state_uuid = $an->Get->uuid();
-		my $query          = "
+		my $query      = "
 INSERT INTO 
     states 
 (
