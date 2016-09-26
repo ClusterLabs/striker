@@ -3125,13 +3125,23 @@ AND
 	{
 		# It's possible that this is called before the host is recorded in the database. So to be
 		# safe, we'll return without doing anything if there is no host_uuid in the database.
-		my $hosts      = $an->ScanCore->get_hosts();
-		my $host_count = @{$hosts};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "hosts",      value1 => $hosts, 
-			name2 => "host_count", value1 => $host_count, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if (not $host_count)
+		my $hosts = $an->ScanCore->get_hosts();
+		my $found = 0;
+		foreach my $hash_ref (@{$hosts})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->{host_uuid}", value1 => $hash_ref->{host_uuid}, 
+				name2 => "sys::host_uuid",        value2 => $an->data->{sys}{host_uuid}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{host_uuid} eq $an->data->{sys}{host_uuid})
+			{
+				$found = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "found", value1 => $found, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		if (not $found)
 		{
 			# We're out.
 			return(0);
