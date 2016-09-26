@@ -4423,7 +4423,7 @@ sub translate_sensor_name
 sub translate_strings
 {
 	my ($an, $string) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "translate_strings" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "translate_strings" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "string",     value1 => $string, 
 		name2 => "lc(string)", value2 => lc($string), 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4550,12 +4550,16 @@ sub translate_strings
 	{
 		$return = $an->String->get({key => "tools_suffix_0080"});
 	}
+	elsif (lc($string) eq "rbld")
+	{
+		$return = $an->String->get({key => "tools_suffix_0081"});
+	}
 # 	elsif (lc($string) eq "")
 # 	{
 # 		$return = $an->String->get({key => ""});
 # 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return",  value1 => $return, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($return);

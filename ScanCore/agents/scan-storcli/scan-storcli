@@ -256,6 +256,9 @@ find_changes($an);
 # always call this before process_health().
 process_temperatures($an);
 
+# This looks for anything other than temperature sensors that will feed into the health of the node.
+check_sensor_health($an);
+
 # Finally, process health weights.
 process_health($an);
 
@@ -269,6 +272,49 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Function below                                                                                            #
 #############################################################################################################
+
+# This looks for anything other than temperature sensors that will feed into the health of the node.
+sub check_sensor_health
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Is the array degraded or partially degraded?
+	foreach my $id_string (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
+	{
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$id_string}{drive_group}})
+		{
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $value = $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable};
+				if ($value eq "Partially Degraded")
+				{
+					# Partially degraded array
+					my $health_source_name                           = "drive_group:".$id_string,"-".$drive_group.":".$variable;
+					   $an->data->{health}{new}{$health_source_name} = 5;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($value eq "Degraded")
+				{
+					# Degraded array
+					my $health_source_name                           = "drive_group:".$id_string,"-".$drive_group.":".$variable;
+					   $an->data->{health}{new}{$health_source_name} = 10;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+	}
+	
+	return(0);
+}
 
 # This reads in all health wieghts previously set, alters ones as needed, INSERTs new ones and DELETEs old
 # ones.
@@ -10884,26 +10930,12 @@ sub process_vg_overview_data
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
-			
-			# We'll also set our health here.
-			my $health_source_name                           = "drive_group:".$id_string,"-".$drive_group.":".$variable;
-			   $an->data->{health}{new}{$health_source_name} = 5;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
-			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^dgrd$/i)
 		{
 			$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} = "Degraded";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "<< virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# We'll also set our health here.
-			my $health_source_name                           = "drive_group:".$id_string,"-".$drive_group.":".$variable;
-			   $an->data->{health}{new}{$health_source_name} = 10;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable} =~ /^Optl$/i)
