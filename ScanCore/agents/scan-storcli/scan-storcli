@@ -249,15 +249,15 @@ prep_databases($an);
 # Look to see if any databases need to be updated.
 update_db($an);
 
+# Finally, process health weights.
+pre_process_health($an);
+
 # Look for changes.
 find_changes($an);
 
 # Process temperatures! This also sets health values for warning and critical temperatures so make sure we
 # always call this before process_health().
 process_temperatures($an);
-
-# This looks for anything other than temperature sensors that will feed into the health of the node.
-check_sensor_health($an);
 
 # Finally, process health weights.
 process_health($an);
@@ -274,10 +274,10 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 
 # This looks for anything other than temperature sensors that will feed into the health of the node.
-sub check_sensor_health
+sub pre_process_health
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "pre_process_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Is the array degraded or partially degraded?
 	foreach my $id_string (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
@@ -313,13 +313,109 @@ sub check_sensor_health
 		}
 	}
 	
+	# Controllers.
+	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
+	{
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{variable}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "controller::serial_number::${serial_number}::variable::$variable", value1 => $an->data->{controller}{serial_number}{$serial_number}{variable}{$variable}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $value = $an->data->{controller}{serial_number}{$serial_number}{variable}{$variable};
+			if (($variable eq "alarm_state") && (lc($value) ne "off"))
+			{
+				my $health_source_name                           = "controller:".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif (($variable eq "memory_correctable_errors") && ($value ne "0"))
+			{
+				# TODO: I might want to scale this where 1~X = 1, Y~Z = 3, etc
+				my $health_source_name                           = "controller:".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif (($variable eq "memory_uncorrectable_errors") && ($value ne "0"))
+			{
+				# TODO: I might want to scale this where 1~X = 5, Y~Z = 10, etc
+				my $health_source_name                           = "controller:".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 5;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif (($variable eq "controller_status") && (lc($value) ne "optimal"))
+			{
+				my $health_source_name                           = "controller:".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 5;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Physical Drives.
+	foreach my $storcli_virtual_drive_id_string (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
+	{
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}})
+		{
+			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}})
+			{
+				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
+				{
+					foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
+					{
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "virtual_drive::${storcli_virtual_drive_id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						my $value = $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
+						if (($variable eq "media_error_count") && ($value ne "0"))
+						{
+							# TODO: I might want to scale this where 1~X = 1, Y~Z = 3, etc
+							my $health_source_name                           = "drive:".$variable;
+							   $an->data->{health}{new}{$health_source_name} = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif (($variable eq "other_error_count") && ($value ne "0"))
+						{
+							# TODO: I might want to scale this where 1~X = 1, Y~Z = 3, etc
+							my $health_source_name                           = "drive:".$variable;
+							   $an->data->{health}{new}{$health_source_name} = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif (($variable eq "predictive_failure_count") && ($value ne "0"))
+						{
+							# TODO: I might want to scale this where 1~X = 3, Y~Z = 3, etc
+							my $health_source_name                           = "drive:".$variable;
+							   $an->data->{health}{new}{$health_source_name} = 3;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+				}
+			}
+		}
+	}
+	
 	# Cachevaults.
 	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
 	{
 		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}})
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable}, 
+				name1 => "cachevault::serial_number::${cachevault_serial_number}::variable::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $value = $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable};
@@ -335,25 +431,25 @@ sub check_sensor_health
 	}
 	
 	# BBUs
-	
-			if ($variable eq "replacement_required")
+	foreach my $bbu_serial_number (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}})
+	{
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "bbu::serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $value = $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
+			if (($variable eq "replacement_required") && (lc($value) eq "yes"))
 			{
-				$new_replacement_needed = delete $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "new_replacement_needed", value1 => $new_replacement_needed,
+				my $health_source_name                           = "bbu:".$bbu_serial_number.":".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 5;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				# We'll also set our health here if the FBU needs to be replaced.
-				if (lc($new_replacement_needed) eq "yes")
-				{
-					my $health_source_name                           = "bbu:".$bbu_serial_number.":".$variable;
-					   $an->data->{health}{new}{$health_source_name} = 5;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				next;
 			}
+		}
+	}
 	
 	return(0);
 }
@@ -472,7 +568,7 @@ INSERT INTO
 	}
 	
 	# Delete any old entries that are left.
-	foreach my $health_source_name (sort {$a cmp $b} keys %{$an->data->{health}{new}})
+	foreach my $health_source_name (sort {$a cmp $b} keys %{$an->data->{health}{old}})
 	{
 		# Well set the source name to 'DELETED'.
 		my $query = "
@@ -3747,16 +3843,6 @@ sub process_cachevaults
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_replacement_needed", value1 => $new_replacement_needed,
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				# We'll also set our health here if the FBU needs to be replaced.
-				if (lc($new_replacement_needed) eq "yes")
-				{
-					my $health_source_name                           = "cachevault:".$cachevault_serial_number.":".$variable;
-					   $an->data->{health}{new}{$health_source_name} = 5;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
 				next;
 			}
 		}
@@ -4952,16 +5038,6 @@ sub process_bbus
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "new_replacement_needed", value1 => $new_replacement_needed,
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				# We'll also set our health here if the FBU needs to be replaced.
-				if (lc($new_replacement_needed) eq "yes")
-				{
-					my $health_source_name                           = "bbu:".$bbu_serial_number.":".$variable;
-					   $an->data->{health}{new}{$health_source_name} = 5;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
 				next;
 			}
 		}
@@ -6392,15 +6468,6 @@ INSERT INTO
 					{
 						$title_key = "an_alert_title_0004";
 					}
-					else
-					{
-						### TODO: We might want to tune this based on the actual alert.
-						# Note this sensor for our health weight.
-						$an->data->{health}{new}{'controller:alarm-state'} = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
 				}
 				$an->data->{sys}{alert_sort}++; 
 				$an->Alert->register_alert({
@@ -6938,12 +7005,6 @@ AND
 										name2 => "title_key",   value2 => $title_key, 
 										name3 => "message_key", value3 => $message_key, 
 									}, file => $THIS_FILE, line => __LINE__});
-									
-									# Note this sensor for our health weight.
-									$an->data->{health}{new}{$variable} = 1;
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-										name1 => "health::new::$variable", value1 => $an->data->{health}{new}{$variable}, 
-									}, file => $THIS_FILE, line => __LINE__});
 								}
 								elsif ($variable =~ /memory_uncorrectable_errors/)
 								{
@@ -6955,13 +7016,6 @@ AND
 										name2 => "title_key",   value2 => $title_key, 
 										name3 => "message_key", value3 => $message_key, 
 									}, file => $THIS_FILE, line => __LINE__});
-									
-									# Ya, time to get the servers the 
-									# heck off this node.
-									$an->data->{health}{new}{$variable} = 5;
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-										name1 => "health::new::$variable", value1 => $an->data->{health}{new}{$variable}, 
-									}, file => $THIS_FILE, line => __LINE__});
 								}
 								elsif ($variable =~ /controller_status/)
 								{
@@ -6972,13 +7026,6 @@ AND
 										name1 => "alert_level", value1 => $alert_level, 
 										name2 => "title_key",   value2 => $title_key, 
 										name3 => "message_key", value3 => $message_key, 
-									}, file => $THIS_FILE, line => __LINE__});
-									
-									# Ya, time to get the servers the 
-									# heck off this node.
-									$an->data->{health}{new}{$variable} = 5;
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-										name1 => "health::new::$variable", value1 => $an->data->{health}{new}{$variable}, 
 									}, file => $THIS_FILE, line => __LINE__});
 								}
 								# There more of interest... See: SELECT a.host_name, b.storcli_controller_serial_number AS sn, b.storcli_controller_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_controllers b, storcli_variables c WHERE a.host_uuid = b.storcli_controller_host_uuid AND b.storcli_controller_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a07n01.alteeve.ca';

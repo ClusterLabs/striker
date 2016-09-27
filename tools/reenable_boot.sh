@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# 19-Dec-2014: Subu - Reenables passphraseless boot by changing the securitykey and not requiring a passphrase
+# 19-Dec-2014: Reenables passphraseless boot by changing the securitykey and not requiring a passphrase
 
 # Need to run as root
 if [[ $EUID -ne 0 ]]; then

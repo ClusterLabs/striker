@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# 19-Dec-2014: Subu - Disables boot by changing the securitykey and requiring a passphrase
+# 19-Dec-2014: Disables boot by changing the securitykey and requiring a passphrase
 
 # Need to run as root
 if [[ $EUID -ne 0 ]]; then
