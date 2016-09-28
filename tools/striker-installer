@@ -3738,6 +3738,8 @@ ACCEPT		net		fw		udp	69
 ACCEPT		net		fw		tcp	69
 ACCEPT		net		fw		tcp	80
 ACCEPT		net		fw		tcp	443
+ACCEPT		net		fw		udp	2049
+ACCEPT		net		fw		tcp	2049
 ACCEPT		net		fw		tcp	5432
 ACCEPT		net		fw		tcp	5800
 ACCEPT		net		fw		tcp	5900
@@ -3751,6 +3753,8 @@ ACCEPT		loc		fw		udp	69
 ACCEPT		loc		fw		tcp	69
 ACCEPT		loc		fw		tcp	80
 ACCEPT		loc		fw		tcp	443
+ACCEPT		loc		fw		udp	2049
+ACCEPT		loc		fw		tcp	2049
 ACCEPT		loc		fw		tcp	5432
 ACCEPT		loc		fw		tcp	5800
 ACCEPT		loc		fw		tcp	5900
@@ -5824,15 +5828,15 @@ sub configure_iptables
 		{
 			if ($line =~ /tcp/)
 			{
-				logger($conf, $THIS_FILE, __LINE__, "- NSF for Remote USB, tcp port is already enabled.", 1);
+				logger($conf, $THIS_FILE, __LINE__, "- NFS for Remote USB, tcp port is already enabled.", 1);
 			}
 			elsif ($line =~ /udp/)
 			{
-				logger($conf, $THIS_FILE, __LINE__, "- NSF for Remote USB, udp port is already enabled.", 1);
+				logger($conf, $THIS_FILE, __LINE__, "- NFS for Remote USB, udp port is already enabled.", 1);
 			}
 			else
 			{
-				logger($conf, $THIS_FILE, __LINE__, "- NSF for Remote USB port is already enabled.", 1);
+				logger($conf, $THIS_FILE, __LINE__, "- NFS for Remote USB port is already enabled.", 1);
 			}
 			$nfs_open = 1;
 		}
@@ -6689,8 +6693,7 @@ sub install_packages
 	
 	logger($conf, $THIS_FILE, __LINE__, "Checking if anything needs to be installed.", 1);
 	
-	# If the user has set 'router-mode', add 'shorewall' to the list of
-	# packages to install.
+	# If the user has set 'router-mode', add 'shorewall' to the list of packages to install.
 	if ($conf->{switches}{'router-mode'})
 	{
 		# It was.
