@@ -5794,6 +5794,7 @@ sub configure_iptables
 	my $https_open = 0;
 	my $vnc_open   = 0;
 	my $pgsql_open = 0;
+	my $nfs_open   = 0;	# This is needed for remote USB mount.
 	logger($conf, $THIS_FILE, __LINE__, "- Reading the current firewall configuration.", 1);
 	my $shell_call = "$conf->{executable}{'iptables-save'}";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
@@ -5818,6 +5819,22 @@ sub configure_iptables
 				logger($conf, $THIS_FILE, __LINE__, "- Trivial FTP port is already enabled.", 1);
 			}
 			$tftp_open = 1;
+		}
+		if (($line =~ /--state NEW/) && ($line =~ /--dport 2049/) && ($line =~ /ACCEPT/))
+		{
+			if ($line =~ /tcp/)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- NSF for Remote USB, tcp port is already enabled.", 1);
+			}
+			elsif ($line =~ /udp/)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- NSF for Remote USB, udp port is already enabled.", 1);
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- NSF for Remote USB port is already enabled.", 1);
+			}
+			$nfs_open = 1;
 		}
 		if (($line =~ /--state NEW/) && ($line =~ /--dport 80/) && ($line =~ /ACCEPT/))
 		{
@@ -5847,6 +5864,21 @@ sub configure_iptables
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for trivial FTP (needed for PXE booting).", 1);
 		my $shell_call =  "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 69 -j ACCEPT && ";
 		   $shell_call .= "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p udp --dport 69 -j ACCEPT";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+		}
+		close $file_handle;
+		$changes = 1;
+	}
+	if (not $nfs_open)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Opening access for NFS (needed for Remote USB).", 1);
+		my $shell_call =  "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 2049 -j ACCEPT && ";
+		   $shell_call .= "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p udp --dport 2049 -j ACCEPT";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{

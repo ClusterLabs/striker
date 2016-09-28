@@ -4856,7 +4856,7 @@ WHERE
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -4867,7 +4867,7 @@ WHERE
 			my $node_cache_data      = $row->[3] ? $row->[3] : "NULL";
 			my $node_cache_note      = $row->[4] ? $row->[4] : "NULL";
 			my $modified_date        = $row->[5];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "node_cache_uuid",      value1 => $node_cache_uuid, 
 				name2 => "node_cache_node_uuid", value2 => $node_cache_node_uuid, 
 				name3 => "node_cache_name",      value3 => $node_cache_name, 
@@ -4900,7 +4900,7 @@ WHERE
 	# needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{nodes_cache}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $node_cache_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}})
@@ -4909,7 +4909,7 @@ WHERE
 			my $node_cache_name      = $an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}{node_cache_name};
 			my $node_cache_data      = $an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}{node_cache_data};
 			my $node_cache_note      = $an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}{node_cache_note};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "node_cache_node_uuid", value1 => $node_cache_node_uuid, 
 				name2 => "node_cache_name",      value2 => $node_cache_name, 
 				name3 => "node_cache_data",      value3 => $node_cache_data, 
@@ -4926,7 +4926,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::nodes_cache::node_cache_uuid::${node_cache_uuid}::seen", value1 => $an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{seen})
@@ -4935,13 +4935,13 @@ WHERE
 					$an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::nodes_cache::node_cache_uuid::${node_cache_uuid}::exists", value1 => $an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::nodes_cache::modified_date::${modified_date}::node_cache_uuid::${node_cache_uuid}", value1 => $an->data->{db_data}{$id}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid})
@@ -5118,7 +5118,7 @@ FROM
 			my $smtp_alt_server     = $row->[9];
 			my $smtp_alt_port       = $row->[10];
 			my $modified_date       = $row->[11];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 				name1  => "smtp_uuid",           value1  => $smtp_uuid, 
 				name2  => "smtp_server",         value2  => $smtp_server,
 				name3  => "smtp_port",           value3  => $smtp_port,
@@ -5170,7 +5170,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{smtp}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $smtp_uuid (keys %{$an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}})
@@ -5400,14 +5400,14 @@ SELECT
 FROM 
     history.variables 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results, 
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -5421,7 +5421,7 @@ FROM
 			my $variable_source_uuid  = $row->[6] ? $row->[6] : "NULL"; 
 			my $variable_source_table = $row->[7] ? $row->[7] : "NULL"; 
 			my $modified_date         = $row->[8] ? $row->[8] : "NULL";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "variable_uuid",         value1 => $variable_uuid, 
 				name2 => "variable_name",         value2 => $variable_name,
 				name3 => "variable_value",        value3 => $variable_value,
@@ -5462,7 +5462,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{variables}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $variable_uuid (keys %{$an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}})
@@ -5474,7 +5474,7 @@ FROM
 			my $variable_section      = $an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid}{variable_section};
 			my $variable_source_uuid  = $an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid}{variable_source_uuid};
 			my $variable_source_table = $an->data->{db_data}{unified}{variables}{modified_date}{$modified_date}{variable_uuid}{$variable_uuid}{variable_source_table};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "variable_uuid",         value1 => $variable_uuid, 
 				name2 => "variable_name",         value2 => $variable_name,
 				name3 => "variable_value",        value3 => $variable_value,
@@ -5680,7 +5680,7 @@ FROM
 			my $manifest_data = $row->[1];
 			my $manifest_note = $row->[2];
 			my $modified_date = $row->[3];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "manifest_uuid", value1 => $manifest_uuid, 
 				name2 => "manifest_data", value2 => $manifest_data,
 				name3 => "manifest_note", value3 => $manifest_note, 
@@ -5706,7 +5706,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{manifests}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $manifest_uuid (keys %{$an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}})
@@ -5893,7 +5893,7 @@ FROM
 			my $recipient_notify_level = $row->[3];
 			my $recipient_note         = $row->[4];
 			my $modified_date          = $row->[5];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "recipient_uuid",         value1 => $recipient_uuid, 
 				name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid,
 				name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid,
@@ -6130,7 +6130,7 @@ FROM
 			my $notify_units    = $row->[5];
 			my $notify_note     = $row->[6] ? $row->[6] : "";
 			my $modified_date   = $row->[7];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "notify_uuid",     value1 => $notify_uuid, 
 				name2 => "notify_name",     value2 => $notify_name,
 				name3 => "notify_target",   value3 => $notify_target,
@@ -6168,7 +6168,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{notifications}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $notify_uuid (keys %{$an->data->{db_data}{unified}{notifications}{modified_date}{$modified_date}{notify_uuid}})
@@ -6393,7 +6393,7 @@ FROM
 			my $node_ifn         = $row->[8];
 			my $node_password    = $row->[9];
 			my $modified_date    = $row->[10];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 				name1  => "node_uuid",        value1  => $node_uuid, 
 				name2  => "node_anvil_uuid",  value2  => $node_anvil_uuid, 
 				name3  => "node_host_uuid",   value3  => $node_host_uuid, 
@@ -6440,7 +6440,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{nodes}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $node_uuid (keys %{$an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}})
@@ -6683,7 +6683,7 @@ FROM
 			my $anvil_note        = $row->[5];
 			my $anvil_password    = $row->[6];
 			my $modified_date     = $row->[7];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "anvil_uuid",        value1 => $anvil_uuid, 
 				name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
 				name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
@@ -6723,7 +6723,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{anvils}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $anvil_uuid (keys %{$an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}})
@@ -6936,7 +6936,7 @@ FROM
 			my $owner_name    = $row->[1];
 			my $owner_note    = $row->[2];
 			my $modified_date = $row->[3];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "owner_uuid",    value1 => $owner_uuid, 
 				name2 => "owner_name",    value2 => $owner_name, 
 				name3 => "owner_note",    value3 => $owner_note, 
@@ -6962,7 +6962,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{owners}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $owner_uuid (keys %{$an->data->{db_data}{unified}{owners}{modified_date}{$modified_date}{owner_uuid}})
@@ -7147,7 +7147,7 @@ FROM
 			my $state_host_uuid = $row->[2];
 			my $state_note      = $row->[3];
 			my $modified_date   = $row->[4];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "state_uuid",      value1 => $state_uuid, 
 				name2 => "state_name",      value2 => $state_name, 
 				name3 => "state_host_uuid", value3 => $state_host_uuid, 
@@ -7176,7 +7176,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{states}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $state_uuid (keys %{$an->data->{db_data}{unified}{states}{modified_date}{$modified_date}{state_uuid}})
@@ -7850,7 +7850,7 @@ WHERE
 			my $health_source_name   = $row->[2]; 
 			my $health_source_weight = $row->[3];
 			my $modified_date        = $row->[4];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "health_uuid",          value1 => $health_uuid, 
 				name2 => "health_agent_name",    value2 => $health_agent_name, 
 				name3 => "health_source_name",   value3 => $health_source_name, 
@@ -7887,7 +7887,7 @@ WHERE
 			my $health_uuid          = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}{health_uuid};
 			my $health_source_name   = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}{health_source_name};
 			my $health_source_weight = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}{health_source_weight};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "health_uuid",          value1 => $health_uuid, 
 				name2 => "health_agent_name",    value2 => $health_agent_name, 
 				name3 => "health_source_name",   value3 => $health_source_name, 
@@ -8089,7 +8089,7 @@ FROM
 			my $dr_target_copies          =         $row->[8]; 
 			my $dr_target_bandwidth_limit = defined $row->[9] ? $row->[9] : ""; 
 			my $modified_date             =         $row->[10];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "dr_target_uuid",            value1  => $dr_target_uuid, 
 				name2  => "dr_target_name",            value2  => $dr_target_name, 
 				name3  => "dr_target_note",            value3  => $dr_target_note, 
@@ -8152,7 +8152,7 @@ FROM
 			my $dr_target_store           = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_store}; 
 			my $dr_target_copies          = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_copies}; 
 			my $dr_target_bandwidth_limit = $an->data->{db_data}{unified}{dr_targets}{modified_date}{$modified_date}{dr_target_uuid}{$dr_target_uuid}{dr_target_bandwidth_limit}; 
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "dr_target_uuid",            value1 => $dr_target_uuid, 
 				name2 => "dr_target_name",            value2 => $dr_target_name, 
 				name3 => "dr_target_note",            value3 => $dr_target_note, 
@@ -8358,7 +8358,7 @@ SELECT
 FROM 
     history.dr_jobs 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -8432,7 +8432,7 @@ FROM
 			my $dr_job_servers        = $an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}{dr_job_servers}; 
 			my $dr_job_auto_prune     = $an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}{dr_job_auto_prune}; 
 			my $dr_job_schedule       = $an->data->{db_data}{unified}{dr_jobs}{modified_date}{$modified_date}{dr_job_uuid}{$dr_job_uuid}{dr_job_schedule}; 
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "dr_job_uuid",           value1 => $dr_job_uuid, 
 				name2 => "dr_job_dr_target_uuid", value2 => $dr_job_dr_target_uuid, 
 				name3 => "dr_job_anvil_uuid",     value3 => $dr_job_anvil_uuid, 
@@ -8634,7 +8634,7 @@ SELECT
 FROM 
     history.servers 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -8743,7 +8743,7 @@ FROM
 			my $server_pre_migration_arguments  = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_pre_migration_arguments};
 			my $server_post_migration_script    = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_script};
 			my $server_post_migration_arguments = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_arguments};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0015", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
 				name1  => "server_uuid",                     value1  => $server_uuid, 
 				name2  => "server_anvil_uuid",               value2  => $server_anvil_uuid, 
 				name3  => "server_name",                     value3  => $server_name, 
@@ -9505,7 +9505,7 @@ WHERE
 			my $alert_sort              = $row->[7]; 
 			my $alert_header            = $row->[8];
 			my $modified_date           = $row->[9];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "alert_uuid",              value1  => $alert_uuid, 
 				name2  => "alert_agent_name",        value2  => $alert_agent_name, 
 				name3  => "alert_level",             value3  => $alert_level, 
@@ -9901,7 +9901,7 @@ SELECT
 FROM 
     history.hosts
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9909,7 +9909,7 @@ FROM
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9956,12 +9956,12 @@ FROM
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "db_data::unified::hosts::modified_date", value1 => $an->data->{db_data}{unified}{hosts}{modified_date},
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hosts}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $host_uuid (keys %{$an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}})
@@ -9971,7 +9971,7 @@ FROM
 			my $host_emergency_stop = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_emergency_stop};
 			my $host_stop_reason    = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_stop_reason};
 			my $host_health         = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_health};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "host_uuid",           value1 => $host_uuid, 
 				name2 => "host_name",           value2 => $host_name, 
 				name3 => "host_type",           value3 => $host_type, 
@@ -9990,7 +9990,7 @@ FROM
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::hosts::host_uuid::${host_uuid}::seen", value1 => $an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{seen})
@@ -9999,13 +9999,13 @@ FROM
 					$an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::hosts::host_uuid::${host_uuid}::exists", value1 => $an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::hosts::modified_date::${modified_date}::host_uuid::${host_uuid}", value1 => $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid})

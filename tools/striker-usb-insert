@@ -532,6 +532,10 @@ sub format_device
 	if ($conf->{'remote-usb'}{luks}{fs_label})
 	{
 		$mkfs_call = "$conf->{path}{mkfs} -O ^has_journal -t $conf->{'remote-usb'}{luks}{use_filesystem} -L '$conf->{'remote-usb'}{luks}{fs_label}' $device";
+		
+		# Also update the device's label for later when we mount the newly formatted FS.
+		$conf->{devices}{$device}{label} = $conf->{'remote-usb'}{luks}{fs_label};
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - devices::${device}::label: [".$conf->{devices}{$device}{label}."]");
 	}
 	my $fs    = "";
 	my $uuid  = "";
@@ -750,6 +754,14 @@ then
 else 
     echo 'not mounted';
 fi";
+				
+				# We're going to reformat this, so update the label, if the user has given us
+				# a label to use.
+				if ($conf->{'remote-usb'}{luks}{fs_label})
+				{
+					$conf->{devices}{$device}{label} = $conf->{'remote-usb'}{luks}{fs_label};
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - devices::${device}::label: [".$conf->{devices}{$device}{label}."].");
+				}
 			}
 		}
 		
@@ -908,13 +920,15 @@ fi";
 					
 					# If the formatted FS has a label, and the old FS didn't, we'll want
 					# to append the label to the mount point now.
-					if ($conf->{devices}{$device}{label})
+					my $label = $conf->{devices}{$device}{label} ? $conf->{devices}{$device}{label} : "";
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - label: [$label]");
+					if ($label)
 					{
 						# A label was set, update the mount name.
 						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
-						if ($conf->{devices}{$device}{label})
+						if (($label) && ($remote_mount !~ /$label/)) 
 						{
-							$remote_mount .= "_$conf->{devices}{$device}{label}";
+							$remote_mount .= "_".$label;
 							logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 						}
 						if ($i)
@@ -939,9 +953,42 @@ fi";
 			exit(10);
 		}
 		
+		# Check to see if the device's FS needs to be fsck'ed.
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device]");
+		my $fsck_needed = 0;
+		$shell_call = $conf->{path}{tune2fs}." -l $device | ".$conf->{path}{'grep'}." state";
+		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
+			if ($line =~ /not clean/)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "The device: [$device] needs to have it's file system checked.");
+				$fsck_needed = 1;
+			}
+		}
+		close $file_handle;
+		
+		if ($fsck_needed)
+		{
+			my $shell_call = $conf->{path}{fsck}." -a $device";
+			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
+			}
+			close $file_handle;
+		}
+		
 		# See if the device is already mounted locally.
 		my $already_mounted = 0;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device], local_mount: [$local_mount]");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - local_mount: [$local_mount]");
 		$shell_call = "
 mount
 if $conf->{path}{mount} | $conf->{path}{grep} -q '$device on $local_mount';
@@ -951,7 +998,7 @@ else
     echo 'mount needed';
 fi;";
 		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
-		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 		while (<$file_handle>)
 		{
 			chomp;
