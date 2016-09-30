@@ -27,6 +27,7 @@ my $THIS_FILE = "DB.pm";
 # load_schema
 # locking
 # mark_active
+# prep_for_archive
 # set_update_db_flag
 # update_time
 # verify_host_uuid
@@ -1617,6 +1618,30 @@ sub mark_active
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return($state_uuid);
+}
+
+### WARNING: This is slow when processing thousands or records, each with many columns! Only call this when 
+###          there is a reasonable expectation that the string will need to actually be processed!
+# This prepares a string for writing to an archive file. It generates strings equivelant to the 'COPY ...' section in a 'pgdump'
+sub prep_for_archive
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_flag", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $string = defined $parameter->{string} ? $parameter->{string} : '\N';
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$string =~ s/\n/\\n/gs;
+	$string =~ s/\t/\\t/gs;
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($string);
 }
 
 # This sets the 'db_resync_in_progress' variable to be the timestamp that a db sync starts or '0' when a
