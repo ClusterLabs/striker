@@ -77,14 +77,14 @@ sub check_lock_age
 	if ((not defined $an->data->{sys}{local_lock_active}) or ($an->data->{sys}{local_lock_active} =~ /\D/))
 	{
 		$an->data->{sys}{local_lock_active} = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::local_lock_active", value1 => $an->data->{sys}{local_lock_active}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{locking}{reap_age}) or ($an->data->{scancore}{locking}{reap_age} =~ /\D/))
 	{
 		$an->data->{scancore}{locking}{reap_age} = 300;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::locking::reap_age", value1 => $an->data->{scancore}{locking}{reap_age}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -95,14 +95,14 @@ sub check_lock_age
 	{
 		my $current_time  = time;
 		my $lock_age      = $current_time - $an->data->{sys}{local_lock_active};
-		my $hald_reap_age = int($an->data->{scancore}{locking}{reap_age} / 2);
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		my $half_reap_age = int($an->data->{scancore}{locking}{reap_age} / 2);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "current_time",  value1 => $current_time, 
 			name2 => "lock_age",      value2 => $lock_age, 
-			name3 => "hald_reap_age", value3 => $hald_reap_age, 
+			name3 => "half_reap_age", value3 => $half_reap_age, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($lock_age > $hald_reap_age)
+		if ($lock_age > $half_reap_age)
 		{
 			$an->DB->locking({renew => 1});
 			$renewed                            = 1;
@@ -142,7 +142,7 @@ sub commit_sql
 	my $source = defined $parameter->{source} ? $parameter->{source} : $THIS_FILE;
 	my $line   = defined $parameter->{line}   ? $parameter->{line}   : __LINE__;
 	my $count  = @{$an->data->{sys}{sql}};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "source", value1 => $source, 
 		name2 => "line",   value2 => $line, 
 		name3 => "count",  value3 => $count, 
@@ -151,7 +151,7 @@ sub commit_sql
 	# DEBUG
 	foreach my $query (@{$an->data->{sys}{sql}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -801,7 +801,7 @@ AND
 			$query .= ";";
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -816,7 +816,7 @@ AND
 		{
 			$an->data->{scancore}{sql}{source_updated_time} = $last_updated;
 			$an->data->{scancore}{sql}{source_db_id}        = $id;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "scancore::sql::source_db_id",        value1 => $an->data->{scancore}{sql}{source_db_id}, 
 				name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1397,7 +1397,7 @@ sub locking
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $request     = defined $parameter->{request}     ? $parameter->{request}     : 0;
 	my $release     = defined $parameter->{release}     ? $parameter->{release}     : 0;
@@ -1405,7 +1405,7 @@ sub locking
 	my $check       = defined $parameter->{check}       ? $parameter->{check}       : 0;
 	my $source_name =         $parameter->{source_name} ? $parameter->{source_name} : $an->hostname;
 	my $source_uuid =         $parameter->{source_uuid} ? $parameter->{source_uuid} : $an->data->{sys}{host_uuid};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "request",     value1 => $request, 
 		name2 => "release",     value2 => $release, 
 		name3 => "renew",       value3 => $renew, 
@@ -1417,7 +1417,7 @@ sub locking
 	my $set            = 0;
 	my $variable_name  = "lock_request";
 	my $variable_value = $source_name."::".$source_uuid."::".time;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "variable_name",  value1 => $variable_name, 
 		name2 => "variable_value", value2 => $variable_value, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1426,7 +1426,7 @@ sub locking
 	if ((not $an->data->{scancore}{locking}{reap_age}) or ($an->data->{scancore}{locking}{reap_age} =~ /\D/))
 	{
 		$an->data->{scancore}{locking}{reap_age} = 300;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::locking::reap_age", value1 => $an->data->{scancore}{locking}{reap_age}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1435,7 +1435,7 @@ sub locking
 	if ($check)
 	{
 		my $lock_value = $an->ScanCore->read_variable({variable_name => $variable_name});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "lock_value", value1 => $lock_value, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1455,7 +1455,7 @@ sub locking
 			update_value_only => 1,
 		});
 		$an->data->{sys}{local_lock_active} = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "variable_uuid",          value1 => $variable_uuid, 
 			name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1472,19 +1472,19 @@ sub locking
 			variable_value    => $variable_value,
 			update_value_only => 1,
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "variable_uuid", value1 => $variable_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($variable_uuid)
 		{
 			$set = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "set", value1 => $set, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		$an->data->{sys}{local_lock_active} = time;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "variable_uuid",          value1 => $variable_uuid, 
 			name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1502,7 +1502,7 @@ sub locking
 		
 		# See if we had a lock.
 		my $lock_value = $an->ScanCore->read_variable({variable_name => $variable_name});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "waiting",    value1 => $waiting, 
 			name2 => "lock_value", value2 => $lock_value, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1514,7 +1514,7 @@ sub locking
 			my $current_time     = time;
 			my $timeout_time     = $lock_time + $an->data->{scancore}{locking}{reap_age};
 			my $lock_age         = $current_time - $lock_time;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "lock_source_name", value1 => $lock_source_name, 
 				name2 => "lock_source_uuid", value2 => $lock_source_uuid, 
 				name3 => "current_time",     value3 => $current_time, 
@@ -1532,7 +1532,7 @@ sub locking
 					variable_value    => "",
 					update_value_only => 1,
 				});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "variable_uuid", value1 => $variable_uuid, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1543,7 +1543,7 @@ sub locking
 				$an->DB->mark_active({set => 0});
 				
 				$waiting = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "waiting", value1 => $waiting, 
 				}, file => $THIS_FILE, line => __LINE__});
 				sleep 5;
@@ -1560,7 +1560,7 @@ sub locking
 			variable_value    => $variable_value,
 			update_value_only => 1,
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "variable_uuid", value1 => $variable_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1568,7 +1568,7 @@ sub locking
 		{
 			$set = 1;
 			$an->data->{sys}{local_lock_active} = time;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "set",                    value1 => $set, 
 				name2 => "variable_uuid",          value2 => $variable_uuid, 
 				name3 => "sys::local_lock_active", value3 => $an->data->{sys}{local_lock_active}, 
@@ -1586,10 +1586,10 @@ sub mark_active
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "mark_active", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_active", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $set = defined $parameter->{set} ? $parameter->{set} : 1;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "set",  value1 => $set, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1604,15 +1604,15 @@ sub mark_active
 	{
 		$value = "true";
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "value",  value1 => $value, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $state_uuid = $an->ScanCore->insert_or_update_states({
 		state_name      => "db_in_use",
 		state_host_uuid => $an->data->{sys}{host_uuid},
-		state_note      => "true",
+		state_note      => $value,
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "state_uuid",  value1 => $state_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1626,11 +1626,11 @@ sub set_update_db_flag
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_flag", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_flag", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $set  = defined $parameter->{set}    ? $parameter->{set}    : 0;
 	my $wait = defined $parameter->{'wait'} ? $parameter->{'wait'} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "set",  value1 => $set, 
 		name2 => "wait", value2 => $wait, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1640,7 +1640,7 @@ sub set_update_db_flag
 		variable_value    => $set,
 		update_value_only => 1,
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "variable_uuid", value1 => $variable_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1717,7 +1717,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__ });
 			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
@@ -1735,7 +1735,7 @@ WHERE
 AND
     updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__ });
 			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});

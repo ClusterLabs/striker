@@ -63,6 +63,22 @@ my $an = AN::Tools->new({data =>
 		scancore			=>	{
 			# Set to '1' to add the footer warning that the email did not come from alteeve.ca.
 			append_email_footer	=>	0,
+			archive			=>	{
+				directory		=>	"/var/ScanCore/archives/",
+				trigger			=>	100000,
+				count			=>	50000,
+				dump_file_header	=>	"
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET search_path = history, pg_catalog;
+",
+			},
 			dashboard		=>	{
 				dlm_hung_timeout	=>	0,
 			},
@@ -246,6 +262,10 @@ avoid_duplicate_run($an);
 # agents that have registered alerts (pending or historical).
 load_agent_strings($an);
 
+# Archive, if needed. This will only fire here if we've started when another dashboard archived while we were
+# offline.
+archive_if_needed($an);
+
 # Update the database before we do anything else.
 update_db($an);
 
@@ -406,12 +426,11 @@ sub archive_if_needed
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_resync_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Set a state 'archive_date' -> '<host_uuid>:<modified_date>' so that, if a database connects
-	###       later that needs to sync, it archives the old records before beginning the resync process.
-	###       
-	### TODO: Also, update 'update_db()' to check for 'archive_date' and if it is found, see if there is a
-	###       record in any history schema table with a record older that that. If there is, do the 
-	###       archive/delete.
+	### NOTE: If a ScanCore db server was offline when an archive ran, when it returns, it's records will
+	###       sync back, triggering a sooner-than-expected subsequent archive. This shouldn't happen 
+	###       often, and the complexity of tracking archive dates is such that we'll not try to account
+	###       for these cases. 
+	### TODO: What we can do later is, when we write the restore stuff, build in a dedupe function.
 	
 	### Process:
 	# 1. Count the records in history for each table, restricting the results to those from this host 
@@ -425,7 +444,490 @@ sub archive_if_needed
 	# 6. Select all records older that the 'modified_date', write them to a file and then DELETE those
 	#    records from the database.
 	
+	# Update the archive path, if set by a user. Also verify that there are sane archive values.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
+		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
+		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
+		name4 => "scancore::archive::count",     value4 => $an->data->{scancore}{archive}{count}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
+	{
+		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{trigger} = 100000;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{count} = 50000;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	if (not -e $an->data->{path}{scancore_archive})
+	{
+		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# Did it work?
+		if (not -e $an->data->{path}{scancore_archive})
+		{
+			# Nope. :(
+			$an->Alert->warning({message_key => "scancore_warning_0030", message_variables => { directory => $an->data->{path}{scancore_archive} }, quiet => 1, file => $THIS_FILE, line => __LINE__});
+			return(1);
+		}
+	}
+	
+	# See if there was a request to archive records older than a certain date. If so, do it now.
+	# TODO
+	
+	# Now lets look to archive certain fast-growing tables.
+	# * agents
+	# * health
+	# * power
+	# * temperature
+	# * ram_used
+	# * servers
+	$an->{archive}{table} = {
+		agents		=>	{
+			archive_date	=>	"",
+			host_column	=>	"agent_host_uuid",
+			offset		=>	0,
+		},
+		health		=>	{
+			archive_date	=>	"",
+			host_column	=>	"health_host_uuid",
+			offset		=>	0,
+		},
+		power		=>	{
+			archive_date	=>	"",
+			host_column	=>	"power_host_uuid",
+			offset		=>	0,
+		},
+		temperature	=>	{
+			archive_date	=>	"",
+			host_column	=>	"temperature_host_uuid",
+			offset		=>	0,
+		},
+		ram_used	=>	{
+			archive_date	=>	"",
+			host_column	=>	"ram_used_host_uuid",
+			offset		=>	0,
+		},
+		servers		=>	{
+			archive_date	=>	"",
+			host_column	=>	"",
+			offset		=>	0,
+		},
+	};
+	my $archive_needed = 0;
+	foreach my $table (sort {$a cmp $b} keys %{$an->{archive}{table}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "table", value1 => $table, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    history.$table 
+;";
+		if ($an->{archive}{table}{$table}{host_column})
+		{
+			$query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    history.$table 
+WHERE 
+    ".$an->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+			
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		   $records = 0 if not defined $records;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "records", value1 => $records, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($records > $an->data->{scancore}{archive}{trigger})
+		{
+			   $archive_needed                             = 1;
+			my $records_to_save                            = ($an->data->{scancore}{archive}{trigger} - $an->data->{scancore}{archive}{count});
+			my $offset                                     = $records - $records_to_save;
+			   $an->data->{archive}{table}{$table}{offset} = $offset;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "archive_needed",                   value1 => $archive_needed, 
+				name2 => "records_to_save",                  value2 => $records_to_save, 
+				name3 => "archive::table::${table}::offset", value3 => $an->data->{archive}{table}{$table}{offset}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I have something to archive, do so now.
+	if ($archive_needed)
+	{
+		# This will store the files to compress after we release the locks.
+		my $compress = [];
+		
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
+		# Now loop through the table(s) that need to be archived.
+		foreach my $table (sort {$a cmp $b} keys %{$an->{archive}{table}})
+		{
+			next if not $an->data->{archive}{table}{$table}{offset};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "table", value1 => $table, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Now to do the archive.
+			if ($table eq "agents")
+			{
+				my $archive_file = archive_agents($an);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "archive_file", value1 => $archive_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$compress}, $archive_file if $archive_file =~ /^\//;
+			}
+			elsif ($table eq "temperature")
+			{
+				my $archive_file = archive_temperature($an);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "archive_file", value1 => $archive_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$compress}, $archive_file if $archive_file =~ /^\//;
+			}
+		}
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
+		
+		# Compress the archives.
+		foreach my $archive_file (sort {$a cmp $b} @{$compress})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "archive_file", value1 => $archive_file, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Compress the file.
+			$an->System->compress_file({file => $archive_file});
+		}
+	}
+	die "$THIS_FILE ".__LINE__."; testing...\n";
+	
 	return(0);
+}
+
+# This archives the 'agents' table.
+sub archive_agents
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_agents" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $offset = $an->data->{archive}{table}{agents}{offset};
+	my $query  = "
+SELECT 
+    modified_date 
+FROM 
+    history.agents 
+WHERE 
+    agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+ORDER BY 
+    modified_date ASC 
+OFFSET ".$an->data->{sys}{use_db_fh}->quote($offset)." 
+LIMIT 1
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $date = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	   $date = "" if not defined $date;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "date", value1 => $date, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I got a date, proceed.
+	my $archive_file = "";
+	if ($date)
+	{
+		# Start the output file.
+		my $start_time    =  time;
+		my $date_and_time =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
+		   $date_and_time =~ s/:/-/g;
+		   $archive_file  =  $an->data->{path}{scancore_archive}."/scancore-archive_agents_".$an->hostname."_".$date_and_time.".out";
+		   $archive_file  =~ s/\/+/\//g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "date_and_time", value1 => $date_and_time,
+			name2 => "archive_file",  value2 => $archive_file,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Open the file
+		my $header_date = $an->Get->date_and_time({split_date_time => 0});
+		my $shell_call  = $archive_file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle "-- $header_date\n";
+		print $file_handle $an->data->{scancore}{archive}{dump_file_header}."\n";
+		print $file_handle "COPY agents (agent_uuid, agent_host_uuid, agent_name, agent_exit_code, agent_runtime, modified_date) FROM stdin;\n";
+		
+		my $query = "
+SELECT 
+    history_id, 
+    agent_uuid, 
+    agent_host_uuid, 
+    agent_name, 
+    agent_exit_code, 
+    agent_runtime, 
+    modified_date 
+FROM 
+    history.agents 
+WHERE 
+    agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+AND 
+    modified_date <= '$date'
+ORDER BY 
+    modified_date DESC 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "count",   value1 => $count, 
+			name2 => "results", value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $history_id      = defined $row->[0] ? $row->[0] : "NULL";
+			my $agent_uuid      = defined $row->[1] ? $row->[1] : "NULL";
+			my $agent_host_uuid = defined $row->[2] ? $row->[2] : "NULL";
+			my $agent_name      = defined $row->[3] ? $row->[3] : "NULL";
+			my $agent_exit_code = defined $row->[4] ? $row->[4] : "NULL";
+			my $agent_runtime   = defined $row->[5] ? $row->[5] : "NULL";
+			my $modified_date   = defined $row->[6] ? $row->[6] : "NULL";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+				name1 => "history_id",      value1 => $history_id, 
+				name2 => "agent_uuid",      value2 => $agent_uuid, 
+				name3 => "agent_host_uuid", value3 => $agent_host_uuid, 
+				name4 => "agent_name",      value4 => $agent_name, 
+				name5 => "agent_exit_code", value5 => $agent_exit_code, 
+				name6 => "agent_runtime",   value6 => $agent_runtime, 
+				name7 => "modified_date",   value7 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# The 'history_id' is NOT consistent between databases! So we don't record it here.
+			print $file_handle $agent_uuid."\t".$agent_host_uuid."\t".$agent_name."\t".$agent_exit_code."\t".$agent_runtime."\t".$modified_date."\n";
+		}
+		
+		# Close it up.
+		print $file_handle "\\.\n\n";;
+		close $file_handle;
+		
+		# Delete the records now.
+		$query = "
+DELETE FROM 
+    history.agents 
+WHERE 
+    agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+AND 
+    modified_date <= '$date'
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		
+		my $archive_time = time - $start_time;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "archive_time", value1 => $archive_time, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "archive_file", value1 => $archive_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($archive_file);
+}
+
+# This archives the 'temperature' table.
+sub archive_temperature
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_temperature" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $offset = $an->data->{archive}{table}{temperature}{offset};
+	my $query  = "
+SELECT 
+    modified_date 
+FROM 
+    history.temperature 
+WHERE 
+    temperature_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+ORDER BY 
+    modified_date ASC 
+OFFSET ".$an->data->{sys}{use_db_fh}->quote($offset)." 
+LIMIT 1
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $date = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	   $date = "" if not defined $date;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "date", value1 => $date, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I got a date, proceed.
+	my $archive_file = "";
+	if ($date)
+	{
+		# Start the output file.
+		my $start_time    =  time;
+		my $date_and_time =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
+		   $date_and_time =~ s/:/-/g;
+		   $archive_file  =  $an->data->{path}{scancore_archive}."/scancore-archive_temperature_".$an->hostname."_".$date_and_time.".out";
+		   $archive_file  =~ s/\/+/\//g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "date_and_time", value1 => $date_and_time,
+			name2 => "archive_file",  value2 => $archive_file,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Open the file
+		my $header_date = $an->Get->date_and_time({split_date_time => 0});
+		my $shell_call  = $archive_file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle "-- $header_date\n";
+		print $file_handle $an->data->{scancore}{archive}{dump_file_header}."\n";
+		print $file_handle "COPY temperature (temperature_uuid, temperature_host_uuid, temperature_agent_name, temperature_sensor_host, temperature_sensor_name, temperature_celsius, temperature_state, temperature_is, modified_date) FROM stdin;\n";
+		
+		my $query = "
+SELECT 
+    history_id, 
+    temperature_uuid, 
+    temperature_host_uuid, 
+    temperature_agent_name, 
+    temperature_sensor_host, 
+    temperature_sensor_name, 
+    temperature_celsius, 
+    temperature_state, 
+    temperature_is, 
+    modified_date 
+FROM 
+    history.temperature 
+WHERE 
+    temperature_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+AND 
+    modified_date <= '$date'
+ORDER BY 
+    modified_date DESC 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "count",   value1 => $count, 
+			name2 => "results", value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $history_id              = defined $row->[0] ? $row->[0] : "NULL";
+			my $temperature_uuid        = defined $row->[1] ? $row->[1] : "NULL";
+			my $temperature_host_uuid   = defined $row->[2] ? $row->[2] : "NULL";
+			my $temperature_agent_name  = defined $row->[3] ? $row->[3] : "NULL"; 
+			my $temperature_sensor_host = defined $row->[4] ? $row->[4] : "NULL"; 
+			my $temperature_sensor_name = defined $row->[5] ? $row->[5] : "NULL";
+			my $temperature_celsius     = defined $row->[6] ? $row->[6] : "NULL";
+			my $temperature_state       = defined $row->[7] ? $row->[7] : "NULL";
+			my $temperature_is          = defined $row->[8] ? $row->[8] : "NULL";
+			my $modified_date           = defined $row->[9] ? $row->[9] : "NULL";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+				name1  => "history_id",              value1  => $history_id, 
+				name2  => "temperature_uuid",        value2  => $temperature_uuid, 
+				name3  => "temperature_host_uuid",   value3  => $temperature_host_uuid, 
+				name4  => "temperature_agent_name",  value4  => $temperature_agent_name, 
+				name5  => "temperature_sensor_host", value5  => $temperature_sensor_host, 
+				name6  => "temperature_sensor_name", value6  => $temperature_sensor_name, 
+				name7  => "temperature_celsius",     value7  => $temperature_celsius, 
+				name8  => "temperature_state",       value8  => $temperature_state, 
+				name9  => "temperature_is",          value9  => $temperature_is, 
+				name10 => "modified_date",           value10 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# The 'history_id' is NOT consistent between databases! So we don't record it here.
+			print $file_handle $temperature_uuid."\t".$temperature_host_uuid."\t".$temperature_agent_name."\t".$temperature_sensor_host."\t".$temperature_sensor_name."\t".$temperature_celsius."\t".$temperature_state."\t".$temperature_is."\t".$modified_date."\n";
+		}
+		
+		# Close it up.
+		print $file_handle "\\.\n\n";;
+		close $file_handle;
+		
+		# Delete the records now.
+		$query = "
+DELETE FROM 
+    history.temperature 
+WHERE 
+    temperature_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+AND 
+    modified_date <= '$date'
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		
+		my $archive_time = time - $start_time;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "archive_time", value1 => $archive_time, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "archive_file", value1 => $archive_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($archive_file);
 }
 
 # This connects to the available databases and clears the "resync" flag.
@@ -4813,9 +5315,6 @@ sub update_db
 		
 		# Release the lock
 		$an->DB->locking({release => 1});
-	
-		# Clear the update flag.
-		#$an->DB->set_update_db_flag({set => 0});
 	}
 	
 	return(0);

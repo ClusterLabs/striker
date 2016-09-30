@@ -962,6 +962,14 @@ The 'AN::Tools::ScanCore' module's 'insert_or_update_states()' method was called
 
 The 'AN::Tools::ScanCore' module's 'insert_or_update_states()' method was called without state host uuid being set.
 
+=head2 C<188>
+
+The 'AN::Tools::System' module's 'compress_file()' method was called without a file name to compress.
+
+=head2 C<189>
+
+The 'AN::Tools::System' module's 'compress_file()' method was called with a file name that does not appear to be a fully defined path.
+
 
 =head2 C<999>
 

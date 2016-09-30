@@ -235,6 +235,7 @@ Another instance of ScanCore registered that it was starting to sync the databas
 
 If you are getting this message repeatedly, then it might be failing to terminate the hung instance. If that happens, please feel free to contact #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) and we will do our best to assist.
 		</key>
+		<key name="scancore_warning_0030">Failed to create the ScanCore database archive directory: [#!variable!directory!#]. Archiving is disabled on this dashboard.</key>
 		
 		<!-- Cleared warnings. -->
 		<key name="scancore_cleared_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

@@ -550,6 +550,7 @@ sub _set_paths
 	$an->data->{path}{awk}                 = "/bin/awk";
 	$an->data->{path}{blkid}               = "/sbin/blkid";
 	$an->data->{path}{brctl}               = "/usr/sbin/brctl";
+	$an->data->{path}{bzip2}               = "/usr/bin/bzip2";
 	$an->data->{path}{cat}                 = "/bin/cat";
 	$an->data->{path}{ccs}                 = "/usr/sbin/ccs";
 	$an->data->{path}{ccs_config_validate} = "/usr/sbin/ccs_config_validate";
@@ -678,6 +679,7 @@ sub _set_paths
 	$an->data->{path}{alert_files}        = "/var/log";
 	$an->data->{path}{fence_agents}       = "/usr/sbin";
 	$an->data->{path}{initd}              = "/etc/init.d";
+	$an->data->{path}{scancore_archive}   = "/var/ScanCore/archives/";	# The user can override this with 'scancore::archive::directory'
 	$an->data->{path}{shared}             = "/shared";
 	$an->data->{path}{shared_archive}     = "/shared/archive";
 	$an->data->{path}{shared_definitions} = "/shared/definitions";

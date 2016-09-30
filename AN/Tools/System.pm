@@ -11,6 +11,7 @@ our $VERSION  = "0.1.001";
 my $THIS_FILE = "System.pm";
 
 ### Methods;
+# compress_file
 # daemon_boot_config
 # delayed_run
 # dual_command_run
@@ -50,6 +51,95 @@ sub parent
 #############################################################################################################
 # Provided methods                                                                                          #
 #############################################################################################################
+
+# This compresses a given file using 
+sub compress_file
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "compress_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $file     = $parameter->{file}     ? $parameter->{file}     : "";
+	my $keep     = $parameter->{keep}     ? $parameter->{keep}     : 0;
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "file",   value1 => $file, 
+		name2 => "keep",   value2 => $keep, 
+		name3 => "target", value3 => $target, 
+		name4 => "port",   value4 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure a file was passed and, if it was, that it looks sane.
+	if (not $file)
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0188", code => 188, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	if ($file !~ /^\//)
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0189", message_variables => { file => $file }, code => 189, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	my $return     = [];
+	my $start_time = time;
+	my $i_am_a     = $an->Get->what_am_i();
+	my $say_keep   = $keep             ? "--keep"  : "";
+	my $say_small  = $i_am_a eq "node" ? "--small" : "";
+	my $shell_call = $an->data->{path}{bzip2}." --compress $say_keep $say_small ".$file;
+	if ($target)
+	{
+		# Remote call.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	my $compress_time = time - $start_time;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "compress_time", value1 => $compress_time, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($return);
+}
 
 # This checks/sets whether a daemon is set to start on boot or not.
 sub daemon_boot_config

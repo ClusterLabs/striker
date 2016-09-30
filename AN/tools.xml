@@ -930,6 +930,8 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0185"><![CDATA[The 'AN::Tools::Striker' module's '_server_eject_media()' method was called without a server name being set.]]></key>
 		<key name="error_message_0186"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_states()' method was called without state name being set.]]></key>
 		<key name="error_message_0187"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_states()' method was called without state host uuid being set.]]></key>
+		<key name="error_message_0188"><![CDATA[The 'AN::Tools::System' module's 'compress_file()' method was called without a file name to compress.]]></key>
+		<key name="error_message_0189"><![CDATA[The 'AN::Tools::System' module's 'compress_file()' method was called with the file name: [#!variable!file!#] which does not appear to be a fully defined path.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
