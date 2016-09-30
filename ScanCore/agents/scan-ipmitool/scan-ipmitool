@@ -20,6 +20,7 @@
 #   the IPMI and eth device share the same physical connector.
 # - Update the string processing from the '!!x!name=a,value=b,units=c!!' method to the new method here:
 #   https://alteeve.ca/w/ScanCore#Unit_Parsing
+# - Change 'ipmitool_value_id' to 'ipmitool_value_uuid'.
 # 
 # NOTE: 
 # - Health values
@@ -110,6 +111,24 @@ my $an = AN::Tools->new({data =>
 			# scancore::locking::reap_age, it will renew the lock.
 			local_lock_active	=>	0,
 			sql			=>	[],
+		},
+		scancore		=>	{
+			archive			=>	{
+				directory		=>	"/var/ScanCore/archives/",
+				trigger			=>	100000,
+				count			=>	50000,
+				dump_file_header	=>	"
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET search_path = history, pg_catalog;
+",
+			},
 		},
 		# These are values the user might set in striker.conf
 		'scan-ipmitool'		=>	{
@@ -243,6 +262,9 @@ query_ipmi_targets($an);
 # Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
 prep_databases($an);
 
+# Archive, if needed.
+archive_if_needed($an);
+
 # Look to see if any databases need to be updated.
 update_db($an);
 
@@ -262,6 +284,552 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This will archive stuff in the 'history' schema, if needed.
+sub archive_if_needed
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_resync_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If the 'trigger' is '0', archiving is disabled.
+	if (not $an->data->{scancore}{archive}{trigger})
+	{
+		return(1);
+	}
+	
+	### NOTE: If a ScanCore db server was offline when an archive ran, when it returns, it's records will
+	###       sync back, triggering a sooner-than-expected subsequent archive. This shouldn't happen 
+	###       often, and the complexity of tracking archive dates is such that we'll not try to account
+	###       for these cases. 
+	### TODO: What we can do later is, when we write the restore stuff, build in a dedupe function.
+	
+	### Process:
+	# 1. Count the records in history for each table, restricting the results to those from this host 
+	#    (save for special tables like 'server') and if the number of records is greater than 
+	#    'scancore::archive::trigger', start an archive.
+	# 2. Set/update the 'archive_date' state.
+	# 3. Lock the database.
+	# 4. Select 'modified_date' from history.foo, offset by 
+	#    ('scancore::archive::trigger' - 'scancore::archive::count').
+	# 5. Make sure the 'scancore::archive::directory' exists, creating it if needed.
+	# 6. Select all records older that the 'modified_date', write them to a file and then DELETE those
+	#    records from the database.
+	
+	# Update the archive path, if set by a user. Also verify that there are sane archive values.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
+		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
+		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
+		name4 => "scancore::archive::count",     value4 => $an->data->{scancore}{archive}{count}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
+	{
+		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{trigger} = 100000;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{count} = 50000;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	if (not -e $an->data->{path}{scancore_archive})
+	{
+		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# Did it work?
+		if (not -e $an->data->{path}{scancore_archive})
+		{
+			# Nope. :(
+			$an->Alert->warning({message_key => "scancore_warning_0030", message_variables => { directory => $an->data->{path}{scancore_archive} }, quiet => 1, file => $THIS_FILE, line => __LINE__});
+			return(1);
+		}
+	}
+	
+	# Unlike ScanCore, matching 'ipmitool_value' to a host requires a join on 'ipmitool', so this is a 
+	# bit more complex.
+	$an->{archive}{table} = {
+		ipmitool	=>	{
+			archive_date	=>	"",
+			offset		=>	0,
+		},
+		ipmitool_value	=>	{
+			archive_date	=>	"",
+			offset		=>	0,
+		},
+	};
+	my $archive_needed = 0;
+	foreach my $table (sort {$a cmp $b} keys %{$an->{archive}{table}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "table", value1 => $table, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    history.$table 
+WHERE 
+    ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		if ($table eq "ipmitool_value")
+		{
+			$query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    history.ipmitool_value a, 
+    ipmitool b 
+WHERE 
+    a.ipmitool_value_ipmitool_uuid = b.ipmitool_uuid 
+AND 
+    b.ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		   $records = 0 if not defined $records;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "records", value1 => $records, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($records > $an->data->{scancore}{archive}{trigger})
+		{
+			   $archive_needed                             = 1;
+			my $records_to_save                            = ($an->data->{scancore}{archive}{trigger} - $an->data->{scancore}{archive}{count});
+			my $offset                                     = $records - $records_to_save;
+			   $an->data->{archive}{table}{$table}{offset} = $offset;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "archive_needed",                   value1 => $archive_needed, 
+				name2 => "records_to_save",                  value2 => $records_to_save, 
+				name3 => "archive::table::${table}::offset", value3 => $an->data->{archive}{table}{$table}{offset}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I have something to archive, do so now.
+	if ($archive_needed)
+	{
+		# This will store the files to compress after we release the locks.
+		my $compress = [];
+		
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
+		# Now loop through the table(s) that need to be archived.
+		foreach my $table (sort {$a cmp $b} keys %{$an->{archive}{table}})
+		{
+			next if not $an->data->{archive}{table}{$table}{offset};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "table", value1 => $table, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Now to do the archive.
+			if ($table eq "ipmitool")
+			{
+				my $archive_file = archive_ipmitool($an);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "archive_file", value1 => $archive_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$compress}, $archive_file if $archive_file =~ /^\//;
+			}
+			elsif ($table eq "ipmitool_value")
+			{
+				my $archive_file = archive_ipmitool_value($an);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "archive_file", value1 => $archive_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$compress}, $archive_file if $archive_file =~ /^\//;
+			}
+		}
+		
+		### TODO: Make this less of a hackish mc-hackington...
+		# VACUUM FULL, if the database is on this machine. I need to do this from the command line 
+		# because the user we connect as isn't allowed to do it. We'll also only vacuum our DB.
+		my $db_name = "";
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "id",                        value1 => $id, 
+				name2 => "scancore::db::${id}::host", value2 => $an->data->{scancore}{db}{$id}{host}, 
+				name3 => "hostname",                  value3 => $an->hostname, 
+				name4 => "short_hostname",            value4 => $an->short_hostname, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($an->data->{scancore}{db}{$id}{host} eq $an->hostname) or ($an->data->{scancore}{db}{$id}{host} eq $an->short_hostname))
+			{
+				$db_name = $an->data->{scancore}{db}{$id}{name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "db_name",                   value1 => $db_name, 
+					name2 => "scancore::db::${id}::name", value2 => $an->data->{scancore}{db}{$id}{name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+		if ($db_name)
+		{
+			my $start      = time;
+			my $shell_call = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." $db_name -c 'VACUUM FULL;'\"";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "start",      value1 => $start, 
+				name2 => "shell_call", value2 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			my $finished = time - $start;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "finished", value1 => $finished, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
+		
+		# Compress the archives.
+		foreach my $archive_file (sort {$a cmp $b} @{$compress})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "archive_file", value1 => $archive_file, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Compress the file.
+			$an->System->compress_file({file => $archive_file});
+		}
+	}
+	
+	return(0);
+}
+
+# This archives the 'ipmitool_value' table.
+sub archive_ipmitool_value
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_ipmitool_value" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $offset = $an->data->{archive}{table}{ipmitool_value}{offset};
+	my $query  = "
+SELECT 
+    a.modified_date 
+FROM 
+    history.ipmitool_value a, 
+    ipmitool b 
+WHERE 
+    a.ipmitool_value_ipmitool_uuid = b.ipmitool_uuid 
+AND 
+    b.ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+ORDER BY 
+    a.modified_date ASC 
+OFFSET ".$an->data->{sys}{use_db_fh}->quote($offset)." 
+LIMIT 1
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $date = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	   $date = "" if not defined $date;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "date", value1 => $date, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I got a date, proceed.
+	my $archive_file = "";
+	if ($date)
+	{
+		# Start the output file.
+		my $start_time    =  time;
+		my $date_and_time =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
+		   $date_and_time =~ s/:/-/g;
+		   $archive_file  =  $an->data->{path}{scancore_archive}."/scancore-archive_ipmitool_value_".$an->hostname."_".$date_and_time.".out";
+		   $archive_file  =~ s/\/+/\//g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "date_and_time", value1 => $date_and_time,
+			name2 => "archive_file",  value2 => $archive_file,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Open the file
+		my $header_date = $an->Get->date_and_time({split_date_time => 0});
+		my $shell_call  = $archive_file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle "-- $header_date\n";
+		print $file_handle $an->data->{scancore}{archive}{dump_file_header}."\n";
+		print $file_handle "COPY ipmitool_value (ipmitool_value_id, ipmitool_value_ipmitool_uuid, ipmitool_value_sensor_value, modified_date) FROM stdin;\n";
+		
+		my $query = "
+SELECT 
+    a.history_id, 
+    a.ipmitool_value_id,
+    a.ipmitool_value_ipmitool_uuid, 
+    a.ipmitool_value_sensor_value, 
+    a.modified_date 
+FROM 
+    history.ipmitool_value a, 
+    ipmitool b 
+WHERE 
+    a.ipmitool_value_ipmitool_uuid = b.ipmitool_uuid 
+AND 
+    b.ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    a.modified_date <= '$date' 
+ORDER BY 
+    a.modified_date DESC 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "count",   value1 => $count, 
+			name2 => "results", value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $history_id                   = defined $row->[0] ? $row->[0] : '\N';
+			my $ipmitool_value_id            = defined $row->[1] ? $row->[1] : '\N';
+			my $ipmitool_value_ipmitool_uuid = defined $row->[2] ? $row->[2] : '\N';
+			my $ipmitool_value_sensor_value  = defined $row->[3] ? $row->[3] : '\N';
+			my $modified_date                = defined $row->[4] ? $row->[4] : '\N';
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+				name1 => "history_id",                   value1 => $history_id, 
+				name2 => "ipmitool_value_id",            value2 => $ipmitool_value_id, 
+				name3 => "ipmitool_value_ipmitool_uuid", value3 => $ipmitool_value_ipmitool_uuid, 
+				name4 => "ipmitool_value_sensor_value",  value4 => $ipmitool_value_sensor_value, 
+				name5 => "modified_date",                value5 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# The 'history_id' is NOT consistent between databases! So we don't record it here.
+			print $file_handle $ipmitool_value_id."\t".$ipmitool_value_ipmitool_uuid."\t".$ipmitool_value_sensor_value."\t".$modified_date."\n";
+		}
+		
+		# Close it up.
+		print $file_handle "\\.\n\n";;
+		close $file_handle;
+		
+		# Delete the records now.
+		$query = "
+DELETE FROM 
+    history.ipmitool_value a
+USING 
+    ipmitool b
+WHERE 
+    a.ipmitool_value_ipmitool_uuid = b.ipmitool_uuid 
+AND 
+    b.ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+AND 
+    a.modified_date <= '$date'
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		
+		my $archive_time = time - $start_time;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "archive_time", value1 => $archive_time, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "archive_file", value1 => $archive_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($archive_file);
+}
+
+# This archives the 'ipmitool' table.
+sub archive_ipmitool
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_ipmitool" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $offset = $an->data->{archive}{table}{ipmitool}{offset};
+	my $query  = "
+SELECT 
+    modified_date 
+FROM 
+    history.ipmitool 
+WHERE 
+    ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+ORDER BY 
+    modified_date ASC 
+OFFSET ".$an->data->{sys}{use_db_fh}->quote($offset)." 
+LIMIT 1
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $date = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	   $date = "" if not defined $date;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "date", value1 => $date, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I got a date, proceed.
+	my $archive_file = "";
+	if ($date)
+	{
+		# Start the output file.
+		my $start_time    =  time;
+		my $date_and_time =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
+		   $date_and_time =~ s/:/-/g;
+		   $archive_file  =  $an->data->{path}{scancore_archive}."/scancore-archive_ipmitool_".$an->hostname."_".$date_and_time.".out";
+		   $archive_file  =~ s/\/+/\//g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "date_and_time", value1 => $date_and_time,
+			name2 => "archive_file",  value2 => $archive_file,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Open the file
+		my $header_date = $an->Get->date_and_time({split_date_time => 0});
+		my $shell_call  = $archive_file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle "-- $header_date\n";
+		print $file_handle $an->data->{scancore}{archive}{dump_file_header}."\n";
+		print $file_handle "COPY ipmitool (ipmitool_uuid, ipmitool_host_uuid, ipmitool_sensor_host, ipmitool_sensor_name, ipmitool_sensor_units, ipmitool_sensor_status, ipmitool_sensor_high_critical, ipmitool_sensor_high_warning, ipmitool_sensor_low_critical, ipmitool_sensor_low_warning, modified_date) FROM stdin;\n";
+		
+		my $query = "
+SELECT 
+    history_id, 
+    ipmitool_uuid, 
+    ipmitool_host_uuid, 
+    ipmitool_sensor_host, 
+    ipmitool_sensor_name, 
+    ipmitool_sensor_units, 
+    ipmitool_sensor_status, 
+    ipmitool_sensor_high_critical, 
+    ipmitool_sensor_high_warning, 
+    ipmitool_sensor_low_critical, 
+    ipmitool_sensor_low_warning, 
+    modified_date 
+FROM 
+    history.ipmitool 
+WHERE 
+    ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+AND 
+    modified_date <= '$date'
+ORDER BY 
+    modified_date DESC 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "count",   value1 => $count, 
+			name2 => "results", value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $history_id                    = defined $row->[0]  ? $row->[0]  : '\N';
+			my $ipmitool_uuid                 = defined $row->[1]  ? $row->[1]  : '\N';
+			my $ipmitool_host_uuid            = defined $row->[2]  ? $row->[2]  : '\N';
+			my $ipmitool_sensor_host          = defined $row->[3]  ? $row->[3]  : '\N';
+			my $ipmitool_sensor_name          = defined $row->[4]  ? $row->[4]  : '\N';
+			my $ipmitool_sensor_units         = defined $row->[5]  ? $row->[5]  : '\N';
+			my $ipmitool_sensor_status        = defined $row->[6]  ? $row->[6]  : '\N';
+			my $ipmitool_sensor_high_critical = defined $row->[7]  ? $row->[7]  : '\N';
+			my $ipmitool_sensor_high_warning  = defined $row->[8]  ? $row->[8]  : '\N';
+			my $ipmitool_sensor_low_critical  = defined $row->[9]  ? $row->[9]  : '\N';
+			my $ipmitool_sensor_low_warning   = defined $row->[10] ? $row->[10] : '\N';
+			my $modified_date                 = defined $row->[11] ? $row->[11] : '\N';
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+				name1  => "history_id",                    value1  => $history_id, 
+				name2  => "ipmitool_uuid",                 value2  => $ipmitool_uuid, 
+				name3  => "ipmitool_host_uuid",            value3  => $ipmitool_host_uuid, 
+				name4  => "ipmitool_sensor_host",          value4  => $ipmitool_sensor_host, 
+				name5  => "ipmitool_sensor_name",          value5  => $ipmitool_sensor_name, 
+				name6  => "ipmitool_sensor_units",         value6  => $ipmitool_sensor_units, 
+				name7  => "ipmitool_sensor_status",        value7  => $ipmitool_sensor_status, 
+				name8  => "ipmitool_sensor_high_critical", value8  => $ipmitool_sensor_high_critical, 
+				name9  => "ipmitool_sensor_high_warning",  value9  => $ipmitool_sensor_high_warning, 
+				name10 => "ipmitool_sensor_low_critical",  value10 => $ipmitool_sensor_low_critical, 
+				name11 => "ipmitool_sensor_low_warning",   value11 => $ipmitool_sensor_low_warning, 
+				name12 => "modified_date",                 value12 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# The 'history_id' is NOT consistent between databases! So we don't record it here.
+			print $file_handle $ipmitool_uuid."\t".$ipmitool_host_uuid."\t".$ipmitool_sensor_host."\t".$ipmitool_sensor_name."\t".$ipmitool_sensor_units."\t".$ipmitool_sensor_status."\t".$ipmitool_sensor_high_critical."\t".$ipmitool_sensor_high_warning."\t".$ipmitool_sensor_low_critical."\t".$ipmitool_sensor_low_warning."\t".$modified_date."\n";
+		}
+		
+		# Close it up.
+		print $file_handle "\\.\n\n";;
+		close $file_handle;
+		
+		# Delete the records now.
+		$query = "
+DELETE FROM 
+    history.ipmitool 
+WHERE 
+    ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+AND 
+    modified_date <= '$date'
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		
+		my $archive_time = time - $start_time;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "archive_time", value1 => $archive_time, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "archive_file", value1 => $archive_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($archive_file);
+}
 
 # This reads in all health wieghts previously set, alters ones as needed, INSERTs new ones and DELETEs old
 # ones.

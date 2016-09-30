@@ -61,7 +61,7 @@ sub compress_file
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "compress_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $file     = $parameter->{file}     ? $parameter->{file}     : "";
-	my $keep     = $parameter->{keep}     ? $parameter->{keep}     : 1;
+	my $keep     = $parameter->{keep}     ? $parameter->{keep}     : 0;
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
