@@ -610,6 +610,7 @@ sub _set_paths
 	$an->data->{path}{pmap}                = "/usr/bin/pmap";
 	$an->data->{path}{poweroff}            = "/sbin/poweroff";
 	$an->data->{path}{ps}                  = "/bin/ps";
+	$an->data->{path}{psql}                = "/usr/bin/psql";
 	$an->data->{path}{pvchange}            = "/sbin/pvchange";
 	$an->data->{path}{pvcreate}            = "/sbin/pvcreate";
 	$an->data->{path}{pvscan}              = "/sbin/pvscan";
@@ -630,6 +631,7 @@ sub _set_paths
 	$an->data->{path}{'ssh-keyscan'}       = "/usr/bin/ssh-keyscan";
 	$an->data->{path}{'ssh-copy-id'}       = "/usr/bin/ssh-copy-id";
 	$an->data->{path}{storcli64}           = "/sbin/storcli64";
+	$an->data->{path}{su}                  = "/bin/su";
 	$an->data->{path}{timeout}             = "/usr/bin/timeout";
 	$an->data->{path}{uuidgen}             = "/usr/bin/uuidgen";
 	$an->data->{path}{touch}               = "/bin/touch";

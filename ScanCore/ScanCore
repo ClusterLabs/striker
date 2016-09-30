@@ -479,7 +479,7 @@ sub archive_if_needed
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -678,6 +678,53 @@ WHERE
 			}
 		}
 		
+		### TODO: Make this less of a hackish mc-hashington...
+		# VACUUM FULL, if the database is on this machine. I need to do this from the command line 
+		# because the user we connect as isn't allowed to do it. We'll also only vacuum our DB.
+		my $db_name = "";
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "id",                        value1 => $id, 
+				name2 => "scancore::db::${id}::host", value2 => $an->data->{scancore}{db}{$id}{host}, 
+				name3 => "hostname",                  value3 => $an->hostname, 
+				name4 => "short_hostname",            value4 => $an->short_hostname, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($an->data->{scancore}{db}{$id}{host} eq $an->hostname) or ($an->data->{scancore}{db}{$id}{host} eq $an->short_hostname))
+			{
+				$db_name = $an->data->{scancore}{db}{$id}{name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "db_name",                   value1 => $db_name, 
+					name2 => "scancore::db::${id}::name", value2 => $an->data->{scancore}{db}{$id}{name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+		if ($db_name)
+		{
+			my $start      = time;
+			my $shell_call = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." $db_name -c 'VACUUM FULL;'\"";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "start",      value1 => $start, 
+				name2 => "shell_call", value2 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			my $finished = time - $start;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "finished", value1 => $finished, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
 		# Release the lock
 		$an->DB->locking({release => 1});
 		
@@ -692,7 +739,6 @@ WHERE
 			$an->System->compress_file({file => $archive_file});
 		}
 	}
-	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	return(0);
 }
@@ -1912,7 +1958,7 @@ fi";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1947,7 +1993,7 @@ fi";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
