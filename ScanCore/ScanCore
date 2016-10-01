@@ -509,12 +509,14 @@ sub archive_if_needed
 	
 	# Now lets look to archive certain fast-growing tables.
 	# * agents
+	# * alerts
 	# * health
 	# * power
 	# * temperature
 	# * ram_used
+	# * hosts
 	# * servers
-	$an->{archive}{table} = {
+	$an->data->{archive}{table} = {
 		agents		=>	{
 			archive_date	=>	"",
 			host_column	=>	"agent_host_uuid",
@@ -557,7 +559,7 @@ sub archive_if_needed
 		},
 	};
 	my $archive_needed = 0;
-	foreach my $table (sort {$a cmp $b} keys %{$an->{archive}{table}})
+	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "table", value1 => $table, 
@@ -569,7 +571,7 @@ SELECT
 FROM 
     history.$table 
 ;";
-		if ($an->{archive}{table}{$table}{host_column})
+		if ($an->data->{archive}{table}{$table}{host_column})
 		{
 			$query = "
 SELECT 
@@ -577,7 +579,7 @@ SELECT
 FROM 
     history.$table 
 WHERE 
-    ".$an->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    ".$an->data->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
 			
 		}
@@ -615,7 +617,7 @@ WHERE
 		$an->DB->locking({request => 1});
 		
 		# Now loop through the table(s) that need to be archived.
-		foreach my $table (sort {$a cmp $b} keys %{$an->{archive}{table}})
+		foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 		{
 			next if not $an->data->{archive}{table}{$table}{offset};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {

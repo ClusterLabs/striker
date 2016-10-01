@@ -372,7 +372,7 @@ sub archive_if_needed
 	
 	# Unlike ScanCore, matching 'ipmitool_value' to a host requires a join on 'ipmitool', so this is a 
 	# bit more complex.
-	$an->{archive}{table} = {
+	$an->data->{archive}{table} = {
 		ipmitool	=>	{
 			archive_date	=>	"",
 			offset		=>	0,
@@ -383,7 +383,7 @@ sub archive_if_needed
 		},
 	};
 	my $archive_needed = 0;
-	foreach my $table (sort {$a cmp $b} keys %{$an->{archive}{table}})
+	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "table", value1 => $table, 
@@ -445,7 +445,7 @@ AND
 		$an->DB->locking({request => 1});
 		
 		# Now loop through the table(s) that need to be archived.
-		foreach my $table (sort {$a cmp $b} keys %{$an->{archive}{table}})
+		foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 		{
 			next if not $an->data->{archive}{table}{$table}{offset};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
