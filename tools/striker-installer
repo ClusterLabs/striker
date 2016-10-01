@@ -184,6 +184,7 @@ my $conf = {
 		start_udev		=>	"/sbin/start_udev",
 		storcli64		=>	"/opt/MegaRAID/storcli/storcli64",
 		storcli64_link		=>	"/sbin/storcli64",
+		'subscription-manager'	=>	"/usr/sbin/subscription-manager",
 		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
 		su			=>	"/bin/su",
 		tar			=>	"/bin/tar",
@@ -700,7 +701,7 @@ my $conf = {
 		create_bonds		=>	0,		# Gets set to '1' if 4 NICs are found.
 		customer		=>	"Striker Dashboard",
 		# Debug level; 0 == silent except errors, 1 == normal output, 2 == basic debug, 3 == extra debug, 4 == prepare your buffers
-		debug			=>	2,
+		debug			=>	1,
 		hostname		=>	"",
 		internet_access		=>	0,
 		ipmi_gateway		=>	"",
@@ -731,7 +732,7 @@ my $conf = {
 		skip_mail		=>	1,
 		skip_network		=>	0,
 		ssl_checked		=>	0,
-		stable_version		=>	"1.1.6",
+		stable_version		=>	"2.0.0",
 		### If you change these, change the matching values in 
 		### Common.pm so that InstallManifest runs match.
 		scancore_database	=>	"scancore",
@@ -745,6 +746,7 @@ my $conf = {
 	url		=>	{
 		git_master	=>	"https://github.com/ClusterLabs/striker/archive/master.zip",
 		striker		=>	"https://github.com/ClusterLabs/striker/archive/#!striker_version!#.zip",
+		latest_release	=>	"https://alteeve.ca/striker_latest.txt",
 	},
 	# This will be changed to have two of each link if four NICs are found.
 	nics		=>	["bcn_link1", "ifn_link1"],
@@ -6451,7 +6453,8 @@ sub register_with_rhn
 	### TODO: Escape bash special vars in passwords.
 	logger($conf, $THIS_FILE, __LINE__, "RHN credentials given. Attempting to register now.", 1);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient, this might take a minute...", 1);
-	my $shell_call = "$conf->{executable}{rhnreg_ks} --username '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --force --profilename '$conf->{sys}{hostname}'; echo rhnreg_ks:\$?";
+	#my $shell_call = "$conf->{executable}{rhnreg_ks} --username '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --force --profilename '$conf->{sys}{hostname}'; echo rhnreg_ks:\$?";
+	my $shell_call = $conf->{executable}{'subscription-manager'}." register --username '".$conf->{sys}{rhn_user}."' --password '".$conf->{sys}{rhn_password}."' --auto-attach; echo subscription-manager:\$?";
 	logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
 	logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
@@ -6461,7 +6464,7 @@ sub register_with_rhn
 	{
 		chomp;
 		my $line = $_;
-		if ($line =~ /rhnreg_ks:(\d+)/)
+		if ($line =~ /subscription-manager:(\d+)/)
 		{
 			my $exit_code = $1;
 			if ($exit_code == 0)
@@ -6487,16 +6490,15 @@ sub register_with_rhn
 	if ($registered)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Adding 'Optional' channel...", 1);
-		my $shell_call = "$conf->{executable}{'rhn-channel'} --add --user '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --channel=rhel-x86_64-server-optional-6; echo rhn-channel:\$?";
-		logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
-		logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
+		#my $shell_call = "$conf->{executable}{'rhn-channel'} --add --user '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --channel=rhel-x86_64-server-optional-6; echo rhn-channel:\$?";
+		my $shell_call = $conf->{executable}{'subscription-manager'}." repos --enable=rhel-6-server-optional-rpms; echo subscription-manager:\$?";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			if ($line =~ /rhn-channel:(\d+)/)
+			if ($line =~ /subscription-manager:(\d+)/)
 			{
 				my $exit_code = $1;
 				if ($exit_code == 0)
@@ -7618,7 +7620,6 @@ sub backup_original_files
 			exit(8);
 		}
 	}
-	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	# Backup rc.local
 	logger($conf, $THIS_FILE, __LINE__, "- Backing up: [$conf->{path}{rc_local}]", 1);
@@ -7639,6 +7640,7 @@ sub backup_original_files
 			logger($conf, $THIS_FILE, __LINE__, "- Doesn't exist, skipping.", 1);
 		}
 	}
+	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	return(0);
 }
@@ -7842,13 +7844,15 @@ sub sanity_check_switches
 	}
 	
 	# See if they've asked for a specific version.
-	if (not $conf->{switches}{d})
+	if ((not $conf->{switches}{d}) or ($conf->{switches}{d} eq "latest"))
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- No specific version requested, will install: [$conf->{sys}{stable_version}]", 1);
 		$conf->{sys}{install_version} = $conf->{sys}{stable_version};
 		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
 		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
-		# TODO: check to see if the requested version exists
+		
+		# If we can access the web, try to get the version from there.
+		get_latest_version($conf);
 	}
 	else
 	{
@@ -7857,23 +7861,11 @@ sub sanity_check_switches
 		$conf->{sys}{install_version} =  $conf->{switches}{d};
 		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
 		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
-		if (($conf->{switches}{d} eq "1.1.4") or 
-		    ($conf->{switches}{d} eq "1.1.5") or
-		    ($conf->{switches}{d} eq "1.1.6"))
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- Will install version: [$conf->{switches}{d}]", 1);
-		}
-		elsif ($conf->{switches}{d} eq "git")
+		if ($conf->{switches}{d} eq "git")
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] - Will install the latest version from git.", 1);
 			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] - Please be cautious about using the git version in production.", 1);
 			#sleep 5;
-		}
-		else
-		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unsupported Striker version requested!", 0);
-			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Is this installer too old?", 0);
-			$bad_value = 1;
 		}
 	}
 	
@@ -8009,6 +8001,56 @@ sub sanity_check_switches
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	return($bad_value);
 }
+
+# This tries to determine the latest release by checking the alteeve website.
+sub get_latest_version
+{
+	my ($conf) = @_;
+	
+	my $set        = 0;
+	my $shell_call = $conf->{executable}{curl}." --stderr /dev/null ".$conf->{url}{latest_release};
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 2);
+		
+		if ($line =~ /^striker:(http.*)$/)
+		{
+			$conf->{url}{striker} = $1;
+			$set                  = 1;
+			logger($conf, $THIS_FILE, __LINE__, "url::striker: [".$conf->{url}{striker}."]", 2);
+		}
+	}
+	close $file_handle;
+	
+	logger($conf, $THIS_FILE, __LINE__, "set: [$set]", 2);
+	if ($set)
+	{
+		if ($conf->{url}{striker} =~ /.*\/(.*)\.zip$/)
+		{
+			$conf->{sys}{install_version} = $1;
+			logger($conf, $THIS_FILE, __LINE__, "sys::install_version: [".$conf->{sys}{install_version}."]", 2);
+		}
+		elsif ($conf->{url}{striker} =~ /.*\/(.*)\.tar.gz$/)
+		{
+			$conf->{sys}{install_version} = $1;
+			logger($conf, $THIS_FILE, __LINE__, "sys::install_version: [".$conf->{sys}{install_version}."]", 2);
+		}
+		elsif ($conf->{url}{striker} =~ /.*\/(.*)\.tar.bz2$/)
+		{
+			$conf->{sys}{install_version} = $1;
+			logger($conf, $THIS_FILE, __LINE__, "sys::install_version: [".$conf->{sys}{install_version}."]", 2);
+		}
+		$conf->{sys}{tarball_dir} = "striker-".$conf->{sys}{install_version};
+		logger($conf, $THIS_FILE, __LINE__, "sys::tarball_dir: [".$conf->{sys}{tarball_dir}."]", 2);
+	}
+	
+	return(0);
+}
+
 
 # This checks the DHCP lease start and end range.
 sub sanity_check_dhcp

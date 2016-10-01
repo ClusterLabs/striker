@@ -10176,9 +10176,23 @@ sub get_node_os_version
 	# If it is RHEL, see if it is registered.
 	if ($an->data->{node}{$node}{os}{brand} =~ /Red Hat Enterprise Linux Server/i)
 	{
+		# Example output:
+# +-------------------------------------------+
+#    System Status Details
+# +-------------------------------------------+
+# Overall Status: Unknown
+# 
+# exit:1
+# ====
+# +-------------------------------------------+
+#    System Status Details
+# +-------------------------------------------+
+# Overall Status: Current
+# 
+# exit:0
 		# See if it has been registered already.
 		$an->data->{node}{$node}{os}{registered} = 0;
-		my $shell_call = $an->data->{path}{rhn_check}."; ".$an->data->{path}{echo}." exit:\$?";
+		my $shell_call = $an->data->{path}{'subscription-manager'}." status; ".$an->data->{path}{echo}." exit:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
@@ -13108,10 +13122,10 @@ sub register_node_with_rhn
 	my $optional          =  0;
 	my $return_code       =  0;
 	my $shell_call        =  "
-".$an->data->{path}{rhnreg_ks}." --username \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --force --profilename \"$name\" && 
-".$an->data->{path}{'rhn-channel'}." --add --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --channel=rhel-x86_64-server-rs-6 && 
-".$an->data->{path}{'rhn-channel'}." --add --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --channel=rhel-x86_64-server-optional-6 && 
-".$an->data->{path}{'rhn-channel'}." --list --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\"";
+".$an->data->{path}{'subscription-manager'}." register --username \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --auto-attach && 
+".$an->data->{path}{'subscription-manager'}." repos --enable=rhel-6-server-optional-rpms && 
+".$an->data->{path}{'subscription-manager'}." repos --enable=rhel-rs-for-rhel-6-server-rpms && 
+".$an->data->{path}{'subscription-manager'}." repos --list-enabled";
 	# Exposes the RHN password, so log level 4.
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
@@ -13129,15 +13143,15 @@ sub register_node_with_rhn
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /rhel-x86_64-server-6/)
+		if ($line =~ /rhel-6-server-rpms/)
 		{
 			$base = 1;
 		}
-		if ($line =~ /rhel-x86_64-server-optional-6/)
+		if ($line =~ /rhel-6-server-optional-rpms/)
 		{
 			$resilient_storage = 1;
 		}
-		if ($line =~ /rhel-x86_64-server-rs-6/)
+		if ($line =~ /rhel-rs-for-rhel-6-server-rpms/)
 		{
 			$optional = 1;
 		}

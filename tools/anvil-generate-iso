@@ -165,6 +165,7 @@ my $conf = {
 			release		=>	"6.8",
 			suffix		=>	"beta",
 			mark		=>	"m2",
+			version		=>	"2.0.0",
 		},
 		# This is will be set to '1' if the source ISO is not mounted.
 		use_isoread	=>	0,
@@ -762,8 +763,6 @@ cat > /root/example_striker-installer.txt << EOF
 ./striker-installer \\\\
  -c \"$conf->{sys}{ks}{company_name}\" \\\\
  -n \"$conf->{sys}{ks}{prefix}-striker0${number}.$conf->{sys}{ks}{domain}\" \\\\
- -e \"$conf->{sys}{ks}{admin_user}\@$conf->{sys}{ks}{domain}:$conf->{sys}{ks}{password}\" \\\\
- -m mail.$conf->{sys}{ks}{domain}:587 \\\\
  -u \"$conf->{sys}{ks}{admin_user}:$conf->{sys}{ks}{password}\" \\\\
  -i $my_ifn_ip/$conf->{sys}{ks}{ifn_netmask},dg=$conf->{sys}{ks}{ifn_gateway},dns1=$conf->{sys}{ks}{ifn_dns1},dns2=$conf->{sys}{ks}{ifn_dns2} \\\\
  -b $my_bcn_ip/$conf->{sys}{ks}{bcn_netmask} \\\\
@@ -1356,7 +1355,8 @@ sub build_iso
 	   $say_company    =~ s/!/\\\\\\/;
 	my $say_anvil      =  $conf->{sys}{ks}{anvil_name};
 	   $say_anvil      =~ s/!/\\\\\\/;
-	my $shell_call     =  $conf->{executable}{mkisofs}." -rock -joliet-long -translation-table -no-emul-boot -boot-load-size 4 -boot-info-table -V '$conf->{path}{iso}{file_name}' -appid '$say_anvil ".$conf->{sys}{name}{mark}." Installer' -publisher \"$say_company - $conf->{sys}{ks}{support_url}\" -preparer 'Built by $say_user on $say_host at $say_date' -eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat -x 'lost+found' -o $output_file $conf->{path}{iso}{source_directory}";
+	my $volume_id      = "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
+	my $shell_call     =  $conf->{executable}{mkisofs}." -rock -joliet-long -translation-table -no-emul-boot -boot-load-size 4 -boot-info-table -V '$volume_id' -appid '$say_anvil ".$conf->{sys}{name}{mark}." v".$conf->{sys}{name}{version}." Installer' -publisher \"$say_company - $conf->{sys}{ks}{support_url}\" -preparer 'Built by $say_user on $say_host at $say_date' -eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat -x 'lost+found' -o $output_file $conf->{path}{iso}{source_directory}";
 	my $mkisofs_output = "";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
@@ -2538,12 +2538,12 @@ sub setup_build_environment
 	
 	# Assemble the final ISO name
 	my $os_type                      = $conf->{sys}{os_type};
-	   $conf->{path}{iso}{file_name} = "Anvil_".$conf->{sys}{name}{mark}."_".$conf->{sys}{name}{$os_type}."_".$conf->{sys}{name}{release};
+	   $conf->{path}{iso}{file_name} = "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
 	if ($conf->{sys}{name}{suffix})
 	{
-		$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{suffix};
+		$conf->{path}{iso}{file_name} .= "-".$conf->{sys}{name}{suffix};
 	}
-	$conf->{path}{iso}{file_name} .= ".iso";
+	$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{$os_type}."-".$conf->{sys}{name}{release}.".iso";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
 	
 	# This will be where we look for updated RPMs.
