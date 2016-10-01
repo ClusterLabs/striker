@@ -423,7 +423,7 @@ $an->nice_exit({exit_code => 0});
 sub archive_if_needed
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_resync_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the 'trigger' is '0', archiving is disabled.
 	if (not $an->data->{scancore}{archive}{trigger})

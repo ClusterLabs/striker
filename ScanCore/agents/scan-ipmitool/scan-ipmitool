@@ -289,7 +289,7 @@ $an->nice_exit({exit_code => 0});
 sub archive_if_needed
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_resync_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the 'trigger' is '0', archiving is disabled.
 	if (not $an->data->{scancore}{archive}{trigger})
@@ -633,7 +633,7 @@ ORDER BY
 			my $ipmitool_value_ipmitool_uuid = defined $row->[2] ? $row->[2] : '\N';
 			my $ipmitool_value_sensor_value  = defined $row->[3] ? $row->[3] : '\N';
 			my $modified_date                = defined $row->[4] ? $row->[4] : '\N';
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "history_id",                   value1 => $history_id, 
 				name2 => "ipmitool_value_id",            value2 => $ipmitool_value_id, 
 				name3 => "ipmitool_value_ipmitool_uuid", value3 => $ipmitool_value_ipmitool_uuid, 
