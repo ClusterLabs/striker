@@ -1,20 +1,26 @@
-Striker v2.0.0 - alpha
+Striker v2.0.0 - beta
 =============
 
-  Striker is the user interface for the Anvil! (virtual) server platform and
-the ScanCore autonomous self-defence and alert system. 
+  Striker is the user interface for the Anvil! "Intelligent Availability(tm)"
+platform. It includes 'ScanCore' and associated agents which provide the
+ever-growing intelligence that makes the Anvil! the next-generation of high
+availability server platforms.
 
-  Version 1.1.6 is the last stable release, and it is fairly out of date. 
-After well over a year of work, we're getting close to the v2 beta release.
-Intrepid sysadmins are invited to joing us in final testing of the current 
-alpha version.
+  Version 2.0.0 is now in beta!
+
+  Anyone interested in testing out the new system is welcome to contact us. We
+will be happy to help users get their Anvil! systems up and running in exchange
+for helping us refine and stabilize the platform. Once Striker hits final 
+release, all beta participants will be eligable for 3 months of 24x7 monitoring
+by Alteeve, as our thank you for helping us make Striker even better.
 
 Online Documentation
 --------------------
 
-  The core of the Anvil! platform, designed to be able to run entirely alone
-and fully supported by Red Hat. It does not include the Striker interface or
-ScanCore ASDAS system. Adding those converts the HA stack into a full Anvil!.
+  A core component of the beta to final transition will be the completion of
+the associated documentation. For now, the only complete documentation is the
+old stand-alone high-availability platform linked below. This section will be
+updated as the documentation progresses.
 
 - https://alteeve.ca/w/AN!Cluster_Tutorial_2
 
