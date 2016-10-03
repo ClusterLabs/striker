@@ -163,7 +163,7 @@ my $conf = {
 			centos		=>	"CentOS",
 			rhel		=>	"RHEL",
 			release		=>	"6.8",
-			suffix		=>	"beta",
+			suffix		=>	"",
 			mark		=>	"m2",
 			version		=>	"2.0.0",
 		},
@@ -215,9 +215,15 @@ my $conf = {
 		},
 	},
 	url		=>	{
+		# By default, we will read the latest release from 'striker_latest'. If, however, we can't
+		# access that file, we'll use 'striker_default'. Optionally, the user can request the latest
+		# git master with '--master', in which case we will download the 'striker_master' URL. In all
+		# cases, the downloaded file will be saved as 'striker_zip_file'.
 		striker		=>	"https://github.com/ClusterLabs/striker.git",
-		striker_zip	=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
-		striker_zip_file =>	"striker-master.zip",
+		striker_default	=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-tc1.zip",
+		striker_latest	=>	"https://alteeve.ca/striker_latest.txt",
+		striker_master	=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
+		striker_zip_file =>	"striker.zip",
 		'an-repo'	=>	"https://alteeve.ca/an-repo/el6/RPMS",
 		third_party	=>	"https://alteeve.ca/an-repo/el6/Third_Party",
 		# These are non-RPM packages we want to download for the ISO.
@@ -353,8 +359,7 @@ get_package_list($conf);
 build_source($conf);
 
 # Download things we need.
-#download_striker($conf);
-download_striker_zip($conf);
+download_striker($conf);
 
 # Prepare the 'Packages' repository
 prep_packages_repo($conf);
@@ -768,17 +773,16 @@ cat > /root/example_striker-installer.txt << EOF
  -b $my_bcn_ip/$conf->{sys}{ks}{bcn_netmask} \\\\
  -p $dhcp_range \\\\
  --peer-dashboard hostname=$conf->{sys}{ks}{prefix}-striker0${peer_number}.$conf->{sys}{ks}{domain},bcn_ip=$peer_ip \\\\
- --router-mode \\\\
 ";
 		# Use '--rhn' on RHEL only.
 		if ($conf->{sys}{os_type} eq "rhel")
 		{
-			$ks_body .= " -d git \\\\\n";
+			$ks_body .= " --router-mode \\\\\n";
 			$ks_body .= " --rhn \"rhn_$conf->{sys}{ks}{admin_user}:rhn_$conf->{sys}{ks}{password}\"\n";
 		}
 		else
 		{
-			$ks_body .= " -d git\n";
+			$ks_body .= " --router-mode\n";
 		}
 		$ks_body .= "EOF
 
@@ -1618,31 +1622,89 @@ sub get_date
 	return(0);
 }
 
-# This downloads Striker, but using master.zip instead of pulling github
-sub download_striker_zip
+# This downloads the latest version of striker.
+sub download_striker
 {
 	my ($conf) = @_;
 	
 	# The github source file is simply 'master', so we save it as the 'url::striker_zip_file'.
 	my $out_directory    = $conf->{path}{iso}{working_directory};
 	my $source_directory = $conf->{path}{iso}{source_directory};
-	my $download         = $conf->{url}{striker_zip};
+	my $download_default = $conf->{url}{striker_default};
+	my $download_master  = $conf->{url}{striker_master};
+	my $download         = $download_default;
 	my $file             = $conf->{url}{striker_zip_file};
 	my $out_file         = $out_directory."/".$file;
 	my $source_name      = $source_directory."/striker-master";
 	my $target_name      = $source_directory."/striker";
+	my $striker_latest   = $conf->{url}{striker_latest};
+	my $os_type          = $conf->{sys}{os_type};
 	if ($conf->{sys}{debug} >= 2)
 	{
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - out_directory: .. [$out_directory]\n";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_directory: [$source_directory]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - download_default: [$download_default]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - download_master:  [$download_master]\n";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: ....... [$download]\n";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - file: ........... [$file]\n";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - out_file: ....... [$out_file]\n";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: .... [$source_name]\n";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - target_name: .... [$target_name]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - striker_latest: . [$striker_latest]\n";
 	}
 	
-	#die "$THIS_FILE ".__LINE__."; testing...\n";
+	# If I have an internet connection (and I really should), try to get the latest version from the 
+	# Alteeve site.
+	if ($conf->{switches}{master})
+	{
+		$download = $download_master;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Download: [$download] as: [$out_file]\n" if $conf->{sys}{debug} >= 2;
+		
+		# We'll set the system version to 'master-<date>' and update the ISO name.
+		$conf->{sys}{name}{version}   =  "master_".$conf->{sys}{date};
+		$conf->{sys}{name}{version}   =~ s/\//-/g;
+		$conf->{path}{iso}{file_name} =  "Anvil_".$conf->{sys}{name}{mark}."-".$conf->{sys}{name}{version};
+		if ($conf->{sys}{name}{suffix})
+		{
+			$conf->{path}{iso}{file_name} .= "-".$conf->{sys}{name}{suffix};
+		}
+		$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{$os_type}."-".$conf->{sys}{name}{release}.".iso";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: [$download], sys::name::version: [$conf->{sys}{name}{version}], path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
+	}
+	else
+	{
+		# Try to get the latest version from the striker_latest file on Alteeve.
+		my $shell_call = $conf->{executable}{curl}." --stderr /dev/null $striker_latest";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			
+			if ($line =~ /^striker:(http.*)$/)
+			{
+				$download = $1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - download: [$download]\n" if $conf->{sys}{debug} >= 2;
+			}
+		}
+		close $file_handle;
+	}
+	
+	# Set the version based on the output version.
+	if ($download =~ /.*\/(.*)\.zip$/)
+	{
+		$conf->{sys}{name}{version}   = $1;
+		$source_name                  = $source_directory."/striker-".$conf->{sys}{name}{version};
+		$conf->{path}{iso}{file_name} =  "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
+		if ($conf->{sys}{name}{suffix})
+		{
+			$conf->{path}{iso}{file_name} .= "-".$conf->{sys}{name}{suffix};
+		}
+		$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{$os_type}."-".$conf->{sys}{name}{release}.".iso";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: [$source_name], sys::name::version: [$conf->{sys}{name}{version}], path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
+	}
 	
 	if (-e $out_file)
 	{
@@ -1655,6 +1717,7 @@ sub download_striker_zip
 		{
 			print "- Removing the old copy and downloading the latest version.\n";
 			unlink $out_file or die __LINE__."; [ Error ] - Failed to delete: [$out_file] to make room for the new file. The error was: $!\n";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - About to download: [$download] to: [$out_file]\n" if $conf->{sys}{debug} >= 2;
 			download_file($conf, $download, $out_file, 0644);
 		}
 	}
@@ -1662,6 +1725,7 @@ sub download_striker_zip
 	{
 		print "- Downloading the Striker source code.\n";
 		print "- This might take a few minutes on slow connections, please be patient.\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - About to download: [$download] to: [$out_file]\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $download, $out_file, 0644);
 	}
 	
@@ -1712,73 +1776,6 @@ sub download_striker_zip
 	return(0);
 }
 
-# This checks out the Striker repository, which includes the files we need.
-sub download_striker
-{
-	my ($conf) = @_;
-	
-	### TODO: Make this version dependent (use a version file at 
-	###       'https://alteeve.ca/files/striker_latest.txt').
-	# Checkout/update the git repo.
-	my $git_directory  = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/.git";
-	my $pull_directory = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - git_directory: [$git_directory], pull_directory: [$pull_directory]\n" if $conf->{sys}{debug} >= 2;
-	
-	# If the git directory exists, 'pull'. Otherwise, clone.
-	my $shell_call = "";
-	if (-e $git_directory)
-	{
-		print "- Updating the Striker git repository.\n";
-		$shell_call = $conf->{executable}{git}." -C $pull_directory pull";
-	}
-	else
-	{
-		print "- Cloning the Striker git repository.\n";
-		print "  Please be patient, this might take a minute...\n";
-		$shell_call = $conf->{executable}{git}." -C ".$conf->{path}{iso}{source_directory}." clone ".$conf->{url}{striker};
-	}
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-	open (my $file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
-	}
-	close $file_handle;
-	if (-e $git_directory)
-	{
-		print "- Striker source is ready.\n";
-	}
-	else
-	{
-		print "
-[ Error ] - Failed to clone the Striker source code! 
-[ Error ]   An attempt was made to clone the repository:
-[ Error ]   $conf->{url}{striker}
-[ Error ] - This should have created the directory:
-[ Error ]   $git_directory
-[ Error ]   which was not found, meaning the check-out probably failed. Is your
-[ Error ]   Internet connection up?
-";
-		exit(6);
-	}
-	
-	# Download RPMs from our repo.
-	download_anrepo_rpms($conf);
-	
-	# Download non-RPM tools
-	download_anrepo_tools($conf);
-	
-	# Now start copying files into place.
-	copy_files_from_git($conf);
-	
-	# Generate kickstart files.
-	generate_kickstart_files($conf);
-	
-	return(0);
-}
-
 # This copies files extracted from the striker source zip file.
 sub copy_files_from_source
 {
@@ -1820,8 +1817,6 @@ sub copy_files_from_source
 		}
 		closedir(DIR);
 	}
-	
-	#die "$THIS_FILE ".__LINE__."; testing\n";
 	
 	return(0);
 }
@@ -2190,7 +2185,7 @@ sub download_file
 		}
 		
 		my $start_time = time;
-		print "- Downloading: [$source], which is: [$say_size]... ";
+		print "- Downloading: [$source] to: [$target], which is: [$say_size]... ";
 		print "\n" if $conf->{sys}{debug} >= 1;
 		
 		### NOTE: Do NOT use 2>&1 as this pushes the download progress into the download file. If 
@@ -2220,12 +2215,14 @@ sub download_file
 			{
 				# Yay!
 				$file_ok = 1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is binary, good.\n" if $conf->{sys}{debug} >= 1;
 			}
 			else
 			{
 				# If the file is less than 1024 bytes, read it in to make sure it is not a 
 				# failure message.
 				my $size = (stat($target))[7];
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is: [$size] bytes.\n" if $conf->{sys}{debug} >= 1;
 				if ($size < 1024)
 				{
 					# Read it in.
@@ -2249,6 +2246,20 @@ sub download_file
 							print "[ Error ] - Failed to download: [$target].\n";
 							print "[ Error ]   It appears that the file was not found on the server.\n";
 						}
+						if ($line =~ /<a href="(.*?)">redirected<\/a>/)
+						{
+							# Redirect
+							my $new_source = $1;
+							
+							# Cleanup
+							close $file_handle;
+							unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it is a failed download message, not the file). The error was: $!\n";
+							
+							# Download the new source
+							print "$THIS_FILE ".__LINE__."; [ Debug ] - Redirected source: [$source]: to: [$new_source].\n" if $conf->{sys}{debug} >= 1;
+							download_file($conf, $new_source, $target, $mode);
+							return(0);
+						}
 					}
 					close $file_handle;
 				}
@@ -2256,9 +2267,11 @@ sub download_file
 				{
 					# Too big to be a failure, so we're probably good.
 					$file_ok = 1;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is large enough that analysis is not required.\n" if $conf->{sys}{debug} >= 1;
 				}
 			}
 		}
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - target: [$target], file_ok: [$file_ok]\n" if $conf->{sys}{debug} >= 1;
 		if ($file_ok)
 		{
 			my $duration = time - $start_time;
@@ -2267,9 +2280,12 @@ sub download_file
 		else
 		{
 			# Sadness.
+			print "\n" if not $conf->{sys}{debug};
+			print "[ Error ] - There was a problem downloading: [$source] to: [$target]\n";
 			if (-e $target)
 			{
 				# Remove the sadness
+				print "[ Note ] - Failed download target: [$target] will now be removed.\n";
 				unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it is a failed download message, not the file). The error was: $!\n";
 			}
 			exit(7);
@@ -3022,7 +3038,7 @@ sub validate_source
 		}
 		
 		print "- Generating md5sum of the source: [$iso], please wait a moment...\n";
-			$conf->{source}{$iso}{sum} = "";
+		   $conf->{source}{$iso}{sum} = "";
 		my $shell_call                = $conf->{executable}{md5sum}." ".$iso;
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
@@ -4202,6 +4218,12 @@ SWITCHES
 -h, -?, --help
 
 	Show this dialoge and exit.
+
+--master
+
+	By default, this installer will grab the latest release of Striker from
+	the Github repository. If you want to download the testing version 
+	though, you can specify 'master' here to get the current git master.
 
 --no-refresh
 

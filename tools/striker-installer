@@ -135,7 +135,7 @@ my $conf = {
 		pxe_iso_subdirs		=>	["iso", "img", "ks", "files"],	# appended to {centos,rhel}_pxe_web + arch
 		rhel_pxe_web		=>	"html/rhel6",			# Appeanded to 'document_root' + arch appended after
 		rhel_tftp_boot		=>	"rhel6",			# Appeanded to 'pxelinux_boot' + arch
-		source			=>	"",
+		source			=>	"./striker",
 		sql_files		=>	"/etc/striker/SQL",
 		striker_config		=>	"/etc/striker",
 		striker_tools		=>	"/sbin/striker",		# Change the library directory in the various tools if this changes!
@@ -668,7 +668,6 @@ my $conf = {
 		'c'			=>	"", # <customer/owner>
 		'custom-config'		=>	"", # /path/to/striker.conf
 		'd'			=>	"", # <version>
-		'disable-scancore'	=>	"",
 		'ethtool-opts'		=>	"", # "<options>"
 		gui			=>	1,
 		'h'			=>	"",
@@ -684,10 +683,8 @@ my $conf = {
 		ntp			=>	"", # <ip[,ip]>
 		'p'			=>	"", # <start_ip:end_ip>
 		'peer-dashboard'	=>	"", # <hostname=x,bcn_ip=y>
-# 		'r'			=>	"", # <repo>
-# 		'rhel-iso'		=>	"", # <'none', 'dvd', local path or URL>
 		rhn			=>	"", # <user:password>
-		'router-mode'		=>	"",
+		'router-mode'		=>	0,
 		'run-rc-local'		=>	"",
 		'u'			=>	"", # <user:password>
 		'y'			=>	"",
@@ -2030,12 +2027,6 @@ fi";
 	# Enable ScanCore in striker.conf, unless requested not to, in which case, disable it..
 	   $shell_call = "$conf->{executable}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
 	my $message    = "Enabling ScanCore.";
-	if ($conf->{switches}{'disable-scancore'})
-	{
-		# Disable it
-		$shell_call = "$conf->{executable}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
-		$message    = "Disabling ScanCore.";
-	}
 	logger($conf, $THIS_FILE, __LINE__, "- $message", 1);
 	$shell_call .= "
 if \$(grep -q '^scancore::enabled\\s*=\\s*1' $conf->{path}{striker_config});
@@ -2052,29 +2043,13 @@ fi";
 		my $line = $_;
 		if ($line eq "enabled")
 		{
-			if ($conf->{switches}{'disable-scancore'})
-			{
-				# Failed to disable.
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to disable ScanCore!\n", 0);
-				exit(42);
-			}
-			else
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- ScanCore is now enabled.", 1);
-			}
+			logger($conf, $THIS_FILE, __LINE__, "- ScanCore is now enabled.", 1);
 		}
 		elsif ($line eq "disabled")
 		{
-			if ($conf->{switches}{'disable-scancore'})
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- ScanCore is now disabled.", 1);
-			}
-			else
-			{
-				# Failed to enable!
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to enable ScanCore!\n", 0);
-				exit(42);
-			}
+			# Failed to enable!
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to enable ScanCore!\n", 0);
+			exit(42);
 		}
 		else
 		{
@@ -2586,8 +2561,10 @@ sub setup_striker
 	# If requested, this will install and configure the GUI.
 	configure_gui($conf);
 	
+	### NOTE: No longer supported. The source will be in place thanks to the kickstart file that built 
+	###       this dashboard.
 	# Download Striker, if needed.
-	download_striker($conf);
+	#download_striker($conf);
 	
 	# Configure apache.
 	configure_apache($conf);
@@ -7844,30 +7821,30 @@ sub sanity_check_switches
 	}
 	
 	# See if they've asked for a specific version.
-	if ((not $conf->{switches}{d}) or ($conf->{switches}{d} eq "latest"))
-	{
-		logger($conf, $THIS_FILE, __LINE__, "- No specific version requested, will install: [$conf->{sys}{stable_version}]", 1);
-		$conf->{sys}{install_version} = $conf->{sys}{stable_version};
-		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
-		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
-		
-		# If we can access the web, try to get the version from there.
-		get_latest_version($conf);
-	}
-	else
-	{
-		# Make sure the request is sane. First check for a supported
-		# version:
-		$conf->{sys}{install_version} =  $conf->{switches}{d};
-		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
-		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
-		if ($conf->{switches}{d} eq "git")
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] - Will install the latest version from git.", 1);
-			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] - Please be cautious about using the git version in production.", 1);
-			#sleep 5;
-		}
-	}
+# 	if ((not $conf->{switches}{d}) or ($conf->{switches}{d} eq "latest"))
+# 	{
+# 		logger($conf, $THIS_FILE, __LINE__, "- No specific version requested, will install: [$conf->{sys}{stable_version}]", 1);
+# 		$conf->{sys}{install_version} = $conf->{sys}{stable_version};
+# 		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
+# 		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
+# 		
+# 		# If we can access the web, try to get the version from there.
+# 		get_latest_version($conf);
+# 	}
+# 	else
+# 	{
+# 		# Make sure the request is sane. First check for a supported
+# 		# version:
+# 		$conf->{sys}{install_version} =  $conf->{switches}{d};
+# 		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
+# 		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
+# 		if ($conf->{switches}{d} eq "git")
+# 		{
+# 			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] - Will install the latest version from git.", 1);
+# 			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] - Please be cautious about using the git version in production.", 1);
+# 			#sleep 5;
+# 		}
+# 	}
 	
 	# Check to see if either the htpasswd file exists or the user is giving us a user now.
 	if ((not -e $conf->{path}{apache_htpasswd}) && (not $conf->{switches}{u}))
@@ -8558,13 +8535,6 @@ SWITCHES
 	have all core variables set though. That is, the specified file must
 	be complete because it will be used instead of, not appended to, the
 	default configuration file.
-
- -d <version>
-
-	This tells the installer what version of Striker dashboard to install.
-	The default is to download the latest stable version. If set to 'git',
-	the latest version in github will be installed. You probably don't want
-	this unless you're a developer.
 
  --ethtool-opts "<options>"
 
