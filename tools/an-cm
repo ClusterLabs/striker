@@ -115,9 +115,33 @@ my $conf = {
 		check_bbu_health	=>	0,		# This gets set to 'time + check_bbu_health_after' after a learn cycle completes. Once this unix time passes, the health of the BBU is checked and then this is 0'ed out.
 		new_style_network	=>	0,		# This is used to ignore 'bond0' when the new network naming is in place.
 	},
+	# The stuff below is needed here now that it is no longer defined in striker.conf.
 	mail_data		=>	{
-		debug_to		=>	"debug\@example.com",
-	}
+		subject			=>	"",
+		to			=>	"test\@example.com",
+		debug_to		=>	"test\@example.com",
+	}, 
+	smtp			=>	{
+		server		=>	"mail.example.com",
+		port		=>	"587",
+		alt_server	=>	"",
+		alt_port	=>	"",
+		username	=>	"test\@example.com",
+		password	=>	"secret",
+		security	=>	"STARTTLS",
+		encrypt_pass	=>	1,
+		helo_domain	=>	"example.com",
+	},
+	cluster			=>	{
+		'1'			=>	{
+			company			=>	"Test Anvil!",
+			description		=>	"Anvil! 01 (Magic)",
+			name			=>	"an-anvil-01",
+			nodes			=>	"an-a01n01, an-a01n02",
+			ricci_pw		=>	"Initial1",
+			root_pw			=>	"Initial1",
+		},
+	},
 };
 
 # Should I live?

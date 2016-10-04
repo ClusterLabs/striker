@@ -1227,10 +1227,22 @@ sub initialize_db
 	
 	if (not $an->data->{path}{scancore_sql})
 	{
+		### NOTE: On striker dashboards, this error will prevent the user from logging in because !0
+		###       exit codes abort the login. Therefor, if this is a dashbaord, we'll exit with 
+		###       'code => 0'.
 		# This is likely caused by running an agent directly on a system where ScanCore has never run
 		# before.
-		$an->Alert->error({title_key => "an_0003", message_key => "error_message_0048", code => 48, file => $THIS_FILE, line => __LINE__});
-		return("");
+		my $i_am_a = $an->Get->what_am_i();
+		if ($i_am_a eq "dashboard")
+		{
+			$an->Alert->error({title_key => "an_0003", message_key => "error_message_0048", code => 0, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
+		else
+		{
+			$an->Alert->error({title_key => "an_0003", message_key => "error_message_0048", code => 48, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
 	}
 	
 	# Create the read shell call.

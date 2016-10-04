@@ -2256,6 +2256,7 @@ sub download_file
 							unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it is a failed download message, not the file). The error was: $!\n";
 							
 							# Download the new source
+							print "Redirected.\n";
 							print "$THIS_FILE ".__LINE__."; [ Debug ] - Redirected source: [$source]: to: [$new_source].\n" if $conf->{sys}{debug} >= 1;
 							download_file($conf, $new_source, $target, $mode);
 							return(0);

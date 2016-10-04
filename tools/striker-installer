@@ -6430,7 +6430,6 @@ sub register_with_rhn
 	### TODO: Escape bash special vars in passwords.
 	logger($conf, $THIS_FILE, __LINE__, "RHN credentials given. Attempting to register now.", 1);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient, this might take a minute...", 1);
-	#my $shell_call = "$conf->{executable}{rhnreg_ks} --username '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --force --profilename '$conf->{sys}{hostname}'; echo rhnreg_ks:\$?";
 	my $shell_call = $conf->{executable}{'subscription-manager'}." register --username '".$conf->{sys}{rhn_user}."' --password '".$conf->{sys}{rhn_password}."' --auto-attach; echo subscription-manager:\$?";
 	logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
 	logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
@@ -6460,7 +6459,7 @@ sub register_with_rhn
 		}
 		else
 		{
-			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 2);
 		}
 	}
 	close $file_handle;
@@ -8610,7 +8609,13 @@ SWITCHES
 
 	By default, the 'striker-configure-vmm' will be used to configure 
 	Virtual Machine Manager so that Anvil! systems added via Striker are
-	automatically added to and removed from VMM.
+	automatically added to and removed from VMM. In some cases, this can
+	cause login trouble (though that is a bug and should be reported,
+	please). 
+	
+	Using this option prevents the automatic management of Striker 
+	dashboard to Anvil! node access and Virtuam machine Manager 
+	configuration.
 
  --no-reboot
  
@@ -8648,8 +8653,10 @@ SWITCHES
  --rhn <user:password>
 
 	When installing on a RHEL server, these credentials can be passed to
-	add the machine to yout RHN account. If you do not pass this and if
-	your machine is not already activated, the install will fail.
+	add the machine to yout RHN account. 
+	
+	NOTE: This uses Red Hat's subscription-manager, NOT the legacy RHN
+	      tools.
 
  --router-mode
 
