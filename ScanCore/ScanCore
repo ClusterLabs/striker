@@ -2331,10 +2331,10 @@ sub check_for_dlm_hang
 	if ($power_check_command)
 	{
 		# First, can we access it?
-		my $return   = $an->Get->node_info({name => $node});
-		my $target   = $return->{use_ip};
-		my $port     = $return->{use_port};
-		my $password = $return->{password};
+		my $node_info = $an->Get->node_info({node_name => $node});
+		my $target    = $node_info->{use_ip};
+		my $port      = $node_info->{use_port};
+		my $password  = $node_info->{password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target", value1 => $target,
 			name2 => "port",   value1 => $port,
@@ -3595,14 +3595,14 @@ sub migrate_all_servers_to_here
 	my $node_name = $an->hostname;
 	my $peer_key  = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
 	my $peer_name = $an->data->{sys}{anvil}{$peer_key}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "node_name", value1 => $node_name, 
 		name2 => "peer_key",  value2 => $peer_key, 
 		name3 => "peer_name", value3 => $peer_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: We DO NOT migrate directly! We will use 'anvil-migrate-server' because we WANT it to abort
-	###       if the peer is not healthy.
+	###       if needed.
 	
 	# Find the servers running on our peer. We'll call 'clustat' here to be sure we have the most current
 	# view of system.
@@ -3611,7 +3611,7 @@ sub migrate_all_servers_to_here
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -3628,7 +3628,7 @@ sub migrate_all_servers_to_here
 			my $server = $1;
 			my $host   = $2;
 			my $state  = $3;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "server", value1 => $server, 
 				name2 => "host",   value2 => $host, 
 				name3 => "state",  value3 => $state, 
@@ -3646,7 +3646,6 @@ sub migrate_all_servers_to_here
 	# Well?
 	if (@{$to_migrate} > 0)
 	{
-		### TODO: Send an alert if we migrate any servers!
 		# Migrate!
 		foreach my $server (sort {$a cmp $b} @{$to_migrate})
 		{
@@ -3654,7 +3653,7 @@ sub migrate_all_servers_to_here
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -4092,15 +4091,18 @@ sub check_node_health
 	my $node_key           = $an->data->{sys}{node_name}{$node_name}{node_key};
 	my $peer_key           = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
 	my $peer_name          = $an->data->{sys}{anvil}{$peer_key}{name};
-	my $peer_uuid          = $an->data->{sys}{anvil}{$peer_key}{uuid};
+	my $node_info          = $an->Get->node_info({node_name => $peer_name});
+	my $peer_host_uuid     = $node_info->{host_uuid};
+	my $peer_node_uuid     = $an->data->{sys}{anvil}{$peer_key}{uuid};	# This is the node ID
 	my $peer_online        = $an->data->{sys}{anvil}{$node_key}{online};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-		name1 => "node_name",   value1 => $node_name, 
-		name2 => "node_key",    value2 => $node_key, 
-		name3 => "peer_key",    value3 => $peer_key, 
-		name4 => "peer_name",   value4 => $peer_name, 
-		name5 => "peer_uuid",   value5 => $peer_uuid, 
-		name6 => "peer_online", value6 => $peer_online, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		name1 => "node_name",      value1 => $node_name, 
+		name2 => "node_key",       value2 => $node_key, 
+		name3 => "peer_key",       value3 => $peer_key, 
+		name4 => "peer_name",      value4 => $peer_name, 
+		name5 => "peer_host_uuid", value5 => $peer_host_uuid, 
+		name6 => "peer_node_uuid", value6 => $peer_node_uuid, 
+		name7 => "peer_online",    value7 => $peer_online, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If the peer isn't online, there is no sense summing weights.
@@ -4158,7 +4160,7 @@ SELECT
 FROM 
     health 
 WHERE 
-    health_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($peer_uuid)."
+    health_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($peer_host_uuid)."
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query

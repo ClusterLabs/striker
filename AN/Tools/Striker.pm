@@ -1098,6 +1098,13 @@ sub scan_node
 			$an->data->{node}{$node_name}{enable_poweroff} = 0;
 			$an->data->{node}{$node_name}{enable_fence}    = 0;
 			$an->data->{node}{$node_name}{info}{note}      = "";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "sys::online_nodes",                   value1 => $an->data->{sys}{online_nodes},
+				name2 => "node::${node_name}::enable_poweron",  value2 => $an->data->{node}{$node_name}{enable_poweron},
+				name3 => "node::${node_name}::enable_poweroff", value3 => $an->data->{node}{$node_name}{enable_poweroff},
+				name4 => "node::${node_name}::enable_fence",    value4 => $an->data->{node}{$node_name}{enable_fence},
+				name5 => "node::${node_name}::info::note",      value5 => $an->data->{node}{$node_name}{info}{note},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($an->data->{sys}{anvil}{$node_key}{power} eq "on")
 		{
@@ -1116,6 +1123,14 @@ sub scan_node
 				# Unable to log into node.
 				$an->data->{node}{$node_name}{info}{note} = $an->String->get({key => "message_0034", variables => { node => $node_name }});
 			}
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "sys::online_nodes",                   value1 => $an->data->{sys}{online_nodes},
+				name2 => "node::${node_name}::enable_poweron",  value2 => $an->data->{node}{$node_name}{enable_poweron},
+				name3 => "node::${node_name}::enable_poweroff", value3 => $an->data->{node}{$node_name}{enable_poweroff},
+				name4 => "node::${node_name}::enable_fence",    value4 => $an->data->{node}{$node_name}{enable_fence},
+				name5 => "node::${node_name}::info::state",     value5 => $an->data->{node}{$node_name}{info}{'state'},
+				name6 => "node::${node_name}::info::note",      value6 => $an->data->{node}{$node_name}{info}{note},
+			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "log_0017", file => $THIS_FILE, line => __LINE__});
 			foreach my $daemon ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd")
 			{
@@ -1138,6 +1153,13 @@ sub scan_node
 			{
 				$an->data->{node}{$node_name}{info}{note} = $an->String->get({key => "message_0037", variables => { node => $node_name }});
 			}
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "node::${node_name}::enable_poweron",  value1 => $an->data->{node}{$node_name}{enable_poweron},
+				name2 => "node::${node_name}::enable_poweroff", value2 => $an->data->{node}{$node_name}{enable_poweroff},
+				name3 => "node::${node_name}::enable_fence",    value3 => $an->data->{node}{$node_name}{enable_fence},
+				name4 => "node::${node_name}::info::state",     value4 => $an->data->{node}{$node_name}{info}{'state'},
+				name5 => "node::${node_name}::info::note",      value5 => $an->data->{node}{$node_name}{info}{note},
+			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "log_0017", file => $THIS_FILE, line => __LINE__});
 			foreach my $daemon ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd")
 			{
@@ -1432,7 +1454,7 @@ sub scan_servers
 				#$line =~ s/\s+$//;
 				#$line =~ s/\s+/ /g;
 				next if not $line;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -4230,8 +4252,8 @@ sub _confirm_poweroff_node
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_poweroff_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title                   =  $an->String->get({key => "title_0039", variables => { node_anvil_name => $an->data->{cgi}{node_name} }});
-	my $say_message                 =  $an->String->get({key => "message_0156", variables => { node_anvil_name => $an->data->{cgi}{node_name} }});
+	my $say_title                   =  $an->String->get({key => "title_0039", variables => { node_name => $an->data->{cgi}{node_name} }});
+	my $say_message                 =  $an->String->get({key => "message_0156", variables => { node_name => $an->data->{cgi}{node_name} }});
 	my $expire_time                 =  time + $an->data->{sys}{actime_timeout};
 	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-poweroff-node", replace => { 
@@ -4252,8 +4274,8 @@ sub confirm_poweron_node
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_poweron_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title   = $an->String->get({key => "title_0040", variables => { node_anvil_name => $an->data->{cgi}{node_name} }});
-	my $say_message = $an->String->get({key => "message_0160", variables => { node_anvil_name => $an->data->{cgi}{node_name} }});
+	my $say_title   = $an->String->get({key => "title_0040", variables => { node_name => $an->data->{cgi}{node_name} }});
+	my $say_message = $an->String->get({key => "message_0160", variables => { node_name => $an->data->{cgi}{node_name} }});
 	print $an->Web->template({file => "server.html", template => "confirm-poweron-node", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -5699,6 +5721,9 @@ sub _display_node_controls
 				id		=>	"poweroff_node_$node_name",
 			}});
 		$say_shutdown[$i] = $an->data->{node}{$node_name}{enable_poweroff} ? $say_shutdown_enabled_button : $say_shutdown_disabled_button;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "say_shutdown[$i]", value1 => $say_shutdown[$i],
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Boot button
 		my $say_boot_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0034!#" }});
@@ -6851,8 +6876,8 @@ sub _fence_node
 	if (0)
 	{
 		# Sweet, fence via the peer.
-		my $say_title   = $an->String->get({key => "title_0068", variables => { node_anvil_name => $node_name }});
-		my $say_message = $an->String->get({key => "message_0233", variables => { node_anvil_name => $node_name }});
+		my $say_title   = $an->String->get({key => "title_0068", variables => { node_name => $node_name }});
+		my $say_message = $an->String->get({key => "message_0233", variables => { node_name => $node_name }});
 		print $an->Web->template({file => "server.html", template => "fence-node-header", replace => { 
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -6904,8 +6929,8 @@ sub _fence_node
 	else
 	{
 		# OK, use cache to try to call it locally
-		my $say_title   = $an->String->get({key => "title_0202", variables => { node_anvil_name => $node_name }});
-		my $say_message = $an->String->get({key => "message_0233", variables => { node_anvil_name => $node_name }});
+		my $say_title   = $an->String->get({key => "title_0202", variables => { node_name => $node_name }});
+		my $say_message = $an->String->get({key => "message_0233", variables => { node_name => $node_name }});
 		print $an->Web->template({file => "server.html", template => "fence-node-header", replace => { 
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -10079,7 +10104,7 @@ sub _parse_daemons
 	
 	# If all daemons are down, record here that I can shut down this server. If any are up, enable 
 	# withdrawl.
-	$an->data->{node}{$node_name}{enable_poweroff} = 0;
+	$an->data->{node}{$node_name}{enable_poweroff} = 1;
 	$an->data->{node}{$node_name}{enable_withdraw} = 0;
 	
 	# I need to pre-set the services as stopped because the little hack I have below doesn't echo when a
@@ -10105,7 +10130,7 @@ sub _parse_daemons
 		next if $line !~ /^striker:/;
 		my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
 		   $exit_code            = "" if not defined $exit_code;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "node_name", value1 => $node_name,
 			name2 => "daemon",    value2 => $daemon,
 			name3 => "exit_code", value3 => $exit_code,
@@ -10116,6 +10141,10 @@ sub _parse_daemons
 			# Running
 			$an->data->{node}{$node_name}{daemon}{$daemon}{status} = "<span class=\"highlight_good\">#!string!an_state_0003!#</span>";
 			$an->data->{node}{$node_name}{enable_poweroff}         = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node::${node_name}::daemon::${daemon}::status", value1 => $an->data->{node}{$node_name}{daemon}{$daemon}{status},
+				name2 => "node::${node_name}::enable_poweroff",           value2 => $an->data->{node}{$node_name}{enable_poweroff},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		$an->data->{node}{$node_name}{daemon}{$daemon}{exit_code} = $exit_code;
@@ -10164,14 +10193,14 @@ sub _parse_daemons
 			if ($an->data->{node}{$node_name}{connected})
 			{
 				$an->data->{node}{$node_name}{enable_poweroff} = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "node::${node_name}::enable_poweroff", value1 => $an->data->{node}{$node_name}{enable_poweroff},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node_name}::enable_poweroff", value1 => $an->data->{node}{$node_name}{enable_poweroff},
 		name2 => "node::${node_name}::enable_withdraw", value2 => $an->data->{node}{$node_name}{enable_withdraw},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -11655,7 +11684,7 @@ sub _parse_virsh
 			$an->data->{node}{$node_name}{enable_withdraw} = 0;
 			$an->data->{server}{$server}{can_migrate}      = 0;
 			$an->data->{node}{$node_name}{enable_poweroff} = 0;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "node::${node_name}::enable_withdraw", value1 => $an->data->{node}{$node_name}{enable_withdraw},
 				name2 => "server::${server}::can_migrate",      value2 => $an->data->{server}{$server}{can_migrate},
 				name3 => "node::${node_name}::enable_poweroff", value3 => $an->data->{node}{$node_name}{enable_poweroff},
@@ -12060,13 +12089,15 @@ sub _poweroff_node
 	if ($proceed)
 	{
 		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
 		my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
 		my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
 		my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "node_uuid", value1 => $node_uuid,
-			name2 => "target",    value2 => $target,
-			name3 => "port",      value3 => $port,
+			name2 => "node_name", value2 => $node_name,
+			name3 => "target",    value3 => $target,
+			name4 => "port",      value4 => $port,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "password", value1 => $password,
@@ -12083,18 +12114,13 @@ sub _poweroff_node
 		# Tell ScanCore that we're cleanly shutting down so we don't auto-reboot the node.
 		$an->Striker->mark_node_as_clean_off({node_uuid => $node_uuid});
 		
-		my $shell_call = $an->data->{path}{poweroff}."; ".$an->data->{path}{echo}." rc:\$1";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "shell_call", value2 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			shell_call	=>	$shell_call,
+		# Shut it down now.
+		my $output = $an->System->poweroff({
+			target   => $target,
+			port     => $port,
+			password => $password,
 		});
-		foreach my $line (@{$return})
+		foreach my $line (split/\n/, $output)
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
@@ -12103,10 +12129,10 @@ sub _poweroff_node
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($line =~ /rc:(\d+)/)
+			if ($line =~ /poweroff: (.*)$/)
 			{
-				my $rc = $1;
-				if ($rc eq "0")
+				my $victim = $1;
+				if ($victim eq $target)
 				{
 					# Success
 					$line = $an->String->get({key => "message_0477", variables => { node_name => $node_name }});
@@ -12114,7 +12140,7 @@ sub _poweroff_node
 				else
 				{
 					# wat...
-					$line = $an->String->get({key => "message_0478", variables => { node_name => $node_name, rc => $rc }});
+					$line = $an->String->get({key => "message_0478", variables => { node_name => $node_name, victim => $victim }});
 				}
 			}
 			else

@@ -2317,7 +2317,7 @@ sub node_info
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "node_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If no host name is passed in, use this machine's host name.
-	my $node_name = $parameter->{name} ? $parameter->{name} : $an->hostname;
+	my $node_name = $parameter->{node_name} ? $parameter->{node_name} : $an->hostname;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2327,8 +2327,8 @@ sub node_info
 	my $node_data = $an->ScanCore->get_nodes();
 	foreach my $hash_ref (@{$node_data})
 	{
-		my $this_node_name       = $node_data->{host_name};
-		my $this_node_anvil_uuid = $node_data->{node_anvil_uuid};
+		my $this_node_name       = $hash_ref->{host_name};
+		my $this_node_anvil_uuid = $hash_ref->{node_anvil_uuid};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "this_node_name",       value1 => $this_node_name,
 			name2 => "this_node_anvil_uuid", value2 => $this_node_anvil_uuid,
@@ -2350,9 +2350,9 @@ sub node_info
 			$return->{anvil_name}  = $an->data->{sys}{anvil}{name};
 			$return->{use_ip}      = $an->data->{anvils}{$anvil_uuid}{$node_key}{use_ip};
 			$return->{use_port}    = $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port};
-			$return->{node_host_uuid} = 
+			$return->{host_uuid}   = $hash_ref->{host_uuid};
 			$return->{password}    = $an->data->{sys}{anvil}{$node_key}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 				name1 => "return->local",       value1 => $return->{'local'}, 
 				name2 => "return->peer",        value2 => $return->{peer}, 
 				name3 => "return->anvil_uuid",  value3 => $return->{anvil_uuid}, 
@@ -2361,11 +2361,11 @@ sub node_info
 				name6 => "return->anvil_name",  value6 => $return->{anvil_name}, 
 				name7 => "return->use_ip",      value7 => $return->{use_ip}, 
 				name8 => "return->use_port",    value8 => $return->{use_port}, 
+				name9 => "return->host_uuid",   value9 => $return->{host_uuid}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "return->password", value1 => $return->{password}, 
 			}, file => $THIS_FILE, line => __LINE__});
-			
 			
 			last;
 		}

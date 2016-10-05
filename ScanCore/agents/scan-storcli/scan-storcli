@@ -742,6 +742,7 @@ sub pre_process_health
 			}
 			elsif (($variable eq "controller_status") && (lc($value) ne "optimal"))
 			{
+				# 'Needs Attention' when array degrades
 				my $health_source_name                           = "controller:".$variable;
 				   $an->data->{health}{new}{$health_source_name} = 5;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2864,11 +2865,11 @@ sub process_physical_disks
 	foreach my $storcli_physical_drive_uuid (keys %{$an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}})
 	{
 		# Physical Disk vanished!
-		die "$THIS_FILE ".__LINE__."; sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_disk_model is not defined!\n" if not defined $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_disk_model};
+		die "$THIS_FILE ".__LINE__."; sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_model is not defined!\n" if not defined $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 		
-		my $old_physical_disk_serial_number = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_disk_serial_number};
-		my $old_controller_uuid             = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_disk_controller_uuid};
-		my $old_model                       = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_disk_model};
+		my $old_physical_disk_serial_number = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number};
+		my $old_controller_uuid             = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid};
+		my $old_model                       = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 		my $old_controller_serial_number    = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "old_physical_disk_serial_number", value1 => $old_physical_disk_serial_number,
@@ -2878,7 +2879,7 @@ sub process_physical_disks
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Delete it so that we know it has been processed.
-		delete $an->data->{sql}{storcli_physical_disks}{storcli_physical_disk_uuid}{$storcli_physical_drive_uuid};
+		delete $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid};
 		
 		# If the old alarm state is already 'VANISHED', ignore it.
 		next if $old_model eq "VANISHED";
@@ -2903,12 +2904,12 @@ sub process_physical_disks
 		
 		my $query = "
 UPDATE 
-    storcli_physical_disks
+    storcli_physical_drives
 SET 
-    storcli_physical_disk_model = 'VANISHED', 
-    modified_date               = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    storcli_physical_drive_model = 'VANISHED', 
+    modified_date                = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    storcli_physical_disk_uuid  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid)." 
+    storcli_physical_drive_uuid  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid)." 
 ;";
 		# Now record the query in the array
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -8084,7 +8085,7 @@ FROM
 WHERE
     storcli_physical_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -8104,7 +8105,7 @@ WHERE
 		my $storcli_physical_drive_vendor                = defined $row->[7] ? $row->[7] : "";
 		my $storcli_physical_drive_model                 = defined $row->[8] ? $row->[8] : "";
 		my $storcli_physical_drive_self_encrypting_drive = defined $row->[9] ? $row->[9] : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 			name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
 			name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
 			name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
@@ -8131,7 +8132,7 @@ WHERE
 			storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
 			storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
 		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 			name1 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_controller_uuid",       value1 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid}, 
 			name2 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_virtual_drive",         value2 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_virtual_drive}, 
 			name3 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_drive_group",           value3 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_drive_group}, 

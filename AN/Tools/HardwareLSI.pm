@@ -86,7 +86,7 @@ sub _add_disk_to_array
 	my $success           = 0;
 	my $return_string     = "";
 	
-	my $shell_call = $an->data->{path}{megacli64}." PdReplaceMissing PhysDrv [".$an->data->{cgi}{disk_address}."] -array$an->data->{cgi}{logical_disk} -row$an->data->{cgi}{row} -a".$an->data->{cgi}{adapter};
+	my $shell_call = $an->data->{path}{megacli64}." PdReplaceMissing PhysDrv [".$an->data->{cgi}{disk_address}."] -array".$an->data->{cgi}{logical_disk}." -row".$an->data->{cgi}{row}." -a".$an->data->{cgi}{adapter};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
@@ -576,18 +576,24 @@ sub _display_node_health
 							}
 						}
 						
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::enclosure_device_id::${this_enclosure_device_id}::slot_number::${this_slot_number}::firmware_state", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state},
+						}, file => $THIS_FILE, line => __LINE__});
 						my $disk_state_class = "highlight_good";
 						my $say_disk_action  = "";
 						if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(bad)")
 						{
 							$disk_state_class =  "highlight_bad";
-							$say_disk_action  =  $an->Web->template({file => "common.html", template => "new_line"});
+							$say_disk_action  .= $an->Web->template({file => "common.html", template => "new_line"});
 							$say_disk_action  .= $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 									button_class	=>	"highlight_warning",
 									button_link	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&node_name=".$an->data->{cgi}{node_name}."&task=display_health&do=make_disk_good&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 									button_text	=>	"#!string!button_0008!#",
 									id		=>	"make_disk_good_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "say_disk_action", value1 => $say_disk_action,
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Offline")
 						{
@@ -604,7 +610,10 @@ sub _display_node_health
 									button_text	=>	"#!string!button_0007!#",
 									id		=>	"spin_disk_down",
 								}});
-							$say_disk_action = " - $say_put_disk_online_button - $say_spin_disk_down_button";
+							$say_disk_action .= " - $say_put_disk_online_button - $say_spin_disk_down_button";
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "say_disk_action", value1 => $say_disk_action,
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Rebuild")
 						{
@@ -616,17 +625,23 @@ sub _display_node_health
 									disk_address => "$this_enclosure_device_id:$this_slot_number",
 									adapter      => $this_adapter
 								});
-							$disk_state_class = "highlight_warning";
-							$say_disk_action  = $an->String->get({key => "lsi_0042", variables => { 
+							$disk_state_class =  "highlight_warning";
+							$say_disk_action  .= $an->String->get({key => "lsi_0042", variables => { 
 									rebuild_percent		=>	$rebuild_percent,
 									time_to_complete	=>	$time_to_complete,
 								}});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "say_disk_action", value1 => $say_disk_action,
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun Up")
 						{
 							$disk_state_class = "highlight_detail";
 							foreach my $this_logical_disk (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
 							{
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
+								}, file => $THIS_FILE, line => __LINE__});
 								next if $this_logical_disk eq "";
 								if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i)
 								{
@@ -651,7 +666,7 @@ sub _display_node_health
 												name1 => "say_button", value1 => $say_button,
 											}, file => $THIS_FILE, line => __LINE__});
 											
-											$say_disk_action =  $an->Web->template({file => "common.html", template => "new_line"}) if not $say_disk_action;
+											$say_disk_action .= $an->Web->template({file => "common.html", template => "new_line"}) if not $say_disk_action;
 											$say_disk_action .= $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 												button_class	=>	"bold_button",
 												button_link	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&node_name=".$an->data->{cgi}{node_name}."&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk",
@@ -668,20 +683,23 @@ sub _display_node_health
 								}
 								elsif ($this_logical_disk == 9999)
 								{
-									$say_disk_action =  $an->Web->template({file => "common.html", template => "new_line"}) if not $say_disk_action;
+									$say_disk_action .= $an->Web->template({file => "common.html", template => "new_line"}) if not $say_disk_action;
 									$say_disk_action .= $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 											button_link	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&node_name=".$an->data->{cgi}{node_name}."&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 											button_text	=>	"#!string!button_0011!#",
 											id		=>	"make_disk_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 										}});
-									$say_disk_action = $an->Web->template({file => "common.html", template => "new_line"});
+									$say_disk_action .= $an->Web->template({file => "common.html", template => "new_line"});
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "say_disk_action", value1 => $say_disk_action,
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 							}
 						}
 						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun down")
 						{
 							$disk_state_class =  "highlight_detail";
-							$say_disk_action  =  $an->Web->template({file => "common.html", template => "new_line"});
+							$say_disk_action  .= $an->Web->template({file => "common.html", template => "new_line"});
 							$say_disk_action  .= $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 									button_link	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&node_name=".$an->data->{cgi}{node_name}."&task=display_health&do=spin_disk_up&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 									button_text	=>	"#!string!button_0012!#",
@@ -689,24 +707,33 @@ sub _display_node_health
 								}});
 							$say_temperature  = "<span class=\"highlight_unavailable\">".$an->String->get({key => "message_0055"})."</a>";
 							$offline_button   = $an->String->get({key => "message_0054"});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "say_disk_action", value1 => $say_disk_action,
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Transition")
 						{
 							$disk_state_class =  "highlight_detail";
-							$say_disk_action  =  $an->Web->template({file => "common.html", template => "new_line"});
+							$say_disk_action  .= $an->Web->template({file => "common.html", template => "new_line"});
 							$say_disk_action  .= $an->String->get({key => "message_0056"});
 							$say_temperature  =  "<span class=\"highlight_unavailable\">".$an->String->get({key => "message_0057"})."</span>";
 							$offline_button   =  $an->String->get({key => "message_0058"});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "say_disk_action", value1 => $say_disk_action,
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Spun Up")
 						{
-							$disk_state_class = "highlight_detail";
-							$say_disk_action  = "";
-							$offline_button   = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							$disk_state_class =  "highlight_detail";
+							$say_disk_action  .= "";
+							$offline_button   =  $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 									button_link	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&node_name=".$an->data->{cgi}{node_name}."&task=display_health&do=unmake_disk_as_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
 									button_text	=>	"#!string!button_0013!#",
 									id		=>	"unmake_disk_as_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "say_disk_action", value1 => $say_disk_action,
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						### TODO: 'Copyback' state is when a drive has been inserted 
 						###       into an array after a hot-spare took over a failed 
@@ -953,7 +980,7 @@ sub _get_storage_data
 	   $shell_call     .= $an->data->{path}{echo}." '==] Start bbu_info'; $megacli64_path AdpBbuCmd aAll; ";
 	   $shell_call     .= $an->data->{path}{echo}." '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; ";
 	   $shell_call     .= $an->data->{path}{echo}." '==] Start physical_disk_info'; $megacli64_path PDList aAll; ";
-	   $shell_call     .= $an->data->{path}{echo}." '==] Start pd_id_led_state'; ".$an->data->{path}{grep}." \"PD Locate\" /root/MegaSAS.log;";
+	   $shell_call     .= $an->data->{path}{echo}." '==] Start pd_id_led_state'; ".$an->data->{path}{'grep'}." \"PD Locate\" /root/MegaSAS.log;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,

@@ -581,7 +581,8 @@ SELECT
     a.node_sn, 
     a.node_ifn, 
     a.node_password,
-    b.host_name,  
+    b.host_name, 
+    b.host_uuid, 
     a.modified_date 
 FROM 
     nodes a,
@@ -613,8 +614,9 @@ WHERE
 		my $node_ifn         = $row->[8] ? $row->[8] : "";
 		my $node_password    = $row->[9] ? $row->[9] : "";
 		my $host_name        = $row->[10];
-		my $modified_date    = $row->[11];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+		my $host_uuid        = $row->[11];
+		my $modified_date    = $row->[12];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 			name1  => "node_uuid",        value1  => $node_uuid, 
 			name2  => "node_anvil_uuid",  value2  => $node_anvil_uuid, 
 			name3  => "node_host_uuid",   value3  => $node_host_uuid, 
@@ -625,7 +627,8 @@ WHERE
 			name8  => "node_sn",          value8  => $node_sn, 
 			name9  => "node_ifn",         value9  => $node_ifn, 
 			name10 => "host_name",        value10 => $host_name, 
-			name11 => "modified_date",    value11 => $modified_date, 
+			name11 => "host_uuid",        value11 => $host_uuid, 
+			name12 => "modified_date",    value12 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_password", value1 => $node_password, 
@@ -641,6 +644,7 @@ WHERE
 			node_sn			=>	$node_sn, 
 			node_ifn		=>	$node_ifn, 
 			host_name		=>	$host_name, 
+			host_uuid		=>	$host_uuid, 
 			node_password		=>	$node_password, 
 			modified_date		=>	$modified_date, 
 		};
@@ -2217,7 +2221,8 @@ WHERE
 			my $old_node_cache_name      = $row->[3];
 			my $old_node_cache_data      = $row->[4] ? $row->[4] : "NULL";
 			my $old_node_cache_note      = $row->[5] ? $row->[5] : "NULL";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			### NOTE: When loading fence cache data, this will usually contain a password, hence log level 4.
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0006", message_variables => {
 				name1 => "old_node_cache_uuid",      value1 => $old_node_cache_uuid, 
 				name2 => "old_node_cache_host_uuid", value2 => $old_node_cache_host_uuid, 
 				name3 => "old_node_cache_node_uuid", value3 => $old_node_cache_node_uuid, 
