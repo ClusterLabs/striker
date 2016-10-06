@@ -2640,7 +2640,7 @@ AND
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -2850,7 +2850,7 @@ WHERE
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -2911,7 +2911,7 @@ WHERE
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{ipmitool}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $ipmitool_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{ipmitool}{modified_date}{$modified_date}{ipmitool_uuid}})
@@ -2924,7 +2924,7 @@ WHERE
 			my $ipmitool_sensor_high_warning  = $an->data->{db_data}{unified}{ipmitool}{modified_date}{$modified_date}{ipmitool_uuid}{$ipmitool_uuid}{ipmitool_sensor_high_warning};
 			my $ipmitool_sensor_low_critical  = $an->data->{db_data}{unified}{ipmitool}{modified_date}{$modified_date}{ipmitool_uuid}{$ipmitool_uuid}{ipmitool_sensor_low_critical};
 			my $ipmitool_sensor_low_warning   = $an->data->{db_data}{unified}{ipmitool}{modified_date}{$modified_date}{ipmitool_uuid}{$ipmitool_uuid}{ipmitool_sensor_low_warning};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1  => "ipmitool_uuid",                 value1  => $ipmitool_uuid, 
 				name2  => "ipmitool_sensor_host",          value2  => $ipmitool_sensor_host, 
 				name3  => "ipmitool_sensor_name",          value3  => $ipmitool_sensor_name, 
@@ -2946,7 +2946,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::ipmitool::ipmitool_uuid::${ipmitool_uuid}::seen", value1 => $an->data->{db_data}{$id}{ipmitool}{ipmitool_uuid}{$ipmitool_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{ipmitool}{ipmitool_uuid}{$ipmitool_uuid}{seen})
@@ -2955,13 +2955,13 @@ WHERE
 					$an->data->{db_data}{$id}{ipmitool}{ipmitool_uuid}{$ipmitool_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::ipmitool::ipmitool_uuid::${ipmitool_uuid}::exists", value1 => $an->data->{db_data}{$id}{ipmitool}{ipmitool_uuid}{$ipmitool_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{ipmitool}{ipmitool_uuid}{$ipmitool_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::ipmitool::modified_date::${modified_date}::ipmitool_uuid::${ipmitool_uuid}", value1 => $an->data->{db_data}{$id}{ipmitool}{modified_date}{$modified_date}{ipmitool_uuid}{$ipmitool_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{ipmitool}{modified_date}{$modified_date}{ipmitool_uuid}{$ipmitool_uuid})

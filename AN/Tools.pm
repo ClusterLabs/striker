@@ -712,7 +712,8 @@ sub _set_paths
 	$an->data->{path}{'call_striker-manage-install-target'} = "/sbin/striker/call_striker-manage-install-target";
 	
 	# Lock files
-	$an->data->{path}{gfs2_lock} = "/var/lock/subsys/gfs2";
+	$an->data->{path}{gfs2_lock}     = "/var/lock/subsys/gfs2";
+	$an->data->{path}{scancore_lock} = "/tmp/ScanCore.lock";
 	
 	# Sockets
 	$an->data->{path}{libvirtd_socket} = "/var/run/libvirt/libvirt-sock";

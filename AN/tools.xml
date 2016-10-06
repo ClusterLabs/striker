@@ -196,6 +196,9 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0035">I was asked to mark the host with the UUID: [#!variable!host_uuid!#] as 'off', but I am a node and this isn't my host UUID. This shouldn't happen and is probably the sign of a bug in the program. Returning from the method without doing anything.</key>
 		<key name="tools_log_0036">I was asked to wait: [#!variable!wait!#] seconds after setting the "database is being resynchronized' flag, to give other instances of ScanCore time to finish their scans. Will resume shortly...</key>
 		<key name="tools_log_0037">The DB with ID: [#!variable!id!#] for: [#!variable!file!#] is behind.</key>
+		<key name="tools_log_0038">The host: [#!variable!host!#] is requesting a database lock.</key>
+		<key name="tools_log_0039">The host: [#!variable!host!#] has renewed its database lock.</key>
+		<key name="tools_log_0040">The host: [#!variable!host!#] has released its database lock.</key>
 	
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

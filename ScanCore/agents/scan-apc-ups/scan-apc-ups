@@ -5505,6 +5505,9 @@ sub gather_ups_data
 		
 		# Get the AC restore delay, if set. (High-precision, divide by 10 to get seconds).
 		$an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{ac_restore_delay});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "ups::${ups_name}::apc_ups_ac_restore_delay", value1 => $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} =~ /\D/)
 		{
 			# This should have been an integer...
@@ -5976,49 +5979,49 @@ sub read_oid
 		{
 			$value = "#!no_connection!#";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "value", value1 => "$value"
+				name1 => "value", value1 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /STRING: "(.*)"$/i)
 		{
 			$value = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "value", value1 => "$value"
+				name1 => "value", value1 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /INTEGER: (\d+)$/i)
 		{
 			$value = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "value", value1 => "$value"
+				name1 => "value", value1 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /Hex-STRING: (.*)$/i)
 		{
 			$value = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "value", value1 => "$value"
+				name1 => "value", value1 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /Gauge32: (.*)$/i)
 		{
 			$value =  $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "value", value1 => "$value"
+				name1 => "value", value1 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /Timeticks: \((\d+)\) /i)
 		{
 			$value =  $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "value", value1 => "$value"
+				name1 => "value", value1 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /No Such Instance/i)
 		{
 			$value = "--";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "value", value1 => "$value"
+				name1 => "value", value1 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -6029,7 +6032,7 @@ sub read_oid
 	$value =~ s/\s+$//;
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "value", value1 => "$value"
+		name1 => "value", value1 => $value, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($value);
 }

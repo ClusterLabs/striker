@@ -3684,9 +3684,9 @@ sub server_uuid
 				port     => $port,
 				password => $password,
 			});
-		my $state = $clustat_data->{server}{$server}{status};
-		my $host  = $clustat_data->{server}{$server}{host};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		my $state = $clustat_data->{server}{$server}{status} ? $clustat_data->{server}{$server}{status} : "unknown";
+		my $host  = $clustat_data->{server}{$server}{host}   ? $clustat_data->{server}{$server}{host}   : "unknown";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "state", value1 => $state, 
 			name2 => "host",  value2 => $host, 
 		}, file => $THIS_FILE, line => __LINE__});

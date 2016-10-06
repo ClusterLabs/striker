@@ -386,6 +386,9 @@ while(1)
 	# Disconnect from databases.
 	$an->DB->disconnect_from_databases();
 	
+	# Update the lock file timestamp.
+	$an->ScanCore->lock_file({'do' => "set"});
+	
 	# Did the user disabled ScanCore while the agents were running (or was this a '--one-shot')?
 	exit_if_one_shot($an);
 	exit_if_disabled($an);
@@ -3584,7 +3587,7 @@ WHERE
 	return(0);
 }
 
-### NOTE: Thos is only called by nodes.
+### NOTE: This is only called by nodes.
 # This finds all servers currently running on the peer and migrates them to this node.
 sub migrate_all_servers_to_here
 {
@@ -12120,37 +12123,25 @@ sub avoid_duplicate_run
 	}
 	close $file_handle;
 	
-	# If another copy is running, and there is no lock, see when it last finished a scan. If it was more
-	# than five minutes ago, kill it because it might be hung.
+	# If another copy is running, and there is no DB lock, read our file lock's update time and see when 
+	# it last finished a scan. If it was more than five minutes ago, kill it because it might be hung.
 	if (($already_running) && (not $lock))
 	{
-		my $query = "
-SELECT 
-    round(extract(epoch from modified_date)) 
-FROM 
-    updated 
-WHERE 
-    updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    updated_by        = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).";
-";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1  => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $last_updated = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-		   $last_updated = 0 if not defined $last_updated;
+		my $last_updated = $an->ScanCore->lock_file({'do' => "get"});
 		my $current_time = time;
 		my $difference   = $current_time - $last_updated;
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "last_updated",               value1 => $last_updated, 
 			name2 => "current_time",               value2 => $current_time, 
 			name3 => "difference",                 value3 => $difference, 
 			name4 => "scancore::update_age_limit", value4 => $an->data->{scancore}{update_age_limit}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($difference > $an->data->{scancore}{update_age_limit})
+		# If I've got no lock time, exit because it's probably the very first time ScanCore has run 
+		# and it probably hasn't finished yet. Otherwise, see if the difference is large enough to
+		# declare the other instance hung.
+		if (($last_updated) && ($difference > $an->data->{scancore}{update_age_limit}))
 		{
 			# Kill it and then exit. We could keep running, but it is safer to wait for cron to 
 			# re-fire ScanCore.
@@ -12178,6 +12169,7 @@ AND
 			}
 		}
 		
+		# Now exit.
 		$an->nice_exit({exit_code => 6});
 	}
 	

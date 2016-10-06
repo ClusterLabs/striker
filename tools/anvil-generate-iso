@@ -60,17 +60,6 @@ my $conf = {
 	},
 	# Paths to files and directories
 	path		=>	{
-		# This details files to be copied out of git to a directory in the source.
-		git		=>	{
-			# This is where we find the root of the ISO data from the git checkout under 
-			# 'path::source_path'.
-			root		=>	"striker/ISO",
-			# These are the subdirectory names we'll used under 'path::git::root' depending on
-			# the OS being build on.
-			centos		=>	"CentOS",
-			rhel		=>	"RHEL",
-			suffix		=>	"6/Anvil",
-		},
 		# Directories and files we download, copy or create will be placed under this directory, 
 		# which itself will be appended to the user's home directory.
 		working_dir	=>	"anvil",
@@ -1821,48 +1810,6 @@ sub copy_files_from_source
 	return(0);
 }
 
-# This copies files checked out from git to their directories.
-sub copy_files_from_git
-{
-	my ($conf) = @_;
-	
-	# I need the OS-specific source.
-	my $os_type          = $conf->{sys}{os_type};
-	my $distro_directory = $conf->{path}{git}{$os_type};
-	my $git_iso_source   = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{git_iso}."/".$distro_directory."/".$conf->{path}{git}{suffix};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::source_directory: [".$conf->{path}{iso}{source_directory}."]\n" if $conf->{sys}{debug} >= 2;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::striker: ........ [".$conf->{path}{iso}{striker}."]\n" if $conf->{sys}{debug} >= 2;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::git_iso: ........ [".$conf->{path}{iso}{git_iso}."]\n" if $conf->{sys}{debug} >= 2;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - distro_directory: .......... [$distro_directory]\n" if $conf->{sys}{debug} >= 2;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::suffix: ......... [".$conf->{path}{iso}{suffix}."]\n" if $conf->{sys}{debug} >= 2;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - git_iso_source: [$git_iso_source]\n" if $conf->{sys}{debug} >= 2;
-	
-	# isolinux
-	foreach my $directory (sort {$a cmp $b} keys %{$conf->{path}{iso}{git_copy}})
-	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory], path::iso::git_copy::${directory}::target: [$conf->{path}{iso}{git_copy}{$directory}{target}]\n" if $conf->{sys}{debug} >= 2;
-		my $source = $git_iso_source."/".$directory;
-		my $target = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{git_copy}{$directory}{target});
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
-		   $source =~ s/\/\/+/\//g;
-		   #$target =~ s/\/\/+/\//g;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
-		local(*DIR);
-		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
-		while (my $file = readdir(DIR))
-		{
-			next if (($file eq ".") or ($file eq ".."));
-			my $source_file = $source."/".$file;
-			my $target_file = $target."/".$file;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_file: [$source_file], target_file: [$target_file]\n" if $conf->{sys}{debug} >= 2;
-			copy_file($conf, $source_file, $target_file, 1);
-		}
-		closedir(DIR);
-	}
-	
-	return(0);
-}
-
 # This copies a file from the given ISO file using 'iso-read'
 sub isoread_file
 {
@@ -2367,19 +2314,19 @@ sub download_anrepo_rpms
 	foreach my $arch ("x86_64", "noarch")
 	{
 		my $shell_call = $conf->{executable}{curl}." ".$conf->{url}{'an-repo'}."/$arch/";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 3;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
 			if ($line =~ /href="(.*?)">/)
 			{
 				my $download_package = $1;
 				next if $download_package !~ /\.rpm$/;
 				my $download_url =  $conf->{url}{'an-repo'}."/$arch/$download_package";
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - arch: [$arch], download_package: [$download_package], download_url: [$download_url]\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - arch: [$arch], download_package: [$download_package], download_url: [$download_url]\n" if $conf->{sys}{debug} >= 3;
 				$conf->{download_packages}{$download_package} = $download_url;
 			}
 		}
@@ -2391,16 +2338,16 @@ sub download_anrepo_rpms
 	{
 		my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
 		my $found         = 0;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 3;
 		
 		foreach my $download_package (sort {$a cmp $b} keys %{$conf->{download_packages}})
 		{
 			next if $download_package !~ /^\Q$file\E/;
 			next if $download_package !~ /\Q$arch\E/;
-			print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 3;
 			if ($download_package =~ /^\Q$file\E-\d/)
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 3;
 				$found++;
 				$conf->{download}{$package}{url} = $conf->{download_packages}{$download_package};
 			}
@@ -2414,22 +2361,22 @@ sub download_anrepo_rpms
 	# Find the packages in the Third Party repo
 	foreach my $vendor (sort {$a cmp $b} keys %{$conf->{sys}{packages}{third_party}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agreed: [$conf->{sys}{third_party}{$vendor}{agreed}]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agreed: [$conf->{sys}{third_party}{$vendor}{agreed}]\n" if $conf->{sys}{debug} >= 3;
 		next if not $conf->{sys}{third_party}{$vendor}{agreed};
 		my $shell_call =  $conf->{executable}{curl}." ".$conf->{url}{third_party}."/$vendor/";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 3;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
 			if ($line =~ /href="(.*?)">/)
 			{
 				my $download_package = $1;
 				next if $download_package !~ /\.rpm$/;
 				my $download_url =  $conf->{url}{third_party}."/$vendor/$download_package";
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - download_package: [$download_package], download_url: [$download_url]\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - download_package: [$download_package], download_url: [$download_url]\n" if $conf->{sys}{debug} >= 3;
 				$conf->{download_packages}{$download_package} = $download_url;
 			}
 		}
@@ -2438,22 +2385,22 @@ sub download_anrepo_rpms
 	# Match our requirements to the packages available in the third party repo
 	foreach my $vendor (sort {$a cmp $b} keys %{$conf->{sys}{packages}{third_party}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agreed: [$conf->{sys}{third_party}{$vendor}{agreed}]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agreed: [$conf->{sys}{third_party}{$vendor}{agreed}]\n" if $conf->{sys}{debug} >= 3;
 		next if not $conf->{sys}{third_party}{$vendor}{agreed};
 		foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{third_party}{$vendor}})
 		{
 			my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
 			my $found         = 0;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 3;
 			
 			foreach my $download_package (sort {$a cmp $b} keys %{$conf->{download_packages}})
 			{
 				next if $download_package !~ /^\Q$file\E/;
 				next if $download_package !~ /\Q$arch\E/;
-				print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 3;
 				if ($download_package =~ /^\Q$file\E-\d/)
 				{
-					print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 2;
+					print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 3;
 					$found++;
 					$conf->{download}{$package}{url} = $conf->{download_packages}{$download_package};
 				}
@@ -2472,7 +2419,7 @@ sub download_anrepo_rpms
 		my $package_file = $conf->{path}{iso}{iso_packages}."/".$package_name;
 		if (-e $package_file)
 		{
-			print "- The package: [$package_file] is already downloaded.\n" if $conf->{sys}{debug} >= 2;
+			print "- The package: [$package_file] is already downloaded.\n" if $conf->{sys}{debug} >= 3;
 		}
 		else
 		{

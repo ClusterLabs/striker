@@ -421,7 +421,7 @@ sub dual_command_run
 		my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
 		my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
 		my $password = $an->data->{sys}{anvil}{$node_key}{use_password};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "node",   value1 => $node, 
 			name2 => "target", value2 => $target, 
 			name3 => "port",   value3 => $port, 
@@ -474,7 +474,7 @@ sub dual_command_run
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			$output->{$node} .= "$line\n";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output},
 			}, file => $THIS_FILE, line => __LINE__});
 		}

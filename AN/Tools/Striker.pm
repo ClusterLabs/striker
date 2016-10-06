@@ -9181,6 +9181,7 @@ ORDER BY
 			message			=>	$message,
 			server_note		=>	$note_form, 
 			restart_tomcat		=>	$restart_tomcat,
+			anvil_uuid		=>	$an->data->{cgi}{anvil_uuid},
 			anvil			=>	$anvil_name,
 			server			=>	$an->data->{cgi}{server},
 			task			=>	$an->data->{cgi}{task},

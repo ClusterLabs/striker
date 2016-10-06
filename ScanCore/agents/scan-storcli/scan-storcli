@@ -8217,18 +8217,13 @@ sub update_db
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
 	{
 		# Request a lock.
 		$an->DB->locking({request => 1});
-		
-		# Make a note in the databases that we're starting an update and ask it to wait 10 seconds 
-		# before returning to give other instances time to finish their scans. (our scans end quickly
-		# enough).
-		#$an->DB->set_update_db_flag({set => time, 'wait' => 10});
 		
 		# Update Controllers and the various dangly bits hanging off them.
 		update_db_controllers($an);
@@ -8241,9 +8236,6 @@ sub update_db
 		
 		# Release the lock
 		$an->DB->locking({release => 1});
-	
-		# Clear the update flag.
-		#$an->DB->set_update_db_flag({set => 0});
 	}
 	
 	return(0);
@@ -8282,14 +8274,14 @@ FROM
 WHERE
     storcli_physical_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -8431,7 +8423,7 @@ WHERE
     storcli_physical_drive_uuid                  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -8472,7 +8464,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8518,7 +8510,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8584,14 +8576,14 @@ FROM
 WHERE
     storcli_drive_group_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -8761,7 +8753,7 @@ WHERE
     storcli_drive_group_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -8810,7 +8802,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8864,7 +8856,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8928,20 +8920,20 @@ FROM
 WHERE
     storcli_virtual_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $storcli_virtual_drive_uuid              = $row->[0]; 
-			my $storcli_virtual_drive_controller_uuid   = $row->[1];
+			my $storcli_virtual_drive_uuid              =         $row->[0]; 
+			my $storcli_virtual_drive_controller_uuid   =         $row->[1];
 			my $storcli_virtual_drive_creation_date     = defined $row->[2]  ? $row->[2]  : "";
 			my $storcli_virtual_drive_data_protection   = defined $row->[3]  ? $row->[3]  : "";
 			my $storcli_virtual_drive_disk_cache_policy = defined $row->[4]  ? $row->[4]  : "";
@@ -8952,7 +8944,7 @@ WHERE
 			my $storcli_virtual_drive_drives_per_span   = defined $row->[9]  ? $row->[9]  : "";
 			my $storcli_virtual_drive_span_depth        = defined $row->[10] ? $row->[10] : "";
 			my $storcli_virtual_drive_scsi_naa_id       = defined $row->[11] ? $row->[11] : "";
-			my $modified_date                           = $row->[12];
+			my $modified_date                           =         $row->[12];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 				name1  => "storcli_virtual_drive_uuid",              value1  => $storcli_virtual_drive_uuid, 
 				name2  => "storcli_virtual_drive_controller_uuid",   value2  => $storcli_virtual_drive_controller_uuid, 
@@ -9091,7 +9083,7 @@ WHERE
     storcli_virtual_drive_uuid              = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -9136,7 +9128,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9186,7 +9178,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9247,28 +9239,28 @@ FROM
 WHERE
     storcli_bbu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $storcli_bbu_uuid               = $row->[0]; 
-			my $storcli_bbu_controller_uuid    = $row->[1];
-			my $storcli_bbu_serial_number      = $row->[2];
+			my $storcli_bbu_uuid               =         $row->[0]; 
+			my $storcli_bbu_controller_uuid    =         $row->[1];
+			my $storcli_bbu_serial_number      =         $row->[2];
 			my $storcli_bbu_type               = defined $row->[3] ? $row->[3] : "";
 			my $storcli_bbu_model              = defined $row->[4] ? $row->[4] : "";
 			my $storcli_bbu_state              = defined $row->[5] ? $row->[5] : "";
 			my $storcli_bbu_manufacture_date   = defined $row->[6] ? $row->[6] : "";
 			my $storcli_bbu_design_capacity    = defined $row->[7] ? $row->[7] : "";
 			my $storcli_bbu_replacement_needed = defined $row->[8] ? $row->[8] : "";
-			my $modified_date                  = $row->[9];
+			my $modified_date                  =         $row->[9];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "storcli_bbu_uuid",               value1  => $storcli_bbu_uuid, 
 				name2  => "storcli_bbu_controller_uuid",    value2  => $storcli_bbu_controller_uuid, 
@@ -9389,7 +9381,7 @@ WHERE
     storcli_bbu_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -9428,7 +9420,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9472,7 +9464,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9532,27 +9524,27 @@ FROM
 WHERE
     storcli_cachevault_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $storcli_cachevault_uuid               = $row->[0]; 
-			my $storcli_cachevault_controller_uuid    = $row->[1];
-			my $storcli_cachevault_serial_number      = $row->[2]; 
+			my $storcli_cachevault_uuid               =         $row->[0]; 
+			my $storcli_cachevault_controller_uuid    =         $row->[1];
+			my $storcli_cachevault_serial_number      =         $row->[2]; 
 			my $storcli_cachevault_state              = defined $row->[3] ? $row->[3] : "";
 			my $storcli_cachevault_design_capacity    = defined $row->[4] ? $row->[4] : "";
 			my $storcli_cachevault_replacement_needed = defined $row->[5] ? $row->[5] : "";
 			my $storcli_cachevault_type               = defined $row->[6] ? $row->[6] : "";
 			my $storcli_cachevault_manufacture_date   = defined $row->[7] ? $row->[7] : "";
-			my $modified_date                         = $row->[8];
+			my $modified_date                         =         $row->[8];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "storcli_cachevault_uuid",               value1 => $storcli_cachevault_uuid, 
 				name2 => "storcli_cachevault_controller_uuid",    value2 => $storcli_cachevault_controller_uuid, 
@@ -9667,7 +9659,7 @@ WHERE
     storcli_cachevault_uuid               = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -9704,7 +9696,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9804,14 +9796,14 @@ FROM
 WHERE
     storcli_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -9925,7 +9917,7 @@ WHERE
     storcli_variable_uuid           = ".$an->data->{sys}{use_db_fh}->quote($storcli_variable_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -9958,7 +9950,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9996,7 +9988,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10053,14 +10045,14 @@ FROM
 WHERE
     storcli_controller_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -10167,7 +10159,7 @@ AND
     storcli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -10198,7 +10190,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10234,7 +10226,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -12010,7 +12002,7 @@ sub get_cachevault_data
 			$variable =~ s/auto-learn/auto_learn/;
 			
 			$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable} = $value;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cachevault:serial_number::${cachevault_serial_number}::${type}::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{$type}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}

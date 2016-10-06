@@ -41,6 +41,7 @@ my $THIS_FILE = "ScanCore.pm";
 # insert_or_update_states
 # insert_or_update_smtp
 # insert_or_update_variables
+# lock_file
 # parse_anvil_data
 # parse_install_manifest
 # read_cache
@@ -3068,13 +3069,13 @@ sub insert_or_update_states
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_states" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_states" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $state_uuid      = $parameter->{state_uuid}      ? $parameter->{state_uuid}      : "";
 	my $state_name      = $parameter->{state_name}      ? $parameter->{state_name}      : "";
 	my $state_host_uuid = $parameter->{state_host_uuid} ? $parameter->{state_host_uuid} : $an->data->{sys}{host_uuid};
 	my $state_note      = $parameter->{state_note}      ? $parameter->{state_note}      : "NULL";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "state_uuid",      value1 => $state_uuid, 
 		name2 => "state_name",      value2 => $state_name, 
 		name3 => "state_host_uuid", value3 => $state_host_uuid, 
@@ -3106,7 +3107,7 @@ WHERE
 AND 
     state_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($state_host_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3119,7 +3120,7 @@ AND
 		foreach my $row (@{$results})
 		{
 			$state_uuid = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "state_uuid", value1 => $state_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3172,7 +3173,7 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -3190,7 +3191,7 @@ FROM
 WHERE 
     state_uuid = ".$an->data->{sys}{use_db_fh}->quote($state_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3205,7 +3206,7 @@ WHERE
 			my $old_state_name         = $row->[0];
 			my $old_state_host_uuid    = $row->[1];
 			my $old_state_note         = $row->[2] ? $row->[2] : "NULL";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "old_state_name",      value1 => $old_state_name, 
 				name2 => "old_state_host_uuid", value2 => $old_state_host_uuid, 
 				name3 => "old_state_note",      value3 => $old_state_note, 
@@ -3229,7 +3230,7 @@ WHERE
     state_uuid       = ".$an->data->{sys}{use_db_fh}->quote($state_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -3714,6 +3715,68 @@ WHERE
 	}
 	
 	return($variable_uuid);
+}
+
+# Read or set/update the lock file timestamp.
+sub lock_file
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lock_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $do = $parameter->{'do'} ? $parameter->{'do'} : "get";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "do", value1 => $do, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $lock_time = "";
+	if ($do eq "set")
+	{
+		my $shell_call = $an->data->{path}{scancore_lock};
+		   $lock_time  = time;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+			name2 => "lock_time",  value2 => $lock_time, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle "$lock_time\n";
+		close $file_handle;
+	}
+	else
+	{
+		# Read the lock file's time stamp, if the file exists.
+		if (-e $an->data->{path}{scancore_lock})
+		{
+			my $shell_call = $an->data->{path}{scancore_lock};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /^\d+$/)
+				{
+					$lock_time = $line;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "lock_time", value1 => $lock_time, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+			close $file_handle;
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "lock_time", value1 => $lock_time, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($lock_time);
 }
 
 # This uses the data from 'get_anvils()', 'get_nodes()' and 'get_owners()' and stores the data in 

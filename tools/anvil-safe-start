@@ -1196,17 +1196,15 @@ sub start_clvmd
 		name2 => "peer_key", value2 => $peer_key,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $node1 = $an->data->{sys}{anvil}{$node_key}{name};
-	my $node2 = $an->data->{sys}{anvil}{$peer_key}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node1", value1 => $node1,
-		name2 => "node2", value2 => $node2,
-	}, file => $THIS_FILE, line => __LINE__});
-	
 	### Check each node separetly.
 	# Peer first.
-	my $peer = $an->data->{sys}{anvil}{$peer_key}{name};
-	foreach my $line (split/\n/, $output->{$peer})
+	my $local_name = $an->data->{sys}{anvil}{$node_key}{name};
+	my $peer_name  = $an->data->{sys}{anvil}{$peer_key}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "local_name", value1 => $local_name,
+		name2 => "peer_name",  value2 => $peer_name,
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $line (split/\n/, $output->{$peer_name})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -1214,8 +1212,8 @@ sub start_clvmd
 		next if not $line;
 		### NOTE: Customer requested, move to 2 before v2.0 release
 		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
-			name1 => "peer", value1 => $peer,
-			name2 => "line", value2 => $line,
+			name1 => "peer_name", value1 => $peer_name,
+			name2 => "line",      value2 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^inactive '(.*?)' /)
 		{
@@ -1223,7 +1221,7 @@ sub start_clvmd
 			my $logical_volume = $1;
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0021", message_variables => {
 				logical_volume => $logical_volume, 
-				node           => $peer, 
+				node           => $peer_name, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $shell_call = $an->data->{path}{lvchange}." -ay $logical_volume";
@@ -1247,7 +1245,7 @@ sub start_clvmd
 	}
 	
 	# Now local
-	foreach my $line (split/\n/, $output->{$node1})
+	foreach my $line (split/\n/, $output->{$local_name})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -1255,8 +1253,8 @@ sub start_clvmd
 		next if not $line;
 		### NOTE: Customer requested, move to 2 before v2.0 release
 		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
-			name1 => "node", value1 => $node1,
-			name2 => "line", value2 => $line,
+			name1 => "local_name", value1 => $local_name,
+			name2 => "line",       value2 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^inactive '(.*?)' /)
 		{
@@ -1264,7 +1262,7 @@ sub start_clvmd
 			my $logical_volume = $1;
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0021", message_variables => {
 				logical_volume => $logical_volume, 
-				node           => $node1, 
+				node           => $local_name, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $shell_call = $an->data->{path}{lvchange}." -ay $logical_volume";

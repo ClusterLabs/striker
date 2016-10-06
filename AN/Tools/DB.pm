@@ -90,7 +90,7 @@ sub check_lock_age
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# If I have an active lock, check its age.
+	# If I have an active lock, check its age and also update the ScanCore lock file.
 	my $renewed = 0;
 	if ($an->data->{sys}{local_lock_active})
 	{
@@ -106,11 +106,13 @@ sub check_lock_age
 		if ($lock_age > $half_reap_age)
 		{
 			$an->DB->locking({renew => 1});
-			$renewed                            = 1;
-			$an->data->{sys}{local_lock_active} = time;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			   $renewed                            = 1;
+			   $an->data->{sys}{local_lock_active} = time;
+			my $lock_file_age                      = $an->ScanCore->lock_file({'do' => "set"});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "renewed",                value1 => $renewed, 
 				name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
+				name3 => "lock_file_age",          value3 => $lock_file_age, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -770,7 +772,7 @@ sub find_behind_databases
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_behind_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $file = $parameter->{file} ? $parameter->{file} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "file", value1 => $file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -802,14 +804,14 @@ AND
 			$query .= ";";
 		}
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		my $last_updated = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $last_updated = 0 if not defined $last_updated;
 		   
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "last_updated",                       value1 => $last_updated, 
 			name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 		}, file => $THIS_FILE, line => __LINE__});
@@ -817,7 +819,7 @@ AND
 		{
 			$an->data->{scancore}{sql}{source_updated_time} = $last_updated;
 			$an->data->{scancore}{sql}{source_db_id}        = $id;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "scancore::sql::source_db_id",        value1 => $an->data->{scancore}{sql}{source_db_id}, 
 				name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 			}, file => $THIS_FILE, line => __LINE__});
@@ -826,7 +828,7 @@ AND
 		### TODO: Determine if I should be checking per-table... Is it possible for one agent's table
 		###       to fall behind? Maybe, if the agent is deleted/recovered...
 		$an->data->{scancore}{db}{$id}{last_updated} = $last_updated;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "scancore::sql::source_updated_time",   value1 => $an->data->{scancore}{sql}{source_updated_time}, 
 			name2 => "scancore::sql::source_db_id",    value2 => $an->data->{scancore}{sql}{source_db_id}, 
 			name3 => "scancore::db::${id}::last_updated", value3 => $an->data->{scancore}{db}{$id}{last_updated}
@@ -838,7 +840,7 @@ AND
 	$an->data->{scancore}{db_resync_needed} = 0;
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "scancore::sql::source_updated_time", value1 => $an->data->{scancore}{sql}{source_updated_time}, 
 			name2 => "scancore::db::${id}::last_updated",  value2 => $an->data->{scancore}{db}{$id}{last_updated}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -862,7 +864,7 @@ AND
 			
 			# A database is behind, resync
 			$an->data->{scancore}{db_resync_needed} = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "scancore::db_to_update::${id}::behind", value1 => $an->data->{scancore}{db_to_update}{$id}{behind}, 
 				name2 => "scancore::db_resync_needed",            value2 => $an->data->{scancore}{db_resync_needed}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -871,7 +873,7 @@ AND
 		{
 			# This database is up to date.
 			$an->data->{scancore}{db_to_update}{$id}{behind} = 0;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "scancore::db_to_update::${id}::behind", value1 => $an->data->{scancore}{db_to_update}{$id}{behind}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1473,6 +1475,7 @@ sub locking
 			name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		$an->Log->entry({log_level => 1, message_key => "tools_log_0040", message_variables => { host => $an->hostname }, file => $THIS_FILE, line => __LINE__});
 		return($set);
 	}
 	
@@ -1502,6 +1505,7 @@ sub locking
 			name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		$an->Log->entry({log_level => 1, message_key => "tools_log_0039", message_variables => { host => $an->hostname }, file => $THIS_FILE, line => __LINE__});
 		return($set);
 	}
 	
@@ -1586,6 +1590,8 @@ sub locking
 				name2 => "variable_uuid",          value2 => $variable_uuid, 
 				name3 => "sys::local_lock_active", value3 => $an->data->{sys}{local_lock_active}, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->Log->entry({log_level => 1, message_key => "tools_log_0038", message_variables => { host => $an->hostname }, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -1729,13 +1735,13 @@ FROM
 WHERE 
     updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND
-    updated_by = ".$an->data->{sys}{use_db_fh}->quote($file).";"; 
+    updated_by        = ".$an->data->{sys}{use_db_fh}->quote($file).";"; 
 
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__ });
 		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__ });
 		if (not $count)
@@ -1754,7 +1760,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1  => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__ });
 			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
@@ -1766,13 +1772,13 @@ INSERT INTO
 UPDATE 
     updated 
 SET
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    updated_by = ".$an->data->{sys}{use_db_fh}->quote($file)." 
+    updated_by        = ".$an->data->{sys}{use_db_fh}->quote($file)." 
 AND
     updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1  => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__ });
 			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
