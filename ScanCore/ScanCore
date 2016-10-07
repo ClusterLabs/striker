@@ -4094,7 +4094,7 @@ AND
 sub check_node_health
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_health_ok     = 1;
 	my $my_health_weight   = 0;
