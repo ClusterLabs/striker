@@ -326,7 +326,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_note_0064">- The temperature of the physical drive: [#!variable!serial_number!#] has changed: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]</key>
 		<key name="scan_storcli_note_0065">- The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has changed: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]</key>
 		<key name="scan_storcli_note_0066">- The temperature of the BBU: [#!variable!serial_number!#] has changed: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]</key>
-		<key name="scan_storcli_note_0067">- The temperature of the controller: [#!variable!controller!#] has changed: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]</key>
+		<key name="scan_storcli_note_0067">- The temperature of the controller: [#!variable!serial_number!#] has changed: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]</key>
 
 		
 		<!-- Warnings -->
@@ -337,11 +337,11 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 - Cache Size: .. [#!variable!old_say_cache_size!#] -> [#!variable!new_say_cache_size!#]
 - Alarm State: . [#!variable!old_alarm_state!#] -> [#!variable!new_alarm_state!#]
 </key>
-		<key name="scan_storcli_warning_0003">- Controller: [#!variable!controller!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
-		<key name="scan_storcli_warning_0004">- Controller: [#!variable!controller!#]: New variable found; #!variable!name!#: [#!variable!value!#]</key>
-		<key name="scan_storcli_warning_0005">- Controller: [#!variable!controller!#]: Old variable lost; #!variable!name!#: [#!variable!old_value!#]</key>
-		<key name="scan_storcli_warning_0006">- Controller: [#!variable!controller!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
-		<key name="scan_storcli_warning_0007">- Controller: [#!variable!controller!#]: '#!variable!name!#' has vanished!</key>
+		<key name="scan_storcli_warning_0003">- Controller: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0004">- Controller: [#!variable!serial_number!#]: New variable found; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0005">- Controller: [#!variable!serial_number!#]: Old variable lost; #!variable!name!#: [#!variable!old_value!#]</key>
+		<key name="scan_storcli_warning_0006">- Controller: [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
+		<key name="scan_storcli_warning_0007">- Controller: [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
 		<key name="scan_storcli_warning_0008">The controller: [#!variable!model!#] with the serial number: [#!variable!serial_number!#] has vanished!</key>
 		<key name="scan_storcli_warning_0009">The RAID controller has returned:
 - Model: ....... [#!variable!new_model!#]
@@ -373,7 +373,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_warning_0013">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0014">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
 		<key name="scan_storcli_warning_0015">- A new variable was found on the BBU: [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
-		<key name="scan_storcli_warning_0016">- The BBU: [#!variable!bbu_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0016">- The BBU: [#!variable!bbu_serial_number!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		<key name="scan_storcli_warning_0017">The RAID controller's Virtual Drive (VD) properties have changed:
 - On Controller: .... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
 - ID String: ........ [#!variable!old_id_string!#] -> [#!variable!new_id_string!#]
@@ -406,7 +406,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_warning_0020">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0021">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' has vanished!</key>
 		<key name="scan_storcli_warning_0022">- A new variable was found on the Virtual Drive: [#!variable!id_string!#]; #!variable!name!#: [#!variable!value!#]</key>
-		<key name="scan_storcli_warning_0023">The Virtual Drive: [#!variable!id_string!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0023">The Virtual Drive: [#!variable!id_string!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		<key name="scan_storcli_warning_0024">The RAID controller's Drive Group (DG) properties have changed:
 - ID String: ................. [#!variable!old_id_string!#] -> [#!variable!new_id_string!#]
 - Access: .................... [#!variable!old_access!#] -> [#!variable!new_access!#]
@@ -464,7 +464,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_warning_0032">- The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0033">- A new variable was found on the Physical Drive (PD): [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
 		<key name="scan_storcli_warning_0034">- Physical Drive: [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
-		<key name="scan_storcli_warning_0035">- The Physical Drive: [#!variable!physical_disk_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0035">- The Physical Drive: [#!variable!physical_disk_serial_number!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		<key name="scan_storcli_warning_0036">The RAID controller's Cachevault (FBU) properties have changed:
 - On Controller: .... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
 - Model: ............ [#!variable!old_model!#] -> [#!variable!new_model!#]
@@ -489,8 +489,8 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_warning_0039">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0040">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
 		<key name="scan_storcli_warning_0041">- A new variable was found on the Cachevault (FBU): [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
-		<key name="scan_storcli_warning_0042">- The Cachevault (FBU): [#!variable!cachevault_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
-		<key name="scan_storcli_warning_0043">- The Cachevault (FBU): [#!variable!cachevault_serial_number!#]; on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0042">- The Cachevault (FBU): [#!variable!cachevault_serial_number!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0043">- The Cachevault (FBU): [#!variable!cachevault_serial_number!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		<key name="scan_storcli_warning_0044">
 - The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]
   If this ticks up by '1', and this hasn't changed recently before, it is generally safe to ignore. 
