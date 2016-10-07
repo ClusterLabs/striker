@@ -3660,29 +3660,39 @@ AND
 				name4 => "power_charge_percentage", value4 => $power_charge_percentage,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# Existing record; See if there is a difference and update if so.
-			if (($power_ups_name          ne $apc_ups_name) or 
-			    ($power_on_battery        ne $apc_ups_on_battery) or 
-			    ($power_seconds_left      ne $apc_ups_output_estimated_runtime) or 
-			    ($power_charge_percentage ne $apc_ups_battery_percentage_charge))
+			# Existing record; If load shedding is disabled, see if anything changed. If load 
+			# shedding is NOT disabled, we'll update always.
+			if ((not $an->data->{scancore}{disable}{load_shedding}) or 
+			    (($power_ups_name          ne $apc_ups_name)                     or 
+			     ($power_on_battery        ne $apc_ups_on_battery)               or 
+			     ($power_seconds_left      ne $apc_ups_output_estimated_runtime) or 
+			     ($power_charge_percentage ne $apc_ups_battery_percentage_charge)))
 			{
-				# Something changed.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "power_ups_name", value1 => $power_ups_name,
-					name2 => "apc_ups_name",   value2 => $apc_ups_name,
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "power_on_battery",   value1 => $power_on_battery,
-					name2 => "apc_ups_on_battery", value2 => $apc_ups_on_battery,
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "power_seconds_left",               value1 => $power_seconds_left,
-					name2 => "apc_ups_output_estimated_runtime", value2 => $apc_ups_output_estimated_runtime,
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "power_charge_percentage",           value1 => $power_charge_percentage,
-					name2 => "apc_ups_battery_percentage_charge", value2 => $apc_ups_battery_percentage_charge,
-				}, file => $THIS_FILE, line => __LINE__});
+				# Something changed if load shedding is disabled.
+				if ($an->data->{scancore}{disable}{load_shedding})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "power_ups_name", value1 => $power_ups_name,
+						name2 => "apc_ups_name",   value2 => $apc_ups_name,
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "power_on_battery",   value1 => $power_on_battery,
+						name2 => "apc_ups_on_battery", value2 => $apc_ups_on_battery,
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "power_seconds_left",               value1 => $power_seconds_left,
+						name2 => "apc_ups_output_estimated_runtime", value2 => $apc_ups_output_estimated_runtime,
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "power_charge_percentage",           value1 => $power_charge_percentage,
+						name2 => "apc_ups_battery_percentage_charge", value2 => $apc_ups_battery_percentage_charge,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# Load shedding is enabled, so we'll always update.
+					$an->Log->entry({log_level => 3, message_key => "scan_apc_ups_log_0005", message_variables => { ups_name => $apc_ups_name }, file => $THIS_FILE, line => __LINE__});
+				}
 				my $query = "
 UPDATE 
     power 
@@ -3693,11 +3703,11 @@ SET
     power_charge_percentage = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_battery_percentage_charge).", 
     modified_date           = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    power_host_uuid      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+    power_host_uuid         = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
-    power_agent_name     = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+    power_agent_name        = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
 AND 
-    power_record_locator = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number).";
+    power_record_locator    = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number).";
 ";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
@@ -3707,9 +3717,7 @@ AND
 			else
 			{
 				# No change found, update not needed.
-				$an->Log->entry({log_level => 3, message_key => "scan_apc_ups_log_0004", message_variables => {
-					ups_name => $apc_ups_name
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 3, message_key => "scan_apc_ups_log_0004", message_variables => { ups_name => $apc_ups_name }, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		else

@@ -444,7 +444,7 @@ sub register_alert
 	my $alert_message_variables = $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : "";
 	my $alert_sort              = $parameter->{alert_sort}              ? $parameter->{alert_sort}              : 9999;
 	my $alert_header            = $parameter->{alert_header}            ? $parameter->{alert_header}            : 'TRUE';
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 		name1 => "alert_agent_name",        value1 => $alert_agent_name,
 		name2 => "alert_level",             value2 => $alert_level,
 		name3 => "alert_title_key",         value3 => $alert_title_key,
@@ -576,7 +576,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query,
 	}, file => $THIS_FILE, line => __LINE__});
 	

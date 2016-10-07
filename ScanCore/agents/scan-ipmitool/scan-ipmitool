@@ -110,6 +110,7 @@ my $an = AN::Tools->new({data =>
 			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
 			local_lock_active	=>	0,
+			scanning_myself		=>	0,
 			sql			=>	[],
 		},
 		scancore		=>	{
@@ -1501,6 +1502,19 @@ INSERT INTO
 			}
 		}
 		
+		# If I am scanning myself and if I see problems, I will set the health accordingly.
+		if (($machine eq $an->hostname) or ($machine eq $an->short_hostname))
+		{
+			$an->data->{sys}{scanning_myself} = 1;
+		}
+		else
+		{
+			$an->data->{sys}{scanning_myself} = 0;
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::scanning_myself", value1 => $an->data->{sys}{scanning_myself}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		### Now add, update and delete 'temperature' entries.
 		process_temperature($an, $machine);
 		
@@ -1583,11 +1597,17 @@ sub check_sensor_health
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# Record it.
-			$an->data->{health}{new}{$health_source_name} = 1;
+			# Record it, if we're scanning ourselves.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				name1 => "sys::scanning_myself", value1 => $an->data->{sys}{scanning_myself}, 
 			}, file => $THIS_FILE, line => __LINE__});
+			if ($an->data->{sys}{scanning_myself})
+			{
+				$an->data->{health}{new}{$health_source_name} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	
@@ -1665,21 +1685,27 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If the state is 'warning', set  a health weight of 1 and set critical to 2.
-		if ($new_temperature_state eq "warning")
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::scanning_myself", value1 => $an->data->{sys}{scanning_myself}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{sys}{scanning_myself})
 		{
-			my $health_source_name                           = "temperature:".$ipmitool_sensor_name;
-			   $an->data->{health}{new}{$health_source_name} = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		elsif ($new_temperature_state eq "critical")
-		{
-			my $health_source_name                           = "temperature:".$ipmitool_sensor_name;
-			   $an->data->{health}{new}{$health_source_name} = 2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
-			}, file => $THIS_FILE, line => __LINE__});
+			if ($new_temperature_state eq "warning")
+			{
+				my $health_source_name                           = "temperature:".$ipmitool_sensor_name;
+				   $an->data->{health}{new}{$health_source_name} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($new_temperature_state eq "critical")
+			{
+				my $health_source_name                           = "temperature:".$ipmitool_sensor_name;
+				   $an->data->{health}{new}{$health_source_name} = 2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 		
 		# Now see if the variable was seen before and, if so, if it changed.
@@ -1698,8 +1724,8 @@ AND
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if (($new_temperature_celsius ne $old_temperature_celsius) || 
-			    ($new_temperature_state   ne $old_temperature_state)   ||
-			    ($new_temperature_is      ne $old_temperature_is))
+				($new_temperature_state   ne $old_temperature_state)   ||
+				($new_temperature_is      ne $old_temperature_is))
 			{
 				my $query = "
 UPDATE 
@@ -3298,7 +3324,7 @@ sub query_ipmi_targets
 			$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_high_warning}  = $high_warning;
 			$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_low_critical}  = $low_critical;
 			$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_low_warning}   = $low_warning;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_value_sensor_value",   value1 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_value_sensor_value}, 
 				name2 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_sensor_units",         value2 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_units}, 
 				name3 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_sensor_status",        value3 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_status}, 

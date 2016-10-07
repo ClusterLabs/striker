@@ -938,7 +938,7 @@ sub get_recipients
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_recipients" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_recipients" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
@@ -951,7 +951,7 @@ SELECT
 FROM 
     recipients
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -970,7 +970,7 @@ FROM
 		my $recipient_notify_level = $row->[3];
 		my $recipient_note         = $row->[4] ? $row->[4] : "";
 		my $modified_date          = $row->[5];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "recipient_uuid",         value1 => $recipient_uuid, 
 			name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid, 
 			name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid, 
@@ -3726,7 +3726,7 @@ sub lock_file
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lock_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $do = $parameter->{'do'} ? $parameter->{'do'} : "get";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "do", value1 => $do, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -3735,7 +3735,7 @@ sub lock_file
 	{
 		my $shell_call = $an->data->{path}{scancore_lock};
 		   $lock_time  = time;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 			name2 => "lock_time",  value2 => $lock_time, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3749,7 +3749,7 @@ sub lock_file
 		if (-e $an->data->{path}{scancore_lock})
 		{
 			my $shell_call = $an->data->{path}{scancore_lock};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -3757,13 +3757,13 @@ sub lock_file
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ /^\d+$/)
 				{
 					$lock_time = $line;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "lock_time", value1 => $lock_time, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
@@ -3773,7 +3773,7 @@ sub lock_file
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "lock_time", value1 => $lock_time, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($lock_time);

@@ -398,8 +398,13 @@ sub shed_load
 				node => $an->data->{sys}{peer_node},
 				ram  => $an->Readable->bytes_to_hr({'bytes' => $peer_server_ram }),
 			}})."\n";
-			print $an->String->get({key => "assp_message_0012", variables => { node => $an->data->{sys}{peer_node} }})."\n";
-			$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
+			my $message_key = "assp_message_0012";
+			if (not $peer_server_ram)
+			{
+				$message_key = "assp_message_0017";
+			}
+			print $an->String->get({key => $message_key, variables => { node => $an->data->{sys}{peer_node} }})."\n";
+			$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -415,8 +420,13 @@ sub shed_load
 				node => $an->data->{sys}{peer_node},
 				ram  => $an->Readable->bytes_to_hr({'bytes' => $peer_server_ram }),
 			}})."\n";
-			print $an->String->get({key => "assp_message_0012", variables => { node => $an->data->{sys}{local_node} }})."\n";
-			$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
+			my $message_key = "assp_message_0012";
+			if (not $local_server_ram)
+			{
+				$message_key = "assp_message_0017";
+			}
+			print $an->String->get({key => $message_key, variables => { node => $an->data->{sys}{local_node} }})."\n";
+			$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1045,7 +1055,7 @@ sub find_myself
 	$an->data->{peer}{bcn_name}   =  $an->data->{peer}{short_name}.".bcn";
 	$an->data->{peer}{sn_name}    =  $an->data->{peer}{short_name}.".sn";
 	$an->data->{peer}{ifn_name}   =  $an->data->{peer}{short_name}.".ifn";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "peer::short_name", value1 => $an->data->{peer}{short_name}, 
 		name2 => "peer::bcn_name",   value2 => $an->data->{peer}{bcn_name}, 
 		name3 => "peer::sn_name",    value3 => $an->data->{peer}{sn_name}, 
@@ -1054,7 +1064,7 @@ sub find_myself
 	
 	$an->data->{sys}{local_health} = $return->{health}{'local'};
 	$an->data->{sys}{peer_health}  = $return->{health}{peer};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "sys::local_health", value1 => $an->data->{sys}{local_health}, 
 		name2 => "sys::peer_health",  value2 => $an->data->{sys}{peer_health}, 
 	}, file => $THIS_FILE, line => __LINE__});

@@ -1460,22 +1460,28 @@ sub locking
 	# If I've been asked to clear a lock, do so now.
 	if ($release)
 	{
-		### NOTE: This blindly clears all locks. We might want to varify the lock we're clearing is 
-		###       ours at some point, though to be fair, there should only ever be one lock at a time
-		###       and we have no business clearing a lock unless the caller was the one holding the 
-		###       active lock.
-		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
-			variable_name     => $variable_name,
-			variable_value    => "",
-			update_value_only => 1,
-		});
-		$an->data->{sys}{local_lock_active} = 0;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "variable_uuid",          value1 => $variable_uuid, 
-			name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
+		# We check to see if there is a lock before we clear it. This way we don't log that we 
+		# released a lock unless we really released a lock.
+		my $lock_value = $an->ScanCore->read_variable({variable_name => $variable_name});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "lock_value", value1 => $lock_value, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$an->Log->entry({log_level => 1, message_key => "tools_log_0040", message_variables => { host => $an->hostname }, file => $THIS_FILE, line => __LINE__});
+		if ($lock_value)
+		{
+			my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+				variable_name     => $variable_name,
+				variable_value    => "",
+				update_value_only => 1,
+			});
+			$an->data->{sys}{local_lock_active} = 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "variable_uuid",          value1 => $variable_uuid, 
+				name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->Log->entry({log_level => 1, message_key => "tools_log_0040", message_variables => { host => $an->hostname }, file => $THIS_FILE, line => __LINE__});
+		}
 		return($set);
 	}
 	
@@ -1737,11 +1743,12 @@ WHERE
 AND
     updated_by        = ".$an->data->{sys}{use_db_fh}->quote($file).";"; 
 
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__ });
+		
 		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__ });
 		if (not $count)
@@ -1760,7 +1767,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__ });
 			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
@@ -1778,7 +1785,7 @@ WHERE
 AND
     updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__ });
 			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});

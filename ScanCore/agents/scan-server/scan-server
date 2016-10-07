@@ -223,7 +223,7 @@ sub check_for_removed_files
 		my $server_post_migration_arguments = $hash_ref->{server_post_migration_arguments};
 		my $server_anvil_uuid               = $hash_ref->{server_anvil_uuid};
 		my $server_host                     = $hash_ref->{server_host};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 			name1 => "server_uuid",                     value1 => $server_uuid,
 			name2 => "server_name",                     value2 => $server_name,
 			name3 => "server_definition",               value3 => $server_definition,

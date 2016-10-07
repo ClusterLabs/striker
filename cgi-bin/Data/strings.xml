@@ -2834,6 +2834,7 @@ SUPPORT
 		<key name="assp_message_0014">Withdrawing: [#!variable!node!#] from the Anvil! now.</key>
 		<key name="assp_message_0015">Powering off: [#!variable!node!#] now.</key>
 		<key name="assp_message_0016">There are no servers running on either node.</key>
+		<key name="assp_message_0017">There are no servers running on: [#!variable!node!#], so we will shut it down.</key>
 		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->
 		<key name="anp_log_0001">#!variable!this_file!# has started.</key>

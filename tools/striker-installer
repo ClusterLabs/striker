@@ -2000,7 +2000,7 @@ fi";
 	close $file_handle;
 	
 	# Add our entry
-	$raw_cron .= "*/1 * * * * $dashboard 2>1\n";
+	$raw_cron .= "*/1 * * * * $dashboard 2>&1\n";
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out 'root's updated cron table.", 1);
 	$shell_call = "$conf->{path}{cron_root}";

@@ -3458,6 +3458,7 @@ WHERE
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}})
 			{
 				my $new_variable_value = delete $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable};
+				   $new_variable_value = "" if not defined $new_variable_value;
 				my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable",    value1 => $variable,

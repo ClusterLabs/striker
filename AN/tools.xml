@@ -199,6 +199,7 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0038">The host: [#!variable!host!#] is requesting a database lock.</key>
 		<key name="tools_log_0039">The host: [#!variable!host!#] has renewed its database lock.</key>
 		<key name="tools_log_0040">The host: [#!variable!host!#] has released its database lock.</key>
+		<key name="tools_log_0041"><![CDATA[AN::Tools::Cman->boot_server() was asked to boot: [#!variable!server!#] which is in a failed state. Attempting to disable it.]]></key>
 	
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

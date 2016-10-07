@@ -153,9 +153,30 @@ sub boot_server
 		return(1);
 	}
 	
-	# If we're still alive, we're going to try and start it now. Start by getting the information about 
-	# the server so that we can be smart about it.
+	# If the state is 'failed', disable it before proceeding.
+	if ($state->{$server} =~ /fail/)
+	{
+		# Crap...
+		$an->Log->entry({log_level => 1, message_key => "tools_log_0041", message_variables => { server => $server }, file => $THIS_FILE, line => __LINE__});
+		
+		my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
 	
+	### NOTE: If we're still alive, we're going to try and start it now. Start by getting the information
+	###       about the server so that we can be smart about it.
 	# Get the server's data, the cluster config, and the general LVM and DRBD data so that we can 
 	# determine where best to boot the server.
 	my $server_data    = $an->Get->server_data({server => $server});

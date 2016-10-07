@@ -3761,6 +3761,49 @@ fi;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "node_name", value1 => $node_name,
 						}, file => $THIS_FILE, line => __LINE__});
+						
+						# Loop until I can't ping it.
+						my $stop_waiting = time + 30;
+						my $waiting      = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "stop_waiting", value1 => $stop_waiting,
+						}, file => $THIS_FILE, line => __LINE__});
+						while ($waiting)
+						{
+							my $ping = $an->Check->ping({ping => $target});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "ping", value1 => $ping,
+							}, file => $THIS_FILE, line => __LINE__});
+							if ($ping)
+							{
+								# Still alive, wait.
+								sleep 1;
+							}
+							else
+							{
+								# It's down, we're done.
+								$waiting = 0;
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "waiting", value1 => $waiting,
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+							
+							my $current_time = time;
+							my $difference   = $stop_waiting - $current_time;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+								name1 => "stop_waiting", value1 => $stop_waiting,
+								name2 => "current_time", value2 => $current_time,
+								name3 => "difference",   value3 => $difference,
+							}, file => $THIS_FILE, line => __LINE__});
+							if (time > $stop_waiting)
+							{
+								# Taking too long, stop waiting.
+								$waiting = 0;
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "waiting", value1 => $waiting,
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+						}
 					}
 					else
 					{
@@ -6356,6 +6399,7 @@ sub _display_server_state_and_controls
 		}
 		
 		# If the state is 'failed', disable everything.
+		$an->data->{server}{$server}{'state'} = "unknown" if not defined $an->data->{server}{$server}{'state'};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server::${server}::state", value1 => $an->data->{server}{$server}{'state'},
 		}, file => $THIS_FILE, line => __LINE__});

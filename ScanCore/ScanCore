@@ -89,6 +89,9 @@ SET search_path = history, pg_catalog;
 				thermal_shutdown	=>	0,
 				preventative_migration	=>	0,
 			},
+			health			=>	{
+				migration_delay		=>	180,
+			},
 			# This gets set to 'dashboard' if we determine this is a dashboard machine.
 			i_am_a			=>	"",
 			language		=>	"en_CA",
@@ -109,7 +112,7 @@ SET search_path = history, pg_catalog;
 			temperature		=>	{
 				# This is the weight given to each thermal sensor by default.
 				default_sensor_weight	=>	1,
-				load_shed_delay		=>	120,
+				load_shed_delay		=>	180,
 				# The sum of the critical temperature weights must exceed this value to cause
 				# a shut down.
 				shutdown_limit		=>	5,
@@ -3413,7 +3416,7 @@ WHERE
 			$message_key = "scancore_warning_0027";
 		}
 		
-		# Power-triggered load shed! Tell the user.
+		# Load shed! Tell the user.
 		$an->Alert->register_alert({
 			alert_level		=>	"warning", 
 			alert_agent_name	=>	$THIS_FILE,
@@ -4196,6 +4199,21 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	# If I am healthier, I will check/set 'health_triggered_migration' with the current time stamp. If
+	# the health is equal or worse, we will clear this if it was set. If we're healthier, we will return
+	# '2' (requesting a migration) once this variable is older than 'scancore::health::migration_delay'.
+	my $variable_name  = "health_triggered_migration";
+	my $went_sick_time = $an->ScanCore->read_variable({
+			variable_name         => $variable_name,
+			variable_source_uuid  => $an->data->{sys}{host_uuid},
+			variable_source_table => "hosts",
+		});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "variable_name",   value1 => $variable_name, 
+		name2 => "sys::host_uuid",  value2 => $an->data->{sys}{host_uuid}, 
+		name3 => "went_sick_time",  value3 => $went_sick_time, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	# NOTE: We don't check the readiness of the peer to because 'anvil-migrate-server' has the health 
 	#       check logic and will refuse to  migrate if the peer isn't healthy, regardless of what we do 
 	#       here (and no, we will NOT use '--force'. We want this behaviour).
@@ -4205,11 +4223,47 @@ WHERE
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($my_health_weight < $peer_health_weight)
 	{
-		# We're healthier.
-		$node_health_ok = 2;
+		# We're healthier. Before we set '2' though, see how long we've been healthier. We don't 
+		# want to migrate until we've been healthier for at least a few minutes.
+		my $current_time  = time;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "node_health_ok", value1 => $node_health_ok, 
+			name1 => "current_time",  value1 => $current_time, 
 		}, file => $THIS_FILE, line => __LINE__});
+		if (not $went_sick_time)
+		{
+			# First time we've gone healthier
+			my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+				variable_name         => $variable_name,
+				variable_value        => $current_time,
+				variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+				variable_source_table => "hosts", 
+				update_value_only     => 1,
+			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "variable_uuid", value1 => $variable_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Already went sick. How long ago?
+			my $migration_delay = $an->data->{scancore}{health}{migration_delay};
+			my $migration_time  = $went_sick_time + $migration_delay;
+			my $difference      = $migration_time - $current_time;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "migration_delay", value1 => $migration_delay, 
+				name2 => "migration_time",  value2 => $migration_time, 
+				name3 => "difference",      value3 => $difference, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($current_time >=  $migration_time)
+			{
+				# Time to migrate!
+				$node_health_ok = 2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node_health_ok", value1 => $node_health_ok, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
 	elsif ($my_health_weight > $peer_health_weight)
 	{
@@ -4218,6 +4272,30 @@ WHERE
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_health_ok", value1 => $node_health_ok, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If we used to be healthier, clear our 'went_sick_time'.
+		if ($went_sick_time)
+		{
+			# We're the same health but 'health_triggered_migration'is set, so clear it.
+			my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+				variable_name         => $variable_name,
+				variable_value        => "0",
+				variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+				variable_source_table => "hosts", 
+				update_value_only     => 1,
+			});
+		}
+	}
+	elsif ($went_sick_time)
+	{
+		# We're the same health but 'health_triggered_migration'is set, so clear it.
+		my $variable_uuid = $an->ScanCore->insert_or_update_variables({
+			variable_name         => $variable_name,
+			variable_value        => "0",
+			variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+			variable_source_table => "hosts", 
+			update_value_only     => 1,
+		});
 	}
 	
 	# Values are:
@@ -4382,7 +4460,7 @@ WHERE
 		{
 			# Time to go zzz
 			$node_power_ok = 3;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_power_ok", value1 => $node_power_ok,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -4582,7 +4660,7 @@ ORDER BY
 		my $alert_header            =         $row->[7]; 
 		my $alert_sort              = defined $row->[8] ? $row->[8] : 9999; 
 		my $modified_date           =         $row->[9]; 
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 			name1  => "alert_uuid",              value1  => $alert_uuid, 
 			name2  => "alert_agent_name",        value2  => $alert_agent_name, 
 			name3  => "alert_level",             value3  => $alert_level, 
@@ -4605,7 +4683,7 @@ ORDER BY
 			alert_header 		=> $alert_header,
 			modified_date           => $modified_date
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "db::alerts::agent_name::${alert_agent_name}::alert_sort::${alert_sort}::alert_uuid::${alert_uuid}::alert_level",             value1 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_level},
 			name2 => "db::alerts::agent_name::${alert_agent_name}::alert_sort::${alert_sort}::alert_uuid::${alert_uuid}::alert_title_key",         value2 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_title_key},
 			name3 => "db::alerts::agent_name::${alert_agent_name}::alert_sort::${alert_sort}::alert_uuid::${alert_uuid}::alert_title_variables",   value3 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid}{alert_title_variables},
@@ -4724,12 +4802,12 @@ ORDER BY
 		delete $an->data->{db}{alerts};
 		
 		# Mark that an alert was sent
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0053", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0053", file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		# No alerts
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0052", file => $THIS_FILE, line => __LINE__}) if not $first_run;
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0052", file => $THIS_FILE, line => __LINE__}) if not $first_run;
 	}
 	
 	return(0);
@@ -5610,7 +5688,7 @@ sub get_string_from_double_bang
 sub translate_sensor_name
 {
 	my ($an, $ipmitool_sensor_name, $ipmitool_sensor_units) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "translate_sensor_name", }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "translate_sensor_name", }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "ipmitool_sensor_name",  value1 => $ipmitool_sensor_name, 
 		name2 => "ipmitool_sensor_units", value2 => $ipmitool_sensor_units, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5625,7 +5703,7 @@ sub translate_sensor_name
 		if ($say_sensor_name eq "Ambient")
 		{
 			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0001"});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5638,7 +5716,7 @@ sub translate_sensor_name
 					cpu		=>	$cpu,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5651,14 +5729,14 @@ sub translate_sensor_name
 					module		=>	$module,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($say_sensor_name =~ /Systemboard/)
 		{
 			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0023"});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5674,7 +5752,7 @@ sub translate_sensor_name
 					voltage		=>	$voltage,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5689,7 +5767,7 @@ sub translate_sensor_name
 					voltage		=>	$voltage,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5702,7 +5780,7 @@ sub translate_sensor_name
 					voltage		=>	$voltage,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5715,7 +5793,7 @@ sub translate_sensor_name
 					voltage		=>	$voltage,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5728,7 +5806,7 @@ sub translate_sensor_name
 					voltage		=>	$voltage,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5741,7 +5819,7 @@ sub translate_sensor_name
 					voltage		=>	$voltage,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5754,7 +5832,7 @@ sub translate_sensor_name
 					voltage		=>	$voltage,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5767,7 +5845,7 @@ sub translate_sensor_name
 					voltage		=>	$voltage,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5780,7 +5858,7 @@ sub translate_sensor_name
 					voltage		=>	$voltage,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5796,28 +5874,28 @@ sub translate_sensor_name
 					cpu		=>	$cpu,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($say_sensor_name =~ /Fan Power/)
 		{
 			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0010"});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($say_sensor_name =~ /HDD Power/)
 		{
 			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0011"});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($say_sensor_name =~ /Memory Power/)
 		{
 			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0019"});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5830,14 +5908,14 @@ sub translate_sensor_name
 					psu		=>	$psu,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($say_sensor_name =~ /Total Power/)
 		{
 			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0024"});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5853,14 +5931,14 @@ sub translate_sensor_name
 					channel		=>	$channel,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($say_sensor_name =~ /SEL Level/)
 		{
 			$say_units = $an->String->get({key => "scan_ipmitool_sensor_name_0021"});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5878,7 +5956,7 @@ sub translate_sensor_name
 					fan		=>	$fan,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5891,7 +5969,7 @@ sub translate_sensor_name
 					fan		=>	$fan,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -5904,13 +5982,13 @@ sub translate_sensor_name
 					fan		=>	$fan,
 				},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_units", value1 => $say_units, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "say_sensor_name",  value1 => $say_sensor_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($say_sensor_name)
