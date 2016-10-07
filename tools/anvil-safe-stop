@@ -911,9 +911,11 @@ sub do_migration
 		name1 => "server", value1 => $server, 
 	}, file => $THIS_FILE, line => __LINE__});
 
+	# We force the migration because we're going down, and in cases where we're load shedding, both nodes
+	# will be in a 'warning' state.
 	my $output     = "";
 	my $success    = 1;
-	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server";
+	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server --force";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});

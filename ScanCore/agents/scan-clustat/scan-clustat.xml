@@ -100,7 +100,7 @@ Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_bra
 		<key name="scan_clustat_warning_0015">The service: [#!variable!service!#] failed to start!</key>
 		<key name="scan_clustat_warning_0016">The service: [#!variable!service!#] has failed!</key>
 		<key name="scan_clustat_warning_0017">The service: [#!variable!service!#] has been restarted on the host: [#!variable!host!#]. This is generally not normal, unless someone is doing work on a node.</key>
-		<key name="scan_clustat_warning_0018">The node: [#!variable!node!#] has gone offline. If someone is doing work on your #!string!brand_0004!#, then this is usually OK. If this was not expected, the node may have crashed and been fenced.</key>
+		<key name="scan_clustat_warning_0018">The node: [#!variable!node!#] has gone offline. This can be caused by someone is doing work on your #!string!brand_0004!#, or if a node was withdrawn to shed load, or if the node's health went critical. If this was not expected, the node may have crashed and been fenced.</key>
 		<key name="scan_clustat_warning_0019">The server: [#!variable!service!#] was disabled after being marked as failed.</key>
 		<key name="scan_clustat_warning_0020">The server: [#!variable!service!#] was recovered successfully on the host: [#!variable!host!#].</key>
 		<key name="scan_clustat_warning_0021">The server: [#!variable!service!#] was disabled after being marked as failed.</key>

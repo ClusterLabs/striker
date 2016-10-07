@@ -209,7 +209,7 @@ my $conf = {
 		# git master with '--master', in which case we will download the 'striker_master' URL. In all
 		# cases, the downloaded file will be saved as 'striker_zip_file'.
 		striker		=>	"https://github.com/ClusterLabs/striker.git",
-		striker_default	=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-tc2.zip",
+		striker_default	=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-tc3.zip",
 		striker_latest	=>	"https://alteeve.ca/striker_latest.txt",
 		striker_master	=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
 		striker_zip_file =>	"striker.zip",

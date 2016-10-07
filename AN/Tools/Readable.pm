@@ -579,11 +579,11 @@ sub time
 	my $suffix = $parameter->{suffix} ? $parameter->{suffix} : "short";
 	
 	# The suffix used for each unit of time will depend on the requested suffix type.
-	my $suffix_seconds = $suffix eq "long"? "tools_suffix_0032" : "tools_suffix_0027";
-	my $suffix_minutes = $suffix eq "long"? "tools_suffix_0033" : "tools_suffix_0028";
-	my $suffix_hours   = $suffix eq "long"? "tools_suffix_0034" : "tools_suffix_0029";
-	my $suffix_days    = $suffix eq "long"? "tools_suffix_0035" : "tools_suffix_0030";
-	my $suffix_weeks   = $suffix eq "long"? "tools_suffix_0036" : "tools_suffix_0031";
+	my $suffix_seconds = $suffix eq "long"? " #!string!tools_suffix_0032!#" : " #!string!tools_suffix_0027!#";
+	my $suffix_minutes = $suffix eq "long"? " #!string!tools_suffix_0033!#" : " #!string!tools_suffix_0028!#";
+	my $suffix_hours   = $suffix eq "long"? " #!string!tools_suffix_0034!#" : " #!string!tools_suffix_0029!#";
+	my $suffix_days    = $suffix eq "long"? " #!string!tools_suffix_0035!#" : " #!string!tools_suffix_0030!#";
+	my $suffix_weeks   = $suffix eq "long"? " #!string!tools_suffix_0036!#" : " #!string!tools_suffix_0031!#";
 	
 	# Exit if 'time' is not defined or set as '--'.
 	$parameter->{'time'} = "--" if not defined $parameter->{'time'};

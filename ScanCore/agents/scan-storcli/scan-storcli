@@ -4656,7 +4656,7 @@ WHERE
 						if ($type eq "temperature")
 						{
 							# It's a temperature, so change the default message.
-							$message_key = "scan_storcli_note_0064";
+							$message_key = "scan_storcli_note_0065";
 							if (($new_variable_value ne $old_variable_value))
 							{
 								# If the temperature is rising, see if we 
