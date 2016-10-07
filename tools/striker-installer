@@ -2118,15 +2118,6 @@ sub configure_striker_tools
 		mkdir $conf->{directory}{striker_tools} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{striker_tools}]. The error was: $!\n";
 	}
 	
-	if (not -e $conf->{directory}{source})
-	{
-		my $test_source = $conf->{directory}{source}."-master";
-		if (-e $test_source)
-		{
-			$conf->{directory}{source} = $test_source;
-		}
-	}
-	
 	# Now copy the tools we want into place, if they're not already there.
 	logger($conf, $THIS_FILE, __LINE__, "Copying Striker tools and ScanCore into place.", 1);
 	rsync_files($conf, "$conf->{directory}{source}/striker.conf", "$conf->{directory}{striker_tools}/");
@@ -2574,6 +2565,16 @@ sub setup_striker
 	###       this dashboard.
 	# Download Striker, if needed.
 	#download_striker($conf);
+	
+	# If the user installed from github master, we'll need to update the source directory.
+	if (not -e $conf->{directory}{source})
+	{
+		my $test_source = $conf->{directory}{source}."-master";
+		if (-e $test_source)
+		{
+			$conf->{directory}{source} = $test_source;
+		}
+	}
 	
 	# Configure apache.
 	configure_apache($conf);
