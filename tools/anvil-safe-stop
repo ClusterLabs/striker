@@ -891,6 +891,26 @@ sub local_shut_down
 			$an->Striker->mark_node_as_clean_off({node_uuid => $node_uuid});
 		}
 		
+		# If we were kicking the UPSes, stop now.
+		my $shell_call = "
+if [ -e '".$an->data->{path}{'anvil-kick-apc-ups'}."' ]
+then
+    ".$an->data->{path}{'anvil-kick-apc-ups'}." --cancel
+fi;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
 		# We're done, power off.
 		print $an->String->get({key => "assp_message_0015", variables => { node => $an->hostname }})."\n";
 		$an->System->poweroff();
@@ -1078,7 +1098,7 @@ sub find_myself
 sub avoid_duplicate_run
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $pids  = $an->Get->pids({program_name => $an->data->{sys}{program_name}});
 	my $count = @{$pids};

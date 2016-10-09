@@ -2803,21 +2803,41 @@ sub pids
 			if ($command =~ /$program_name/)
 			{
 				# If we're calling locally and we see our own PID, skip it.
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "pid",    value1 => $pid,
-					name2 => "my_pid", value2 => $my_pid, 
-					name3 => "target", value3 => $target, 
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+					name1 => "command",      value1 => $command,
+					name2 => "program_name", value2 => $program_name, 
+					name3 => "pid",          value3 => $pid,
+					name4 => "my_pid",       value4 => $my_pid, 
+					name5 => "target",       value5 => $target, 
+					name6 => "line",         value6 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
 				if (($pid eq $my_pid) && (not $target))
 				{
 					# This is us! :D
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "pid",    value1 => $pid,
+						name2 => "my_pid", value2 => $my_pid, 
+						name3 => "target", value3 => $target, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif (($command =~ /--status/) or ($command =~ /--state/))
 				{
 					# Ignore this, it is someone else also checking the state.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "command", value1 => $command,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($command =~ /\/timeout (\d)/)
+				{
+					# Ignore this, we were called by 'timeout' so the pid will be 
+					# different but it is still us.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "command", value1 => $command,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
+					# Who is this? This isn't us! We're out. :)
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 						name1 => "pid",          value1 => $pid,
 						name2 => "target",       value2 => $target, 

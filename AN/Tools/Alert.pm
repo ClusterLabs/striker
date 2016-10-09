@@ -391,6 +391,12 @@ sub error
 	# Write a copy of the error to the log.
 	$an->Log->entry({file => $THIS_FILE, level => 0, raw => $error});
 	
+	# If this is a browser calling us, print the footer so that the loading pinwheel goes away.
+	if ($ENV{'HTTP_REFERER'})
+	{
+		$an->Striker->_footer();
+	}
+	
 	# Don't actually die, but do print the error, if fatal errors have been globally disabled (as is done
 	# in the tests).
 	if (not $an->Alert->no_fatal_errors)
