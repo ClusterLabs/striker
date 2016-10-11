@@ -7064,8 +7064,8 @@ sub create_partition_on_node
 						node		=>	$node, 
 						disk		=>	$disk,
 						type		=>	$type,
-						old_end		=>	$an->Readable->bytes_to_hr({'bytes' => $use_end })." ($use_end #!string!suffix_0009!#)",
-						new_end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
+						old_end		=>	$use_end." #!string!suffix_0006!#",
+						new_end		=>	$end." #!string!suffix_0006!#",
 						shell_call	=>	$shell_call,
 					}});
 				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
