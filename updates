@@ -1,0 +1,25 @@
+
+
+-- FROM: [2.0.0b tc1] TO: [2.0.0b tc4]
+
+BEGIN TRANSACTION;
+
+CREATE TABLE locations (location_uuid uuid not null primary key, location_name text not null, location_note text, modified_date timestamp with time zone not null);
+ALTER TABLE locations OWNER TO admin;
+CREATE TABLE history.locations (history_id bigserial, location_uuid uuid, location_name text, location_note text, modified_date timestamp with time zone not null); 
+ALTER TABLE history.locations OWNER TO admin;
+CREATE FUNCTION history_locations() RETURNS trigger AS $$ DECLARE history_locations RECORD; BEGIN SELECT INTO history_locations * FROM locations WHERE location_uuid = new.location_uuid; INSERT INTO history.locations (location_uuid, location_name, location_note, modified_date) VALUES (history_locations.location_uuid, history_locations.location_name, history_locations.location_note, history_locations.modified_date); RETURN NULL; END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_locations() OWNER TO admin;
+CREATE TRIGGER trigger_locations AFTER INSERT OR UPDATE ON locations FOR EACH ROW EXECUTE PROCEDURE history_locations();
+
+ALTER TABLE public.hosts ADD COLUMN host_location_uuid uuid;
+ALTER TABLE history.hosts ADD COLUMN host_location_uuid uuid;
+ALTER TABLE public.hosts ADD FOREIGN KEY(host_location_uuid) REFERENCES locations(location_uuid);
+
+DROP FUNCTION history_hosts() CASCADE;
+CREATE FUNCTION history_hosts() RETURNS trigger AS $$ DECLARE history_hosts RECORD; BEGIN SELECT INTO history_hosts * FROM hosts WHERE host_uuid = new.host_uuid; INSERT INTO history.hosts (host_uuid, host_location_uuid, host_name, host_type, host_emergency_stop, host_stop_reason, host_health, modified_date) VALUES (history_hosts.host_uuid, history_hosts.host_location_uuid, history_hosts.host_name, history_hosts.host_type, history_hosts.host_emergency_stop, history_hosts.host_stop_reason, history_hosts.host_health, history_hosts.modified_date); RETURN NULL; END; $$ LANGUAGE plpgsql; ALTER FUNCTION history_hosts() OWNER TO admin;
+CREATE TRIGGER trigger_hosts AFTER INSERT OR UPDATE ON hosts FOR EACH ROW EXECUTE PROCEDURE history_hosts();
+
+COMMIT;
+
+-- END

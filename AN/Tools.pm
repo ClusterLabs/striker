@@ -139,7 +139,7 @@ sub new
 	
 	# Before I do anything, read in values from the 'DEFAULT::CONFIG_FILE' configuration file.
 	$self->{DEFAULT}{CONFIG_FILE} = $an->Storage->find({file => $self->{DEFAULT}{CONFIG_FILE}, fatal => 1});
-	$an->Storage->read_conf($an->{DEFAULT}{CONFIG_FILE});
+	$an->Storage->read_conf({file => $an->{DEFAULT}{CONFIG_FILE} });
 	
 	# Setup my '$an->data' hash right away so that I have a place to store the strings hash.
 	$an->data($parameter->{data}) if $parameter->{data};

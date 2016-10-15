@@ -5181,10 +5181,10 @@ sub check_email_configuration
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_email_configuration" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: At this time, dashboards can't send email.
-	if (not -e $an->data->{path}{cman_config})
-	{
-		return(0);
-	}
+# 	if (not -e $an->data->{path}{cman_config})
+# 	{
+# 		return(0);
+# 	}
 	
 	# These will be set to '1' if either the relay file or main.cf need to be updated.
 	my $reconfigure = 0;
@@ -6356,7 +6356,8 @@ sub update_db
 		# Request a lock.
 		$an->DB->locking({request => 1});
 		
-		# Update (and commit) the hosts table
+		# Update (and commit) the locations and then hosts table.
+		update_db_locations($an);
 		update_db_hosts($an);
 		
 		### NOTE: The order that these are updated is important because of constraints. Don't re-order them.
@@ -8447,6 +8448,215 @@ INSERT INTO
 				} # Seen anvil_uuid?
 			} # foreach my $id 
 		} # foreach my $anvil_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update/sync the locations table. Like 'servers', this table is not bound to a host.
+sub update_db_locations
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_owners" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'locations' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		### NOTE: This table is special in that it does NOT link back to a specific host.
+		# Read in the history schema
+		my $query = "
+SELECT 
+    location_uuid,
+    location_name, 
+    location_note, 
+    modified_date 
+FROM 
+    history.locations 
+;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $location_uuid    = $row->[0];
+			my $location_name    = $row->[1];
+			my $location_note    = $row->[2];
+			my $modified_date = $row->[3];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "location_uuid",    value1 => $location_uuid, 
+				name2 => "location_name",    value2 => $location_name, 
+				name3 => "location_note",    value3 => $location_note, 
+				name4 => "modified_date", value4 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{locations}{modified_date}{$modified_date}{location_uuid}{$location_uuid} = {
+				location_name	=>	$location_name, 
+				location_note	=>	$location_note, 
+			};
+			
+			$an->data->{db_data}{$id}{locations}{location_uuid}{$location_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{locations}{location_uuid}{$location_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{locations}{modified_date}{$modified_date}{location_uuid}{$location_uuid} = {
+				location_name	=>	$location_name, 
+				location_note	=>	$location_note, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{locations}{modified_date}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $location_uuid (keys %{$an->data->{db_data}{unified}{locations}{modified_date}{$modified_date}{location_uuid}})
+		{
+			my $location_name = $an->data->{db_data}{unified}{locations}{modified_date}{$modified_date}{location_uuid}{$location_uuid}{location_name}; 
+			my $location_note = $an->data->{db_data}{unified}{locations}{modified_date}{$modified_date}{location_uuid}{$location_uuid}{location_note};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "location_uuid", value1 => $location_uuid, 
+				name2 => "location_name", value2 => $location_name, 
+				name3 => "location_note", value3 => $location_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'location_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::location::location_uuid::${location_uuid}::seen", value1 => $an->data->{db_data}{$id}{locations}{location_uuid}{$location_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{locations}{location_uuid}{$location_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{locations}{location_uuid}{$location_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::location::location_uuid::${location_uuid}::exists", value1 => $an->data->{db_data}{$id}{locations}{location_uuid}{$location_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{locations}{location_uuid}{$location_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::location::modified_date::${modified_date}::location_uuid::${location_uuid}", value1 => $an->data->{db_data}{$id}{locations}{modified_date}{$modified_date}{location_uuid}{$location_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{locations}{modified_date}{$modified_date}{location_uuid}{$location_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.locations 
+SET
+    location_name    = ".$an->data->{sys}{use_db_fh}->quote($location_name).", 
+    location_note    = ".$an->data->{sys}{use_db_fh}->quote($location_note).", 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    location_uuid    = ".$an->data->{sys}{use_db_fh}->quote($location_uuid)." 
+;";
+							# Now record the query in the array
+							$query =~ s/'NULL'/NULL/g;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.locations 
+(
+    location_uuid, 
+    location_name, 
+    location_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($location_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($location_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($location_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$query =~ s/'NULL'/NULL/g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'location_uuid' before, so it is just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{locations}{modified_date}{$modified_date}{location_uuid}{$location_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.locations 
+(
+    location_uuid, 
+    location_name, 
+    location_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($location_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($location_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($location_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$query =~ s/'NULL'/NULL/g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen location_uuid?
+			} # foreach my $id 
+		} # foreach my $location_uuid ...
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.
@@ -11464,6 +11674,7 @@ sub update_db_hosts
 		my $query = "
 SELECT 
     host_uuid, 
+    host_location_uuid, 
     host_name, 
     host_type, 
     host_emergency_stop, 
@@ -11488,24 +11699,27 @@ FROM
 		foreach my $row (@{$results})
 		{
 			my $host_uuid           = $row->[0];
-			my $host_name           = $row->[1];
-			my $host_type           = $row->[2];
-			my $host_emergency_stop = $row->[3] ? "TRUE"    : "FALSE";
-			my $host_stop_reason    = $row->[4] ? $row->[4] : "";
-			my $host_health         = $row->[5] ? $row->[5] : "";
-			my $modified_date       = $row->[6];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			my $host_location_uuid  = $row->[1];
+			my $host_name           = $row->[2];
+			my $host_type           = $row->[3];
+			my $host_emergency_stop = $row->[4] ? "TRUE"    : "FALSE";
+			my $host_stop_reason    = $row->[5] ? $row->[5] : "";
+			my $host_health         = $row->[6] ? $row->[6] : "";
+			my $modified_date       = $row->[7];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "host_uuid",           value1 => $host_uuid, 
-				name2 => "host_name",           value2 => $host_name, 
-				name3 => "host_type",           value3 => $host_type, 
-				name4 => "host_emergency_stop", value4 => $host_emergency_stop,
-				name5 => "host_stop_reason",    value5 => $host_stop_reason, 
-				name6 => "host_health",         value6 => $host_health, 
-				name7 => "modified_date",       value7 => $modified_date, 
+				name2 => "host_location_uuid",  value2 => $host_location_uuid, 
+				name3 => "host_name",           value3 => $host_name, 
+				name4 => "host_type",           value4 => $host_type, 
+				name5 => "host_emergency_stop", value5 => $host_emergency_stop,
+				name6 => "host_stop_reason",    value6 => $host_stop_reason, 
+				name7 => "host_health",         value7 => $host_health, 
+				name8 => "modified_date",       value8 => $modified_date, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
 			$an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid} = {
+				host_location_uuid	=>	$host_location_uuid, 
 				host_name		=>	$host_name, 
 				host_type		=>	$host_type, 
 				host_emergency_stop	=>	$host_emergency_stop, 
@@ -11516,6 +11730,7 @@ FROM
 			$an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{'exists'} = 1;
 			$an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{seen}     = 0;
 			$an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid} = {
+				host_location_uuid	=>	$host_location_uuid, 
 				host_name		=>	$host_name, 
 				host_type		=>	$host_type,
 				host_emergency_stop	=>	$host_emergency_stop,
@@ -11538,18 +11753,20 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $host_uuid (keys %{$an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}})
 		{
+			my $host_location_uuid  = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_location_uuid};
 			my $host_name           = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_name};
 			my $host_type           = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_type};
 			my $host_emergency_stop = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_emergency_stop};
 			my $host_stop_reason    = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_stop_reason};
 			my $host_health         = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_health};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "host_uuid",           value1 => $host_uuid, 
-				name2 => "host_name",           value2 => $host_name, 
-				name3 => "host_type",           value3 => $host_type, 
-				name4 => "host_emergency_stop", value4 => $host_emergency_stop,
-				name5 => "host_stop_reason",    value5 => $host_stop_reason, 
-				name6 => "host_health",         value6 => $host_health, 
+				name2 => "host_location_uuid",  value2 => $host_location_uuid, 
+				name3 => "host_name",           value3 => $host_name, 
+				name4 => "host_type",           value4 => $host_type, 
+				name5 => "host_emergency_stop", value5 => $host_emergency_stop,
+				name6 => "host_stop_reason",    value6 => $host_stop_reason, 
+				name7 => "host_health",         value7 => $host_health, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -11587,6 +11804,7 @@ FROM
 UPDATE 
     public.hosts 
 SET
+    host_location_uuid  = ".$an->data->{sys}{use_db_fh}->quote($host_location_uuid).", 
     host_name           = ".$an->data->{sys}{use_db_fh}->quote($host_name).", 
     host_type           = ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
     host_emergency_stop = ".$an->data->{sys}{use_db_fh}->quote($host_emergency_stop).", 
@@ -11612,7 +11830,8 @@ WHERE
 INSERT INTO 
     public.hosts
 (
-    host_uuid,  
+    host_uuid, 
+    host_location_uuid, 
     host_name, 
     host_type, 
     host_emergency_stop, 
@@ -11621,6 +11840,7 @@ INSERT INTO
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($host_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($host_location_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($host_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($host_emergency_stop).", 
@@ -11650,6 +11870,7 @@ INSERT INTO
     history.hosts
 (
     host_uuid,  
+    host_location_uuid, 
     host_name, 
     host_type, 
     host_emergency_stop, 
@@ -11658,6 +11879,7 @@ INSERT INTO
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($host_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($host_location_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($host_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($host_emergency_stop).", 

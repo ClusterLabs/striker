@@ -98,9 +98,9 @@ sub process_task
 		# dealt with in the main menu.
 		show_main_menu($an);
 	}
-	elsif ($an->data->{cgi}{task} eq "scancore_db")
+	elsif ($an->data->{cgi}{task} eq "local_striker")
 	{
-		
+		local_striker_menu($an);
 	}
 	else
 	{
@@ -1152,6 +1152,17 @@ sub save_owner_form
 		name1 => "notice_message", value1 => $notice_message,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($notice_message, $error_fields);
+}
+
+# This saves the changes to the local Striker dashboard.
+sub save_local_striker_form
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_local_striker_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: Be sure to save a backup before actually writing out the new striker.conf file.
+	
+	return(0);
 }
 
 # This saves the changes to an Anvil! using the minimal of user input. As much data as possible will be 
@@ -6674,6 +6685,299 @@ sub owner_menu
 	return(0);
 }
 
+# This handles configuring the local Striker dashboard.
+sub local_striker_menu
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "local_striker_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: Add an "Advanced" button to expose all the remaining form fields
+	# Is the user asking to save changes?
+	my $notice_message = "";
+	my $error_fields   = [];
+	my $refresh_link   = $an->data->{sys}{cgi_string};
+	if ($an->data->{cgi}{save})
+	{
+		# Save, if something changed.
+		($notice_message, $error_fields) = save_local_striker_form($an);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+		$refresh_link =~ s/save=.*?&/&/;
+		$refresh_link =~ s/save=.*//;
+		$refresh_link =~ s/&&+/&/;
+	}
+	
+	# We need to get the SMTP data from the database
+	my $smtp = $an->ScanCore->get_smtp();
+	
+	# The rest of the data will be pulled from the database.
+	my $width      = 300;
+	my $menu_items = $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message => "#!string!header_0026!#",
+			class   => "breaker_header",
+			colspan => 4,
+		}});
+	
+	### TODO: Put the list of locations here.
+	
+	# And now get a list of SMTP mail servers to send email alerts through
+	my $smtp_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
+	my $smtp_explain = "#!string!explain_0178!#";
+	my $smtp_row     = "&nbsp;";	# Actually the 'Load' button
+	if (@{$smtp} > 0)
+	{
+		# Build an array to pass to 'build_select'
+		$smtp_explain = "#!string!explain_0192!#";
+		$smtp_row      = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"load_smtp",
+			id	=>	"load_smtp",
+			value	=>	"#!string!button_0048!#",
+		}, no_comment => 1});
+		
+		my $options = [];
+		foreach my $hash_ref (@{$smtp})
+		{
+			my $smtp_uuid  = $hash_ref->{smtp_uuid};
+			my $smtp_server  = $hash_ref->{smtp_server};
+			my $this_option = $smtp_uuid."#!#".$smtp_server;
+			push @{$options}, $this_option;
+		}
+		$smtp_select = $an->Web->build_select({
+			name      => "smtp_uuid", 
+			options   => $options, 
+			blank     => 1,
+			say_blank => "select_0012", 
+			selected  => $an->data->{cgi}{smtp_uuid},
+			width     => ($width + 10),
+		});
+	}
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"",
+			column1		=>	"$smtp_row",
+			column2_class	=>	"input_select",
+			column2		=>	$smtp_select,
+			column3_class	=>	"input_explain",
+			column3		=>	$smtp_explain,
+			column4_class	=>	"input_url",
+			column4		=>	"",
+		}});
+	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	"#!string!header_0021!#",
+			class	=>	"breaker_header",
+			colspan	=>	4,
+		}});
+	
+	### NOTE: 'DB->connect_to_db()' deletes DB entries that are not currently accessible. For this 
+	###       reason, we need to re-read the config file now.
+	$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+	
+	### From here down, we present fields for the user to enter.
+	# First, show the databases with one additional blank entry for new databases.
+	my $default_user     = $an->data->{scancore}{db}{1}{user} ? $an->data->{scancore}{db}{1}{user} : "admin";
+	my $default_password = $an->data->{scancore}{db}{1}{user} ? $an->data->{scancore}{db}{1}{user} : "";
+	my $db_id_list       = "";
+	my $id_list          = [];
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "id", value1 => $id, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$id_list}, $id;
+	}
+	push @{$id_list}, "new";
+	foreach my $id (@{$id_list})
+	{
+		# If the user deletes the host, it will remove the entire entry.
+		   $db_id_list    .= $id.",";
+		my $this_host     =  $an->data->{scancore}{db}{$id}{host};
+		my $this_port     =  $an->data->{scancore}{db}{$id}{port}     ? $an->data->{scancore}{db}{$id}{port}     : 5432;
+		my $this_name     =  $an->data->{scancore}{db}{$id}{name}     ? $an->data->{scancore}{db}{$id}{name}     : "scancore";
+		my $this_user     =  $an->data->{scancore}{db}{$id}{user}     ? $an->data->{scancore}{db}{$id}{user}     : $default_user;
+		my $this_password =  $an->data->{scancore}{db}{$id}{password} ? $an->data->{scancore}{db}{$id}{password} : $default_password;
+		my $say_id        =  $id eq "new" ? "#!string!state_0130!#"   : $id;
+		my $say_explain   =  $id eq "new" ? "#!string!explain_0232!#" : "#!string!explain_0233!#";
+		my $host_key      =  $id."_scancore_db_host";
+		my $port_key      =  $id."_scancore_db_port";
+		my $name_key      =  $id."_scancore_db_name";
+		my $user_key      =  $id."_scancore_db_user";
+		my $password_key  =  $id."_scancore_db_password";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			name1  => "id",          value1  => $id, 
+			name2  => "db_id_list",  value2  => $db_id_list, 
+			name3  => "this_host",   value3  => $this_host,
+			name4  => "this_port",   value4  => $this_port,
+			name5  => "this_name",   value5  => $this_name,
+			name6  => "this_user",   value6  => $this_user,
+			name7  => "say_id",      value7  => $say_id,
+			name8  => "say_explain", value8  => $say_explain,
+			name9  => "host_key",    value9  => $host_key,
+			name10 => "port_key",    value10 => $port_key,
+			name11 => "name_key",    value11 => $name_key,
+			name12 => "user_key",    value12 => $user_key,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_password", value1 => $this_password, 
+			name2 => "password_key",  value2 => $password_key, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ((not $an->data->{cgi}{save}) && ($id ne "new"))
+		{
+			$an->data->{cgi}{$host_key}     = $this_host;
+			$an->data->{cgi}{$port_key}     = $this_port;
+			$an->data->{cgi}{$name_key}     = $this_name;
+			$an->data->{cgi}{$user_key}     = $this_user;
+			$an->data->{cgi}{$password_key} = $this_password;
+		}
+		
+		# Host
+		$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+				column1_class	=>	"highlight_row_bold",
+				column1		=>	$an->String->get({key => "row_0328", variables => { id => $say_id }}),
+				column2_class	=>	"input_select",
+				column2		=>	"<input type=\"text\" name=\"$host_key\" id=\"$host_key\" value=\"".$an->data->{cgi}{$host_key}."\" style=\"width: ${width}px;\">",
+				column3_class	=>	"input_explain",
+				column3		=>	$say_explain,
+				column4_class	=>	"input_url",
+				column4		=>	"&nbsp;",
+			}});
+		
+		# Port
+		$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+				column1_class	=>	"highlight_row_bold",
+				column1		=>	$an->String->get({key => "row_0329", variables => { id => $say_id }}),
+				column2_class	=>	"input_select",
+				column2		=>	"<input type=\"text\" name=\"$port_key\" id=\"$port_key\" value=\"".$an->data->{cgi}{$port_key}."\" style=\"width: ${width}px;\">",
+				column3_class	=>	"input_explain",
+				column3		=>	"#!string!explain_0234!#",
+				column4_class	=>	"input_url",
+				column4		=>	"&nbsp;",
+			}});
+		
+		# Name
+		$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+				column1_class	=>	"highlight_row_bold",
+				column1		=>	$an->String->get({key => "row_0330", variables => { id => $say_id }}),
+				column2_class	=>	"input_select",
+				column2		=>	"<input type=\"text\" name=\"$name_key\" id=\"$name_key\" value=\"".$an->data->{cgi}{$name_key}."\" style=\"width: ${width}px;\">",
+				column3_class	=>	"input_explain",
+				column3		=>	"#!string!explain_0235!#",
+				column4_class	=>	"input_url",
+				column4		=>	"&nbsp;",
+			}});
+		
+		# User
+		$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+				column1_class	=>	"highlight_row_bold",
+				column1		=>	$an->String->get({key => "row_0331", variables => { id => $say_id }}),
+				column2_class	=>	"input_select",
+				column2		=>	"<input type=\"text\" name=\"$user_key\" id=\"$user_key\" value=\"".$an->data->{cgi}{$user_key}."\" style=\"width: ${width}px;\">",
+				column3_class	=>	"input_explain",
+				column3		=>	"#!string!explain_0236!#",
+				column4_class	=>	"input_url",
+				column4		=>	"&nbsp;",
+			}});
+		
+		# Password
+		$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+				column1_class	=>	"highlight_row_bold",
+				column1		=>	$an->String->get({key => "row_0332", variables => { id => $say_id }}),
+				column2_class	=>	"input_select",
+				column2		=>	"<input type=\"text\" name=\"$password_key\" id=\"$password_key\" value=\"".$an->data->{cgi}{$password_key}."\" style=\"width: ${width}px;\">",
+				column3_class	=>	"input_explain",
+				column3		=>	"#!string!explain_0237!#",
+				column4_class	=>	"input_url",
+				column4		=>	"&nbsp;",
+			}});
+	}
+	
+	# The hidden DB ID list.
+	$db_id_list =~ s/,$//;
+	$menu_items .= $an->Web->template({file => "web.html", template => "hidden_input", replace => { 
+			name	=>	"scancore_db_id_list",
+			id	=>	"scancore_db_id_list",
+			value	=>	$db_id_list,
+		}});
+	
+	
+	# Hidden fields now  
+	$menu_items .= $an->Web->template({file => "web.html", template => "hidden_input", replace => { 
+			name	=>	"task",
+			id	=>	"task",
+			value	=>	$an->data->{cgi}{task},
+		}});
+	
+	
+	
+	# The 'Save' button
+	my $save_button = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+		name	=>	"save",
+		id	=>	"save",
+		value	=>	"#!string!button_0045!#",
+	}, no_comment => 1});
+	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	$save_button,
+			class	=>	"",
+			colspan	=>	4,
+		}});
+	
+	# Put the menu template together
+	my $menu = $an->Web->template({file => "web.html", template => "generic-4column-menu", replace => {
+			title		=>	"#!string!title_0205!#",
+			menu_items	=>	$menu_items,
+		}});
+	# Wrap it in a <form>
+	$menu = $an->Web->template({file => "web.html", template => "form-wrapper", replace => { body => $menu }});
+	
+	# Put together the page's frame...
+	my $back_image = $an->Web->template({file => "common.html", template => "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
+			alt_text     => "#!string!button_0001!#",
+			id           => "back_icon",
+		}});
+	
+	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
+			alt_text     => "#!string!button_0002!#",
+			id           => "refresh_icon",
+		}});
+	my $back_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"back",
+			id	=>	"back",
+			alt	=>	"#!string!button_0001!#",
+			value	=>	$back_image,
+			url	=>	"?",
+		}, no_comment => 1});
+	my $refresh_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"refresh",
+			id	=>	"refresh",
+			alt	=>	"#!string!button_0002!#",
+			value	=>	$refresh_image,
+			url	=>	$refresh_link,
+		}, no_comment => 1});
+	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
+			back	=>	$back_anchor,
+			refresh	=>	$refresh_anchor,
+		}});
+	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
+	
+	# Print it!
+	print $an->Web->template({
+			file		=>	"configure.html",
+			template	=>	"configure-main-page",
+			replace		=>	{
+				header		=>	$header, 
+				notices		=>	$notice_message,
+				body		=>	$menu, 
+				footer		=>	$footer, 
+			},
+		});
+	
+	return(0);
+}
+
+
 # This handles the configuration of Anvil! systems (including the ability to create new owners)
 sub anvil_menu
 {
@@ -7434,61 +7738,85 @@ sub show_main_menu
 			url		=>	"",
 		}})."\n";
 	
-	### TODO: Setup these later.
-	# Backup and restore
-# 	my $task_backup_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-# 			name	=>	"task_backup",
-# 			id	=>	"task_backup",
-# 			alt	=>	"#!string!button_0074!#",
-# 			value	=>	"#!string!button_0074!#",
-# 			url	=>	"?task=backup",
-# 		}, no_comment => 1});
-# 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-# 			button		=>	$task_backup_anchor,
-# 			description	=>	"#!string!explain_0171!#",
-# 			url		=>	"",
-# 		}})."\n";
+	### Backs up and restores the ScanCore database. - Disabled until v2.1
+	if (0)
+	{
+		# Backup and restore
+		my $task_backup_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+				name	=>	"task_backup",
+				id	=>	"task_backup",
+				alt	=>	"#!string!button_0074!#",
+				value	=>	"#!string!button_0074!#",
+				url	=>	"?task=backup",
+			}, no_comment => 1});
+		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+				button		=>	$task_backup_anchor,
+				description	=>	"#!string!explain_0171!#",
+				url		=>	"",
+			}})."\n";
+	}
 	
-	# Configure ScanCore Databases
-# 	my $task_scancore_db_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-# 			name	=>	"scancore_db",
-# 			id	=>	"scancore_db",
-# 			alt	=>	"#!string!button_0076!#",
-# 			value	=>	"#!string!button_0076!#",
-# 			url	=>	"?task=scancore_db",
-# 		}, no_comment => 1});
-# 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-# 			button		=>	$task_scancore_db_anchor,
-# 			description	=>	"#!string!explain_0173!#",
-# 			url		=>	"",
-# 		}})."\n";
+	### Configures the local dashboard (Databases, SMTP server and (in v2.1) location).
+	my $task_local_striker_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"local_striker",
+			id	=>	"local_striker",
+			alt	=>	"#!string!button_0076!#",
+			value	=>	"#!string!button_0076!#",
+			url	=>	"?task=local_striker",
+		}, no_comment => 1});
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	$task_local_striker_anchor,
+			description	=>	"#!string!explain_0173!#",
+			url		=>	"",
+		}})."\n";
 	
 	### Disaster recovery options - Disabled until v2.1
-	# DR Targets
-# 	my $task_dr_target_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-# 			name	=>	"dr_target",
-# 			id	=>	"dr_target",
-# 			alt	=>	"#!string!button_0078!#",
-# 			value	=>	"#!string!button_0078!#",
-# 			url	=>	"?task=dr_target",
-# 		}, no_comment => 1});
-# 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-# 			button		=>	$task_dr_target_anchor,
-# 			description	=>	"#!string!explain_0213!#",
-# 			url		=>	"",
-# 		}})."\n";
-# 	my $task_dr_job_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-# 			name	=>	"dr_job",
-# 			id	=>	"dr_job",
-# 			alt	=>	"#!string!button_0079!#",
-# 			value	=>	"#!string!button_0079!#",
-# 			url	=>	"?task=dr_job",
-# 		}, no_comment => 1});
-# 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-# 			button		=>	$task_dr_job_anchor,
-# 			description	=>	"#!string!explain_0214!#",
-# 			url		=>	"",
-# 		}})."\n";
+	if (0)
+	{
+		# DR Targets
+		my $task_dr_target_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+				name	=>	"dr_target",
+				id	=>	"dr_target",
+				alt	=>	"#!string!button_0078!#",
+				value	=>	"#!string!button_0078!#",
+				url	=>	"?task=dr_target",
+			}, no_comment => 1});
+		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+				button		=>	$task_dr_target_anchor,
+				description	=>	"#!string!explain_0213!#",
+				url		=>	"",
+			}})."\n";
+		my $task_dr_job_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+				name	=>	"dr_job",
+				id	=>	"dr_job",
+				alt	=>	"#!string!button_0079!#",
+				value	=>	"#!string!button_0079!#",
+				url	=>	"?task=dr_job",
+			}, no_comment => 1});
+		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+				button		=>	$task_dr_job_anchor,
+				description	=>	"#!string!explain_0214!#",
+				url		=>	"",
+			}})."\n";
+	}
+	
+	### Host locations - Disabled until v2.1
+	if (0)
+	{
+		# Host locations
+		my $task_location_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+				name	=>	"location",
+				id	=>	"location",
+				alt	=>	"#!string!button_0080!#",
+				value	=>	"#!string!button_0080!#",
+				url	=>	"?task=location",
+			}, no_comment => 1});
+		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+				button		=>	$task_location_anchor,
+				description	=>	"#!string!explain_0231!#",
+				url		=>	"",
+			}})."\n";
+	}
 	
 	# Get the list of existing Anvil! systems, if any
 	my $anvil_count = 0;
@@ -7571,9 +7899,7 @@ sub initialize
 	$an->Storage->read_words({file => $an->data->{path}{scancore_strings}});
 	$an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
-	# Read in the configuration file. If the file doesn't exist, initial setup will be triggered.
-	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
-
+	# Read in the configuration file.
 	$an->default_language    ($an->data->{sys}{language});
 	$an->default_log_language($an->data->{'log'}{language});
 	$an->default_log_file    ($an->data->{'log'}{file});

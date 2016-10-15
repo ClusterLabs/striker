@@ -320,6 +320,7 @@ sub get_hosts
 	my $query = "
 SELECT 
     host_uuid, 
+    host_location_uuid, 
     host_name, 
     host_type, 
     host_emergency_stop, 
@@ -343,23 +344,26 @@ FROM
 	foreach my $row (@{$results})
 	{
 		my $host_uuid           = $row->[0];
-		my $host_name           = $row->[1];
-		my $host_type           = $row->[2];
-		my $host_emergency_stop = $row->[3] ? $row->[3] : "";
-		my $host_stop_reason    = $row->[4] ? $row->[4] : "";
-		my $host_health         = $row->[5] ? $row->[5] : "";
-		my $modified_date       = $row->[6];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		my $host_location_uuid  = $row->[1] ? $row->[1] : "";
+		my $host_name           = $row->[2];
+		my $host_type           = $row->[3];
+		my $host_emergency_stop = $row->[4] ? $row->[4] : "";
+		my $host_stop_reason    = $row->[5] ? $row->[5] : "";
+		my $host_health         = $row->[6] ? $row->[6] : "";
+		my $modified_date       = $row->[7];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "host_uuid",           value1 => $host_uuid, 
-			name2 => "host_name",           value2 => $host_name, 
-			name3 => "host_type",           value3 => $host_type, 
-			name4 => "host_emergency_stop", value4 => $host_emergency_stop, 
-			name5 => "host_stop_reason",    value5 => $host_stop_reason, 
-			name6 => "host_health",         value6 => $host_health, 
-			name7 => "modified_date",       value7 => $modified_date, 
+			name2 => "host_location_uuid",  value2 => $host_location_uuid, 
+			name3 => "host_name",           value3 => $host_name, 
+			name4 => "host_type",           value4 => $host_type, 
+			name5 => "host_emergency_stop", value5 => $host_emergency_stop, 
+			name6 => "host_stop_reason",    value6 => $host_stop_reason, 
+			name7 => "host_health",         value7 => $host_health, 
+			name8 => "modified_date",       value8 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$return}, {
 			host_uuid		=>	$host_uuid,
+			host_location_uuid	=>	$host_location_uuid, 
 			host_name		=>	$host_name, 
 			host_type		=>	$host_type, 
 			host_emergency_stop	=>	$host_emergency_stop, 

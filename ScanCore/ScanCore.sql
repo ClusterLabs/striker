@@ -5,6 +5,57 @@ SET client_encoding = 'UTF8';
 CREATE SCHEMA IF NOT EXISTS history;
 
 
+-- NOTE: The 'hosts' table depends on this, so it must come before 'hosts'.
+-- NOTE: This is not implemented yet and will not be implemented until v2.1 or v2.2
+-- This stores information about installation sites. Sites can be used to pool and separate common 
+-- environmental data, like power and temperature data, together so that more intelligent decisions can be
+-- made with reguard to emergency and recovery conditions.
+-- NOTE: Hosts without a location UUID are treated as being in a common location. Thus, "no location" is
+--       effectively a default location.
+CREATE TABLE locations (
+	location_uuid			uuid				not null	primary key,	-- 
+	location_name			text				not null,			-- A human-friendly location name
+	location_note			text,								-- An optional notes section
+	modified_date			timestamp with time zone	not null 
+);
+ALTER TABLE locations OWNER TO #!variable!user!#;
+
+CREATE TABLE history.locations (
+	history_id			bigserial, 
+	location_uuid			uuid, 
+	location_name			text, 
+	location_note			text, 
+	modified_date			timestamp with time zone	not null 
+);
+ALTER TABLE history.locations OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_locations() RETURNS trigger
+AS $$
+DECLARE
+	history_locations RECORD;
+BEGIN
+	SELECT INTO history_locations * FROM locations WHERE location_uuid = new.location_uuid;
+	INSERT INTO history.locations
+		(location_uuid, 
+		 location_name, 
+		 location_note, 
+		 modified_date)
+	VALUES
+		(history_locations.location_uuid,
+		 history_locations.location_name, 
+		 history_locations.location_note, 
+		 history_locations.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_locations() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_locations
+	AFTER INSERT OR UPDATE ON locations
+	FOR EACH ROW EXECUTE PROCEDURE history_locations();
+
+
 -- This stores infomation for sending email notifications. 
 CREATE TABLE smtp (
 	smtp_uuid		uuid				not null	primary key,	-- 
@@ -498,18 +549,22 @@ CREATE TRIGGER trigger_manifests
 -- ScanCore. All agents will reference this table.
 CREATE TABLE hosts (
 	host_uuid		uuid				not null	primary key,	-- This is the single most important record in ScanCore. Everything links back to here.
+	host_location_uuid	uuid,								-- This stores the current health of the node ('ok', 'warning', 'critical', 'shutdown')
 	host_name		text				not null,
 	host_type		text				not null,			-- Either 'node' or 'dashboard'.
 	host_emergency_stop	boolean				not null	default FALSE,	-- Set to TRUE when ScanCore shuts down the node.
 	host_stop_reason	text,								-- Set to 'power' if the UPS shut down and 'temperature' if the temperature went too high or low. Set to 'clean' if the user used Striker to power off the node (this prevents any Striker from booting the nodes back up).
 	host_health		text,								-- This stores the current health of the node ('ok', 'warning', 'critical', 'shutdown')
-	modified_date		timestamp with time zone	not null
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(host_location_uuid) REFERENCES locations(location_uuid)
 );
 ALTER TABLE hosts OWNER TO #!variable!user!#;
 
 CREATE TABLE history.hosts (
 	history_id		bigserial,
 	host_uuid		uuid				not null,
+	host_location_uuid	uuid,
 	host_name		text				not null,
 	host_type		text				not null,
 	host_emergency_stop	boolean				not null,
@@ -527,6 +582,7 @@ BEGIN
 	SELECT INTO history_hosts * FROM hosts WHERE host_uuid = new.host_uuid;
 	INSERT INTO history.hosts
 		(host_uuid,
+		 host_location_uuid, 
 		 host_name,
 		 host_type,
 		 host_emergency_stop,
@@ -535,6 +591,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_hosts.host_uuid,
+		 history_hosts.host_location_uuid, 
 		 history_hosts.host_name,
 		 history_hosts.host_type,
 		 history_hosts.host_emergency_stop,

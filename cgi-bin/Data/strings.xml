@@ -80,10 +80,11 @@
 		<key name="button_0073">Advanced Options</key>
 		<key name="button_0074">Backup and Restore</key>
 		<key name="button_0075">Removal disabled while 'Degraded'</key>
-		<key name="button_0076">#!string!brand_0015!# Databases</key>
+		<key name="button_0076">Local #!string!brand_0015!#</key>
 		<key name="button_0077">Edit</key>
 		<key name="button_0078">DR Targets</key>
 		<key name="button_0079">DR Jobs</key>
+		<key name="button_0080">Locations</key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -321,7 +322,7 @@
 		<key name="explain_0170">Enables the ability to network-boot and build nodes and dashboards.</key>
 		<key name="explain_0171">Create a backup of this #!string!brand_0020!# or restore from an old backup.</key>
 		<key name="explain_0172"><![CDATA[#!string!brand_0020!# and #!string!brand_0015!# have many configuration options.<br />Advanced users can tune these in this menu.]]></key>
-		<key name="explain_0173">Add, edit or remove the available #!string!brand_0015!# databases to synchronize with.</key>
+		<key name="explain_0173">Configure the local #!string!brand_0020!#.</key>
 		<key name="explain_0174">There are no existing #!string!brand_0003!# systems yet.</key>
 		<key name="explain_0175">There are no existing owners yet.</key>
 		<key name="explain_0176">Enter the name of the company, group or person who owns this #!string!brand_0003!# system.</key>
@@ -379,6 +380,13 @@
 		<key name="explain_0228"><![CDATA[There are no existing #!string!brand_0003!# systems yet.<br />You will not be able to save a DR job until one exists.]]></key>
 		<key name="explain_0229"><![CDATA[Select an existing #!string!brand_0003!# system and click '#!string!button_0048!#,<br />to update the list of servers available to select for this job.]]></key>
 		<key name="explain_0230"><![CDATA[There are no servers to select for this job yet.]]></key>
+		<key name="explain_0231"><![CDATA[Defining locations allows hosts to be grouped by physical location,<br />which improves the intelligence of the decision engine in emegerncy<br />and recovery conditions.]]></key>
+		<key name="explain_0232">The host name (or IP address) of the #!string!brand_0015!# database server.</key>
+		<key name="explain_0233"><![CDATA[The host name (or IP address) of the #!string!brand_0015!# database server<br /><span class="highlight_note_bold">Note</span>: Clearing this field will delete the existing DB]]></key>
+		<key name="explain_0234">The TCP port that the #!string!brand_0015!# database is listening on.</key>
+		<key name="explain_0235">The name of the #!string!brand_0015!# database.</key>
+		<key name="explain_0236">The user name to use when connecting to the #!string!brand_0015!# database.</key>
+		<key name="explain_0237"><![CDATA[The database user's password.<br /><span class="highlight_note_bold">Note</span>: Changing this will <b>NOT</b> change the current database password!]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -802,6 +810,11 @@
 		<key name="row_0325">Schedule</key>
 		<key name="row_0326">Target Name</key>
 		<key name="row_0327">Target Password</key>
+		<key name="row_0328"><![CDATA[[<span class="subtle_text">#!variable!id!#</span>] Database Host]]></key>
+		<key name="row_0329"><![CDATA[[<span class="subtle_text">#!variable!id!#</span>] Database Port]]></key>
+		<key name="row_0330"><![CDATA[[<span class="subtle_text">#!variable!id!#</span>] Database Name]]></key>
+		<key name="row_0331"><![CDATA[[<span class="subtle_text">#!variable!id!#</span>] Database User]]></key>
+		<key name="row_0332"><![CDATA[[<span class="subtle_text">#!variable!id!#</span>] Database Password]]></key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -829,6 +842,7 @@
 		<key name="header_0023"><![CDATA[These #!string!brand_0003!# systems are currently owned by this owner.]]></key>
 		<key name="header_0024"><![CDATA[These #!string!brand_0003!# systems currently using this SMTP server to send alerts.]]></key>
 		<key name="header_0025"><![CDATA[Notification details for existing #!string!brand_0003!# systems.]]></key>
+		<key name="header_0026">Select an existing item to use it again for this #!string!brand_0015!#</key>
 		
 		<!-- These are strings used to describe devices -->
 		<key name="device_0001">Hard Drive</key>
@@ -1170,6 +1184,7 @@
 		<key name="state_0127">Cold</key>
 		<key name="state_0128"><![CDATA[<span class="highlight_warning">Unknown (was: [#!variable!host!#])</span>]]></key>
 		<key name="state_0129">Partial Success</key>
+		<key name="state_0130">New</key>
 		
 		
 		<!-- Titles used in tables (and options in <select> fields) -->
@@ -1377,6 +1392,7 @@
 		<key name="title_0202"><![CDATA[Fencing <span class="fixed_width">#!variable!node_name!#</span> node directly...]]></key>
 		<key name="title_0203">The new #!string!brand_0003!# was successfully saved.</key>
 		<key name="title_0204">Add, edit or delete a disaster recovery target server.</key>
+		<key name="title_0205">Configure this #!string!brand_0015!# host.</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>

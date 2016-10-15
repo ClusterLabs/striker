@@ -389,9 +389,6 @@ sub read_conf
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
-	my $file;
-	my $hash = $an->data;
-	
 	# This is/was for testing.
 	if (0)
 	{
@@ -400,19 +397,9 @@ sub read_conf
 		$an->nice_exit({exit_code => 0});
 	}
 	
-	# Now see if the user passed the values in a hash reference or directly.
-	if (ref($parameter) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$file = $parameter->{file} if $parameter->{file};
-		$hash = $parameter->{hash} if $parameter->{hash};
-	}
-	else
-	{
-		# Values passed directly.
-		$file = $parameter;
-		$hash = $_[0] if defined $_[0];
-	}
+	my $file  = $parameter->{file}  ? $parameter->{file}  : "";
+	my $hash  = $parameter->{hash}  ? $parameter->{hash}  : $an->data;
+	my $debug = $parameter->{debug} ? $parameter->{debug} : 0;
 	
 	# Make sure I have a sane file name.
 	if ($file)
@@ -420,14 +407,14 @@ sub read_conf
 		# Find it relative to the AN::Tools root directory.
 		if ($file =~ /^AN::Tools/)
 		{
-			my $dir =  $INC{'AN/Tools.pm'};
-			$dir    =~ s/Tools.pm//;
-			$file   =~ s/AN::Tools\//$dir/;
-			$file   =~ s/\/\//\//g;
+			my $dir  =  $INC{'AN/Tools.pm'};
+			   $dir  =~ s/Tools.pm//;
+			   $file =~ s/AN::Tools\//$dir/;
+			   $file =~ s/\/\//\//g;
 		}
 		
 		# I have a file. Is it relative to the install dir or fully qualified?
-		if (($file =~ /^\.\//) || ($file !~ /^\//))
+		if (($file =~ /^\.\//) or ($file !~ /^\//))
 		{
 			# It is in or relative to this directory.
 			if ($ENV{PWD})
@@ -452,6 +439,12 @@ sub read_conf
 	$an->_load_io_handle() if not $an->_io_handle_loaded();
 	my $read = IO::Handle->new();
 	
+	if ($debug)
+	{
+		print "Content-type: text/html; charset=utf-8\n\n";
+		print "<pre>\n";
+	}
+	
 	# Is it too early to use "$an->error"?
 	my $short_hostname = $an->short_hostname;
 	my $hostname       = $an->hostname;
@@ -459,15 +452,20 @@ sub read_conf
 	while (<$read>)
 	{
 		chomp;
-		my $line  =  $_;
-		   $line  =~ s/^\s+//;
-		   $line  =~ s/\s+$//;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
 		next if ((not $line) or ($line =~ /^#/));
 		next if $line !~ /=/;
 		my ($variable, $value) = split/=/, $line, 2;
 		$variable =~ s/\s+$//;
 		$value    =~ s/^\s+//;
 		next if not $variable;
+		
+		if ($debug)
+		{
+			print "$variable = $value\n";
+		}
 		
 		# If the variable has '#!hostname!#' or '#!short_hostname!#', convert it now.
 		$value =~ s/#!hostname!#/$hostname/g;
@@ -476,13 +474,16 @@ sub read_conf
 		$an->_make_hash_reference($hash, $variable, $value);
 	}
 	$read->close();
+	if ($debug)
+	{
+		print "</pre>\n";
+		die "$THIS_FILE ".__LINE__."; testing...\n";
+	}
 	
-	### MADI: Make this a more intelligent method that can go a variable
-	###       number of sub-keys deep and does a search/replace of
-	###       variables based on a given key match.
-	# Some keys store directories. Below, I convert the ones I know about
-	# to the current operating system's directory delimiter where '::' is
-	# found.
+	### TODO: Make this a more intelligent method that can go a variable number of sub-keys deep and does
+	###       a search/replace of variables based on a given key match.
+	# Some keys store directories. Below, I convert the ones I know about to the current operating 
+	# system's directory delimiter where '::' is found.
 	my $directory_delimiter = $an->_directory_delimiter();
 	foreach my $key (keys %{$an->data->{dir}})
 	{
