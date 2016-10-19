@@ -696,9 +696,27 @@ sub do_db_write
 	my $limit     = 25000;
 	my $count     = 0;
 	my $query_set = [];
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "query",                       value1 => $query, 
+		name2 => "sys::db::maximum_batch_size", value2 => $an->data->{sys}{db}{maximum_batch_size}, 
 	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{db}{maximum_batch_size})
+	{
+		if ($an->data->{sys}{db}{maximum_batch_size} =~ /\D/)
+		{
+			# Bad value.
+			$an->data->{sys}{db}{maximum_batch_size} = 25000;
+			$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::db::maximum_batch_size", value1 => $an->data->{sys}{db}{maximum_batch_size}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Use the set value now.
+		$limit = $an->data->{sys}{db}{maximum_batch_size};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "limit", value1 => $limit, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	if (ref($query) eq "ARRAY")
 	{
 		# Multiple things to enter.

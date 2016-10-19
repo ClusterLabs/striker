@@ -7757,18 +7757,21 @@ sub show_main_menu
 	}
 	
 	### Configures the local dashboard (Databases, SMTP server and (in v2.1) location).
-	my $task_local_striker_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-			name	=>	"local_striker",
-			id	=>	"local_striker",
-			alt	=>	"#!string!button_0076!#",
-			value	=>	"#!string!button_0076!#",
-			url	=>	"?task=local_striker",
-		}, no_comment => 1});
-	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	$task_local_striker_anchor,
-			description	=>	"#!string!explain_0173!#",
-			url		=>	"",
-		}})."\n";
+	if (0)
+	{
+		my $task_local_striker_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+				name	=>	"local_striker",
+				id	=>	"local_striker",
+				alt	=>	"#!string!button_0076!#",
+				value	=>	"#!string!button_0076!#",
+				url	=>	"?task=local_striker",
+			}, no_comment => 1});
+		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+				button		=>	$task_local_striker_anchor,
+				description	=>	"#!string!explain_0173!#",
+				url		=>	"",
+			}})."\n";
+	}
 	
 	### Disaster recovery options - Disabled until v2.1
 	if (0)
