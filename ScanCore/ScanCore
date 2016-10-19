@@ -39,6 +39,7 @@ use strict;
 use warnings;
 use AN::Tools;
 use Data::Dumper;
+no warnings 'recursion';
 
 # Disable buffering.
 $| = 1;
@@ -381,7 +382,7 @@ while(1)
 	$an->DB->update_time({file => $THIS_FILE});
 	
 	# Check RAM usage and bail if it looks like we're leaking.
-	check_ram_usage($an);
+	$an->ScanCore->check_ram_usage();
 	
 	# Archive, if needed.
 	archive_if_needed($an);
@@ -511,7 +512,7 @@ sub archive_if_needed
 	}
 	
 	# See if there was a request to archive records older than a certain date. If so, do it now.
-	# TODO
+	# TODO: Remove 'states' history.
 	
 	# Now lets look to archive certain fast-growing tables.
 	# * agents
@@ -992,7 +993,7 @@ ORDER BY
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "count",   value1 => $count, 
 			name2 => "results", value2 => $results, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1426,7 +1427,7 @@ ORDER BY
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "count",   value1 => $count, 
 			name2 => "results", value2 => $results, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -6368,7 +6369,6 @@ sub update_db
 		update_db_nodes($an);         
 		update_db_notifications($an);
 		update_db_recipients($an);
-		update_db_states($an);
 		update_db_nodes_cache($an);
 		
 		update_db_alerts($an);
@@ -6825,7 +6825,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -6914,7 +6914,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7106,7 +7106,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -7142,7 +7142,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7183,7 +7183,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7335,7 +7335,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -7361,7 +7361,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7392,7 +7392,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7498,7 +7498,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{recipients}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $recipient_uuid (keys %{$an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}})
@@ -7560,7 +7560,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -7590,7 +7590,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7625,7 +7625,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7809,7 +7809,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -7843,7 +7843,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -7882,7 +7882,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8093,7 +8093,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -8133,7 +8133,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8178,7 +8178,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8366,7 +8366,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -8400,7 +8400,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8439,7 +8439,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8591,7 +8591,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -8617,7 +8617,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8648,7 +8648,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8800,7 +8800,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -8826,7 +8826,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8857,7 +8857,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8866,227 +8866,6 @@ INSERT INTO
 				} # Seen owner_uuid?
 			} # foreach my $id 
 		} # foreach my $owner_uuid ...
-	} # foreach $modified_date ...
-	
-	# Free up memory by deleting the DB data from the main hash.
-	delete $an->data->{db_data};
-	
-	# Do the INSERTs now and then release the memory.
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
-	{
-		# Merge the queries with public schema queries being first.
-		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
-		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
-		{
-			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
-			delete $an->data->{db_resync}{$id}{sql};
-		}
-	}
-	
-	return(0);
-}
-
-# Update/sync the states table. Like 'servers', this table is not bound to a host.
-sub update_db_states
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_states" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# Now read in all the 'states' table records that came from us.
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
-	{
-		# These will store the INSERTs for this DB, if needed.
-		$an->data->{db_resync}{$id}{sql}          = [];
-		$an->data->{db_resync}{$id}{public}{sql}  = [];
-		$an->data->{db_resync}{$id}{history}{sql} = [];
-		
-		### NOTE: This table is special in that it does NOT link back to a specific host.
-		# Read in the history schema
-		my $query = "
-SELECT 
-    state_uuid,
-    state_name, 
-    state_host_uuid, 
-    state_note, 
-    modified_date 
-FROM 
-    history.states 
-;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "id",    value1 => $id, 
-			name2 => "query", value2 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Do the query against the source DB and loop through the results.
-		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "results", value1 => $results
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $row (@{$results})
-		{
-			my $state_uuid      = $row->[0];
-			my $state_name      = $row->[1];
-			my $state_host_uuid = $row->[2];
-			my $state_note      = $row->[3];
-			my $modified_date   = $row->[4];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name1 => "state_uuid",      value1 => $state_uuid, 
-				name2 => "state_name",      value2 => $state_name, 
-				name3 => "state_host_uuid", value3 => $state_host_uuid, 
-				name4 => "state_note",      value4 => $state_note, 
-				name5 => "modified_date",   value5 => $modified_date
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Record this in the unified and local hashes.
-			$an->data->{db_data}{unified}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid} = {
-				state_name	=>	$state_name, 
-				state_host_uuid	=>	$state_host_uuid, 
-				state_note	=>	$state_note, 
-			};
-			
-			$an->data->{db_data}{$id}{states}{state_uuid}{$state_uuid}{'exists'} = 1;
-			$an->data->{db_data}{$id}{states}{state_uuid}{$state_uuid}{seen}     = 0;
-			$an->data->{db_data}{$id}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid} = {
-				state_name	=>	$state_name, 
-				state_host_uuid	=>	$state_host_uuid, 
-				state_note	=>	$state_note, 
-			};
-		}
-	}
-	
-	### NOTE: Sort '$b cmp $a' on the modified date.
-	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
-	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{states}{modified_date}})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "modified_date", value1 => $modified_date,
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $state_uuid (keys %{$an->data->{db_data}{unified}{states}{modified_date}{$modified_date}{state_uuid}})
-		{
-			my $state_name      = $an->data->{db_data}{unified}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid}{state_name}; 
-			my $state_host_uuid = $an->data->{db_data}{unified}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid}{state_host_uuid}; 
-			my $state_note      = $an->data->{db_data}{unified}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid}{state_note};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-				name1 => "state_uuid",      value1 => $state_uuid, 
-				name2 => "state_name",      value2 => $state_name, 
-				name3 => "state_host_uuid", value3 => $state_name, 
-				name4 => "state_note",      value4 => $state_note, 
-			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
-			{
-				# For each 'state_uuid' we see;
-				# - Check if we've *seen* it before
-				#   |- If not; See if it *exists* in the public schema yet.
-				#   |  |- If so, check to see if the entry in the public schema is up to date.
-				#   |  |  \- If not, _UPDATE_ public schema.
-				#   |  \- If not, do an _INSERT_ into public schema.
-				#   \- If we have, see if it exists at the current timestamp.
-				#      \- If not, _INSERT_ it into history schema.
-				#
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "db_data::${id}::state::state_uuid::${state_uuid}::seen", value1 => $an->data->{db_data}{$id}{states}{state_uuid}{$state_uuid}{seen}, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if (not $an->data->{db_data}{$id}{states}{state_uuid}{$state_uuid}{seen})
-				{
-					# Mark this record as now having been seen.
-					$an->data->{db_data}{$id}{states}{state_uuid}{$state_uuid}{seen} = 1;
-					
-					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::state::state_uuid::${state_uuid}::exists", value1 => $an->data->{db_data}{$id}{states}{state_uuid}{$state_uuid}{'exists'}, 
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{states}{state_uuid}{$state_uuid}{'exists'})
-					{
-						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1  => "db_data::${id}::state::modified_date::${modified_date}::state_uuid::${state_uuid}", value1 => $an->data->{db_data}{$id}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid}, 
-						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid})
-						{
-							# No, so UPDATE it.
-							my $query = "
-UPDATE 
-    public.states 
-SET
-    state_name      = ".$an->data->{sys}{use_db_fh}->quote($state_name).", 
-    state_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($state_host_uuid).", 
-    state_note      = ".$an->data->{sys}{use_db_fh}->quote($state_note).", 
-    modified_date   = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    state_uuid      = ".$an->data->{sys}{use_db_fh}->quote($state_uuid)." 
-;";
-							# Now record the query in the array
-							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-								name1 => "id",    value1 => $id, 
-								name2 => "query", value2 => $query
-							}, file => $THIS_FILE, line => __LINE__});
-							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-						}
-					}
-					else
-					{
-						# It doesn't exist, so INSERT it.
-						my $query = "
-INSERT INTO 
-    public.states 
-(
-    state_uuid, 
-    state_name, 
-    state_host_uuid, 
-    state_note, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($state_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($state_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($state_host_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($state_note).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						# Now record the query in the array
-						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-					}
-				}
-				else
-				{
-					# We've seen this 'state_uuid' before, so it is just a question
-					# of whether the entry for the current timestamp exists in the 
-					# history schema.
-					if (not $an->data->{db_data}{$id}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid})
-					{
-						# It doesn't, INSERT it.
-						my $query = "
-INSERT INTO 
-    history.states 
-(
-    state_uuid, 
-    state_name, 
-    state_host_uuid, 
-    state_note, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($state_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($state_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($state_host_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($state_note).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						# Now record the query in the array
-						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
-					} # Exist in history at timestamp?
-				} # Seen state_uuid?
-			} # foreach my $id 
-		} # foreach my $state_uuid ...
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.
@@ -9231,7 +9010,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -9259,7 +9038,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9292,7 +9071,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9482,7 +9261,7 @@ AND
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -9518,7 +9297,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9559,7 +9338,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9615,7 +9394,7 @@ FROM
 WHERE 
     health_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9722,7 +9501,7 @@ AND
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -9752,7 +9531,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9787,7 +9566,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -9848,7 +9627,7 @@ SELECT
 FROM 
     history.dr_targets 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9996,7 +9775,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -10036,7 +9815,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10081,7 +9860,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10273,7 +10052,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -10309,7 +10088,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10350,7 +10129,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10598,7 +10377,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -10648,7 +10427,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10703,7 +10482,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10872,7 +10651,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -10902,7 +10681,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -10937,7 +10716,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -11126,7 +10905,7 @@ AND
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -11162,7 +10941,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -11203,7 +10982,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -11400,7 +11179,7 @@ INSERT INTO
 );";
 					# Now record the query in the array
 					$query =~ s/'NULL'/NULL/g;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "id",    value1 => $id, 
 						name2 => "query", value2 => $query
 					}, file => $THIS_FILE, line => __LINE__});
@@ -11453,7 +11232,7 @@ FROM
 WHERE
     agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -11559,7 +11338,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -11589,7 +11368,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -11624,7 +11403,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -11816,7 +11595,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -11850,7 +11629,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -11889,7 +11668,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -12105,6 +11884,8 @@ sub call_agents
 	# Now loop through the agents I found and try calling them.
 	foreach my $agent (sort {$a cmp $b} @{$an->data->{sys}{agents}})
 	{
+		print "$THIS_FILE ".__LINE__."; time: [".time."], agent: [$agent]\n";
+		
 		### TODO: Put a time limit on these...
 		my $start_time =  time;
 		my $say_agent  = ($agent =~ /.*\/(.*)$/)[0];
@@ -12218,104 +11999,13 @@ WHERE
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		}
+		
+		# Make sure we're not eating too much RAM.
+		$an->ScanCore->check_ram_usage();
 	}
 	
 	# Clear the agent list.
 	$an->data->{sys}{agents} = [];
-	
-	return(0);
-}
-
-# This checks the amount RAM used by ScanCore and exits if it exceeds a scancore::maximum_ram bytes. It looks
-# for any process with our name and sums the RAM used.
-sub check_ram_usage
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_ram_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# Read in how much RAM we're using.
-	my $used_ram = $an->Get->ram_used_by_program({program_name => $an->data->{sys}{program_name}});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "used_ram",              value1 => "$used_ram", 
-		name2 => "scancore::maximum_ram", value2 => $an->data->{scancore}{maximum_ram}
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Exit if I failed to read the amount of RAM in use.
-	if (not $used_ram)
-	{
-		$an->Alert->warning({message_key => "scancore_warning_0023", message_variables => { program_name => $an->data->{sys}{program_name} }, quiet => 1, file => $THIS_FILE, line => __LINE__});
-		$an->data->{sys}{'exit'} = 1;
-	}
-	
-	# Records the RAM used.
-	my $query = "
-SELECT 
-    ram_used_bytes 
-FROM 
-    ram_used 
-WHERE 
-    ram_used_by        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
-AND
-    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1  => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	my $ram_used_bytes = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "ram_used_bytes", value1 => $ram_used_bytes
-	}, file => $THIS_FILE, line => __LINE__});
-	if (not $ram_used_bytes)
-	{
-		# Add this agent to the DB
-		my $query = "
-INSERT INTO 
-    ram_used 
-(
-    ram_used_host_uuid, 
-    ram_used_by, 
-    ram_used_bytes, 
-    modified_date
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($used_ram).", 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-);
-";
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($ram_used_bytes ne $used_ram)
-	{
-		# It exists and the value has changed.
-		my $query = "
-UPDATE 
-    ram_used 
-SET
-    ram_used_bytes     = ".$an->data->{sys}{use_db_fh}->quote($used_ram).", 
-    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-WHERE 
-    ram_used_by        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
-AND
-    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-;";
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# The amount of RAM used is unchanged.
-		#print __LINE__."; The amount of RAM used by ".$an->data->{sys}{program_name}." is unchanged.\n";
-	}
-	
-	if ($used_ram > $an->data->{scancore}{maximum_ram})
-	{
-		# Much, too much, much music!
-		# err, too much RAM...
-		$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0013", message_variables => { 
-			used_ram    => $an->Readable->bytes_to_hr({'bytes' => $used_ram}), 
-			maximum_ram => $an->Readable->bytes_to_hr({'bytes' => $an->data->{scancore}{maximum_ram}})
-		}, code => 5, file => $THIS_FILE, line => __LINE__});
-	}
 	
 	return(0);
 }

@@ -29,6 +29,7 @@ use strict;
 use warnings;
 use AN::Tools;
 use Text::Diff;
+no warnings 'recursion';
 
 # Disable buffering.
 $| = 1;

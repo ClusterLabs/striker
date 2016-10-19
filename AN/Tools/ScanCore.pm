@@ -7,11 +7,13 @@ use strict;
 use warnings;
 use Data::Dumper;
 use Text::Diff;
+no warnings 'recursion';
 
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "ScanCore.pm";
 
 ### Methods;
+# check_ram_usage
 # get_anvils
 # get_dr_jobs
 # get_dr_targets
@@ -80,6 +82,102 @@ sub parent
 #############################################################################################################
 # Provided methods                                                                                          #
 #############################################################################################################
+
+# This checks the amount RAM used by ScanCore and exits if it exceeds a scancore::maximum_ram bytes. It looks
+# for any process with our name and sums the RAM used.
+sub check_ram_usage
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_ram_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read in how much RAM we're using.
+	my $used_ram = $an->Get->ram_used_by_program({program_name => $an->data->{sys}{program_name}});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "used_ram",              value1 => "$used_ram", 
+		name2 => "scancore::maximum_ram", value2 => $an->data->{scancore}{maximum_ram}
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Exit if I failed to read the amount of RAM in use.
+	if (not $used_ram)
+	{
+		$an->Alert->warning({message_key => "scancore_warning_0023", message_variables => { program_name => $an->data->{sys}{program_name} }, quiet => 1, file => $THIS_FILE, line => __LINE__});
+		$an->data->{sys}{'exit'} = 1;
+	}
+	
+	# Records the RAM used.
+	my $query = "
+SELECT 
+    ram_used_bytes 
+FROM 
+    ram_used 
+WHERE 
+    ram_used_by        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
+AND
+    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	my $ram_used_bytes = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "ram_used_bytes", value1 => $ram_used_bytes
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $ram_used_bytes)
+	{
+		# Add this agent to the DB
+		my $query = "
+INSERT INTO 
+    ram_used 
+(
+    ram_used_host_uuid, 
+    ram_used_by, 
+    ram_used_bytes, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($used_ram).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($ram_used_bytes ne $used_ram)
+	{
+		# It exists and the value has changed.
+		my $query = "
+UPDATE 
+    ram_used 
+SET
+    ram_used_bytes     = ".$an->data->{sys}{use_db_fh}->quote($used_ram).", 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    ram_used_by        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
+AND
+    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# The amount of RAM used is unchanged.
+		#print __LINE__."; The amount of RAM used by ".$an->data->{sys}{program_name}." is unchanged.\n";
+	}
+	
+	if ($used_ram > $an->data->{scancore}{maximum_ram})
+	{
+		# Much, too much, much music!
+		# err, too much RAM...
+		$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0013", message_variables => { 
+			used_ram    => $an->Readable->bytes_to_hr({'bytes' => $used_ram}), 
+			maximum_ram => $an->Readable->bytes_to_hr({'bytes' => $an->data->{scancore}{maximum_ram}})
+		}, code => 5, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
 
 # Get a list of Anvil! systems as an array of hash references
 sub get_anvils

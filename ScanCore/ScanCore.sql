@@ -609,57 +609,6 @@ CREATE TRIGGER trigger_hosts
 	FOR EACH ROW EXECUTE PROCEDURE history_hosts();
 
 
--- This stores state information, like the whether migrations are happening and so on.
-CREATE TABLE states (
-	state_uuid		uuid				primary key,
-	state_name		text				not null,			-- This is the name of the state (ie: 'migration', etc)
-	state_host_uuid		uuid				not null,			-- The UUID of the machine that the state relates to. In migrations, this is the UUID of the target
-	state_note		text,								-- This is a free-form note section that the application setting the state can use for extra information (like the name of the server being migrated)
-	modified_date		timestamp with time zone	not null,
-	
-	FOREIGN KEY(state_host_uuid) REFERENCES hosts(host_uuid)
-);
-ALTER TABLE states OWNER TO #!variable!user!#;
-
-CREATE TABLE history.states (
-	history_id		bigserial,
-	state_uuid		uuid,
-	state_name		text,
-	state_host_uuid		uuid,
-	state_note		text,
-	modified_date		timestamp with time zone	not null
-);
-ALTER TABLE history.states OWNER TO #!variable!user!#;
-
-CREATE FUNCTION history_states() RETURNS trigger
-AS $$
-DECLARE
-	history_states RECORD;
-BEGIN
-	SELECT INTO history_states * FROM states WHERE state_uuid = new.state_uuid;
-	INSERT INTO history.states
-		(state_uuid,
-		 state_name, 
-		 state_host_uuid, 
-		 state_note, 
-		 modified_date)
-	VALUES
-		(history_states.state_uuid,
-		 history_states.state_name, 
-		 history_states.state_host_uuid, 
-		 history_states.state_note, 
-		 history_states.modified_date);
-	RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
-ALTER FUNCTION history_states() OWNER TO #!variable!user!#;
-
-CREATE TRIGGER trigger_states
-	AFTER INSERT OR UPDATE ON states
-	FOR EACH ROW EXECUTE PROCEDURE history_states();
-
-
 -- TODO: Create a 'node_cache' table here that stores things like power check commands, default network to 
 --       use for access, hosts and sshd data and so on. Link it to a host_uuid because some dashboards will
 --       record different data, like what network to use to talk to the dashboard.
@@ -1428,3 +1377,16 @@ CREATE TABLE alert_sent (
 	FOREIGN KEY(alert_sent_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE updated OWNER TO #!variable!user!#;
+
+
+-- This stores state information, like the whether migrations are happening and so on.
+CREATE TABLE states (
+	state_uuid		uuid				primary key,
+	state_name		text				not null,			-- This is the name of the state (ie: 'migration', etc)
+	state_host_uuid		uuid				not null,			-- The UUID of the machine that the state relates to. In migrations, this is the UUID of the target
+	state_note		text,								-- This is a free-form note section that the application setting the state can use for extra information (like the name of the server being migrated)
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(state_host_uuid) REFERENCES hosts(host_uuid)
+);
+ALTER TABLE states OWNER TO #!variable!user!#;

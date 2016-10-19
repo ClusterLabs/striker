@@ -20,6 +20,10 @@ DROP FUNCTION history_hosts() CASCADE;
 CREATE FUNCTION history_hosts() RETURNS trigger AS $$ DECLARE history_hosts RECORD; BEGIN SELECT INTO history_hosts * FROM hosts WHERE host_uuid = new.host_uuid; INSERT INTO history.hosts (host_uuid, host_location_uuid, host_name, host_type, host_emergency_stop, host_stop_reason, host_health, modified_date) VALUES (history_hosts.host_uuid, history_hosts.host_location_uuid, history_hosts.host_name, history_hosts.host_type, history_hosts.host_emergency_stop, history_hosts.host_stop_reason, history_hosts.host_health, history_hosts.modified_date); RETURN NULL; END; $$ LANGUAGE plpgsql; ALTER FUNCTION history_hosts() OWNER TO admin;
 CREATE TRIGGER trigger_hosts AFTER INSERT OR UPDATE ON hosts FOR EACH ROW EXECUTE PROCEDURE history_hosts();
 
+
+DROP FUNCTION history_states() CASCADE;
+DROP TABLE history.states;
+
 COMMIT;
 
 -- END

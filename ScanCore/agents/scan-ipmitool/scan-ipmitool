@@ -10,6 +10,7 @@
 # Exit Codes:
 # 0   - Success
 # 1   - Passed in host name was not found in the database.
+# 2   - Bad number of ipmitool_value_id's returned for the given 
 # 
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
@@ -75,6 +76,7 @@ use warnings;
 use AN::Tools;
 use Data::Dumper;
 use Socket;
+no warnings 'recursion';
 #use utf8;
 #binmode STDOUT, 'encoding(utf8)';
 
@@ -2666,7 +2668,7 @@ AND
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -2748,7 +2750,7 @@ WHERE
     ipmitool_value_ipmitool_uuid = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_ipmitool_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -2771,7 +2773,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2785,6 +2787,9 @@ INSERT INTO
 					# the history schema.
 					if (not $an->data->{db_data}{$id}{ipmitool_value}{modified_date}{$modified_date}{ipmitool_value_ipmitool_uuid}{$ipmitool_value_ipmitool_uuid})
 					{
+						# Get the ID for this.
+						my $ipmitool_value_id = get_ipmitool_value_id($an, $ipmitool_value_ipmitool_uuid, $id);
+						
 						# It doesn't, INSERT it.
 						my $query = "
 INSERT INTO 
@@ -2795,20 +2800,13 @@ INSERT INTO
     ipmitool_value_sensor_value, 
     modified_date 
 ) VALUES (
-    (
-        SELECT 
-            ipmitool_value_id 
-        FROM 
-            public.ipmitool_value 
-        WHERE 
-            ipmitool_value_ipmitool_uuid = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_ipmitool_uuid)."
-    ), 
+    ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_id).", 
     ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_ipmitool_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_sensor_value).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2835,6 +2833,61 @@ INSERT INTO
 	}
 	
 	return(0);
+}
+
+# This returns the ipmitool_value_id for a given ipmitool_value_ipmitool_uuid
+sub get_ipmitool_value_id
+{
+	my ($an, $ipmitool_value_ipmitool_uuid, $id) = @_;
+	
+	my $query = "
+SELECT 
+    ipmitool_value_id 
+FROM 
+    public.ipmitool_value 
+WHERE 
+    ipmitool_value_ipmitool_uuid = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_ipmitool_uuid)."
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "id",    value1 => $id, 
+		name2 => "query", value2 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Do the query against the source DB and loop through the results.
+	my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# There should be only one result
+	if ($count != 1)
+	{
+		my $i = 1;
+		foreach my $row (@{$results})
+		{
+			my $ipmitool_value_id = $row->[0]; 
+			$an->Log->entry({log_level => 0, message_key => "an_variables_0002", message_variables => {
+				name1 => "i",                 value1 => $i, 
+				name2 => "ipmitool_value_id", value2 => $ipmitool_value_id, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$i++;
+		}
+		$an->Alert->error({title_key => "an_0003", message_key => "scan_ipmitool_error_0001", message_variables => { 
+			query => $query,
+			id    => $id, 
+			count => $count, 
+		}, code => 2, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Return only the first.
+	my $ipmitool_value_id = $results->[0]->[0]; 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "ipmitool_value_id", value1 => $ipmitool_value_id, 
+	}, file => $THIS_FILE, line => __LINE__});
+
+	return($ipmitool_value_id);
 }
 
 # Update the 'ipmitool' DB table, if needed.
@@ -2869,14 +2922,14 @@ FROM
 WHERE
     ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -2891,7 +2944,7 @@ WHERE
 			my $ipmitool_sensor_low_critical  = $row->[7];
 			my $ipmitool_sensor_low_warning   = $row->[8];
 			my $modified_date                 = $row->[9];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "ipmitool_uuid",                 value1  => $ipmitool_uuid, 
 				name2  => "ipmitool_sensor_host",          value2  => $ipmitool_sensor_host, 
 				name3  => "ipmitool_sensor_name",          value3  => $ipmitool_sensor_name, 
@@ -3012,7 +3065,7 @@ AND
     ipmitool_uuid      = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -3051,7 +3104,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -3095,7 +3148,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});

@@ -23,6 +23,7 @@ use warnings;
 use AN::Tools;
 use Data::Dumper;
 use Socket;
+no warnings 'recursion';
 
 # Disable buffering.
 $| = 1;
@@ -4136,7 +4137,7 @@ WHERE
 AND 
     a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4159,7 +4160,7 @@ AND
 			my $apc_ups_battery_alarm_temperature     = $row->[8]; 
 			my $apc_ups_battery_voltage               = $row->[9]; 
 			my $modified_date                         = $row->[10];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 				name1  => "apc_ups_battery_apc_ups_uuid",          value1  => $apc_ups_battery_apc_ups_uuid, 
 				name2  => "apc_ups_battery_replacement_date",      value2  => $apc_ups_battery_replacement_date, 
 				name3  => "apc_ups_battery_health",                value3  => $apc_ups_battery_health, 
@@ -4205,7 +4206,7 @@ AND
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_ups_battery}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $apc_ups_battery_apc_ups_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_ups_battery}{modified_date}{$modified_date}{apc_ups_battery_apc_ups_uuid}})
@@ -4219,7 +4220,7 @@ AND
 			my $apc_ups_battery_temperature           = $an->data->{db_data}{unified}{apc_ups_battery}{modified_date}{$modified_date}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid}{apc_ups_battery_temperature};
 			my $apc_ups_battery_alarm_temperature     = $an->data->{db_data}{unified}{apc_ups_battery}{modified_date}{$modified_date}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid}{apc_ups_battery_alarm_temperature};
 			my $apc_ups_battery_voltage               = $an->data->{db_data}{unified}{apc_ups_battery}{modified_date}{$modified_date}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid}{apc_ups_battery_voltage};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "apc_ups_battery_apc_ups_uuid",          value1  => $apc_ups_battery_apc_ups_uuid, 
 				name2  => "apc_ups_battery_replacement_date",      value2  => $apc_ups_battery_replacement_date, 
 				name3  => "apc_ups_battery_health",                value3  => $apc_ups_battery_health, 
@@ -4242,7 +4243,7 @@ AND
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::apc_ups_battery::apc_ups_battery_apc_ups_uuid::${apc_ups_battery_apc_ups_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_ups_battery}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{apc_ups_battery}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid}{seen})
@@ -4251,13 +4252,13 @@ AND
 					$an->data->{db_data}{$id}{apc_ups_battery}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::apc_ups_battery::apc_ups_battery_apc_ups_uuid::${apc_ups_battery_apc_ups_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_ups_battery}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{apc_ups_battery}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::apc_ups_battery::modified_date::${modified_date}::apc_ups_battery_apc_ups_uuid::${apc_ups_battery_apc_ups_uuid}", value1 => $an->data->{db_data}{$id}{apc_ups_battery}{modified_date}{$modified_date}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{apc_ups_battery}{modified_date}{$modified_date}{apc_ups_battery_apc_ups_uuid}{$apc_ups_battery_apc_ups_uuid})
@@ -4294,7 +4295,7 @@ WHERE
     )
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -4333,7 +4334,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -4386,7 +4387,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -4448,7 +4449,7 @@ WHERE
 AND 
     a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4468,7 +4469,7 @@ AND
 			my $apc_ups_output_voltage           = $row->[5];
 			my $apc_ups_output_total_output      = $row->[6];
 			my $modified_date                    = $row->[7];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "apc_ups_output_apc_ups_uuid",      value1 => $apc_ups_output_apc_ups_uuid, 
 				name2 => "apc_ups_output_load_percentage",   value2 => $apc_ups_output_load_percentage, 
 				name3 => "apc_ups_output_time_on_batteries", value3 => $apc_ups_output_time_on_batteries, 
@@ -4507,7 +4508,7 @@ AND
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_ups_output}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $apc_ups_output_apc_ups_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_ups_output}{modified_date}{$modified_date}{apc_ups_output_apc_ups_uuid}})
@@ -4518,7 +4519,7 @@ AND
 			my $apc_ups_output_frequency         = $an->data->{db_data}{unified}{apc_ups_output}{modified_date}{$modified_date}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid}{apc_ups_output_frequency};
 			my $apc_ups_output_voltage           = $an->data->{db_data}{unified}{apc_ups_output}{modified_date}{$modified_date}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid}{apc_ups_output_voltage};
 			my $apc_ups_output_total_output      = $an->data->{db_data}{unified}{apc_ups_output}{modified_date}{$modified_date}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid}{apc_ups_output_total_output};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "apc_ups_output_apc_ups_uuid",      value1 => $apc_ups_output_apc_ups_uuid, 
 				name2 => "apc_ups_output_load_percentage",   value2 => $apc_ups_output_load_percentage, 
 				name3 => "apc_ups_output_time_on_batteries", value3 => $apc_ups_output_time_on_batteries, 
@@ -4538,7 +4539,7 @@ AND
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::apc_ups_output::apc_ups_output_apc_ups_uuid::${apc_ups_output_apc_ups_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_ups_output}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{apc_ups_output}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid}{seen})
@@ -4547,13 +4548,13 @@ AND
 					$an->data->{db_data}{$id}{apc_ups_output}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::apc_ups_output::apc_ups_output_apc_ups_uuid::${apc_ups_output_apc_ups_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_ups_output}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{apc_ups_output}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::apc_ups_output::modified_date::${modified_date}::apc_ups_output_apc_ups_uuid::${apc_ups_output_apc_ups_uuid}", value1 => $an->data->{db_data}{$id}{apc_ups_output}{modified_date}{$modified_date}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{apc_ups_output}{modified_date}{$modified_date}{apc_ups_output_apc_ups_uuid}{$apc_ups_output_apc_ups_uuid})
@@ -4588,7 +4589,7 @@ WHERE
     )
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -4621,7 +4622,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -4668,7 +4669,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -4729,7 +4730,7 @@ WHERE
 AND 
     a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4748,7 +4749,7 @@ AND
 			my $apc_ups_input_1m_maximum_input_voltage = $row->[4]; 
 			my $apc_ups_input_1m_minimum_input_voltage = $row->[5]; 
 			my $modified_date                          = $row->[6];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "apc_ups_input_apc_ups_uuid",             value1 => $apc_ups_input_apc_ups_uuid, 
 				name2 => "apc_ups_input_frequency",                value2 => $apc_ups_input_frequency, 
 				name3 => "apc_ups_input_sensitivity",              value3 => $apc_ups_input_sensitivity, 
@@ -4782,7 +4783,7 @@ AND
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_ups_input}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $apc_ups_input_apc_ups_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_ups_input}{modified_date}{$modified_date}{apc_ups_input_apc_ups_uuid}})
@@ -4792,7 +4793,7 @@ AND
 			my $apc_ups_input_voltage                  = $an->data->{db_data}{unified}{apc_ups_input}{modified_date}{$modified_date}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid}{apc_ups_input_voltage};
 			my $apc_ups_input_1m_maximum_input_voltage = $an->data->{db_data}{unified}{apc_ups_input}{modified_date}{$modified_date}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid}{apc_ups_input_1m_maximum_input_voltage};
 			my $apc_ups_input_1m_minimum_input_voltage = $an->data->{db_data}{unified}{apc_ups_input}{modified_date}{$modified_date}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid}{apc_ups_input_1m_minimum_input_voltage};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "apc_ups_input_apc_ups_uuid",             value1 => $apc_ups_input_apc_ups_uuid, 
 				name2 => "apc_ups_input_frequency",                value2 => $apc_ups_input_frequency, 
 				name3 => "apc_ups_input_sensitivity",              value3 => $apc_ups_input_sensitivity, 
@@ -4811,7 +4812,7 @@ AND
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::apc_ups_input::apc_ups_input_apc_ups_uuid::${apc_ups_input_apc_ups_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_ups_input}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{apc_ups_input}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid}{seen})
@@ -4826,7 +4827,7 @@ AND
 					if ($an->data->{db_data}{$id}{apc_ups_input}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::apc_ups_input::modified_date::${modified_date}::apc_ups_input_apc_ups_uuid::${apc_ups_input_apc_ups_uuid}", value1 => $an->data->{db_data}{$id}{apc_ups_input}{modified_date}{$modified_date}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{apc_ups_input}{modified_date}{$modified_date}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid})
@@ -4860,7 +4861,7 @@ WHERE
     )
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -4891,7 +4892,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -4936,7 +4937,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -5005,7 +5006,7 @@ FROM
 WHERE 
     apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -5035,7 +5036,7 @@ WHERE
 			my $apc_ups_nmc_serial_number     = $row->[15];
 			my $apc_ups_nmc_mac_address       = $row->[16];
 			my $modified_date                 = $row->[17];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0018", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0018", message_variables => {
 				name1  => "apc_ups_uuid",                  value1  => $apc_ups_uuid, 
 				name2  => "apc_ups_name",                  value2  => $apc_ups_name, 
 				name3  => "apc_ups_serial_number",         value3  => $apc_ups_serial_number, 
@@ -5102,7 +5103,7 @@ WHERE
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_ups}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $apc_ups_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}})
@@ -5123,7 +5124,7 @@ WHERE
 			my $apc_ups_nmc_firmware_version  = $an->data->{db_data}{unified}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}{$apc_ups_uuid}{apc_ups_nmc_firmware_version};
 			my $apc_ups_nmc_serial_number     = $an->data->{db_data}{unified}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}{$apc_ups_uuid}{apc_ups_nmc_serial_number};
 			my $apc_ups_nmc_mac_address       = $an->data->{db_data}{unified}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}{$apc_ups_uuid}{apc_ups_nmc_mac_address};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "apc_ups_uuid",                  value1  => $apc_ups_uuid, 
 				name2  => "apc_ups_name",                  value2  => $apc_ups_name, 
 				name3  => "apc_ups_serial_number",         value3  => $apc_ups_serial_number, 
@@ -5153,7 +5154,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::apc_ups::apc_ups_uuid::${apc_ups_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_ups}{apc_ups_uuid}{$apc_ups_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{apc_ups}{apc_ups_uuid}{$apc_ups_uuid}{seen})
@@ -5162,13 +5163,13 @@ WHERE
 					$an->data->{db_data}{$id}{apc_ups}{apc_ups_uuid}{$apc_ups_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::apc_ups::apc_ups_uuid::${apc_ups_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_ups}{apc_ups_uuid}{$apc_ups_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{apc_ups}{apc_ups_uuid}{$apc_ups_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::apc_ups::modified_date::${modified_date}::apc_ups_uuid::${apc_ups_uuid}", value1 => $an->data->{db_data}{$id}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}{$apc_ups_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}{$apc_ups_uuid})
@@ -5201,7 +5202,7 @@ AND
     apc_ups_uuid      = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -5256,7 +5257,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -5316,7 +5317,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});

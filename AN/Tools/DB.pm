@@ -9,6 +9,7 @@ use strict;
 use warnings;
 use DBI;
 use Data::Dumper;
+no warnings 'recursion';
 
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "DB.pm";
@@ -650,15 +651,17 @@ sub do_db_write
 	my $an        = $self->parent;
 	
 	# Setup my variables.
-	my $id     = $parameter->{id}     ? $parameter->{id}     : "";
-	my $source = $parameter->{source} ? $parameter->{source} : "";
-	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
-	my $query  = $parameter->{query}  ? $parameter->{query}  : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "id",     value1 => $id, 
-		name2 => "source", value2 => $source, 
-		name3 => "line",   value3 => $line, 
-		name4 => "query",  value4 => $query, 
+	my $id      = $parameter->{id}      ? $parameter->{id}      : "";
+	my $source  = $parameter->{source}  ? $parameter->{source}  : "";
+	my $line    = $parameter->{line}    ? $parameter->{line}    : "";
+	my $query   = $parameter->{query}   ? $parameter->{query}   : "";
+	my $reenter = $parameter->{reenter} ? $parameter->{reenter} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+		name1 => "id",      value1 => $id, 
+		name2 => "source",  value2 => $source, 
+		name3 => "line",    value3 => $line, 
+		name4 => "query",   value4 => $query, 
+		name5 => "reenter", value5 => $reenter, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I don't have a query, die.
@@ -690,35 +693,81 @@ sub do_db_write
 	}
 	
 	# Sort out if I have one or many queries.
-	my $is_array = 0;
-	my @query;
+	my $limit     = 25000;
+	my $count     = 0;
+	my $query_set = [];
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	if (ref($query) eq "ARRAY")
 	{
 		# Multiple things to enter.
-		$is_array = 1;
-		foreach my $this_query (@{$query})
+		$count = @{$query};
+		
+		# If I am re-entering, then we'll proceed normally. If not, and if we have more than 10k 
+		# queries, we'll split up the queries into 10k chunks and re-enter.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "count",   value1 => $count, 
+			name2 => "limit",   value2 => $limit, 
+			name3 => "reenter", value3 => $reenter, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($count > $limit) && (not $reenter))
 		{
-			push @query, $this_query;
+			my $i    = 0;
+			my $next = $limit;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "i",    value1 => $i, 
+				name2 => "next", value2 => $next, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $this_query (@{$query})
+			{
+				push @{$query_set}, $this_query;
+				$i++;
+				
+				if ($i > $next)
+				{
+					# Commit this batch.
+					foreach my $id (@db_ids)
+					{
+						# Commit this chunk to this DB.
+						$an->DB->do_db_write({id => $id, query => $query_set, source => $THIS_FILE, line => $line, reenter => 1});
+						
+						# This can get memory intensive, so check our RAM usage and 
+						# bail if we're eating too much.
+						$an->ScanCore->check_ram_usage();
+						
+						# Wipe out the old set array, create it as a new anonymous array and reset 'i'.
+						undef $query_set;
+						$query_set =  [];
+						$i         =  0;
+					}
+				}
+			}
+		}
+		else
+		{
+			# Not enough to worry about or we're dealing with a chunk, proceed as normal.
+			foreach my $this_query (@{$query})
+			{
+				push @{$query_set}, $this_query;
+			}
 		}
 	}
 	else
 	{
-		push @query, $query;
+		push @{$query_set}, $query;
 	}
 	foreach my $id (@db_ids)
 	{
 		# Do the actual query(ies)
-		if ($is_array)
+		if ($count)
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "is_array", value1 => $is_array
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "count", value1 => $count, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{dbh}{$id}->begin_work;
 		}
-		foreach my $query (@query)
+		foreach my $query (@{$query_set})
 		{
 			# Record the query
 			if ($an->Log->db_transactions())
@@ -750,12 +799,15 @@ sub do_db_write
 		}
 		
 		# Commit the changes.
-		if ($is_array)
+		if ($count)
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "is_array", value1 => $is_array
+				name1 => "count", value1 => $count
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{dbh}{$id}->commit();
+			
+			# Free up some memory.
+			undef $query_set;
 		}
 	}
 	

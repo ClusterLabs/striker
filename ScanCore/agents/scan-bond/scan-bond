@@ -29,6 +29,7 @@ use strict;
 use warnings;
 use AN::Tools;
 use Data::Dumper;
+no warnings 'recursion';
 
 # Disable buffering.
 $| = 1;
@@ -501,7 +502,7 @@ FROM
 WHERE
     bond_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -572,7 +573,7 @@ WHERE
 	# needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{bond}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $bond_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{bond}{modified_date}{$modified_date}{bond_uuid}})
@@ -586,7 +587,7 @@ WHERE
 			my $bond_mii_polling_interval = $an->data->{db_data}{unified}{bond}{modified_date}{$modified_date}{bond_uuid}{$bond_uuid}{bond_mii_polling_interval};
 			my $bond_up_delay             = $an->data->{db_data}{unified}{bond}{modified_date}{$modified_date}{bond_uuid}{$bond_uuid}{bond_up_delay};
 			my $bond_down_delay           = $an->data->{db_data}{unified}{bond}{modified_date}{$modified_date}{bond_uuid}{$bond_uuid}{bond_down_delay};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "bond_uuid",                 value1  => $bond_uuid, 
 				name2  => "bond_name",                 value2  => $bond_name, 
 				name3  => "bond_mode",                 value3  => $bond_mode, 
@@ -609,7 +610,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::bond::bond_uuid::${bond_uuid}::seen", value1 => $an->data->{db_data}{$id}{bond}{bond_uuid}{$bond_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{bond}{bond_uuid}{$bond_uuid}{seen})
@@ -618,13 +619,13 @@ WHERE
 					$an->data->{db_data}{$id}{bond}{bond_uuid}{$bond_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::bond::bond_uuid::${bond_uuid}::exists", value1 => $an->data->{db_data}{$id}{bond}{bond_uuid}{$bond_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{bond}{bond_uuid}{$bond_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::bond::modified_date::${modified_date}::bond_uuid::${bond_uuid}", value1 => $an->data->{db_data}{$id}{bond}{modified_date}{$modified_date}{bond_uuid}{$bond_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{bond}{modified_date}{$modified_date}{bond_uuid}{$bond_uuid})
@@ -650,7 +651,7 @@ AND
     bond_uuid      = ".$an->data->{sys}{use_db_fh}->quote($bond_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -691,7 +692,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -737,7 +738,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
