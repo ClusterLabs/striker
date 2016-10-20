@@ -619,7 +619,7 @@ sub warning
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "warning" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Setup default values
-	my $title_key         = $parameter->{title_key}         ? $parameter->{title_key}         : "";
+	my $title_key         = $parameter->{title_key}         ? $parameter->{title_key}         : "an_0011";
 	my $title_variables   = $parameter->{title_variables}   ? $parameter->{title_variables}   : "";
 	my $message_key       = $parameter->{message_key}       ? $parameter->{message_key}       : "";
 	my $message_variables = $parameter->{message_variables} ? $parameter->{message_variables} : "";

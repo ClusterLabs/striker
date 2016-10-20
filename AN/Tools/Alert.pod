@@ -974,6 +974,14 @@ The 'AN::Tools::System' module's 'compress_file()' method was called with a file
 
 A request to shut down a node timed out.
 
+=head2 C<191>
+
+The 'AN::Tools::Get' module's 'ram_used_by_program()' method was called without a program name to check.
+
+=head2 C<192>
+
+The 'AN::Tools::ScanCore' module's 'check_ram_usage()' method was called without a program name to check.
+
 
 =head2 C<999>
 

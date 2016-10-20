@@ -652,7 +652,7 @@ sub do_db_write
 	
 	# Setup my variables.
 	my $id      = $parameter->{id}      ? $parameter->{id}      : "";
-	my $source  = $parameter->{source}  ? $parameter->{source}  : "";
+	my $source  = $parameter->{source}  ? $parameter->{source}  : $THIS_FILE;
 	my $line    = $parameter->{line}    ? $parameter->{line}    : "";
 	my $query   = $parameter->{query}   ? $parameter->{query}   : "";
 	my $reenter = $parameter->{reenter} ? $parameter->{reenter} : "";
@@ -752,7 +752,7 @@ sub do_db_write
 						
 						# This can get memory intensive, so check our RAM usage and 
 						# bail if we're eating too much.
-						$an->ScanCore->check_ram_usage();
+						$an->ScanCore->check_ram_usage({program_name => $source, check_usage => 1});
 						
 						# Wipe out the old set array, create it as a new anonymous array and reset 'i'.
 						undef $query_set;

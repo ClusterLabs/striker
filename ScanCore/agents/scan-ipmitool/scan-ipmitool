@@ -2777,8 +2777,7 @@ INSERT INTO
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-					}
+2					}
 				}
 				else
 				{
@@ -2789,6 +2788,7 @@ INSERT INTO
 					{
 						# Get the ID for this.
 						my $ipmitool_value_id = get_ipmitool_value_id($an, $ipmitool_value_ipmitool_uuid, $id);
+						next if not $ipmitool_value_id;
 						
 						# It doesn't, INSERT it.
 						my $query = "

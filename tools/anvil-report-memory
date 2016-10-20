@@ -62,9 +62,7 @@ if (not $an->data->{switches}{program})
 	$an->Alert->error({title_key => "an_0003", message_key => "arm_error_0001", code => 2, file => $THIS_FILE, line => __LINE__});
 }
 
-$an->Log->entry({log_level => 3, message_key => "arm_log_0001", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 3, message_key => "arm_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 get_pids($an);
 

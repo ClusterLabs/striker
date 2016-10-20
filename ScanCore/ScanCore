@@ -148,9 +148,6 @@ SET search_path = history, pg_catalog;
 			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
 			local_lock_active	=>	0,
-			# This looks like a lot, but 'pmap' kinda sucks and reports shared memory, so to even
-			# start a program lists 120 MiB+ used. I will make it smarter later.
-			program_name		=>	$THIS_FILE,
 			read_db_id		=>	"",
 			# These are used to avoid repeatedly logging that something has happened.
 			reported		=>	{
@@ -382,7 +379,7 @@ while(1)
 	$an->DB->update_time({file => $THIS_FILE});
 	
 	# Check RAM usage and bail if it looks like we're leaking.
-	$an->ScanCore->check_ram_usage();
+	$an->ScanCore->check_ram_usage({program_name => $THIS_FILE, check_usage => 1});
 	
 	# Archive, if needed.
 	archive_if_needed($an);
@@ -11884,8 +11881,6 @@ sub call_agents
 	# Now loop through the agents I found and try calling them.
 	foreach my $agent (sort {$a cmp $b} @{$an->data->{sys}{agents}})
 	{
-		print "$THIS_FILE ".__LINE__."; time: [".time."], agent: [$agent]\n";
-		
 		### TODO: Put a time limit on these...
 		my $start_time =  time;
 		my $say_agent  = ($agent =~ /.*\/(.*)$/)[0];
@@ -12001,7 +11996,7 @@ WHERE
 		}
 		
 		# Make sure we're not eating too much RAM.
-		$an->ScanCore->check_ram_usage();
+		$an->ScanCore->check_ram_usage({program_name => $THIS_FILE, check_usage => 1});
 	}
 	
 	# Clear the agent list.

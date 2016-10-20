@@ -8423,7 +8423,7 @@ WHERE
     storcli_physical_drive_uuid                  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -8464,7 +8464,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8510,7 +8510,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8904,6 +8904,7 @@ sub update_db_virtual_drives
 SELECT 
     storcli_virtual_drive_uuid, 
     storcli_virtual_drive_controller_uuid, 
+    storcli_virtual_drive_id_string, 
     storcli_virtual_drive_creation_date, 
     storcli_virtual_drive_data_protection, 
     storcli_virtual_drive_disk_cache_policy, 
@@ -8934,37 +8935,40 @@ WHERE
 		{
 			my $storcli_virtual_drive_uuid              =         $row->[0]; 
 			my $storcli_virtual_drive_controller_uuid   =         $row->[1];
-			my $storcli_virtual_drive_creation_date     = defined $row->[2]  ? $row->[2]  : "";
-			my $storcli_virtual_drive_data_protection   = defined $row->[3]  ? $row->[3]  : "";
-			my $storcli_virtual_drive_disk_cache_policy = defined $row->[4]  ? $row->[4]  : "";
-			my $storcli_virtual_drive_emulation_type    = defined $row->[5]  ? $row->[5]  : "";
-			my $storcli_virtual_drive_encryption        = defined $row->[6]  ? $row->[6]  : "";
-			my $storcli_virtual_drive_blocks            = defined $row->[7]  ? $row->[7]  : "";
-			my $storcli_virtual_drive_strip_size        = defined $row->[8]  ? $row->[8]  : "";
-			my $storcli_virtual_drive_drives_per_span   = defined $row->[9]  ? $row->[9]  : "";
-			my $storcli_virtual_drive_span_depth        = defined $row->[10] ? $row->[10] : "";
-			my $storcli_virtual_drive_scsi_naa_id       = defined $row->[11] ? $row->[11] : "";
-			my $modified_date                           =         $row->[12];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+			my $storcli_virtual_drive_id_string         = defined $row->[2]  ? $row->[2]  : "";
+			my $storcli_virtual_drive_creation_date     = defined $row->[3]  ? $row->[3]  : "";
+			my $storcli_virtual_drive_data_protection   = defined $row->[4]  ? $row->[4]  : "";
+			my $storcli_virtual_drive_disk_cache_policy = defined $row->[5]  ? $row->[5]  : "";
+			my $storcli_virtual_drive_emulation_type    = defined $row->[6]  ? $row->[6]  : "";
+			my $storcli_virtual_drive_encryption        = defined $row->[7]  ? $row->[7]  : "";
+			my $storcli_virtual_drive_blocks            = defined $row->[8]  ? $row->[8]  : "";
+			my $storcli_virtual_drive_strip_size        = defined $row->[9]  ? $row->[9]  : "";
+			my $storcli_virtual_drive_drives_per_span   = defined $row->[10] ? $row->[10] : "";
+			my $storcli_virtual_drive_span_depth        = defined $row->[11] ? $row->[11] : "";
+			my $storcli_virtual_drive_scsi_naa_id       = defined $row->[12] ? $row->[12] : "";
+			my $modified_date                           =         $row->[13];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
 				name1  => "storcli_virtual_drive_uuid",              value1  => $storcli_virtual_drive_uuid, 
 				name2  => "storcli_virtual_drive_controller_uuid",   value2  => $storcli_virtual_drive_controller_uuid, 
-				name3  => "storcli_virtual_drive_creation_date",     value3  => $storcli_virtual_drive_creation_date, 
-				name4  => "storcli_virtual_drive_data_protection",   value4  => $storcli_virtual_drive_data_protection, 
-				name5  => "storcli_virtual_drive_disk_cache_policy", value5  => $storcli_virtual_drive_disk_cache_policy, 
-				name6  => "storcli_virtual_drive_emulation_type",    value6  => $storcli_virtual_drive_emulation_type, 
-				name7  => "storcli_virtual_drive_encryption",        value7  => $storcli_virtual_drive_encryption, 
-				name8  => "storcli_virtual_drive_blocks",            value8  => $storcli_virtual_drive_blocks, 
-				name9  => "storcli_virtual_drive_strip_size",        value9  => $storcli_virtual_drive_strip_size, 
-				name10 => "storcli_virtual_drive_drives_per_span",   value10 => $storcli_virtual_drive_drives_per_span, 
-				name11 => "storcli_virtual_drive_span_depth",        value11 => $storcli_virtual_drive_span_depth, 
-				name12 => "storcli_virtual_drive_scsi_naa_id",       value12 => $storcli_virtual_drive_scsi_naa_id, 
-				name13 => "modified_date",                           value13 => $modified_date
+				name3  => "storcli_virtual_drive_id_string",         value3  => $storcli_virtual_drive_id_string, 
+				name4  => "storcli_virtual_drive_creation_date",     value4  => $storcli_virtual_drive_creation_date, 
+				name5  => "storcli_virtual_drive_data_protection",   value5  => $storcli_virtual_drive_data_protection, 
+				name6  => "storcli_virtual_drive_disk_cache_policy", value6  => $storcli_virtual_drive_disk_cache_policy, 
+				name7  => "storcli_virtual_drive_emulation_type",    value7  => $storcli_virtual_drive_emulation_type, 
+				name8  => "storcli_virtual_drive_encryption",        value8  => $storcli_virtual_drive_encryption, 
+				name9  => "storcli_virtual_drive_blocks",            value9  => $storcli_virtual_drive_blocks, 
+				name10 => "storcli_virtual_drive_strip_size",        value10 => $storcli_virtual_drive_strip_size, 
+				name11 => "storcli_virtual_drive_drives_per_span",   value11 => $storcli_virtual_drive_drives_per_span, 
+				name12 => "storcli_virtual_drive_span_depth",        value12 => $storcli_virtual_drive_span_depth, 
+				name13 => "storcli_virtual_drive_scsi_naa_id",       value13 => $storcli_virtual_drive_scsi_naa_id, 
+				name14 => "modified_date",                           value14 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			### There can only be one entry per host, so we don't have a subhash.
 			# Record this in the unified and local hashes.
 			$an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid} = {
 				storcli_virtual_drive_controller_uuid	=>	$storcli_virtual_drive_controller_uuid, 
+				storcli_virtual_drive_id_string		=>	$storcli_virtual_drive_id_string, 
 				storcli_virtual_drive_creation_date	=>	$storcli_virtual_drive_creation_date, 
 				storcli_virtual_drive_data_protection	=>	$storcli_virtual_drive_data_protection, 
 				storcli_virtual_drive_disk_cache_policy	=>	$storcli_virtual_drive_disk_cache_policy, 
@@ -8980,6 +8984,7 @@ WHERE
 			$an->data->{db_data}{$id}{storcli_virtual_drives}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{seen}     = 0;
 			$an->data->{db_data}{$id}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid} = {
 				storcli_virtual_drive_controller_uuid	=>	$storcli_virtual_drive_controller_uuid, 
+				storcli_virtual_drive_id_string		=>	$storcli_virtual_drive_id_string, 
 				storcli_virtual_drive_creation_date	=>	$storcli_virtual_drive_creation_date, 
 				storcli_virtual_drive_data_protection	=>	$storcli_virtual_drive_data_protection, 
 				storcli_virtual_drive_disk_cache_policy	=>	$storcli_virtual_drive_disk_cache_policy, 
@@ -9005,6 +9010,7 @@ WHERE
 		foreach my $storcli_virtual_drive_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}})
 		{
 			my $storcli_virtual_drive_controller_uuid   = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_controller_uuid};
+			my $storcli_virtual_drive_id_string         = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_id_string};
 			my $storcli_virtual_drive_creation_date     = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_creation_date};
 			my $storcli_virtual_drive_data_protection   = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_data_protection};
 			my $storcli_virtual_drive_disk_cache_policy = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_disk_cache_policy};
@@ -9015,20 +9021,40 @@ WHERE
 			my $storcli_virtual_drive_drives_per_span   = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_drives_per_span};
 			my $storcli_virtual_drive_span_depth        = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_span_depth};
 			my $storcli_virtual_drive_scsi_naa_id       = $an->data->{db_data}{unified}{storcli_virtual_drives}{modified_date}{$modified_date}{storcli_virtual_drive_uuid}{$storcli_virtual_drive_uuid}{storcli_virtual_drive_scsi_naa_id};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 				name1  => "storcli_virtual_drive_uuid",              value1  => $storcli_virtual_drive_uuid, 
 				name2  => "storcli_virtual_drive_controller_uuid",   value2  => $storcli_virtual_drive_controller_uuid, 
-				name3  => "storcli_virtual_drive_creation_date",     value3  => $storcli_virtual_drive_creation_date, 
-				name4  => "storcli_virtual_drive_data_protection",   value4  => $storcli_virtual_drive_data_protection, 
-				name5  => "storcli_virtual_drive_disk_cache_policy", value5  => $storcli_virtual_drive_disk_cache_policy, 
-				name6  => "storcli_virtual_drive_emulation_type",    value6  => $storcli_virtual_drive_emulation_type, 
-				name7  => "storcli_virtual_drive_encryption",        value7  => $storcli_virtual_drive_encryption, 
-				name8  => "storcli_virtual_drive_blocks",            value8  => $storcli_virtual_drive_blocks, 
-				name9  => "storcli_virtual_drive_strip_size",        value9  => $storcli_virtual_drive_strip_size, 
-				name10 => "storcli_virtual_drive_drives_per_span",   value10 => $storcli_virtual_drive_drives_per_span, 
-				name11 => "storcli_virtual_drive_span_depth",        value11 => $storcli_virtual_drive_span_depth, 
-				name12 => "storcli_virtual_drive_scsi_naa_id",       value12 => $storcli_virtual_drive_scsi_naa_id, 
+				name3  => "storcli_virtual_drive_id_string",         value3  => $storcli_virtual_drive_id_string, 
+				name4  => "storcli_virtual_drive_creation_date",     value4  => $storcli_virtual_drive_creation_date, 
+				name5  => "storcli_virtual_drive_data_protection",   value5  => $storcli_virtual_drive_data_protection, 
+				name6  => "storcli_virtual_drive_disk_cache_policy", value6  => $storcli_virtual_drive_disk_cache_policy, 
+				name7  => "storcli_virtual_drive_emulation_type",    value7  => $storcli_virtual_drive_emulation_type, 
+				name8  => "storcli_virtual_drive_encryption",        value8  => $storcli_virtual_drive_encryption, 
+				name9  => "storcli_virtual_drive_blocks",            value9  => $storcli_virtual_drive_blocks, 
+				name10 => "storcli_virtual_drive_strip_size",        value10 => $storcli_virtual_drive_strip_size, 
+				name11 => "storcli_virtual_drive_drives_per_span",   value11 => $storcli_virtual_drive_drives_per_span, 
+				name12 => "storcli_virtual_drive_span_depth",        value12 => $storcli_virtual_drive_span_depth, 
+				name13 => "storcli_virtual_drive_scsi_naa_id",       value13 => $storcli_virtual_drive_scsi_naa_id, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We need to sanity check the three numeric strings because calling 'quote' directly
+			# will wrap the numeric values in single quotes which violates 'numeric' forms.
+			my $quoted_storcli_virtual_drive_blocks          =  $an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_blocks);
+			my $quoted_storcli_virtual_drive_drives_per_span =  $an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_drives_per_span);
+			my $quoted_storcli_virtual_drive_span_depth      =  $an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_span_depth);
+			   $quoted_storcli_virtual_drive_blocks          =~ s/^'(.*?)'$/$1/;
+			   $quoted_storcli_virtual_drive_drives_per_span =~ s/^'(.*?)'$/$1/;
+			   $quoted_storcli_virtual_drive_span_depth      =~ s/^'(.*?)'$/$1/;
+			if ((($quoted_storcli_virtual_drive_blocks)          && ($quoted_storcli_virtual_drive_blocks =~ /\D/))          or 
+			    (($quoted_storcli_virtual_drive_drives_per_span) && ($quoted_storcli_virtual_drive_drives_per_span =~ /\D/)) or 
+			    (($quoted_storcli_virtual_drive_span_depth)      && ($quoted_storcli_virtual_drive_span_depth =~ /\D/)))
+			{
+				die "$THIS_FILE ".__LINE__."; non-numeric value; quoted_storcli_virtual_drive_blocks: [$quoted_storcli_virtual_drive_blocks], quoted_storcli_virtual_drive_drives_per_span: [$quoted_storcli_virtual_drive_drives_per_span], quoted_storcli_virtual_drive_span_depth: [$quoted_storcli_virtual_drive_span_depth]\n";
+			}
+			$quoted_storcli_virtual_drive_blocks          = "NULL" if $quoted_storcli_virtual_drive_blocks          eq "";
+			$quoted_storcli_virtual_drive_drives_per_span = "NULL" if $quoted_storcli_virtual_drive_drives_per_span eq "";
+			$quoted_storcli_virtual_drive_span_depth      = "NULL" if $quoted_storcli_virtual_drive_span_depth      eq "";
+			
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
 				# For each 'storcli_virtual_drive_uuid' we see;
@@ -9068,15 +9094,16 @@ UPDATE
     public.storcli_virtual_drives
 SET
     storcli_virtual_drive_controller_uuid   = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_controller_uuid).", 
+    storcli_virtual_drive_id_string         = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_id_string).", 
     storcli_virtual_drive_creation_date     = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_creation_date).", 
     storcli_virtual_drive_data_protection   = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_data_protection).", 
     storcli_virtual_drive_disk_cache_policy = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_disk_cache_policy).", 
     storcli_virtual_drive_emulation_type    = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_emulation_type).", 
     storcli_virtual_drive_encryption        = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_encryption).", 
-    storcli_virtual_drive_blocks            = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_blocks).", 
+    storcli_virtual_drive_blocks            = $quoted_storcli_virtual_drive_blocks, 
     storcli_virtual_drive_strip_size        = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_strip_size).", 
-    storcli_virtual_drive_drives_per_span   = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_drives_per_span).", 
-    storcli_virtual_drive_span_depth        = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_span_depth).", 
+    storcli_virtual_drive_drives_per_span   = $quoted_storcli_virtual_drive_drives_per_span, 
+    storcli_virtual_drive_span_depth        = $quoted_storcli_virtual_drive_span_depth, 
     storcli_virtual_drive_scsi_naa_id       = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_scsi_naa_id).", 
     modified_date                           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
@@ -9098,6 +9125,7 @@ INSERT INTO
     public.storcli_virtual_drives
 (
     storcli_virtual_drive_uuid, 
+    storcli_virtual_drive_id_string, 
     storcli_virtual_drive_host_uuid, 
     storcli_virtual_drive_controller_uuid, 
     storcli_virtual_drive_creation_date, 
@@ -9113,6 +9141,7 @@ INSERT INTO
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_id_string).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_controller_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_creation_date).", 
@@ -9120,10 +9149,10 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_disk_cache_policy).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_emulation_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_encryption).", 
-    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_blocks).", 
+    $quoted_storcli_virtual_drive_blocks, 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_strip_size).", 
-    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_drives_per_span).", 
-    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_span_depth).", 
+    $quoted_storcli_virtual_drive_drives_per_span, 
+    $quoted_storcli_virtual_drive_span_depth, 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_scsi_naa_id).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
@@ -9148,6 +9177,7 @@ INSERT INTO
     history.storcli_virtual_drives
 (
     storcli_virtual_drive_uuid, 
+    storcli_virtual_drive_id_string, 
     storcli_virtual_drive_host_uuid, 
     storcli_virtual_drive_controller_uuid, 
     storcli_virtual_drive_creation_date, 
@@ -9163,6 +9193,7 @@ INSERT INTO
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_id_string).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_controller_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_creation_date).", 
@@ -9170,10 +9201,10 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_disk_cache_policy).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_emulation_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_encryption).", 
-    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_blocks).", 
+    $quoted_storcli_virtual_drive_blocks, 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_strip_size).", 
-    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_drives_per_span).", 
-    ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_span_depth).", 
+    $quoted_storcli_virtual_drive_drives_per_span, 
+    $quoted_storcli_virtual_drive_span_depth, 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_scsi_naa_id).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";

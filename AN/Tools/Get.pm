@@ -2907,19 +2907,22 @@ sub ram_used_by_program
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ram_used_by_program" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $program_name = $parameter->{program_name} ? $parameter->{program_name} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "program_name", value1 => $program_name, 
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	
 	# What program?
-	if (not $parameter->{program_name})
+	if (not $program_name)
 	{
-		return(-1);
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0191", code => 191, file => $THIS_FILE, line => __LINE__});
+		return("");
 	}
 	
 	my $total_bytes = 0;
-	my $shell_call  = $an->data->{path}{'anvil-report-memory'}." --program $parameter->{program_name}";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => "$shell_call"
+	my $shell_call  = $an->data->{path}{'anvil-report-memory'}." --program $program_name";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
 	while(<$file_handle>)
@@ -2930,7 +2933,7 @@ sub ram_used_by_program
 			name1 => "line", value1 => "$line"
 		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 		
-		if ($line =~ /^$parameter->{program_name} = (\d+)/)
+		if ($line =~ /^$program_name = (\d+)/)
 		{
 			$total_bytes = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
