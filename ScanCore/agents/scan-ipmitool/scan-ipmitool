@@ -2777,7 +2777,13 @@ INSERT INTO
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
-2					}
+						
+						# Because this is the old '_id' system, we need to do a 
+						# sub-select to get the IDs from the UUIDs. To make sure this
+						# can work, we need to INSERT these immediately and accept 
+						# the performance hit.
+						$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+					}
 				}
 				else
 				{
@@ -2874,11 +2880,17 @@ WHERE
 			}, file => $THIS_FILE, line => __LINE__});
 			$i++;
 		}
-		$an->Alert->error({title_key => "an_0003", message_key => "scan_ipmitool_error_0001", message_variables => { 
+		$an->Log->entry({log_level => 0, message_key => "scan_ipmitool_error_0001", message_variables => {
 			query => $query,
 			id    => $id, 
 			count => $count, 
-		}, code => 2, file => $THIS_FILE, line => __LINE__});
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		#$an->Alert->warning({title_key => "an_0003", message_key => "scan_ipmitool_error_0001", message_variables => { 
+		#	query => $query,
+		#	id    => $id, 
+		#	count => $count, 
+		#}, code => 2, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Return only the first.
