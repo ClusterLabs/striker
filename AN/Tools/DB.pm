@@ -790,11 +790,12 @@ sub do_db_write
 			# Record the query
 			if ($an->Log->db_transactions())
 			{
-				$an->Log->entry({log_level => 0, message_key => "an_variables_0004", message_variables => {
-					name1 => "query",  value1 => $query, 
-					name2 => "id",     value2 => $id,
-					name3 => "source", value3 => $source, 
-					name4 => "line",   value4 => $line, 
+				$an->Log->entry({log_level => 0, message_key => "an_variables_0005", message_variables => {
+					name1 => "query",    value1 => $query, 
+					name2 => "id",       value2 => $id,
+					name3 => "source",   value3 => $source, 
+					name4 => "line",     value4 => $line, 
+					name5 => "dbh::$id", value5 => $an->data->{dbh}{$id}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
@@ -823,10 +824,13 @@ sub do_db_write
 				name1 => "count", value1 => $count
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{dbh}{$id}->commit();
-			
-			# Free up some memory.
-			undef $query_set;
 		}
+	}
+	
+	if ($count)
+	{
+		# Free up some memory.
+		undef $query_set;
 	}
 	
 	return(0);
