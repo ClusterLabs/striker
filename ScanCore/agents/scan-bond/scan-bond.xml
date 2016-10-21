@@ -288,7 +288,7 @@ The network bond: [#!variable!bond_name!#] has vanished!
 		<key name="scan_bond_state_0006">Half Duplex</key>
 		
 		<!-- Errors -->
-		<key name="scan_bond_error_0001"></key>
+		<key name="scan_bond_error_0001">The query: [#!variable!query!#] against DB: [#!variable!id!#] returned: [#!variable!count!#] rows. Only '1' should have been returned!</key>
 		
 		<!-- bond Agent-specific messages -->
 		<key name="scan_bond_message_0001">Starting #!string!scan_bond_brand_0001!#:</key>

@@ -168,20 +168,12 @@ sub update_db
 		# Request a lock.
 		$an->DB->locking({request => 1});
 		
-		# Make a note in the databases that we're starting an update and ask it to wait 10 seconds 
-		# before returning to give other instances time to finish their scans. (our scans end quickly
-		# enough).
-		#$an->DB->set_update_db_flag({set => time, 'wait' => 10});
-		
 		# Update bond and interfaces
 		update_db_bond($an);
 		update_db_bond_interface($an);
 		
 		# Release the lock
 		$an->DB->locking({release => 1});
-		
-		# Clear the update flag.
-		#$an->DB->set_update_db_flag({set => 0});
 	}
 	
 	return(0);
@@ -393,7 +385,12 @@ INSERT INTO
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						
+						# Because this is the old '_id' system, we need to do a 
+						# sub-select to get the IDs from the UUIDs. To make sure this
+						# can work, we need to INSERT these immediately and accept 
+						# the performance hit.
+						$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 					}
 				}
 				else
@@ -403,6 +400,10 @@ INSERT INTO
 					# history schema.
 					if (not $an->data->{db_data}{$id}{bond_interface}{modified_date}{$modified_date}{bond_interface_name}{$bond_interface_name})
 					{
+						# Get the ID for this.
+						my $bond_interface_id = get_bond_interface_id($an, $bond_interface_bond_uuid, $bond_interface_name, $id);
+						next if not $bond_interface_id;
+						
 						# It doesn't, INSERT it.
 						my $query = "
 INSERT INTO 
@@ -419,16 +420,7 @@ INSERT INTO
     bond_interface_slave_queue_id, 
     modified_date 
 ) VALUES (
-    (
-        SELECT 
-            bond_interface_id 
-        FROM 
-            public.bond_interface 
-        WHERE 
-            bond_interface_bond_uuid = ".$an->data->{sys}{use_db_fh}->quote($bond_interface_bond_uuid)." 
-        AND 
-            bond_interface_name = ".$an->data->{sys}{use_db_fh}->quote($bond_interface_name)."
-    ), 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_interface_id).", 
     ".$an->data->{sys}{use_db_fh}->quote($bond_interface_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($bond_interface_bond_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($bond_interface_mii_status).", 
@@ -469,11 +461,67 @@ INSERT INTO
 	return(0);
 }
 
+# This returns the get_bond_interface_id for a given bond_interface_bond_uuid and bond_interface_name
+sub get_bond_interface_id
+{
+	my ($an, $bond_interface_bond_uuid, $bond_interface_name, $id) = @_;
+	
+	my $query = "
+SELECT 
+    bond_interface_id 
+FROM 
+    public.bond_interface 
+WHERE 
+    bond_interface_bond_uuid = ".$an->data->{sys}{use_db_fh}->quote($bond_interface_bond_uuid)." 
+AND 
+    bond_interface_name = ".$an->data->{sys}{use_db_fh}->quote($bond_interface_name)."
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "id",    value1 => $id, 
+		name2 => "query", value2 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Do the query against the source DB and loop through the results.
+	my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# There should be only one result
+	if ($count != 1)
+	{
+		my $i = 1;
+		foreach my $row (@{$results})
+		{
+			my $bond_interface_id = $row->[0]; 
+			$an->Log->entry({log_level => 0, message_key => "an_variables_0002", message_variables => {
+				name1 => "i",                 value1 => $i, 
+				name2 => "bond_interface_id", value2 => $bond_interface_id, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$i++;
+		}
+		$an->Log->entry({log_level => 0, message_key => "scan_bond_error_0001", message_variables => {
+			query => $query,
+			id    => $id, 
+			count => $count, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Return only the first.
+	my $bond_interface_id = $results->[0]->[0]; 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "bond_interface_id", value1 => $bond_interface_id, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($bond_interface_id);
+}
+
 # Update the 'bond' table.
 sub update_db_bond
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_bond", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_bond" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'bond' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
