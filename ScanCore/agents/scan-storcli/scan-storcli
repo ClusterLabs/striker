@@ -10871,7 +10871,7 @@ sub get_virtual_drive_data
 		if ($line =~ /\/c$adapter\/v(\d+):/)
 		{
 			$virtual_drive                                                  = $1;
-			$id_string                                                     = $serial_number."-vd".$virtual_drive;
+			$id_string                                                      = $serial_number."-vd".$virtual_drive;
 			$an->data->{virtual_drive}{$id_string}{variable}{on_controller} = $serial_number;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "virtual_drive",                                           value1 => $virtual_drive, 

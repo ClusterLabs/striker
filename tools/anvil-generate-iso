@@ -2156,21 +2156,28 @@ sub download_file
 		my $file_ok = 0;
 		if (-e $target)
 		{
-			# Downloaded, but is it binary or text? If it is text, make sure it is not a failure 
-			# message.
-			if (-B $target)
+			# If the file is less than 1024 bytes, read it in to make sure it is not a 
+			# failure message.
+			my $size = (stat($target))[7];
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is: [$size] bytes.\n" if $conf->{sys}{debug} >= 1;
+			if ($size < 1024)
 			{
-				# Yay!
-				$file_ok = 1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is binary, good.\n" if $conf->{sys}{debug} >= 1;
-			}
-			else
-			{
-				# If the file is less than 1024 bytes, read it in to make sure it is not a 
-				# failure message.
-				my $size = (stat($target))[7];
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is: [$size] bytes.\n" if $conf->{sys}{debug} >= 1;
-				if ($size < 1024)
+				# Is it binary or text? If it is text, make sure it is not a failure message.
+				if (not $size)
+				{
+					# File is empty.
+					print "\n" if not $conf->{sys}{debug};
+					print "[ Error ] - Failed to download: [$target].\n";
+					print "[ Error ]   The downloaded file was 0-bytes.\n";
+					print "[ Error ]   Is the source: [$source] accessible?\n";
+				}
+				elsif (-B $target)
+				{
+					# Yay!
+					$file_ok = 1;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is binary, good.\n" if $conf->{sys}{debug} >= 1;
+				}
+				else
 				{
 					# Read it in.
 					my $shell_call = $target;
@@ -2184,12 +2191,14 @@ sub download_file
 						if ($line =~ /Could not resolve host/i)
 						{
 							# Bad URL
+							print "\n" if not $conf->{sys}{debug};
 							print "[ Error ] - Failed to download: [$target].\n";
 							print "[ Error ]   It appears that the domain name is invalid.\n";
 						}
 						if ($line =~ /<title>404 Not Found<\/title>/i)
 						{
 							# File not found.
+							print "\n" if not $conf->{sys}{debug};
 							print "[ Error ] - Failed to download: [$target].\n";
 							print "[ Error ]   It appears that the file was not found on the server.\n";
 						}
@@ -2211,12 +2220,12 @@ sub download_file
 					}
 					close $file_handle;
 				}
-				else
-				{
-					# Too big to be a failure, so we're probably good.
-					$file_ok = 1;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is large enough that analysis is not required.\n" if $conf->{sys}{debug} >= 1;
-				}
+			}
+			else
+			{
+				# Too big to be a failure, so we're probably good.
+				$file_ok = 1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is large enough that analysis is not required.\n" if $conf->{sys}{debug} >= 1;
 			}
 		}
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - target: [$target], file_ok: [$file_ok]\n" if $conf->{sys}{debug} >= 1;
