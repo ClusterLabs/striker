@@ -747,13 +747,17 @@ EOF
 # Now setup the script for the user to call once booted.
 echo 'Writing out the sample striker-installer script'
 cat > /root/example_striker-installer.txt << EOF
-# This is an example 'striker-installer' call. Feel free to edit this file
-# here and then call it with 'sh /root/example_striker-installer.txt' to
-# save typing all this out.
+# This is an example 'striker-installer' call. Feel free to edit this file here
+# and then call it with 'sh /root/example_striker-installer.txt' to save typing
+# all this out.
 # 
-# To understand what all these switches do, run './striker-installer --help' 
-# and the help will be displayed.
+# If you are rebuilding or replacing a dashboard and you know what the old host
+# UUID was, you can specify it with '--host-uuid <uuid>' to have Scanner link
+# this machine to the previous one's data.
 # 
+# To understand what all these switches do, and what other switches are 
+# available, run './striker-installer --help'. 
+
 ./striker-installer \\\\
  -c \"$conf->{sys}{ks}{company_name}\" \\\\
  -n \"$conf->{sys}{ks}{prefix}-striker0${number}.$conf->{sys}{ks}{domain}\" \\\\
