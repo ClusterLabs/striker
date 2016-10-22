@@ -6052,6 +6052,8 @@ sub configure_storage_stage2
 	return($ok);
 }
 
+### BUG: This tries to stop a node that was in the cluster when the run started! Fix it.
+
 # This manually starts DRBD, forcing one to primary if needed, configures clvmd, sets up the PVs and VGs, 
 # creates the /shared LV, creates the GFS2 partition and configures fstab.
 sub configure_storage_stage3

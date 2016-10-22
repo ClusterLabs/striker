@@ -59,6 +59,7 @@
 #      at an HTTPS URL.
 # 41 - Failed to install AN::Tools
 # 42 - Failed to enable or disable ScanCore.
+# 43 - User specified a host UUID, but it is invalid.
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it is usually too small.
@@ -390,6 +391,7 @@ my $conf = {
 		dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
 		gcc			=>	"/usr/bin/gcc",
 		hostname		=>	"/etc/sysconfig/network",
+		host_uuid		=	"/etc/striker/host.uuid",
 		hosts			=>	"/etc/hosts",
 		inittab			=>	"/etc/inittab",
 		iptables		=>	"/etc/sysconfig/iptables",
@@ -672,6 +674,7 @@ my $conf = {
 		gui			=>	1,
 		'h'			=>	"",
 		help			=>	"",
+		'host-uuid'		=>	"",
 		'i'			=>	"", # <ip_address/netmask>,dg=<ip_address>[,dns1=<ip_address>,dns2=<ip_address>]
 		'ipmi-user'		=>	"", # <user:password>
 		'ipmi-ip'		=>	"", # <ip_address/netmask>[,gw=<ip_address>]
@@ -5482,6 +5485,27 @@ sub install_striker_files
 		}
 	}
 	
+	# If the user has given us a specific host uuid, write it now.
+	if ($conf->{switches}{'host-uuid'})
+	{
+		# Is it valid?
+		logger($conf, $THIS_FILE, __LINE__, "- User-defined host UUID, validating it.", 1);
+		if ($conf->{switches}{'host-uuid'} =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i)
+		{
+			# Valid, record it.
+			logger($conf, $THIS_FILE, __LINE__, "- The UUID is valid, recording it.", 1);
+			open (my $file_handle, ">", $conf->{path}{host_uuid}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{host_uuid}], the error was: $!\n";
+			print $file_handle lc($conf->{switches}{'host-uuid'})."\n";
+			close $file_handle;
+		}
+		else
+		{
+			# Bad UUID, error out.
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The requested host UUID: [".$conf->{switches}{'host-uuid'}."] appears to be invalid.\n", 0);
+			exit(43);
+		}
+	}
+	
 	# Update /etc/striker/striker.conf if a custom config was not used.
 	if (not $conf->{switches}{'custom-config'})
 	{
@@ -8557,6 +8581,21 @@ SWITCHES
  -h, -?, --help
 
 	Show this dialog and exit.
+
+ --host-uuid <uuid>
+
+	If you want to use a set UUID to identify this machine in ScanCore, you
+	can do so using this switch. This will only make sense if you are 
+	rebuilding or replacing an old UUID. To record a machine's existing
+	host UUID, back up:
+|;
+	$help .= "	$conf->{path}{host_uuid}\n";
+$help .= q|
+	In it will be the UUID used to identify each Anvil!
+	machine (Striker dashboards and Anvil! nodes). Note that the Install
+	Manifest records the UUIDs assigned to nodes as well. So replacing a
+	node using the previous manifest automatically re-uses the previous
+	host UUID.
 
  -i <ip_address/netmask>,dg=<ip_address>[,dns1=<ip_address>,dns2=<ip_address>]
 
