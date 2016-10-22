@@ -13437,7 +13437,6 @@ sub run_new_install_manifest
 		rsync				=>	0,
 		screen				=>	0,
 		sharutils			=>	0,
-		'subscription-manager'		=>	0,
 		syslinux			=>	0,
 		sysstat				=>	0,
 		tuned				=>	0,
