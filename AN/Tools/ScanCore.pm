@@ -6121,11 +6121,11 @@ sub target_power
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 1, title_key => "tools_log_0001", title_variables => { function => "target_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "target_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $task   = $parameter->{task}   ? $parameter->{task}   : "status";
 	my $target = $parameter->{target} ? $parameter->{target} : "";
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "task",   value1 => $task, 
 		name2 => "target", value2 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6205,7 +6205,7 @@ sub target_power
 			
 			# Convert the '-a X' to an IP address, if needed.
 			$ipmi_target = ($power_check =~ /-a\s(.*?)\s/)[0];
-			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "ipmi_target", value1 => $ipmi_target,
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->Validate->is_ipv4({ip => $ipmi_target}))

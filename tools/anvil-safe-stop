@@ -130,8 +130,6 @@ if (not $connections)
 # Who am I and what Anvil! do I belong to?
 find_myself($an);
 
-### NOTE: Left off here... report our progress to STDOUT using string keys and don't call anvil-kick-apc-ups
-###       unless it is locally enabled.
 # Do the deed
 process_request($an);
 
@@ -765,6 +763,9 @@ sub local_shut_down
 	
 	# If our health isn't 'critical', set it to 'shutdown'.
 	my $current_health = $an->ScanCore->host_state();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "current_health", value1 => $current_health, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($current_health) && ($current_health ne "critical") && ($current_health ne "shutdown"))
 	{
 		$an->ScanCore->host_state({set => "shutdown"});

@@ -1640,8 +1640,10 @@ sub locking
 				$an->DB->mark_active({set => 0});
 				
 				$waiting = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "waiting", value1 => $waiting, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "lock_source_uuid", value1 => $lock_source_uuid, 
+					name2 => "source_uuid",      value2 => $source_uuid, 
+					name3 => "waiting",          value3 => $waiting, 
 				}, file => $THIS_FILE, line => __LINE__});
 				sleep 5;
 			}

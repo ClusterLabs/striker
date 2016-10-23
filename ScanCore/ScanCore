@@ -427,7 +427,7 @@ $an->nice_exit({exit_code => 0});
 sub archive_if_needed
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the 'trigger' is '0', archiving is disabled.
 	if (not $an->data->{scancore}{archive}{trigger})
@@ -454,7 +454,7 @@ sub archive_if_needed
 	#    records from the database.
 	
 	# Update the archive path, if set by a user. Also verify that there are sane archive values.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
 		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
 		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
@@ -485,7 +485,7 @@ sub archive_if_needed
 	if (not -e $an->data->{path}{scancore_archive})
 	{
 		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -507,9 +507,6 @@ sub archive_if_needed
 			return(1);
 		}
 	}
-	
-	# See if there was a request to archive records older than a certain date. If so, do it now.
-	# TODO: Remove 'states' history.
 	
 	# Now lets look to archive certain fast-growing tables.
 	# * agents
@@ -565,7 +562,7 @@ sub archive_if_needed
 	my $archive_needed = 0;
 	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "table", value1 => $table, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -587,13 +584,13 @@ WHERE
 ;";
 			
 		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $records = 0 if not defined $records;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "records", value1 => $records, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -603,7 +600,7 @@ WHERE
 			my $records_to_save                            = ($an->data->{scancore}{archive}{trigger} - $an->data->{scancore}{archive}{count});
 			my $offset                                     = $records - $records_to_save;
 			   $an->data->{archive}{table}{$table}{offset} = $offset;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
 				name1 => "archive_needed",                   value1 => $archive_needed, 
 				name2 => "records_to_save",                  value2 => $records_to_save, 
 				name3 => "archive::table::${table}::offset", value3 => $an->data->{archive}{table}{$table}{offset}, 
@@ -624,7 +621,7 @@ WHERE
 		foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 		{
 			next if not $an->data->{archive}{table}{$table}{offset};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "table", value1 => $table, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -632,7 +629,7 @@ WHERE
 			if ($table eq "agents")
 			{
 				my $archive_file = archive_agents($an);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "archive_file", value1 => $archive_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -641,7 +638,7 @@ WHERE
 			elsif ($table eq "alerts")
 			{
 				my $archive_file = archive_alerts($an);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "archive_file", value1 => $archive_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -650,7 +647,7 @@ WHERE
 			elsif ($table eq "health")
 			{
 				my $archive_file = archive_health($an);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "archive_file", value1 => $archive_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -659,7 +656,7 @@ WHERE
 			elsif ($table eq "power")
 			{
 				my $archive_file = archive_power($an);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "archive_file", value1 => $archive_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -668,7 +665,7 @@ WHERE
 			elsif ($table eq "temperature")
 			{
 				my $archive_file = archive_temperature($an);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "archive_file", value1 => $archive_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -677,7 +674,7 @@ WHERE
 			elsif ($table eq "ram_used")
 			{
 				my $archive_file = archive_ram_used($an);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "archive_file", value1 => $archive_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -686,7 +683,7 @@ WHERE
 			elsif ($table eq "servers")
 			{
 				my $archive_file = archive_servers($an);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "archive_file", value1 => $archive_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -695,7 +692,7 @@ WHERE
 			elsif ($table eq "hosts")
 			{
 				my $archive_file = archive_hosts($an);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "archive_file", value1 => $archive_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -729,7 +726,7 @@ WHERE
 		{
 			my $start      = time;
 			my $shell_call = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." $db_name -c 'VACUUM FULL;'\"";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 				name1 => "start",      value1 => $start, 
 				name2 => "shell_call", value2 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -745,7 +742,7 @@ WHERE
 			close $file_handle;
 			
 			my $finished = time - $start;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "finished", value1 => $finished, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -756,7 +753,7 @@ WHERE
 		# Compress the archives.
 		foreach my $archive_file (sort {$a cmp $b} @{$compress})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "archive_file", value1 => $archive_file, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -899,7 +896,7 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "archive_file", value1 => $archive_file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($archive_file);
@@ -2590,23 +2587,6 @@ ORDER BY
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
-			
-			### NOTE: Disabled, because it was clearing before a 'clean' stop could finish. We'll
-			###       trust the node to clear its own state on boot in anvil-safe-start.
-# 			# OK, if 'clear' and if there is a stop reason and/or estop flag, clear it
-# 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-# 				name1 => "clear",               value1 => $clear, 
-# 				name2 => "host_emergency_stop", value2 => $host_emergency_stop, 
-# 				name3 => "host_stop_reason",    value3 => $host_stop_reason, 
-# 			}, file => $THIS_FILE, line => __LINE__});
-# 			if (($clear) && (($host_emergency_stop) or ($host_stop_reason)))
-# 			{
-# 				# Clear it
-# 				$an->Log->entry({log_level => 1, message_key => "scancore_log_0086", message_variables => {
-# 					node => $host_name, 
-# 				}, file => $THIS_FILE, line => __LINE__});
-# 				clear_node_stop($an, $host_uuid);
-# 			}
 			next;
 		}
 		
@@ -3281,7 +3261,7 @@ SET
 WHERE 
     host_uuid           = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -11803,7 +11783,7 @@ FROM
 WHERE 
     host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname)."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -11820,7 +11800,7 @@ WHERE
 			my $unix_modified_date  =         $row->[2];
 			my $current_time        = time;
 			my $difference          = $current_time - $unix_modified_date;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 				name1 => "host_emergency_stop", value1 => $host_emergency_stop, 
 				name2 => "host_stop_reason",    value2 => $host_stop_reason, 
 				name3 => "unix_modified_date",  value3 => $unix_modified_date, 
@@ -11850,7 +11830,7 @@ SET
 WHERE
     host_uuid           = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -12059,7 +12039,7 @@ sub avoid_duplicate_run
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $my_pid = $$;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "my_pid", value1 => $my_pid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -12113,7 +12093,7 @@ sub avoid_duplicate_run
 		my $current_time = time;
 		my $difference   = $current_time - $last_updated;
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "last_updated",               value1 => $last_updated, 
 			name2 => "current_time",               value2 => $current_time, 
 			name3 => "difference",                 value3 => $difference, 
@@ -12135,7 +12115,7 @@ sub avoid_duplicate_run
 				
 				# Kill it
 				my $shell_call = $an->data->{path}{'kill'}." $pid";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -12143,7 +12123,7 @@ sub avoid_duplicate_run
 				{
 					chomp;
 					my $line = $_;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}

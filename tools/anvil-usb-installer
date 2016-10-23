@@ -411,7 +411,7 @@ sub write_device
         close $file_handle;
 
 #Below lies the previous method for moving mbr files to the device. syslinux --install appears to have remedied. TEST.
-=cut
+#=cut
 	my $mbr_bin_path       = $conf->{path}{mbr_bin};
 	my $syslinux_directory = ($mbr_bin_path =~ /^(.*?)\/mbr\.bin$/)[0];
 	my $ldlinux_c32_path   = $syslinux_directory."/ldlinux.c32";
@@ -440,7 +440,7 @@ sub write_device
 		}
 		close $file_handle;
 	}
-=cut	
+#=cut	
 	return(0);
 }
 

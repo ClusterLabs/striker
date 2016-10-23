@@ -1289,7 +1289,7 @@ sub write_driver_update_script
 # version changes. It will be replaced by a proper program later (hopefully).
 
 DATADIR=\"".$conf->{directory}{striker_config}."\";
-DATAFILE=\"".$conf->{directory}{striker_config}."/".$conf->{path}{last_kernel}."\";
+DATAFILE=\"".$conf->{path}{last_kernel}."\";
 ASIXDRIVER=\"".$driver_directory."/".$conf->{sys}{asix_driver}.".zip\";
 ASIXDIRECTORY=\"/tmp/".$conf->{sys}{asix_driver}."/\";
 RECOMPILE=0;
