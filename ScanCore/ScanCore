@@ -9162,18 +9162,18 @@ WHERE
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
-			$an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name} = {
-				temperature_uuid	=>	$temperature_uuid, 
+			$an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid} = {
+				temperature_agent_name	=>	$temperature_agent_name, 
 				temperature_sensor_host	=>	$temperature_sensor_host,
 				temperature_sensor_name	=>	$temperature_sensor_name,
 				temperature_celsius	=>	$temperature_celsius,
 				temperature_state	=>	$temperature_state,
 				temperature_is		=>	$temperature_is,
 			};
-			$an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name}{'exists'} = 1;
-			$an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name}{seen}     = 0;
-			$an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name} = {
-				temperature_uuid	=>	$temperature_uuid, 
+			$an->data->{db_data}{$id}{temperature}{temperature_uuid}{$temperature_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{temperature}{temperature_uuid}{$temperature_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid} = {
+				temperature_agent_name	=>	$temperature_agent_name, 
 				temperature_sensor_host	=>	$temperature_sensor_host,
 				temperature_sensor_name	=>	$temperature_sensor_name,
 				temperature_celsius	=>	$temperature_celsius,
@@ -9191,14 +9191,14 @@ WHERE
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $temperature_agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}})
+		foreach my $temperature_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_uuid}})
 		{
-			my $temperature_uuid        = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_uuid};
-			my $temperature_sensor_host = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_sensor_host};
-			my $temperature_sensor_name = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_sensor_name};
-			my $temperature_celsius     = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_celsius};
-			my $temperature_state       = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_state};
-			my $temperature_is          = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_is};
+			my $temperature_agent_name  = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid}{temperature_agent_name};
+			my $temperature_sensor_host = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid}{temperature_sensor_host};
+			my $temperature_sensor_name = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid}{temperature_sensor_name};
+			my $temperature_celsius     = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid}{temperature_celsius};
+			my $temperature_state       = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid}{temperature_state};
+			my $temperature_is          = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid}{temperature_is};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "temperature_uuid",        value1 => $temperature_uuid, 
 				name2 => "temperature_agent_name",  value2 => $temperature_agent_name, 
@@ -9220,24 +9220,24 @@ WHERE
 				#      \- If not, _INSERT_ it into history schema.
 				#
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "db_data::${id}::temperature::temperature_agent_name::${temperature_agent_name}::seen", value1 => $an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name}{seen}, 
+					name1 => "db_data::${id}::temperature::temperature_agent_name::${temperature_agent_name}::seen", value1 => $an->data->{db_data}{$id}{temperature}{temperature_uuid}{$temperature_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if (not $an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name}{seen})
+				if (not $an->data->{db_data}{$id}{temperature}{temperature_uuid}{$temperature_uuid}{seen})
 				{
 					# Mark this record as now having been seen.
-					$an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name}{seen} = 1;
+					$an->data->{db_data}{$id}{temperature}{temperature_uuid}{$temperature_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::temperature::temperature_agent_name::${temperature_agent_name}::exists", value1 => $an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name}{'exists'}, 
+						name1 => "db_data::${id}::temperature::temperature_agent_name::${temperature_agent_name}::exists", value1 => $an->data->{db_data}{$id}{temperature}{temperature_uuid}{$temperature_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name}{'exists'})
+					if ($an->data->{db_data}{$id}{temperature}{temperature_uuid}{$temperature_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1  => "db_data::${id}::temperature::modified_date::${modified_date}::temperature_agent_name::${temperature_agent_name}", value1 => $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}, 
+							name1  => "db_data::${id}::temperature::modified_date::${modified_date}::temperature_agent_name::${temperature_agent_name}", value1 => $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name})
+						if (not $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid})
 						{
 							# No, so UPDATE it.
 							my $query = "
@@ -9250,10 +9250,9 @@ SET
     temperature_celsius     = ".$an->data->{sys}{use_db_fh}->quote($temperature_celsius).", 
     temperature_state       = ".$an->data->{sys}{use_db_fh}->quote($temperature_state).", 
     temperature_is          = ".$an->data->{sys}{use_db_fh}->quote($temperature_is).", 
-    modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
+    modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date).", 
     temperature_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
+WHERE 
     temperature_uuid        = ".$an->data->{sys}{use_db_fh}->quote($temperature_uuid)." 
 ;";
 							# Now record the query in the array
@@ -9306,7 +9305,7 @@ INSERT INTO
 					# We've seen this 'temperature_agent_name' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
-					if (not $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name})
+					if (not $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_uuid}{$temperature_uuid})
 					{
 						# It doesn't, INSERT it.
 						my $query = "
@@ -9417,15 +9416,15 @@ WHERE
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
-			$an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name} = {
-				health_uuid		=>	$health_uuid, 
+			$an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_uuid}{$health_uuid} = {
+				health_agent_name	=>	$health_agent_name, 
 				health_source_name	=>	$health_source_name,
 				health_source_weight	=>	$health_source_weight,
 			};
-			$an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{'exists'} = 1;
-			$an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{seen}     = 0;
-			$an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name} = {
-				health_uuid		=>	$health_uuid, 
+			$an->data->{db_data}{$id}{health}{health_uuid}{$health_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{health}{health_uuid}{$health_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_uuid}{$health_uuid} = {
+				health_agent_name	=>	$health_agent_name, 
 				health_source_name	=>	$health_source_name,
 				health_source_weight	=>	$health_source_weight,
 			};
@@ -9440,11 +9439,11 @@ WHERE
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $health_agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}})
+		foreach my $health_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_uuid}})
 		{
-			my $health_uuid          = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}{health_uuid};
-			my $health_source_name   = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}{health_source_name};
-			my $health_source_weight = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}{health_source_weight};
+			my $health_agent_name    = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_uuid}{$health_uuid}{health_agent_name};
+			my $health_source_name   = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_uuid}{$health_uuid}{health_source_name};
+			my $health_source_weight = $an->data->{db_data}{unified}{health}{modified_date}{$modified_date}{health_uuid}{$health_uuid}{health_source_weight};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "health_uuid",          value1 => $health_uuid, 
 				name2 => "health_agent_name",    value2 => $health_agent_name, 
@@ -9463,24 +9462,24 @@ WHERE
 				#      \- If not, _INSERT_ it into history schema.
 				#
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "db_data::${id}::health::health_agent_name::${health_agent_name}::seen", value1 => $an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{seen}, 
+					name1 => "db_data::${id}::health::health_agent_name::${health_agent_name}::seen", value1 => $an->data->{db_data}{$id}{health}{health_uuid}{$health_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if (not $an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{seen})
+				if (not $an->data->{db_data}{$id}{health}{health_uuid}{$health_uuid}{seen})
 				{
 					# Mark this record as now having been seen.
-					$an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{seen} = 1;
+					$an->data->{db_data}{$id}{health}{health_uuid}{$health_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::health::health_agent_name::${health_agent_name}::exists", value1 => $an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{'exists'}, 
+						name1 => "db_data::${id}::health::health_agent_name::${health_agent_name}::exists", value1 => $an->data->{db_data}{$id}{health}{health_uuid}{$health_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{health}{health_agent_name}{$health_agent_name}{'exists'})
+					if ($an->data->{db_data}{$id}{health}{health_uuid}{$health_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1  => "db_data::${id}::health::modified_date::${modified_date}::health_agent_name::${health_agent_name}", value1 => $an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name}, 
+							name1  => "db_data::${id}::health::modified_date::${modified_date}::health_agent_name::${health_agent_name}", value1 => $an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_uuid}{$health_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name})
+						if (not $an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_uuid}{$health_uuid})
 						{
 							# No, so UPDATE it.
 							my $query = "
@@ -9490,10 +9489,9 @@ SET
     health_agent_name    = ".$an->data->{sys}{use_db_fh}->quote($health_agent_name).", 
     health_source_name   = ".$an->data->{sys}{use_db_fh}->quote($health_source_name).", 
     health_source_weight = ".$an->data->{sys}{use_db_fh}->quote($health_source_weight).", 
-    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($modified_date).", 
     health_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
+WHERE 
     health_uuid          = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)." 
 ;";
 							# Now record the query in the array
@@ -9540,7 +9538,7 @@ INSERT INTO
 					# We've seen this 'health_agent_name' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
-					if (not $an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_agent_name}{$health_agent_name})
+					if (not $an->data->{db_data}{$id}{health}{modified_date}{$modified_date}{health_uuid}{$health_uuid})
 					{
 						# It doesn't, INSERT it.
 						my $query = "
@@ -10804,8 +10802,8 @@ WHERE
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
-			$an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name} = {
-				power_uuid		=>	$power_uuid, 
+			$an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid} = {
+				power_agent_name	=>	$power_agent_name, 
 				power_record_locator	=>	$power_record_locator,
 				power_ups_name		=>	$power_ups_name,
 				power_on_battery	=>	$power_on_battery,
@@ -10813,10 +10811,10 @@ WHERE
 				power_charge_percentage	=>	$power_charge_percentage,
 			};
 			
-			$an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{'exists'} = 1;
-			$an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{seen}     = 0;
-			$an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name} = {
-				power_uuid		=>	$power_uuid, 
+			$an->data->{db_data}{$id}{power}{power_uuid}{$power_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{power}{power_uuid}{$power_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid} = {
+				power_agent_name	=>	$power_agent_name, 
 				power_record_locator	=>	$power_record_locator,
 				power_ups_name		=>	$power_ups_name,
 				power_on_battery	=>	$power_on_battery,
@@ -10834,14 +10832,14 @@ WHERE
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $power_agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}})
+		foreach my $power_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_uuid}})
 		{
-			my $power_uuid              = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_uuid};
-			my $power_record_locator    = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_record_locator};
-			my $power_ups_name          = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_ups_name};
-			my $power_on_battery        = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_on_battery};
-			my $power_seconds_left      = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_seconds_left};
-			my $power_charge_percentage = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_charge_percentage};
+			my $power_agent_name        = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid}{power_agent_name};
+			my $power_record_locator    = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid}{power_record_locator};
+			my $power_ups_name          = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid}{power_ups_name};
+			my $power_on_battery        = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid}{power_on_battery};
+			my $power_seconds_left      = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid}{power_seconds_left};
+			my $power_charge_percentage = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid}{power_charge_percentage};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "power_uuid",              value1 => $power_uuid, 
 				name2 => "power_agent_name",        value2 => $power_agent_name, 
@@ -10864,24 +10862,24 @@ WHERE
 				#      \- If not, _INSERT_ it into history schema.
 				#
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "db_data::${id}::power::power_agent_name::${power_agent_name}::seen", value1 => $an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{seen}, 
+					name1 => "db_data::${id}::power::power_agent_name::${power_agent_name}::seen", value1 => $an->data->{db_data}{$id}{power}{power_uuid}{$power_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if (not $an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{seen})
+				if (not $an->data->{db_data}{$id}{power}{power_uuid}{$power_uuid}{seen})
 				{
 					# Mark this record as now having been seen.
-					$an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{seen} = 1;
+					$an->data->{db_data}{$id}{power}{power_uuid}{$power_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::power::power_agent_name::${power_agent_name}::exists", value1 => $an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{'exists'}, 
+						name1 => "db_data::${id}::power::power_agent_name::${power_agent_name}::exists", value1 => $an->data->{db_data}{$id}{power}{power_uuid}{$power_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{'exists'})
+					if ($an->data->{db_data}{$id}{power}{power_uuid}{$power_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1  => "db_data::${id}::power::modified_date::${modified_date}::power_agent_name::${power_agent_name}", value1 => $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}, 
+							name1  => "db_data::${id}::power::modified_date::${modified_date}::power_agent_name::${power_agent_name}", value1 => $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name})
+						if (not $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid})
 						{
 							# No, so UPDATE it.
 							my $query = "
@@ -10894,10 +10892,9 @@ SET
     power_charge_percentage = ".$an->data->{sys}{use_db_fh}->quote($power_charge_percentage).", 
     power_agent_name        = ".$an->data->{sys}{use_db_fh}->quote($power_agent_name).", 
     power_record_locator    = ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
-    modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
+    modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date).", 
     power_host_uuid         = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
+WHERE 
     power_uuid              = ".$an->data->{sys}{use_db_fh}->quote($power_uuid)." 
 ;";
 							# Now record the query in the array
@@ -10950,7 +10947,7 @@ INSERT INTO
 					# We've seen this 'power_agent_name' before, so it is just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
-					if (not $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name})
+					if (not $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_uuid}{$power_uuid})
 					{
 						# It doesn't, INSERT it.
 						my $query = "

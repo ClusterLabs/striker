@@ -1,0 +1,153 @@
+#!/bin/bash
+#
+# This drops ScanCore agent data, but not information about the Anvil! systems,
+# notifications, etc. Said another way; this drops all auto-generated data but
+# not user-set data.
+# 
+# This is not a smart program. New agents will need to be added manually
+
+if [ ! -e '/usr/bin/psql' ];
+then
+    echo "PostgreSQL not installed. Is this a Striker dashboard?"
+    exit;
+fi;
+
+echo "This script will drop all data collected by ScanCore agents (but not"
+echo "user) data from the *LOCAL* ScanCore database only."
+echo
+echo "NOTE: If you want to reset completely, disable ScanCore on all machines,"
+echo "       wait for all instances to exit, run this on all ScanCore databases"
+echo "       and then re-enable ScanCore on all machines."
+echo 
+echo -n "Are you sure you want to proceed? [y/N] "
+read answer
+if echo "$answer" | grep -iq "^y" ;
+then
+    echo Proceeding.
+else
+    echo Aborting.
+    exit 1;
+fi
+
+
+# scan-apc-ups
+echo "Dropping 'scan-apc-ups' data..."
+su - postgres -c "psql -d scancore -c '
+BEGIN TRANSACTION; 
+DROP FUNCTION IF EXISTS history_apc_ups_input() CASCADE; 
+DROP FUNCTION IF EXISTS history_apc_ups_output() CASCADE; 
+DROP FUNCTION IF EXISTS history_apc_ups_battery() CASCADE; 
+DROP FUNCTION IF EXISTS history_apc_ups() CASCADE; 
+DROP TABLE IF EXISTS history.apc_ups_input; 
+DROP TABLE IF EXISTS history.apc_ups_output; 
+DROP TABLE IF EXISTS history.apc_ups_battery; 
+DROP TABLE IF EXISTS history.apc_ups; 
+DROP TABLE IF EXISTS apc_ups_input; 
+DROP TABLE IF EXISTS apc_ups_output; 
+DROP TABLE IF EXISTS apc_ups_battery; 
+DROP TABLE IF EXISTS apc_ups; 
+COMMIT;
+'"
+
+# scan-bond
+echo "Dropping 'scan-bond' data..."
+su - postgres -c "psql -d scancore -c '
+BEGIN TRANSACTION; 
+DROP FUNCTION IF EXISTS history_bond_interface() CASCADE; 
+DROP FUNCTION IF EXISTS history_bond() CASCADE; 
+DROP TABLE IF EXISTS history.bond_interface; 
+DROP TABLE IF EXISTS history.bond; 
+DROP TABLE IF EXISTS bond_interface; 
+DROP TABLE IF EXISTS bond; 
+COMMIT;
+'"
+
+# scan-clustat
+echo "Dropping 'scan-clustat' data..."
+su - postgres -c "psql -d scancore -c '
+BEGIN TRANSACTION; 
+DROP FUNCTION IF EXISTS history_clustat_service() CASCADE; 
+DROP FUNCTION IF EXISTS history_clustat_node() CASCADE; 
+DROP FUNCTION IF EXISTS history_clustat() CASCADE; 
+DROP TABLE IF EXISTS history.clustat_service; 
+DROP TABLE IF EXISTS history.clustat_node; 
+DROP TABLE IF EXISTS history.clustat; 
+DROP TABLE IF EXISTS clustat_service; 
+DROP TABLE IF EXISTS clustat_node; 
+DROP TABLE IF EXISTS clustat; 
+COMMIT;
+'"
+
+# scan-ipmitool
+echo "Dropping 'scan-ipmitool' data..."
+su - postgres -c "psql -d scancore -c '
+BEGIN TRANSACTION; 
+DROP FUNCTION IF EXISTS history_ipmitool_value() CASCADE;
+DROP FUNCTION IF EXISTS history_ipmitool() CASCADE;
+DROP TABLE IF EXISTS history.ipmitool_value;
+DROP TABLE IF EXISTS history.ipmitool;
+DROP TABLE IF EXISTS ipmitool_value;
+DROP TABLE IF EXISTS ipmitool;
+COMMIT;
+'"
+
+# scan-server
+echo "NOT Dropping 'scan-server' data. It is stored in the core database."
+
+# scan-storcli
+echo "Dropping 'scan-storcli' data..."
+su - postgres -c "psql -d scancore -c '
+BEGIN TRANSACTION; 
+DROP FUNCTION IF EXISTS history_storcli_variables() CASCADE;
+DROP FUNCTION IF EXISTS history_storcli_physical_drives() CASCADE;
+DROP FUNCTION IF EXISTS history_storcli_drive_groups() CASCADE;
+DROP FUNCTION IF EXISTS history_storcli_virtual_drives() CASCADE;
+DROP FUNCTION IF EXISTS history_storcli_bbus() CASCADE;
+DROP FUNCTION IF EXISTS history_storcli_cachevaults() CASCADE;
+DROP FUNCTION IF EXISTS history_storcli_controllers() CASCADE;
+DROP TABLE IF EXISTS history.storcli_variables;
+DROP TABLE IF EXISTS history.storcli_physical_drives;
+DROP TABLE IF EXISTS history.storcli_drive_groups;
+DROP TABLE IF EXISTS history.storcli_virtual_drives;
+DROP TABLE IF EXISTS history.storcli_bbus;
+DROP TABLE IF EXISTS history.storcli_cachevaults;
+DROP TABLE IF EXISTS history.storcli_controllers;
+DROP TABLE IF EXISTS storcli_variables;
+DROP TABLE IF EXISTS storcli_physical_drives;
+DROP TABLE IF EXISTS storcli_drive_groups;
+DROP TABLE IF EXISTS storcli_virtual_drives;
+DROP TABLE IF EXISTS storcli_bbus;
+DROP TABLE IF EXISTS storcli_cachevaults;
+DROP TABLE IF EXISTS storcli_controllers;
+COMMIT;
+'"
+# 
+#echo "Dropping 'scan-' data..."
+#su - postgres -c "psql -d scancore -c '
+#BEGIN TRANSACTION; 
+#DROP FUNCTION IF EXISTS history_() CASCADE;
+#DROP TABLE IF EXISTS history.;
+#DROP TABLE IF EXISTS ;
+#COMMIT;
+#'"
+
+# Delete data from the health, temperature and power tables
+echo "Deleting power, temperature and health data"
+su - postgres -c "psql -d scancore -c '
+BEGIN TRANSACTION; 
+DELETE FROM history.power;
+DELETE FROM history.temperature;
+DELETE FROM history.health;
+DELETE FROM power;
+DELETE FROM temperature;
+DELETE FROM health;
+COMMIT;
+'"
+
+echo "Deleting power, temperature and health data"
+su - postgres -c "psql -d scancore -c \"DELETE FROM updated;\""
+
+echo "Vacuuming the database.";
+su - postgres -c "psql -d scancore -c 'VACUUM FULL;'"
+
+echo "Done!"

@@ -3262,22 +3262,22 @@ INSERT INTO
 							$message_key = "scan_storcli_note_0015";
 						}
 					}
+					
+					# Record this for later processing into the 'temperature' table.
+					my $sensor_host_key = "pd:$storcli_physical_drive_serial_number";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "sensor_host_key", value1 => $sensor_host_key,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+						name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+						name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
-				
-				# Record this for later processing into the 'temperature' table.
-				my $sensor_host_key = "pd:$storcli_physical_drive_serial_number";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "sensor_host_key", value1 => $sensor_host_key,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
-				$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
-				$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
-					name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
-					name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
-				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Send an alert telling the user that we've found a new physical drive sensor.
 				$an->data->{sys}{alert_sort}++; 
@@ -4425,22 +4425,22 @@ INSERT INTO
 								$message_key = "scan_storcli_note_0039";
 							}
 						}
+						
+						# Record this for later processing into the 'temperature' table.
+						my $sensor_host_key = "cachevault:$cachevault_serial_number";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "sensor_host_key", value1 => $sensor_host_key,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+							name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+							name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
-					
-					# Record this for later processing into the 'temperature' table.
-					my $sensor_host_key = "cachevault:$cachevault_serial_number";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "sensor_host_key", value1 => $sensor_host_key,
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
-					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
-					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-						name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
-						name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
-						name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
-					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Send an alert telling the user that we've found a new controller.
 					$an->data->{sys}{alert_sort}++; 
@@ -5620,22 +5620,22 @@ INSERT INTO
 								$message_key = "scan_storcli_note_0053";
 							}
 						}
+						
+						# Record this for later processing into the 'temperature' table.
+						my $sensor_host_key = "bbu:$bbu_serial_number";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "sensor_host_key", value1 => $sensor_host_key,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+							name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+							name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
-					
-					# Record this for later processing into the 'temperature' table.
-					my $sensor_host_key = "bbu:$bbu_serial_number";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "sensor_host_key", value1 => $sensor_host_key,
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
-					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
-					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-						name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
-						name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
-						name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
-					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Send an alert telling the user that we've found a new controller.
 					$an->data->{sys}{alert_sort}++; 
@@ -6751,22 +6751,22 @@ INSERT INTO
 								$message_key = "scan_storcli_note_0025";
 							}
 						}
+						
+						# Record this for later processing into the 'temperature' table.
+						my $sensor_host_key = "controller:$serial_number";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "sensor_host_key", value1 => $sensor_host_key,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
+						$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
+							name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
+							name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
-					
-					# Record this for later processing into the 'temperature' table.
-					my $sensor_host_key = "controller:$serial_number";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "sensor_host_key", value1 => $sensor_host_key,
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $value;
-					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
-					$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-						name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
-						name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
-						name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
-					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Send an alert telling the user that we've found a new controller.
 					$an->data->{sys}{alert_sort}++; 
