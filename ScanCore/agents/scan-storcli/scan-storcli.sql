@@ -485,6 +485,8 @@ CREATE TABLE storcli_physical_drives (
 	storcli_physical_drive_controller_uuid		uuid				not null,
 	storcli_physical_drive_virtual_drive		text,
 	storcli_physical_drive_drive_group		text,
+	storcli_physical_drive_enclosure_id		text,
+	storcli_physical_drive_slot_number		text,
 	storcli_physical_drive_serial_number		text,					-- "Serial Number"
 	storcli_physical_drive_size			text,					-- In 'text' because of 'Bytes' suffix - "drive_size" but also; "Raw size", "Non Coerced size" and "Coerced size"
 	storcli_physical_drive_sector_size		text,					-- In 'text' because of 'Bytes' suffix - "sector_size", "Sector Size"
@@ -506,6 +508,8 @@ CREATE TABLE history.storcli_physical_drives (
 	storcli_physical_drive_serial_number		text,
 	storcli_physical_drive_virtual_drive		text,
 	storcli_physical_drive_drive_group		text,
+	storcli_physical_drive_enclosure_id		text,
+	storcli_physical_drive_slot_number		text,
 	storcli_physical_drive_size			text,
 	storcli_physical_drive_sector_size		text,
 	storcli_physical_drive_vendor			text,
@@ -527,6 +531,8 @@ BEGIN
 		 storcli_physical_drive_controller_uuid, 
 		 storcli_physical_drive_virtual_drive, 
 		 storcli_physical_drive_drive_group, 
+		 storcli_physical_drive_enclosure_id, 
+		 storcli_physical_drive_slot_number, 
 		 storcli_physical_drive_serial_number, 
 		 storcli_physical_drive_size, 
 		 storcli_physical_drive_sector_size, 
@@ -540,6 +546,8 @@ BEGIN
 		 history_storcli_physical_drives.storcli_physical_drive_controller_uuid, 
 		 history_storcli_physical_drives.storcli_physical_drive_virtual_drive, 
 		 history_storcli_physical_drives.storcli_physical_drive_drive_group, 
+		 history_storcli_physical_drives.storcli_physical_drive_enclosure_id, 
+		 history_storcli_physical_drives.storcli_physical_drive_slot_number, 
 		 history_storcli_physical_drives.storcli_physical_drive_size, 
 		 history_storcli_physical_drives.storcli_physical_drive_sector_size, 
 		 history_storcli_physical_drives.storcli_physical_drive_vendor, 

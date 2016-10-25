@@ -1273,19 +1273,11 @@ sub find_changes
 	### NOTE: We will loop through each section of data we scanned, deleting records as we process them
 	###       that existed in the DB, and then marking as removed anything left in the databased data not
 	###       seen in this scan.
-	
-	### TODO: Left off here... Create functions to process the various bits under each controller. 
-	###       Remember to keep in mind that a drive that vanishes or appears may come from another node
-	###       or controller. We may not care here though and, if not, we'll try to trace a drive through
-	###       notes in the UI later...
 	process_controllers($an);
 	process_bbus($an);
 	process_cachevaults($an);
 	process_virtual_drives($an);	# This calls process_drive_groups();
 	process_physical_disks($an);
-	
-	# Now read back in the various temperature data and process them.
-	#...
 	
 	return(0);
 }
@@ -1986,6 +1978,12 @@ WHERE
 	{
 		# Drive Group vanished!
 		my $storcli_drive_group_id_string = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_id_string};
+		
+		# If this drive group is '9999', we won't care if it vanishes because it was a pseudo DG 
+		# anyway.
+		next if $storcli_drive_group_id_string =~ /-dg9999$/;
+		
+		# Still here? Gather the rest of the data.
 		my $controller_uuid               = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_controller_uuid};
 		my $access                        = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_access};
 		my $host_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$controller_uuid};
@@ -2083,8 +2081,9 @@ sub process_virtual_drives
 		foreach my $type ("variable", "temperature")
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "type", value1 => $type,
+				name1 => "virtual_drive::${storcli_virtual_drive_id_string}::${type}", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type},
 			}, file => $THIS_FILE, line => __LINE__});
+			next if not defined $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{$type};
 			
 			$an->Log->aligned_entries({
 				log_level => 3, 
@@ -3125,6 +3124,8 @@ INSERT INTO
     storcli_physical_drive_controller_uuid, 
     storcli_physical_drive_virtual_drive, 
     storcli_physical_drive_drive_group, 
+    storcli_physical_drive_enclosure_id, 
+    storcli_physical_drive_slot_number, 
     storcli_physical_drive_serial_number, 
     storcli_physical_drive_size, 
     storcli_physical_drive_sector_size, 
@@ -3138,6 +3139,8 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($virtual_drive).", 
     ".$an->data->{sys}{use_db_fh}->quote($drive_group).", 
+    ".$an->data->{sys}{use_db_fh}->quote($enclosure_id).", 
+    ".$an->data->{sys}{use_db_fh}->quote($slot_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_size).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_sector_size).", 
@@ -3338,13 +3341,15 @@ INSERT INTO
 		my $old_controller_uuid              = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid};
 		my $old_virtual_drive                = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_virtual_drive};
 		my $old_drive_group                  = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_drive_group};
+		my $old_enclosure_id                 = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_enclosure_id};
+		my $old_slot_number                  = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_slot_number};
 		my $old_physical_drive_serial_number = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number};
 		my $old_size                         = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size};
 		my $old_sector_size                  = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size};
 		my $old_vendor                       = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
 		my $old_model                        = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 		my $old_self_encrypting_drive        = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0018", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0022", message_variables => {
 			name1  => "storcli_physical_drive_serial_number", value1  => $storcli_physical_drive_serial_number,
 			name2  => "old_physical_drive_serial_number",     value2  => $old_physical_drive_serial_number,
 			name3  => "controller_uuid",                      value3  => $controller_uuid,
@@ -3353,22 +3358,28 @@ INSERT INTO
 			name6  => "old_virtual_drive",                    value6  => $old_virtual_drive,
 			name7  => "drive_group",                          value7  => $drive_group,
 			name8  => "old_drive_group",                      value8  => $old_drive_group,
-			name9  => "new_size",                             value9  => $new_size,
-			name10 => "old_size",                             value10 => $old_size,
-			name11 => "new_sector_size",                      value11 => $new_sector_size,
-			name12 => "old_sector_size",                      value12 => $old_sector_size,
-			name13 => "new_vendor",                           value13 => $new_vendor,
-			name14 => "old_vendor",                           value14 => $old_vendor,
-			name15 => "new_model",                            value15 => $new_model,
-			name16 => "old_model",                            value16 => $old_model,
-			name17 => "new_self_encrypting_drive",            value17 => $new_self_encrypting_drive,
-			name18 => "old_self_encrypting_drive",            value18 => $old_self_encrypting_drive,
+			name9  => "enclosure_id",                         value9  => $enclosure_id,
+			name10 => "old_enclosure_id",                     value10 => $old_enclosure_id,
+			name11 => "slot_number",                          value11 => $slot_number,
+			name12 => "old_slot_number",                      value12 => $old_slot_number,
+			name13 => "new_size",                             value13 => $new_size,
+			name14 => "old_size",                             value14 => $old_size,
+			name15 => "new_sector_size",                      value15 => $new_sector_size,
+			name16 => "old_sector_size",                      value16 => $old_sector_size,
+			name17 => "new_vendor",                           value17 => $new_vendor,
+			name18 => "old_vendor",                           value18 => $old_vendor,
+			name19 => "new_model",                            value19 => $new_model,
+			name20 => "old_model",                            value20 => $old_model,
+			name21 => "new_self_encrypting_drive",            value21 => $new_self_encrypting_drive,
+			name22 => "old_self_encrypting_drive",            value22 => $old_self_encrypting_drive,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if (($storcli_physical_drive_serial_number ne $old_physical_drive_serial_number) or 
 		    ($controller_uuid                      ne $old_controller_uuid)              or 
 		    ($virtual_drive                        ne $old_virtual_drive)                or 
 		    ($drive_group                          ne $old_drive_group)                  or 
+		    ($enclosure_id                         ne $old_enclosure_id)                 or 
+		    ($slot_number                          ne $old_slot_number)                  or 
 		    ($new_size                             ne $old_size)                         or 
 		    ($new_sector_size                      ne $old_sector_size)                  or 
 		    ($new_vendor                           ne $old_vendor)                       or 
@@ -3388,7 +3399,7 @@ INSERT INTO
 			{
 				if ($old_model eq "VANISHED")
 				{
-					# Cachevault has returned.
+					# Physical drive has returned.
 					$message_key = "scan_storcli_warning_0030";
 				}
 			}
@@ -3407,6 +3418,10 @@ INSERT INTO
 					old_virtual_drive	=>	$old_virtual_drive,
 					new_drive_group		=>	$drive_group,
 					old_drive_group		=>	$old_drive_group,
+					new_enclosure_id	=>	$enclosure_id,
+					old_enclosure_id	=>	$old_enclosure_id,
+					new_slot_number		=>	$slot_number,
+					old_slot_number		=>	$old_slot_number,
 					new_serial_number	=>	$storcli_physical_drive_serial_number,
 					old_serial_number	=>	$old_physical_drive_serial_number,
 					new_vendor		=>	$new_vendor,
@@ -3430,6 +3445,8 @@ SET
     storcli_physical_drive_controller_uuid       = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
     storcli_physical_drive_virtual_drive         = ".$an->data->{sys}{use_db_fh}->quote($virtual_drive).", 
     storcli_physical_drive_drive_group           = ".$an->data->{sys}{use_db_fh}->quote($drive_group).", 
+    storcli_physical_drive_enclosure_id          = ".$an->data->{sys}{use_db_fh}->quote($enclosure_id).", 
+    storcli_physical_drive_slot_number           = ".$an->data->{sys}{use_db_fh}->quote($slot_number).", 
     storcli_physical_drive_serial_number         = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
     storcli_physical_drive_size                  = ".$an->data->{sys}{use_db_fh}->quote($new_size).", 
     storcli_physical_drive_sector_size           = ".$an->data->{sys}{use_db_fh}->quote($new_sector_size).", 
@@ -8074,6 +8091,8 @@ SELECT
     storcli_physical_drive_controller_uuid, 
     storcli_physical_drive_virtual_drive, 
     storcli_physical_drive_drive_group, 
+    storcli_physical_drive_enclosure_id, 
+    storcli_physical_drive_slot_number, 
     storcli_physical_drive_serial_number, 
     storcli_physical_drive_size, 
     storcli_physical_drive_sector_size, 
@@ -8097,25 +8116,29 @@ WHERE
 	{
 		my $storcli_physical_drive_uuid                  =         $row->[0]; 
 		my $storcli_physical_drive_controller_uuid       =         $row->[1];
-		my $storcli_physical_drive_virtual_drive         = defined $row->[2] ? $row->[2] : "";
-		my $storcli_physical_drive_drive_group           = defined $row->[3] ? $row->[3] : "";
-		my $storcli_physical_drive_serial_number         = defined $row->[4] ? $row->[4] : "";
-		my $storcli_physical_drive_size                  = defined $row->[5] ? $row->[5] : "";
-		my $storcli_physical_drive_sector_size           = defined $row->[6] ? $row->[6] : "";
-		my $storcli_physical_drive_vendor                = defined $row->[7] ? $row->[7] : "";
-		my $storcli_physical_drive_model                 = defined $row->[8] ? $row->[8] : "";
-		my $storcli_physical_drive_self_encrypting_drive = defined $row->[9] ? $row->[9] : "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		my $storcli_physical_drive_virtual_drive         = defined $row->[2]  ? $row->[2]  : "";
+		my $storcli_physical_drive_drive_group           = defined $row->[3]  ? $row->[3]  : "";
+		my $storcli_physical_drive_enclosure_id          = defined $row->[4]  ? $row->[4]  : "";
+		my $storcli_physical_drive_slot_number           = defined $row->[5]  ? $row->[5]  : "";
+		my $storcli_physical_drive_serial_number         = defined $row->[6]  ? $row->[6]  : "";
+		my $storcli_physical_drive_size                  = defined $row->[7]  ? $row->[7]  : "";
+		my $storcli_physical_drive_sector_size           = defined $row->[8]  ? $row->[8]  : "";
+		my $storcli_physical_drive_vendor                = defined $row->[9]  ? $row->[9]  : "";
+		my $storcli_physical_drive_model                 = defined $row->[10] ? $row->[10] : "";
+		my $storcli_physical_drive_self_encrypting_drive = defined $row->[11] ? $row->[11] : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 			name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
 			name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
 			name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
 			name4  => "storcli_physical_drive_drive_group",           value4  => $storcli_physical_drive_drive_group, 
-			name5  => "storcli_physical_drive_serial_number",         value5  => $storcli_physical_drive_serial_number, 
-			name6  => "storcli_physical_drive_size",                  value6  => $storcli_physical_drive_size, 
-			name7  => "storcli_physical_drive_sector_size",           value7  => $storcli_physical_drive_sector_size, 
-			name8  => "storcli_physical_drive_vendor",                value8  => $storcli_physical_drive_vendor, 
-			name9  => "storcli_physical_drive_model",                 value9  => $storcli_physical_drive_model, 
-			name10 => "storcli_physical_drive_self_encrypting_drive", value10 => $storcli_physical_drive_self_encrypting_drive, 
+			name5  => "storcli_physical_drive_enclosure_id",          value5  => $storcli_physical_drive_enclosure_id, 
+			name6  => "storcli_physical_drive_slot_number",           value6  => $storcli_physical_drive_slot_number, 
+			name7  => "storcli_physical_drive_serial_number",         value7  => $storcli_physical_drive_serial_number, 
+			name8  => "storcli_physical_drive_size",                  value8  => $storcli_physical_drive_size, 
+			name9  => "storcli_physical_drive_sector_size",           value9  => $storcli_physical_drive_sector_size, 
+			name10 => "storcli_physical_drive_vendor",                value10 => $storcli_physical_drive_vendor, 
+			name11 => "storcli_physical_drive_model",                 value11 => $storcli_physical_drive_model, 
+			name12 => "storcli_physical_drive_self_encrypting_drive", value12 => $storcli_physical_drive_self_encrypting_drive, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Store the information about this physical drive
@@ -8125,6 +8148,8 @@ WHERE
 			storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
 			storcli_physical_drive_virtual_drive		=>	$storcli_physical_drive_virtual_drive, 
 			storcli_physical_drive_drive_group		=>	$storcli_physical_drive_drive_group, 
+			storcli_physical_drive_enclosure_id		=>	$storcli_physical_drive_enclosure_id, 
+			storcli_physical_drive_slot_number		=>	$storcli_physical_drive_slot_number, 
 			storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
 			storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
 			storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
@@ -8132,16 +8157,18 @@ WHERE
 			storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
 			storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
-			name1 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_controller_uuid",       value1 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid}, 
-			name2 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_virtual_drive",         value2 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_virtual_drive}, 
-			name3 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_drive_group",           value3 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_drive_group}, 
-			name4 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_serial_number",         value4 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number}, 
-			name5 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_size",                  value5 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size}, 
-			name6 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_sector_size",           value6 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size}, 
-			name7 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_vendor",                value7 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor}, 
-			name8 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_model",                 value8 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model}, 
-			name9 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_self_encrypting_drive", value9 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive}, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			name1  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_controller_uuid",       value1  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid}, 
+			name2  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_virtual_drive",         value2  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_virtual_drive}, 
+			name3  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_drive_group",           value3  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_drive_group}, 
+			name4  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_enclosure_id",          value4  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_enclosure_id}, 
+			name5  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_slot_number",           value5  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_slot_number}, 
+			name6  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_serial_number",         value6  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number}, 
+			name7  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_size",                  value7  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size}, 
+			name8  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_sector_size",           value8  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size}, 
+			name9  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_vendor",                value9  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor}, 
+			name10 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_model",                 value10 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model}, 
+			name11 => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_self_encrypting_drive", value11 => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
@@ -8262,6 +8289,8 @@ SELECT
     storcli_physical_drive_controller_uuid, 
     storcli_physical_drive_virtual_drive, 
     storcli_physical_drive_drive_group, 
+    storcli_physical_drive_enclosure_id, 
+    storcli_physical_drive_slot_number, 
     storcli_physical_drive_serial_number, 
     storcli_physical_drive_size, 
     storcli_physical_drive_sector_size, 
@@ -8288,27 +8317,31 @@ WHERE
 		{
 			my $storcli_physical_drive_uuid                  =         $row->[0]; 
 			my $storcli_physical_drive_controller_uuid       =         $row->[1];
-			my $storcli_physical_drive_virtual_drive         = defined $row->[2]  ? $row->[2] : "";
-			my $storcli_physical_drive_drive_group           = defined $row->[3]  ? $row->[3] : "";
-			my $storcli_physical_drive_serial_number         = defined $row->[4]  ? $row->[4] : "";
-			my $storcli_physical_drive_size                  = defined $row->[5]  ? $row->[5] : "";
-			my $storcli_physical_drive_sector_size           = defined $row->[6]  ? $row->[6] : "";
-			my $storcli_physical_drive_vendor                = defined $row->[7]  ? $row->[7] : "";
-			my $storcli_physical_drive_model                 = defined $row->[8]  ? $row->[8] : "";
-			my $storcli_physical_drive_self_encrypting_drive = defined $row->[9]  ? $row->[9] : "";
-			my $modified_date                                =         $row->[10];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+			my $storcli_physical_drive_virtual_drive         = defined $row->[2]  ? $row->[2]  : "";
+			my $storcli_physical_drive_drive_group           = defined $row->[3]  ? $row->[3]  : "";
+			my $storcli_physical_drive_enclosure_id          = defined $row->[4]  ? $row->[4]  : "";
+			my $storcli_physical_drive_slot_number           = defined $row->[5]  ? $row->[5]  : "";
+			my $storcli_physical_drive_serial_number         = defined $row->[6]  ? $row->[6]  : "";
+			my $storcli_physical_drive_size                  = defined $row->[7]  ? $row->[7]  : "";
+			my $storcli_physical_drive_sector_size           = defined $row->[8]  ? $row->[8]  : "";
+			my $storcli_physical_drive_vendor                = defined $row->[9]  ? $row->[9]  : "";
+			my $storcli_physical_drive_model                 = defined $row->[10] ? $row->[10] : "";
+			my $storcli_physical_drive_self_encrypting_drive = defined $row->[11] ? $row->[11] : "";
+			my $modified_date                                =         $row->[12];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 				name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
 				name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
 				name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
 				name4  => "storcli_physical_drive_drive_group",           value4  => $storcli_physical_drive_drive_group, 
-				name5  => "storcli_physical_drive_serial_number",         value5  => $storcli_physical_drive_serial_number, 
-				name6  => "storcli_physical_drive_size",                  value6  => $storcli_physical_drive_size, 
-				name7  => "storcli_physical_drive_sector_size",           value7  => $storcli_physical_drive_sector_size, 
-				name8  => "storcli_physical_drive_vendor",                value8  => $storcli_physical_drive_vendor, 
-				name9  => "storcli_physical_drive_model",                 value9  => $storcli_physical_drive_model, 
-				name10 => "storcli_physical_drive_self_encrypting_drive", value10 => $storcli_physical_drive_self_encrypting_drive, 
-				name11 => "modified_date",                                value11 => $modified_date
+				name5  => "storcli_physical_drive_enclosure_id",          value5  => $storcli_physical_drive_enclosure_id, 
+				name6  => "storcli_physical_drive_slot_number",           value6  => $storcli_physical_drive_slot_number, 
+				name7  => "storcli_physical_drive_serial_number",         value7  => $storcli_physical_drive_serial_number, 
+				name8  => "storcli_physical_drive_size",                  value8  => $storcli_physical_drive_size, 
+				name9  => "storcli_physical_drive_sector_size",           value9  => $storcli_physical_drive_sector_size, 
+				name10 => "storcli_physical_drive_vendor",                value10 => $storcli_physical_drive_vendor, 
+				name11 => "storcli_physical_drive_model",                 value11 => $storcli_physical_drive_model, 
+				name12 => "storcli_physical_drive_self_encrypting_drive", value12 => $storcli_physical_drive_self_encrypting_drive, 
+				name13 => "modified_date",                                value13 => $modified_date, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			### There can only be one entry per host, so we don't have a subhash.
@@ -8317,6 +8350,8 @@ WHERE
 				storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
 				storcli_physical_drive_virtual_drive		=>	$storcli_physical_drive_virtual_drive, 
 				storcli_physical_drive_drive_group		=>	$storcli_physical_drive_drive_group, 
+				storcli_physical_drive_enclosure_id		=>	$storcli_physical_drive_enclosure_id, 
+				storcli_physical_drive_slot_number		=>	$storcli_physical_drive_slot_number, 
 				storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
 				storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
 				storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
@@ -8330,6 +8365,8 @@ WHERE
 				storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
 				storcli_physical_drive_virtual_drive		=>	$storcli_physical_drive_virtual_drive, 
 				storcli_physical_drive_drive_group		=>	$storcli_physical_drive_drive_group, 
+				storcli_physical_drive_enclosure_id		=>	$storcli_physical_drive_enclosure_id, 
+				storcli_physical_drive_slot_number		=>	$storcli_physical_drive_slot_number, 
 				storcli_physical_drive_serial_number		=>	$storcli_physical_drive_serial_number, 
 				storcli_physical_drive_size			=>	$storcli_physical_drive_size, 
 				storcli_physical_drive_sector_size		=>	$storcli_physical_drive_sector_size, 
@@ -8352,24 +8389,27 @@ WHERE
 			my $storcli_physical_drive_controller_uuid       = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid};
 			my $storcli_physical_drive_virtual_drive         = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_virtual_drive};
 			my $storcli_physical_drive_drive_group           = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_drive_group};
+			my $storcli_physical_drive_enclosure_id          = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_enclosure_id};
+			my $storcli_physical_drive_slot_number           = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_slot_number};
 			my $storcli_physical_drive_serial_number         = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_serial_number};
 			my $storcli_physical_drive_size                  = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_size};
 			my $storcli_physical_drive_sector_size           = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_sector_size};
 			my $storcli_physical_drive_vendor                = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
 			my $storcli_physical_drive_model                 = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 			my $storcli_physical_drive_self_encrypting_drive = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 				name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
 				name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
 				name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
 				name4  => "storcli_physical_drive_drive_group",           value4  => $storcli_physical_drive_drive_group, 
-				name5  => "storcli_physical_drive_serial_number",         value5  => $storcli_physical_drive_serial_number, 
-				name6  => "storcli_physical_drive_size",                  value6  => $storcli_physical_drive_size, 
-				name7  => "storcli_physical_drive_sector_size",           value7  => $storcli_physical_drive_sector_size, 
-				name8  => "storcli_physical_drive_vendor",                value8  => $storcli_physical_drive_vendor, 
-				name9  => "storcli_physical_drive_model",                 value9  => $storcli_physical_drive_model, 
-				name10 => "storcli_physical_drive_serial_number",         value10 => $storcli_physical_drive_serial_number, 
-				name11 => "storcli_physical_drive_self_encrypting_drive", value11 => $storcli_physical_drive_self_encrypting_drive, 
+				name5  => "storcli_physical_drive_enclosure_id",          value5  => $storcli_physical_drive_enclosure_id, 
+				name6  => "storcli_physical_drive_slot_number",           value6  => $storcli_physical_drive_slot_number, 
+				name7  => "storcli_physical_drive_serial_number",         value7  => $storcli_physical_drive_serial_number, 
+				name8  => "storcli_physical_drive_size",                  value8  => $storcli_physical_drive_size, 
+				name9  => "storcli_physical_drive_sector_size",           value9  => $storcli_physical_drive_sector_size, 
+				name10 => "storcli_physical_drive_vendor",                value10 => $storcli_physical_drive_vendor, 
+				name11 => "storcli_physical_drive_model",                 value11 => $storcli_physical_drive_model, 
+				name12 => "storcli_physical_drive_self_encrypting_drive", value12 => $storcli_physical_drive_self_encrypting_drive, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -8412,6 +8452,8 @@ SET
     storcli_physical_drive_controller_uuid       = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_controller_uuid).", 
     storcli_physical_drive_virtual_drive         = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_virtual_drive).", 
     storcli_physical_drive_drive_group           = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_drive_group).", 
+    storcli_physical_drive_enclosure_id          = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_enclosure_id).", 
+    storcli_physical_drive_slot_number           = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_slot_number).", 
     storcli_physical_drive_serial_number         = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
     storcli_physical_drive_size                  = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_size).", 
     storcli_physical_drive_sector_size           = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_sector_size).", 
@@ -8440,9 +8482,11 @@ INSERT INTO
     storcli_physical_drive_uuid, 
     storcli_physical_drive_host_uuid, 
     storcli_physical_drive_controller_uuid, 
+    storcli_physical_drive_serial_number, 
     storcli_physical_drive_virtual_drive, 
     storcli_physical_drive_drive_group, 
-    storcli_physical_drive_serial_number, 
+    storcli_physical_drive_enclosure_id, 
+    storcli_physical_drive_slot_number, 
     storcli_physical_drive_size, 
     storcli_physical_drive_sector_size, 
     storcli_physical_drive_vendor, 
@@ -8456,6 +8500,8 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_virtual_drive).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_drive_group).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_enclosure_id).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_slot_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_size).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_sector_size).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_vendor).", 
@@ -8488,6 +8534,8 @@ INSERT INTO
     storcli_physical_drive_controller_uuid, 
     storcli_physical_drive_virtual_drive, 
     storcli_physical_drive_drive_group, 
+    storcli_physical_drive_enclosure_id, 
+    storcli_physical_drive_slot_number, 
     storcli_physical_drive_serial_number, 
     storcli_physical_drive_size, 
     storcli_physical_drive_sector_size, 
@@ -8501,6 +8549,8 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_controller_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_virtual_drive).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_drive_group).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_enclosure_id).", 
+    ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_slot_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_size).", 
     ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_sector_size).", 
@@ -10357,6 +10407,19 @@ sub gather_data
 		# Read in controller data.
 		my $serial_number = get_controller_info($an, $adapter);
 		
+		# We use dummy VDs and DGs to store drives not allocated to either yet. The drives will 
+		# reference their parent controller, but the VDs and DGs won't. To deal with this, we need to
+		# allocate the pseudo DG and VG to something, so we'll use the first controller's SN that we
+		# see.
+		if ($controller eq "1")
+		{
+			my $storcli_virtual_drive_id_string = $serial_number."-vd9999";
+			$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{on_controller} = $serial_number;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "virtual_drive::${storcli_virtual_drive_id_string}::variable::on_controller", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{variable}{on_controller}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
 		# Read in cachevault (FBU) data (if it exists).
 		get_cachevault_data($an, $adapter, $serial_number);
 		
@@ -10382,16 +10445,25 @@ sub get_physical_disk_data
 		name2 => "serial_number", value2 => $serial_number, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $virtual_drive    = 9999;
-	my $drive_group      = 9999;
-	my $enclosure_id     = "";
-	my $slot_number      = "";
-	my $in_drive_header  = 0;
-	my $in_port_status   = 0;
-	my $start_break      = 0;
-	my $sector_size      = 0;
-	my $sector_variables = [];
-	my $shell_call       = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{physical_disk_data};
+	my $virtual_drive         = $serial_number."-vd9999";
+	my $drive_group           = 9999;
+	my $enclosure_id          = "";
+	my $slot_number           = "";
+	my $device_id             = "";
+	my $state                 = "";
+	my $drive_size            = "";
+	my $interface             = "";
+	my $drive_media           = "";
+	my $self_encrypting_drive = "";
+	my $protection_info       = "";
+	my $drive_model           = "";
+	my $spun_up               = "";
+	my $in_drive_header       = 0;
+	my $in_port_status        = 0;
+	my $start_break           = 0;
+	my $sector_size           = 0;
+	my $sector_variables      = [];
+	my $shell_call            = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{physical_disk_data};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -10412,15 +10484,39 @@ sub get_physical_disk_data
 		### TODO: Make sure we don't hit a case where we don't find the virtual drive ID string 
 		###       before we start recording data. If we do, we'll have to artificially create the ID
 		###       from the controller's serial number (which is pretty safe).
-		# If I am in the drive header, look for this drive's "Drive Group".
-		if (($in_drive_header) && ($line =~ /^$enclosure_id:$slot_number\s+\d+\s+.*?\s+(.*?)\s+/))
+		# If I am in the drive header, look for this drive data
+		#                                     EID          :Slt            DID     State   DG      Size       Intf  Med     SED     PI      SeSz     Model      Sp
+		#                                     252          :0              9       Onln    0       136.218 GB SAS   HDD     N       N       512B     MK1401GRRB U
+		if (($in_drive_header) && ($line =~ /^$enclosure_id:$slot_number\s+(\d+)\s+(.*?)\s+(.*?)\s+(.*?B)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?B)\s+(.*?)\s+(.*)$/))
 		{
-			$drive_group = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "drive_group", value1 => $drive_group, 
-				name2 => "line",        value2 => $line, 
+			$device_id             = $1;
+			$state                 = $2;
+			$drive_group           = $3;
+			$drive_size            = $4;
+			$interface             = $5;
+			$drive_media           = $6;
+			$self_encrypting_drive = $7;
+			$protection_info       = $8;
+			$sector_size           = $9;
+			$drive_model           = $10;
+			$spun_up               = $11;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+				name1  => "enclosure_id",          value1  => $enclosure_id, 
+				name2  => "slot_number",           value2  => $slot_number, 
+				name3  => "device_id",             value3  => $device_id, 
+				name4  => "state",                 value4  => $state, 
+				name5  => "drive_group",           value5  => $drive_group, 
+				name6  => "drive_size",            value6  => $drive_size, 
+				name7  => "interface",             value7  => $interface, 
+				name8  => "drive_media",           value8  => $drive_media, 
+				name9  => "self_encrypting_drive", value9  => $self_encrypting_drive, 
+				name10 => "protection_info",       value10 => $protection_info, 
+				name11 => "sector_size",           value11 => $sector_size, 
+				name12 => "drive_model",           value12 => $drive_model, 
+				name13 => "spun_up",               value13 => $spun_up, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
+			# If it isn't in a drive group, it also won't be in a virtual drive.
 			if ($drive_group eq "-")
 			{
 				$drive_group = 9999 ;
@@ -10428,25 +10524,55 @@ sub get_physical_disk_data
 					name1 => "drive_group", value1 => $drive_group, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			
-			# Find the virtual drive this drive is connected to, if any.
-			foreach my $this_virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
+			else
 			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "virtual_drive::${this_virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size", value1 => $an->data->{virtual_drive}{$this_virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if ($an->data->{virtual_drive}{$this_virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size})
+				# Find the virtual drive this drive is connected to, if any.
+				foreach my $this_virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
 				{
-					# Found it.
-					$virtual_drive = $this_virtual_drive;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "virtual_drive", value1 => $virtual_drive, 
+						name1 => "virtual_drive::${this_virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size", value1 => $an->data->{virtual_drive}{$this_virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					last;
+					if ($an->data->{virtual_drive}{$this_virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size})
+					{
+						# Found it.
+						$virtual_drive = $this_virtual_drive;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "virtual_drive", value1 => $virtual_drive, 
+						}, file => $THIS_FILE, line => __LINE__});
+						last;
+					}
 				}
 			}
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "virtual_drive", value1 => $virtual_drive, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We need to record this here because drives not in a drive group will be missed 
+			# later in process_vg_pd_list_data(). Drives processed there may overwrite this data,
+			# which is fine.
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}             = $device_id;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}               = $state;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}            = $drive_size;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}             = $interface;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}           = $drive_media;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive} = $self_encrypting_drive;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}       = $protection_info;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}           = $sector_size;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}           = $drive_model;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}               = $spun_up;
+			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}         = $serial_number;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+				name1  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::device_id",             value1  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}, 
+				name2  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::state",                 value2  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}, 
+				name3  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size",            value3  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
+				name4  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::interface",             value4  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{interface}, 
+				name5  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_media",           value5  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_media}, 
+				name6  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::self_encrypting_drive", value6  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{self_encrypting_drive}, 
+				name7  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::protection_info",       value7  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{protection_info}, 
+				name8  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::sector_size",           value8  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{sector_size}, 
+				name9  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_model",           value9  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}, 
+				name10 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::spun_up",               value10 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}, 
+				name11 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::on_controller",         value11 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -10536,7 +10662,8 @@ sub get_physical_disk_data
 				next;
 			}
 		}
-		# We stop processing a give drive when we see 'Inquiry Data'.
+		
+		# We stop processing a given drive when we see 'Inquiry Data'.
 		if ($line =~ /^Inquiry Data =/)
 		{
 			# Process and variables that need their size calculated from sectors to bytes.
@@ -10585,7 +10712,7 @@ sub get_physical_disk_data
 				name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::on_controller", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$virtual_drive    = 9999;
+			$virtual_drive    = $serial_number."-vd9999";
 			$drive_group      = 9999;
 			$enclosure_id     = "";
 			$slot_number      = "";
@@ -11083,7 +11210,6 @@ sub process_vg_pd_list_data
 		my $sector_size           = $11;
 		my $drive_model           = $12;
 		my $spun_up               = $13;
-		#   $slot_number           = sprintf("%02d", $slot_number);
 		   $drive_group           = 9999 if $drive_group eq "-";
 		   $protection_info       = $protection_info       =~ /n/i ? "No" : "Yes";
 		   $self_encrypting_drive = $self_encrypting_drive =~ /n/i ? "No" : "Yes";

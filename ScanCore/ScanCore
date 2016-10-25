@@ -6125,7 +6125,7 @@ sub translate_strings
 sub translate_units
 {
 	my ($an, $value, $units, $user_units) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "translate_units" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "translate_units" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "value",      value1 => $value, 
 		name2 => "units",      value2 => $units, 
 		name3 => "user_units", value3 => $user_units, 
@@ -6265,7 +6265,7 @@ sub translate_units
 		$return = $value.$an->String->get({key => "tools_suffix_0073"});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return",  value1 => $return, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($return)
@@ -6276,7 +6276,7 @@ sub translate_units
 sub translate_sensor_value
 {
 	my ($an, $ipmitool_value_sensor_value, $ipmitool_sensor_units, $units) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "translate_sensor_value", }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "translate_sensor_value", }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "ipmitool_value_sensor_value", value1 => $ipmitool_value_sensor_value, 
 		name2 => "ipmitool_sensor_units",       value2 => $ipmitool_sensor_units, 
 		name3 => "units",                       value3 => $units, 
@@ -6303,14 +6303,14 @@ sub translate_sensor_value
 	elsif ($say_units eq "W")   { $say_units = $an->String->get({key => "tools_suffix_0017"}); } # watts
 	elsif ($say_units eq "V")   { $say_units = $an->String->get({key => "tools_suffix_0018"}); } # vDC is always assumed, may need to update this later.
 	elsif ($say_units eq "RPM") { $say_units = $an->String->get({key => "tools_suffix_0021"}); } # rotations per minute.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "say_units", value1 => $say_units, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Put them together
 	my $say_sensor_value = "$ipmitool_value_sensor_value $say_units";
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "say_sensor_value", value1 => $say_sensor_value, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($say_sensor_value);
