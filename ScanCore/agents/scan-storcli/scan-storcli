@@ -2597,16 +2597,45 @@ WHERE
 							$an->data->{sys}{alert_sort}++; 
 							
 							my $message_key = "scan_storcli_warning_0019";
+							my $title_key   = "an_alert_title_0004";
 							if ($old_variable_value eq "VANISHED")
 							{
 								$message_key = "scan_storcli_warning_0020";
 							}
+							
+							# If the 'name' is 'active operations' and the new is
+							# 'Background Initialization', we're in the middle of
+							# a BGI and this is not a warning. If the new is
+							# 'None', the CGI completed.
+							if ($variable =~ /Active Operations/i)
+							{
+								$title_key = "an_alert_title_0003";
+								if ($new_variable_value =~ /None/i)
+								{
+									# BGI done!
+									$message_key = "scan_storcli_note_0069";
+								}
+								else
+								{
+									# BGI in progress still, pull out the
+									# percentage.
+									my $percentage = ($new_variable_value =~ /\(\d+%\)/)[0];
+									if ($percentage)
+									{
+										# Successfully pulled the new
+										# percentage complete value.
+										$new_variable_value = $percentage;
+									}
+									$message_key = "scan_storcli_note_0068";
+								}
+							}
+							
 							$an->Alert->register_alert({
 								alert_level		=>	"warning", 
 								alert_agent_name	=>	$THIS_FILE,
 								alert_sort		=>	$an->data->{sys}{alert_sort},
 								alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
-								alert_title_key		=>	"an_alert_title_0004",
+								alert_title_key		=>	$title_key,
 								alert_message_key	=>	$message_key,
 								alert_message_variables	=>	{
 									id_string		=>	$storcli_virtual_drive_id_string,

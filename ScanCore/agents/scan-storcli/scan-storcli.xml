@@ -327,6 +327,8 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_note_0065">- The temperature of the Cachevault (FBU): [#!variable!serial_number!#] has changed: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]</key>
 		<key name="scan_storcli_note_0066">- The temperature of the BBU: [#!variable!serial_number!#] has changed: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]</key>
 		<key name="scan_storcli_note_0067">- The temperature of the controller: [#!variable!serial_number!#] has changed: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]</key>
+		<key name="scan_storcli_note_0068">- The Virtual Drive: [#!variable!id_string!#]: is performing a background initialization, which is now: [#!variable!new_value!#] complete.</key>
+		<key name="scan_storcli_note_0069">- The Virtual Drive: [#!variable!id_string!#]: has completed its background initialization operation.</key>
 
 		
 		<!-- Warnings -->
