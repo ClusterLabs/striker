@@ -192,12 +192,15 @@ sub add_target_to_known_hosts
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "add_target_to_known_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $user   = $parameter->{user}   ? $parameter->{user} : $<; 
-	my $target = $parameter->{target};
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "add_target_to_known_hosts" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "user",   value1 => $user,
-		name2 => "target", value2 => $target,
+	my $user            = $parameter->{user}   ? $parameter->{user} : $<; 
+	my $target          = $parameter->{target};
+	my $delete_if_found = $parameter->{delete_if_found} ? $parameter->{delete_if_found} : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "user",            value1 => $user,
+		name2 => "target",          value2 => $target,
+		name3 => "delete_if_found", value3 => $delete_if_found,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the local user's home
@@ -222,7 +225,11 @@ sub add_target_to_known_hosts
 	if (-e $known_hosts)
 	{
 		# Yup, see if the target is there already,
-		$known_machine = $an->Remote->_check_known_hosts_for_target({target => $target, known_hosts => $known_hosts});
+		$known_machine = $an->Remote->_check_known_hosts_for_target({
+			target          => $target, 
+			known_hosts     => $known_hosts, 
+			delete_if_found => $delete_if_found,
+		});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "known_machine", value1 => $known_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -238,7 +245,11 @@ sub add_target_to_known_hosts
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Verify
-		$known_machine = $an->Remote->_check_known_hosts_for_target({target => $target, known_hosts => $known_hosts});
+		$known_machine = $an->Remote->_check_known_hosts_for_target({
+			target          => $target, 
+			known_hosts     => $known_hosts,
+			delete_if_found => $delete_if_found,
+		});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "known_machine", value1 => $known_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -815,18 +826,21 @@ sub _check_known_hosts_for_target
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_check_known_hosts_for_target" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target      = $parameter->{target};
-	my $known_hosts = $parameter->{known_hosts};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_check_known_hosts_for_target" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "target",      value1 => $target,
-		name2 => "known_hosts", value2 => $known_hosts,
+	my $target          = $parameter->{target};
+	my $known_hosts     = $parameter->{known_hosts};
+	my $delete_if_found = $parameter->{delete_if_found} ? $parameter->{delete_if_found} : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",          value1 => $target,
+		name2 => "known_hosts",     value2 => $known_hosts,
+		name3 => "delete_if_found", value3 => $delete_if_found,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# read it in and search.
 	my $known_machine = 0;
 	my $shell_call    = $known_hosts;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -834,7 +848,7 @@ sub _check_known_hosts_for_target
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /$target ssh-rsa /)
@@ -842,12 +856,29 @@ sub _check_known_hosts_for_target
 			# We already know this machine (or rather, we already have a fingerprint for
 			# this machine).
 			$known_machine = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "known_machine", value1 => $known_machine, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	close $file_handle;
+	
+	if ($delete_if_found)
+	{
+		my $shell_call = $an->data->{path}{'ssh-keygen'}." -R $target";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "known_machine", value1 => $known_machine, 

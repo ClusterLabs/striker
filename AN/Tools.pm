@@ -535,6 +535,12 @@ sub nice_exit
 	# Close database connections (if any).
 	$an->DB->disconnect_from_databases();
 	
+	# If this is a browser calling us, print the footer so that the loading pinwheel goes away.
+	if ($ENV{'HTTP_REFERER'})
+	{
+		$an->Striker->_footer();
+	}
+	
 	exit($exit_code);
 }
 

@@ -5158,11 +5158,11 @@ sub check_email_configuration
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_email_configuration" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### NOTE: At this time, dashboards can't send email.
-# 	if (not -e $an->data->{path}{cman_config})
-# 	{
-# 		return(0);
-# 	}
+	### NOTE: At this time, dashboards can't send email. This will be changed for v2.1
+	if (not -e $an->data->{path}{cman_config})
+	{
+		return(0);
+	}
 	
 	# These will be set to '1' if either the relay file or main.cf need to be updated.
 	my $reconfigure = 0;

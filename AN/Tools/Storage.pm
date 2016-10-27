@@ -1048,6 +1048,8 @@ sub rsync
 	if ($remote_machine)
 	{
 		# Make sure we know the fingerprint of the remote machine
+		$an->Log->entry({log_level => 2, message_key => "log_0035", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
+		
 		$an->Remote->add_target_to_known_hosts({target => $remote_machine});
 		
 		# Make sure we have a target and password for the remote machine.

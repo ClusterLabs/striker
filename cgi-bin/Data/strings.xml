@@ -277,9 +277,9 @@
 		<key name="explain_0125"><![CDATA[Have you reviewed the values that will be set carefully?<br /><br />If you are happy, enter the current IP address and the current <span class="code">root</span> user's password for both nodes.]]></key>
 		<key name="explain_0126"><![CDATA[This is a new install, so storage will be initialized and any existing data will be lost!]]></key>
 		<key name="explain_0127"><![CDATA[During the install process, the nodes may be rebooted to load a new kernel, if updated, or to reconfigure the network, if needed.<br /><br />If, for some reason, this #!string!brand_0002!# dashboard can not access the nodes after they reboot, manual intervention will be required.<br /><br />This installation process might take quite some time to complete, depending on multiple factors like your network speed, machine speed, etc.<br /><br />Please be patient while the process runs and do not interrupt the process once it has started.]]></key>
-		<key name="explain_0128"><![CDATA[Please be patient!<br /><br />Some tasks may not cause any output to be displayed for some time.<br /><br /><b>Please do not reload this page!</b>.]]></key>
-		<key name="explain_0129"><![CDATA[The next step will install required programs on the nodes.<br />This might take a while on slow Internet connections.<br /><b>Please be patient!</b><br />If you think the system is hung, please log into the nodes and run:<br /><span class="code">ps aux | grep yum</span><br />If you see <span class="code">yum</span> running, then please keep waiting.]]></key>
-		<key name="explain_0130"><![CDATA[The next step will try to update the operating system on the nodes.<br />This might take a while on slow Internet connections.<br /><b>Please be patient!</b><br />As above, use <span class="code">ps auxf</span> as above.]]></key>
+		<key name="explain_0128"><![CDATA[Please be patient!<br />Some tasks may not cause any output to be displayed for some time.<br /><b>Please do not reload or leave this page!</b>.]]></key>
+		<key name="explain_0129"><![CDATA[The next step will install required programs on the nodes.<br />This might take a long time, <b>Please be patient!</b>]]></key>
+		<key name="explain_0130"><![CDATA[The next step will try to update the operating system on the nodes.<br />This might take a long time, particularly on a slow Internet connection.<br /><b>Please be patient!</b>]]></key>
 		<key name="explain_0131"><![CDATA[Now that we've had a chance to look at your hardware, we're ready to install!]]></key>
 		<key name="explain_0132"><![CDATA[Please review the build plan below and, if you're happy, press "<span class="button_reference">#!string!button_0053!#</span>".]]></key>
 		<key name="explain_0133"><![CDATA[If the storage is OK, but you want to remap the network, press "<span class="button_reference">#!string!button_0054!#</span>".]]></key>
@@ -290,7 +290,7 @@
 		<key name="explain_0138"><![CDATA[The node(s) will now be registered with RHN.<br />This process can take a minute or two, so please be patient.]]></key>
 		<key name="explain_0139"><![CDATA[If you have custom or local repositories for installing programs on the #!string!brand_0003!# nodes, you can define them here.<br />This can be one or more URL to the repository file (ie: <span class="fixed_width"><a href="https://alteeve.ca/repo/el6/an.repo" target="_new">https://alteeve.ca/repo/el6/an.repo</a></span>).<br />Use a comma without spaces to specify two or more repositories.<br />]]></key>
 		<key name="explain_0140"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be a valid <a href="https://en.wikipedia.org/wiki/Uniform_resource_locator" target="_new">URL</a>.<br />]]></key>
-		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now.<br />If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="highlight_detail">#!conf!sys::reboot_timeout!# seconds</span> to successfully reboot.<br />If either node fails to reboot in this period of time, the install will abort.]]></key>
+		<key name="explain_0141"><![CDATA[If either node needs to be rebooted, it will be done now.<br />If both nodes need to be rebooted, they will be rebooted sequentially.<br />Each node will be given <span class="highlight_detail">#!conf!sys::reboot_timeout!# seconds</span> to come back online.]]></key>
 		<key name="explain_0142"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty if the field "<span class="highlight_good_bold"">#!variable!dependent_field!#</span>" is set.]]></key>
 		<key name="explain_0143"><![CDATA[In a two-PDU environment, then both must be defined. In a four PDU environment, at least two must be defined.]]></key>
 		<key name="explain_0144"><![CDATA[<span class="">#!variable!node!#</span> is set to use an outlet on "<span class="highlight_good_bold"">#!variable!field!#</span>", but that PDU doesn't have a name and IP set.]]></key>
@@ -387,6 +387,7 @@
 		<key name="explain_0235">The name of the #!string!brand_0015!# database.</key>
 		<key name="explain_0236">The user name to use when connecting to the #!string!brand_0015!# database.</key>
 		<key name="explain_0237"><![CDATA[The database user's password.<br /><span class="highlight_note_bold">Note</span>: Changing this will <b>NOT</b> change the current database password!]]></key>
+		<key name="explain_0238"><![CDATA[<b>It looks like we are about to rebuild or replace a node.</b><br />Please be sure to check that the passwords set in the manifest match the ones currently in use!]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -815,6 +816,8 @@
 		<key name="row_0330"><![CDATA[[<span class="subtle_text">#!variable!id!#</span>] Database Name]]></key>
 		<key name="row_0331"><![CDATA[[<span class="subtle_text">#!variable!id!#</span>] Database User]]></key>
 		<key name="row_0332"><![CDATA[[<span class="subtle_text">#!variable!id!#</span>] Database Password]]></key>
+		<key name="row_0333">Node Readiness</key>
+		<key name="row_0334">Before Proceeding</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -1185,6 +1188,9 @@
 		<key name="state_0128"><![CDATA[<span class="highlight_warning">Unknown (was: [#!variable!host!#])</span>]]></key>
 		<key name="state_0129">Partial Success</key>
 		<key name="state_0130">New</key>
+		<key name="state_0131">Ready for setup</key>
+		<key name="state_0132">Hosting Servers, Read Only!</key>
+		<key name="state_0133">Skipped</key>
 		
 		
 		<!-- Titles used in tables (and options in <select> fields) -->
@@ -2262,7 +2268,7 @@
 		<key name="log_0267">DRBD does not appear to be running on node: [#!variable!node!#].</key>
 		<key name="log_0268">[ Warning ] - One or more services failed to start. An attempt will be made to restart.</key>
 		<key name="log_0269">The restart appears to have been successful</key>
-		<key name="log_0270"></key>
+		<key name="log_0270">Node: [#!variable!active_node!#] is hosting servers, so its '#!variable!file!#' will be used on the peer.</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
 		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2016]]></key>

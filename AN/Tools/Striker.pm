@@ -4583,7 +4583,7 @@ sub _confirm_provision_server
 			selected => $an->data->{cgi}{ram_suffix},
 			width    => 60,
 		});
-	   $an->data->{cgi}{os_variant} = "generic" if not $an->data->{cgi}{os_variant};
+	   $an->data->{cgi}{os_variant} = "rhel6" if not $an->data->{cgi}{os_variant};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "select_ram_suffix", value1 => $select_ram_suffix,
 		name2 => "cgi::os_variant",   value2 => $an->data->{cgi}{os_variant},
