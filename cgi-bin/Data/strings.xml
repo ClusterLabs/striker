@@ -388,6 +388,7 @@
 		<key name="explain_0236">The user name to use when connecting to the #!string!brand_0015!# database.</key>
 		<key name="explain_0237"><![CDATA[The database user's password.<br /><span class="highlight_note_bold">Note</span>: Changing this will <b>NOT</b> change the current database password!]]></key>
 		<key name="explain_0238"><![CDATA[<b>It looks like we are about to rebuild or replace a node.</b><br />Please be sure to check that the passwords set in the manifest match the ones currently in use!]]></key>
+		<key name="explain_0239"><![CDATA[A server was found to be running on a node while the 'cman' daemon was stopped.<br />This should never happen.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -1699,7 +1700,7 @@
 		<key name="message_0283">Config directory exists</key>
 		<key name="message_0284">Backup successful</key>
 		<key name="message_0285">Backup failed or not possible</key>
-		<key name="message_0286"><![CDATA[The #!string!brand_0003!# has been rebuilt successfully!<br />It is already in your #!string!brand_0002!# dashboard, so you're all set!<br /><a href="#!variable!url!#">Click here</a> to start using your #!string!brand_0003!#.]]></key>
+		<key name="message_0286"><![CDATA[The #!string!brand_0003!# has been rebuilt successfully!<br />It is already in your #!string!brand_0002!# database, so you're all set!<br /><a href="#!variable!url!#">Click here</a> to start using your #!string!brand_0003!#.]]></key>
 		<key name="message_0287">View or upate the system configuration for this #!string!brand_0002!#.</key>
 		<key name="message_0288">I will now download:</key>
 		<key name="message_0289">From the website:</key>

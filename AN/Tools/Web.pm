@@ -824,6 +824,12 @@ sub template
 		name3 => "no_comment", value3 => $no_comment,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# If this is called without a skin directory, it will fail. So default to 'alteeve' in such cases.
+	if (not $an->data->{sys}{skin})
+	{
+		$an->data->{sys}{skin} = "alteeve";
+	}
+	
 	my @contents;
 	my $template_file = $an->data->{path}{skins}."/".$an->data->{sys}{skin}."/".$file;
 	

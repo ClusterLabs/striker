@@ -1070,6 +1070,7 @@ sub check_config_for_anvil
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_config_for_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_configured = 0;
+	my $anvil_uuid       = "";
 	my $anvil_data       = $an->ScanCore->get_anvils();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_data", value1 => $anvil_data,
@@ -1088,15 +1089,17 @@ sub check_config_for_anvil
 		{
 			# Match!
 			$anvil_configured = 1;
+			$anvil_uuid       = $this_anvil_uuid;
 			$an->Log->entry({log_level => 2, message_key => "log_0041", file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_configured", value1 => $anvil_configured,
+		name2 => "anvil_uuid",       value2 => $anvil_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
-	return($anvil_configured);
+	return($anvil_configured, $anvil_uuid);
 }
 
 # This makes sure we have access to both nodes.
@@ -2779,13 +2782,13 @@ sub configure_gfs2
 			target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 			port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 			password => $an->data->{sys}{anvil}{node1}{password},
-		});
+		}) if not $an->data->{node}{node1}{has_servers};
 	my ($node2_return_code) = $an->InstallManifest->setup_gfs2_on_node({
 			node     => $node2, 
 			target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 			password => $an->data->{sys}{anvil}{node2}{password},
-		});
+		}) if not $an->data->{node}{node2}{has_servers};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_return_code", value1 => $node1_return_code,
 		name2 => "node2_return_code", value2 => $node2_return_code,
@@ -2804,7 +2807,12 @@ sub configure_gfs2
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0029!#";
 	# Node 1
-	if ($node1_return_code eq "1")
+	if ($an->data->{node}{node1}{has_servers})
+	{
+		$node1_class   = "highlight_note_bold";
+		$node1_message = "#!string!state_0133!#";
+	}
+	elsif ($node1_return_code eq "1")
 	{
 		$node1_message = "#!string!state_0028!#";
 	}
@@ -2843,8 +2851,14 @@ sub configure_gfs2
 		$node1_message = "#!string!state_0095!#";
 		$ok            = 0;
 	}
+	
 	# Node 2
-	if ($node2_return_code eq "1")
+	if ($an->data->{node}{node2}{has_servers})
+	{
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0133!#";
+	}
+	elsif ($node2_return_code eq "1")
 	{
 		$node2_message = "#!string!state_0028!#";
 	}
@@ -5473,6 +5487,8 @@ sub configure_ssh
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_ssh" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	### NOTE: We run this on both nodes, regardless of whether they're hosting servers, because the 
+	###       existing node needs to update for the new peer's fingerprint.
 	# Three steps; 
 	# 1. Get/generate RSA keys
 	# 2. Populate known_hosts
@@ -6273,40 +6289,44 @@ sub configure_storage_stage3
 				
 				### Stop everything now.
 				# gfs2
-				my ($gfs2_node1_return_code) = $an->InstallManifest->stop_service_on_node({
+				my $gfs2_node1_return_code = 0;
+				my $gfs2_node2_return_code = 0;
+				($gfs2_node1_return_code) = $an->InstallManifest->stop_service_on_node({
 						node     => $node1, 
 						target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 						port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 						password => $an->data->{sys}{anvil}{node1}{password},
 						service  => "gfs2",
-					});
-				my ($gfs2_node2_return_code) = $an->InstallManifest->stop_service_on_node({
+					}) if not $an->data->{node}{node1}{has_servers};
+				($gfs2_node2_return_code) = $an->InstallManifest->stop_service_on_node({
 						node     => $node2, 
 						target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 						port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 						password => $an->data->{sys}{anvil}{node2}{password},
 						service  => "gfs2",
-					});
+					}) if not $an->data->{node}{node2}{has_servers};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "gfs2_node1_return_code", value1 => $gfs2_node1_return_code, 
 					name2 => "gfs2_node2_return_code", value2 => $gfs2_node2_return_code, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# clvmd
-				my ($clvmd_node1_return_code) = $an->InstallManifest->stop_service_on_node({
+				my $clvmd_node1_return_code = 0;
+				my $clvmd_node2_return_code = 0;
+				($clvmd_node1_return_code) = $an->InstallManifest->stop_service_on_node({
 						node     => $node1, 
 						target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 						port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 						password => $an->data->{sys}{anvil}{node1}{password},
 						service  => "clvmd",
-					});
-				my ($clvmd_node2_return_code) = $an->InstallManifest->stop_service_on_node({
+					}) if not $an->data->{node}{node1}{has_servers};
+				($clvmd_node2_return_code) = $an->InstallManifest->stop_service_on_node({
 						node     => $node2, 
 						target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 						port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 						password => $an->data->{sys}{anvil}{node2}{password},
 						service  => "clvmd",
-					});
+					}) if not $an->data->{node}{node2}{has_servers};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "clvmd_node1_return_code", value1 => $clvmd_node1_return_code, 
 					name2 => "clvmd_node2_return_code", value2 => $clvmd_node2_return_code, 
@@ -6351,33 +6371,40 @@ sub configure_storage_stage3
 	if ($ok)
 	{
 		# Start rgmanager, making sure it comes up
-		my ($node1_return_code) = $an->InstallManifest->set_daemon_state({
+		my $node1_return_code = 2;
+		my $node2_return_code = 2;
+		($node1_return_code) = $an->InstallManifest->set_daemon_state({
 				node     => $node1, 
 				target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 				port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 				password => $an->data->{sys}{anvil}{node1}{password},
 				daemon   => "rgmanager",
 				'state'  => "start",
-			});
-		my ($node2_return_code) = $an->InstallManifest->set_daemon_state({
+			}) if not $an->data->{node}{node1}{has_servers};
+		($node2_return_code) = $an->InstallManifest->set_daemon_state({
 				node     => $node2, 
 				target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 				port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 				password => $an->data->{sys}{anvil}{node2}{password},
 				daemon   => "rgmanager",
 				'state'  => "start",
-			});
+			}) if not $an->data->{node}{node2}{has_servers};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node1_return_code", value1 => $node1_return_code,
 			name2 => "node2_return_code", value2 => $node2_return_code,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Go into a loop waiting for the rgmanager services to either start or fail.
+		my $node_key = "node1";
+		if ($an->data->{node}{node1}{has_servers})
+		{
+			$node_key = "node2";
+		}
 		my ($clustat_ok) = $an->InstallManifest->watch_clustat({
-				node     => $node1, 
-				target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
-				port     => $an->data->{sys}{anvil}{node1}{use_port}, 
-				password => $an->data->{sys}{anvil}{node1}{password},
+				node     => $an->data->{sys}{anvil}{$node_key}{name}, 
+				target   => $an->data->{sys}{anvil}{$node_key}{use_ip}, 
+				port     => $an->data->{sys}{anvil}{$node_key}{use_port}, 
+				password => $an->data->{sys}{anvil}{$node_key}{password},
 			});
 		
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -6386,50 +6413,55 @@ sub configure_storage_stage3
 		if (not $clustat_ok)
 		{
 			$an->Log->entry({log_level => 1, message_key => "log_0268", file => $THIS_FILE, line => __LINE__});
-			my ($rgmanager_node1_return_code) = $an->InstallManifest->stop_service_on_node({
+			
+			my $rgmanager_node1_return_code = 0;
+			my $rgmanager_node2_return_code = 0;
+			($rgmanager_node1_return_code) = $an->InstallManifest->stop_service_on_node({
 					node     => $node1, 
 					target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 					port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 					password => $an->data->{sys}{anvil}{node1}{password},
 					service  => "rgmanager",
-				});
-			my ($rgmanager_node2_return_code) = $an->InstallManifest->stop_service_on_node({
+				}) if not $an->data->{node}{node1}{has_servers};
+			($rgmanager_node2_return_code) = $an->InstallManifest->stop_service_on_node({
 					node     => $node2, 
 					target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 					port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 					password => $an->data->{sys}{anvil}{node2}{password},
 					service  => "rgmanager",
-				});
+				}) if not $an->data->{node}{node2}{has_servers};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "rgmanager_node1_return_code", value1 => $rgmanager_node1_return_code, 
 				name2 => "rgmanager_node2_return_code", value2 => $rgmanager_node2_return_code, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			sleep 10;
-				
-			my ($node1_return_code) = $an->InstallManifest->set_daemon_state({
+			
+			my $node1_return_code = 0;
+			my $node2_return_code = 0;
+			($node1_return_code) = $an->InstallManifest->set_daemon_state({
 					node     => $node1, 
 					target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 					port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 					password => $an->data->{sys}{anvil}{node1}{password},
 					daemon   => "rgmanager",
 					'state'  => "start",
-				});
-			my ($node2_return_code) = $an->InstallManifest->set_daemon_state({
+				}) if not $an->data->{node}{node1}{has_servers};
+			($node2_return_code) = $an->InstallManifest->set_daemon_state({
 					node     => $node2, 
 					target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 					port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 					password => $an->data->{sys}{anvil}{node2}{password},
 					daemon   => "rgmanager",
 					'state'  => "start",
-				});
+				}) if not $an->data->{node}{node2}{has_servers};
 			
 			# Go into a loop waiting for the rgmanager services to either start or fail.
 			my ($clustat_ok) = $an->InstallManifest->watch_clustat({
-					node     => $node1, 
-					target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
-					port     => $an->data->{sys}{anvil}{node1}{use_port}, 
-					password => $an->data->{sys}{anvil}{node1}{password},
+					node     => $an->data->{sys}{anvil}{$node_key}{name}, 
+					target   => $an->data->{sys}{anvil}{$node_key}{use_ip}, 
+					port     => $an->data->{sys}{anvil}{$node_key}{use_port}, 
+					password => $an->data->{sys}{anvil}{$node_key}{password},
 				});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "clustat_ok", value1 => $clustat_ok,
@@ -8373,18 +8405,22 @@ sub drbd_first_start
 	
 	# Start DRBD manually and if both nodes are Inconsistent for a given resource, run;
 	# drbdadm -- --overwrite-data-of-peer primary <res>
-	my ($node1_attach_return_code, $node1_attach_message) = $an->InstallManifest->do_drbd_attach_on_node({
+	my $node1_attach_return_code = 0;
+	my $node1_attach_message     = "";
+	my $node2_attach_return_code = 0;
+	my $node2_attach_message     = "";
+	($node1_attach_return_code, $node1_attach_message) = $an->InstallManifest->do_drbd_attach_on_node({
 			node     => $node1, 
 			target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 			port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 			password => $an->data->{sys}{anvil}{node1}{password},
-		});
-	my ($node2_attach_return_code, $node2_attach_message) = $an->InstallManifest->do_drbd_attach_on_node({
+		}) if not $an->data->{node}{node1}{has_servers};
+	($node2_attach_return_code, $node2_attach_message) = $an->InstallManifest->do_drbd_attach_on_node({
 			node     => $node2, 
 			target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 			password => $an->data->{sys}{anvil}{node2}{password},
-		});
+		}) if not $an->data->{node}{node2}{has_servers};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "node1_attach_return_code", value1 => $node1_attach_return_code,
 		name2 => "node1_attach_message",     value2 => $node1_attach_message,
@@ -8397,11 +8433,16 @@ sub drbd_first_start
 	# 3 == Attach failed.
 	# 4 == Failed to install 'wait-for-drbd'
 	
-	# Call 'wait-for-drbd' on node 1 so that we don't move on to clvmd before DRBD (its PV) is ready.
-	my $node       = $an->data->{sys}{anvil}{node1}{name};
-	my $target     = $an->data->{sys}{anvil}{node1}{use_ip};
-	my $port       = $an->data->{sys}{anvil}{node1}{use_port};
-	my $password   = $an->data->{sys}{anvil}{node1}{password};
+	# Call 'wait-for-drbd' on node 1 (or node 2, if node 1 has servers) so that we don't move on to clvmd before DRBD (its PV) is ready.
+	my $node_key = "node1";
+	if ($an->data->{node}{node1}{has_servers})
+	{
+		$node_key = "node2";
+	}
+	my $node       = $an->data->{sys}{anvil}{$node_key}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
 	my $shell_call = $an->data->{path}{nodes}{'wait-for-drbd_initd'}." start";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
@@ -8462,6 +8503,7 @@ sub drbd_first_start
 		}, file => $THIS_FILE, line => __LINE__});
 		if (($node1_ping) && ($node2_ping))
 		{
+			### NOTE: We run this on both nodes because it is possible that the surviving node is StandAlone
 			# Both nodes have both of their resources attached and are pingable on the SN, 
 			# Make sure they're not 'StandAlone' and, if so, tell them to connect.
 			($node1_connect_return_code, $node1_connect_message) = $an->InstallManifest->do_drbd_connect_on_node({
@@ -8531,7 +8573,7 @@ sub drbd_first_start
 								password => $an->data->{sys}{anvil}{node1}{password},
 								force_r0 => $force_node1_r0,
 								force_r1 => $force_node1_r1,
-							});
+							}) if not $an->data->{node}{node1}{has_servers};
 						($node2_primary_return_code, $node2_primary_message) = $an->InstallManifest->do_drbd_primary_on_node({
 								node     => $node2, 
 								target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
@@ -8539,7 +8581,7 @@ sub drbd_first_start
 								password => $an->data->{sys}{anvil}{node2}{password},
 								force_r0 => 0,
 								force_r1 => 0,
-							});
+							}) if not $an->data->{node}{node2}{has_servers};
 						
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 							name1 => "node1_primary_return_code", value1 => $node1_primary_return_code,
@@ -8612,6 +8654,16 @@ sub drbd_first_start
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code,
 	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{node}{node1}{has_servers})
+	{
+		$node1_class   = "highlight_note_bold";
+		$node1_message = "#!string!state_0133!#";
+	}
+	if ($an->data->{node}{node2}{has_servers})
+	{
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0133!#";
+	}
 	if ($return_code eq "1")
 	{
 		# Attach failed
@@ -8761,20 +8813,26 @@ sub enable_tools
 	
 	# sas_return_code  == anvil-safe-start, return code
 	# akau_return_code == anvil-kick-apc-ups, return code
-	my ($node1_sas_return_code, $node1_akau_return_code, $node1_sc_return_code) = $an->InstallManifest->enable_tools_on_node({
+	my $node1_sas_return_code  = 0;
+	my $node1_akau_return_code = 0;
+	my $node1_sc_return_code   = 0;
+	my $node2_sas_return_code  = 0;
+	my $node2_akau_return_code = 0;
+	my $node2_sc_return_code   = 0;
+	($node1_sas_return_code, $node1_akau_return_code, $node1_sc_return_code) = $an->InstallManifest->enable_tools_on_node({
 			node      => $node1, 
 			target    => $an->data->{sys}{anvil}{node1}{use_ip}, 
 			port      => $an->data->{sys}{anvil}{node1}{use_port}, 
 			password  => $an->data->{sys}{anvil}{node1}{password},
 			node_name => $node1,
-		});
-	my ($node2_sas_return_code, $node2_akau_return_code, $node2_sc_return_code) = $an->InstallManifest->enable_tools_on_node({
+		}) if not $an->data->{node}{node1}{has_servers};
+	($node2_sas_return_code, $node2_akau_return_code, $node2_sc_return_code) = $an->InstallManifest->enable_tools_on_node({
 			node      => $node2, 
 			target    => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			port      => $an->data->{sys}{anvil}{node2}{use_port}, 
 			password  => $an->data->{sys}{anvil}{node2}{password},
 			node_name => $node2,
-		});
+		}) if not $an->data->{node}{node2}{has_servers};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "node1_sas_return_code",  value1 => $node1_sas_return_code,
 		name2 => "node1_akau_return_code", value2 => $node1_akau_return_code,
@@ -8797,7 +8855,12 @@ sub enable_tools
 	my $node2_class   = "highlight_warning_bold";
 	my $node2_message = "#!string!state_0001!#";
 	# Node 1
-	if ($node1_sas_return_code eq "0")
+	if ($an->data->{node}{node1}{has_servers})
+	{
+		$node1_class   = "highlight_note_bold";
+		$node1_message = "#!string!state_0133!#";
+	}
+	elsif ($node1_sas_return_code eq "0")
 	{
 		# Unknown state.
 		$ok = 0;
@@ -8826,8 +8889,14 @@ sub enable_tools
 		$node1_message = "#!string!state_0122!#";
 		$ok            = 0;
 	}
+	
 	# Node 2
-	if ($node2_sas_return_code eq "0")
+	if ($an->data->{node}{node2}{has_servers})
+	{
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0133!#";
+	}
+	elsif ($node2_sas_return_code eq "0")
 	{
 		# Unknown state.
 		$ok = 0;
@@ -8871,7 +8940,12 @@ sub enable_tools
 	$node2_class   = "highlight_warning_bold";
 	$node2_message = "#!string!state_0001!#";
 	# Node 1
-	if ($node1_akau_return_code eq "0")
+	if ($an->data->{node}{node1}{has_servers})
+	{
+		$node1_class   = "highlight_note_bold";
+		$node1_message = "#!string!state_0133!#";
+	}
+	elsif ($node1_akau_return_code eq "0")
 	{
 		# Unknown state.
 		$ok = 0;
@@ -8900,8 +8974,14 @@ sub enable_tools
 		$node1_message = "#!string!state_0122!#";
 		$ok            = 0;
 	}
+	
 	# Node 2
-	if ($node2_akau_return_code eq "0")
+	if ($an->data->{node}{node2}{has_servers})
+	{
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0133!#";
+	}
+	elsif ($node2_akau_return_code eq "0")
 	{
 		# Unknown state.
 		$ok = 0;
@@ -8944,7 +9024,12 @@ sub enable_tools
 	$node2_class   = "highlight_warning_bold";
 	$node2_message = "#!string!state_0001!#";
 	# Node 1
-	if ($node1_sc_return_code eq "0")
+	if ($an->data->{node}{node1}{has_servers})
+	{
+		$node1_class   = "highlight_note_bold";
+		$node1_message = "#!string!state_0133!#";
+	}
+	elsif ($node1_sc_return_code eq "0")
 	{
 		# Unknown state.
 		$ok = 0;
@@ -8973,8 +9058,14 @@ sub enable_tools
 		$node1_message = "#!string!state_0122!#";
 		$ok            = 0;
 	}
+	
 	# Node 2
-	if ($node2_sc_return_code eq "0")
+	if ($an->data->{node}{node2}{has_servers})
+	{
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0133!#";
+	}
+	elsif ($node2_sc_return_code eq "0")
 	{
 		# Unknown state.
 		$ok = 0;
@@ -13859,13 +13950,6 @@ sub run_new_install_manifest
 		# Start cman up
 		$an->InstallManifest->start_cman() or return(1);
 		
-		### NOTE: Left off working on the above function
-		### TODO: Check against:
-		###	  $an->data->{node}{$node}{has_servers}
-		###	  $an->data->{node}{$node_key}{has_servers}
-		###	  before changing anything on a node.
-		#$an->nice_exit({exit_code => 0});
-		
 		# Live migration won't work until we've populated ~/.ssh/known_hosts, so do so now.
 		$an->InstallManifest->configure_ssh() or return(1);
 		
@@ -13878,9 +13962,10 @@ sub run_new_install_manifest
 		
 		### If we're not dead, it is time to celebrate!
 		# Is this Anvil! already in the database?
-		my ($anvil_configured) = $an->InstallManifest->check_config_for_anvil();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		my ($anvil_configured, $anvil_uuid) = $an->InstallManifest->check_config_for_anvil();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "anvil_configured", value1 => $anvil_configured,
+			name2 => "anvil_uuid",       value2 => $anvil_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If the 'anvil_configured' is 1, run 'configure_ssh_local()'
@@ -13905,7 +13990,7 @@ sub run_new_install_manifest
 		}
 		
 		# Do we need to show the link for adding the Anvil! to the config?
-		my $message = $an->String->get({key => "message_0286", variables => { url => "?cluster=".$an->data->{cgi}{cluster} }});
+		my $message = $an->String->get({key => "message_0286", variables => { url => "/cgi-bin/striker?anvil_uuid=".$anvil_uuid }});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "message", value1 => $message,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -16030,22 +16115,23 @@ sub setup_lvm_pv_and_vgs
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "setup_lvm_pv_and_vgs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Start 'clvmd' on both nodes.
-	my $return_code = 0;
-	my $node1       = $an->data->{sys}{anvil}{node1}{name};
-	my $node2       = $an->data->{sys}{anvil}{node2}{name};
-
-	my ($node1_return_code) = $an->InstallManifest->start_clvmd_on_node({
+	my $return_code       = 0;
+	my $node1             = $an->data->{sys}{anvil}{node1}{name};
+	my $node2             = $an->data->{sys}{anvil}{node2}{name};
+	my $node1_return_code = 1;
+	my $node2_return_code = 1;
+	($node1_return_code) = $an->InstallManifest->start_clvmd_on_node({
 			node     => $node1, 
 			target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 			port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 			password => $an->data->{sys}{anvil}{node1}{password},
-		});
-	my ($node2_return_code) = $an->InstallManifest->start_clvmd_on_node({
+		}) if not $an->data->{node}{node1}{has_servers};
+	($node2_return_code) = $an->InstallManifest->start_clvmd_on_node({
 			node     => $node2, 
 			target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 			password => $an->data->{sys}{anvil}{node2}{password},
-		});
+		}) if not $an->data->{node}{node2}{has_servers};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_return_code", value1 => $node1_return_code,
 		name2 => "node2_return_code", value2 => $node2_return_code,
@@ -16059,7 +16145,12 @@ sub setup_lvm_pv_and_vgs
 	my $node1_message = "#!string!state_0014!#";
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0014!#";
-	if ($node1_return_code eq "1")
+	if ($an->data->{node}{node1}{has_servers})
+	{
+		$node1_class   = "highlight_note_bold";
+		$node1_message = "#!string!state_0133!#";
+	}
+	elsif ($node1_return_code eq "1")
 	{
 		$node1_message = "#!string!state_0078!#";
 	}
@@ -16070,7 +16161,13 @@ sub setup_lvm_pv_and_vgs
 		$node1_message = "#!string!state_0123!#";
 		$ok            = 0;
 	}
-	if ($node2_return_code eq "1")
+	
+	if ($an->data->{node}{node2}{has_servers})
+	{
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0133!#";
+	}
+	elsif ($node2_return_code eq "1")
 	{
 		$node2_message = "#!string!state_0078!#";
 	}
@@ -16987,6 +17084,18 @@ sub start_cman
 		name1 => "node1_cman_state", value1 => $node1_cman_state,
 		name2 => "node2_cman_state", value2 => $node2_cman_state,
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If either node has servers but cman is stopped, bail out.
+	if ((($an->data->{node}{node1}{has_servers}) && (not $node1_cman_state)) or 
+	    (($an->data->{node}{node2}{has_servers}) && (not $node2_cman_state)))
+	{
+		# WHAT?
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
+			row     => "#!string!row_0256!#",
+			message => "#!string!explain_0239!#",
+		}});
+		return(0);
+	}
 
 	# First thing, make sure each node can talk to the other on the BCN.
 	my ($node1_ping) = $an->Check->ping({
@@ -17213,13 +17322,18 @@ sub start_cman
 	# 2 = Started
 	# 3 = Already running
 	# 4 = Failed to start
-	my $ok = 1;
+	my $ok            = 1;
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0014!#";
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0014!#";
 	# Node 1
-	if ($node1_return_code eq "1")
+	if ($an->data->{node}{node1}{has_servers})
+	{
+		$node1_class   = "highlight_note_bold";
+		$node1_message = "#!string!state_0133!#";
+	}
+	elsif ($node1_return_code eq "1")
 	{
 		$node1_class   = "highlight_warning_bold";
 		$node1_message = "#!string!state_0077!#",
@@ -17244,8 +17358,14 @@ sub start_cman
 	{
 		$node1_message = "#!string!state_0078!#",
 	}
+	
 	# Node 2
-	if ($node2_return_code eq "1")
+	if ($an->data->{node}{node2}{has_servers})
+	{
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0133!#";
+	}
+	elsif ($node2_return_code eq "1")
 	{
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = "#!string!state_0077!#",
@@ -17387,18 +17507,20 @@ sub stop_drbd
 	if ($stop_first eq "node2")
 	{
 		# Stop 2 -> 1
-		my ($drbd_node2_ok) = $an->InstallManifest->stop_drbd_on_node({
+		my $drbd_node1_ok = 2;
+		my $drbd_node2_ok = 2;
+		($drbd_node2_ok) = $an->InstallManifest->stop_drbd_on_node({
 				node     => $node2, 
 				target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 				port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 				password => $an->data->{sys}{anvil}{node2}{password},
-			});
-		my ($drbd_node1_ok) = $an->InstallManifest->stop_drbd_on_node({
+			}) if not $an->data->{node}{node2}{has_servers};
+		($drbd_node1_ok) = $an->InstallManifest->stop_drbd_on_node({
 				node     => $node1, 
 				target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 				port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 				password => $an->data->{sys}{anvil}{node1}{password},
-			});
+			}) if not $an->data->{node}{node1}{has_servers};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "drbd_node1_ok", value1 => $drbd_node1_ok, 
 			name2 => "drbd_node2_ok", value2 => $drbd_node2_ok, 
@@ -17414,18 +17536,20 @@ sub stop_drbd
 	else
 	{
 		# Stop 1 -> 2
-		my ($drbd_node1_ok) = $an->InstallManifest->stop_drbd_on_node({
+		my $drbd_node1_ok = 2;
+		my $drbd_node2_ok = 2;
+		($drbd_node1_ok) = $an->InstallManifest->stop_drbd_on_node({
 				node     => $node1, 
 				target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 				port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 				password => $an->data->{sys}{anvil}{node1}{password},
-			});
-		my ($drbd_node2_ok) = $an->InstallManifest->stop_drbd_on_node({
+			}) if not $an->data->{node}{node1}{has_servers};
+		($drbd_node2_ok) = $an->InstallManifest->stop_drbd_on_node({
 				node     => $node2, 
 				target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 				port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 				password => $an->data->{sys}{anvil}{node2}{password},
-			});
+			}) if not $an->data->{node}{node2}{has_servers};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "drbd_node1_ok", value1 => $drbd_node1_ok, 
 			name2 => "drbd_node2_ok", value2 => $drbd_node2_ok, 
@@ -19051,6 +19175,16 @@ sub watch_clustat
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0014!#";
 	# Node 1
+	if ($an->data->{node}{node1}{has_servers})
+	{
+		$node1_class   = "highlight_note_bold";
+		$node1_message = "#!string!state_0133!#";
+	}
+	if ($an->data->{node}{node2}{has_servers})
+	{
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0133!#";
+	}
 	if ($services_seen)
 	{
 		if (($n01_storage =~ /failed/) or ($n01_storage =~ /disabled/))
@@ -19087,6 +19221,16 @@ sub watch_clustat
 	$node1_message = "#!string!state_0014!#";
 	$node2_class   = "highlight_good_bold";
 	$node2_message = "#!string!state_0014!#";
+	if ($an->data->{node}{node1}{has_servers})
+	{
+		$node1_class   = "highlight_note_bold";
+		$node1_message = "#!string!state_0133!#";
+	}
+	if ($an->data->{node}{node2}{has_servers})
+	{
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0133!#";
+	}
 	if ($services_seen)
 	{
 		if ($n01_libvirtd =~ /failed/)
