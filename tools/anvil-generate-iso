@@ -214,7 +214,7 @@ my $conf = {
 		# git master with '--master', in which case we will download the 'striker_master' URL. In all
 		# cases, the downloaded file will be saved as 'striker_zip_file'.
 		striker		=>	"https://github.com/ClusterLabs/striker.git",
-		striker_default	=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-tc7.zip",
+		striker_default	=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-tc8.zip",
 		striker_latest	=>	"https://alteeve.ca/striker_latest.txt",
 		striker_master	=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
 		striker_zip_file =>	"striker.zip",
@@ -382,7 +382,7 @@ sub get_uuid
 		
 		if ($line =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
 		{
-			$uuid = $1;
+			$uuid = $line;
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - uuid: [$uuid]\n" if $conf->{sys}{debug} >= 2;
 		}
 		else
