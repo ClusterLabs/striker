@@ -4750,8 +4750,8 @@ sub configure_scancore
 	# Node 2
 	if ($an->data->{node}{node2}{has_servers})
 	{
-		$node1_class   = "highlight_note_bold";
-		$node1_message = "#!string!state_0133!#";
+		$node2_class   = "highlight_note_bold";
+		$node2_message = "#!string!state_0133!#";
 	}
 	elsif ($node2_return_code eq "1")
 	{
