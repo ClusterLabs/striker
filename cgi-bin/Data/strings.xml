@@ -1192,6 +1192,7 @@
 		<key name="state_0131">Ready for setup</key>
 		<key name="state_0132">Hosting Servers, Read Only!</key>
 		<key name="state_0133">Skipped</key>
+		<key name="state_0134"><![CDATA[The service: [<span class="highlight_detail">#!variable!service!#</span>] is in a 'failed' state.<br />Manual intervention is required.]]></key>
 		
 		
 		<!-- Titles used in tables (and options in <select> fields) -->
@@ -1246,7 +1247,7 @@
 		<key name="title_0049"><![CDATA[Migrating: [<span class="highlight_detail">#!variable!server!#</span>] now...]]></key>
 		<key name="title_0050"><![CDATA[Migration of: [<span class="highlight_detail">#!variable!server!#</span>] to: [<span class="highlight_detail">#!variable!migration_target!#</span>] aborted!]]></key>
 		<key name="title_0051"><![CDATA[Attempting graceful shut down of: [<span class="highlight_detail">#!variable!server!#</span>] now...]]></key>
-		<key name="title_0052"><![CDATA[Attempting to join: [<span class="highlight_detail">#!variable!node_name!#</span>] to: [<span class="highlight_detail">#!variable!anvil!#</span>] now...]]></key>
+		<key name="title_0052"><![CDATA[Attempting to join: [<span class="highlight_detail">#!variable!node_name!#</span>] to: [<span class="highlight_detail">#!variable!anvil_name!#</span>] now...]]></key>
 		<key name="title_0053"><![CDATA[Joining of <span class="fixed_width">#!variable!node_name!#</span> to <span class="fixed_width">#!variable!anvil!#</span> aborted!]]></key>
 		<key name="title_0054"><![CDATA[Attempting to join both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# now...]]></key>
 		<key name="title_0055"><![CDATA[Joining of both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# aborted!]]></key>

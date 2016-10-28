@@ -18964,9 +18964,9 @@ sub watch_clustat
 					name2 => "state",   value2 => $state, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				# If it is not started or failed, I am not interested in it.
-				next if (($state ne "failed") && ($state ne "disabled") && ($state ne "started") && ($state ne "stopped"));
-				if ($state eq "stopped")
+				# If it is not started, disabled or failed, I am not interested in it.
+				next if (($state ne "failed") && ($state ne "started") && ($state ne "stopped"));
+				if (($state eq "stopped") or ($state eq "disabled"))
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "service", value1 => $service, 

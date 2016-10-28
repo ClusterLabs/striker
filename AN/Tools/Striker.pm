@@ -6142,7 +6142,7 @@ sub _display_server_details
 		$lv_size[0]                                      = "--" if not defined $lv_size[0];
 		$type[0]                                         = "--" if not defined $type[0];
 		$mac[0]                                          = "--" if not defined $mac[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "server::${server}::details::cpu_count", value1 => $an->data->{server}{$server}{details}{cpu_count},
 			name2 => "say_ram",                               value2 => $say_ram,
 			name3 => "lv_path[0]",                            value3 => $lv_path[0],
@@ -8224,8 +8224,8 @@ sub _join_anvil
 	if ($proceed)
 	{
 		my $say_title = $an->String->get({key => "title_0052", variables => { 
-				node_name => $node_name,
-				anvil           => $anvil_name,
+				node_name  => $node_name,
+				anvil_name => $anvil_name,
 			}});
 		print $an->Web->template({file => "server.html", template => "join-anvil-header", replace => { title => $say_title }});
 		
@@ -8320,6 +8320,324 @@ sub _join_anvil
 				}});
 			}
 		}
+		
+		# Watch to see if storage starts. If it doesn't, the storage service might be disabled and 
+		# we'll need to start it manually.
+		my $started_waiting      = time;
+		my $stop_waiting         = $started_waiting + 300;
+		my $services_up          = 0;
+		my $storage_n01_started  = 0;
+		my $storage_n02_started  = 0;
+		my $libvirtd_n01_started = 0;
+		my $libvirtd_n02_started = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "started_waiting", value1 => $started_waiting,
+			name2 => "stop_waiting",    value2 => $stop_waiting,
+		}, file => $THIS_FILE, line => __LINE__});
+		until ($services_up)
+		{
+			my $difference = $stop_waiting - time;
+			if ($difference < 0)
+			{
+				# We're done waiting. Throw an error and exit the loop
+				
+				$services_up = 2;
+			}
+			my $shell_call = $an->data->{path}{clustat};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /^service:(.*?) (.*?) (.*)$/)
+				{
+					my $service = $1;
+					my $host    = $2;
+					my $state   = $3;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "service", value1 => $service, 
+						name2 => "host",    value2 => $host, 
+						name3 => "state",   value3 => $state, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Storage on Node 1
+					if ($service eq "storage_n01")
+					{
+						if ($state eq "started")
+						{
+							$storage_n01_started = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "storage_n01_started", value1 => $storage_n01_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif ($state eq "disabled")
+						{
+							# We'll need to start it.
+							$storage_n01_started = 2;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "storage_n01_started", value1 => $storage_n01_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif ($state eq "failed")
+						{
+							# Time to get a human involved.
+							$storage_n01_started = 3;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "storage_n01_started", value1 => $storage_n01_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					# Storage on Node 2
+					if ($service eq "storage_n02")
+					{
+						if ($state eq "started")
+						{
+							$storage_n02_started = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "storage_n02_started", value1 => $storage_n02_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif ($state eq "disabled")
+						{
+							# We'll need to start it.
+							$storage_n02_started = 2;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "storage_n02_started", value1 => $storage_n02_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif ($state eq "failed")
+						{
+							# Time to get a human involved.
+							$storage_n02_started = 3;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "storage_n02_started", value1 => $storage_n02_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					# Libvirtd on Node 1
+					if ($service eq "libvirtd_n01")
+					{
+						if ($state eq "started")
+						{
+							$libvirtd_n01_started = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "libvirtd_n01_started", value1 => $libvirtd_n01_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif ($state eq "disabled")
+						{
+							# We'll need to start it.
+							$libvirtd_n01_started = 2;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "libvirtd_n01_started", value1 => $libvirtd_n01_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif ($state eq "failed")
+						{
+							# Time to get a human involved.
+							$libvirtd_n01_started = 3;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "libvirtd_n01_started", value1 => $libvirtd_n01_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					# Libvirtd on Node 2
+					if ($service eq "libvirtd_n02")
+					{
+						if ($state eq "started")
+						{
+							$libvirtd_n02_started = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "libvirtd_n02_started", value1 => $libvirtd_n02_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif ($state eq "disabled")
+						{
+							# We'll need to start it.
+							$libvirtd_n02_started = 2;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "libvirtd_n02_started", value1 => $libvirtd_n02_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif ($state eq "failed")
+						{
+							# Time to get a human involved.
+							$libvirtd_n02_started = 3;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "libvirtd_n02_started", value1 => $libvirtd_n02_started, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+				}
+			}
+			
+			### Check to see if any services are failed or disabled.
+			# Storage Node 1
+			if ($storage_n01_started eq "3")
+			{
+				# Throw a warning and exit the loop.
+				$services_up = 3;
+				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+					status	=>	"<span class=\"highlight_bad\">#!string!state_0018!#</span>",
+					message	=>	$an->String->get({key => "state_0134", variables => { service => "storage_n01" }}),
+				}});
+			}
+			elsif ($storage_n01_started eq "2")
+			{
+				# Enable it.
+				$storage_n01_started = 0;
+				my $shell_call = $an->data->{path}{clusvcadm}." -e service:storage_n01";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $target,
+					name2 => "shell_call", value2 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			# Storage Node 2
+			if ($storage_n02_started eq "3")
+			{
+				# Throw a warning and exit the loop.
+				$services_up = 3;
+				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+					status	=>	"<span class=\"highlight_bad\">#!string!state_0018!#</span>",
+					message	=>	$an->String->get({key => "state_0134", variables => { service => "storage_n02" }}),
+				}});
+			}
+			elsif ($storage_n02_started eq "2")
+			{
+				# Enable it.
+				$storage_n02_started = 0;
+				my $shell_call = $an->data->{path}{clusvcadm}." -e service:storage_n02";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $target,
+					name2 => "shell_call", value2 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			# Libvirtd Node 1
+			if ($libvirtd_n02_started eq "3")
+			{
+				# Throw a warning and exit the loop.
+				$services_up = 3;
+				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+					status	=>	"<span class=\"highlight_bad\">#!string!state_0018!#</span>",
+					message	=>	$an->String->get({key => "state_0134", variables => { service => "libvirtd_n02" }}),
+				}});
+			}
+			elsif ($libvirtd_n02_started eq "2")
+			{
+				# Enable it.
+				$libvirtd_n02_started = 0;
+				my $shell_call = $an->data->{path}{clusvcadm}." -e service:libvirtd_n02";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $target,
+					name2 => "shell_call", value2 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			# Libvirtd Node 2
+			if ($libvirtd_n02_started eq "3")
+			{
+				# Throw a warning and exit the loop.
+				$services_up = 3;
+				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+					status	=>	"<span class=\"highlight_bad\">#!string!state_0018!#</span>",
+					message	=>	$an->String->get({key => "state_0134", variables => { service => "libvirtd_n02" }}),
+				}});
+			}
+			elsif ($libvirtd_n02_started eq "2")
+			{
+				# Enable it.
+				$libvirtd_n02_started = 0;
+				my $shell_call = $an->data->{path}{clusvcadm}." -e service:libvirtd_n02";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $target,
+					name2 => "shell_call", value2 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			
+			# If all the services are up, exit.
+			if (($storage_n01_started eq "1") && ($storage_n02_started eq "1") && ($libvirtd_n01_started eq "1") && ($libvirtd_n02_started eq "1"))
+			{
+				$services_up = 1;
+			}
+			else
+			{
+				sleep 5;
+			}
+		}
+		
 		print $an->Web->template({file => "server.html", template => "join-anvil-footer"});
 	}
 	else
