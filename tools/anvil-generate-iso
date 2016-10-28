@@ -788,9 +788,9 @@ EOF
 
 # Now setup the script for the user to call once booted.
 echo 'Writing out the sample striker-installer script'
-cat > ".$an->data->{path}{example_install}." << EOF
+cat > ".$conf->{path}{example_install}." << EOF
 # This is an example 'striker-installer' call. Feel free to edit this file here
-# and then call it with 'sh ".$an->data->{path}{example_install}."' to save typing
+# and then call it with 'sh ".$conf->{path}{example_install}."' to save typing
 # all this out.
 # 
 # If you are rebuilding or replacing a dashboard and you know what the old host
