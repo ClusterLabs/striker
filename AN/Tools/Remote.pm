@@ -194,8 +194,8 @@ sub add_target_to_known_hosts
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "add_target_to_known_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $user            = $parameter->{user}   ? $parameter->{user} : $<; 
 	my $target          = $parameter->{target};
+	my $user            = $parameter->{user}            ? $parameter->{user}            : $<; 
 	my $delete_if_found = $parameter->{delete_if_found} ? $parameter->{delete_if_found} : 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "user",            value1 => $user,
@@ -228,6 +228,7 @@ sub add_target_to_known_hosts
 		$known_machine = $an->Remote->_check_known_hosts_for_target({
 			target          => $target, 
 			known_hosts     => $known_hosts, 
+			user            => $user,
 			delete_if_found => $delete_if_found,
 		});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -248,6 +249,7 @@ sub add_target_to_known_hosts
 		$known_machine = $an->Remote->_check_known_hosts_for_target({
 			target          => $target, 
 			known_hosts     => $known_hosts,
+			user            => $user,
 			delete_if_found => $delete_if_found,
 		});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -451,6 +453,8 @@ sub remote_call
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "ssh_fh", value1 => $ssh_fh, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I don't already have an active SSH file handle, connect now.
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
@@ -828,13 +832,15 @@ sub _check_known_hosts_for_target
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_check_known_hosts_for_target" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target          = $parameter->{target};
-	my $known_hosts     = $parameter->{known_hosts};
+	my $target          = $parameter->{target}          ? $parameter->{target}          : "";
+	my $known_hosts     = $parameter->{known_hosts}     ? $parameter->{known_hosts}     : "";
+	my $user            = $parameter->{user}            ? $parameter->{user}            : "";
 	my $delete_if_found = $parameter->{delete_if_found} ? $parameter->{delete_if_found} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "target",          value1 => $target,
 		name2 => "known_hosts",     value2 => $known_hosts,
-		name3 => "delete_if_found", value3 => $delete_if_found,
+		name3 => "user",            value3 => $user,
+		name4 => "delete_if_found", value4 => $delete_if_found,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# read it in and search.
@@ -865,7 +871,12 @@ sub _check_known_hosts_for_target
 	
 	if ($delete_if_found)
 	{
+		# If we have a non-digit user, run this through 'su.
 		my $shell_call = $an->data->{path}{'ssh-keygen'}." -R $target";
+		if (($user) && ($user =~ /\D/))
+		{
+			$shell_call = $an->data->{path}{su}." - $user -c '".$an->data->{path}{'ssh-keygen'}." -R $target'";
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});

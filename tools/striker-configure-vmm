@@ -4,6 +4,8 @@
 # connecting to localhost, enables network and disk IO polling, displays server CPU, host CPU, network and
 # disk graphs. It then walks through striker.conf and adds an autoconnect entry for each node it finds.
 # 
+# NOTE: The exit code is always '0', but errors will exit by printing 'exit:x'. This is needed because 
+#       exiting with non-0 will cause the login to Gnome to fail.
 # Return codes:
 # 0  = Normal exit.
 # 1  = Disabled in striker.conf
@@ -206,7 +208,8 @@ if (not -e $an->data->{path}{'virt-manager'})
 {
 	$an->Log->entry({log_level => 2, message_key => "scv_log_0003", file => $THIS_FILE, line => __LINE__});
 	print $an->String->get({key => "scv_log_0003"})."\n";
-	$an->nice_exit({exit_code => 3});
+	print "exit:3\n";
+	$an->nice_exit({exit_code => 0});
 }
 
 # Is the user asking to enable or disable this feature?
@@ -259,7 +262,8 @@ else
 		manage_gdm_presession($an, "remove");
 		$an->Log->entry({log_level => 2, message_key => "scv_log_0004", file => $THIS_FILE, line => __LINE__});
 		print $an->String->get({key => "scv_log_0004"})."\n";
-		$an->nice_exit({exit_code => 1});
+		print "exit:1\n";
+		$an->nice_exit({exit_code => 0});
 	}
 }
 
@@ -282,7 +286,7 @@ foreach my $anvil_uuid (keys %{$an->data->{anvils}})
 	$an->data->{anvil}{node2}    = $an->data->{anvils}{$anvil_uuid}{node2}{name};
 	$an->data->{anvil}{password} = $an->data->{anvils}{$anvil_uuid}{password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "anvil::id",       value1 => $an->data->{anvil}{id}, 
+		name1 => "anvil::uuid",     value1 => $an->data->{anvil}{uuid}, 
 		name2 => "anvil::node1",    value2 => $an->data->{anvil}{node1}, 
 		name3 => "anvil::node2",    value3 => $an->data->{anvil}{node2}, 
 		name4 => "anvil::password", value4 => $an->data->{anvil}{password}, 
@@ -292,7 +296,7 @@ foreach my $anvil_uuid (keys %{$an->data->{anvils}})
 	{
 		my $uri = "qemu+ssh://root\@$node/system";
 		$an->data->{node}{$uri}{autoconnect} = 1;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node",                      value1 => $node, 
 			name2 => "node::${uri}::autoconnect", value2 => $an->data->{node}{$uri}{autoconnect},
 		}, file => $THIS_FILE, line => __LINE__});

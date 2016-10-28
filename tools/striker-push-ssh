@@ -49,6 +49,11 @@ my $an = AN::Tools->new({data => {
 			log_language	=>	"en_CA",
 			log_level	=>	2,
 		},
+		tools		=>	{
+			'auto-update-ssh-fingerprints'	=>	{
+				enabled		=>	1,
+			},
+		},
 	},
 });
 
@@ -171,12 +176,14 @@ sub push_ssh_keys
 			my $online    = $an->data->{sys}{anvil}{$node_key}{online};
 			my $use_ip    = $an->data->{sys}{anvil}{$node_key}{use_ip};
 			my $use_port  = $an->data->{sys}{anvil}{$node_key}{use_port};
+			my $bcn_ip    = $an->data->{sys}{anvil}{$node_key}{bcn_ip};
 			my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 				name1 => "node_name", value1 => $node_name, 
 				name2 => "online",    value2 => $online, 
 				name3 => "use_ip",    value3 => $use_ip, 
 				name4 => "use_port",  value4 => $use_port, 
+				name5 => "bcn_ip",    value5 => $bcn_ip, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "password", value1 => $password, 
@@ -192,6 +199,10 @@ sub push_ssh_keys
 			# Insert/update the use_ip and hostname into our local /etc/hosts file. This will 
 			# allow us to store the fingerprint by the node's name.
 			update_hosts($an, $node_name, $use_ip);
+			
+			# Check to see if the fingerprint for this node has changed and, if not, update it.
+			check_ssh_fingerprint($an, $node_key, $an->data->{anvil}{uuid}, $node_name);
+			check_ssh_fingerprint($an, $node_key, $an->data->{anvil}{uuid}, $bcn_ip);
 			
 			# Make sure I've got the remote machine's RSA fingerprint recorded.
 			$an->Remote->add_target_to_known_hosts({
@@ -220,6 +231,73 @@ sub push_ssh_keys
 	return(0);
 }
 
+# This loops through the local users and updates the target's ssh fingerprint when needed.
+sub check_ssh_fingerprint
+{
+	my ($an, $node_key, $anvil_uuid, $target) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_ssh_fingerprint" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "node_key",   value1 => $node_key, 
+		name2 => "anvil_uuid", value2 => $anvil_uuid, 
+		name3 => "target",     value3 => $target, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $port     = $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port};
+	my $password = $an->data->{anvils}{$anvil_uuid}{$node_key}{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "port", value1 => $port,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	my $users = $an->Get->local_users();
+	foreach my $user (sort {$a cmp $b} @{$users})
+	{
+		my $remove_key = 0;
+		my $shell_call = $an->data->{path}{su}." $user -c '".$an->data->{path}{ssh}." root\@$target \"".$an->data->{path}{echo}." 1\"'";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/\r//;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			
+			if ($line =~ /REMOTE HOST IDENTIFICATION HAS CHANGED/i)
+			{
+				$remove_key = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "remove_key", value1 => $remove_key,
+				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				last;
+			}
+		}
+		close $file_handle;
+		
+		if (($remove_key) && (not $an->data->{tools}{'auto-update-ssh-fingerprints'}{enabled}))
+		{
+			# Warn the user
+			$remove_key = 0;
+		}
+		
+		# Any problem with this key?
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "remove_key", value1 => $remove_key,
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		$an->Remote->add_target_to_known_hosts({
+			target          => $target, 
+			user            => $user,
+			delete_if_found => $remove_key,
+		});
+	}
+	
+	return(0);
+}
+
 # Read in /etc/hosts and insert the host name (or update the existing entry if it has changed).
 sub update_hosts
 {
@@ -228,7 +306,7 @@ sub update_hosts
 	my $insert     = 1;
 	my $new_hosts  = "";
 	my $shell_call = $an->data->{path}{etc_hosts};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});

@@ -240,19 +240,28 @@ sub configure_ssh_local
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ssh_local" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Exit if we weren't given an Anvil! name,
 	if (not $parameter->{anvil_name})
 	{
-		# Nothing passed in or set in CGI
 		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0123", code => 123, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
-	my $anvil_name = $parameter->{anvil_name} ? $parameter->{anvil_name} : "";
-	my $output     = "";
+	my $output       = "";
+	my $anvil_name   = $parameter->{anvil_name}           ? $parameter->{anvil_name}           : "";
+	my $remove_hosts = $parameter->{remove_hosts}         ? $parameter->{remove_hosts}         : 0;
+	my $node1_name   = $an->data->{cgi}{anvil_node1_name} ? $an->data->{cgi}{anvil_node1_name} : "";
+	my $node2_name   = $an->data->{cgi}{anvil_node2_name} ? $an->data->{cgi}{anvil_node2_name} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "anvil_name",   value1 => $anvil_name,
+		name2 => "remove_hosts", value2 => $remove_hosts,
+		name3 => "node1_name",   value3 => $node1_name,
+		name4 => "node2_name",   value4 => $node2_name,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Add the user's SSH keys to the new anvil! (will simply exit if disabled in striker.conf).
 	my $shell_call = $an->data->{path}{'call_striker-push-ssh'}." --anvil $anvil_name";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "Calling", value1 => $shell_call,
+		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)

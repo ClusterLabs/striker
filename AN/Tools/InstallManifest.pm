@@ -5159,8 +5159,6 @@ fi;
 			print $file_handle $striker_config;
 			close $file_handle;
 			
-			### TODO: Left off here - When rebuilding a node, the surviving node's 
-			###       '.ssh/know_hosts' file entry for the peer will be bad. 
 			# If the target's keys are known, delete them in case we're rebuilding the taget.
 			$an->Remote->add_target_to_known_hosts({
 				target          => $target, 
