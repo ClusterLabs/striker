@@ -74,9 +74,6 @@
 # - If the BCN isn't 10.20.4.{1,2}, the kickstart files fail.
 # - If the installer re-runs with a new subnet (IFN, at least) and shorewall is configured, shorewall breaks
 #   access to the dashboard.
-# - In some cases, an update will pull in new RPMs and priority=1 will cause that to fail. So make it be that
-#   if some packages fail to install, we run '--skip-broken' to get what we can locally, then disable the 
-#   local repo's priority and try again.
 # 
 
 my $THIS_FILE =  $0;
@@ -740,7 +737,7 @@ my $conf = {
 		striker_password	=>	"",		# no default password, evar!
 		switch_count		=>	0,
 		tarball_dir		=>	"striker-#!striker_version!#",
-		update_os		=>	0,
+		update_os		=>	1,
 		yum_switches		=>	"-y",		# Adds: [--disablerepo='*' --enablerepo='striker*'] if no internet connection found.
 	},
 	url		=>	{
@@ -2651,9 +2648,6 @@ sub setup_striker
 	#       get scrolled off the screen.
 	# Set the root user's password.
 	set_root_password($conf);
-	
-	# Remove the 'priority=1' from our repos.
-	remove_yum_priority($conf);
 	
 	return(0);
 }
@@ -6748,17 +6742,6 @@ sub install_packages
 		$conf->{packages}{to_install}{MegaCli} = 0;
 	}
 	
-	# Check for OS updates.
-	$conf->{sys}{update_os} = 0 if $conf->{switches}{'no-os-updates'};
-	if ($conf->{sys}{update_os})
-	{
-		update_os($conf);
-	}
-	else
-	{
-		logger($conf, $THIS_FILE, __LINE__, "- OS update disabled, skipping.", 1);
-	}
-	
 	# Get a list of already installed packages.
 	get_list_of_installed_packages($conf);
 	
@@ -6861,6 +6844,29 @@ fi";
 		close $file_handle;
 	}
 	
+	# Check for OS updates.
+	$conf->{sys}{update_os} = 0 if $conf->{switches}{'no-os-updates'};
+	logger($conf, $THIS_FILE, __LINE__, "Checking for OS updates (with priority on on local repo).", 1);
+	if ($conf->{sys}{update_os})
+	{
+		# Update the OS
+		update_os($conf);
+		
+		# Remove the 'priority=1' from our repos.
+		logger($conf, $THIS_FILE, __LINE__, "Removing priority on on local repo.", 1);
+		remove_yum_priority($conf);
+		
+		# Running the update again without local priority
+		logger($conf, $THIS_FILE, __LINE__, "Checking for OS updates again.", 1);
+		update_os($conf);
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- OS update disabled, removing the local repo priority only.", 1);
+		remove_yum_priority($conf);
+	}
+	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
+	
 	return(0);
 }
 
@@ -6947,12 +6953,11 @@ sub install_missing_packages
 	return(0);
 }
 
-# This updates the OS, if needed.
+# This calls the actual yum update.
 sub update_os
 {
 	my ($conf) = @_;
 	
-	logger($conf, $THIS_FILE, __LINE__, "Checking for OS updates.", 1);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient! It may appear that nothing is happening for a", 3);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] while. This is likely because of how buffering is handled. If you", 3);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
@@ -6972,7 +6977,6 @@ sub update_os
 	}
 	close $file_handle;
 	logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
-	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	return(0);
 }

@@ -126,6 +126,7 @@ my $THIS_FILE = "InstallManifest.pm";
 # watch_clustat
 # write_cluster_conf
 # write_lvm_conf_on_node
+# _do_os_update
 
 #############################################################################################################
 # House keeping methods                                                                                     #
@@ -18344,42 +18345,31 @@ sub update_node
 	}, file => $THIS_FILE, line => __LINE__});
 	return(1) if not $an->data->{sys}{update_os};
 	
-	my $shell_call = $an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." update";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "target",     value1 => $target,
-		name2 => "shell_call", value2 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__});
-	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$target,
-		port		=>	$port, 
-		password	=>	$password,
-		shell_call	=>	$shell_call,
-	});
-	foreach my $line (@{$return})
-	{
-		$line =~ s/\n//g;
-		$line =~ s/\r//g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /Installing : kernel/)
-		{
-			# New kernel, we'll need to reboot.
-			$an->data->{node}{$node}{reboot_needed} = 1;
-			$an->Log->entry({log_level => 2, message_key => "log_0194", message_variables => {
-				node => $node, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		if ($line =~ /Total download size/)
-		{
-			# Updated packages
-			$an->data->{node}{$node}{os_updated} = 1;
-			$an->Log->entry({log_level => 2, message_key => "log_0195", message_variables => {
-				node => $node, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
+	# We now do two update calls... First with priority on the striker dashboards, then again without.
+	# This ensures any locally available updates are downloaded and installed before burning data 
+	# updating from external repos.
+	$an->InstallManifest->_do_os_update({
+			node     => $node, 
+			target   => $target, 
+			port     => $port, 
+			password => $password,
+		});
+	
+	# Remove the priority= from the nodes. We don't care about the output.
+	$an->InstallManifest->remove_priority_from_node({
+			node     => $node, 
+			target   => $target, 
+			port     => $port, 
+			password => $password,
+		});
+	
+	# Call the update again. This time, external updates will be installed.
+	$an->InstallManifest->_do_os_update({
+			node     => $node, 
+			target   => $target, 
+			port     => $port, 
+			password => $password,
+		});
 	
 	return(0);
 }
@@ -18418,20 +18408,6 @@ sub update_nodes
 		}) if not $an->data->{node}{node2}{has_servers};
 	# 0 = update attempted
 	# 1 = OS updates disabled in manifest
-	
-	# Remove the priority= from the nodes. We don't care about the output.
-	$an->InstallManifest->remove_priority_from_node({
-			node     => $node1, 
-			target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
-			port     => $an->data->{sys}{anvil}{node1}{use_port}, 
-			password => $an->data->{sys}{anvil}{node1}{password},
-		}) if not $an->data->{node}{node1}{has_servers};
-	$an->InstallManifest->remove_priority_from_node({
-			node     => $node2, 
-			target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
-			port     => $an->data->{sys}{anvil}{node2}{use_port}, 
-			password => $an->data->{sys}{anvil}{node2}{password},
-		}) if not $an->data->{node}{node2}{has_servers};
 	
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0026!#";
@@ -19409,5 +19385,66 @@ sub write_lvm_conf_on_node
 #############################################################################################################
 # Internal methods                                                                                          #
 #############################################################################################################
+
+# This does the actual OS Update.
+sub _do_os_update
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_do_os_update" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "node",   value1 => $node, 
+		name2 => "target", value2 => $target, 
+		name3 => "port",   value3 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = $an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." update";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$line =~ s/\n//g;
+		$line =~ s/\r//g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /Installing : kernel/)
+		{
+			# New kernel, we'll need to reboot.
+			$an->data->{node}{$node}{reboot_needed} = 1;
+			$an->Log->entry({log_level => 2, message_key => "log_0194", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Total download size/)
+		{
+			# Updated packages
+			$an->data->{node}{$node}{os_updated} = 1;
+			$an->Log->entry({log_level => 2, message_key => "log_0195", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
 
 1;
