@@ -1179,22 +1179,22 @@ FROM
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
 	{
-		my $server_uuid                     = $row->[0];
-		my $server_anvil_uuid               = $row->[1];
-		my $server_name                     = $row->[2];
-		my $server_stop_reason              = $row->[3];
-		my $server_start_after              = $row->[4];
-		my $server_start_delay              = $row->[5];
-		my $server_note                     = $row->[6] ? $row->[6] : "";
-		my $server_definition               = $row->[7];
-		my $server_host                     = $row->[8];
-		my $server_state                    = $row->[9];
-		my $server_migration_type           = $row->[10];
-		my $server_pre_migration_script     = $row->[11];
-		my $server_pre_migration_arguments  = $row->[12];
-		my $server_post_migration_script    = $row->[13];
-		my $server_post_migration_arguments = $row->[14];
-		my $modified_date                   = $row->[15];
+		my $server_uuid                     =         $row->[0];
+		my $server_anvil_uuid               =         $row->[1];
+		my $server_name                     =         $row->[2];
+		my $server_stop_reason              = defined $row->[3]  ? $row->[3];
+		my $server_start_after              = defined $row->[4]  ? $row->[4];
+		my $server_start_delay              =         $row->[5];
+		my $server_note                     = defined $row->[6]  ? $row->[6]  : "";
+		my $server_definition               =         $row->[7];
+		my $server_host                     = defined $row->[8]  ? $row->[8]  : "";
+		my $server_state                    = defined $row->[9]  ? $row->[9]  : "";
+		my $server_migration_type           =         $row->[10];
+		my $server_pre_migration_script     = defined $row->[11] ? $row->[11] : "";
+		my $server_pre_migration_arguments  = defined $row->[12] ? $row->[12] : "";
+		my $server_post_migration_script    = defined $row->[13] ? $row->[13] : "";
+		my $server_post_migration_arguments = defined $row->[14] ? $row->[14] : "";
+		my $modified_date                   =         $row->[15];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
 			name1  => "server_uuid",                     value1  => $server_uuid, 
 			name2  => "server_anvil_uuid",               value2  => $server_anvil_uuid, 
