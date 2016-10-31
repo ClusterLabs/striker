@@ -116,7 +116,7 @@ my $THIS_FILE = "InstallManifest.pm";
 # stop_service_on_node
 # test_internet_connection
 # update_install_manifest
-# update_node
+# update_target_node
 # update_nodes
 # verify_drbd_resources_are_connected
 # verify_internet_access
@@ -18319,12 +18319,12 @@ sub update_install_manifest
 }
 
 # This calls the yum update and flags the node for a reboot if the kernel is updated.
-sub update_node
+sub update_target_node
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_target_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -18394,13 +18394,13 @@ sub update_nodes
 	$an->data->{node}{$node2}{os_updated} = 0;
 	$an->data->{node}{$node1}{os_updated} = 0;
 	   
-	($node1_return_code) = $an->InstallManifest->update_node({
+	($node1_return_code) = $an->InstallManifest->update_target_node({
 			node     => $node1, 
 			target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 			port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 			password => $an->data->{sys}{anvil}{node1}{password},
 		}) if not $an->data->{node}{node1}{has_servers};
-	($node2_return_code) = $an->InstallManifest->update_node({
+	($node2_return_code) = $an->InstallManifest->update_target_node({
 			node     => $node2, 
 			target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			port     => $an->data->{sys}{anvil}{node2}{use_port}, 
@@ -19430,17 +19430,13 @@ sub _do_os_update
 		{
 			# New kernel, we'll need to reboot.
 			$an->data->{node}{$node}{reboot_needed} = 1;
-			$an->Log->entry({log_level => 2, message_key => "log_0194", message_variables => {
-				node => $node, 
-			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 1, message_key => "log_0194", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /Total download size/)
 		{
 			# Updated packages
 			$an->data->{node}{$node}{os_updated} = 1;
-			$an->Log->entry({log_level => 2, message_key => "log_0195", message_variables => {
-				node => $node, 
-			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 1, message_key => "log_0195", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	

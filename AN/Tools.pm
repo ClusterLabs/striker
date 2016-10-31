@@ -536,7 +536,7 @@ sub nice_exit
 	$an->DB->disconnect_from_databases();
 	
 	# If this is a browser calling us, print the footer so that the loading pinwheel goes away.
-	if ($ENV{'HTTP_REFERER'})
+	if (($ENV{'HTTP_REFERER'}) && (not $an->data->{sys}{footer_printed}))
 	{
 		$an->Striker->_footer();
 	}

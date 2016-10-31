@@ -5293,6 +5293,9 @@ sub dr_job_menu
 			},
 		});
 	
+	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
+	$an->data->{sys}{footer_printed} = 1;
+	
 	return(0);
 }
 
@@ -5640,6 +5643,9 @@ sub dr_target_menu
 				footer		=>	$footer, 
 			},
 		});
+	
+	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
+	$an->data->{sys}{footer_printed} = 1;
 	
 	return(0);
 }
@@ -6026,6 +6032,9 @@ sub notify_menu
 			},
 		});
 	
+	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
+	$an->data->{sys}{footer_printed} = 1;
+	
 	return(0);
 }
 
@@ -6401,6 +6410,9 @@ sub smtp_menu
 			},
 		});
 	
+	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
+	$an->data->{sys}{footer_printed} = 1;
+	
 	return(0);
 }
 
@@ -6681,6 +6693,9 @@ sub owner_menu
 				footer		=>	$footer, 
 			},
 		});
+	
+	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
+	$an->data->{sys}{footer_printed} = 1;
 	
 	return(0);
 }
@@ -6973,6 +6988,9 @@ sub local_striker_menu
 				footer		=>	$footer, 
 			},
 		});
+	
+	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
+	$an->data->{sys}{footer_printed} = 1;
 	
 	return(0);
 }
@@ -7524,6 +7542,9 @@ sub anvil_menu
 			},
 		});
 	
+	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
+	$an->data->{sys}{footer_printed} = 1;
+	
 	return(0);
 }
 
@@ -7880,6 +7901,9 @@ sub show_main_menu
 				footer		=>	$footer, 
 			},
 		});
+	
+	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
+	$an->data->{sys}{footer_printed} = 1;
 	
 	return(0);
 }

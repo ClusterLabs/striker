@@ -42,6 +42,8 @@ my $an = AN::Tools->new({data => {
 		switches	=>	{
 		},
 		sys		=>	{
+			# Don't print the webUI footer when invoked by a web-called parent
+			footer_printed	=>	1,
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",
 			log_level		=>	2,

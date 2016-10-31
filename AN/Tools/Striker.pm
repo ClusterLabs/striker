@@ -6853,13 +6853,17 @@ sub _footer
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_footer" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::footer_printed", value1 => $an->data->{sys}{footer_printed},
 	}, file => $THIS_FILE, line => __LINE__});
-	return(0) if $an->data->{sys}{footer_printed}; 
-	
-	print $an->Web->template({file => "common.html", template => "footer"});
-	$an->data->{sys}{footer_printed} = 1;
+	if (not $an->data->{sys}{footer_printed})
+	{
+		print $an->Web->template({file => "common.html", template => "footer"});
+		$an->data->{sys}{footer_printed} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::footer_printed", value1 => $an->data->{sys}{footer_printed},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	return (0);
 }

@@ -919,6 +919,12 @@ sub template
 		$page .= "<!-- $comment -->\n";
 	}
 	
+	# If this was the footer, record the footer as having been printed.
+	if (($template eq "footer") && ($file eq "commont.html"))
+	{
+		$an->data->{sys}{footer_printed} = 1;
+	}
+	
 	return($page);
 }
 

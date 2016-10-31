@@ -58,6 +58,8 @@ my $an = AN::Tools->new({data => {
 		},
 		switches	=>	{},
 		sys		=>	{
+			# Don't print the webUI footer when invoked by a web-called parent
+			footer_printed	=>	1,
 			language	=>	"en_CA",
 			log_language	=>	"en_CA",
 			log_level	=>	2,
@@ -456,7 +458,7 @@ sub check_shorewall
 	}
 	close $file_handle;
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::shorewall_enabled", value1 => $an->data->{sys}{shorewall_enabled}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($an->data->{sys}{shorewall_enabled});
@@ -474,7 +476,7 @@ sub check_status
 	# dhcpd     - 0 == running, 3 == stopped
 	# shorewall - 0 == running, 3 == stopped, 4 == stopped (hasn't run)
 	$an->data->{daemons}{dhcpd} = check_daemon($an, "dhcpd");
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{shorewall_enabled})

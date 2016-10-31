@@ -71,6 +71,8 @@ my $an = AN::Tools->new({data => {
 			peer		=>	"",
 		},
 		sys		=>	{
+			# Don't print the webUI footer when invoked by a web-called parent
+			footer_printed	=>	1,
 			pings		=>	3,
 			language	=>	"en_CA",
 			local_users	=>	[],
