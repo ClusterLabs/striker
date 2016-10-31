@@ -288,7 +288,7 @@ sub load_anvil
 	
 	# Did the user specify an anvil_uuid?
 	my $anvil_uuid = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -348,7 +348,7 @@ sub load_anvil
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->Validate->is_uuid({uuid => $anvil_uuid}))
@@ -458,7 +458,7 @@ sub load_anvil
 		$an->data->{sys}{anvil}{$node_key}{online}         =  $an->data->{anvils}{$anvil_uuid}{$node_key}{online};
 		$an->data->{sys}{anvil}{$node_key}{power}          =  $an->data->{anvils}{$anvil_uuid}{$node_key}{power};
 		$an->data->{sys}{anvil}{$node_key}{host_uuid}      =  $an->data->{anvils}{$anvil_uuid}{$node_key}{host_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0018", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0018", message_variables => {
 			name1  => "sys::anvil::${node_key}::uuid",           value1  => $an->data->{sys}{anvil}{$node_key}{uuid}, 
 			name2  => "sys::anvil::${node_key}::name",           value2  => $an->data->{sys}{anvil}{$node_key}{name}, 
 			name3  => "sys::anvil::${node_key}::short_name",     value3  => $an->data->{sys}{anvil}{$node_key}{short_name}, 
@@ -6851,16 +6851,16 @@ sub _footer
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_footer" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_footer" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::footer_printed", value1 => $an->data->{sys}{footer_printed},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{sys}{footer_printed})
 	{
 		print $an->Web->template({file => "common.html", template => "footer"});
 		$an->data->{sys}{footer_printed} = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::footer_printed", value1 => $an->data->{sys}{footer_printed},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -7750,7 +7750,7 @@ sub _header
 		$anvil_name = $an->data->{sys}{anvil}{name};
 		$node1_name = $an->data->{sys}{anvil}{node1}{name};
 		$node2_name = $an->data->{sys}{anvil}{node2}{name};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "anvil_uuid", value1 => $anvil_uuid,
 			name2 => "anvil_name", value2 => $anvil_name,
 			name3 => "node1_name", value3 => $node1_name,
@@ -12592,6 +12592,7 @@ sub _poweron_node
 		return("");
 	}
 	
+	### NOTE: The target node should be off, so 'target' will likely be empty.
 	# Pull out the rest of the data
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $node_key   = $an->data->{sys}{node_name}{$node_name}{node_key};
@@ -12616,6 +12617,7 @@ sub _poweron_node
 		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Die if I don't know who my target is.
 	if (not $node_key)
 	{
 		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0150", message_variables => { node_name => $node_name }, code => 150, file => $THIS_FILE, line => __LINE__});
@@ -12668,9 +12670,9 @@ sub _poweron_node
 		if ($an->data->{sys}{anvil}{$peer_key}{online})
 		{
 			# Sweet, power on via the peer.
-			my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
-			my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
-			my $password = $an->data->{sys}{anvil}{$node_key}{password};
+			my $target   = $an->data->{sys}{anvil}{$peer_key}{use_ip};
+			my $port     = $an->data->{sys}{anvil}{$peer_key}{use_port};
+			my $password = $an->data->{sys}{anvil}{$peer_key}{password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "target", value1 => $target,
 				name2 => "port",   value2 => $port,
@@ -12682,8 +12684,8 @@ sub _poweron_node
 			# Fencing is off -> verify -> on. Being already off, this effectively just boots the node.
 			my $shell_call = $an->data->{path}{fence_node}." -v $node_name";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "target",     value2 => $target,
-				name2 => "shell_call", value1 => $shell_call,
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$target,

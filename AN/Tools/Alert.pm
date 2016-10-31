@@ -411,6 +411,7 @@ sub error
 		{
 			print "$error\n" if not $an->Alert->no_fatal_errors;
 		}
+		$an->data->{sys}{footer_printed} = 1;
 		$an->nice_exit({exit_code => $code});
 	}
 	

@@ -6125,7 +6125,7 @@ sub target_power
 	
 	my $task   = $parameter->{task}   ? $parameter->{task}   : "status";
 	my $target = $parameter->{target} ? $parameter->{target} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "task",   value1 => $task, 
 		name2 => "target", value2 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});

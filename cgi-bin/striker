@@ -730,7 +730,7 @@ sub _initialize_an
 			# If a user wants to use spice + qxl for video in VMs, set this to '1'. NOTE: This 
 			# disables web-based VNC!
 # 			use_spice_graphics	=>	1,
-			version			=>	"2.0.0a",
+			version			=>	"2.0.0b",
 			# Adds: [--disablerepo='*' --enablerepo='striker*'] if
 			# no internet connection found.
 			yum_switches		=>	"-y",		
