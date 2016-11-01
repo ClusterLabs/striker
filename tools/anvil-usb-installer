@@ -46,10 +46,15 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 }
 
 my $conf = {
+	# Executable programs. We will search for these in PATH if not pre-defined (start with '/...').
+	executable	=>	{
+		curl		=>	"curl",
+	},
 	# Paths to files and directories
 	path		=>	{
 		mbr_bin		=>	"",
 		running_dir	=>	$running_directory,
+		redhat_release	=>	"/etc/redhat-release",
 	},
 	sys		=>	{
 		debug		=>	1,
@@ -67,6 +72,13 @@ my $conf = {
 		usb_partition	=>	"",
 		usb_mount	=>	"/tmp/anvil_usb",
 		iso_mount	=>	"/tmp/anvil_iso",
+		os_type		=>	"",
+	},
+	url		=>	{
+		'ldlinux.c32'	=>	"https://alteeve.ca/an-repo/misc/syslinux/ldlinux.c32",
+		'libcom32.c32'	=>	"https://alteeve.ca/an-repo/misc/syslinux/libcom32.c32",
+		'libutil.c32'	=>	"https://alteeve.ca/an-repo/misc/syslinux/libutil.c32",
+		'vesamenu.c32'	=>	"https://alteeve.ca/an-repo/misc/syslinux/vesamenu.c32",
 	},
 };
 
@@ -144,6 +156,9 @@ check_apps($conf);
 # Is it a USB device? If so, it will report the detail of the device to the user. If not, it will exit.
 check_if_usb($conf);
 
+# Check the OS type
+check_os($conf);
+
 # Ask the user to confirm.
 print "=======================================================================\n";
 print "[ WARNING ] - This device will be completely erased! All existing data\n";
@@ -196,6 +211,46 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This determines what OS we're on and tunes to run appropriately.
+sub check_os
+{
+	my ($conf) = @_;
+	
+	if (-e $conf->{path}{redhat_release})
+	{
+		# We're a RHEL variant.
+		my $os_string  = "";
+		my $shell_call = $conf->{path}{redhat_release};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			$os_string = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - os_string: [$os_string].\n" if $conf->{sys}{debug} >= 2;
+		}
+		close $file_handle;
+		
+		if ($os_string =~ /6\./)
+		{
+			$conf->{sys}{os_type} = "el6";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::os_type: [".$conf->{sys}{os_type}."].\n" if $conf->{sys}{debug} >= 2;
+		}
+		elsif ($os_string =~ /7\./)
+		{
+			$conf->{sys}{os_type} = "el7";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::os_type: [".$conf->{sys}{os_type}."].\n" if $conf->{sys}{debug} >= 2;
+		}
+		elsif ($os_string =~ /Fedora/)
+		{
+			$conf->{sys}{os_type} = "fedora";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::os_type: [".$conf->{sys}{os_type}."].\n" if $conf->{sys}{debug} >= 2;
+		}
+	}
+	
+	return(0);
+}
 
 # This cleans up and syncs.
 sub cleanup
@@ -410,37 +465,59 @@ sub write_device
                 }
         close $file_handle;
 
-#Below lies the previous method for moving mbr files to the device. syslinux --install appears to have remedied. TEST.
-#=cut
-	my $mbr_bin_path       = $conf->{path}{mbr_bin};
-	my $syslinux_directory = ($mbr_bin_path =~ /^(.*?)\/mbr\.bin$/)[0];
-	my $ldlinux_c32_path   = $syslinux_directory."/ldlinux.c32";
-	my $libcom32_c32_path  = $syslinux_directory."/libcom32.c32";
-	my $libutil_c32_path   = $syslinux_directory."/libutil.c32";
-	my $vesamenu_c32_path  = $syslinux_directory."/vesamenu.c32";
-	foreach my $source_file ($ldlinux_c32_path, $libcom32_c32_path, $libutil_c32_path, $vesamenu_c32_path)
+	# If this is Fedora, we need to copy a few more files.
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::os_type: [".$conf->{sys}{os_type}."].\n" if $conf->{sys}{debug} >= 0;
+	if ($conf->{sys}{os_type} eq "fedora")
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_file: [$source_file].\n" if $conf->{sys}{debug} >= 2;
-		if (not -e $source_file)
+		my $mbr_bin_path       = $conf->{path}{mbr_bin};
+		my $syslinux_directory = ($mbr_bin_path =~ /^(.*?)\/mbr\.bin$/)[0];
+		my $ldlinux_c32_path   = $syslinux_directory."/ldlinux.c32";
+		my $libcom32_c32_path  = $syslinux_directory."/libcom32.c32";
+		my $libutil_c32_path   = $syslinux_directory."/libutil.c32";
+		my $vesamenu_c32_path  = $syslinux_directory."/vesamenu.c32";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - ldlinux_c32_path: [$ldlinux_c32_path], libcom32_c32_path: [$libcom32_c32_path], libutil_c32_path: [$libutil_c32_path], vesamenu_c32_path: [$vesamenu_c32_path].\n" if $conf->{sys}{debug} >= 2;
+		
+		# Tune for different sources.
+		if ((not -e $ldlinux_c32_path)  or 
+		    (not -e $libcom32_c32_path) or 
+		    (not -e $libutil_c32_path)  or 
+		    (not -e $vesamenu_c32_path))
 		{
-			print "
-[ Error ] - The source syslinux file: [$source_file]
-[ Error ]   was not found, unable to proceed.\n";
-			exit(17);
+			$ldlinux_c32_path = "/tmp/ldlinux.c32";
+			$libcom32_c32_path = "/tmp/libcom32.c32";
+			$libutil_c32_path = "/tmp/libutil.c32";
+			$vesamenu_c32_path = "/tmp/vesamenu.c32";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - ldlinux_c32_path: [$ldlinux_c32_path], libcom32_c32_path: [$libcom32_c32_path], libutil_c32_path: [$libutil_c32_path], vesamenu_c32_path: [$vesamenu_c32_path].\n" if $conf->{sys}{debug} >= 2;
+			download_file($conf, $conf->{url}{'ldlinux.c32'}, $ldlinux_c32_path, 0644);
+			download_file($conf, $conf->{url}{'libcom32.c32'}, $libcom32_c32_path, 0644);
+			download_file($conf, $conf->{url}{'libutil.c32'}, $libutil_c32_path, 0644);
+			download_file($conf, $conf->{url}{'vesamenu.c32'}, $vesamenu_c32_path, 0644);
 		}
 		
-		my $shell_call = "rsync --archive --no-owner --no-perms --no-group --safe-links --modify-window 1 --stats $source_file $usb_mount/syslinux/";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
-		while (<$file_handle>)
+		foreach my $source_file ($ldlinux_c32_path, $libcom32_c32_path, $libutil_c32_path, $vesamenu_c32_path)
 		{
-			chomp;
-			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_file: [$source_file].\n" if $conf->{sys}{debug} >= 2;
+			if (not -e $source_file)
+			{
+				print "
+[ Error ] - The source syslinux file: [$source_file]
+[ Error ]   was not found, unable to proceed.\n";
+				exit(17);
+			}
+			
+			my $shell_call = "rsync --archive --no-owner --no-perms --no-group --safe-links --modify-window 1 --stats $source_file $usb_mount/syslinux/";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			}
+			close $file_handle;
 		}
-		close $file_handle;
 	}
-#=cut	
+
 	return(0);
 }
 
@@ -490,7 +567,7 @@ sub prep_device
 {
 	my ($conf) = @_;
 	
-	print "- Wiping out existing partition scheme and MBR from: [".$conf->{sys}{usb_device}."]\n";
+	print "- Wiping out existing partition geometry and MBR from: [".$conf->{sys}{usb_device}."]\n";
 	my $shell_call = "dd if=/dev/zero of=".$conf->{sys}{usb_device}." bs=100M count=1 oflag=direct,sync";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
@@ -855,10 +932,10 @@ sub check_if_usb
 	}
 	
 	my $yn = ["No", "Yes"];
-	print "- USB device path: ..... [$device]\n";
-	print "- Target make and model: [$device_vendor $device_model]\n";
-	print "- The capacity is: ..... [$size_gib GiB ($size_gb GB)]\n";
-	print "- The source ISO is: ... [".$conf->{sys}{source_iso}."]\n";
+	print "- USB device path: . [$device]\n";
+	print "- Target drive: .... [$device_vendor $device_model]\n";
+	print "- The capacity is: . [$size_gib GiB ($size_gb GB)]\n";
+	print "- The source ISO is: [".$conf->{sys}{source_iso}."]\n";
 	
 	return(0);
 }
@@ -959,6 +1036,225 @@ sub get_switches
 	}
 	
 	return(0);
+}
+
+# This downloads the give file, if it is not already downloaded, and verifies that it is not a curl failure
+# message.
+sub download_file
+{
+	my ($conf, $source, $target, $mode) = @_;
+	$mode = "" if not defined $mode;
+	
+	if (-e $target)
+	{
+		print "- The file: [$target] is already downloaded.\n" if $conf->{sys}{debug} >= 2;
+	}
+	else
+	{
+		# Get the file size so that we can warn the user
+		my $size       = "";
+		my $shell_call = $conf->{executable}{curl}." --head $source";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			   $line =~ s/\r//;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			if ($line =~ /Content-Length: (\d+)$/)
+			{
+				$size = $1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - size: [$size]\n" if $conf->{sys}{debug} >= 2;
+			}
+		}
+		close $file_handle;
+		
+		# If I got a size, make it (crudely) human readable.
+		my $say_size = "<unknown>";
+		if ($size =~ /^\d+$/)
+		{
+			$say_size = hr_size($conf, $size);
+		}
+		
+		my $start_time = time;
+		print "- Downloading: [$source] to: [$target], which is: [$say_size]... ";
+		print "\n" if $conf->{sys}{debug} >= 1;
+		
+		### NOTE: Do NOT use 2>&1 as this pushes the download progress into the download file. If 
+		###       debug is enabled, we'll dump the progress to the screen.
+		$shell_call = $conf->{executable}{curl}." $source 2>/dev/null > $target";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		if ($conf->{sys}{debug})
+		{
+			$shell_call = $conf->{executable}{curl}." $source > $target";
+		}
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open ($file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		}
+		close $file_handle;
+		
+		my $file_ok = 0;
+		if (-e $target)
+		{
+			# If the file is less than 1024 bytes, read it in to make sure it is not a 
+			# failure message.
+			my $size = (stat($target))[7];
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is: [$size] bytes.\n" if $conf->{sys}{debug} >= 1;
+			if ($size < 1024)
+			{
+				# Is it binary or text? If it is text, make sure it is not a failure message.
+				if (not $size)
+				{
+					# File is empty.
+					print "\n" if not $conf->{sys}{debug};
+					print "[ Error ] - Failed to download: [$target].\n";
+					print "[ Error ]   The downloaded file was 0-bytes.\n";
+					print "[ Error ]   Is the source: [$source] accessible?\n";
+				}
+				elsif (-B $target)
+				{
+					# Yay!
+					$file_ok = 1;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is binary, good.\n" if $conf->{sys}{debug} >= 1;
+				}
+				else
+				{
+					# Read it in.
+					my $shell_call = $target;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+					open (my $file_handle, "<$shell_call") or die __LINE__."; \n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line = $_;
+						print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+						if ($line =~ /Could not resolve host/i)
+						{
+							# Bad URL
+							print "\n" if not $conf->{sys}{debug};
+							print "[ Error ] - Failed to download: [$target].\n";
+							print "[ Error ]   It appears that the domain name is invalid.\n";
+						}
+						if ($line =~ /<title>404 Not Found<\/title>/i)
+						{
+							# File not found.
+							print "\n" if not $conf->{sys}{debug};
+							print "[ Error ] - Failed to download: [$target].\n";
+							print "[ Error ]   It appears that the file was not found on the server.\n";
+						}
+						if ($line =~ /<a href="(.*?)">redirected<\/a>/)
+						{
+							# Redirect
+							my $new_source = $1;
+							
+							# Cleanup
+							close $file_handle;
+							unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it is a failed download message, not the file). The error was: $!\n";
+							
+							# Download the new source
+							print "Redirected.\n";
+							print "$THIS_FILE ".__LINE__."; [ Debug ] - Redirected source: [$source]: to: [$new_source].\n" if $conf->{sys}{debug} >= 1;
+							download_file($conf, $new_source, $target, $mode);
+							return(0);
+						}
+					}
+					close $file_handle;
+				}
+			}
+			else
+			{
+				# Too big to be a failure, so we're probably good.
+				$file_ok = 1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is large enough that analysis is not required.\n" if $conf->{sys}{debug} >= 1;
+			}
+		}
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - target: [$target], file_ok: [$file_ok]\n" if $conf->{sys}{debug} >= 1;
+		if ($file_ok)
+		{
+			my $duration = time - $start_time;
+			print "Finished! Took: [$duration] second(s).\n";
+		}
+		else
+		{
+			# Sadness.
+			print "\n" if not $conf->{sys}{debug};
+			print "[ Error ] - There was a problem downloading: [$source] to: [$target]\n";
+			if (-e $target)
+			{
+				# Remove the sadness
+				print "[ Note ] - Failed download target: [$target] will now be removed.\n";
+				unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it is a failed download message, not the file). The error was: $!\n";
+			}
+			exit(7);
+		}
+	}
+	
+	# Set the mode, if needed
+	if ($mode)
+	{
+		chmod $mode, $target;
+	}
+	
+	return(0);
+}
+
+# This converts a raw number of bytes to a human readable size. It always uses base-2.
+sub hr_size
+{
+	my ($conf, $hr_size) = @_;
+	
+	if ($hr_size >= (2 ** 80))
+	{
+		# Yebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 80)))." YiB";
+	}
+	elsif ($hr_size >= (2 ** 70))
+	{
+		# Zebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 70)))." ZiB";
+	}
+	elsif ($hr_size >= (2 ** 60))
+	{
+		# Exbibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 60)))." EiB";
+	}
+	elsif ($hr_size >= (2 ** 50))
+	{
+		# Pebibyte
+		$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 50)))." PiB";
+	}
+	elsif ($hr_size >= (2 ** 40))
+	{
+		# Tebibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 40)))." TiB";
+	}
+	elsif ($hr_size >= (2 ** 30))
+	{
+		# Gibibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 30)))." GiB";
+	}
+	elsif ($hr_size >= (2 ** 20))
+	{
+		# Mebibyte
+		$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 20)))." MiB";
+	}
+	elsif ($hr_size >= (2 ** 10))
+	{
+		# Kibibyte
+		$hr_size = sprintf("%.1f", ($hr_size /= (2 ** 10)))." KiB";
+	}
+	else
+	{
+		$hr_size .= " Bytes";
+	}
+	
+	return($hr_size);
 }
 
 # Print the usage information.
