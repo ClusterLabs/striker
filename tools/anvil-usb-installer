@@ -36,7 +36,6 @@
 use strict;
 use warnings;
 use IO::Handle;
-use Data::Dumper;
 
 my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
@@ -336,6 +335,9 @@ sub write_device
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 	}
 	close $file_handle;
+	
+	# Sleep for a moment to make sure they register as mounted
+	sleep 2;
 	
 	print "- Verifying they mounted.\n";
 	my $usb_found  = 0;
