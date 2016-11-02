@@ -48,6 +48,7 @@ my $conf = {
 	# Executable programs. We will search for these in PATH if not pre-defined (start with '/...').
 	executable	=>	{
 		curl		=>	"curl",
+		syslinux	=>	"syslinux",
 	},
 	# Paths to files and directories
 	path		=>	{
@@ -499,21 +500,20 @@ sub write_device
 	
 	# Use the syslinux installer to create a MBR for the partition. #UPDATE THIS WITH NON-HARDCODED BINARIES#
 	print "- Copying the 'syslinux' files into place.\n";
-	my $syslinux_path	= "/usr/bin/syslinux";
-	$shell_call = "$syslinux_path --install ".$conf->{sys}{usb_partition};
-        print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
-        open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
-        while (<$file_handle>)
-	        {
-                        chomp;
-                        my $line = $_;
-                        print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
-                }
+	$shell_call = $conf->{executable}{syslinux}." --install ".$conf->{sys}{usb_partition};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+	}
         close $file_handle;
 
 	# If this is Fedora, we need to copy a few more files.
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 0;
-	if ($conf->{sys}{local_os} eq "fedora")
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+	if (($conf->{sys}{local_os} eq "fedora") or ($conf->{sys}{local_os} eq "ubuntu"))
 	{
 		my $mbr_bin_path       = $conf->{path}{mbr_bin};
 		my $syslinux_directory = ($mbr_bin_path =~ /^(.*?)\/mbr\.bin$/)[0];
@@ -627,10 +627,10 @@ sub prep_device
 	
 	print "- Creating a new partition.\n";
 	$shell_call = "
-parted ".$conf->{sys}{usb_device}." --script -- mklabel msdos
-parted ".$conf->{sys}{usb_device}." --script -- mkpart primary fat32 4MiB -1s
-parted ".$conf->{sys}{usb_device}." --script -- set 1 boot on
-parted ".$conf->{sys}{usb_device}." --script unit MB print
+parted -a opt ".$conf->{sys}{usb_device}." --script -- mklabel msdos
+parted -a opt ".$conf->{sys}{usb_device}." --script -- mkpart primary fat32 4MiB -1s
+parted -a opt ".$conf->{sys}{usb_device}." --script -- set 1 boot on
+parted -a opt ".$conf->{sys}{usb_device}." --script unit MB print
 ";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
@@ -654,6 +654,9 @@ parted ".$conf->{sys}{usb_device}." --script unit MB print
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 	}
 	close $file_handle;
+	
+	# Sleep for a bit so that partprobe can create the new /dev/ device.
+	sleep 2;
 	
 	# Make sure the new partition exists.
 	if (not -e $conf->{sys}{usb_partition})
