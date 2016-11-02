@@ -21,7 +21,7 @@
 # 3  = Source ISO(s) have unrecognized mds5 sums.
 # 4  = No source ISO given
 # 5  = Failed to copy a file to Packages/ but the shell call itself didn't fail.
-# 6  = Failed to clone Striker from github.
+# 6  = 
 # 7  = Failed to download an RPM from an-repo.
 # 8  = User rejected the creation of the working directory.
 # 9  = The source ISO's .discinfo file wasn't copied to the source directory.
@@ -49,7 +49,9 @@ my $conf = {
 		createrepo	=>	"createrepo",
 		cp		=>	"cp",
 		curl		=>	"curl",
-		git		=>	"git",
+		# This is only needed on Ubuntu because it's iso-read is broken.
+		fuseiso		=>	"fuseiso",
+		fusermount	=>	"fusermount",
 		isoinfo		=>	"isoinfo",
 		'iso-read'	=>	"iso-read",
 		md5sum		=>	"md5sum",
@@ -61,6 +63,8 @@ my $conf = {
 	},
 	# Paths to files and directories
 	path		=>	{
+		redhat_release	=>	"/etc/redhat-release",
+		os_release	=>	"/etc/os-release",
 		# This is the path and file name used to store the example 'striker-installer' call on newly
 		# built Striker dashboards.
 		example_install	=>	"/root/striker-installer.example",
@@ -81,7 +85,7 @@ my $conf = {
 		iso		=>	{
 			file_name	=>	"",
 			kickstart	=>	"ks",
-			striker		=>	"striker",	# striker-master will be created by git/zip
+			striker		=>	"striker",	# striker-master will be created by zip
 			packages	=>	"Packages",
 			tools		=>	"Tools",
 			### NOTE: Entries below here are appended to 'path::iso::tools'.
@@ -90,22 +94,7 @@ my $conf = {
 			avago		=>	"Avago",
 			asix		=>	"ASIX",
 			### NOTE: Entries above here are appended to 'path::iso::tools'.
-			git_iso		=>	"ISO",
 			zip_iso		=>	"ISO",
-			# These keys are appended to the 'path::'git::<os>' path. The 'target' is where the 
-			# files in these directories should be copied to. The 'target' will be appended to
-			# 'path::source_path'.
-			git_copy	=>	{
-				isolinux	=>	{
-					target		=>	"isolinux",
-				},
-				syslinux	=>	{
-					target		=>	"syslinux",
-				},
-				ks		=>	{
-					target		=>	"ks",
-				},
-			},
 			# These keys are appended to the 'path::zip::<os>' path. The 'target' is where the 
 			# files in these directories should be copied to. The 'target' will be appended to
 			# 'path::source_path'.
@@ -121,7 +110,7 @@ my $conf = {
 				},
 			}
 		},
-		# This details files to be copied out of git to a directory in the source.
+		# This details files to be copied out of zip to a directory in the source.
 		zip		=>	{
 			# This is where we find the root of the ISO data from the extracted zip file under
 			# 'path::source_path'.
@@ -137,6 +126,7 @@ my $conf = {
 	source_packages	=>	{},
 	sys		=>	{
 		date		=>	"",
+		fuse_mounted	=>	[],
 		'time'		=>	"",
 		debug		=>	0,
 		md5sum		=>	{
@@ -210,9 +200,8 @@ my $conf = {
 	url		=>	{
 		# By default, we will read the latest release from 'striker_latest'. If, however, we can't
 		# access that file, we'll use 'striker_default'. Optionally, the user can request the latest
-		# git master with '--master', in which case we will download the 'striker_master' URL. In all
+		# master with '--master', in which case we will download the 'striker_master' URL. In all
 		# cases, the downloaded file will be saved as 'striker_zip_file'.
-		striker		=>	"https://github.com/ClusterLabs/striker.git",
 		striker_default	=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-rc1.zip",
 		striker_latest	=>	"https://alteeve.ca/striker_latest.txt",
 		striker_master	=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
@@ -326,6 +315,9 @@ $conf->{sys}{debug} = 1 if $conf->{switches}{v};
 $conf->{sys}{debug} = 2 if $conf->{switches}{vv};
 $conf->{sys}{debug} = 3 if $conf->{switches}{vvv};
 
+# Check the OS type
+check_os($conf);
+
 # Make sure we know where executables are on this system.
 find_executables($conf);
 
@@ -364,6 +356,89 @@ exit(0);
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This determines what OS we're on and tunes to run appropriately.
+sub check_os
+{
+	my ($conf) = @_;
+	
+	if (-e $conf->{path}{redhat_release})
+	{
+		# We're a RHEL variant.
+		my $os_string  = "";
+		my $shell_call = $conf->{path}{redhat_release};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			$os_string = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - os_string: [$os_string].\n" if $conf->{sys}{debug} >= 2;
+		}
+		close $file_handle;
+		
+		if ($os_string =~ /6\./)
+		{
+			$conf->{sys}{local_os} = "el6";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+		}
+		elsif ($os_string =~ /7\./)
+		{
+			$conf->{sys}{local_os} = "el7";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+		}
+		elsif ($os_string =~ /Fedora/)
+		{
+			$conf->{sys}{local_os} = "fedora";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+		}
+	}
+	elsif (-e $conf->{path}{os_release})
+	{
+		# We're an ubuntu (debian?) variant. Example format:
+		# NAME="Ubuntu"
+		# VERSION="16.04.1 LTS (Xenial Xerus)"
+		# ID=ubuntu
+		# ID_LIKE=debian
+		# PRETTY_NAME="Ubuntu 16.04.1 LTS"
+		# VERSION_ID="16.04"
+		# HOME_URL="http://www.ubuntu.com/"
+		# SUPPORT_URL="http://help.ubuntu.com/"
+		# BUG_REPORT_URL="http://bugs.launchpad.net/ubuntu/"
+		# UBUNTU_CODENAME=xenial
+		my $os_name    = "";
+		my $os_version = "";
+		my $shell_call = $conf->{path}{os_release};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line].\n" if $conf->{sys}{debug} >= 2;
+			
+			if ($line =~ /NAME="(.*?)"/)
+			{
+				$os_name = lc($line);
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - os_name: [$os_name].\n" if $conf->{sys}{debug} >= 2;
+			}
+			if ($line =~ /VERSION="(.*?)"/)
+			{
+				$os_version = lc($line);
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - os_version: [$os_version].\n" if $conf->{sys}{debug} >= 2;
+			}
+		}
+		close $file_handle;
+		
+		if (($os_name) && ($os_name =~ /ubuntu/))
+		{
+			$conf->{sys}{local_os} = "ubuntu";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+		}
+	}
+	
+	return(0);
+}
+
 # This uses uuidget to get a UUID for the example --host-uuid switch.
 sub get_uuid
 {
@@ -392,6 +467,7 @@ sub get_uuid
 [ Error ]   Which returned: [$line].
 [ Error ]   A UUID string was expected, and this didn't match.
 ";
+			clean_up($conf);
 			exit(14);
 		}
 	}
@@ -1443,6 +1519,8 @@ sub build_iso
 			# Mebibyte
 			$size = sprintf("%.2f", ($size /= (2 ** 20)));
 		}
+		
+		clean_up($conf);
 		print "- All done!
 
 The ISO file: [$output_file] has been generated!
@@ -1462,7 +1540,37 @@ $mkisofs_output
 [ Error ] - You can re-run this program with '-v', '-vv' or '-vvv' to 
 [ Error ]   additional debugging information.
 ";
+		clean_up($conf);
 		exit(11);
+	}
+	
+	return(0);
+}
+
+# Unmounts the fuseiso mounted ISOs, if needed.
+sub clean_up
+{
+	my ($conf) = @_;
+	
+	if (-x $conf->{executable}{fusermount})
+	{
+		foreach my $mount_point (sort {$a cmp $b} @{$conf->{sys}{fuse_mounted}})
+		{
+			my $shell_call = $conf->{executable}{fusermount}." -u ".$mount_point;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 0;
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 0;
+			}
+			close $file_handle;
+		}
+	}
+	else
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - fusermount: [".$conf->{executable}{fusermount}."] not found, skipping clean-up.\n" if $conf->{sys}{debug} >= 0;
 	}
 	
 	return(0);
@@ -1494,6 +1602,7 @@ sub build_repository
 [ Error ]   corrupt. Check that your Internet connection is working. If the 
 [ Error ]   error is not obvious, re-run this with '-vv' for debugging output.
 ";
+			clean_up($conf);
 			exit(10);
 		}
 	}
@@ -1557,6 +1666,7 @@ sub get_repodata_xml_file_name
 	if (not $xml_file1)
 	{
 		print "[ Error ] - Failed to find the XML file used by 'createrepo' on the source ISO.\n";
+		clean_up($conf);
 		exit(13);
 	}
 	
@@ -1625,6 +1735,7 @@ sub get_disc_id
 [ Error ]   root, but it either doesn't exist or it wasn't copied the the 
 [ Error ]   'source' build directory. This is needed to generate the new ISO.
 ";
+		clean_up($conf);
 		exit(9);
 	}
 	
@@ -1888,6 +1999,7 @@ sub isoread_file
 			print "[ Error ]   from: [$iso]\n";
 			print "[ Error ]   to: [$target]\n";
 			print "[ Error ] - No error was reported, but the target file doesn't exist.\n";
+			clean_up($conf);
 			exit(5);
 		}
 	}
@@ -1937,6 +2049,7 @@ sub copy_file
 				print "[ Error ] - The file: [$target] files is not the same size as the source!\n";
 				print "[ Error ] - Source size (in bytes): [$source_size]\n";
 				print "[ Error ] - Target size (in bytes): [$target_size]\n";
+				clean_up($conf);
 				exit(12);
 			}
 			elsif (not $target_size)
@@ -1953,6 +2066,7 @@ sub copy_file
 			print "[ Error ] - Failed to copy: [$target]!\n";
 			print "[ Error ] - Tried to copy via: [$shell_call]\n";
 			print "[ Error ] - No error was reported in the copy operation but the target file doesn't exist.\n";
+			clean_up($conf);
 			exit(5);
 		}
 	}
@@ -2291,6 +2405,7 @@ sub download_file
 				print "[ Note ] - Failed download target: [$target] will now be removed.\n";
 				unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it is a failed download message, not the file). The error was: $!\n";
 			}
+			clean_up($conf);
 			exit(7);
 		}
 	}
@@ -2519,6 +2634,7 @@ sub setup_build_environment
 			else
 			{
 				print "- Without a working directory, ISO generation can not proceed. Exiting.\n";
+				clean_up($conf);
 				exit(8);
 			}
 		}
@@ -2840,6 +2956,13 @@ sub prep_source
 		}
 		close $file_handle;
 		
+		# Did I mount it with fuse?
+		if ((not $conf->{source}{$iso}{mount}) && ($conf->{source}{$iso}{fuse_mount}))
+		{
+			$conf->{source}{$iso}{mount} = $conf->{source}{$iso}{fuse_mount};
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::mount: [$conf->{source}{$iso}{mount}]\n" if $conf->{sys}{debug} >= 2;
+		}
+		
 		# If the source isn't mounted, we'll need to try and read the files out of the ISO directly because
 		# 'mount' requires root, and we can't assume the user has that.
 		if (not $conf->{source}{$iso}{mount})
@@ -2864,6 +2987,7 @@ sub prep_source
 [ Error ]   and then re-run this program.
 
 	";
+				clean_up($conf);
 				exit(2);
 			}
 		}
@@ -3112,6 +3236,45 @@ sub validate_source
 		exit(3);
 	}
 	
+	# If this is Ubuntu, 'iso-read' is broken (at least on 16.04), so see if 'fuseiso' is installed and,
+	# if so, mount the ISOs.
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."], executable::fuseiso: [".$conf->{executable}{fuseiso}."]\n" if $conf->{sys}{debug} >= 0;
+	if (($conf->{sys}{local_os} eq "ubuntu") && (-x $conf->{executable}{fuseiso}))
+	{
+		my $i = 1;
+		foreach my $iso (sort {$a cmp $b} @{$conf->{sys}{source}{iso}})
+		{
+			my $mount_point = "/tmp/iso".$i;
+			my $test_file   = $mount_point."/.discinfo";
+			
+			# Skip if I already mounted.
+			if (-e $test_file)
+			{
+				# Make a note to clean it up
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - skipping: [$iso], found: [$test_file] already.\n" if $conf->{sys}{debug} >= 0;
+				$i++;
+				push @{$conf->{sys}{fuse_mounted}}, $mount_point;
+				$conf->{source}{$iso}{fuse_mount} = $mount_point;
+				next;
+			}
+			
+			my $shell_call  = $conf->{executable}{fuseiso}." -p ".$iso." ".$mount_point;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 0;
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			}
+			close $file_handle;
+			
+			$i++;
+			push @{$conf->{sys}{fuse_mounted}}, $mount_point;
+			$conf->{source}{$iso}{fuse_mount} = $mount_point;
+		}
+	}
+	
 	return(0);
 }
 
@@ -3138,9 +3301,12 @@ sub find_executables
 			}
 		}
 		
-		### NOTE: We don't die on iso-read or isoinfo as they may not be needed.
+		### NOTE: We don't die on iso-read, isoinfo or fuseiso as they may not be needed.
 		# Die if we didn't find it.
-		if (($conf->{executable}{$executable} !~ /^\//) && ($executable ne "iso-read") && ($executable ne "isoinfo"))
+		if (($conf->{executable}{$executable} !~ /^\//) && 
+		    ($executable ne "iso-read")                 && 
+		    ($executable ne "isoinfo")                  && 
+		    ($executable ne "fuseiso"))
 		{
 			$ok = 0;
 			print "[ Error ] - Failed to find the: [$executable] program.\n";
@@ -3151,11 +3317,23 @@ sub find_executables
 		print "
 [ Error ] - Some programs needed to build the Anvil! ISO appear to not be 
 [ Error ]   installed. Please ensure the following programs are installed:
-[ Error ]   'createrepo, iso-read, isoinfo, git and mkisofs'.
+[ Error ]   'createrepo, iso-read, isoinfo and mkisofs'.
 [ Error ]   On RPM-based distros, the following command should provide 
 [ Error ]   everything:
 [ Error ] 
-[ Error ] - \$ sudo yum -y install createrepo genisoimage git libcdio 
+";
+		if ($conf->{sys}{os_type} eq "fedora")
+		{
+			print "[ Error ] - \$ sudo dnf -y install createrepo genisoimage libcdio";
+		}
+		elsif ($conf->{sys}{os_type} eq "ubuntu")
+		{
+		}
+		else
+		{
+			print "[ Error ] - \$ sudo yum -y install createrepo genisoimage libcdio";
+		}
+		print "
 [ Error ] 
 [ Error ] - Note that your distro may use 'dnf' instead of 'yum'. On non-RPM
 [ Error ]   based distros, these programs may be provided by different 
@@ -3163,6 +3341,7 @@ sub find_executables
 [ Error ] - Note that 'iso-read' and 'isoinfo' are not needed if you mount the
 [ Error ]   ISO manually. (\$ sudo mount -o loop <iso> <mountpoint>)
 ";
+		clean_up($conf);
 		exit(1);
 	}
 	

@@ -54,6 +54,7 @@ my $conf = {
 		mbr_bin		=>	"",
 		running_dir	=>	$running_directory,
 		redhat_release	=>	"/etc/redhat-release",
+		os_release	=>	"/etc/os-release",
 	},
 	sys		=>	{
 		debug		=>	1,
@@ -71,7 +72,7 @@ my $conf = {
 		usb_partition	=>	"",
 		usb_mount	=>	"/tmp/anvil_usb",
 		iso_mount	=>	"/tmp/anvil_iso",
-		os_type		=>	"",
+		local_os	=>	"",
 	},
 	url		=>	{
 		'ldlinux.c32'	=>	"https://alteeve.ca/an-repo/misc/syslinux/ldlinux.c32",
@@ -149,14 +150,14 @@ if (not -e $conf->{sys}{usb_device})
 	exit(6);
 }
 
+# Check the OS type
+check_os($conf);
+
 # Make sure the apps we'll need are installed
 check_apps($conf);
 
 # Is it a USB device? If so, it will report the detail of the device to the user. If not, it will exit.
 check_if_usb($conf);
-
-# Check the OS type
-check_os($conf);
 
 # Ask the user to confirm.
 print "=======================================================================\n";
@@ -233,18 +234,61 @@ sub check_os
 		
 		if ($os_string =~ /6\./)
 		{
-			$conf->{sys}{os_type} = "el6";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::os_type: [".$conf->{sys}{os_type}."].\n" if $conf->{sys}{debug} >= 2;
+			$conf->{sys}{local_os} = "el6";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
 		}
 		elsif ($os_string =~ /7\./)
 		{
-			$conf->{sys}{os_type} = "el7";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::os_type: [".$conf->{sys}{os_type}."].\n" if $conf->{sys}{debug} >= 2;
+			$conf->{sys}{local_os} = "el7";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
 		}
 		elsif ($os_string =~ /Fedora/)
 		{
-			$conf->{sys}{os_type} = "fedora";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::os_type: [".$conf->{sys}{os_type}."].\n" if $conf->{sys}{debug} >= 2;
+			$conf->{sys}{local_os} = "fedora";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+		}
+	}
+	elsif (-e $conf->{path}{os_release})
+	{
+		# We're an ubuntu (debian?) variant. Example format:
+		# NAME="Ubuntu"
+		# VERSION="16.04.1 LTS (Xenial Xerus)"
+		# ID=ubuntu
+		# ID_LIKE=debian
+		# PRETTY_NAME="Ubuntu 16.04.1 LTS"
+		# VERSION_ID="16.04"
+		# HOME_URL="http://www.ubuntu.com/"
+		# SUPPORT_URL="http://help.ubuntu.com/"
+		# BUG_REPORT_URL="http://bugs.launchpad.net/ubuntu/"
+		# UBUNTU_CODENAME=xenial
+		my $os_name    = "";
+		my $os_version = "";
+		my $shell_call = $conf->{path}{os_release};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line].\n" if $conf->{sys}{debug} >= 2;
+			
+			if ($line =~ /NAME="(.*?)"/)
+			{
+				$os_name = lc($line);
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - os_name: [$os_name].\n" if $conf->{sys}{debug} >= 2;
+			}
+			if ($line =~ /VERSION="(.*?)"/)
+			{
+				$os_version = lc($line);
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - os_version: [$os_version].\n" if $conf->{sys}{debug} >= 2;
+			}
+		}
+		close $file_handle;
+		
+		if (($os_name) && ($os_name =~ /ubuntu/))
+		{
+			$conf->{sys}{local_os} = "ubuntu";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
 		}
 	}
 	
@@ -468,8 +512,8 @@ sub write_device
         close $file_handle;
 
 	# If this is Fedora, we need to copy a few more files.
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::os_type: [".$conf->{sys}{os_type}."].\n" if $conf->{sys}{debug} >= 0;
-	if ($conf->{sys}{os_type} eq "fedora")
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 0;
+	if ($conf->{sys}{local_os} eq "fedora")
 	{
 		my $mbr_bin_path       = $conf->{path}{mbr_bin};
 		my $syslinux_directory = ($mbr_bin_path =~ /^(.*?)\/mbr\.bin$/)[0];
