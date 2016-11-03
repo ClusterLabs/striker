@@ -251,7 +251,19 @@ sub check_os
 	}
 	elsif (-e $conf->{path}{os_release})
 	{
-		# We're an ubuntu (debian?) variant. Example format:
+		### SUSE style
+		# NAME="openSUSE Leap"
+		# VERSION="42.1"
+		# VERSION_ID="42.1"
+		# PRETTY_NAME="openSUSE Leap 42.1 (x86_64)"
+		# ID=opensuse
+		# ANSI_COLOR="0;32"
+		# CPE_NAME="cpe:/o:opensuse:opensuse:42.1"
+		# BUG_REPORT_URL="https://bugs.opensuse.org"
+		# HOME_URL="https://opensuse.org/"
+		# ID_LIKE="suse"
+		#
+		### Ubuntu style
 		# NAME="Ubuntu"
 		# VERSION="16.04.1 LTS (Xenial Xerus)"
 		# ID=ubuntu
@@ -286,10 +298,18 @@ sub check_os
 		}
 		close $file_handle;
 		
-		if (($os_name) && ($os_name =~ /ubuntu/))
+		if ($os_name)
 		{
-			$conf->{sys}{local_os} = "ubuntu";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+			if ($os_name =~ /suse/)
+			{
+				$conf->{sys}{local_os} = "suse";
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+			}
+			elsif ($os_name =~ /ubuntu/)
+			{
+				$conf->{sys}{local_os} = "ubuntu";
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+			}
 		}
 	}
 	

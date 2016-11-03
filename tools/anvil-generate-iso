@@ -394,7 +394,19 @@ sub check_os
 	}
 	elsif (-e $conf->{path}{os_release})
 	{
-		# We're an ubuntu (debian?) variant. Example format:
+		### SUSE style
+		# NAME="openSUSE Leap"
+		# VERSION="42.1"
+		# VERSION_ID="42.1"
+		# PRETTY_NAME="openSUSE Leap 42.1 (x86_64)"
+		# ID=opensuse
+		# ANSI_COLOR="0;32"
+		# CPE_NAME="cpe:/o:opensuse:opensuse:42.1"
+		# BUG_REPORT_URL="https://bugs.opensuse.org"
+		# HOME_URL="https://opensuse.org/"
+		# ID_LIKE="suse"
+		#
+		### Ubuntu style
 		# NAME="Ubuntu"
 		# VERSION="16.04.1 LTS (Xenial Xerus)"
 		# ID=ubuntu
@@ -429,10 +441,18 @@ sub check_os
 		}
 		close $file_handle;
 		
-		if (($os_name) && ($os_name =~ /ubuntu/))
+		if ($os_name)
 		{
-			$conf->{sys}{local_os} = "ubuntu";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+			if ($os_name =~ /suse/)
+			{
+				$conf->{sys}{local_os} = "suse";
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+			}
+			elsif ($os_name =~ /ubuntu/)
+			{
+				$conf->{sys}{local_os} = "ubuntu";
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."].\n" if $conf->{sys}{debug} >= 2;
+			}
 		}
 	}
 	
@@ -1557,20 +1577,20 @@ sub clean_up
 		foreach my $mount_point (sort {$a cmp $b} @{$conf->{sys}{fuse_mounted}})
 		{
 			my $shell_call = $conf->{executable}{fusermount}." -u ".$mount_point;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 0;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 0;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 			}
 			close $file_handle;
 		}
 	}
 	else
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - fusermount: [".$conf->{executable}{fusermount}."] not found, skipping clean-up.\n" if $conf->{sys}{debug} >= 0;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - fusermount: [".$conf->{executable}{fusermount}."] not found, skipping clean-up.\n" if $conf->{sys}{debug} >= 2;
 	}
 	
 	return(0);
@@ -3238,7 +3258,7 @@ sub validate_source
 	
 	# If this is Ubuntu, 'iso-read' is broken (at least on 16.04), so see if 'fuseiso' is installed and,
 	# if so, mount the ISOs.
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."], executable::fuseiso: [".$conf->{executable}{fuseiso}."]\n" if $conf->{sys}{debug} >= 0;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::local_os: [".$conf->{sys}{local_os}."], executable::fuseiso: [".$conf->{executable}{fuseiso}."]\n" if $conf->{sys}{debug} >= 2;
 	if (($conf->{sys}{local_os} eq "ubuntu") && (-x $conf->{executable}{fuseiso}))
 	{
 		my $i = 1;
@@ -3251,7 +3271,7 @@ sub validate_source
 			if (-e $test_file)
 			{
 				# Make a note to clean it up
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - skipping: [$iso], found: [$test_file] already.\n" if $conf->{sys}{debug} >= 0;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - skipping: [$iso], found: [$test_file] already.\n" if $conf->{sys}{debug} >= 2;
 				$i++;
 				push @{$conf->{sys}{fuse_mounted}}, $mount_point;
 				$conf->{source}{$iso}{fuse_mount} = $mount_point;
@@ -3259,7 +3279,7 @@ sub validate_source
 			}
 			
 			my $shell_call  = $conf->{executable}{fuseiso}." -p ".$iso." ".$mount_point;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 0;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
