@@ -1182,8 +1182,8 @@ FROM
 		my $server_uuid                     =         $row->[0];
 		my $server_anvil_uuid               =         $row->[1];
 		my $server_name                     =         $row->[2];
-		my $server_stop_reason              = defined $row->[3]  ? $row->[3];
-		my $server_start_after              = defined $row->[4]  ? $row->[4];
+		my $server_stop_reason              = defined $row->[3]  ? $row->[3]  : "";
+		my $server_start_after              = defined $row->[4]  ? $row->[4]  : "";
 		my $server_start_delay              =         $row->[5];
 		my $server_note                     = defined $row->[6]  ? $row->[6]  : "";
 		my $server_definition               =         $row->[7];
