@@ -1645,6 +1645,7 @@ WHERE
 	return($anvil_uuid);
 }
 
+### NOTE: Use 'lvchange --permission r <lv>' to flip the LV to read-only before starting an image process.
 # This updates (or inserts) a record in the 'dr_jobs' table.
 sub insert_or_update_dr_jobs
 {

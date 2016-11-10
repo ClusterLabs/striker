@@ -836,14 +836,14 @@ compile_network_drivers($conf);
 # Check to see if we have an internet connection so that, if not, we can disable external repos.
 verify_internet_access($conf, 0);
 
+# Get the hostname if the user didn't set it.
+get_hostname($conf);
+
 # Register with RHN, if needed.
 if ($conf->{sys}{register_with_rhn})
 {
 	register_with_rhn($conf);
 }
-
-# Get the hostname if the user didn't.
-get_hostname($conf);
 
 # Add the AN!Repo (or remove it if the user doesn't want it).
 if ($conf->{switches}{'no-an-repo'})
@@ -6458,7 +6458,7 @@ sub register_with_rhn
 	### TODO: Escape bash special vars in passwords.
 	logger($conf, $THIS_FILE, __LINE__, "RHN credentials given. Attempting to register now.", 1);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient, this might take a minute...", 1);
-	my $shell_call = $conf->{executable}{'subscription-manager'}." register --username '".$conf->{sys}{rhn_user}."' --password '".$conf->{sys}{rhn_password}."' --auto-attach; echo subscription-manager:\$?";
+	my $shell_call = $conf->{executable}{'subscription-manager'}." register --username '".$conf->{sys}{rhn_user}."' --password '".$conf->{sys}{rhn_password}."' --name=".$conf->{sys}{hostname}." --auto-attach; echo subscription-manager:\$?";
 	logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
 	logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);

@@ -13422,7 +13422,7 @@ sub register_node_with_rhn
 	my $optional          =  0;
 	my $return_code       =  0;
 	my $shell_call        =  "
-".$an->data->{path}{'subscription-manager'}." register --username \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --auto-attach && 
+".$an->data->{path}{'subscription-manager'}." register --username \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --name=$name --auto-attach && 
 ".$an->data->{path}{'subscription-manager'}." repos --enable=rhel-6-server-optional-rpms && 
 ".$an->data->{path}{'subscription-manager'}." repos --enable=rhel-rs-for-rhel-6-server-rpms && 
 ".$an->data->{path}{'subscription-manager'}." repos --list-enabled";
