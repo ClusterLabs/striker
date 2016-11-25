@@ -649,12 +649,19 @@ sub shutdown_node
 				$an->Striker->mark_node_as_clean_off({node_uuid => $node_uuid});
 			}
 			
-			# We're done, power off.
-			print $an->String->get({key => "assp_message_0015", variables => { node => $node }})."\n";
-			$output .= $an->System->poweroff({
-				target   => $node,
-				password => $an->data->{sys}{anvil_password}, 
-			});
+			# We're done, power off?
+			if ($an->data->{switches}{'withdraw-only'})
+			{
+				print $an->String->get({key => "assp_message_0018", variables => { node => $node }})."\n";
+			}
+			else
+			{
+				print $an->String->get({key => "assp_message_0015", variables => { node => $node }})."\n";
+				$output .= $an->System->poweroff({
+					target   => $node,
+					password => $an->data->{sys}{anvil_password}, 
+				});
+			}
 		}
 		elsif ($return_code eq "2")
 		{
@@ -865,7 +872,7 @@ sub local_shut_down
 	
 	if ($return_code eq "0")
 	{
-		# We're done, power off.
+		# We're done.
 		my $node_uuid = $an->ScanCore->get_node_uuid_from_node_name({node_name => $an->hostname});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node_uuid",        value1 => $node_uuid, 
@@ -914,9 +921,16 @@ fi;";
 		}
 		close $file_handle;
 		
-		# We're done, power off.
-		print $an->String->get({key => "assp_message_0015", variables => { node => $an->hostname }})."\n";
-		$an->System->poweroff();
+		# We're done, power off?
+		if ($an->data->{switches}{'withdraw-only'})
+		{
+			print $an->String->get({key => "assp_message_0018", variables => { node => $an->hostname }})."\n";
+		}
+		else
+		{
+			print $an->String->get({key => "assp_message_0015", variables => { node => $an->hostname }})."\n";
+			$an->System->poweroff();
+		}
 	}
 	elsif ($return_code eq "2")
 	{

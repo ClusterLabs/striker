@@ -575,8 +575,9 @@ sub time
 	return undef if not defined $parameter;
 	
 	# Now see if the user passed the values in a hash reference or directly.
-	my $time   = $parameter->{'time'} ? $parameter->{'time'} : 0;
-	my $suffix = $parameter->{suffix} ? $parameter->{suffix} : "short";
+	my $time    = $parameter->{'time'}  ? $parameter->{'time'}  : 0;
+	my $suffix  = $parameter->{suffix}  ? $parameter->{suffix}  : "short";
+	my $process = $parameter->{process} ? $parameter->{process} : 0;
 	
 	# The suffix used for each unit of time will depend on the requested suffix type.
 	my $suffix_seconds = $suffix eq "long"? " #!string!tools_suffix_0032!#" : " #!string!tools_suffix_0027!#";
@@ -664,6 +665,17 @@ sub time
 		$hr_time = $weeks.$suffix_weeks." ".$hr_time;
 	}
 	$hr_time = $sign ? $sign.$hr_time : $hr_time;
+	
+	# Return an already-translated string, if requested.
+	if ($process)
+	{
+		$hr_time = $an->String->_process_string({
+			string    => $hr_time, 
+			language  => $an->default_language, 
+			hash      => $an->data, 
+			variables => {}, 
+		});
+	}
 	
 	return ($hr_time);
 }

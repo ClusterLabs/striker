@@ -701,6 +701,7 @@ sub _set_paths
 	
 	# Tools
 	$an->data->{path}{'anvil-boot-server'}         = "/sbin/striker/anvil-boot-server";
+	$an->data->{path}{'anvil-download-file'}       = "/sbin/striker/anvil-download-file";
 	$an->data->{path}{'anvil-kick-apc-ups'}        = "/sbin/striker/anvil-kick-apc-ups";
 	$an->data->{path}{'anvil-run-jobs'}            = "/sbin/striker/anvil-run-jobs";
 	$an->data->{path}{'anvil-map-network'}         = "/sbin/striker/anvil-map-network";
@@ -713,6 +714,9 @@ sub _set_paths
 	$an->data->{path}{'anvil-stop-server'}         = "/sbin/striker/anvil-stop-server";
 	$an->data->{path}{'striker-push-ssh'}          = "/sbin/striker/striker-push-ssh";
 	$an->data->{path}{ScanCore}                    = "/sbin/striker/ScanCore/ScanCore";
+	
+	# Temporary/progress files
+	$an->data->{path}{'tmp_anvil-download-file'}   = "/tmp/anvil-download-file.status";
 	
 	# setuid tools
 	$an->data->{path}{'call_striker-manage-install-target'} = "/sbin/striker/call_striker-manage-install-target";

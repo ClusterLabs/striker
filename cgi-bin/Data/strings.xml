@@ -2816,6 +2816,10 @@ SWITCHES
 	output reported to the user but then uses the same logic as load 
 	shedding. Striker uses this during a "Cold Stop" operation to reuse 
 	the same logic to determine which node to shut down first.
+ 
+ -h, -?, --help
+
+	Show this dialoge and exit.
 
  --local
 
@@ -2831,10 +2835,11 @@ SWITCHES
  --shed-load
 
 	Picks a node to turn off based on the above criteria.
- 
- -h, -?, --help
 
-	Show this dialoge and exit.
+ --withdraw-only
+
+	Performs the safe-stop logic, but exits when the node is withdrawn from
+	the system instead of shutting down.
 
                   
 SUPPORT
@@ -2859,6 +2864,7 @@ SUPPORT
 		<key name="assp_message_0015">Powering off: [#!variable!node!#] now.</key>
 		<key name="assp_message_0016">There are no servers running on either node.</key>
 		<key name="assp_message_0017">There are no servers running on: [#!variable!node!#], so we will shut it down.</key>
+		<key name="assp_message_0018">Withdraw-only requested. Will *NOT* shut down: [#!variable!node!#].</key>
 		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->
 		<key name="anp_log_0001">#!variable!this_file!# has started.</key>
@@ -3266,7 +3272,69 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
+		
+		
+		<!-- Anvil! download file -->
+		<!-- logs -->
+		<key name="adf_log_0001">#!variable!this_file!# has started.</key>
+		<key name="adf_log_0002">
+Starting download: 
+* File: ..... [#!variable!file!#]
+* URL: ...... [#!variable!url!#]
+* Save to: .. [#!variable!out_file!#]
+* PID: ...... [#!variable!pid!#]
+* UUID: ..... [#!variable!uuid!#]
+* Start Time: [#!variable!unix_start!#]
+		</key>
+		<key name="adf_log_0003">Deleting failed download file: [#!variable!bad_file!#].</key>
+		
+		<!-- errors -->
+		<key name="adf_warning_0001">Failed to delete the bad file: [#!variable!bad_file!#]. The error was: [#!variable!error!#].</key>
+		
+		<!-- errors -->
+		<key name="adf_error_0001">The requested URL: [#!variable!url!#] is not supported. Only 'ftp', 'http' and 'https' are supported.</key>
+		<key name="adf_error_0002">The requested URL: [#!variable!url!#] was not found on the remote server.</key>
+		<key name="adf_error_0003">The requested URL: [#!variable!url!#] does not resolve to a known domain.</key>
+		<key name="adf_error_0004">The requested URL: [#!variable!url!#] failed because the remote host refused the connection.</key>
+		<key name="adf_error_0005">The requested URL: [#!variable!url!#] failed because there is no route to that host.</key>
+		
+		<!-- messages -->
+		<key name="adf_message_0001"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
 
+DESCRIPTION
+
+This program downloads a file from an FTP, HTTP or HTTPS URL. It can also 
+report on the progress of downloads happening in the background. Lastly, it can
+abort currently running downloads.
+
+When called with no arguments, it reports the status of other downloads, if 
+any.
+
+
+SWITCHES
+
+ --abort <{uuid,pid}>
+	 
+	 Abort the download underway given either the UUID of the download or 
+	 the process ID of the instance performing the download.
+
+ --url <{ftp,http,https}://example.com/path/to/file>
+
+	Attempt to download the file at the given URL.
+	
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
 		
 		
 		<!-- Anvil! boot servers -->

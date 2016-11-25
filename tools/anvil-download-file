@@ -1,0 +1,236 @@
+#!/usr/bin/perl
+# 
+# This takes a URL (ftp, http or https) and downloads the file. If it is called without --url, it shows the 
+# progress of any other instances currently downloading files.
+# 
+# Return codes:
+# 0 = Normal exit.
+# 1 = URL not found.
+# 
+
+use strict; 
+use warnings;
+use IO::Handle;
+use AN::Tools;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+
+my $an = AN::Tools->new({data => {
+		path		=>	{
+			log_file	=>	"/var/log/striker.log",
+			striker_config	=>	"/etc/striker/striker.conf",
+			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+		},
+		switches	=>	{},
+		sys		=>	{
+			# Don't print the webUI footer when invoked by a web-called parent
+			footer_printed	=>	1,
+			language	=>	"en_CA",
+			log_language	=>	"en_CA",
+			log_level	=>	2,
+		},
+	},
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or
+    ($an->data->{switches}{help}))
+{
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+
+# Log our startup
+$an->Log->entry({log_level => 1, message_key => "adf_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+
+if ($an->data->{switches}{url})
+{
+	# Try to download the file
+	download_file($an);
+}
+
+
+$an->nice_exit({exit_code => 0});
+
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This downloads the file.
+sub download_file
+{
+	my ($an) = @_;
+	
+	my $url        = $an->data->{switches}{url};
+	my $uuid       = $an->Get->uuid();
+	my $pid        = $$;
+	my $file       = ($url =~ /^.*\/(.*)$/)[0];
+	my $out_file   = $an->data->{path}{shared_files}."/".$file;
+	my $unix_start = time;
+	my $say_start  = $an->Get->date_and_time({use_time => $unix_start, split_date_time => 0});
+	$an->Log->entry({log_level => 1, message_key => "adf_log_0002", message_variables => { 
+		file       => $file, 
+		url        => $url, 
+		out_file   => $out_file, 
+		pid        => $pid, 
+		uuid       => $uuid, 
+		unix_start => $unix_start, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Is this a supported protocol?
+	if (($url !~ /^ftp\:\/\//) && ($url !~ /^http\:\/\//) && ($url !~ /^https\:\/\//))
+	{
+		my $variables = { url => $url };
+		print $an->String->get({key => "adf_error_0001", variables => $variables})."\n";
+		$an->Log->entry({log_level => 0, message_key => "adf_error_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+		$an->nice_exit({exit_code => 1});
+	}
+	
+	# Download!
+	my $percent         = 0;
+	my $rate            = 0;	# Bytes/sec
+	my $downloaded      = 0;	# Bytes
+	my $time_left       = 0;	# Seconds
+	my $failed          = 0;
+	my $report_interval = 2;	# Seconds between status file update
+	my $next_report     = time + $report_interval;
+	my $shell_call = $an->data->{path}{wget}." -c --progress=dot:binary ".$url." -O ".$out_file;
+	print "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n";
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		#print "out: [$line]\n";
+		
+		# Check for problems
+		if (($line =~ /404/) && ($line =~ /Not Found/i))
+		{
+			$an->Log->entry({log_level => 0, message_key => "adf_error_0002", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
+			$failed = 1;
+		}
+		if ($line =~ /Name or service not known/i)
+		{
+			$an->Log->entry({log_level => 0, message_key => "adf_error_0003", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
+			$failed = 1;
+		}
+		if ($line =~ /Connection refused/i)
+		{
+			$an->Log->entry({log_level => 0, message_key => "adf_error_0004", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
+			$failed = 1;
+		}
+		if ($line =~ /route to host/i)
+		{
+			$an->Log->entry({log_level => 0, message_key => "adf_error_0005", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
+			$failed = 1;
+		}
+		
+		if ($line =~ /^(\d+)K .*? (\d+)% (.*?) (\d+.*)$/)
+		{
+			$downloaded = $1;
+			$percent    = $2;
+			$rate       = $3;
+			$time_left  = $4;
+			#print "$THIS_FILE ".__LINE__."; >> downloaded: [$downloaded], percent: [$percent], rate: [$rate], time_left: [$time_left]\n";
+			
+			### NOTE: According to: http://savannah.gnu.org/bugs/index.php?22765, wget uses base-2.
+			# Convert
+			my $bytes_downloaded =  $downloaded * 1024;
+			my $say_downloaded   =  $an->Readable->bytes_to_hr({'bytes' => $bytes_downloaded});
+			   $percent          .= "%";
+			my $byte_rate        =  $an->Readable->hr_to_bytes({size => $rate, base2 => 1});
+			my $say_rate         =  $an->Readable->bytes_to_hr({'bytes' => $byte_rate})."/s";
+			# Time left is a bit more complicated
+			my $days    = 0;
+			my $hours   = 0;
+			my $minutes = 0;
+			my $seconds = 0;
+			if ($time_left =~ /(\d+)d/)
+			{
+				$days = $1;
+			}
+			if ($time_left =~ /(\d+)h/)
+			{
+				$hours = $1;
+			}
+			if ($time_left =~ /(\d+)m/)
+			{
+				$minutes = $1;
+			}
+			if ($time_left =~ /(\d+)s/)
+			{
+				$seconds = $1;
+			}
+			my $seconds_left  = (($days * 86400) + ($hours * 3600) + ($minutes * 60) + $seconds);
+			my $say_time_left = $an->Readable->time({'time' => $seconds_left, suffix => "long", process => 1});
+			#print "$THIS_FILE ".__LINE__."; time_left: [$time_left], days: [$days], hours: [$hours], minutes: [$minutes], seconds: [$seconds], seconds_left: [$seconds_left], say_time_left: [$say_time_left]\n";
+			
+			#print "$THIS_FILE ".__LINE__."; downloaded: [$downloaded], bytes_downloaded: [$bytes_downloaded], say_downloaded: [$say_downloaded], percent: [$percent], rate: [$rate], byte_rate: [$byte_rate], say_rate: [$say_rate], time_left: [$time_left]\n";
+			if (time > $next_report)
+			{
+				print "$THIS_FILE ".__LINE__."; say_downloaded: [$say_downloaded], percent: [$percent], say_rate: [$say_rate], seconds_left: [$seconds_left], say_time_left: [$say_time_left]\n";
+				$next_report += $report_interval;
+			}
+		}
+	}
+	close $file_handle;
+	
+	# Unlink the file, *if* the download failed and *if* the file is under '/shared/files' (test statically)
+	my $bad_file = "/shared/files/".$file;
+	if (($failed) && (-e $bad_file))
+	{
+		# Try to unlink the file, if possible.
+		$an->Log->entry({log_level => 0, message_key => "adf_log_0003", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
+		unlink $bad_file or $an->Log->entry({log_level => 0, message_key => "adf_warning_0001", message_variables => { bad_file => $bad_file, error => $! }, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $an->String->get({key => "adf_message_0001"})."\n";
+	close $file_handle;
+	
+	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");
+
+	return(0);
+}
