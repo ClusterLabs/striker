@@ -3287,9 +3287,19 @@ Starting download:
 * Start Time: [#!variable!unix_start!#]
 		</key>
 		<key name="adf_log_0003">Deleting failed download file: [#!variable!bad_file!#].</key>
+		<key name="adf_log_0004">Adding a job to the jobs file: 
+* Jobs File: ... [#!variable!jobs_file!#]
+* ID String: ... [#!variable!id_string!#]
+* Progress File: [#!variable!progress_file!#]
+		</key>
+		<key name="adf_log_0005">The job with PID: [#!variable!pid!#] is dead, removing it from jobs.</key>
+		<key name="adf_log_0006">Download complete, removing our own entry from the jobs file.</key>
+		<key name="adf_log_0007">Terminating job with PID: [#!variable!pid!#], downloading file: [#!variable!out!#] on user request.</key>
+		<key name="adf_log_0008">By user request, deleting: [#!variable!file!#].</key>
 		
 		<!-- errors -->
 		<key name="adf_warning_0001">Failed to delete the bad file: [#!variable!bad_file!#]. The error was: [#!variable!error!#].</key>
+		<key name="adf_warning_0002">Failed to delete the aborted download file: [#!variable!file!#]. The error was: [#!variable!error!#].</key>
 		
 		<!-- errors -->
 		<key name="adf_error_0001">The requested URL: [#!variable!url!#] is not supported. Only 'ftp', 'http' and 'https' are supported.</key>
@@ -3297,6 +3307,7 @@ Starting download:
 		<key name="adf_error_0003">The requested URL: [#!variable!url!#] does not resolve to a known domain.</key>
 		<key name="adf_error_0004">The requested URL: [#!variable!url!#] failed because the remote host refused the connection.</key>
 		<key name="adf_error_0005">The requested URL: [#!variable!url!#] failed because there is no route to that host.</key>
+		<key name="adf_error_0006">I was asked to abort another download, but the passed in string: [#!variable!abort!#] is not a UUID or PID.</key>
 		
 		<!-- messages -->
 		<key name="adf_message_0001"><![CDATA[
@@ -3318,6 +3329,10 @@ SWITCHES
 	 
 	 Abort the download underway given either the UUID of the download or 
 	 the process ID of the instance performing the download.
+
+ --delete
+	 
+	 When used with '--delete', the associated download file is deleted.
 
  --url <{ftp,http,https}://example.com/path/to/file>
 

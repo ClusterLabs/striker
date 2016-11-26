@@ -654,7 +654,6 @@ sub _set_paths
 	$an->data->{path}{yum}                    = "/usr/bin/yum";
 	
 	# Text files
-	$an->data->{path}{'anvil-jobs'}     = "/tmp/anvil.jobs";
 	$an->data->{path}{cman_config}      = "/etc/cluster/cluster.conf";
 	$an->data->{path}{dhcpd_conf}       = "/etc/dhcp/dhcpd.conf";
 	$an->data->{path}{etc_fstab}        = "/etc/fstab";
@@ -716,7 +715,8 @@ sub _set_paths
 	$an->data->{path}{ScanCore}                    = "/sbin/striker/ScanCore/ScanCore";
 	
 	# Temporary/progress files
-	$an->data->{path}{'tmp_anvil-download-file'}   = "/tmp/anvil-download-file.status";
+	$an->data->{path}{'anvil-jobs'}        = "/tmp/anvil.jobs";
+	$an->data->{path}{'downloading-files'} = "/tmp/anvil-download-file.status";
 	
 	# setuid tools
 	$an->data->{path}{'call_striker-manage-install-target'} = "/sbin/striker/call_striker-manage-install-target";

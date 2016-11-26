@@ -6,6 +6,11 @@
 # Return codes:
 # 0 = Normal exit.
 # 1 = URL not found.
+# 2 = The requested URL was not found on the remote server.
+# 3 = The requested URL does not resolve to a known domain.
+# 4 = The requested URL failed because the remote host refused the connection.
+# 5 = The requested URL failed because there is no route to that host.
+# 6 = Abort requested, but UUID or PID not passed
 # 
 
 use strict; 
@@ -67,12 +72,17 @@ if (($an->data->{switches}{h})   or
 }
 
 # Log our startup
-$an->Log->entry({log_level => 1, message_key => "adf_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 3, message_key => "adf_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 if ($an->data->{switches}{url})
 {
 	# Try to download the file
 	download_file($an);
+}
+if ($an->data->{switches}{abort})
+{
+	# Kill the other download
+	abort_download($an);
 }
 
 
@@ -83,19 +93,293 @@ $an->nice_exit({exit_code => 0});
 # Functions                                                                                                 #
 #############################################################################################################
 
+# Aborts another download, by UUID or PID
+sub abort_download
+{
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "abort_download" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $uuid = "";
+	my $pid  = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "switches::abort",  value1 => $an->data->{switches}{abort}, 
+		name2 => "switches::delete", value2 => $an->data->{switches}{'delete'}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->Validate->is_uuid({uuid => $an->data->{switches}{abort}}))
+	{
+		$uuid = $an->data->{switches}{abort};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "uuid", value1 => $uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($an->data->{switches}{abort} =~ /^\d+$/)
+	{
+		$pid = $an->data->{switches}{abort};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "pid", value1 => $pid, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Bad input
+		my $variables = { abort => $an->data->{switches}{abort} };
+		print $an->String->get({key => "adf_error_0006", variables => $variables})."\n";
+		$an->Log->entry({log_level => 0, message_key => "adf_error_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+		$an->nice_exit({exit_code => 6});
+	}
+	
+	# Read in the jobs file.
+	my $terminated    = 0;
+	my $job_pid       = 0;
+	my $job_uuid      = "";
+	my $progress_file = "";
+	my $out_file      = "";
+	if (-e $an->data->{path}{'downloading-files'})
+	{
+		my $shell_call = $an->data->{path}{'downloading-files'};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($pid) && ($line =~ /pid=$pid /))
+			{
+				# Found it.
+				$job_pid = $pid;
+			}
+			elsif (($uuid) && ($line =~ /uuid=$uuid /))
+			{
+				# Found it.
+				$job_uuid = $uuid;
+			}
+			
+			if (($job_pid) or ($job_uuid))
+			{
+				$job_pid       = ($line =~ /pid=(\d+) /)[0];
+				$job_uuid      = ($line =~ /uuid=(.*?) /)[0];
+				$out_file      = ($line =~ /out=(.*?) /)[0];
+				$progress_file = ($line =~ /progress=(.*)$/)[0];
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "job_pid",       value1 => $job_pid, 
+					name2 => "job_uuid",      value2 => $job_uuid, 
+					name3 => "out_file",      value3 => $out_file, 
+					name4 => "progress_file", value4 => $progress_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		close $file_handle;
+	}
+	
+	# I found the entry in the jobs file. Is the PID already dead?
+	if ($job_pid)
+	{
+		my $pid_proc = "/proc/$job_pid";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "job_pid",  value1 => $job_pid, 
+			name2 => "pid_proc", value2 => $pid_proc, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (-d $pid_proc)
+		{
+			# PID is alive, terminate it.
+			$an->Log->entry({log_level => 1, message_key => "adf_log_0007", message_variables => { 
+				pid => $job_pid, 
+				out => $out_file,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Kill the other process (and it's child wget call)
+		my $shell_call = $an->data->{path}{pkill}." -TERM -P ".$job_pid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+		}
+		close $file_handle;
+		
+		# Update the progress file 
+		if (not $progress_file)
+		{
+			$progress_file = "/tmp/".$THIS_FILE.".progress.".$job_uuid;
+		}
+		$shell_call = $progress_file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle "aborted=".time."\n";
+		close $file_handle;
+		
+		# Update the jobs file.
+		manage_jobs_list($an);
+	}
+	
+	# Finally, if requested, delete the file 
+	if (($an->data->{switches}{'delete'}) && (-e $out_file) && ($out_file =~ /^\/shared\/files\//))
+	{
+		$an->Log->entry({log_level => 0, message_key => "adf_log_0008", message_variables => { file => $out_file }, file => $THIS_FILE, line => __LINE__});
+		unlink $out_file or $an->Log->entry({log_level => 0, message_key => "adf_warning_0002", message_variables => { file => $out_file, error => $! }, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+# This adds or removes an entry to the jobs file.
+sub manage_jobs_list
+{
+	my ($an, $uuid, $pid, $unix_start, $url, $out_file) = @_;
+	$uuid       = "" if not defined $uuid;
+	$pid        = 0  if not defined $pid;
+	$unix_start = 0  if not defined $unix_start;
+	$url        = "" if not defined $url;
+	$out_file   = "" if not defined $out_file;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "manage_jobs_list" }, message_key => "an_variables_0005", message_variables => { 
+		name1 => "uuid",       value1 => $uuid,
+		name2 => "pid",        value2 => $pid,
+		name3 => "unix_start", value3 => $unix_start,
+		name4 => "url",        value4 => $url,
+		name5 => "out_file",   value5 => $out_file,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# First, does the entry exist?
+	my $existing_entry = "";
+	my $jobs_content   = "";
+	my $write_out      = 0;
+	if (-e $an->data->{path}{'downloading-files'})
+	{
+		my $shell_call = $an->data->{path}{'downloading-files'};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /pid=(\d+) /)
+			{
+				my $this_pid = $1;
+				my $pid_proc = "/proc/$this_pid";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "this_pid", value1 => $this_pid, 
+					name2 => "pid_proc", value2 => $pid_proc, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not -d $pid_proc)
+				{
+					# PID is gone.
+					$an->Log->entry({log_level => 1, message_key => "adf_log_0005", message_variables => { pid => $pid }, file => $THIS_FILE, line => __LINE__});
+					$write_out = 1;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "write_out", value1 => $write_out, 
+					}, file => $THIS_FILE, line => __LINE__});
+					next;
+				}
+				if ((not $pid) && ($this_pid eq $$))
+				{
+					# We're exiting, delete our line.
+					$an->Log->entry({log_level => 1, message_key => "adf_log_0006", file => $THIS_FILE, line => __LINE__});
+					$write_out = 1;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "write_out", value1 => $write_out, 
+					}, file => $THIS_FILE, line => __LINE__});
+					next;
+				}
+			}
+			if ($line =~ / uuid=(.*?) /)
+			{
+				my $this_uuid = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "this_uuid", value1 => $this_uuid, 
+					name2 => "uuid",      value2 => $uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($this_uuid eq $uuid)
+				{
+					$existing_entry = $line;
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+						name1 => "existing_entry", value1 => $existing_entry, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					$jobs_content .= $line."\n";
+				}
+			}
+		}
+		close $file_handle;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "jobs_content", value1 => $jobs_content, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	if (($uuid) && ($pid))
+	{
+		my $progress_file = "/tmp/".$THIS_FILE.".progress.".$uuid;
+		my $id_string     = "pid=$pid uuid=$uuid started=$unix_start source=$url out=$out_file progress=$progress_file";
+		$an->Log->entry({log_level => 3, message_key => "adf_log_0004", message_variables => { 
+			jobs_file     => $an->data->{path}{'downloading-files'}, 
+			progress_file => $progress_file, 
+			id_string     => $id_string, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($existing_entry ne $id_string)
+		{
+			$jobs_content .= $id_string."\n";
+			$write_out     = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "write_out", value1 => $write_out, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "write_out", value1 => $write_out, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($write_out)
+	{
+		# Write out the new body.
+		my $shell_call = $an->data->{path}{'downloading-files'};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle $jobs_content;
+		close $file_handle;
+	}
+	
+	return(0);
+}
+
 # This downloads the file.
 sub download_file
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "download_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $url        = $an->data->{switches}{url};
-	my $uuid       = $an->Get->uuid();
-	my $pid        = $$;
-	my $file       = ($url =~ /^.*\/(.*)$/)[0];
-	my $out_file   = $an->data->{path}{shared_files}."/".$file;
-	my $unix_start = time;
-	my $say_start  = $an->Get->date_and_time({use_time => $unix_start, split_date_time => 0});
-	$an->Log->entry({log_level => 1, message_key => "adf_log_0002", message_variables => { 
+	my $url           = $an->data->{switches}{url};
+	my $uuid          = $an->Get->uuid();
+	my $pid           = $$;
+	my $file          = ($url =~ /^.*\/(.*)$/)[0];
+	my $out_file      = $an->data->{path}{shared_files}."/".$file;
+	my $unix_start    = time;
+	my $say_start     = $an->Get->date_and_time({use_time => $unix_start, split_date_time => 0});
+	$an->Log->entry({log_level => 3, message_key => "adf_log_0002", message_variables => { 
 		file       => $file, 
 		url        => $url, 
 		out_file   => $out_file, 
@@ -113,20 +397,32 @@ sub download_file
 		$an->nice_exit({exit_code => 1});
 	}
 	
-	# Download!
+	# Add this job to the main list.
+	manage_jobs_list($an, $uuid, $pid, $unix_start, $url, $out_file);
+	
+	# Prep!
 	my $percent         = 0;
 	my $rate            = 0;	# Bytes/sec
 	my $downloaded      = 0;	# Bytes
 	my $time_left       = 0;	# Seconds
 	my $failed          = 0;
-	my $report_interval = 2;	# Seconds between status file update
+	my $report_interval = 5;	# Seconds between status file update
 	my $next_report     = time + $report_interval;
-	my $shell_call = $an->data->{path}{wget}." -c --progress=dot:binary ".$url." -O ".$out_file;
-	print "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n";
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+	my $progress_file   = "/tmp/".$THIS_FILE.".progress.".$uuid;
+	my $shell_call      = $progress_file;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	print $file_handle "bytes_downloaded=0, percent=0, current_rate=0, average_rate=0, seconds_running=0, seconds_left=?, out_file=$out_file\n";
+	close $file_handle;
+	
+	# Download!
+	$shell_call = $an->data->{path}{wget}." -c --progress=dot:binary ".$url." -O ".$out_file;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -140,22 +436,22 @@ sub download_file
 		if (($line =~ /404/) && ($line =~ /Not Found/i))
 		{
 			$an->Log->entry({log_level => 0, message_key => "adf_error_0002", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
-			$failed = 1;
+			$failed = 2;
 		}
 		if ($line =~ /Name or service not known/i)
 		{
 			$an->Log->entry({log_level => 0, message_key => "adf_error_0003", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
-			$failed = 1;
+			$failed = 3;
 		}
 		if ($line =~ /Connection refused/i)
 		{
 			$an->Log->entry({log_level => 0, message_key => "adf_error_0004", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
-			$failed = 1;
+			$failed = 4;
 		}
 		if ($line =~ /route to host/i)
 		{
 			$an->Log->entry({log_level => 0, message_key => "adf_error_0005", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
-			$failed = 1;
+			$failed = 5;
 		}
 		
 		if ($line =~ /^(\d+)K .*? (\d+)% (.*?) (\d+.*)$/)
@@ -168,11 +464,13 @@ sub download_file
 			
 			### NOTE: According to: http://savannah.gnu.org/bugs/index.php?22765, wget uses base-2.
 			# Convert
-			my $bytes_downloaded =  $downloaded * 1024;
-			my $say_downloaded   =  $an->Readable->bytes_to_hr({'bytes' => $bytes_downloaded});
-			   $percent          .= "%";
-			my $byte_rate        =  $an->Readable->hr_to_bytes({size => $rate, base2 => 1});
-			my $say_rate         =  $an->Readable->bytes_to_hr({'bytes' => $byte_rate})."/s";
+			my $bytes_downloaded = $downloaded * 1024;
+			my $say_downloaded   = $an->Readable->bytes_to_hr({'bytes' => $bytes_downloaded});
+			my $say_percent      = $percent."%";
+			my $byte_rate        = $an->Readable->hr_to_bytes({size => $rate, base2 => 1});
+			my $say_rate         = $an->Readable->bytes_to_hr({'bytes' => $byte_rate})."/s";
+			my $running_time     = time - $unix_start;
+			my $say_running_time = $an->Readable->time({'time' => $running_time, process => 1});
 			# Time left is a bit more complicated
 			my $days    = 0;
 			my $hours   = 0;
@@ -181,40 +479,74 @@ sub download_file
 			if ($time_left =~ /(\d+)d/)
 			{
 				$days = $1;
+				#print "$THIS_FILE ".__LINE__."; == days: [$days]\n";
 			}
 			if ($time_left =~ /(\d+)h/)
 			{
 				$hours = $1;
+				#print "$THIS_FILE ".__LINE__."; == hours: [$hours]\n";
 			}
 			if ($time_left =~ /(\d+)m/)
 			{
 				$minutes = $1;
+				#print "$THIS_FILE ".__LINE__."; == minutes: [$minutes]\n";
 			}
 			if ($time_left =~ /(\d+)s/)
 			{
 				$seconds = $1;
+				#print "$THIS_FILE ".__LINE__."; == seconds: [$seconds]\n";
 			}
-			my $seconds_left  = (($days * 86400) + ($hours * 3600) + ($minutes * 60) + $seconds);
-			my $say_time_left = $an->Readable->time({'time' => $seconds_left, suffix => "long", process => 1});
-			#print "$THIS_FILE ".__LINE__."; time_left: [$time_left], days: [$days], hours: [$hours], minutes: [$minutes], seconds: [$seconds], seconds_left: [$seconds_left], say_time_left: [$say_time_left]\n";
+			my $seconds_left     = (($days * 86400) + ($hours * 3600) + ($minutes * 60) + $seconds);
+			my $say_time_left    = $an->Readable->time({'time' => $seconds_left, suffix => "long", process => 1});
+			   $running_time     = 1 if not $running_time;
+			my $average_rate     = int($bytes_downloaded / $running_time);
+			my $say_average_rate = $an->Readable->bytes_to_hr({'bytes' => $average_rate})."/s";
 			
 			#print "$THIS_FILE ".__LINE__."; downloaded: [$downloaded], bytes_downloaded: [$bytes_downloaded], say_downloaded: [$say_downloaded], percent: [$percent], rate: [$rate], byte_rate: [$byte_rate], say_rate: [$say_rate], time_left: [$time_left]\n";
 			if (time > $next_report)
 			{
-				print "$THIS_FILE ".__LINE__."; say_downloaded: [$say_downloaded], percent: [$percent], say_rate: [$say_rate], seconds_left: [$seconds_left], say_time_left: [$say_time_left]\n";
+				#print "$THIS_FILE ".__LINE__."; say_downloaded: [$say_downloaded], percent: [$percent], say_rate: [$say_rate], running_time: [$running_time], say_running_time: [$say_running_time], seconds_left: [$seconds_left], say_time_left: [$say_time_left]\n";
+				print "$file; Downloaded: [$say_downloaded]/[$say_percent], Rate/Avg: [$say_rate]/[$say_average_rate], Running: [$say_running_time], Left: [$say_time_left]\n";
+				#print "$THIS_FILE ".__LINE__."; bytes_downloaded=$bytes_downloaded, percent=$percent, current_rate=$byte_rate, average_rate=$average_rate, seconds_running=$running_time, seconds_left=$seconds_left, out_file=$out_file\n";
 				$next_report += $report_interval;
+				
+				my $shell_call = $progress_file;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+				print $file_handle "bytes_downloaded=$bytes_downloaded, percent=$percent, current_rate=$byte_rate, average_rate=$average_rate, seconds_running=$running_time, seconds_left=$seconds_left, out_file=$out_file\n";
+				close $file_handle;
 			}
 		}
 	}
 	close $file_handle;
 	
-	# Unlink the file, *if* the download failed and *if* the file is under '/shared/files' (test statically)
-	my $bad_file = "/shared/files/".$file;
-	if (($failed) && (-e $bad_file))
+	# All done
+	$shell_call = $progress_file;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	print $file_handle "done=".time."\n";
+	close $file_handle;
+	
+	# Remove ourself from the job file
+	manage_jobs_list($an, $uuid);
+	
+	if ($failed)
 	{
-		# Try to unlink the file, if possible.
-		$an->Log->entry({log_level => 0, message_key => "adf_log_0003", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
-		unlink $bad_file or $an->Log->entry({log_level => 0, message_key => "adf_warning_0001", message_variables => { bad_file => $bad_file, error => $! }, file => $THIS_FILE, line => __LINE__});
+		# Unlink the file, *if* the download failed and *if* the file is under '/shared/files' (test statically)
+		my $bad_file = "/shared/files/".$file;
+		if (-e $bad_file)
+		{
+			# Try to unlink the file, if possible.
+			$an->Log->entry({log_level => 0, message_key => "adf_log_0003", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
+			unlink $bad_file or $an->Log->entry({log_level => 0, message_key => "adf_warning_0001", message_variables => { bad_file => $bad_file, error => $! }, file => $THIS_FILE, line => __LINE__});
+		}
+		my $key = "adf_error_000".$failed;
+		print $an->String->get({key => $key, variables => { url => $url }})."\n";
+		$an->nice_exit({exit_code => $failed});
 	}
 	
 	return(0);

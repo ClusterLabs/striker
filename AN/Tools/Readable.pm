@@ -617,64 +617,78 @@ sub time
 	my $rem_days  = $days % 7;
 	my $weeks     = ($days - $rem_days) / 7;
 
-	my $hr_time;
+	my $hr_time = "";
 	if ($seconds < 1)
 	{
 		$hr_time = $float ? "0.${float}s" : "0".$suffix_seconds;
+		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
 	else
 	{
 		$hr_time = sprintf("%01d", $seconds);
+		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 		if ( $float > 0 )
 		{
 			$hr_time .= ".".$float.$suffix_seconds;
+			#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 		}
 		else
 		{
 			$hr_time .= $suffix_seconds;
+			#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 		}
 	}
 	if ( $rem_min > 0 )
 	{
 		$hr_time =~ s/ sec.$/$suffix_seconds/;
 		$hr_time =  sprintf("%01d", $rem_min).$suffix_minutes." $hr_time";
+		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
 	elsif (($hours > 0) or ($days > 0) or ($weeks > 0))
 	{
 		$hr_time = "0".$suffix_minutes." ".$hr_time;
+		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
 	if ( $rem_hours > 0 )
 	{
-		$hr_time = sprintf("%01d", $rem_hours)."h $hr_time";
+		$hr_time = sprintf("%01d", $rem_hours)."$suffix_hours $hr_time";
+		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
 	elsif (($days > 0) or ($weeks > 0))
 	{
 		$hr_time = "0".$suffix_hours." ".$hr_time;
+		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
 	if ( $days > 0 )
 	{
 		$hr_time = sprintf("%01d", $rem_days).$suffix_days." ".$hr_time;
+		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
 	elsif ($weeks > 0)
 	{
 		$hr_time = "0".$suffix_days." ".$hr_time;
+		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
 	if ( $weeks > 0 )
 	{
 		$weeks   = $an->Readable->comma($weeks);
 		$hr_time = $weeks.$suffix_weeks." ".$hr_time;
+		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
 	$hr_time = $sign ? $sign.$hr_time : $hr_time;
+	#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	
 	# Return an already-translated string, if requested.
 	if ($process)
 	{
+		#print "$THIS_FILE ".__LINE__."; >> hr_time: [$hr_time]\n";
 		$hr_time = $an->String->_process_string({
 			string    => $hr_time, 
 			language  => $an->default_language, 
 			hash      => $an->data, 
 			variables => {}, 
 		});
+		#print "$THIS_FILE ".__LINE__."; << hr_time: [$hr_time]\n";
 	}
 	
 	return ($hr_time);
