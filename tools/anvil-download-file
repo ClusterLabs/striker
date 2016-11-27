@@ -84,6 +84,11 @@ if ($an->data->{switches}{abort})
 	# Kill the other download
 	abort_download($an);
 }
+if ($an->data->{switches}{status})
+{
+	# Show the status of any downloading, finished, failed or aborted downloads.
+	show_status($an);
+}
 
 
 $an->nice_exit({exit_code => 0});
@@ -92,6 +97,66 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# Show the status of any downloading, finished, failed or aborted downloads.
+sub show_status
+{
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read all the progress files.
+	my $progress_files = $THIS_FILE.".progress.";
+	my $directory      = "/tmp";
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $directory);
+	while(my $file = readdir(DIRECTORY))
+	{
+		next if $file !~ /^$progress_files/;
+		my $full_path = $directory."/".$file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "full_path", value1 => $full_path, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# How old is this? We'll unlink anything over 60 minutes old.
+		my $mtime = (stat($full_path))[9];
+		my $age   = time - $mtime;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "time",  value1 => time, 
+			name2 => "mtime", value2 => $mtime, 
+			name3 => "age",   value3 => $age, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $stale_age = 60;
+		if ($age > $stale_age)
+		{
+			# Delete it.
+			$an->Log->entry({log_level => 1, message_key => "adf_log_0009", message_variables => { 
+				file => $full_path, 
+				age  => $age, 
+			}, file => $THIS_FILE, line => __LINE__});
+			unlink $full_path or $an->Log->entry({log_level => 0, message_key => "adf_warning_0002", message_variables => { file => $full_path, error => $! }, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		# Read the file.
+		my $shell_call = $full_path;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			print "$line\n";
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+}
 
 # Aborts another download, by UUID or PID
 sub abort_download
@@ -120,6 +185,10 @@ sub abort_download
 	}
 	else
 	{
+		### NOTE: This is meant to be parsed by a script, so don't translate it.
+		# Print that we failed and what the failure was. 
+		print "failed:6\n";
+		
 		# Bad input
 		my $variables = { abort => $an->data->{switches}{abort} };
 		print $an->String->get({key => "adf_error_0006", variables => $variables})."\n";
@@ -210,6 +279,11 @@ sub abort_download
 		}
 		close $file_handle;
 		
+		# Trying to pkill -9 or analysing wget's RC is failing. So for now, we'll just sleep a moment
+		# to let the other instance exit before writing out that the download was aborted. It's 
+		# messy, but it will have to do for now.
+		sleep 1;
+		
 		# Update the progress file 
 		if (not $progress_file)
 		{
@@ -220,7 +294,7 @@ sub abort_download
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-		print $file_handle "aborted=".time."\n";
+		print $file_handle "aborted=".time." uuid=$job_uuid out=$out_file\n";
 		close $file_handle;
 		
 		# Update the jobs file.
@@ -391,6 +465,10 @@ sub download_file
 	# Is this a supported protocol?
 	if (($url !~ /^ftp\:\/\//) && ($url !~ /^http\:\/\//) && ($url !~ /^https\:\/\//))
 	{
+		### NOTE: This is meant to be parsed by a script, so don't translate it.
+		# Print that we failed and what the failure was. 
+		print "failed:1\n";
+		
 		my $variables = { url => $url };
 		print $an->String->get({key => "adf_error_0001", variables => $variables})."\n";
 		$an->Log->entry({log_level => 0, message_key => "adf_error_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
@@ -401,20 +479,24 @@ sub download_file
 	manage_jobs_list($an, $uuid, $pid, $unix_start, $url, $out_file);
 	
 	# Prep!
-	my $percent         = 0;
-	my $rate            = 0;	# Bytes/sec
-	my $downloaded      = 0;	# Bytes
-	my $time_left       = 0;	# Seconds
-	my $failed          = 0;
-	my $report_interval = 5;	# Seconds between status file update
-	my $next_report     = time + $report_interval;
-	my $progress_file   = "/tmp/".$THIS_FILE.".progress.".$uuid;
-	my $shell_call      = $progress_file;
+	my $bytes_downloaded = 0;
+	my $running_time     = 0;
+	my $average_rate     = 0;
+	my $start_printed    = 0;
+	my $percent          = 0;
+	my $rate             = 0;	# Bytes/sec
+	my $downloaded       = 0;	# Bytes
+	my $time_left        = 0;	# Seconds
+	my $failed           = 0;
+	my $report_interval  = 5;	# Seconds between status file update
+	my $next_report      = time + $report_interval;
+	my $progress_file    = "/tmp/".$THIS_FILE.".progress.".$uuid;
+	my $shell_call       = $progress_file;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-	print $file_handle "bytes_downloaded=0, percent=0, current_rate=0, average_rate=0, seconds_running=0, seconds_left=?, out_file=$out_file\n";
+	print $file_handle "uuid=$uuid bytes_downloaded=0 percent=0 current_rate=0 average_rate=0 seconds_running=0 seconds_left=? out_file=$out_file\n";
 	close $file_handle;
 	
 	# Download!
@@ -462,14 +544,21 @@ sub download_file
 			$time_left  = $4;
 			#print "$THIS_FILE ".__LINE__."; >> downloaded: [$downloaded], percent: [$percent], rate: [$rate], time_left: [$time_left]\n";
 			
+			if (not $start_printed)
+			{
+				### NOTE: This is meant to be parsed by a script, so don't translate it.
+				print "started:$uuid\n";
+				$start_printed = 1;
+			}
+			
 			### NOTE: According to: http://savannah.gnu.org/bugs/index.php?22765, wget uses base-2.
 			# Convert
-			my $bytes_downloaded = $downloaded * 1024;
+			   $bytes_downloaded = $downloaded * 1024;
 			my $say_downloaded   = $an->Readable->bytes_to_hr({'bytes' => $bytes_downloaded});
 			my $say_percent      = $percent."%";
 			my $byte_rate        = $an->Readable->hr_to_bytes({size => $rate, base2 => 1});
 			my $say_rate         = $an->Readable->bytes_to_hr({'bytes' => $byte_rate})."/s";
-			my $running_time     = time - $unix_start;
+			   $running_time     = time - $unix_start;
 			my $say_running_time = $an->Readable->time({'time' => $running_time, process => 1});
 			# Time left is a bit more complicated
 			my $days    = 0;
@@ -499,14 +588,14 @@ sub download_file
 			my $seconds_left     = (($days * 86400) + ($hours * 3600) + ($minutes * 60) + $seconds);
 			my $say_time_left    = $an->Readable->time({'time' => $seconds_left, suffix => "long", process => 1});
 			   $running_time     = 1 if not $running_time;
-			my $average_rate     = int($bytes_downloaded / $running_time);
+			   $average_rate     = int($bytes_downloaded / $running_time);
 			my $say_average_rate = $an->Readable->bytes_to_hr({'bytes' => $average_rate})."/s";
 			
 			#print "$THIS_FILE ".__LINE__."; downloaded: [$downloaded], bytes_downloaded: [$bytes_downloaded], say_downloaded: [$say_downloaded], percent: [$percent], rate: [$rate], byte_rate: [$byte_rate], say_rate: [$say_rate], time_left: [$time_left]\n";
 			if (time > $next_report)
 			{
 				#print "$THIS_FILE ".__LINE__."; say_downloaded: [$say_downloaded], percent: [$percent], say_rate: [$say_rate], running_time: [$running_time], say_running_time: [$say_running_time], seconds_left: [$seconds_left], say_time_left: [$say_time_left]\n";
-				print "$file; Downloaded: [$say_downloaded]/[$say_percent], Rate/Avg: [$say_rate]/[$say_average_rate], Running: [$say_running_time], Left: [$say_time_left]\n";
+				#print "$file; Downloaded: [$say_downloaded]/[$say_percent], Rate/Avg: [$say_rate]/[$say_average_rate], Running: [$say_running_time], Left: [$say_time_left]\n";
 				#print "$THIS_FILE ".__LINE__."; bytes_downloaded=$bytes_downloaded, percent=$percent, current_rate=$byte_rate, average_rate=$average_rate, seconds_running=$running_time, seconds_left=$seconds_left, out_file=$out_file\n";
 				$next_report += $report_interval;
 				
@@ -515,20 +604,11 @@ sub download_file
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-				print $file_handle "bytes_downloaded=$bytes_downloaded, percent=$percent, current_rate=$byte_rate, average_rate=$average_rate, seconds_running=$running_time, seconds_left=$seconds_left, out_file=$out_file\n";
+				print $file_handle "uuid=$uuid bytes_downloaded=$bytes_downloaded percent=$percent current_rate=$byte_rate average_rate=$average_rate seconds_running=$running_time seconds_left=$seconds_left out_file=$out_file\n";
 				close $file_handle;
 			}
 		}
 	}
-	close $file_handle;
-	
-	# All done
-	$shell_call = $progress_file;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-	print $file_handle "done=".time."\n";
 	close $file_handle;
 	
 	# Remove ourself from the job file
@@ -536,6 +616,18 @@ sub download_file
 	
 	if ($failed)
 	{
+		my $shell_call = $progress_file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle "failed=$failed uuid=$uuid out_file=$out_file\n";
+		close $file_handle;
+		
+		### NOTE: This is meant to be parsed by a script, so don't translate it.
+		# Print that we failed and what the failure was. 
+		print "failed:$failed\n";
+		
 		# Unlink the file, *if* the download failed and *if* the file is under '/shared/files' (test statically)
 		my $bad_file = "/shared/files/".$file;
 		if (-e $bad_file)
@@ -547,6 +639,34 @@ sub download_file
 		my $key = "adf_error_000".$failed;
 		print $an->String->get({key => $key, variables => { url => $url }})."\n";
 		$an->nice_exit({exit_code => $failed});
+	}
+	else
+	{
+		# All done
+		my $shell_call = $progress_file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle "done=".time." uuid=$uuid bytes_downloaded=$bytes_downloaded average_rate=$average_rate seconds_running=$running_time out_file=$out_file\n";
+		close $file_handle;
+		
+		# Set it to executable, if requested.
+		if ($an->data->{switches}{script})
+		{
+			# Kill the other download
+			my $shell_call = $an->data->{path}{'chmod'}." 755 ".$out_file;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+			}
+			close $file_handle;
+		}
 	}
 	
 	return(0);

@@ -20,6 +20,7 @@ my $THIS_FILE = "MediaLibrary.pm";
 # _delete_file
 # _download_url
 # _image_and_upload
+# _monitor_downloads
 # _process_task
 # _read_shared
 # _save_file_to_disk
@@ -685,12 +686,17 @@ sub _download_url
 		file	=>	$file,
 		base	=>	$base,
 	}});
-
+	
+	### TODO: Switch this to 'anvil-download-file' and then go into a reload loop until this file is 
+	###       downloaded. (sub show_download_progress).
+	my $job_uuid        = "";
 	my $failed          = 0;
 	my $header_printed  = 0;
-	my $progress_points = 5;
-	my $next_percent    = $progress_points;
-	my $shell_call      = $an->data->{path}{wget}." -c --progress=dot -e dotbytes=10M $url -O ".$an->data->{path}{shared_files}."/$file";
+	my $shell_call      = $an->data->{path}{'anvil-download-file'}." --url $url";
+	if ($an->data->{cgi}{script})
+	{
+		$shell_call .= " --script";
+	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
@@ -703,212 +709,46 @@ sub _download_url
 	});
 	foreach my $line (@{$return})
 	{
-		### TODO: This doesn't work anymore because the 'remote_call()' function returns all output
-		###       in one go. Add a section to remote_call that does this for wget calls.
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/“/"/g;
-		$line =~ s/”/"/g;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if (($line =~ /Name or service not known/i) or ($line =~ /unable to resolve/i))
+		if ($line =~ /failed:(\d)$/)
 		{
-			$failed = 1;
+			$failed = $1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "failed", value1 => $failed, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		
-		if ($line =~ /^(\d+)K .*? (\d+)% (.*?)(\w) (.*?)$/)
+		elsif ($line =~ /started:(.*)$/)
 		{
-			my $received = $1;
-			my $percent  = $2;
-			my $rate     = $3;
-			my $rate_suf = $4;
-			my $time     = $5;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "percent",      value1 => $percent,
-				name2 => "next percent", value2 => $next_percent,
+			$job_uuid = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "job_uuid", value1 => $job_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($percent eq "100")
-			{
-				print $an->Web->template({file => "media-library.html", template => "download-website-complete"});
-			}
-			elsif ($percent >= $next_percent)
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-					name1 => "percent",      value1 => $percent,
-					name2 => "next percent", value2 => $next_percent,
-					name3 => "received",     value3 => $received,
-					name4 => "rate",         value4 => $rate,
-					name5 => "time",         value5 => $time,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# This prevents multiple prints when the file is partially downloaded.
-				while ($percent >= $next_percent)
-				{
-					$next_percent += $progress_points;
-				}
-				$received        *= 1024;
-				my $say_received =  $an->Readable->bytes_to_hr({'bytes' => $received });
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "received",     value1 => $received,
-					name2 => "say_received", value2 => $say_received,
-				}, file => $THIS_FILE, line => __LINE__});
-				if (uc($rate_suf) eq "M")
-				{
-					$rate = int(($rate * (1024 * 1024)));
-				}
-				elsif (uc($rate_suf) eq "K")
-				{
-					$rate = int(($rate * 1024));
-				}
-				my $say_rate = $an->Readable->bytes_to_hr({'bytes' => $rate });
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "rate",     value1 => $rate,
-					name2 => "say_rate", value2 => $say_rate,
-				}, file => $THIS_FILE, line => __LINE__});
-				my $hours   = 0;
-				my $minutes = 0;
-				my $seconds = 0;
-				if ($time =~ /(\d+)h/)
-				{
-					$hours  = $1;
-				}
-				if ($time =~ /(\d+)m/)
-				{
-					$minutes = $1;
-				}
-				if ($time =~ /(\d+)s/)
-				{
-					$seconds = $1;
-				}
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-					name1 => "time",    value1 => $time,
-					name2 => "hours",   value2 => $hours,
-					name3 => "minutes", value3 => $minutes,
-					name4 => "seconds", value4 => $seconds,
-				}, file => $THIS_FILE, line => __LINE__});
-				my $say_hour   = $hours   == 1 ? "#!string!suffix_0010!#" : "#!string!suffix_0011!#";
-				my $say_minute = $minutes == 1 ? "#!string!suffix_0012!#" : "#!string!suffix_0013!#";
-				my $say_second = $seconds == 1 ? "#!string!suffix_0014!#" : "#!string!suffix_0015!#";
-				my $say_time_remaining;
-				if ($hours)
-				{
-					$say_time_remaining = $an->String->get({key => "message_0293", variables => { 
-							hours		=>	$hours,
-							say_hour	=>	$say_hour,
-							minutes		=>	$minutes,
-							say_minute	=>	$say_minute,
-							seconds		=>	$minutes,
-							say_second	=>	$say_minute,
-						}});
-				}
-				elsif ($minutes)
-				{
-					$say_time_remaining = $an->String->get({key => "message_0293", variables => { 
-							hours		=>	"0",
-							say_hour	=>	$say_hour,
-							minutes		=>	$minutes,
-							say_minute	=>	$say_minute,
-							seconds		=>	$minutes,
-							say_second	=>	$say_minute,
-						}});
-				}
-				else
-				{
-					$say_time_remaining = $an->String->get({key => "message_0293", variables => { 
-							hours		=>	"0",
-							say_hour	=>	$say_hour,
-							minutes		=>	"0",
-							say_minute	=>	$say_minute,
-							seconds		=>	$minutes,
-							say_second	=>	$say_minute,
-						}});
-				}
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "time",               value1 => $time,
-					name2 => "say_time_remaining", value2 => $say_time_remaining,
-				}, file => $THIS_FILE, line => __LINE__});
-				my $say_progress = $an->String->get({key => "message_0291", variables => { 
-						percent		=>	$percent,
-						received	=>	$say_received,
-						rate		=>	$say_rate,
-					}});
-				my $say_remaining = $an->String->get({key => "message_0292", variables => { time_remaining => $say_time_remaining }});
-				print $an->Web->template({file => "media-library.html", template => "download_website_progress", replace => { 
-					progress	=>	$say_progress,
-					remaining	=>	$say_remaining,
-				}});
-			}
-		}
-		else
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line,
-			}, file => $THIS_FILE, line => __LINE__});
-			if (not $header_printed)
-			{
-				print $an->Web->template({file => "common.html", template => "open-shell-call-output"});
-				$header_printed = 1;
-			}
-			
-			if ($failed)
-			{
-				$line = $an->String->get({key => "message_0354"}).$line;
-			}
-			
-			print $an->Web->template({file => "common.html", template => "shell-call-output", replace => { line => $line }});
 		}
 	}
 	
 	# If the 'script' bit was set, chmod the target file.
 	if ($failed)
 	{
-		# Remove the file if it exists
-		my $shell_call = $an->data->{path}{rm}." -f ".$an->data->{path}{shared_files}."/".$file;
+		my $string_key   = "adf_error_000".$failed;
+		my $error_string = $an->String->get({key => $string_key, variables => { url => $url }});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "shell_call", value2 => $shell_call,
+			name1 => "failed",       value1 => $failed, 
+			name2 => "error_string", value2 => $error_string, 
 		}, file => $THIS_FILE, line => __LINE__});
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			shell_call	=>	$shell_call,
-		});
-		foreach my $line (@{$return})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
+		print $an->Web->template({file => "media-library.html", template => "download_error", replace => { message => $error_string }});
+		return("");
 	}
-	elsif ($an->data->{cgi}{script})
+	else
 	{
-		my $shell_call = $an->data->{path}{'chmod'}." 755 ".$an->data->{path}{shared_files}."/".$file;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "shell_call", value2 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			shell_call	=>	$shell_call,
-		});
-		foreach my $line (@{$return})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	if ($header_printed)
-	{
-		print $an->Web->template({file => "common.html", template => "close-shell-call-output"});
+		my $explain = $an->String->get({key => "explain_0240", variables => { job_uuid => $job_uuid }});
+		print $an->Web->template({file => "media-library.html", template => "download_started", replace => { 
+			explain      => $explain,
+			redirect_url => "cgi-bin/mediaLibrary?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=monitor_downloads",
+			reload_time  => 10,
+		}});
 	}
 	print $an->Web->template({file => "media-library.html", template => "download-website-footer"});
 	
@@ -1123,6 +963,134 @@ sub _image_and_upload
 	return (0);
 }
 
+# This reloads itself so long as at least one download is running in the background. It also allows the 
+# user a chance to abort a download.
+sub _monitor_downloads
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_monitor_downloads" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid}, 
+		name2 => "cgi::subtask",    value2 => $an->data->{cgi}{subtask}, 
+		name3 => "cgi::job_uuid",   value3 => $an->data->{cgi}{job_uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Load the information about the active Anvil! and then do a short scan. We want to be quick so we
+	# just want to scan enough to make sure we can still talk to the nodes.
+	$an->Striker->load_anvil({anvil_uuid => $an->data->{cgi}{anvil_uuid}});
+	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
+	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
+	
+	# First, read both nodes (if possible) and if either have any running jobs, monitor them.
+	if ($an->data->{cgi}{subtask} eq "abort")
+	{
+		### TODO: ...
+	}
+	
+	### TODO: Print the header
+	
+	# Show the progress. 
+	my $something_downloading = 0;
+	foreach my $node_key ("node1", "node2")
+	{
+		### TODO: Print the node header
+		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_name", value1 => $node_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+	
+		my $file_displayed = 0;
+		my $shell_call     = $an->data->{path}{'anvil-download-file'}." --status";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target, 
+			name2 => "shell_call", value2 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /uuid=(.*?) bytes_downloaded=(\d+) percent=(\d+) current_rate=(\d+) average_rate=(\d+) seconds_running=(\d+) seconds_left=(.*?) out_file=(.*)$/)
+			{
+				my $uuid             = $1;
+				my $bytes_downloaded = $2;
+				my $percent          = $3;
+				my $current_rate     = $4;
+				my $average_rate     = $5;
+				my $seconds_running  = $6;
+				my $seconds_left     = $7;
+				my $out_file         = $8;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+					name1 => "uuid",             value1 => $uuid, 
+					name2 => "bytes_downloaded", value2 => $bytes_downloaded, 
+					name3 => "percent",          value3 => $percent, 
+					name4 => "current_rate",     value4 => $current_rate, 
+					name5 => "average_rate",     value5 => $average_rate, 
+					name6 => "seconds_running",  value6 => $seconds_running, 
+					name7 => "seconds_left",     value7 => $seconds_left, 
+					name8 => "out_file",         value8 => $out_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Update our counters
+				$file_displayed++;
+				$something_downloading++;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "file_displayed",        value1 => $file_displayed, 
+					name2 => "something_downloading", value2 => $something_downloading, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Convert the units to be human readable.
+				my $say_downloaded   = $an->Readable->bytes_to_hr({'bytes' => $bytes_downloaded});
+				my $say_percent      = $percent."%";
+				my $say_current_rate = $an->Readable->bytes_to_hr({'bytes' => $current_rate})."/s";
+				my $say_average_rate = $an->Readable->bytes_to_hr({'bytes' => $average_rate})."/s";
+				my $say_running_time = $an->Readable->time({'time' => $seconds_running});
+				my $say_time_left    = $an->Readable->time({'time' => $seconds_left});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+					name1 => "say_downloaded",   value1 => $say_downloaded, 
+					name2 => "say_percent",      value2 => $say_percent, 
+					name3 => "say_current_rate", value3 => $say_current_rate, 
+					name4 => "say_average_rate", value4 => $say_average_rate, 
+					name5 => "say_running_time", value5 => $say_running_time, 
+					name6 => "say_time_left",    value6 => $say_time_left, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Now display!
+			}
+		}
+		
+		if (not $file_displayed)
+		{
+			### TODO: Print the 'nothing being downloaded' message.
+		}
+		
+		### TODO: Print the node footer
+	}
+	
+	if ($something_downloading)
+	{
+		### TODO: Print the reload in 5s template
+	}
+	else
+	{
+		### TODO: Print the "done" message, no more reload.
+	}
+	
+	### TODO: Print the footer
+	
+	return (0);
+}
+
 # This sorts out what needs to happen if 'task' was set.
 sub _process_task
 {
@@ -1193,6 +1161,10 @@ sub _process_task
 	elsif ($an->data->{cgi}{task} eq "make_executable")
 	{
 		$an->MediaLibrary->_toggle_executable({mark => "on"});
+	}
+	elsif ($an->data->{cgi}{task} eq "monitor_downloads")
+	{
+		$an->MediaLibrary->_monitor_downloads();
 	}
 	else
 	{

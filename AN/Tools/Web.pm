@@ -385,6 +385,7 @@ sub check_all_cgi
 		"insert",
 		"install_iso",
 		"install_target",
+		"job_uuid", 
 		"load",
 		"load_anvil",
 		"load_dr_job", 
