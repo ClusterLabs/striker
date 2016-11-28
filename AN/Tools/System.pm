@@ -261,7 +261,7 @@ sub daemon_boot_config
 	return($state);
 }
 
-# This uses 'anvil-run-jobs' to run a job in the future
+# This uses 'anvil-run-jobs' to run a job in the future (or just to run it in the background)
 sub delayed_run
 {
 	my $self      = shift;
@@ -270,11 +270,11 @@ sub delayed_run
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delayed_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Get the target
-	my $command  = $parameter->{command};
-	my $delay    = $parameter->{delay}    ? $parameter->{delay}    : 60;
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "local";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : 22;
+	my $command  =         $parameter->{command};
+	my $delay    = defined $parameter->{delay}    ? $parameter->{delay}    : 60;
+	my $target   =         $parameter->{target}   ? $parameter->{target}   : "local";
+	my $password =         $parameter->{password} ? $parameter->{password} : "";
+	my $port     =         $parameter->{port}     ? $parameter->{port}     : 22;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "command", value1 => $command, 
 		name2 => "delay",   value2 => $delay, 

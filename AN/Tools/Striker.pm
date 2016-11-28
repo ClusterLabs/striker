@@ -8040,6 +8040,19 @@ sub _header
 					id		=>	"refresh",
 				}});
 		}
+		elsif ($an->data->{cgi}{task} eq "monitor_downloads")
+		{
+			$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+					button_link	=>	"?anvil_uuid=$anvil_uuid&task=monitor_downloads",
+					button_text	=>	"$refresh_image",
+					id		=>	"refresh",
+				}});
+			$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+					button_link	=>	"?anvil_uuid=$anvil_uuid",
+					button_text	=>	"$back_image",
+					id		=>	"back",
+				}});
+		}
 	}
 	elsif ($an->data->{cgi}{logo})
 	{

@@ -389,7 +389,9 @@
 		<key name="explain_0237"><![CDATA[The database user's password.<br /><span class="highlight_note_bold">Note</span>: Changing this will <b>NOT</b> change the current database password!]]></key>
 		<key name="explain_0238"><![CDATA[<b>It looks like we are about to rebuild or replace a node.</b><br />Please be sure to check that the passwords set in the manifest match the ones currently in use!]]></key>
 		<key name="explain_0239"><![CDATA[A server was found to be running on a node while the 'cman' daemon was stopped.<br />This should never happen.]]></key>
-		<key name="explain_0240"><![CDATA[The download has started with job ID: [#!variable!job_uuid!#].<br />In a moment, the download progress page will load.<br />You can safely go back to the main page if you wish.]]></key>
+		<key name="explain_0240"><![CDATA[The download has been queued and will start within one minute.<br />In a moment, the download progress page will load.<br />You can safely go back to the main page if you wish.]]></key>
+		<key name="explain_0241"><![CDATA[The URL: [<span class="code">#!variable!url!#</span>] is in queue for download]]></key>
+		<key name="explain_0242"><![CDATA[Any pending or active downloads will be shown below.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -820,6 +822,12 @@
 		<key name="row_0332"><![CDATA[[<span class="subtle_text">#!variable!id!#</span>] Database Password]]></key>
 		<key name="row_0333">Node Readiness</key>
 		<key name="row_0334">Before Proceeding</key>
+		<key name="row_0335">Source URL</key>
+		<key name="row_0336">Saving To</key>
+		<key name="row_0337">Progress</key>
+		<key name="row_0338">Download Rate</key>
+		<key name="row_0339">Running Time</key>
+		<key name="row_0340">Queued</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -1057,6 +1065,8 @@
 		<key name="suffix_0013">minutes</key>	<!-- Plural -->
 		<key name="suffix_0014">second</key>	<!-- Singular -->
 		<key name="suffix_0015">seconds</key>	<!-- Plural -->
+		<key name="suffix_0016">Current / Average</key>
+		<key name="suffix_0017">Passed / Estimated Remaining</key>
 		
 		<!-- These are 'state' messages and reflect the state of a given resource. -->
 		<key name="state_0001">Unknown</key>
@@ -1194,6 +1204,7 @@
 		<key name="state_0132">Hosting Servers, Read Only!</key>
 		<key name="state_0133">Skipped</key>
 		<key name="state_0134"><![CDATA[The service: [<span class="highlight_detail">#!variable!service!#</span>] is in a 'failed' state.<br />Manual intervention is required.]]></key>
+		<key name="state_0135">No active downloads</key>
 		
 		
 		<!-- Titles used in tables (and options in <select> fields) -->
@@ -1402,6 +1413,7 @@
 		<key name="title_0203">The new #!string!brand_0003!# was successfully saved.</key>
 		<key name="title_0204">Add, edit or delete a disaster recovery target server.</key>
 		<key name="title_0205">Configure this #!string!brand_0015!# host.</key>
+		<key name="title_0207">Download progress.</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1918,6 +1930,7 @@
 		<key name="message_0499"><![CDATA[The: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job has been deleted.]]></key>
 		<key name="message_0500"><![CDATA[There were no available servers to select for this DR job.<br />Please select an #!string!brand_0003!# hosting servers.]]></key>
 		<key name="message_0501"><![CDATA[Running the install for <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>
+		<key name="message_0502"><![CDATA[Files being downloaded on either node of #!string!brand_0003!#: [#!variable!anvil_name!#] will be shown below.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>
@@ -3302,6 +3315,7 @@ Starting download:
 		<!-- errors -->
 		<key name="adf_warning_0001">Failed to delete the bad file: [#!variable!bad_file!#]. The error was: [#!variable!error!#].</key>
 		<key name="adf_warning_0002">Failed to delete the aborted download file: [#!variable!file!#]. The error was: [#!variable!error!#].</key>
+		<key name="adf_warning_0003">Download aborted at: [#!variable!time!#].</key>
 		
 		<!-- errors -->
 		<key name="adf_error_0001">The requested URL: [#!variable!url!#] is not supported. Only 'ftp', 'http' and 'https' are supported.</key>

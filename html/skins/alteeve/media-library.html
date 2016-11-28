@@ -817,17 +817,219 @@
 <br />
 <!-- end download_error -->
 
-<!-- start download_started -->
-<table>
+<!-- start download_queued -->
 	<tr>
-		<td class="highlight_good">
-			#!string!row_0133!#
+		<td class="highlight_good_bold">
+			#!string!row_0340!#
 		</td>
 		<td>
-			#!replace!message!#
+			<br />
+			#!replace!message!#<br />
+			<br />
 		</td>
 	<tr>
 </table>
 <META HTTP-EQUIV="Refresh" CONTENT="#!replace!reload_time!#; URL=#!replace!redirect_url!#">
 <br />
-<!-- end download_started -->
+<!-- end download_queued -->
+
+<!-- start download-progress-header -->
+<table align="center">
+	<tr>
+		<td class="highlight_ready_bold" colspan="2">
+			#!string!title_0207!#
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0154!#
+		</td>
+		<td>
+			<br />
+			#!string!explain_0242!#<br />
+			<br />
+		</td>
+	</tr>
+<!-- end download-progress-header -->
+
+<!-- start download-progress-footer -->
+</table>
+<META HTTP-EQUIV="Refresh" CONTENT="#!replace!reload_time!#; URL=#!replace!redirect_url!#">
+<br />
+<!-- end download-progress-footer -->
+
+<!-- start download-progress-node-header -->
+	<tr>
+		<td class="highlight_detail">
+			#!replace!node_name!#
+		</td>
+<!-- end download-progress-node-header -->
+
+<!-- start download-progress-node-text-entry -->
+			#!replace!message!#<br />
+<!-- end download-progress-node-text-entry -->
+
+<!-- start download-progress-file-progress-open-list -->
+		<td style="text-align: left;">
+<!-- end download-progress-file-progress-open-list -->
+
+<!-- start download-progress-file-progress-close-list -->
+		</td>
+<!-- end download-progress-file-progress-close-list -->
+
+<!-- start download-progress-file-progress -->
+			<table class="hidden_table" style="text-align: left;">
+				<tr>
+					<!-- Source -->
+					<td class="highlight_row">
+						#!string!row_0335!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!url!#
+					</td>
+				</tr>
+				<tr>
+					<!-- Target -->
+					<td class="highlight_row">
+						#!string!row_0336!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!target!#
+					</td>
+				</tr>
+				<tr>
+					<!-- Progress -->
+					<td class="highlight_row">
+						#!string!row_0337!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!downloaded!# - #!replace!percent!#
+					</td>
+				</tr>
+				<tr>
+					<!-- Rate -->
+					<td class="highlight_row">
+						#!string!row_0338!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!current_rate!# / #!replace!average_rate!# <span class="subtle_text">(#!string!suffix_0016!#)</span>
+					</td>
+				</tr>
+				<tr>
+					<!-- Time -->
+					<td class="highlight_row">
+						#!string!row_0339!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!running_time!# / #!replace!time_left!# <span class="subtle_text">(#!string!suffix_0017!#)</span>
+					</td>
+				</tr>
+			</table>
+<!-- end download-progress-file-progress -->
+
+<!-- start download-progress-file-done -->
+			<table class="hidden_table" style="text-align: left;">
+				<tr>
+					<!-- Source -->
+					<td class="highlight_row">
+						#!string!row_0335!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!url!#
+					</td>
+				</tr>
+				<tr>
+					<!-- Target -->
+					<td class="highlight_row">
+						#!string!row_0336!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!target!#
+					</td>
+				</tr>
+				<tr>
+					<!-- Progress -->
+					<td class="highlight_row">
+						<span class="highlight_good_bold">#!string!row_0019!#</span>:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!downloaded!#
+					</td>
+				</tr>
+				<tr>
+					<!-- Rate -->
+					<td class="highlight_row">
+						#!string!row_0338!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!average_rate!#
+					</td>
+				</tr>
+				<tr>
+					<!-- Time -->
+					<td class="highlight_row">
+						#!string!row_0339!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!running_time!#
+					</td>
+				</tr>
+			</table>
+<!-- end download-progress-file-done -->
+
+<!-- start download-progress-file-failed -->
+			<table class="hidden_table">
+				<tr>
+					<!-- Error -->
+					<td class="highlight_row">
+						<span class="highlight_bad">#!string!state_0018!#</span>:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!error!#
+					</td>
+				</tr>
+				<tr>
+					<!-- Source -->
+					<td class="highlight_row">
+						#!string!row_0335!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!url!#
+					</td>
+				</tr>
+			</table>
+<!-- end download-progress-file-failed -->
+
+<!-- start download-progress-file-aborted -->
+			<table class="hidden_table">
+				<tr>
+					<!-- Error -->
+					<td class="highlight_row">
+						<span class="highlight_warning">#!string!state_0050!#</span>:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!error!#
+					</td>
+				</tr>
+				<tr>
+					<!-- Source -->
+					<td class="highlight_row">
+						#!string!row_0335!#:
+					</td>
+					<td class="highlight_row_data">
+						#!replace!url!#
+					</td>
+				</tr>
+			</table>
+<!-- end download-progress-file-aborted -->
+
+<!-- start download-progress-node-status-entry -->
+		<td>
+			#!replace!statuses!#
+		</td>
+<!-- end download-progress-node-status-entry -->
+
+<!-- start download-progress-node-footer -->
+		</td>
+	</tr>
+<!-- end download-progress-node-footer -->

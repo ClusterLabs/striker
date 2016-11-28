@@ -687,9 +687,8 @@ sub _download_url
 		base	=>	$base,
 	}});
 	
-	### TODO: Switch this to 'anvil-download-file' and then go into a reload loop until this file is 
-	###       downloaded. (sub show_download_progress).
-	my $job_uuid        = "";
+	# We call this and background it immediately so that we don't get stuck waiting for it to return.
+	# This does mean though that we'll not get output. So the 'failed' check is, for now, useless.
 	my $failed          = 0;
 	my $header_printed  = 0;
 	my $shell_call      = $an->data->{path}{'anvil-download-file'}." --url $url";
@@ -701,56 +700,20 @@ sub _download_url
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$target,
-		port		=>	$port, 
-		password	=>	$password,
-		shell_call	=>	$shell_call,
+	my ($token, $delayed_run_output, $problem) = $an->System->delayed_run({
+		command  => $shell_call,
+		delay    => 0,
+		target   => $target,
+		password => $password,
+		port     => $port,
 	});
-	foreach my $line (@{$return})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /failed:(\d)$/)
-		{
-			$failed = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "failed", value1 => $failed, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		elsif ($line =~ /started:(.*)$/)
-		{
-			$job_uuid = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "job_uuid", value1 => $job_uuid, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
 	
-	# If the 'script' bit was set, chmod the target file.
-	if ($failed)
-	{
-		my $string_key   = "adf_error_000".$failed;
-		my $error_string = $an->String->get({key => $string_key, variables => { url => $url }});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "failed",       value1 => $failed, 
-			name2 => "error_string", value2 => $error_string, 
-		}, file => $THIS_FILE, line => __LINE__});
-		print $an->Web->template({file => "media-library.html", template => "download_error", replace => { message => $error_string }});
-		return("");
-	}
-	else
-	{
-		my $explain = $an->String->get({key => "explain_0240", variables => { job_uuid => $job_uuid }});
-		print $an->Web->template({file => "media-library.html", template => "download_started", replace => { 
-			explain      => $explain,
-			redirect_url => "cgi-bin/mediaLibrary?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=monitor_downloads",
-			reload_time  => 10,
-		}});
-	}
-	print $an->Web->template({file => "media-library.html", template => "download-website-footer"});
+	# Tell the user that the download will be starting in a moment.
+	print $an->Web->template({file => "media-library.html", template => "download_queued", replace => { 
+		message      => "#!string!explain_0240!#",
+		redirect_url => "/cgi-bin/mediaLibrary?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=monitor_downloads",
+		reload_time  => 10,
+	}});
 	
 	return (0);
 }
@@ -984,26 +947,53 @@ sub _monitor_downloads
 	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
 	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
 	
+	# Print the header
+	print $an->Web->template({file => "media-library.html", template => "download-progress-header", replace => { anvil_name => $an->data->{sys}{anvil}{name} }});
+	
 	# First, read both nodes (if possible) and if either have any running jobs, monitor them.
 	if ($an->data->{cgi}{subtask} eq "abort")
 	{
 		### TODO: ...
 	}
 	
-	### TODO: Print the header
-	
 	# Show the progress. 
 	my $something_downloading = 0;
 	foreach my $node_key ("node1", "node2")
 	{
-		### TODO: Print the node header
 		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port      = $an->data->{sys}{anvil}{$node_key}{use_port}; 
+		my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+		my $online    = $an->data->{sys}{anvil}{$node_key}{online};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "node_name", value1 => $node_name, 
+			name2 => "target",    value2 => $target, 
+			name3 => "port",      value3 => $port, 
+			name4 => "online",    value4 => $online, 
 		}, file => $THIS_FILE, line => __LINE__});
-	
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password, 
+		}, file => $THIS_FILE, line => __LINE__});
 		my $file_displayed = 0;
-		my $shell_call     = $an->data->{path}{'anvil-download-file'}." --status";
+		
+		# Print the node header
+		print $an->Web->template({file => "media-library.html", template => "download-progress-node-header", replace => { node_name => $node_name }});
+		
+		# Is the node accessible?
+		if (not $online)
+		{
+			# Offline.
+			print $an->Web->template({file => "media-library.html", template => "download-progress-node-text-entry", replace => { 
+				message => "#!string!state_0004!#",
+				class   => "highlight_offline",
+			}});
+			print $an->Web->template({file => "media-library.html", template => "download-progress-node-footer"});
+			next;
+		}
+		
+		# Still alive? Gooood.
+		my $opened_list = 0;
+		my $shell_call  = $an->data->{path}{'anvil-download-file'}." --status";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target, 
 			name2 => "shell_call", value2 => $shell_call, 
@@ -1020,7 +1010,19 @@ sub _monitor_downloads
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($line =~ /uuid=(.*?) bytes_downloaded=(\d+) percent=(\d+) current_rate=(\d+) average_rate=(\d+) seconds_running=(\d+) seconds_left=(.*?) out_file=(.*)$/)
+			if (not $opened_list)
+			{
+				$opened_list = 1;
+				print $an->Web->template({file => "media-library.html", template => "download-progress-file-progress-open-list"});
+			}
+			
+			# Update our counters
+			$file_displayed++;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "file_displayed", value1 => $file_displayed, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /uuid=(.*?) bytes_downloaded=(\d+) percent=(\d+) current_rate=(\d+) average_rate=(\d+) seconds_running=(\d+) seconds_left=(.*?) url=(.*?) out_file=(.*)$/)
 			{
 				my $uuid             = $1;
 				my $bytes_downloaded = $2;
@@ -1029,8 +1031,9 @@ sub _monitor_downloads
 				my $average_rate     = $5;
 				my $seconds_running  = $6;
 				my $seconds_left     = $7;
-				my $out_file         = $8;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				my $url              = $8;
+				my $out_file         = $9;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 					name1 => "uuid",             value1 => $uuid, 
 					name2 => "bytes_downloaded", value2 => $bytes_downloaded, 
 					name3 => "percent",          value3 => $percent, 
@@ -1038,15 +1041,14 @@ sub _monitor_downloads
 					name5 => "average_rate",     value5 => $average_rate, 
 					name6 => "seconds_running",  value6 => $seconds_running, 
 					name7 => "seconds_left",     value7 => $seconds_left, 
-					name8 => "out_file",         value8 => $out_file, 
+					name8 => "url",              value8 => $url, 
+					name9 => "out_file",         value9 => $out_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Update our counters
-				$file_displayed++;
 				$something_downloading++;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "file_displayed",        value1 => $file_displayed, 
-					name2 => "something_downloading", value2 => $something_downloading, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "something_downloading", value1 => $something_downloading, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Convert the units to be human readable.
@@ -1054,8 +1056,8 @@ sub _monitor_downloads
 				my $say_percent      = $percent."%";
 				my $say_current_rate = $an->Readable->bytes_to_hr({'bytes' => $current_rate})."/s";
 				my $say_average_rate = $an->Readable->bytes_to_hr({'bytes' => $average_rate})."/s";
-				my $say_running_time = $an->Readable->time({'time' => $seconds_running});
-				my $say_time_left    = $an->Readable->time({'time' => $seconds_left});
+				my $say_running_time = $an->Readable->time({'time' => $seconds_running, suffix => "long"});
+				my $say_time_left    = $an->Readable->time({'time' => $seconds_left, suffix => "long"});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 					name1 => "say_downloaded",   value1 => $say_downloaded, 
 					name2 => "say_percent",      value2 => $say_percent, 
@@ -1066,27 +1068,159 @@ sub _monitor_downloads
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Now display!
+				print $an->Web->template({file => "media-library.html", template => "download-progress-file-progress", replace => { 
+					url          => $url,
+					target       => $out_file,
+					downloaded   => $say_downloaded,
+					percent      => $say_percent,
+					current_rate => $say_current_rate,
+					average_rate => $say_average_rate,
+					running_time => $say_running_time,
+					time_left    => $say_time_left,
+				}});
 			}
+			if ($line =~ /done=(\d+?) uuid=(.*?) bytes_downloaded=(\d+?) average_rate=(\d+?) seconds_running=(\d+?) url=(.*?) out_file=(.*)$/)
+			{
+				my $done             = $1;
+				my $uuid             = $2;
+				my $bytes_downloaded = $3;
+				my $average_rate     = $4;
+				my $seconds_running  = $5;
+				my $url              = $6;
+				my $out_file         = $7;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+					name1 => "done",             value1 => $done, 
+					name2 => "uuid",             value2 => $uuid, 
+					name3 => "bytes_downloaded", value3 => $bytes_downloaded, 
+					name4 => "average_rate",     value4 => $average_rate, 
+					name5 => "seconds_running",  value5 => $seconds_running, 
+					name6 => "url",              value6 => $url, 
+					name7 => "out_file",         value7 => $out_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Convert the units to be human readable.
+				my $say_downloaded   = $an->Readable->bytes_to_hr({'bytes' => $bytes_downloaded});
+				my $say_average_rate = $an->Readable->bytes_to_hr({'bytes' => $average_rate})."/s";
+				my $say_running_time = $an->Readable->time({'time' => $seconds_running, suffix => "long"});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "say_downloaded",   value1 => $say_downloaded, 
+					name2 => "say_average_rate", value2 => $say_average_rate, 
+					name3 => "say_running_time", value3 => $say_running_time, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Now display!
+				print $an->Web->template({file => "media-library.html", template => "download-progress-file-done", replace => { 
+					url          => $url,
+					target       => $out_file,
+					downloaded   => $say_downloaded,
+					average_rate => $say_average_rate,
+					running_time => $say_running_time,
+				}});
+			}
+			if ($line =~ /failed=(\d+) uuid=(.*?) out_file=(.*) url=(.*)$/)
+			{
+				my $failed       = $1;
+				my $uuid         = $2;
+				my $out_file     = $3;
+				my $url          = $4;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "failed",   value1 => $failed, 
+					name2 => "uuid",     value2 => $uuid, 
+					name3 => "out_file", value3 => $out_file, 
+					name4 => "url",      value4 => $url, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $string_key   = "adf_error_000".$failed;
+				my $error_string = $an->String->get({key => $string_key, variables => { 
+					uuid     => $uuid,
+					out_file => $out_file,
+					url     => $url,
+				}});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "error_string", value1 => $error_string, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Display the sadness
+				print $an->Web->template({file => "media-library.html", template => "download-progress-file-failed", replace => { 
+					url    => $url,
+					target => $out_file,
+					error  => $error_string,
+				}});
+			}
+			if ($line =~ /aborted=(\d+) uuid=(.*?) url=(.*?) out_file=(.*)$/)
+			{
+				my $abort    = $1;
+				my $uuid     = $2;
+				my $url      = $3;
+				my $out_file = $4;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "abort",    value1 => $abort, 
+					name2 => "uuid",     value2 => $uuid, 
+					name3 => "url",      value3 => $url, 
+					name4 => "out_file", value4 => $out_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $say_time     = $an->Get->date_and_time({use_time => $abort});
+				my $error_string = $an->String->get({key => "adf_warning_0003", variables => { 'time' => $say_time }});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "error_string", value1 => $error_string, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Display the sadness
+				print $an->Web->template({file => "media-library.html", template => "download-progress-file-aborted", replace => { 
+					url    => $url,
+					target => $out_file,
+					error  => $error_string,
+				}});
+			}
+			if ($line =~ /queued=(.*)$/)
+			{
+				my $url = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "url", value1 => $url, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Tell the user
+				my $message = $an->String->get({key => "explain_0241", variables => { url => $url }});;
+				print $an->Web->template({file => "media-library.html", template => "download-progress-node-text-entry", replace => { 
+					message => $message,
+					class   => "highlight_ready",
+				}});
+			}
+		}
+		
+		if ($opened_list)
+		{
+			print $an->Web->template({file => "media-library.html", template => "download-progress-file-progress-close-list"});
 		}
 		
 		if (not $file_displayed)
 		{
-			### TODO: Print the 'nothing being downloaded' message.
+			# Print the 'nothing being downloaded' message.
+			print $an->Web->template({file => "media-library.html", template => "download-progress-file-progress-open-list"});
+			print $an->Web->template({file => "media-library.html", template => "download-progress-node-text-entry", replace => { 
+				message => "#!string!state_0135!#",
+				class   => "code",
+			}});
 		}
+		print $an->Web->template({file => "media-library.html", template => "download-progress-file-progress-close-list"});
 		
-		### TODO: Print the node footer
+		# Print the node footer
+		print $an->Web->template({file => "media-library.html", template => "download-progress-node-footer"});
 	}
 	
-	if ($something_downloading)
+	my $reload_timer = 15;
+	if (not $something_downloading)
 	{
-		### TODO: Print the reload in 5s template
-	}
-	else
-	{
-		### TODO: Print the "done" message, no more reload.
+		# Reload each 30s.
+		$reload_timer = 30;
 	}
 	
-	### TODO: Print the footer
+	# Print the footer
+	print $an->Web->template({file => "media-library.html", template => "download-progress-footer", replace => { 
+		reload_time  => $reload_timer,
+		redirect_url => "/cgi-bin/mediaLibrary?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=monitor_downloads",
+	}});
 	
 	return (0);
 }

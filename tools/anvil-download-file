@@ -112,7 +112,7 @@ sub show_status
 	{
 		next if $file !~ /^$progress_files/;
 		my $full_path = $directory."/".$file;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "full_path", value1 => $full_path, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -125,7 +125,7 @@ sub show_status
 			name3 => "age",   value3 => $age, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $stale_age = 60;
+		my $stale_age = 300;
 		if ($age > $stale_age)
 		{
 			# Delete it.
@@ -139,6 +139,27 @@ sub show_status
 		
 		# Read the file.
 		my $shell_call = $full_path;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			print "$line\n";
+		}
+		close $file_handle;
+	}
+	
+	# Now read the anvil-jobs file to see if anything is queued
+	### TODO: Need to filter out running jobs 
+	if (-e $an->data->{path}{'anvil-jobs'})
+	{
+		my $shell_call = $an->data->{path}{'anvil-jobs'};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -150,7 +171,32 @@ sub show_status
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
-			print "$line\n";
+			if ($line =~ /^(\d+):(.*?):(.*)$/)
+			{
+				my $runtime    = $1;
+				my $token      = $2;
+				my $command    = $3;
+				my $time       = time;
+				my $difference = $runtime - $time;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+					name1 => "time",       value1 => $time,
+					name2 => "runtime",    value2 => $runtime,
+					name3 => "difference", value3 => $difference,
+					name4 => "token",      value4 => $token,
+					name5 => "command",    value5 => $command,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				next if $command !~ /$THIS_FILE/;
+				my $url = ($line =~ /--url (.*)$/)[0];
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "url", value1 => $url,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($url)
+				{
+					print "queued=$url\n";
+				}
+			}
 		}
 		close $file_handle;
 	}
@@ -163,8 +209,9 @@ sub abort_download
 {
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "abort_download" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $uuid = "";
-	my $pid  = 0;
+	my $failed = 0; 
+	my $uuid   = "";
+	my $pid    = 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "switches::abort",  value1 => $an->data->{switches}{abort}, 
 		name2 => "switches::delete", value2 => $an->data->{switches}{'delete'}, 
@@ -187,7 +234,8 @@ sub abort_download
 	{
 		### NOTE: This is meant to be parsed by a script, so don't translate it.
 		# Print that we failed and what the failure was. 
-		print "failed:6\n";
+		$failed = 6;
+		print "failed:$failed\n";
 		
 		# Bad input
 		my $variables = { abort => $an->data->{switches}{abort} };
@@ -201,6 +249,7 @@ sub abort_download
 	my $job_pid       = 0;
 	my $job_uuid      = "";
 	my $progress_file = "";
+	my $url           = "";
 	my $out_file      = "";
 	if (-e $an->data->{path}{'downloading-files'})
 	{
@@ -232,13 +281,15 @@ sub abort_download
 			{
 				$job_pid       = ($line =~ /pid=(\d+) /)[0];
 				$job_uuid      = ($line =~ /uuid=(.*?) /)[0];
-				$out_file      = ($line =~ /out=(.*?) /)[0];
+				$out_file      = ($line =~ /out_file=(.*?) /)[0];
+				$url           = ($line =~ /url=(.*?) /)[0];
 				$progress_file = ($line =~ /progress=(.*)$/)[0];
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 					name1 => "job_pid",       value1 => $job_pid, 
 					name2 => "job_uuid",      value2 => $job_uuid, 
 					name3 => "out_file",      value3 => $out_file, 
-					name4 => "progress_file", value4 => $progress_file, 
+					name4 => "url",           value4 => $url, 
+					name5 => "progress_file", value5 => $progress_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -294,7 +345,7 @@ sub abort_download
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-		print $file_handle "aborted=".time." uuid=$job_uuid out=$out_file\n";
+		print $file_handle "aborted=".time." uuid=$job_uuid url=$url out_file=$out_file\n";
 		close $file_handle;
 		
 		# Update the jobs file.
@@ -405,7 +456,7 @@ sub manage_jobs_list
 	if (($uuid) && ($pid))
 	{
 		my $progress_file = "/tmp/".$THIS_FILE.".progress.".$uuid;
-		my $id_string     = "pid=$pid uuid=$uuid started=$unix_start source=$url out=$out_file progress=$progress_file";
+		my $id_string     = "pid=$pid uuid=$uuid started=$unix_start url=$url out_file=$out_file progress=$progress_file";
 		$an->Log->entry({log_level => 3, message_key => "adf_log_0004", message_variables => { 
 			jobs_file     => $an->data->{path}{'downloading-files'}, 
 			progress_file => $progress_file, 
@@ -446,6 +497,7 @@ sub download_file
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "download_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $failed        = 0;
 	my $url           = $an->data->{switches}{url};
 	my $uuid          = $an->Get->uuid();
 	my $pid           = $$;
@@ -453,6 +505,7 @@ sub download_file
 	my $out_file      = $an->data->{path}{shared_files}."/".$file;
 	my $unix_start    = time;
 	my $say_start     = $an->Get->date_and_time({use_time => $unix_start, split_date_time => 0});
+	my $progress_file = "/tmp/".$THIS_FILE.".progress.".$uuid;
 	$an->Log->entry({log_level => 3, message_key => "adf_log_0002", message_variables => { 
 		file       => $file, 
 		url        => $url, 
@@ -467,7 +520,16 @@ sub download_file
 	{
 		### NOTE: This is meant to be parsed by a script, so don't translate it.
 		# Print that we failed and what the failure was. 
-		print "failed:1\n";
+		$failed = 1;
+		print "failed:$failed\n";
+		
+		my $shell_call = $progress_file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle "failed=$failed uuid=$uuid out_file=$out_file url=$url\n";
+		close $file_handle;
 		
 		my $variables = { url => $url };
 		print $an->String->get({key => "adf_error_0001", variables => $variables})."\n";
@@ -487,16 +549,14 @@ sub download_file
 	my $rate             = 0;	# Bytes/sec
 	my $downloaded       = 0;	# Bytes
 	my $time_left        = 0;	# Seconds
-	my $failed           = 0;
 	my $report_interval  = 5;	# Seconds between status file update
 	my $next_report      = time + $report_interval;
-	my $progress_file    = "/tmp/".$THIS_FILE.".progress.".$uuid;
 	my $shell_call       = $progress_file;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-	print $file_handle "uuid=$uuid bytes_downloaded=0 percent=0 current_rate=0 average_rate=0 seconds_running=0 seconds_left=? out_file=$out_file\n";
+	print $file_handle "uuid=$uuid bytes_downloaded=0 percent=0 current_rate=0 average_rate=0 seconds_running=0 seconds_left=0 url=$url out_file=$out_file\n";
 	close $file_handle;
 	
 	# Download!
@@ -604,7 +664,7 @@ sub download_file
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-				print $file_handle "uuid=$uuid bytes_downloaded=$bytes_downloaded percent=$percent current_rate=$byte_rate average_rate=$average_rate seconds_running=$running_time seconds_left=$seconds_left out_file=$out_file\n";
+				print $file_handle "uuid=$uuid bytes_downloaded=$bytes_downloaded percent=$percent current_rate=$byte_rate average_rate=$average_rate seconds_running=$running_time seconds_left=$seconds_left url=$url out_file=$out_file\n";
 				close $file_handle;
 			}
 		}
@@ -621,7 +681,7 @@ sub download_file
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-		print $file_handle "failed=$failed uuid=$uuid out_file=$out_file\n";
+		print $file_handle "failed=$failed uuid=$uuid out_file=$out_file url=$url\n";
 		close $file_handle;
 		
 		### NOTE: This is meant to be parsed by a script, so don't translate it.
@@ -648,7 +708,7 @@ sub download_file
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-		print $file_handle "done=".time." uuid=$uuid bytes_downloaded=$bytes_downloaded average_rate=$average_rate seconds_running=$running_time out_file=$out_file\n";
+		print $file_handle "done=".time." uuid=$uuid bytes_downloaded=$bytes_downloaded average_rate=$average_rate seconds_running=$running_time url=$url out_file=$out_file\n";
 		close $file_handle;
 		
 		# Set it to executable, if requested.

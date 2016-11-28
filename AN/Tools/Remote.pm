@@ -361,12 +361,12 @@ sub remote_call
 	$an->data->{target}{$target}{ssh_fh} = defined $an->data->{target}{$target}{ssh_fh} ? $an->data->{target}{$target}{ssh_fh} : "";
 	
 	# Now pick up the rest of the variables.
-	my $port       = $parameter->{port}            ? $parameter->{port}     : 22;
-	my $user       = $parameter->{user}            ? $parameter->{user}     : "root";
-	my $password   = $parameter->{password}        ? $parameter->{password} : $an->data->{sys}{root_password};
-	my $ssh_fh     = $parameter->{ssh_fh}          ? $parameter->{ssh_fh}   : $an->data->{target}{$target}{ssh_fh};
-	my $close      = defined $parameter->{'close'} ? $parameter->{'close'}  : 0;
-	my $shell_call = $parameter->{shell_call};
+	my $port       =         $parameter->{port}       ? $parameter->{port}       : 22;
+	my $user       =         $parameter->{user}       ? $parameter->{user}       : "root";
+	my $password   =         $parameter->{password}   ? $parameter->{password}   : $an->data->{sys}{root_password};
+	my $ssh_fh     =         $parameter->{ssh_fh}     ? $parameter->{ssh_fh}     : $an->data->{target}{$target}{ssh_fh};
+	my $close      = defined $parameter->{'close'}    ? $parameter->{'close'}    : 0;
+	my $shell_call =         $parameter->{shell_call};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "time",       value1 => time,
 		name2 => "target",     value2 => $target,

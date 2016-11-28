@@ -147,6 +147,20 @@ td {
 	color: #3333cc;
 }
 
+.highlight_row {
+	text-align: right;
+	color: #3333cc;
+	border: 1px transparent;
+}
+
+.highlight_row_data {
+	text-align: left;
+	font-size: 12px;
+	color: #1f1f1f;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	border: 1px transparent;
+}
+
 .highlight_row_bold {
 	color: #13749a;
 	font-weight: bold;
