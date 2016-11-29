@@ -13,7 +13,9 @@ my $THIS_FILE = "MediaLibrary.pm";
 ### Methods;
 ### NOTE: All of these private methods are ports of functions from the old Striker.pm. None will be developed
 ###       further and all will be phased out over time. Do not use any of these in new dev work.
+# _abort_download
 # _check_local_dvd
+# _confirm_abort_download
 # _confirm_delete_file
 # _confirm_download_url
 # _confirm_image_and_upload
@@ -64,6 +66,202 @@ sub parent
 #############################################################################################################
 # Internal methods                                                                                          #
 #############################################################################################################
+
+# This aborts (and deletes, if requested) an in-progress download.
+sub _abort_download
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_abort_download" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	my $subtask    = $an->data->{cgi}{subtask} eq "delete" ? "delete" : "abort";
+	my $job_uuid   = $an->data->{cgi}{job_uuid};
+	my $url        = $an->data->{cgi}{url};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+		name2 => "subtask",    value2 => $subtask,
+		name3 => "job_uuid",   value3 => $job_uuid,
+		name4 => "url",        value4 => $url,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Show the progress. 
+	my $found_node   = "";
+	my $do_abort     = 0;
+	my $aborted      = 0;
+	my $already_done = 0;
+	foreach my $node_key ("node1", "node2")
+	{
+		next if $found_node;
+		
+		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port      = $an->data->{sys}{anvil}{$node_key}{use_port}; 
+		my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+		my $online    = $an->data->{sys}{anvil}{$node_key}{online};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "node_name", value1 => $node_name, 
+			name2 => "target",    value2 => $target, 
+			name3 => "port",      value3 => $port, 
+			name4 => "online",    value4 => $online, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my $file_displayed = 0;
+		
+		# Is the node accessible?
+		next if not $online;
+		
+		# Still alive? Good. Is this the node hosting the download?
+		my $opened_list = 0;
+		my $shell_call  = $an->data->{path}{'anvil-download-file'}." --status";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target, 
+			name2 => "shell_call", value2 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next if $found_node;
+			
+			if ($line =~ /uuid=(.*?) bytes_downloaded=(\d+) percent=(\d+) current_rate=(\d+) average_rate=(\d+) seconds_running=(\d+) seconds_left=(.*?) url=(.*?) out_file=(.*)$/)
+			{
+				my $uuid             = $1;
+				my $bytes_downloaded = $2;
+				my $percent          = $3;
+				my $current_rate     = $4;
+				my $average_rate     = $5;
+				my $seconds_running  = $6;
+				my $seconds_left     = $7;
+				my $url              = $8;
+				my $out_file         = $9;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+					name1 => "uuid",             value1 => $uuid, 
+					name2 => "bytes_downloaded", value2 => $bytes_downloaded, 
+					name3 => "percent",          value3 => $percent, 
+					name4 => "current_rate",     value4 => $current_rate, 
+					name5 => "average_rate",     value5 => $average_rate, 
+					name6 => "seconds_running",  value6 => $seconds_running, 
+					name7 => "seconds_left",     value7 => $seconds_left, 
+					name8 => "url",              value8 => $url, 
+					name9 => "out_file",         value9 => $out_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($uuid eq $job_uuid)
+				{
+					$found_node = $node_key;
+					$do_abort   = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "found_node", value1 => $found_node, 
+						name2 => "do_abort",   value2 => $do_abort, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			if ($line =~ /done=(\d+?) uuid=(.*?) bytes_downloaded=(\d+?) average_rate=(\d+?) seconds_running=(\d+?) url=(.*?) out_file=(.*)$/)
+			{
+				my $done             = $1;
+				my $uuid             = $2;
+				my $bytes_downloaded = $3;
+				my $average_rate     = $4;
+				my $seconds_running  = $5;
+				my $url              = $6;
+				my $out_file         = $7;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+					name1 => "done",             value1 => $done, 
+					name2 => "uuid",             value2 => $uuid, 
+					name3 => "bytes_downloaded", value3 => $bytes_downloaded, 
+					name4 => "average_rate",     value4 => $average_rate, 
+					name5 => "seconds_running",  value5 => $seconds_running, 
+					name6 => "url",              value6 => $url, 
+					name7 => "out_file",         value7 => $out_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($uuid eq $job_uuid)
+				{
+					$found_node = $node_key;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "found_node", value1 => $found_node, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		
+	}
+	
+	# If I found the host and I need to do the abort, do it.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "found_node", value1 => $found_node, 
+		name2 => "do_abort",   value2 => $do_abort, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($found_node) && ($do_abort))
+	{
+		my $node_key  = $found_node;
+		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port      = $an->data->{sys}{anvil}{$node_key}{use_port}; 
+		my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+		my $online    = $an->data->{sys}{anvil}{$node_key}{online};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "node_key",  value1 => $node_key, 
+			name2 => "node_name", value2 => $node_name, 
+			name3 => "target",    value3 => $target, 
+			name4 => "port",      value4 => $port, 
+			name5 => "online",    value5 => $online, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my $file_displayed = 0;
+		
+		# Is the node accessible?
+		next if not $online;
+		
+		# Still alive? Good. Is this the node hosting the download?
+		my $opened_list = 0;
+		my $shell_call  = $an->data->{path}{'anvil-download-file'}." --abort $job_uuid";
+		if ($subtask eq "delete")
+		{
+			$shell_call .= " --delete";
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target, 
+			name2 => "shell_call", value2 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		# There should be no output.
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next if $found_node;
+		}
+	}
+	
+	# Print the footer
+	my $string_key = $subtask eq "delete" ? "message_0506" : "message_0505";
+	my $message    = $an->String->get({key => $string_key, variables => { url => $url }});
+	print $an->Web->template({file => "media-library.html", template => "download-aborted", replace => { 
+		message      => $message,
+		reload_time  => 15,
+		redirect_url => "/cgi-bin/mediaLibrary?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=monitor_downloads",
+	}});
+}
 
 # This tries to see of there is a DVD or CD in the local drive (if there is a local drive at all).
 sub _check_local_dvd
@@ -132,6 +330,46 @@ sub _check_local_dvd
 	$file_handle->close;
 
 	return(0);
+}
+
+# This asks the user to confirm that s/he wants to about (and delete) the downloading file.
+sub _confirm_abort_download
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_confirm_abort_download" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	my $subtask    = $an->data->{cgi}{subtask} eq "delete" ? "delete" : "abort";
+	my $job_uuid   = $an->data->{cgi}{job_uuid};
+	my $url        = $an->data->{cgi}{url};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+		name2 => "subtask",    value2 => $subtask,
+		name3 => "job_uuid",   value3 => $job_uuid,
+		name4 => "url",        value4 => $url,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $warning   = $subtask eq "abort" ? "message_0503" : "message_0504";
+	my $say_title = $an->String->get({key => "title_0208"});
+	my $message   = $an->String->get({key => $warning, variables => { url => $url }});
+	
+	my $confirm_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
+			button_class	=>	"bold_button",
+			button_link	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+			button_text	=>	"#!string!button_0004!#",
+			id		=>	"abort_download_confirmed",
+		}});
+
+	# Display the confirmation window now.
+	print $an->Web->template({file => "media-library.html", template => "abort-download-confirm", replace => { 
+		title          => $say_title,
+		message        => $message,
+		confirm_button => $confirm_button,
+	}});
+	
+	return (0);
 }
 
 # This asks the user to confirm that s/he wants to delete the file.
@@ -947,14 +1185,27 @@ sub _monitor_downloads
 	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
 	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
 	
-	# Print the header
-	print $an->Web->template({file => "media-library.html", template => "download-progress-header", replace => { anvil_name => $an->data->{sys}{anvil}{name} }});
-	
 	# First, read both nodes (if possible) and if either have any running jobs, monitor them.
-	if ($an->data->{cgi}{subtask} eq "abort")
+	if (($an->data->{cgi}{subtask} eq "abort") or ($an->data->{cgi}{subtask} eq "delete"))
 	{
 		### TODO: ...
+		if ($an->data->{cgi}{confirm})
+		{
+			# Do the dew
+			$an->MediaLibrary->_abort_download();
+			return(0);
+		}
+		else
+		{
+			# Pull the plug nao.
+			$an->MediaLibrary->_confirm_abort_download();
+			return(0);
+		}
+
 	}
+	
+	# Print the header
+	print $an->Web->template({file => "media-library.html", template => "download-progress-header", replace => { anvil_name => $an->data->{sys}{anvil}{name} }});
 	
 	# Show the progress. 
 	my $something_downloading = 0;
@@ -1077,6 +1328,8 @@ sub _monitor_downloads
 					average_rate => $say_average_rate,
 					running_time => $say_running_time,
 					time_left    => $say_time_left,
+					abort_url    => "/cgi-bin/mediaLibrary?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=monitor_downloads&subtask=abort&job_uuid=$uuid&url=$url", 
+					delete_url   => "/cgi-bin/mediaLibrary?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=monitor_downloads&subtask=delete&job_uuid=$uuid&url=$url", 
 				}});
 			}
 			if ($line =~ /done=(\d+?) uuid=(.*?) bytes_downloaded=(\d+?) average_rate=(\d+?) seconds_running=(\d+?) url=(.*?) out_file=(.*)$/)

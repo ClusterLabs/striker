@@ -497,6 +497,54 @@
 <br />
 <!-- end file-delete-confirm -->
 
+<!-- start abort-download-confirm -->
+<table align="center">
+	<tr>
+		<td colspan="3" class="highlight_ready_bold">
+			#!replace!title!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="highlight_warning"><b>#!string!title_0133!#</b></span>
+		</td>
+		<td colspan="2" align="left">
+			<br />
+			#!replace!message!#<br />
+			<br />
+		</td>
+	</tr>
+	<tr>
+		<td colspan="3">
+			<div class="align_right">#!replace!confirm_button!#</div>
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end abort-download-confirm -->
+
+<!-- start download-aborted -->
+<table align="center">
+	<tr>
+		<td colspan="3" class="highlight_ready_bold">
+			#!string!title_0209!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<span class="highlight_ready_bold"><b>#!string!row_0019!#</b></span>
+		</td>
+		<td colspan="2" align="left">
+			<br />
+			#!replace!message!#<br />
+			<br />
+		</td>
+	</tr>
+</table>
+<META HTTP-EQUIV="Refresh" CONTENT="#!replace!reload_time!#; URL=#!replace!redirect_url!#">
+<br />
+<!-- end download-aborted -->
+
 <!-- start file-delete-header -->
 <table align="center">
 	<tr>
@@ -922,6 +970,15 @@
 					</td>
 					<td class="highlight_row_data">
 						#!replace!running_time!# / #!replace!time_left!# <span class="subtle_text">(#!string!suffix_0017!#)</span>
+					</td>
+				</tr>
+				<tr>
+					<!-- Abort -->
+					<td class="highlight_row">
+						#!string!row_0341!#:
+					</td>
+					<td class="highlight_row_data">
+						<a href="#!replace!abort_url!#">#!string!button_0081!#</a> - <a href="#!replace!delete_url!#">#!string!button_0030!#</a>
 					</td>
 				</tr>
 			</table>

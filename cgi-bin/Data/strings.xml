@@ -85,6 +85,7 @@
 		<key name="button_0078">DR Targets</key>
 		<key name="button_0079">DR Jobs</key>
 		<key name="button_0080">Locations</key>
+		<key name="button_0081">Preserve</key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -828,6 +829,7 @@
 		<key name="row_0338">Download Rate</key>
 		<key name="row_0339">Running Time</key>
 		<key name="row_0340">Queued</key>
+		<key name="row_0341">Abort and</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -1414,6 +1416,8 @@
 		<key name="title_0204">Add, edit or delete a disaster recovery target server.</key>
 		<key name="title_0205">Configure this #!string!brand_0015!# host.</key>
 		<key name="title_0207">Download progress.</key>
+		<key name="title_0208">About to abort the download.</key>
+		<key name="title_0209">Download aborted.</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1931,6 +1935,10 @@
 		<key name="message_0500"><![CDATA[There were no available servers to select for this DR job.<br />Please select an #!string!brand_0003!# hosting servers.]]></key>
 		<key name="message_0501"><![CDATA[Running the install for <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>
 		<key name="message_0502"><![CDATA[Files being downloaded on either node of #!string!brand_0003!#: [#!variable!anvil_name!#] will be shown below.]]></key>
+		<key name="message_0503"><![CDATA[About to abort the download of: [<span class="highlight_detail">#!variable!url!#</span>].<br />The partially downloaded file will be <span class="highlight_good">preserved</span>.<br />If you restart the download of the same file later, it should pick up where it left off.]]></key>
+		<key name="message_0504"><![CDATA[About to abort the download of: [<span class="highlight_detail">#!variable!url!#</span>].<br />The partially downloaded file will be <span class="highlight_bad">deleted</span>.]]></key>
+		<key name="message_0505"><![CDATA[The download of: [<span class="highlight_detail">#!variable!url!#</span>] has been aborted.]]></key>
+		<key name="message_0506"><![CDATA[The download of: [<span class="highlight_detail">#!variable!url!#</span>] has been aborted.<br />The output file has been deleted.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>
