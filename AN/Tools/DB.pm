@@ -687,8 +687,8 @@ sub do_db_write
 	if (not $query)
 	{
 		print $an->String->get({ key => "tools_log_0021", variables => {
-			title	=>	$an->String->get({key => "tools_title_0003"}),
-			message	=>	$an->String->get({key => "error_title_0026"}),
+			title   => $an->String->get({key => "tools_title_0003"}),
+			message => $an->String->get({key => "error_title_0026"}),
 		}})."\n";
 		$an->nice_exit({exit_code => 1});
 	}
@@ -797,11 +797,12 @@ sub do_db_write
 	foreach my $id (@db_ids)
 	{
 		# Do the actual query(ies)
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "count", value2 => $count, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($count)
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "count", value1 => $count, 
-			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{dbh}{$id}->begin_work;
 		}
 		foreach my $query (@{$query_set})
@@ -837,11 +838,11 @@ sub do_db_write
 		}
 		
 		# Commit the changes.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($count)
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "count", value1 => $count
-			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{dbh}{$id}->commit();
 		}
 	}

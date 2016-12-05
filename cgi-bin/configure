@@ -2752,6 +2752,23 @@ sub delete_anvil
 	### TODO: Delete any cached data for the nodes before deleting the actual node.
 	# Send the queries as an array
 	my $queries = [];
+	# Mark the cache as DELETED for the nodes in this Anvil!.
+	push @{$queries}, "
+UPDATE 
+    nodes_cache a 
+SET 
+    node_cache_data = 'DELETED' 
+FROM 
+    nodes b, 
+    anvils c 
+WHERE 
+    a.node_cache_node_uuid = b.node_uuid 
+AND 
+    b.node_anvil_uuid = c.anvil_uuid 
+AND 
+    c.anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
+	# Mark the nodes as DELETED
 	push @{$queries}, "
 UPDATE 
     nodes 
@@ -2760,6 +2777,7 @@ SET
 WHERE 
     node_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
 ;";
+	# Mark the recipients as DELETED.
 	push @{$queries}, "
 UPDATE 
     recipients  
@@ -2776,18 +2794,35 @@ SET
 WHERE 
     anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
 ;";
+	# Now actually DELETE the cache
+	push @{$queries}, "
+DELETE FROM 
+    nodes_cache a 
+USING 
+    nodes b, 
+    anvils c 
+WHERE 
+    a.node_cache_node_uuid = b.node_uuid 
+AND 
+    b.node_anvil_uuid = c.anvil_uuid 
+AND 
+    c.anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
+	# DELETE the nodes
 	push @{$queries}, "
 DELETE FROM  
     nodes 
 WHERE 
     node_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
 ;";
+	# DELETE the recipients
 	push @{$queries}, "
 DELETE FROM  
     recipients 
 WHERE 
     recipient_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
 ;";
+	# And finally, DELETE the Anvil!.
 	push @{$queries}, "
 DELETE FROM  
     anvils 
