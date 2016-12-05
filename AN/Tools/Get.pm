@@ -4511,6 +4511,14 @@ sub target_details
 	my $target   = $parameter->{target}   ? $parameter->{target}   : $an->hostname;
 	my $port     = $parameter->{port}     ? $parameter->{port}     : 22;
 	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $return   = {
 		anvil_name	=>	"",
 		network		=>	{
@@ -4535,9 +4543,10 @@ sub target_details
 	{
 		### Remote calls
 		# UUID
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "uuid_shell_call", value1 => $uuid_shell_call,
 			name2 => "target",          value2 => $target,
+			name3 => "port",            value3 => $port,
 		}, file => $THIS_FILE, line => __LINE__});
 		(my $error, my $ssh_fh, $uuid_return) = $an->Remote->remote_call({
 			target		=>	$target,
@@ -4548,9 +4557,10 @@ sub target_details
 		});
 		
 		# IP info
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "ip_shell_call", value1 => $ip_shell_call,
 			name2 => "target",        value2 => $target,
+			name3 => "port",          value3 => $port,
 		}, file => $THIS_FILE, line => __LINE__});
 		($error, $ssh_fh, $ip_return) = $an->Remote->remote_call({
 			target		=>	$target,
@@ -4581,12 +4591,16 @@ sub target_details
 		{
 			chomp;
 			my $line =  $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			push @{$uuid_return}, $line;
 		}
 		close $file_handle;
 		
 		# IP Info
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ip_shell_call", value1 => $ip_shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, "$ip_shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $ip_shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});

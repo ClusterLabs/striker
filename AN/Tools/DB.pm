@@ -191,6 +191,7 @@ sub connect_to_databases
 		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $seen_connections       = [];
 	my $connections            = 0;
 	my $failed_connections     = [];
 	my $successful_connections = [];
@@ -206,6 +207,24 @@ sub connect_to_databases
 		# These are not used yet.
 		my $postgres_password = $an->data->{scancore}{db}{$id}{postgres_password} ? $an->data->{scancore}{db}{$id}{postgres_password} : "";
 		my $initialize        = $an->data->{scancore}{db}{$id}{initialize}        ? $an->data->{scancore}{db}{$id}{initialize}        : 0;
+		
+		# Make sure the user didn't specify the same target twice.
+		my $target_host = "$host:$port";
+		my $duplicate   = 0;
+		foreach my $existing_host (sort {$a cmp $b} @{$seen_connections})
+		{
+			if ($existing_host eq $target_host)
+			{
+				# User is connecting to the same target twice.
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0193", message_variables => { target => $target_host}, code => 193, file => $THIS_FILE, line => __LINE__});
+				$duplicate = 1;
+			}
+		}
+		if (not $duplicate)
+		{
+			push @{$seen_connections}, $target_host;
+		}
+		next if $duplicate;
 		
 		# Log what we're doing.
 		$an->Log->entry({log_level => 3, title_key => "an_alert_title_0001", message_key => "tools_log_0007", message_variables => {

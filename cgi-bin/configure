@@ -1225,7 +1225,7 @@ sub save_anvil_form
 	}
 	
 	# Do I have an owner?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::owner_name", value1 => $an->data->{cgi}{owner_name},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{cgi}{owner_name})
@@ -1245,7 +1245,7 @@ sub save_anvil_form
 	}
 	
 	# If no 'smtp_server' is set, we'll ignore the rest of the mail setup.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::smtp_server", value1 => $an->data->{cgi}{smtp_server},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{cgi}{smtp_server})
@@ -1297,6 +1297,12 @@ sub save_anvil_form
 	if ($error_count < 1)
 	{
 		# Proceed with attempt to log into the nodes.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "node1_address", value1 => $node1_address,
+			name2 => "node1_port",    value2 => $node1_port,
+			name3 => "node2_address", value3 => $node2_address,
+			name4 => "node2_port",    value4 => $node2_port,
+		}, file => $THIS_FILE, line => __LINE__});
 		my $node1_access = $an->Check->access({
 			target		=>	$node1_address,
 			port		=>	$node1_port,
@@ -1335,6 +1341,10 @@ sub save_anvil_form
 					port		=>	$node2_port,
 					password	=>	$an->data->{cgi}{anvil_password},
 				});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node1_data", value1 => $node1_data,
+				name2 => "node2_data", value2 => $node2_data,
+			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{cgi}{anvil_name})
 			{
 				$an->data->{cgi}{anvil_name} = $node1_data->{anvil_name} ? $node1_data->{anvil_name} : $node1_data->{anvi2_name};
@@ -1475,6 +1485,10 @@ sub save_nodes
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If either UUID is missing, error.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1_data->uuid", value1 => $node1_data->{uuid},
+		name2 => "node2_data->uuid", value2 => $node2_data->{uuid},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $node1_data->{uuid})
 	{
 		# TODO...
@@ -1505,6 +1519,10 @@ sub save_nodes
 	{
 		$node1_address = "";
 		$node1_port    = "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node1_address", value1 => $node1_address,
+			name2 => "node1_port",    value2 => $node1_port,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	my $node2_address = $an->data->{cgi}{node2_access};
@@ -1524,6 +1542,10 @@ sub save_nodes
 	{
 		$node2_address = "";
 		$node2_port    = "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node2_address", value1 => $node2_address,
+			name2 => "node2_port",    value2 => $node2_port,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	### NOTE: Don't confuse the 'nodeX_uuid' DB record locator with the node's host UUID. The node's UUID
@@ -1552,6 +1574,10 @@ sub save_nodes
 		node_ifn	=>	$node2_data->{network}{ifn_address}, 
 		node_password	=>	$an->data->{cgi}{node2_password} ? $an->data->{cgi}{node2_password} : $an->data->{cgi}{anvil_password},
 	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1_uuid", value1 => $node1_uuid,
+		name2 => "node2_uuid", value2 => $node2_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return($node1_uuid, $node2_uuid);
 }
@@ -7056,7 +7082,7 @@ sub anvil_menu
 	{
 		# Save, if something changed.
 		($notice_message, $error_fields) = save_anvil_form($an);
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
 		$refresh_link =~ s/save=.*?&/&/;

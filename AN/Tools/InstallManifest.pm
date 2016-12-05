@@ -11894,12 +11894,14 @@ sub map_network_on_node
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "map_network_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $remap    = $parameter->{remap}    ? $parameter->{remap}    : "";
-	my $say_node = $parameter->{say_node} ? $parameter->{say_node} : "";
-	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	### TODO: Why are we not using $an->Remote->remote_call() ?
+	my $remap      = $parameter->{remap}    ? $parameter->{remap}    : "";
+	my $say_node   = $parameter->{say_node} ? $parameter->{say_node} : "";
+	my $node       = $parameter->{node}     ? $parameter->{node}     : "";
+	my $target     = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port       = $parameter->{port}     ? $parameter->{port}     : 22;
+	my $ssh_fh_key = $target.":".$port;
+	my $password   = $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "remap",    value1 => $remap, 
 		name2 => "say_node", value2 => $say_node, 
@@ -11979,10 +11981,10 @@ fi";
 		}
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "proceed",                 value1 => $proceed,
-		name2 => "return_code",             value2 => $return_code,
-		name3 => "ssh_fh",                  value3 => $ssh_fh,
-		name4 => "node::${target}::ssh_fh", value4 => $an->data->{target}{$target}{ssh_fh},
+		name1 => "proceed",                     value1 => $proceed,
+		name2 => "return_code",                 value2 => $return_code,
+		name3 => "ssh_fh",                      value3 => $ssh_fh,
+		name4 => "node::${ssh_fh_key}::ssh_fh", value4 => $an->data->{target}{$ssh_fh_key}{ssh_fh},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $nics_seen = 0;
@@ -11993,12 +11995,12 @@ fi";
 			print $an->String->get({key => "message_0378"});
 		}
 	}
-	elsif ($an->data->{target}{$target}{ssh_fh} !~ /^Net::SSH2/)
+	elsif ($an->data->{target}{$ssh_fh_key}{ssh_fh} !~ /^Net::SSH2/)
 	{
 		# Invalid or broken SSH handle.
 		$an->Log->entry({log_level => 1, message_key => "log_0186", message_variables => {
 			node   => $node, 
-			ssh_fh => $an->data->{target}{$target}{ssh_fh}, 
+			ssh_fh => $an->data->{target}{$ssh_fh_key}{ssh_fh}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$return_code = 8;
 	}
@@ -12006,7 +12008,7 @@ fi";
 	{
 		### WARNING: Don't use 'remote_call()'! We need input from the user, so we need to call the 
 		###          target directly
-		my $ssh_fh = $an->data->{target}{$target}{ssh_fh};
+		my $ssh_fh = $an->data->{target}{$ssh_fh_key}{ssh_fh};
 		my $close  = 0;
 		
 		### Build the shell call

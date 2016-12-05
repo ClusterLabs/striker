@@ -354,26 +354,29 @@ sub remote_call
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	# Get the target
-	my $target = $parameter->{target};
+	# Get the target and port so that we can create the ssh_fh key
+	my $target     = $parameter->{target};
+	my $port       = $parameter->{port} ? $parameter->{port} : 22;
+	my $ssh_fh_key = $target.":".$port;
 	
 	# This will store the SSH file handle for the given target after the initial connection.
-	$an->data->{target}{$target}{ssh_fh} = defined $an->data->{target}{$target}{ssh_fh} ? $an->data->{target}{$target}{ssh_fh} : "";
+	$an->data->{target}{$ssh_fh_key}{ssh_fh} = defined $an->data->{target}{$ssh_fh_key}{ssh_fh} ? $an->data->{target}{$ssh_fh_key}{ssh_fh} : "";
 	
 	# Now pick up the rest of the variables.
-	my $port       =         $parameter->{port}       ? $parameter->{port}       : 22;
 	my $user       =         $parameter->{user}       ? $parameter->{user}       : "root";
 	my $password   =         $parameter->{password}   ? $parameter->{password}   : $an->data->{sys}{root_password};
-	my $ssh_fh     =         $parameter->{ssh_fh}     ? $parameter->{ssh_fh}     : $an->data->{target}{$target}{ssh_fh};
+	my $ssh_fh     =         $parameter->{ssh_fh}     ? $parameter->{ssh_fh}     : $an->data->{target}{$ssh_fh_key}{ssh_fh};
 	my $close      = defined $parameter->{'close'}    ? $parameter->{'close'}    : 0;
 	my $shell_call =         $parameter->{shell_call};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-		name1 => "time",       value1 => time,
+	my $start_time = time;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		name1 => "start_time", value1 => $start_time,
 		name2 => "target",     value2 => $target,
 		name3 => "port",       value3 => $port,
 		name4 => "user",       value4 => $user,
-		name5 => "ssh_fh",     value5 => $ssh_fh,
-		name6 => "close",      value6 => $close,
+		name5 => "ssh_fh_key", value5 => $ssh_fh_key,
+		name6 => "ssh_fh",     value6 => $ssh_fh,
+		name7 => "close",      value7 => $close,
 	}, file => $THIS_FILE, line => __LINE__});
 	# Shell calls can expose passwords, which is why it is down here.
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
@@ -431,13 +434,13 @@ sub remote_call
 	if (not $an->Validate->is_ipv4({ip => $target}))
 	{
 		my $new_target = $an->Get->ip_from_hostname({host_name => $target});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "new_target", value1 => $new_target, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($new_target)
 		{
 			$target = $new_target;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "target", value1 => $target, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -541,29 +544,30 @@ sub remote_call
 				if ($ssh_fh->auth_publickey($user, $public_key, $private_key)) 
 				{
 					# We're in! Record the file handle for this target.
-					$an->data->{target}{$target}{ssh_fh} = $ssh_fh;
+					$an->data->{target}{$ssh_fh_key}{ssh_fh} = $ssh_fh;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "target::${target}::ssh_fh", value1 => $an->data->{target}{$target}{ssh_fh}, 
+						name1 => "target::${ssh_fh_key}::ssh_fh", value1 => $an->data->{target}{$ssh_fh_key}{ssh_fh}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					$an->Log->entry({log_level => 3, message_key => "notice_message_0014", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 2, message_key => "notice_message_0014", message_variables => { target => $ssh_fh_key }, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
 					# This is for the user
-					$error = $an->String->get({key => "error_message_0032", variables => { target => $target }});
+					$error = $an->String->get({key => "error_message_0032", variables => { target => $ssh_fh_key }});
 					# This is for our logs
-					$an->Log->entry({log_level => 1, message_key => "error_message_0032", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 1, message_key => "error_message_0032", message_variables => { target => $ssh_fh_key }, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			else
 			{
 				# We're in! Record the file handle for this target.
-				$an->data->{target}{$target}{ssh_fh} = $ssh_fh;
+				$an->data->{target}{$ssh_fh_key}{ssh_fh} = $ssh_fh;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "target::${target}::ssh_fh", value1 => $an->data->{target}{$target}{ssh_fh}, 
+					name1 => "target::${ssh_fh_key}::ssh_fh", value1 => $an->data->{target}{$ssh_fh_key}{ssh_fh}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 3, message_key => "notice_message_0004", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
+				
+				$an->Log->entry({log_level => 2, message_key => "notice_message_0004", message_variables => { target => $ssh_fh_key }, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -682,14 +686,14 @@ sub remote_call
 	# Close the connection if requested.
 	if ($close)
 	{
-		$an->Log->entry({log_level => 2, message_key => "notice_message_0005", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "notice_message_0005", message_variables => { target => $ssh_fh_key }, file => $THIS_FILE, line => __LINE__});
 		$ssh_fh->disconnect() if $ssh_fh;
 		
 		# For good measure, blank both variables.
-		$an->data->{target}{$target}{ssh_fh} = "";
+		$an->data->{target}{$ssh_fh_key}{ssh_fh} = "";
 		$ssh_fh                              = "";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "target::${target}::ssh_fh", value1 => $an->data->{target}{$target}{ssh_fh}, 
+			name1 => "target::${ssh_fh_key}::ssh_fh", value1 => $an->data->{target}{$ssh_fh_key}{ssh_fh}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	

@@ -2042,7 +2042,7 @@ sub insert_or_update_nodes
 	my $node_sn          = $parameter->{node_sn}          ? $parameter->{node_sn}          : "NULL";
 	my $node_ifn         = $parameter->{node_ifn}         ? $parameter->{node_ifn}         : "NULL";
 	my $node_password    = $parameter->{node_password}    ? $parameter->{node_password}    : "NULL";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 		name1 => "node_uuid",        value1 => $node_uuid, 
 		name2 => "node_anvil_uuid",  value2 => $node_anvil_uuid, 
 		name3 => "node_host_uuid",   value3 => $node_host_uuid, 
@@ -2285,7 +2285,7 @@ AND
 AND 
     node_cache_name      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_name)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2298,7 +2298,7 @@ AND
 		foreach my $row (@{$results})
 		{
 			$node_cache_uuid = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_cache_uuid", value1 => $node_cache_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -2330,7 +2330,7 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -2351,7 +2351,7 @@ FROM
 WHERE 
     node_cache_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2403,7 +2403,7 @@ WHERE
     node_cache_uuid      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});

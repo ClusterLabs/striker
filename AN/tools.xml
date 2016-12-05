@@ -940,6 +940,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0190"><![CDATA[A request to shut down: [#!variable!node_name!#] appears to have failed.<br />In some cases, this can be caused by something holding open the shared storage, resulting in the node getting fenced.<br />Please go back to the main page, wait a few minutes and see if the node comes back online.<br />Once things stabilize, please try shutting down the system again.]]></key>
 		<key name="error_message_0191"><![CDATA[The 'AN::Tools::Get' module's 'ram_used_by_program()' method was called without a program name to check.]]></key>
 		<key name="error_message_0192"><![CDATA[The 'AN::Tools::ScanCore' module's 'check_ram_usage()' method was called without a program name to check.]]></key>
+		<key name="error_message_0193"><![CDATA[The 'AN::Tools::DB' module's 'connect_to_databases()' method tried to connect to the same database twice: [#!variable!target!#].]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

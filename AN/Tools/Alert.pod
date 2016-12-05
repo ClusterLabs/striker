@@ -982,6 +982,10 @@ The 'AN::Tools::Get' module's 'ram_used_by_program()' method was called without 
 
 The 'AN::Tools::ScanCore' module's 'check_ram_usage()' method was called without a program name to check.
 
+=head2 C<193>
+
+The 'AN::Tools::DB' module's 'connect_to_databases()' method tried to connect to the same database twice.
+
 
 =head2 C<999>
 

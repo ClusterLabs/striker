@@ -7264,7 +7264,7 @@ sub _gather_node_details
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 		name1 => "node_uuid",  value1 => $node_uuid,
 		name2 => "node_key",   value2 => $node_key,
 		name3 => "anvil_uuid", value3 => $anvil_uuid,
