@@ -2177,13 +2177,8 @@ sub delete_dr_job
 UPDATE 
     dr_jobs 
 SET 
-    dr_job_note = 'DELETED' 
-WHERE 
-    dr_job_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_job_uuid})."
-;";
-	push @{$queries}, "
-DELETE FROM  
-    dr_jobs 
+    dr_job_note   = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     dr_job_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_job_uuid})."
 ;";
@@ -2207,6 +2202,8 @@ FROM
     dr_jobs 
 WHERE 
     dr_job_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_job_uuid})."
+AND 
+    dr_job_note IS DISTINCT FROM 'DELETED' 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query, 
@@ -2270,13 +2267,8 @@ sub delete_dr_target
 UPDATE 
     dr_targets 
 SET 
-    dr_target_note = 'DELETED' 
-WHERE 
-    dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_target_uuid})."
-;";
-	push @{$queries}, "
-DELETE FROM  
-    dr_targets 
+    dr_target_note = 'DELETED', 
+    modified_date  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_target_uuid})."
 ;";
@@ -2300,6 +2292,8 @@ FROM
     dr_targets 
 WHERE 
     dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{dr_target_uuid})."
+AND 
+    dr_target_note IS DISTINCT FROM 'DELETED' 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query, 
@@ -2373,13 +2367,8 @@ sub delete_manifest
 UPDATE 
     manifests 
 SET 
-    manifest_note = 'DELETED' 
-WHERE 
-    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
-;";
-	push @{$queries}, "
-DELETE FROM  
-    manifests 
+    manifest_note = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
 ;";
@@ -2403,6 +2392,8 @@ FROM
     manifests 
 WHERE 
     manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
+AND 
+    manifest_note IS DISTINCT FROM 'DELETED' 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query, 
@@ -2465,13 +2456,8 @@ sub delete_owner
 UPDATE 
     owners 
 SET 
-    owner_note = 'DELETED' 
-WHERE 
-    owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{owner_uuid})."
-;";
-	push @{$queries}, "
-DELETE FROM  
-    owners 
+    owner_note    = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{owner_uuid})."
 ;";
@@ -2495,6 +2481,8 @@ FROM
     owners 
 WHERE 
     owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{owner_uuid})."
+AND 
+    owner_note IS DISTINCT FROM 'DELETED' 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query, 
@@ -2557,7 +2545,8 @@ sub delete_notify
 UPDATE 
     notifications 
 SET 
-    notify_note = 'DELETED' 
+    notify_note   = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
 ;";
@@ -2565,21 +2554,10 @@ WHERE
 UPDATE 
     recipients 
 SET 
-    recipient_note = 'DELETED' 
+    recipient_note = 'DELETED', 
+    modified_date  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     recipient_notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
-;";
-	push @{$queries}, "
-DELETE FROM  
-    recipients 
-WHERE 
-    recipient_notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
-;";
-	push @{$queries}, "
-DELETE FROM  
-    notifications 
-WHERE 
-    notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
 ;";
 	
 	# Log the queries
@@ -2601,6 +2579,8 @@ FROM
     notifications 
 WHERE 
     notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
+AND 
+    notify_note IS DISTINCT FROM 'DELETED' 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query, 
@@ -2663,13 +2643,8 @@ sub delete_smtp
 UPDATE 
     smtp 
 SET 
-    smtp_note = 'DELETED' 
-WHERE 
-    smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{smtp_uuid})."
-;";
-	push @{$queries}, "
-DELETE FROM  
-    smtp 
+    smtp_note     = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{smtp_uuid})."
 ;";
@@ -2693,6 +2668,8 @@ FROM
     smtp 
 WHERE 
     smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{smtp_uuid})."
+AND 
+    smtp_note IS DISTINCT FROM 'DELETED' 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query, 
@@ -2749,7 +2726,7 @@ sub delete_anvil
 	my $anvil_data     = $an->Get->anvil_data({uuid => $an->data->{cgi}{anvil_uuid}});
 	my $notice_message = "";
 	
-	### TODO: Delete any cached data for the nodes before deleting the actual node.
+	### TODO: Delete the hosts entry as well.
 	# Send the queries as an array
 	my $queries = [];
 	# Mark the cache as DELETED for the nodes in this Anvil!.
@@ -2757,7 +2734,8 @@ sub delete_anvil
 UPDATE 
     nodes_cache a 
 SET 
-    node_cache_data = 'DELETED' 
+    node_cache_data = 'DELETED', 
+    modified_date   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 FROM 
     nodes b, 
     anvils c 
@@ -2773,7 +2751,8 @@ AND
 UPDATE 
     nodes 
 SET 
-    node_note = 'DELETED' 
+    node_note     = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     node_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
 ;";
@@ -2782,7 +2761,8 @@ WHERE
 UPDATE 
     recipients  
 SET 
-    recipient_note = 'DELETED' 
+    recipient_note = 'DELETED', 
+    modified_date  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     recipient_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
 ;";
@@ -2790,42 +2770,8 @@ WHERE
 UPDATE 
     anvils 
 SET 
-    anvil_note = 'DELETED' 
-WHERE 
-    anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
-;";
-	# Now actually DELETE the cache
-	push @{$queries}, "
-DELETE FROM 
-    nodes_cache a 
-USING 
-    nodes b, 
-    anvils c 
-WHERE 
-    a.node_cache_node_uuid = b.node_uuid 
-AND 
-    b.node_anvil_uuid = c.anvil_uuid 
-AND 
-    c.anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
-;";
-	# DELETE the nodes
-	push @{$queries}, "
-DELETE FROM  
-    nodes 
-WHERE 
-    node_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
-;";
-	# DELETE the recipients
-	push @{$queries}, "
-DELETE FROM  
-    recipients 
-WHERE 
-    recipient_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
-;";
-	# And finally, DELETE the Anvil!.
-	push @{$queries}, "
-DELETE FROM  
-    anvils 
+    anvil_note = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
 ;";
@@ -2848,6 +2794,8 @@ FROM
     nodes 
 WHERE 
     node_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+AND 
+    node_note IS DISTINCT FROM 'DELETED'
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query, 
@@ -2860,6 +2808,8 @@ FROM
     anvils 
 WHERE 
     anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+AND 
+    anvil_note IS DISTINCT FROM 'DELETED'
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query, 
@@ -3064,13 +3014,8 @@ sub manifests_menu
 UPDATE 
     manifests 
 SET 
-    manifest_note = 'DELETED' 
-WHERE 
-    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
-;";
-	push @{$queries}, "
-DELETE FROM  
-    manifests 
+    manifest_note = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
 ;";

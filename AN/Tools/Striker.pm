@@ -5094,7 +5094,8 @@ fi;
 UPDATE 
     servers 
 SET 
-    server_note = 'DELETED' 
+    server_note   = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
@@ -9402,7 +9403,7 @@ FROM
 WHERE 
     server_uuid !=  ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 AND 
-    server_name != 'DELETED'
+    server_name IS DISTINCT FROM 'DELETED'
 ORDER BY 
     server_name ASC
 ;";

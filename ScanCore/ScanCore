@@ -2239,9 +2239,10 @@ sub read_cache
 	
 	# This will be stuck onto the start of fence agents that don't have a full path.
 	my $fence_path = $an->data->{path}{fence_agents};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "fence_path", value1 => $fence_path
 	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $node_cache = $an->ScanCore->get_nodes_cache();
 	my $node_data  = $an->ScanCore->get_nodes();
 	foreach my $hash_ref (@{$node_data})
@@ -2249,7 +2250,7 @@ sub read_cache
 		my $node_name                                  = $hash_ref->{host_name};
 		my $node_uuid                                  = $hash_ref->{node_uuid};
 		   $an->data->{node}{uuid_to_name}{$node_uuid} = $node_name;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node::uuid_to_name::$node_uuid", value1 => $an->data->{node}{uuid_to_name}{$node_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -2260,7 +2261,7 @@ sub read_cache
 		my $node_cache_name      = $hash_ref->{node_cache_name};
 		my $node_cache_data      = $hash_ref->{node_cache_data};
 		my $node_name            = $an->data->{node}{uuid_to_name}{$node_cache_node_uuid};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "node_cache_node_uuid", value1 => $node_cache_node_uuid, 
 			name2 => "node_cache_name",      value2 => $node_cache_name, 
 			name3 => "node_cache_data",      value3 => $node_cache_data, 
@@ -2272,7 +2273,7 @@ sub read_cache
 		{
 			foreach my $line (split/\n/, $node_cache_data)
 			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -2299,13 +2300,13 @@ sub read_cache
 			{
 				# Stick the full path onto the 'power_check_command'.
 				$node_cache_data =~ s/^fence/$fence_path\/fence/;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "node_cache_data", value1 => $node_cache_data, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			$an->data->{cache}{$node_name}{info}{$node_cache_name} = $node_cache_data;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "cache::${node_name}::info::${node_cache_name}", value1 => $an->data->{cache}{$node_name}{info}{$node_cache_name}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -6323,7 +6324,7 @@ sub update_db
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
@@ -8213,7 +8214,7 @@ SELECT
 FROM 
     history.anvils 
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -8233,7 +8234,7 @@ FROM
 			my $anvil_note        = $row->[5];
 			my $anvil_password    = $row->[6];
 			my $modified_date     = $row->[7];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 				name1 => "anvil_uuid",        value1 => $anvil_uuid, 
 				name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
 				name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
@@ -8273,7 +8274,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{anvils}{modified_date}})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $anvil_uuid (keys %{$an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}})
@@ -8284,7 +8285,7 @@ FROM
 			my $anvil_description = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_description}, 
 			my $anvil_note        = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_note};
 			my $anvil_password    = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_password}, 
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "anvil_uuid",        value1 => $anvil_uuid, 
 				name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
 				name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
@@ -8292,7 +8293,7 @@ FROM
 				name5 => "anvil_description", value5 => $anvil_description, 
 				name6 => "anvil_note",        value6 => $anvil_note, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "anvil_password", value1 => $anvil_password, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -8306,7 +8307,7 @@ FROM
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::anvil::anvil_uuid::${anvil_uuid}::seen", value1 => $an->data->{db_data}{$id}{anvils}{anvil_uuid}{$anvil_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{anvils}{anvil_uuid}{$anvil_uuid}{seen})
@@ -8315,13 +8316,13 @@ FROM
 					$an->data->{db_data}{$id}{anvils}{anvil_uuid}{$anvil_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::anvil::anvil_uuid::${anvil_uuid}::exists", value1 => $an->data->{db_data}{$id}{anvils}{anvil_uuid}{$anvil_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{anvils}{anvil_uuid}{$anvil_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::anvil::modified_date::${modified_date}::anvil_uuid::${anvil_uuid}", value1 => $an->data->{db_data}{$id}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid})
@@ -8343,7 +8344,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -8377,7 +8378,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8416,7 +8417,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});

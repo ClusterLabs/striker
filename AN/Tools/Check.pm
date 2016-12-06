@@ -120,6 +120,9 @@ sub on_same_network
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "on_same_network" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $remote = $parameter->{remote} ? $parameter->{remote} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "remote", value1 => $remote,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $remote)
 	{
 		# I think we're alone now...
@@ -127,9 +130,16 @@ sub on_same_network
 		return("");
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "remote", value1 => $remote,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->Validate->is_ipv4({ip => $remote}))
 	{
 		# Try to translate the host name to an IP.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "remote", value1 => $remote,
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		my $ip = $an->Get->ip({host => $remote});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ip", value1 => $ip,

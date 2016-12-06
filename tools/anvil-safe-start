@@ -388,6 +388,8 @@ SELECT
     server_start_delay 
 FROM 
     servers
+AND 
+    server_node IS DISTINCT FROM 'DELETED'
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query

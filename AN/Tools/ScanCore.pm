@@ -231,6 +231,11 @@ sub get_anvils
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_anvils" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $query = "
 SELECT 
     anvil_uuid, 
@@ -242,10 +247,17 @@ SELECT
     anvil_password, 
     modified_date 
 FROM 
-    anvils
+    anvils ";
+	if (not $include_deleted)
+	{
+		$query .= "
+WHERE 
+    anvil_note IS DISTINCT FROM 'DELETED'";
+	}
+	$query .= "
 ;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
+		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return  = [];
@@ -303,6 +315,10 @@ sub get_dr_jobs
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_dr_jobs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Which query we use will depend on what data we got.
 	my $query = "
@@ -317,7 +333,14 @@ SELECT
     dr_job_schedule, 
     modified_date 
 FROM 
-    dr_jobs 
+    dr_jobs ";
+	if (not $include_deleted)
+	{
+		$query .= "
+WHERE 
+    dr_job_note IS DISTINCT FROM 'DELETED'";
+	}
+	$query .= "
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -376,6 +399,10 @@ sub get_dr_targets
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_dr_targets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Which query we use will depend on what data we got.
 	my $query = "
@@ -392,7 +419,14 @@ SELECT
     dr_target_bandwidth_limit, 
     modified_date 
 FROM 
-    dr_targets 
+    dr_targets ";
+	if (not $include_deleted)
+	{
+		$query .= "
+WHERE 
+    dr_target_note IS DISTINCT FROM 'DELETED'";
+	}
+	$query .= "
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -529,6 +563,11 @@ sub get_manifests
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_manifests" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $query = "
 SELECT 
     manifest_uuid, 
@@ -536,7 +575,14 @@ SELECT
     manifest_note, 
     modified_date 
 FROM 
-    manifests
+    manifests ";
+	if (not $include_deleted)
+	{
+		$query .= "
+WHERE 
+    manifest_note IS DISTINCT FROM 'DELETED'";
+	}
+	$query .= "
 ;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -579,6 +625,11 @@ sub get_migration_target
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_migration_target" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $server = $parameter->{server} ? $parameter->{server} : "";
 	if (not $server)
@@ -716,6 +767,11 @@ sub get_nodes
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $query = "
 SELECT 
     a.node_uuid, 
@@ -735,9 +791,16 @@ FROM
     nodes a,
     hosts b 
 WHERE 
-    a.node_host_uuid = b.host_uuid
+    a.node_host_uuid =  b.host_uuid ";
+	if (not $include_deleted)
+	{
+		$query .= "
+AND 
+    a.node_note IS DISTINCT FROM 'DELETED'";
+	}
+	$query .= "
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -763,7 +826,7 @@ WHERE
 		my $host_name        = $row->[10];
 		my $host_uuid        = $row->[11];
 		my $modified_date    = $row->[12];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 			name1  => "node_uuid",        value1  => $node_uuid, 
 			name2  => "node_anvil_uuid",  value2  => $node_anvil_uuid, 
 			name3  => "node_host_uuid",   value3  => $node_host_uuid, 
@@ -809,9 +872,11 @@ sub get_nodes_cache
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_nodes_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# The user may want cache data from all machines but only of a certain type.
-	my $type = $parameter->{type} ? $parameter->{type} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "type", value1 => $type,
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	my $type            = $parameter->{type}            ? $parameter->{type}            : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "type",            value1 => $type,
+		name2 => "include_deleted", value2 => $include_deleted, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: This is NOT restricted to the host because if this host doesn't have cache data for a given
@@ -827,12 +892,19 @@ SELECT
     modified_date 
 FROM 
     nodes_cache ";
+	my $say_join = "WHERE";
+	if (not $include_deleted)
+	{
+		$say_join =  "AND";
+		$query    .= "
+WHERE 
+   node_cache_data IS DISTINCT FROM 'DELETED'";
+	}
 	if ($type)
 	{
-		$query .= "
-WHERE 
-    node_cache_name = ".$an->data->{sys}{use_db_fh}->quote($type)."
-";
+		   $query    .= "
+$say_join 
+    node_cache_name =  ".$an->data->{sys}{use_db_fh}->quote($type);
 	}
 	$query .= "
 ;";
@@ -856,7 +928,7 @@ WHERE
 		my $node_cache_data      = $row->[4] ? $row->[4] : "";
 		my $node_cache_note      = $row->[5] ? $row->[5] : "";
 		my $modified_date        = $row->[6];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 			name1 => "node_cache_uuid",      value1 => $node_cache_uuid, 
 			name2 => "node_cache_host_uuid", value2 => $node_cache_host_uuid, 
 			name3 => "node_cache_node_uuid", value3 => $node_cache_node_uuid, 
@@ -887,6 +959,11 @@ sub get_notifications
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_notifications" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $query = "
 SELECT 
     notify_uuid, 
@@ -898,7 +975,14 @@ SELECT
     notify_note, 
     modified_date 
 FROM 
-    notifications
+    notifications ";
+	if (not $include_deleted)
+	{
+		$query .= "
+WHERE 
+    notify_note IS DISTINCT FROM 'DELETED'";
+	}
+	$query .= "
 ;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -954,6 +1038,11 @@ sub get_owners
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_owners" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $query = "
 SELECT 
     owner_uuid, 
@@ -961,7 +1050,14 @@ SELECT
     owner_note, 
     modified_date 
 FROM 
-    owners
+    owners ";
+	if (not $include_deleted)
+	{
+		$query .= "
+WHERE 
+    owner_note IS DISTINCT FROM 'DELETED'";
+	}
+	$query .= "
 ;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -1063,7 +1159,7 @@ sub get_power_check_data
 		# I need to remove the double-quotes from the '-p "<password>"'.
 		$power_check_command =~ s/-p "(.*?)"/-p $1/;
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "node_name",            value1 => $node_name, 
 			name2 => "node_cache_node_uuid", value2 => $node_cache_node_uuid, 
 			name3 => "power_check_command",  value3 => $power_check_command, 
@@ -1086,6 +1182,11 @@ sub get_recipients
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_recipients" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $query = "
 SELECT 
     recipient_uuid, 
@@ -1095,7 +1196,14 @@ SELECT
     recipient_note, 
     modified_date 
 FROM 
-    recipients
+    recipients ";
+	if (not $include_deleted)
+	{
+		$query .= "
+WHERE 
+    recipient_note IS DISTINCT FROM 'DELETED'";
+	}
+	$query .= "
 ;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -1145,6 +1253,11 @@ sub get_servers
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $query = "
 SELECT 
     server_uuid, 
@@ -1164,7 +1277,14 @@ SELECT
     server_post_migration_arguments, 
     modified_date 
 FROM 
-    servers
+    servers ";
+	if (not $include_deleted)
+	{
+		$query .= "
+WHERE 
+    server_note IS DISTINCT FROM 'DELETED'";
+	}
+	$query .= "
 ;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -1244,6 +1364,11 @@ sub get_smtp
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_smtp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "include_deleted", value1 => $include_deleted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $query = "
 SELECT 
     smtp_uuid, 
@@ -1259,7 +1384,14 @@ SELECT
     smtp_note, 
     modified_date 
 FROM 
-    smtp
+    smtp ";
+	if (not $include_deleted)
+	{
+		$query .= "
+WHERE 
+    smtp_note IS DISTINCT FROM 'DELETED'";
+	}
+	$query .= "
 ;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -3755,7 +3887,7 @@ AND
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $row (@{$results})
 			{
-				my $old_variable_value = $row->[0];
+				my $old_variable_value = defined $row->[0] ? $row->[0] : "";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "old_variable_value", value1 => $old_variable_value, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -5670,7 +5802,9 @@ FROM
 WHERE 
     node_cache_name      = ".$an->data->{sys}{use_db_fh}->quote($type)."
 AND 
-    node_cache_node_uuid = ".$an->data->{sys}{use_db_fh}->quote($target);
+    node_cache_node_uuid = ".$an->data->{sys}{use_db_fh}->quote($target)."
+AND 
+    node_cache_data IS DISTINCT FROM 'DELETED'";
     
 	if ($source eq "any")
 	{
@@ -6205,14 +6339,23 @@ sub target_power
 			}
 			
 			# Convert the '-a X' to an IP address, if needed.
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "power_check", value1 => $power_check,
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			$ipmi_target = ($power_check =~ /-a\s(.*?)\s/)[0];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "ipmi_target", value1 => $ipmi_target,
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->Validate->is_ipv4({ip => $ipmi_target}))
 			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "ipmi_target", value1 => $ipmi_target,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				print "$THIS_FILE ".__LINE__."; ipmi_target: [$ipmi_target]\n";
 				my $ip = $an->Get->ip({host => $ipmi_target});
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "ip", value1 => $ip,
 				}, file => $THIS_FILE, line => __LINE__});
 				
