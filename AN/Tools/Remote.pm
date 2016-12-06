@@ -192,20 +192,22 @@ sub add_target_to_known_hosts
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "add_target_to_known_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_target_to_known_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $target          = $parameter->{target};
+	my $port            = $parameter->{port}            ? $parameter->{port}            : 22;
 	my $user            = $parameter->{user}            ? $parameter->{user}            : $<; 
 	my $delete_if_found = $parameter->{delete_if_found} ? $parameter->{delete_if_found} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "user",            value1 => $user,
-		name2 => "target",          value2 => $target,
-		name3 => "delete_if_found", value3 => $delete_if_found,
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "target",          value1 => $target,
+		name2 => "port",            value2 => $port,
+		name3 => "user",            value3 => $user,
+		name4 => "delete_if_found", value4 => $delete_if_found,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the local user's home
 	my $users_home = $an->Get->users_home({user => $user});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "users_home", value1 => $users_home,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $users_home)
@@ -216,7 +218,7 @@ sub add_target_to_known_hosts
 	
 	# I'll need to make sure I've seen the fingerprint before.
 	my $known_hosts = "$users_home/.ssh/known_hosts";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "known_hosts", value1 => $known_hosts, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -227,11 +229,12 @@ sub add_target_to_known_hosts
 		# Yup, see if the target is there already,
 		$known_machine = $an->Remote->_check_known_hosts_for_target({
 			target          => $target, 
+			port            => $port, 
 			known_hosts     => $known_hosts, 
 			user            => $user,
 			delete_if_found => $delete_if_found,
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "known_machine", value1 => $known_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -240,19 +243,24 @@ sub add_target_to_known_hosts
 	if (not $known_machine)
 	{
 		# We don't know about this machine yet, so scan it.
-		my $added = $an->Remote->_call_ssh_keyscan({user => $user, target => $target, known_hosts => $known_hosts});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		my $added = $an->Remote->_call_ssh_keyscan({
+			target      => $target, 
+			port        => $port, 
+			user        => $user, 
+			known_hosts => $known_hosts});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "added", value1 => $added, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Verify
 		$known_machine = $an->Remote->_check_known_hosts_for_target({
 			target          => $target, 
+			port            => $port, 
 			known_hosts     => $known_hosts,
 			user            => $user,
 			delete_if_found => $delete_if_found,
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "known_machine", value1 => $known_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($known_machine)
@@ -260,6 +268,7 @@ sub add_target_to_known_hosts
 			# Successfully added!
 			$an->Log->entry({log_level => 2, message_key => "notice_message_0009", message_variables => {
 				target => $target, 
+				port   => $port, 
 				user   => $user, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -268,6 +277,7 @@ sub add_target_to_known_hosts
 			# Failed to add. :(
 			$an->Alert->warning({message_key => "warning_title_0007", message_variables => {
 				target => $target, 
+				port   => $port, 
 				user   => $user, 
 			}, quiet => 1, file => $THIS_FILE, line => __LINE__});
 			return(1);
@@ -764,7 +774,7 @@ sub wait_on_peer
 				port		=>	$port,
 			});
 			my $count = @{$pids};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "count", value1 => $count, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($count)
@@ -799,25 +809,44 @@ sub _call_ssh_keyscan
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $user        = $parameter->{user}; 
 	my $target      = $parameter->{target};
+	my $port        = $parameter->{port};
+	my $user        = $parameter->{user}; 
 	my $known_hosts = $parameter->{known_hosts};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_call_ssh_keyscan" }, message_key => "an_variables_0003", message_variables => { 
-		name1 => "user",        value1 => $user,
-		name2 => "target",      value2 => $target,
-		name3 => "known_hosts", value3 => $known_hosts,
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_call_ssh_keyscan" }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "target",      value1 => $target,
+		name2 => "port",        value2 => $port,
+		name3 => "user",        value3 => $user,
+		name4 => "known_hosts", value4 => $known_hosts,
 	}, file => $THIS_FILE, line => __LINE__});
 
-	$an->Log->entry({log_level => 3, message_key => "notice_message_0010", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "notice_message_0010", message_variables => {
 		target => $target, 
+		port   => $port, 
 		user   => $user, 
 	}, file => $THIS_FILE, line => __LINE__});
-	my $shell_call = $an->data->{path}{'ssh-keyscan'}." $target >> $known_hosts && ";
-		$shell_call .= $an->data->{path}{'chown'}." $user:$user $known_hosts";
+	my $shell_call = $an->data->{path}{'ssh-keyscan'}." $target >> $known_hosts";
+	if (($port) && ($port ne "22"))
+	{
+		$shell_call = $an->data->{path}{'ssh-keyscan'}." -p $port $target >> $known_hosts";
+	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+	}
+	close $file_handle;
+	
+	# Set the ownership
+	$shell_call = $an->data->{path}{'chown'}." $user:$user $known_hosts";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -837,20 +866,22 @@ sub _check_known_hosts_for_target
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_check_known_hosts_for_target" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $target          = $parameter->{target}          ? $parameter->{target}          : "";
+	my $port            = $parameter->{port}            ? $parameter->{port}            : "";
 	my $known_hosts     = $parameter->{known_hosts}     ? $parameter->{known_hosts}     : "";
 	my $user            = $parameter->{user}            ? $parameter->{user}            : "";
 	my $delete_if_found = $parameter->{delete_if_found} ? $parameter->{delete_if_found} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "target",          value1 => $target,
-		name2 => "known_hosts",     value2 => $known_hosts,
-		name3 => "user",            value3 => $user,
-		name4 => "delete_if_found", value4 => $delete_if_found,
+		name2 => "port",            value2 => $port,
+		name3 => "known_hosts",     value3 => $known_hosts,
+		name4 => "user",            value4 => $user,
+		name5 => "delete_if_found", value5 => $delete_if_found,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# read it in and search.
 	my $known_machine = 0;
 	my $shell_call    = $known_hosts;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -858,15 +889,15 @@ sub _check_known_hosts_for_target
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /$target ssh-rsa /)
+		if (($line =~ /$target ssh-rsa /) or ($line =~ /\[$target\]:$port ssh-rsa /))
 		{
 			# We already know this machine (or rather, we already have a fingerprint for
 			# this machine).
 			$known_machine = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "known_machine", value1 => $known_machine, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -875,13 +906,14 @@ sub _check_known_hosts_for_target
 	
 	if ($delete_if_found)
 	{
+		### NOTE: It appears the port is not needed.
 		# If we have a non-digit user, run this through 'su.
 		my $shell_call = $an->data->{path}{'ssh-keygen'}." -R $target";
 		if (($user) && ($user =~ /\D/))
 		{
 			$shell_call = $an->data->{path}{su}." - $user -c '".$an->data->{path}{'ssh-keygen'}." -R $target'";
 		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -889,7 +921,7 @@ sub _check_known_hosts_for_target
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}

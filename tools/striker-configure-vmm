@@ -110,7 +110,7 @@ my $an = AN::Tools->new({data => {
 '<?xml version="1.0"?>
 <gconf>
 	<entry name="manager_window_height" mtime="'.$time.'" type="int" value="596"/>
-	<entry name="manager_window_width" mtime="'.$time.'" type="int" value="864"/>
+	<entry name="manager_window_width" mtime="'.$time.'" type="int" value="939"/>
 </gconf>',
 				},
 				# Nodes will be added to this file. Don't change the key name without 
@@ -231,15 +231,9 @@ elsif ($an->data->{switches}{disable})
 	$an->nice_exit({exit_code => 0});
 }
 
-### DEBUG
-$an->Log->entry({log_level => 0, message_key => "an_variables_0002", message_variables => {
-	name1 => "UID",  value1 => $>, 
-	name2 => "EUID", value2 => $<,
-}, file => $THIS_FILE, line => __LINE__});
-
 # Can I connect to a database?
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 	name1 => "connections", value1 => $connections, 
 }, file => $THIS_FILE, line => __LINE__});
 if (not $connections)
@@ -360,7 +354,7 @@ foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
 # Call 'striker-push-ssh'
 print $an->String->get({key => "scv_message_0016"})."\n";
 my $shell_call = $an->data->{path}{'striker-push-ssh'};
-$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 	name1 => "shell_call", value1 => $shell_call, 
 }, file => $THIS_FILE, line => __LINE__});
 open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
@@ -662,7 +656,7 @@ sub setup_virtual_machine_manager_config
 		# If this is the connections '%gconf.xml' file, we'll analyse it to preserve entries the user
 		# may have added, while deleting entries that were deleted via Striker. All other files we 
 		# will simply replace (for now, we'll probably make this smarter later).
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "path", value1 => $path, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($path =~ /.gconf\/apps\/virt-manager\/connections\/%gconf.xml/)
@@ -886,13 +880,13 @@ sub setup_virtual_machine_manager_config
 								{
 									my $variables = { node => $node };
 									print $an->String->get({key => "scv_message_0005", variables => $variables})."\n";
-									$an->Log->entry({log_level => 2, message_key => "scv_message_0005", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+									$an->Log->entry({log_level => 3, message_key => "scv_message_0005", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 								}
 								else
 								{
 									my $variables = { uri => $uri };
 									print $an->String->get({key => "scv_message_0006", variables => $variables})."\n";
-									$an->Log->entry({log_level => 2, message_key => "scv_message_0006", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+									$an->Log->entry({log_level => 3, message_key => "scv_message_0006", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 								}
 								$body .= "\t\t<li type=\"string\">\n";
 								$body .= "\t\t\t<stringvalue>$uri</stringvalue>\n";
@@ -912,13 +906,13 @@ sub setup_virtual_machine_manager_config
 								{
 									my $variables = { node => $node };
 									print $an->String->get({key => "scv_message_0007", variables => $variables})."\n";
-									$an->Log->entry({log_level => 2, message_key => "scv_message_0007", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+									$an->Log->entry({log_level => 3, message_key => "scv_message_0007", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 								}
 								else
 								{
 									my $variables = { uri => $uri };
 									print $an->String->get({key => "scv_message_0008", variables => $variables})."\n";
-									$an->Log->entry({log_level => 2, message_key => "scv_message_0008", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+									$an->Log->entry({log_level => 3, message_key => "scv_message_0008", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 								}
 								$body .= "\t\t<li type=\"string\">\n";
 								$body .= "\t\t\t<stringvalue>$uri</stringvalue>\n";
@@ -998,7 +992,7 @@ sub setup_virtual_machine_manager_config
 				$an->Log->entry({log_level => 2, message_key => "scv_message_0002", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 				
 				my $shell_call = $path;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -1023,7 +1017,7 @@ sub setup_virtual_machine_manager_config
 				$an->Log->entry({log_level => 2, message_key => "scv_message_0012", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 				
 				my $shell_call  = $an->data->{path}{touch}." $path";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -1031,7 +1025,7 @@ sub setup_virtual_machine_manager_config
 				{
 					chomp;
 					my $line = $_;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => "$line"
 					}, file => $THIS_FILE, line => __LINE__});
 				}

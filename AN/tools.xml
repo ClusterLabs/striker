@@ -652,7 +652,7 @@ Variables:
 		<key name="warning_title_0004">Missing argument</key>
 		<key name="warning_title_0005">Failed to create an RSA key for the user: [#!variable!user!#]. Skipping this user.</key>
 		<key name="warning_title_0006">The user: [#!variable!user!#], has a public RSA file: [#!variable!file!#], but the key wasn't found or read.</key>
-		<key name="warning_title_0007">Failed to add the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts.</key>
+		<key name="warning_title_0007">Failed to add the target: [#!variable!target!#]:[#!variable!port!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts.</key>
 		<key name="warning_title_0008">Dangerous</key>
 		<key name="warning_title_0009">AN::Tools::Check->access() called without a target being specified.</key>
 		<key name="warning_title_0010">Operation Aborted</key>
@@ -698,8 +698,8 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="notice_message_0006">Please be patient! Generating an RSA key now. This can take time depending on how large the key is and how long it takes to collect entropy...</key>
 		<key name="notice_message_0007">successfully generated an RSA key for the user: [#!variable!user!#].</key>
 		<key name="notice_message_0008">Read the local user/host: [#!variable!owner!#]'s public RSA key: [#!variable!key!#].</key>
-		<key name="notice_message_0009">Added the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts successfully.</key>
-		<key name="notice_message_0010">Adding the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts...</key>
+		<key name="notice_message_0009">Added the target: [#!variable!target!#]:[#!variable!port!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts successfully.</key>
+		<key name="notice_message_0010">Adding the target: [#!variable!target!#]:[#!variable!port!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts...</key>
 		<key name="notice_message_0011">Backing up: [#!variable!source!#] to: [#!variable!destination!#].</key>
 		<key name="notice_message_0012">Backed up: [#!variable!source!#] to: [#!variable!destination!#] on: [#!variable!host!#].</key>
 		<key name="notice_message_0013">Connected to: [#!variable!connections!#] database(s).</key>
