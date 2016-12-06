@@ -179,6 +179,9 @@ my $an = AN::Tools->new({data => {
 			local_users	=>	[],
 			log_language	=>	"en_CA",
 			log_level	=>	2,
+			# We'll store the nodes we know about in this array for processing the connections
+			# later.
+			our_nodes	=>	[],
 		},
 	},
 });
@@ -201,14 +204,12 @@ if (($an->data->{switches}{h})   or
 }
 
 # Log our startup
-$an->Log->entry({log_level => 3, message_key => "scv_log_0001", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 3, message_key => "scv_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 # Exit if virt-manager hasn't been installed.
 if (not -e $an->data->{path}{'virt-manager'})
 {
-	$an->Log->entry({log_level => 2, message_key => "scv_log_0003", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 1, message_key => "scv_log_0003", file => $THIS_FILE, line => __LINE__});
 	print $an->String->get({key => "scv_log_0003"})."\n";
 	print "exit:3\n";
 	$an->nice_exit({exit_code => 0});
@@ -229,6 +230,12 @@ elsif ($an->data->{switches}{disable})
 	update_configuration($an, "disable");
 	$an->nice_exit({exit_code => 0});
 }
+
+### DEBUG
+$an->Log->entry({log_level => 0, message_key => "an_variables_0002", message_variables => {
+	name1 => "UID",  value1 => $>, 
+	name2 => "EUID", value2 => $<,
+}, file => $THIS_FILE, line => __LINE__});
 
 # Can I connect to a database?
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
@@ -255,14 +262,14 @@ else
 	if ($an->data->{switches}{force})
 	{
 		# Yup
-		$an->Log->entry({log_level => 2, message_key => "scv_log_0005", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 1, message_key => "scv_log_0005", file => $THIS_FILE, line => __LINE__});
 		print $an->String->get({key => "scv_log_0005"})."\n";
 	}
 	else
 	{
 		# Remove ourself to GDM's PreSession script, if needed.
 		manage_gdm_presession($an, "remove");
-		$an->Log->entry({log_level => 2, message_key => "scv_log_0004", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 1, message_key => "scv_log_0004", file => $THIS_FILE, line => __LINE__});
 		print $an->String->get({key => "scv_log_0004"})."\n";
 		print "exit:1\n";
 		$an->nice_exit({exit_code => 0});
@@ -280,32 +287,66 @@ if (not $local_user_count)
 }
 
 # Create the list of nodes to add to Virtual Machine Manager.
-my $anvil_data = $an->ScanCore->parse_anvil_data();
+my $anvil_data = $an->ScanCore->parse_anvil_data({include_deleted => 1});
 foreach my $anvil_uuid (keys %{$an->data->{anvils}})
 {
-	$an->data->{anvil}{uuid}     = $anvil_uuid;
-	$an->data->{anvil}{node1}    = $an->data->{anvils}{$anvil_uuid}{node1}{name};
-	$an->data->{anvil}{node2}    = $an->data->{anvils}{$anvil_uuid}{node2}{name};
-	$an->data->{anvil}{password} = $an->data->{anvils}{$anvil_uuid}{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "anvil::uuid",     value1 => $an->data->{anvil}{uuid}, 
-		name2 => "anvil::node1",    value2 => $an->data->{anvil}{node1}, 
-		name3 => "anvil::node2",    value3 => $an->data->{anvil}{node2}, 
-		name4 => "anvil::password", value4 => $an->data->{anvil}{password}, 
+	$an->data->{anvil}{uuid}               = $anvil_uuid;
+	$an->data->{anvil}{node1}{name}        = $an->data->{anvils}{$anvil_uuid}{node1}{name};
+	$an->data->{anvil}{node1}{remove}      = $an->data->{anvils}{$anvil_uuid}{node1}{note} eq "DELETED" ? 1 : 0;
+	$an->data->{anvil}{node1}{remote_port} = $an->data->{anvils}{$anvil_uuid}{node1}{remote_port} ? $an->data->{anvils}{$anvil_uuid}{node1}{remote_port} : "";
+	$an->data->{anvil}{node2}{name}        = $an->data->{anvils}{$anvil_uuid}{node2}{name};
+	$an->data->{anvil}{node2}{remove}      = $an->data->{anvils}{$anvil_uuid}{node2}{note} eq "DELETED" ? 1 : 0;
+	$an->data->{anvil}{node2}{remote_port} = $an->data->{anvils}{$anvil_uuid}{node2}{remote_port} ? $an->data->{anvils}{$anvil_uuid}{node2}{remote_port} : "";
+	$an->data->{anvil}{password}           = $an->data->{anvils}{$anvil_uuid}{password};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+		name1  => "anvil::uuid",                               value1  => $an->data->{anvil}{uuid}, 
+		name2  => "anvil::node1::name",                        value2  => $an->data->{anvil}{node1}{name}, 
+		name3  => "anvil::node1::remove",                      value3  => $an->data->{anvil}{node1}{remove}, 
+		name4  => "anvil::node1::remote_port",                 value4  => $an->data->{anvil}{node1}{remote_port}, 
+		name5  => "anvils::${anvil_uuid}::node1::note",        value5  => $an->data->{anvils}{$anvil_uuid}{node1}{note}, 
+		name6  => "anvils::${anvil_uuid}::node1::remote_port", value6  => $an->data->{anvils}{$anvil_uuid}{node1}{remote_port}, 
+		name7  => "anvil::node2::name",                        value7  => $an->data->{anvil}{node2}{name}, 
+		name8  => "anvil::node2::remove",                      value8  => $an->data->{anvil}{node2}{remove}, 
+		name9  => "anvil::node2::remote_port",                 value9  => $an->data->{anvil}{node2}{remote_port}, 
+		name10 => "anvils::${anvil_uuid}::node2::note",        value10 => $an->data->{anvils}{$anvil_uuid}{node2}{note}, 
+		name11 => "anvils::${anvil_uuid}::node2::remote_port", value11 => $an->data->{anvils}{$anvil_uuid}{node2}{remote_port}, 
+		name12 => "anvil::password",                           value12 => $an->data->{anvil}{password}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	foreach my $node ($an->data->{anvil}{node1}, $an->data->{anvil}{node2})
+	# Record the nodes by name for later connections file refresh.
+	push @{$an->data->{sys}{our_nodes}}, $an->data->{anvil}{node1}{name};
+	push @{$an->data->{sys}{our_nodes}}, $an->data->{anvil}{node2}{name};
+	
+	# Record the URIs if we aren't supposed to remove the node.
+	if (not $an->data->{anvil}{node1}{remove})
 	{
-		my $uri = "qemu+ssh://root\@$node/system";
-		$an->data->{node}{$uri}{autoconnect} = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node",                      value1 => $node, 
-			name2 => "node::${uri}::autoconnect", value2 => $an->data->{node}{$uri}{autoconnect},
+		my $node1_uri = "qemu+ssh://root\@".$an->data->{anvil}{node1}{name}."/system";
+		if ($an->data->{anvil}{node1}{remote_port})
+		{
+			$node1_uri = "qemu+ssh://root\@".$an->data->{anvil}{node1}{name}.":".$an->data->{anvil}{node1}{remote_port}."/system";
+		}
+		$an->data->{node}{$node1_uri}{autoconnect} = 1;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node1_uri",                       value1 => $node1_uri,  
+			name2 => "node::${node1_uri}::autoconnect", value2 => $an->data->{node}{$node1_uri}{autoconnect},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if (not $an->data->{anvil}{node2}{remove})
+	{
+		my $node2_uri = "qemu+ssh://root\@".$an->data->{anvil}{node2}{name}."/system";
+		if ($an->data->{anvil}{node2}{remote_port})
+		{
+			$node2_uri = "qemu+ssh://root\@".$an->data->{anvil}{node2}{name}.":".$an->data->{anvil}{node2}{remote_port}."/system";
+		}
+		$an->data->{node}{$node2_uri}{autoconnect} = 1;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node2_uri",                       value1 => $node2_uri,  
+			name2 => "node::${node2_uri}::autoconnect", value2 => $an->data->{node}{$node2_uri}{autoconnect},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 }
 
-# If I am still alive, loop through the list of Anvil! systems and make sure they're in the 
+# If I am still alive, loop through the list of Anvil! systems and make sure they're in the connections file.
 print $an->String->get({key => "scv_message_0009"})."\n";
 foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
 {
@@ -319,7 +360,7 @@ foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
 # Call 'striker-push-ssh'
 print $an->String->get({key => "scv_message_0016"})."\n";
 my $shell_call = $an->data->{path}{'striker-push-ssh'};
-$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 	name1 => "shell_call", value1 => $shell_call, 
 }, file => $THIS_FILE, line => __LINE__});
 open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
@@ -509,7 +550,7 @@ sub setup_virtual_machine_manager_config
 		my $owner = $an->data->{permissions}{directories}{$directory}{owner};
 		my $group = $an->data->{permissions}{directories}{$directory}{group};
 		my $mode  = $an->data->{permissions}{directories}{$directory}{mode};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "path",  value1 => $path, 
 			name2 => "owner", value2 => $owner, 
 			name3 => "group", value3 => $group, 
@@ -520,7 +561,7 @@ sub setup_virtual_machine_manager_config
 		$path  =  "$home_directory/$path";
 		$owner =~ s/~/$user/;
 		$group =~ s/~/$user/;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "path",  value1 => $path, 
 			name2 => "owner", value2 => $owner, 
 			name3 => "group", value3 => $group, 
@@ -529,7 +570,7 @@ sub setup_virtual_machine_manager_config
 		# Convert the owner to UID and group to GID.
 		my $uid = getpwnam($owner);
 		my $gid = getgrnam($group);
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "uid", value1 => $uid, 
 			name2 => "gid", value2 => $gid, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -599,10 +640,13 @@ sub setup_virtual_machine_manager_config
 		my $raw_file = "";
 		if (-e $path)
 		{
-			my $shell_call = $path;
-			open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
 			my $in_autoconnect = 0;
 			my $in_uris        = 0;
+			my $shell_call     = $path;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -616,9 +660,9 @@ sub setup_virtual_machine_manager_config
 		}
 		
 		# If this is the connections '%gconf.xml' file, we'll analyse it to preserve entries the user
-		# may have added. All other files we will simply replace (for now, we'll probably make this 
-		# smarter later).
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		# may have added, while deleting entries that were deleted via Striker. All other files we 
+		# will simply replace (for now, we'll probably make this smarter later).
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "path", value1 => $path, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($path =~ /.gconf\/apps\/virt-manager\/connections\/%gconf.xml/)
@@ -627,11 +671,109 @@ sub setup_virtual_machine_manager_config
 			# Read in the current file.
 			my $variables = { file  => $path };
 			print $an->String->get({key => "scv_message_0004", variables => $variables})."\n";
-			$an->Log->entry({log_level => 2, message_key => "scv_message_0004", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scv_message_0004", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 			
-			# If it exists, read it in and analyze it.
+			# If it exists, read it in and strip out nodes we know about.
+			my $new_file = "";
 			if ($raw_file)
 			{
+				my $skip_entry     = 0;
+				my $in_li          = 0;
+				my $li_string      = "";
+				foreach my $line (split/\n/, $raw_file)
+				{
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# If I am entering, in or leaving a <li/> element, process it before 
+					# blindly adding lines to $new_file.
+					if ($line =~ /<li type="string"/)
+					{
+						$in_li = 1;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "in_li", value1 => $in_li, 
+						}, file => $THIS_FILE, line => __LINE__});
+						next;
+					}
+					if ($line =~ /<\/li>/)
+					{
+						# Record unless skip
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "skip_entry", value1 => $skip_entry, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $skip_entry)
+						{
+							$new_file .= "\t\t<li type=\"string\">\n";
+							$new_file .= "\t\t\t<stringvalue>".$li_string."</stringvalue>\n";
+							$new_file .= "\t\t</li>\n";
+						}
+						
+						$in_li      = 0;
+						$skip_entry = 0;
+						$li_string  = "";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+							name1 => "in_li",      value1 => $in_li, 
+							name2 => "skip_entry", value2 => $skip_entry, 
+							name3 => "li_string",  value3 => $li_string, 
+						}, file => $THIS_FILE, line => __LINE__});
+						next;
+					}
+					if ($in_li)
+					{
+						if ($line =~ /<stringvalue>(.*?)<\/stringvalue>/)
+						{
+							$li_string = $1;
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+								name1 => "li_string", value1 => $li_string, 
+							}, file => $THIS_FILE, line => __LINE__});
+							if ($li_string =~ /qemu\+ssh:\/\/root\@(.*?)\/system/)
+							{
+								my $this_host = $1;
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+									name1 => ">> li_string", value1 => $this_host, 
+								}, file => $THIS_FILE, line => __LINE__});
+								
+								# Strip port, if any
+								$this_host =~ s/:\d+$//;
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+									name1 => "<< li_string", value1 => $this_host, 
+								}, file => $THIS_FILE, line => __LINE__});
+								
+								# Do I know about this host?
+								foreach my $known_node (sort {$a cmp $b} @{$an->data->{sys}{our_nodes}})
+								{
+									next if $skip_entry;
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+										name1 => "known_node", value1 => $known_node, 
+										name2 => "this_host",  value2 => $this_host, 
+									}, file => $THIS_FILE, line => __LINE__});
+									if ($known_node eq $this_host)
+									{
+										$skip_entry = 1;
+										$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+											name1 => "skip_entry", value1 => $skip_entry, 
+										}, file => $THIS_FILE, line => __LINE__});
+									}
+								}
+							}
+						}
+						next;
+					}
+					$new_file .= $line."\n";
+				}
+				
+				# Copy new_file to $raw_file.
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "raw_file", value1 => $raw_file, 
+					name2 => "new_file", value2 => $new_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$raw_file = $new_file;
+				
+				### TODO: Find a way to let the user disable auto-connect (we've lost this 
+				###       with blunt deletion of known servers).
+				### TODO: Merge this logic above.
+				# Now inject the nodes we care about.
 				my $in_autoconnect = 0;
 				my $in_uris        = 0;
 				foreach my $line (split/\n/, $raw_file)
@@ -639,7 +781,6 @@ sub setup_virtual_machine_manager_config
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
-					
 					if ($line =~ /<entry name="autoconnect"/)
 					{
 						$in_autoconnect = 1;
@@ -712,16 +853,17 @@ sub setup_virtual_machine_manager_config
 			
 			# Now construct the new body. If 'raw' is set, merge in our nodes that haven't been
 			# seen. If raw doesn't exist, then we'll use the default 'body'.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "raw_file", value1 => $raw_file, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $raw_file)
 			{
 				$raw_file = $body;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "raw_file", value1 => $raw_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			
 			if ($raw_file)
 			{
 				# Inject our nodes.
@@ -752,9 +894,9 @@ sub setup_virtual_machine_manager_config
 									print $an->String->get({key => "scv_message_0006", variables => $variables})."\n";
 									$an->Log->entry({log_level => 2, message_key => "scv_message_0006", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 								}
-								$body .= "		<li type=\"string\">\n";
-								$body .= "			<stringvalue>$uri</stringvalue>\n";
-								$body .= "		</li>\n";
+								$body .= "\t\t<li type=\"string\">\n";
+								$body .= "\t\t\t<stringvalue>$uri</stringvalue>\n";
+								$body .= "\t\t</li>\n";
 							}
 						}
 					}
@@ -778,21 +920,21 @@ sub setup_virtual_machine_manager_config
 									print $an->String->get({key => "scv_message_0008", variables => $variables})."\n";
 									$an->Log->entry({log_level => 2, message_key => "scv_message_0008", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 								}
-								$body .= "		<li type=\"string\">\n";
-								$body .= "			<stringvalue>$uri</stringvalue>\n";
-								$body .= "		</li>\n";
+								$body .= "\t\t<li type=\"string\">\n";
+								$body .= "\t\t\t<stringvalue>$uri</stringvalue>\n";
+								$body .= "\t\t</li>\n";
 							}
 						}
 					}
 				}
 			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "body", value1 => $body, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		my $files_differ = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "body",     value1 => $body, 
 			name2 => "raw_file", value1 => $raw_file, 
 		}, file => $THIS_FILE, line => __LINE__});
