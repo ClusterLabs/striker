@@ -1145,55 +1145,56 @@ sub get_packages
 {
 	my ($conf, $machine) = @_;
 
-	my $packages     = "# This is a very minimal installation. It is just enough to get the nodes ready
-# for the Stage-2 'Install Manifest' run from the $conf->{sys}{ks}{striker_name} dashboard.
+	my $packages     = "
+# This installs most of the stuff we'll need for stage-2 as well as the stage-1
+# requirements.
 \%packages
-# Core - mandatory
-# We clobber the groups XML repodata, so we specify the packages directly.
-# Core - mandatory
+# Common packages
 acl
+acpid
+aic94xx-firmware
+alteeve-repo
+atmel-firmware
 attr
 audit
+b43-openfwwf
 basesystem
 bash
+bash-completion
+bfa-firmware
+ccs
+cim-schema
+compat-libstdc++-33.i686
 coreutils
 cpio
 cronie
+cyrus-sasl
+cyrus-sasl-plain
 dhclient
+dmidecode
+dracut-network
 e2fsprogs
+efibootmgr
+expect
+fence-agents
 filesystem
+freeipmi
+freeipmi-bmc-watchdog
+freeipmi-ipmidetectd
+gcc
+gcc-c++
 glibc
+gpm
+grub
 initscripts
+ipmitool
 iproute
 iptables
 iptables-ipv6
 iputils
-kbd
-ncurses
-openssh-server
-passwd
-policycoreutils
-procps
-rootfiles
-rpm
-rsyslog
-selinux-policy-targeted
-setup
-shadow-utils
-sudo
-util-linux-ng
-vim-minimal
-yum
-
-# Core - Default
-aic94xx-firmware
-atmel-firmware
-b43-openfwwf
-bfa-firmware
-efibootmgr
-grub
 ipw2100-firmware
 ipw2200-firmware
+irqbalance
 ivtv-firmware
 iwl100-firmware
 iwl1000-firmware
@@ -1204,39 +1205,89 @@ iwl5150-firmware
 iwl6000-firmware
 iwl6000g2a-firmware
 iwl6050-firmware
+kbd
+kernel-devel
 kernel-firmware
+kernel-headers
 kexec-tools
 libertas-usb8388-firmware
+libstdc++-devel.i686
+libstdc++.i686
+mailx
+man
+mlocate
+mtr
+ncurses
+ntp
+OpenIPMI
+OpenIPMI-libs
+openssh-clients
+openssh-server
+openssl-devel
+parted
+passwd
+pciutils
+pcp
+perl
+perl-CGI
+perl-Crypt-SSLeay
+perl-DBD-Pg
+perl-Digest-SHA
+perl-Mail-RFC822-Address
+perl-Net-SSH2
+perl-Net-Telnet
+perl-Sys-Virt
+perl-TermReadKey
+perl-Text-Diff
+perl-Time-HiRes
+perl-XML-Simple
+policycoreutils
+policycoreutils-python
 postfix
+postgresql95
+procps
 ql2100-firmware
 ql2200-firmware
 ql23xx-firmware
 ql2400-firmware
 ql2500-firmware
+rootfiles
+rpm
+rsync
+rsyslog
 rt61pci-firmware
 rt73usb-firmware
-xorg-x11-drv-ati-firmware
-zd1211-firmware
-
-# Core - Optional
-dracut-network
-
-# Others - Common to nodes and dashboards
--kdump
-alteeve-repo
-gpm
-perl
-perl-Crypt-SSLeay
+screen
+selinux-policy-targeted
+setup
+shadow-utils
+sharutils
+sudo
+syslinux
+sysstat
+tuned
+usbutils
+util-linux-ng
 vim
+vim-common 
+vim-enhanced
+vim-minimal
+virt-viewer
+wget
+xorg-x11-drv-ati-firmware
+yum
+zd1211-firmware
 ";
 	if ($conf->{sys}{os_type} eq "centos")
 	{
-		$packages .= "yum-plugin-priorities\n";
+		$packages .= "
+# CentOS specific packages
+yum-plugin-priorities\n";
 	}
 	if ($conf->{sys}{os_type} eq "rhel")
 	{
 		$packages .= "
-# RHEL specific core packages
+# RHEL specific packages
 redhat-support-tool
 rhnsd
 subscription-manager
@@ -1247,47 +1298,166 @@ yum-rhn-plugin
 	if ($machine eq "striker")
 	{
 		$packages .= "
-# Striker packages needed for 'striker-installer' to run
-acpid
-createrepo
-gcc
-glibc-devel
-httpd 
-perl-libwww-perl
-rsync
-screen 
-syslinux 
-syslinux-tftpboot
-usbutils
-xinetd
-
-### Needed to keep virt-manager from complaining.
+# Striker packages needed for Striker dashboards
+abyssinica-fonts
+alsa-plugins-pulseaudio
+at-spi
 augeas-libs
+cjkuni-uming-fonts
+cluster-cim
+control-center
+control-center-extra
+cpp
+createrepo
+dbus
+dejavu-sans-fonts
+dejavu-sans-mono-fonts
+dejavu-serif-fonts
+dhcp
 dnsmasq
 ebtables
+eog
+firefox
+ftp
+gcalctool
+gdm
+gdm-plugin-fingerprint
+gdm-user-switch-applet
+glx-utils
+glibc-devel
 glusterfs
 glusterfs-api
 glusterfs-libs
+gnome-applets
+gnome-media
+gnome-packagekit
+gnome-panel
+gnome-power-manager
+gnome-screensaver
+gnome-session
+gnome-terminal
+gnome-utils
+gnome-vfs2-smb
+google-crosextra-caladea-fonts
+google-crosextra-carlito-fonts
 gpxe-roms-qemu
+gvfs-archive
+gvfs-fuse
+gvfs-smb
+hal
+httpd
 iscsi-initiator-utils
+jomolhari-fonts
 keyutils
+khmeros-base-fonts
+kurdit-unikurd-web-fonts
+libcdio 
+liberation-mono-fonts
+liberation-sans-fonts
+liberation-serif-fonts
 libgssglue
 libtirpc
 libevent
 libvirt
+lklug-fonts
+lohit-assamese-fonts
+lohit-bengali-fonts
+lohit-devanagari-fonts
+lohit-gujarati-fonts
+lohit-kannada-fonts
+lohit-oriya-fonts
+lohit-punjabi-fonts
+lohit-tamil-fonts
+lohit-telugu-fonts
 lzop
+madan-fonts
+metacity
+mod_ssl
+mtr-gtk
+nano
+nautilus
+nautilus-open-terminal
 netcf-libs
 nfs-utils
 nfs-utils-lib
+notification-daemon
+ntfs-3g
+ntfsprogs
 numad
+openssh-askpass
+paktype-naqsh-fonts
+paktype-tehreer-fonts
+patch
+pcp-gui
+perl-CPAN
+perl-IO-Socket-SSL
+perl-Net-SSLeay
+perl-Test-Simple
+perl-YAML-Tiny
+perl-libwww-perl
+plymouth-system-theme
+polkit-gnome
+postgresql95-contrib
+postgresql95-libs
+postgresql95-plperl
+postgresql95-server
+pulseaudio-module-gconf
+pulseaudio-module-x11
 qemu-img
 qemu-kvm
 radvd
 rpcbind
 seabios
 sgabios-bin
+shorewall
+sil-padauk-fonts
+smc-meera-fonts
 spice-server
+spice-vdagent
+stix-fonts
+syslinux-tftpboot
+tftp-server
+thai-scalable-waree-fonts
+tibetan-machine-uni-fonts
+un-core-dotum-fonts
+unzip
 vgabios
+vino
+virt-manager
+vlgothic-fonts
+wdaemon
+wqy-zenhei-fonts
+xdg-user-dirs-gtk
+xinetd
+xorg-x11-drivers
+xorg-x11-server-Xorg
+xorg-x11-server-utils
+xorg-x11-utils
+xorg-x11-xauth
+xorg-x11-xinit
+xvattr
+yelp
+";
+	}
+	else
+	{
+		$packages .= "
+# Striker packages needed for Anvil! Nodes
+bridge-utils
+cman 
+corosync
+drbd84-utils
+gd
+gfs2-utils
+kmod-drbd84
+libvirt
+lvm2-cluster
+net-snmp
+qemu-kvm
+qemu-kvm-tools
+python-virtinst
+rgmanager
+ricci
 ";
 	}
 	$packages .= "\%end\n";
@@ -3656,7 +3826,6 @@ sub get_package_list
 		"kbd-misc.noarch",
 		"kbd.x86_64",
 		"kernel-devel.x86_64",
-		"kernel-devel.x86_64",
 		"kernel-firmware.noarch",
 		"kernel-headers.x86_64",
 		"kernel.x86_64",
@@ -3927,6 +4096,7 @@ sub get_package_list
 		"pcp-libs.x86_64",
 		"pcp.x86_64",
 		"pcre.x86_64",
+		"perl.x86_64",
 		"perl-CGI.x86_64",
 		"perl-CPAN.x86_64",
 		"perl-Compress-Raw-Zlib.x86_64",
@@ -3962,7 +4132,6 @@ sub get_package_list
 		"perl-libs.x86_64",
 		"perl-libwww-perl.noarch",
 		"perl-version.x86_64",
-		"perl.x86_64",
 		"pexpect.noarch",
 		"phonon-backend-gstreamer.x86_64",
 		"pinentry.x86_64",
@@ -4256,6 +4425,7 @@ sub get_package_list
 		"kmod-drbd84.x86_64",
 		"ntfs-3g.x86_64",
 		"ntfsprogs.x86_64",
+		"perl-Mail-RFC822-Address.noarch",
 		"perl-Net-SSH2.x86_64",
 		"perl-XML-Simple.noarch",
 		"postgresql95.x86_64",

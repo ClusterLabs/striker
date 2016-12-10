@@ -13667,7 +13667,7 @@ sub run_new_install_manifest
 	}});
 	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-header"});
 	
-	# Some variables we'll need.
+	# Some packages we'll need.
 	$an->data->{packages}{to_install} = {
 		acpid				=>	0,
 		'alteeve-repo'			=>	0,
