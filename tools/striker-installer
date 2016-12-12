@@ -6445,6 +6445,68 @@ sub create_apache_home_directories
 	return(0);
 }
 
+# This checks to see if this server is already registered with RHN yet.
+sub check_if_registered_with_rhn
+{
+	my ($conf) = @_;
+	
+	my $registered    = 0;
+	my $optional_repo = 0;
+	my $shell_call    = $conf->{executable}{'subscription-manager'}." identity; ".$conf->{executable}{'echo'}." subscription-manager:\$?";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
+		if ($line =~ /subscription-manager:(\d+)/)
+		{
+			my $exit_code = $1;
+			if ($exit_code == 0)
+			{
+				$registered = 1;
+				logger($conf, $THIS_FILE, __LINE__, "The system is registered.", 2);
+			}
+		}
+		elsif ($line =~ /system identity: (.*)$/)
+		{
+			my $uuid       = $1;
+				$registered = 1;
+			logger($conf, $THIS_FILE, __LINE__, "The system's registration UUID is: [$uuid].", 2);
+		}
+	}
+	close $file_handle;
+	
+	# If it is enabled, see if the "optional" repo has been enabled.
+	if ($registered)
+	{
+		my $shell_call = $conf->{executable}{'subscription-manager'}." repos --list-enabled";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
+			if ($line =~ /Repo ID:\s+(.*)$/)
+			{
+				my $repo = $1;
+				logger($conf, $THIS_FILE, __LINE__, "repo: [$repo]", 2);
+				if ($repo eq "rhel-6-server-optional-rpms")
+				{
+					$optional_repo = 1;
+					logger($conf, $THIS_FILE, __LINE__, "- optional_repo: [$optional_repo]", 2);
+				}
+			}
+		}
+		close $file_handle;
+	}
+	
+	logger($conf, $THIS_FILE, __LINE__, "registered: [$registered], optional_repo: [$optional_repo]", 2);
+	return($registered, $optional_repo);
+}
+
 # This does the actual work of registering with RHN.
 sub register_with_rhn
 {
@@ -6456,76 +6518,74 @@ sub register_with_rhn
 		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Registration will probably fail.", 0);
 	}
 	### TODO: Escape bash special vars in passwords.
-	logger($conf, $THIS_FILE, __LINE__, "RHN credentials given. Attempting to register now.", 1);
-	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient, this might take a minute...", 1);
-	my $shell_call = $conf->{executable}{'subscription-manager'}." register --username '".$conf->{sys}{rhn_user}."' --password '".$conf->{sys}{rhn_password}."' --name=".$conf->{sys}{hostname}." --auto-attach; echo subscription-manager:\$?";
-	logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
-	logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
-	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-	my $registered = 0;
-	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		if ($line =~ /subscription-manager:(\d+)/)
-		{
-			my $exit_code = $1;
-			if ($exit_code == 0)
-			{
-				$registered = 1;
-				logger($conf, $THIS_FILE, __LINE__, "- Registration was successful.", 1);
-			}
-			else
-			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Registration with RHN appears to have failed!", 1);
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Exit code was: [$exit_code], expected '0'.", 1);
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   You can run without the '--rhn' switch to install using local packages.", 1);
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Installation aborted. ", 1);
-				exit(38);
-			}
-		}
-		else
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 2);
-		}
-	}
-	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "RHN credentials given. Checking if this system has been registered yet.", 1);
+	
+	# Am I already registered?
+	my ($registered, $optional_repo) = check_if_registered_with_rhn($conf);
+	logger($conf, $THIS_FILE, __LINE__, "registered: [$registered], optional_repo: [$optional_repo]", 2);
 	if ($registered)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Adding 'Optional' channel...", 1);
-		#my $shell_call = "$conf->{executable}{'rhn-channel'} --add --user '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --channel=rhel-x86_64-server-optional-6; echo rhn-channel:\$?";
-		my $shell_call = $conf->{executable}{'subscription-manager'}." repos --enable=rhel-6-server-optional-rpms; echo subscription-manager:\$?";
+		logger($conf, $THIS_FILE, __LINE__, "- This machine is already registered.", 1);
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Registration required, proceeding now.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient, this might take a minute...", 1);
+		my $shell_call = $conf->{executable}{'subscription-manager'}." register --username '".$conf->{sys}{rhn_user}."' --password '".$conf->{sys}{rhn_password}."' --name=".$conf->{sys}{hostname}." --auto-attach --force";
+		logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			if ($line =~ /subscription-manager:(\d+)/)
-			{
-				my $exit_code = $1;
-				if ($exit_code == 0)
-				{
-					$registered = 1;
-					logger($conf, $THIS_FILE, __LINE__, "- 'Optional' channel added successfully.", 1);
-				}
-				else
-				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Adding the 'Optional' RHN channel appears to have failed!", 1);
-					logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Exit code was: [$exit_code], expected '0'.", 1);
-				}
-			}
-			else
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
-			}
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
 		}
 		close $file_handle;
+		
+		($registered, $optional_repo) = check_if_registered_with_rhn($conf);
+		logger($conf, $THIS_FILE, __LINE__, "registered: [$registered]", 2);
+	}
+	
+	# Registered now?
+	if (not $registered)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Registration with RHN appears to have failed!", 1);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   You can run without the '--rhn' switch to install using local packages.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Installation aborted. ", 1);
+		exit(38);
+	}
+	
+	# If we're alive, we're registered.
+	if ($optional_repo)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- The 'optional' repo has already been enabled.", 1);
 	}
 	else
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Registration failed, skipping 'Optional' channel addition.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Adding the 'Optional' channel now.", 1);
+		my $shell_call = $conf->{executable}{'subscription-manager'}." repos --enable=rhel-6-server-optional-rpms";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
+		}
+		close $file_handle;
+		
+		($registered, $optional_repo) = check_if_registered_with_rhn($conf);
+		logger($conf, $THIS_FILE, __LINE__, "registered: [$registered], optional_repo: [$optional_repo]", 2);
+		if ($optional_repo)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- 'Optional' channel added successfully.", 1);
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Adding the 'Optional' RHN channel appears to have failed!", 1);
+		}
 	}
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
@@ -8744,6 +8804,10 @@ $help .= q|
 	NOTE: This also sets the 'root' user's password on the striker
 	      appliance! 
 
+ -vvvv, -vvv, -vv, -v
+
+	This sets the debug level to 4, 3, 2, or 1 respectively.
+
  -y
 
 	Automatically answers "yes" to prompts. Specifically, this prevents
@@ -8851,6 +8915,24 @@ sub get_switches
 	if ($conf->{switches}{raw})
 	{
 		$conf->{switches}{raw} =~ s/^ //;
+	}
+	
+	# If we were passed '-vvv', '-vv' or '-v', increase debug.
+	if ($conf->{switches}{vvvv})
+	{
+		$conf->{sys}{debug} = 4;
+	}
+	elsif ($conf->{switches}{vvv})
+	{
+		$conf->{sys}{debug} = 3;
+	}
+	elsif ($conf->{switches}{vv})
+	{
+		$conf->{sys}{debug} = 2;
+	}
+	elsif ($conf->{switches}{v})
+	{
+		$conf->{sys}{debug} = 1;
 	}
 	
 	# Debug
