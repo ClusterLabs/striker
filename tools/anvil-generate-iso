@@ -1956,16 +1956,16 @@ sub get_date
 	my %time = ();
 	($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime();
 	
+	# Adjust the year and month
+	$time{year} = ($time{year} + 1900);
+	$time{mon}++;
+	
 	# 0-pad the numbers
 	$time{pad_hour} = sprintf("%02d", $time{hour});
 	$time{pad_min}  = sprintf("%02d", $time{min});
 	$time{pad_sec}  = sprintf("%02d", $time{sec});
 	$time{pad_mon}  = sprintf("%02d", $time{mon});
 	$time{pad_mday} = sprintf("%02d", $time{mday});
-	
-	# Adjust the year and month
-	$time{year} = ($time{year} + 1900);
-	$time{mon}++;
 	
 	$conf->{sys}{date}   = $time{year}."/".$time{pad_mon}."/".$time{pad_mday};
 	$conf->{sys}{'time'} = $time{pad_hour}.":".$time{pad_min}.":".$time{pad_sec};
