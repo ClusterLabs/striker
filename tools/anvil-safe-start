@@ -39,9 +39,8 @@ $ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
 $< = $>;
 $( = $);
 
-### NOTE: I can't use '$0' here because it picks up the rc3.d symlink name instead of the real name
 # Figure out who and where I am.
-my $program_name        =  "/sbin/striker/anvil-safe-start";
+my $program_name        =  $0;
 my $THIS_FILE           =  ($program_name =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($program_name =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
@@ -132,26 +131,23 @@ if (($an->data->{switches}{h})   or
 	print_usage($an);
 	$an->nice_exit({exit_code => 0});
 }
-if ($an->data->{switches}{start})
-{
-	# Create the /etc/rc3.d link.
-	update_striker_conf($an, "enable");
-	$an->nice_exit({exit_code => 0});
-}
+
+# I used to have a dumb and complex way of handling this before I knew about '@reboot' in cron... This 
+# function cleans that up, if the old way is found.
+check_root_crontab($an);
+
 if ($an->data->{switches}{enable})
 {
-	# Create the /etc/rc3.d link.
+	# Make sure we're in the root user's crontab and enabled in striker.conf.
 	add_to_root_crontab($an);
-	#create_rc3d_symlink($an);
+	update_striker_conf($an, "enable");
 	$an->nice_exit({exit_code => 0});
 }
 if ($an->data->{switches}{disable})
 {
-	# Remove the crontab entry
+	# Remove our entry in the root user's crontab and disable in striker.conf.
 	remove_from_root_crontab($an);
-	
-	# Remove the /etc/rc3.d link.
-	#remove_rc3d_symlink($an);
+	update_striker_conf($an, "disable");
 	$an->nice_exit({exit_code => 0});
 }
 if (($an->data->{switches}{'state'}) or ($an->data->{switches}{status}))
@@ -163,8 +159,7 @@ if (($an->data->{switches}{'state'}) or ($an->data->{switches}{status}))
 }
 if ($an->data->{switches}{abort})
 {
-	# Create the /etc/rc3.d link.
-	update_striker_conf($an, "disable");
+	# Abort the other instance.
 	abort_other_instances($an);
 	$an->nice_exit({exit_code => 0});
 }
@@ -176,12 +171,12 @@ if (not $an->data->{switches}{force})
 # Exit if we're disabled.
 if ((not $an->data->{switches}{force}) && (not $an->data->{tools}{'anvil-safe-start'}{enabled}))
 {
+	print $an->String->get({key => "asst_message_0023"})."\n";
 	$an->nice_exit({exit_code => 0});
 }
 
 # Log our startup
 $an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
-
 
 ### Process
 # 1. Check if I am enabled in striker.conf and that no other copies are running.
@@ -205,8 +200,6 @@ $an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variabl
 # 6. Using Start Groups/Delays (and ignoring 'clean' off VMs), boot servers.
 # 
 
-# Disable myself in /etc/striker/striker.conf to block further runs.
-update_striker_conf($an, "disable");
 
 # Now wait for access to a ScanCore database.
 wait_for_scancore_database($an);
@@ -324,13 +317,13 @@ sub update_striker_conf
 		close $file_handle;
 		if ($set)
 		{
-			# Called
+			# Enabled, as requested
 			$an->Log->entry({log_level => 1, message_key => "asst_message_0016", message_variables => {this_file => $THIS_FILE}, file => $THIS_FILE, line => __LINE__});
 			print $an->String->get({key => "asst_message_0016", variables => { this_file => $THIS_FILE }})."\n";
 		}
 		else
 		{
-			# Cancelled.
+			# Disabled, as requested
 			$an->Log->entry({log_level => 1, message_key => "asst_message_0017", message_variables => {this_file => $THIS_FILE}, file => $THIS_FILE, line => __LINE__});
 			print $an->String->get({key => "asst_message_0017", variables => { this_file => $THIS_FILE }})."\n";
 		}
@@ -339,13 +332,13 @@ sub update_striker_conf
 	{
 		if ($set)
 		{
-			# Already called
+			# Already enabled
 			$an->Log->entry({log_level => 1, message_key => "asst_message_0018", message_variables => {this_file => $THIS_FILE}, file => $THIS_FILE, line => __LINE__});
 			print $an->String->get({key => "asst_message_0018", variables => { this_file => $THIS_FILE }})."\n";
 		}
 		else
 		{
-			# Already cancelled.
+			# Already disabled.
 			$an->Log->entry({log_level => 1, message_key => "asst_message_0019", message_variables => {this_file => $THIS_FILE}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{switches}{force})
 			{
@@ -2901,11 +2894,11 @@ sub report_state
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "report_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Is it enabled on boot?
+	# Is it enabled in striker.conf?
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "path::anvil-safe-start_link", value1 => $an->data->{path}{'anvil-safe-start_link'}, 
+		name1 => "tools::anvil-safe-start::enabled", value1 => $an->data->{tools}{'anvil-safe-start'}{enabled}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if (-e $an->data->{path}{'anvil-safe-start_link'})
+	if ($an->data->{tools}{'anvil-safe-start'}{enabled})
 	{
 		# Yup.
 		print $an->String->get({key => "asst_message_0005", variables => { this_file => $THIS_FILE }})."\n";
@@ -2936,16 +2929,6 @@ sub report_state
 		print $an->String->get({key => "asst_message_0009", variables => { this_file => $THIS_FILE }})."\n";
 	}
 	
-	# Is it queued?
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "tools::anvil-safe-start::enabled", value1 => $an->data->{tools}{'anvil-safe-start'}{enabled}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{tools}{'anvil-safe-start'}{enabled})
-	{
-		# Yup
-		print $an->String->get({key => "asst_message_0020", variables => { this_file => $THIS_FILE }})."\n";
-	}
-	
 	return(0);
 }
 
@@ -2955,7 +2938,6 @@ sub remove_from_root_crontab
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remove_from_root_crontab" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### TODO
 	my $rewrite    = 0;
 	my $body       = "";
 	my $shell_call = $an->data->{path}{root_crontab};
@@ -2971,50 +2953,55 @@ sub remove_from_root_crontab
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /^$an->data->{path}{'anvil-safe-start'}$/)
+		my $path = $an->data->{path}{'anvil-safe-start'};
+		if ($line =~ /$path/)
 		{
-			my $space1 = $1;
-			my $space2 = $2;
-			my $value  = $3;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "value", value1 => $value, 
-				name2 => "set",   value2 => $set, 
+			# Found it
+			$rewrite = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "rewrite", value1 => $rewrite, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($value ne $set)
-			{
-				$changed = 1;
-				$line    = "tools::anvil-safe-start::enabled".$space1."=".$space2."$set";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "changed", value1 => $changed, 
-					name2 => "line",    value2 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
 		}
-		
-		$new_config .= "$line\n";
+		else
+		{
+			# Save this line
+			$body .= $line."\n";
+		}
 	}
 	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "rewrite", value1 => $rewrite, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($rewrite)
+	{
+		# Save the file.
+		my $shell_call = $an->data->{path}{root_crontab};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle $body;
+		close $file_handle;
+	}
 	
 	return(0);
 }
 
-# This adds anvil-safe-start to the root user's cron table if needed.
-sub add_to_root_crontab
+# This checks to see if the old-style 'anvil-safe-start' crontab entry exists and, if do, removes it
+sub check_root_crontab
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_to_root_crontab" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure the crontab entry exists.
+	my $clean_up   = 0;
 	my $shell_call = "
-if \$(".$an->data->{path}{'grep'}." -q '".$an->data->{path}{'anvil-safe-start'}."' ".$an->data->{path}{root_crontab}.");
+if \$(".$an->data->{path}{'grep'}." -q '\\*/1 \\* \\* \\* \\* ".$an->data->{path}{'anvil-safe-start'}."' ".$an->data->{path}{root_crontab}.");
 then 
-    ".$an->data->{path}{echo}." 'in crontab'; 
-else 
-    ".$an->data->{path}{echo}." 'adding the crontab';
-    ".$an->data->{path}{echo}." '\@reboot ".$an->data->{path}{'anvil-safe-start'}."' >> ".$an->data->{path}{root_crontab}."
+    ".$an->data->{path}{echo}." 'old found'; 
 fi";
-#    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{'anvil-safe-start'}."' >> ".$an->data->{path}{root_crontab}."
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -3022,49 +3009,69 @@ fi";
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /old found/)
+		{
+			# Remove it.
+			$clean_up = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "clean_up", value1 => $clean_up, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	close $file_handle;
 	
-	return(0);
-}
-
-# This creates the /etc/rc3.d/ symlink that runs this program on boot.
-sub create_rc3d_symlink
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_rc3d_symlink" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# First, does the symlink exist already?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "path::anvil-safe-start_link", value1 => $an->data->{path}{'anvil-safe-start_link'}, 
+	# If I need to clean up, remove the rc3.d symlink, if found, and remove the old crontab entry. If the
+	# symlink existed, enable this program in striker.conf.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "clean_up", value1 => $clean_up, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if (-e $an->data->{path}{'anvil-safe-start_link'})
+	if ($clean_up)
 	{
-		# Already exists, nothing to do.
-		$an->Log->entry({log_level => 1, message_key => "asst_log_0003", file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "asst_message_0002", variables => { this_file => $THIS_FILE }})."\n";
-	}
-	else
-	{
-		# Create it.
-		my $target = $an->data->{path}{'anvil-safe-start'};
-		my $link   = $an->data->{path}{'anvil-safe-start_link'};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target", value1 => $target, 
-			name2 => "link",   value2 => $link, 
+		print $an->String->get({key => "asst_message_0024"})."\n";
+		my $enable = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::anvil-safe-start_link", value1 => $an->data->{path}{'anvil-safe-start_link'}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		symlink $target, $link or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0052", message_variables => { target => $target, 'link' => $link, error => $! }, code => 52, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 1, message_key => "asst_log_0002", file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "asst_message_0001", variables => { this_file => $THIS_FILE }})."\n";
+		if (-e $an->data->{path}{'anvil-safe-start_link'})
+		{
+			$enable = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "enable", value1 => $enable, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Delete the old crontab entry.
+		remove_from_root_crontab($an);
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "enable", value1 => $enable, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($enable)
+		{
+			# Remove the link
+			remove_rc3d_symlink($an);
+			
+			# Add the new style to crontab
+			add_to_root_crontab($an);
+			
+			# Enable this is striker.conf
+			update_striker_conf($an, "enable");
+		}
+		else
+		{
+			# Make sure it's disabled in striker.conf.
+			update_striker_conf($an, "disable");
+		}
 	}
 	
 	return(0);
 }
 
-# This removes the /etc/rc3.d/ symlink that runs this program on boot.
+# This removes the /etc/rc3.d/ symlink that was used in the past.
 sub remove_rc3d_symlink
 {
 	my ($an) = @_;
@@ -3092,6 +3099,39 @@ sub remove_rc3d_symlink
 		$an->Log->entry({log_level => 1, message_key => "asst_log_0005", file => $THIS_FILE, line => __LINE__});
 		print $an->String->get({key => "asst_message_0004", variables => { this_file => $THIS_FILE }})."\n";
 	}
+	
+	return(0);
+}
+
+# This adds anvil-safe-start to the root user's cron table if needed.
+sub add_to_root_crontab
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_to_root_crontab" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure the crontab entry exists.
+	my $shell_call = "
+if \$(".$an->data->{path}{'grep'}." -q '".$an->data->{path}{'anvil-safe-start'}."' ".$an->data->{path}{root_crontab}.");
+then 
+    ".$an->data->{path}{echo}." '".$an->String->get({key => "asst_message_0021"})."'; 
+else 
+    ".$an->data->{path}{echo}." '".$an->String->get({key => "asst_message_0022"})."';
+    ".$an->data->{path}{echo}." '\@reboot ".$an->data->{path}{'anvil-safe-start'}."' >> ".$an->data->{path}{root_crontab}."
+fi";
+#    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{'anvil-safe-start'}."' >> ".$an->data->{path}{root_crontab}."
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
 	
 	return(0);
 }

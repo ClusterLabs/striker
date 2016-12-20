@@ -2742,11 +2742,15 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
-		<key name="asst_message_0016">#!variable!this_file!# has been called. It will run within a minute.</key>
-		<key name="asst_message_0017">#!variable!this_file!# has been turned off. No other instances will run until the next reboot, proceeding.</key>
-		<key name="asst_message_0018">#!variable!this_file!# had already been called, no changes made.</key>
-		<key name="asst_message_0019">#!variable!this_file!# had already been turned off, no changes made.</key>
+		<key name="asst_message_0016">#!variable!this_file!# has been enabled. It will run the next time the node boots.</key>
+		<key name="asst_message_0017">#!variable!this_file!# has been disabled. It will NOT run on the next boot</key>
+		<key name="asst_message_0018">#!variable!this_file!# was already enable, no changes made.</key>
+		<key name="asst_message_0019">#!variable!this_file!# was already disabled, no changes made.</key>
 		<key name="asst_message_0020">#!variable!this_file!#: [queued]</key>
+		<key name="asst_message_0021">Already in crontab</key>
+		<key name="asst_message_0022">Adding to crontab</key>
+		<key name="asst_message_0023">Disabled, exiting. Use '--force' to run.</key>
+		<key name="asst_message_0024">An old configuration style was found, reconfiguring now.</key>
 		
 		<!-- warning messages -->
 		<key name="asst_warning_0001">Failed to start 'clvmd'. With cman running, this will cause 'clvmd' to block on the peer. As such, 'cman' and 'drbd' will be stopped locally if they are running to avoid trouble.</key>

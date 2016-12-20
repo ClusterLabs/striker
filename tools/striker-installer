@@ -1006,7 +1006,7 @@ sub compile_network_drivers
 	
 	# Do I have an ASIX AX8817[89] NIC?
 	my $asix_exists = 0;
-	my $shell_call  = $conf->{executable}{lsusb};
+	my $shell_call  = $conf->{executable}{lsusb}." -v";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -1014,11 +1014,14 @@ sub compile_network_drivers
 		chomp;
 		my $line = $_;
 		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-		if (($line =~ /AX88178/i) or ($line =~ /AX88179/i))
+		if (($line =~ /AX88178/i) or 
+		    ($line =~ /AX88179/i) or 
+		    ($line =~ /D-Link DUB-1312/i))
 		{
 			$asix_exists = 1;
 			logger($conf, $THIS_FILE, __LINE__, "An ASIX AX8817{8,9}-based USB3 to Ethernet adapter was found.", 1);
 			logger($conf, $THIS_FILE, __LINE__, "- If possible, the driver will be compiled and installed now.", 1);
+			last;
 		}
 	}
 	close $file_handle;

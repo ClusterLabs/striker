@@ -570,7 +570,6 @@ sub mark_node_as_clean_off
 		name1 => "stop_reason", value1 => $stop_reason,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Is this where shutdown is failing?
 	my $query = "
 UPDATE 
     hosts 
@@ -3760,10 +3759,12 @@ sub _cold_stop_anvil
 			
 			if ($online)
 			{
+				### NOTE: Madi: I think the occassional failure to stop node 2 was caused by 
+				###             the timeout being only 120. Trying 1200 now.
 				# We'll shut down with 'anvil-safe-stop'. No servers should be running, but 
 				# just in case we oopsed and left one up, set the stop reason.
 				my $shell_output = "";
-				my $shell_call   = $an->data->{path}{timeout}." 120 ".$an->data->{path}{'anvil-safe-stop'}." --local --reason cold_stop; ".$an->data->{path}{echo}." rc:\$?";
+				my $shell_call   = $an->data->{path}{timeout}." 1200 ".$an->data->{path}{'anvil-safe-stop'}." --local --reason cold_stop; ".$an->data->{path}{echo}." rc:\$?";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "target",     value1 => $target,
 					name2 => "shell_call", value2 => $shell_call,
