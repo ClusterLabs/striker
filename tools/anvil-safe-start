@@ -141,14 +141,17 @@ if ($an->data->{switches}{start})
 if ($an->data->{switches}{enable})
 {
 	# Create the /etc/rc3.d link.
-	create_rc3d_symlink($an);
 	add_to_root_crontab($an);
+	#create_rc3d_symlink($an);
 	$an->nice_exit({exit_code => 0});
 }
 if ($an->data->{switches}{disable})
 {
-	# Create the /etc/rc3.d link.
-	remove_rc3d_symlink($an);
+	# Remove the crontab entry
+	remove_from_root_crontab($an);
+	
+	# Remove the /etc/rc3.d link.
+	#remove_rc3d_symlink($an);
 	$an->nice_exit({exit_code => 0});
 }
 if (($an->data->{switches}{'state'}) or ($an->data->{switches}{status}))
@@ -2946,6 +2949,55 @@ sub report_state
 	return(0);
 }
 
+# Remove the crontab entry.
+sub remove_from_root_crontab
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remove_from_root_crontab" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### TODO
+	my $rewrite    = 0;
+	my $body       = "";
+	my $shell_call = $an->data->{path}{root_crontab};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^$an->data->{path}{'anvil-safe-start'}$/)
+		{
+			my $space1 = $1;
+			my $space2 = $2;
+			my $value  = $3;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "value", value1 => $value, 
+				name2 => "set",   value2 => $set, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($value ne $set)
+			{
+				$changed = 1;
+				$line    = "tools::anvil-safe-start::enabled".$space1."=".$space2."$set";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "changed", value1 => $changed, 
+					name2 => "line",    value2 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		$new_config .= "$line\n";
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
 # This adds anvil-safe-start to the root user's cron table if needed.
 sub add_to_root_crontab
 {
@@ -2959,8 +3011,9 @@ then
     ".$an->data->{path}{echo}." 'in crontab'; 
 else 
     ".$an->data->{path}{echo}." 'adding the crontab';
-    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{'anvil-safe-start'}."' >> ".$an->data->{path}{root_crontab}."
+    ".$an->data->{path}{echo}." '\@reboot ".$an->data->{path}{'anvil-safe-start'}."' >> ".$an->data->{path}{root_crontab}."
 fi";
+#    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{'anvil-safe-start'}."' >> ".$an->data->{path}{root_crontab}."
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});

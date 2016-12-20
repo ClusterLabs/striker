@@ -570,6 +570,7 @@ sub mark_node_as_clean_off
 		name1 => "stop_reason", value1 => $stop_reason,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	### TODO: Is this where shutdown is failing?
 	my $query = "
 UPDATE 
     hosts 
@@ -807,10 +808,47 @@ sub scan_anvil
 	
 	# Show the 'scanning in progress' table.
 	print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
-		anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{sys}{anvil}{name} }}),
+		anvil_message => $an->String->get({key => "message_0272", variables => { anvil => $an->data->{sys}{anvil}{name} }}),
 	}});
 	
-	# Start your engines!
+	# Check the power state of both nodes. If either report 'on', we'll do a full scan.
+	my $node1_state = $an->ScanCore->target_power({target => $an->data->{sys}{anvil}{node1}{uuid}});
+	my $node2_state = $an->ScanCore->target_power({target => $an->data->{sys}{anvil}{node2}{uuid}});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1_state", value1 => $node1_state, 
+		name2 => "node2_state", value2 => $node2_state, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($node1_state eq "off") && ($node2_state eq "off"))
+	{
+		# Neither node is up. If I can power them on, then I will show the node section to enable 
+		# power up.
+		if (($node1_state eq "unknown") or ($node2_state eq "unknown"))
+		{	
+			print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
+				anvil	=>	$an->data->{sys}{anvil}{name},
+				message	=>	"#!string!message_0029!#",
+			}});
+		}
+		if ($node1_state eq "off")
+		{
+			my $node1_name = $an->data->{sys}{anvil}{node1}{name};
+			$an->data->{node}{$node1_name}{enable_poweron} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node1_name}::enable_poweron", value1 => $an->data->{node}{$node1_name}{enable_poweron}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($node2_state eq "off")
+		{
+			my $node2_name = $an->data->{sys}{anvil}{node2}{name};
+			$an->data->{node}{$node2_name}{enable_poweron} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node2_name}::enable_poweron", value1 => $an->data->{node}{$node2_name}{enable_poweron}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		return(1);
+	}
+	
+	# Still here? Start your engines!
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "sys::anvil::node1::uuid", value1 => $an->data->{sys}{anvil}{node1}{uuid},
 		name2 => "sys::anvil::node2::uuid", value2 => $an->data->{sys}{anvil}{node2}{uuid},
@@ -841,24 +879,6 @@ sub scan_anvil
 	{
 		$an->Striker->scan_servers();
 		$an->Striker->_post_scan_calculations();
-	}
-	else
-	{
-		# Neither node is up. If I can power them on, then I will show the node section to enable 
-		# power up.
-		my $node1_power = $an->data->{sys}{anvil}{node1}{power};
-		my $node2_power = $an->data->{sys}{anvil}{node2}{power};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node1_power", value1 => $node1_power,
-			name2 => "node2_power", value2 => $node2_power,
-		}, file => $THIS_FILE, line => __LINE__});
-		if (($node1_power eq "unknown") or ($node2_power eq "unknown"))
-		{
-			print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
-				anvil	=>	$an->data->{sys}{anvil}{name},
-				message	=>	"#!string!message_0029!#",
-			}});
-		}
 	}
 
 	return(0);

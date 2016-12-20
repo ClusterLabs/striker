@@ -721,10 +721,15 @@ then
 	DRIVE=\"vda\"
 fi
 
+### Nodes with NVMe drives will use '/dev/nvme0n1'
+if grep -q nvme0n1 /proc/partitions; then
+	DRIVE=\"nvme0n1\"
+fi
+
 # Zero-out the first 100GB to help avoid running into problems when a node that
 # was previously in a cluster gets rebuilt. Only run on real hardware, tends to
 # crash VMs.
-if grep -q sda /proc/partitions;
+if ! grep -q vda /proc/partitions;
 then
 	echo \"Please be patient! Zero'ing out the first 100 GiB of /dev/\${DRIVE}...\"
 	dd if=/dev/zero of=/dev/\${DRIVE} bs=4M count=25000
@@ -806,7 +811,12 @@ dd if=/dev/cdrom of=/mnt/sysimage/var/www/html/$os_dir/x86_64/iso/$conf->{path}{
 			# USB target
 			$ks_body .= "
 # Make sure our USB source partition is mounted.
-mount /dev/sdb1 /mnt/source;
+if grep -q nvme0n1 /proc/partitions; 
+then
+	mount /dev/sda1 /mnt/source;
+else
+	mount /dev/sdb1 /mnt/source;
+fi
 
 # Copy the install ISO into place
 echo 'Copying the install iso image. Be patient'
@@ -1102,7 +1112,7 @@ fi
 		if ($target eq "usb")
 		{
 			$ks_body .= "
-### The USB drives comes up as 'sdb', so the Eee's HDD is /dev/sdc
+### The USB drives come up as 'sdb', so the Eee's HDD is /dev/sdc
 # /dev/sdc ASUS EeeBox machine
 if grep -q sdc /proc/partitions; then
 	DRIVE=\"sdc\"
@@ -1120,6 +1130,12 @@ fi
 		}
 
 		$ks_body .= "
+
+### Dashboards with NVMe drives will use '/dev/nvme0n1'
+if grep -q nvme0n1 /proc/partitions; then
+	DRIVE=\"nvme0n1\"
+fi
+
 # Now write the partition script
 cat >> /tmp/part-include <<END
 zerombr
