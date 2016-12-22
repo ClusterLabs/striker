@@ -830,6 +830,7 @@
 		<key name="row_0339">Running Time</key>
 		<key name="row_0340">Queued</key>
 		<key name="row_0341">Abort and</key>
+		<key name="row_0342">Management</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -3512,6 +3513,32 @@ Get a list of all servers on all configured Anvil! systems.
 Restict the list of servers to the 'an-anvil-05' Anvil!.
 
  ./anvil-server-summary --anvil an-anvil-05
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		
+		
+		<!-- Anvil! Repor State -->
+		<key name="ars_message_0001"><![CDATA[
+ -=] Anvil! Report State
+
+DESCRIPTION
+
+This program gathers up state information about the system and reports what it
+finds as 'variable = value' pairs.
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
 
                   
 SUPPORT

@@ -655,6 +655,7 @@ sub _set_paths
 	
 	# Text files
 	$an->data->{path}{cman_config}      = "/etc/cluster/cluster.conf";
+	$an->data->{path}{cluster_conf}     = "/etc/cluster/cluster.conf";
 	$an->data->{path}{dhcpd_conf}       = "/etc/dhcp/dhcpd.conf";
 	$an->data->{path}{etc_fstab}        = "/etc/fstab";
 	$an->data->{path}{etc_hosts}        = "/etc/hosts";
@@ -665,8 +666,11 @@ sub _set_paths
 	$an->data->{path}{logrotate_config} = "/etc/logrotate.d/anvil";
 	$an->data->{path}{ssh_config}       = "/etc/ssh/ssh_config";
 	$an->data->{path}{striker_config}   = "/etc/striker/striker.conf";
-	$an->data->{path}{striker_strings}  = "/sbin/striker/Data/strings.xml",
+	$an->data->{path}{striker_strings}  = "/sbin/striker/Data/strings.xml";
 	$an->data->{path}{root_crontab}     = "/var/spool/cron/root";
+	
+	# Log files
+	$an->data->{path}{log_file} = "/var/log/striker.log";
 	
 	# This is a text file with '#!token!#' replaced with a job's UUID token when running Anvil! jobs from 'anvil-run-jobs'
 	$an->data->{path}{'anvil-jobs-output'} = "/tmp/anvil-job.#!token!#.txt";

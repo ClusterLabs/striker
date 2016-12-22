@@ -2265,7 +2265,7 @@ echo ccs:\$?";
 	if ($ccs_exit_code eq "0")
 	{
 		print $an->Web->template({file => "server.html", template => "general-message", replace => { 
-			row	=>	"#!string!row_0083!#",
+			row	=>	"#!string!row_0342!#",
 			message	=>	"#!string!message_0111!#",
 		}});
 		
@@ -3759,12 +3759,13 @@ sub _cold_stop_anvil
 			
 			if ($online)
 			{
-				### NOTE: Madi: I think the occassional failure to stop node 2 was caused by 
-				###             the timeout being only 120. Trying 1200 now.
+				### NOTE: Madi: Even with 'timeout 1200', it stopped loading the page, 
+				###             removing timeout entirely but the problem probably lies 
+				###             elsewhere. Not that nothing is recorded in http/error_log.
 				# We'll shut down with 'anvil-safe-stop'. No servers should be running, but 
 				# just in case we oopsed and left one up, set the stop reason.
 				my $shell_output = "";
-				my $shell_call   = $an->data->{path}{timeout}." 1200 ".$an->data->{path}{'anvil-safe-stop'}." --local --reason cold_stop; ".$an->data->{path}{echo}." rc:\$?";
+				my $shell_call   = $an->data->{path}{'anvil-safe-stop'}." --local --reason cold_stop; ".$an->data->{path}{echo}." rc:\$?";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "target",     value1 => $target,
 					name2 => "shell_call", value2 => $shell_call,

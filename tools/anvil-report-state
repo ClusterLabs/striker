@@ -1,0 +1,685 @@
+#!/usr/bin/perl
+# 
+# This tool does not do or change anything. It simply gathers information on the current state of the Anvil!
+# and returns it as variable=value pairs.
+# 
+# NOTE:    This program is designed to be machine-readable. For this reason, the data is NOT translated.
+# WARNING: This program reports passwords!
+# 
+# Return Codes:
+# 0  = OK
+# 1  = Failed to find local hostname.
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+use Data::Dumper;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $program_name        =  $0;
+my $THIS_FILE           =  ($program_name =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($program_name =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $time = time;
+
+my $an = AN::Tools->new({
+	data		=> {
+		sys		=>	{
+			log_level	=>	2,
+		},
+	},
+	gathered	=>	{
+		hostname	=>	{
+			peer		=>	"unknown",
+			me		=>	"unknown",
+		},
+	},
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+$an->Log->db_transactions(1) if $an->data->{'anvil-safe-start'}{log_db_transactions};
+$an->Readable->base2(1);
+
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or 
+    ($an->data->{switches}{help}))
+{
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+
+# Gather whatever we can find.
+gather_data($an);
+report_findings($an);
+
+$an->nice_exit({exit_code => 0});
+
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This is a wrapper to call all the various methods for data collection.
+sub gather_data
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	gather_hostname($an);
+	gather_cluster_conf($an);
+	gather_clustat($an);
+	gather_bonds($an);
+	
+	return(0);
+}
+
+
+# This gets data from cluster.conf, if it exists.
+sub gather_bonds
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_bonds" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read the bond file names
+	my $files      = [];
+	my $shell_call = $an->data->{path}{ls}." ".$an->data->{path}{proc_bonding};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$files}, $line;
+	}
+	close $file_handle;
+	
+	# Read each actual bond file now.
+	foreach my $bond (sort {$a cmp $b} @{$files})
+	{
+		my $full_path =  $an->data->{path}{proc_bonding}."/".$bond;
+		   $full_path =~ s/\/\//\//g;
+		
+		# Read in the bond.
+		my $bond_data  = "";
+		my $skip_bond  = 1;
+		my $shell_call = $full_path;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$bond_data .= $line."\n";
+			
+			# If I have an interface, I will parse this bond. Note that 'bond0' always seems to 
+			# exist, without interfaces, if other bonds exist.
+			if ($line =~ /^Slave Interface:/i)
+			{
+				$skip_bond = 0;
+			}
+		}
+		close $file_handle;
+		
+		# Parse?
+		if (not $skip_bond)
+		{
+			$an->data->{gathered}{bonds}{$bond}{bonding_mode}         = "";
+			$an->data->{gathered}{bonds}{$bond}{primary_interface}    = "";
+			$an->data->{gathered}{bonds}{$bond}{reselect_policy}      = "";
+			$an->data->{gathered}{bonds}{$bond}{active_interface}     = "";
+			$an->data->{gathered}{bonds}{$bond}{mii_status}           = "";
+			$an->data->{gathered}{bonds}{$bond}{mii_polling_interval} = "";
+			$an->data->{gathered}{bonds}{$bond}{up_delay}             = "";
+			$an->data->{gathered}{bonds}{$bond}{down_delay}           = "";
+			
+			my $interface = "";
+			
+			foreach my $line (split/\n/, $bond_data)
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "bond", value1 => $bond, 
+					name2 => "line", value2 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (not $line)
+				{
+					$interface = "";
+					next;
+				}
+				
+				if ($line =~ /^Slave Interface: (.*)$/)
+				{
+					$interface = $1;
+					
+					# Preset some values
+					$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{mii_status}         = "";
+					$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{speed}              = "";
+					$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{duplex}             = "";
+					$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{link_failure_count} = "";
+					$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{real_mac_address}   = "";
+					$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{queue_id}           = "";
+					next;
+				}
+				
+				if ($interface)
+				{
+					# Processing an interface
+					if ($line =~ /MII Status: (.*)$/)
+					{
+						$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{mii_status} = $1;
+					}
+					elsif ($line =~ /Speed: (.*)$/)
+					{
+						$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{speed} = $1;
+					}
+					elsif ($line =~ /Duplex: (.*)$/)
+					{
+						$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{duplex} = $1;
+					}
+					elsif ($line =~ /Link Failure Count: (\d+)$/)
+					{
+						$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{link_failure_count} = $1;
+					}
+					elsif ($line =~ /Permanent HW addr: (.*)$/)
+					{
+						$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{real_mac_address} = $1;
+					}
+					elsif ($line =~ /Slave queue ID: (\d+)$/)
+					{
+						$an->data->{gathered}{bonds}{$bond}{interface}{$interface}{queue_id} = $1;
+					}
+				}
+				else
+				{
+					# Processing the main bond info.
+					if ($line =~ /Bonding Mode: .*? \((.*)\)/)
+					{
+						$an->data->{gathered}{bonds}{$bond}{bonding_mode} = $1;
+					}
+					elsif ($line =~ /Primary Slave: (.*)/)
+					{
+						my $slave    = $1;
+						my $reselect = "n/a";
+						
+						if ($slave =~ /^(.*?) \(primary_reselect (.*)\)/)
+						{
+							$slave    = $1;
+							$reselect = $2;
+						}
+						$an->data->{gathered}{bonds}{$bond}{primary_interface} = $slave;
+						$an->data->{gathered}{bonds}{$bond}{reselect_policy}   = $reselect;
+					}
+					elsif ($line =~ /Currently Active Slave: (.*)/)
+					{
+						$an->data->{gathered}{bonds}{$bond}{active_interface} = $1;
+					}
+					elsif ($line =~ /MII Status: (.*)$/)
+					{
+						$an->data->{gathered}{bonds}{$bond}{mii_status} = $1;
+					}
+					elsif ($line =~ /MII Polling Interval \(ms\): (\d+)$/)
+					{
+						my $interval = $1;
+						$an->data->{gathered}{bonds}{$bond}{mii_polling_interval} = $interval." ms";
+					}
+					elsif ($line =~ /Up Delay \(ms\): (\d+)$/)
+					{
+						my $interval = $1;
+						$an->data->{gathered}{bonds}{$bond}{up_delay} = $interval." ms";
+					}
+					elsif ($line =~ /Down Delay \(ms\): (\d+)$/)
+					{
+						my $interval = $1;
+						$an->data->{gathered}{bonds}{$bond}{down_delay} = $interval." ms";
+					}
+				}
+			}
+		}
+	}
+	
+	return(0);
+}
+
+# This gets data from cluster.conf, if it exists.
+sub gather_cluster_conf
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_clustat" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return if not -e $an->data->{path}{cluster_conf};
+	
+	my $in_node                 = "";
+	my $in_fence                = 0;
+	my $in_method               = "";
+	my $device_count            = 0;
+	my $in_fence_device         = 0;
+	my $this_host_name          = "";
+	my $this_node               = "";
+	my $method_counter          = 0;
+	
+	my $shell_call = $an->data->{path}{cluster_conf};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If I didn't get the hostname from clustat, try to find it here.
+		if ($line =~ /<clusternode.*?name="(.*?)"/)
+		{
+			   $this_host_name  =  $1;
+			my $short_host_name =  $this_host_name;
+			   $short_host_name =~ s/\..*$//;
+			   
+			# Is this us?
+			if (($this_host_name eq $an->data->{gathered}{hostname}{me}) or ($short_host_name eq $an->data->{gathered}{hostname}{me}))
+			{
+				# This is me.
+				$this_node = "me";
+			}
+			else
+			{
+				# Must be my peer
+				$an->data->{gathered}{hostname}{peer} = $this_host_name;
+				$this_node = "peer";
+			}
+			
+			# Mark that I am in a node child element.
+			$in_node = $this_host_name;
+		}
+		if ($line =~ /<\/clusternode>/)
+		{
+			# Record my fence findings.
+			$in_node        = "";
+			$this_node      = "";
+			$method_counter = 0;
+		}
+		
+		if (($in_node) && ($line =~ /<fence>/))
+		{
+			$in_fence = 1;
+		}
+		if ($line =~ /<\/fence>/)
+		{
+			$in_fence = 0;
+		}
+		if (($in_fence) && ($line =~ /<method.*name="(.*?)"/))
+		{
+			# The method counter ensures ordered use of the fence devices.
+			$in_method = "$method_counter:$1";
+			$method_counter++;
+		}
+		if ($line =~ /<\/method>/)
+		{
+			$in_method    = "";
+			$device_count = 0;
+		}
+		if (($in_method) && ($line =~ /<device\s/))
+		{
+			my $name            = $line =~ /name="(.*?)"/          ? $1 : "";
+			my $port            = $line =~ /port="(.*?)"/          ? $1 : "";
+			my $action          = $line =~ /action="(.*?)"/        ? $1 : "";
+			my $address         = $line =~ /ipaddr="(.*?)"/        ? $1 : "";
+			my $login           = $line =~ /login="(.*?)"/         ? $1 : "";
+			my $password        = $line =~ /passwd="(.*?)"/        ? $1 : "";
+			my $password_script = $line =~ /passwd_script="(.*?)"/ ? $1 : "";
+			$an->data->{gathered}{'cluster.conf'}{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}            = $name;
+			$an->data->{gathered}{'cluster.conf'}{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}            = $port;
+			$an->data->{gathered}{'cluster.conf'}{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}          = $action;
+			$an->data->{gathered}{'cluster.conf'}{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address}         = $address;
+			$an->data->{gathered}{'cluster.conf'}{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}           = $login;
+			$an->data->{gathered}{'cluster.conf'}{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password}        = $password;
+			$an->data->{gathered}{'cluster.conf'}{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password_script} = $password_script;
+			$device_count++;
+		}
+		
+		# Parse out the fence device details.
+		if ($line =~ /<fencedevices>/)
+		{
+			$in_fence_device = 1;
+		}
+		if ($line =~ /<\/fencedevices>/)
+		{
+			$in_fence_device = 0;
+		}
+		
+		# This could be duplicated, but I don't care as cluster.conf has to be the same on both 
+		# nodes, anyway.
+		if ($in_fence_device)
+		{
+			my $name            = $line =~ /name="(.*?)"/          ? $1 : "";
+			my $agent           = $line =~ /agent="(.*?)"/         ? $1 : "";
+			my $action          = $line =~ /action="(.*?)"/        ? $1 : "";
+			my $address         = $line =~ /ipaddr="(.*?)"/        ? $1 : "";
+			my $login           = $line =~ /login="(.*?)"/         ? $1 : "";
+			my $password        = $line =~ /passwd="(.*?)"/        ? $1 : "";
+			my $password_script = $line =~ /passwd_script="(.*?)"/ ? $1 : "";
+			
+			# If the password has a single-quote, ricci changes it to &apos;. We need to change it back.
+			$password =~ s/&apos;/'/g;
+			
+			$an->data->{gathered}{'cluster.conf'}{fence}{$name}{agent}           = $agent;
+			$an->data->{gathered}{'cluster.conf'}{fence}{$name}{action}          = $action;
+			$an->data->{gathered}{'cluster.conf'}{fence}{$name}{address}         = $address;
+			$an->data->{gathered}{'cluster.conf'}{fence}{$name}{login}           = $login;
+			$an->data->{gathered}{'cluster.conf'}{fence}{$name}{password}        = $password;
+			$an->data->{gathered}{'cluster.conf'}{fence}{$name}{password_script} = $password_script;
+		}
+		
+		# Find servers.
+		if ($line =~ /<vm.*?name="(.*?)"/)
+		{
+			my $server     = $1;
+			my $server_key = $server;
+			my $definition = ($line =~ /path="(.*?)"/)[0].$server.".xml";
+			my $domain     = ($line =~ /domain="(.*?)"/)[0];
+			
+			# I need to set the host to 'none' to avoid triggering the error caused by seeing and
+			# foo.xml server definition outside of here.
+			$an->data->{gathered}{'cluster.conf'}{server}{$server_key}{definition_file} = $definition;
+			$an->data->{gathered}{'cluster.conf'}{server}{$server_key}{failover_domain} = $domain;
+			$an->data->{gathered}{'cluster.conf'}{server}{$server_key}{host}            = "none" if not $an->data->{server}{$server_key}{host};
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This gathers data from 'clustat'
+sub gather_clustat
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_clustat" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return if not -e $an->data->{path}{cluster_conf};
+	
+	# Setup some variables.
+	my $in_member  = 0;
+	my $in_service = 0;
+	my $line_num   = 0;
+	
+	# Default is 'unknown'
+	$an->data->{gathered}{clustat}{name}{me}        = "unknown";
+	$an->data->{gathered}{clustat}{name}{peer}      = "unknown";
+	$an->data->{gathered}{clustat}{cman}{me}        = 0;
+	$an->data->{gathered}{clustat}{cman}{peer}      = 0;
+	$an->data->{gathered}{clustat}{rgmanager}{me}   = 0;
+	$an->data->{gathered}{clustat}{rgmanager}{peer} = 0;
+	$an->data->{gathered}{clustat}{enable_join}     = 0;
+	$an->data->{gathered}{clustat}{hung}            = 0;
+	
+	my $shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{clustat}."; ".$an->data->{path}{echo}." clustat:\$?";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /clustat:(\d+)/)
+		{
+			my $return_code = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($return_code eq "127")
+			{
+				# Timeout fired, clustat is hung
+				$an->data->{gathered}{clustat}{hung} = 1;
+			}
+			next;
+		}
+		
+		if ($line =~ /Could not connect to CMAN/i)
+		{
+			# CMAN isn't running.
+			$an->data->{gathered}{clustat}{enable_join} = 1;
+		}
+		next if not $line;
+		next if $line =~ /^-/;
+		
+		if ($line =~ /^Member Name/)
+		{
+			$in_member  = 1;
+			$in_service = 0;
+			next;
+		}
+		elsif ($line =~ /^Service Name/)
+		{
+			$in_member  = 0;
+			$in_service = 1;
+			next;
+		}
+		if ($in_member)
+		{
+			if ($line =~ /Local/)
+			{
+				# Split the node name and services out
+				($an->data->{gathered}{clustat}{name}{me}, undef, my $services) = (split/ /, $line, 3);
+				
+				# Now parse the daemon states
+				$services =~ s/local//;
+				$services =~ s/ //g;
+				$services =~ s/,,/,/g;
+				$an->data->{gathered}{clustat}{cman}{me}      =  1 if $services =~ /Online/;
+				$an->data->{gathered}{clustat}{rgmanager}{me} =  1 if $services =~ /rgmanager/;
+			}
+			else
+			{
+				# Split the node name and service out
+				($an->data->{gathered}{clustat}{name}{peer}, undef, my $services) = split/ /, $line, 3;
+				
+				# Now parse the daemon states
+				$services =~ s/ //g;
+				$services =~ s/,,/,/g;
+				$an->data->{gathered}{clustat}{cman}{peer}      = 1 if $services =~ /Online/;
+				$an->data->{gathered}{clustat}{rgmanager}{peer} = 1 if $services =~ /rgmanager/;
+			}
+		}
+		elsif ($in_service)
+		{
+			if ($line =~ /^vm:/)
+			{
+				# Parse the server state line
+				my ($server, $host, $state) = split/ /, $line, 3;
+				
+				# Now sort out the details.
+				$server =~ s/^vm://;
+				$host   =~ s/^\((.*?)\)$/$1/g;
+				
+				if (($state eq "disabled") or ($state eq "stopped"))
+				{
+					# Set host to 'none'.
+					$host = "none";
+				}
+				elsif ($state eq "failed")
+				{
+					# It is possible the server is still running. We don't know...
+					$host = "unknown";
+				}
+				elsif (not $host)
+				{
+					$host = "none" if not $host;
+				}
+				
+				$an->data->{gathered}{clustat}{server}{$server}{host}    = $host;
+				$an->data->{gathered}{clustat}{server}{$server}{'state'} = $state;
+			}
+			elsif ($line =~ /^service:(.*?)\s+(.*?)\s+(.*)$/)
+			{
+				my $name  = $1;
+				my $host  = $2;
+				my $state = $3;
+				
+				# If the service is disabled, it will have '()' which I need to remove.
+				$host =~ s/\(//g;
+				$host =~ s/\)//g;
+				
+				$an->data->{gathered}{clustat}{service}{$name}{host}    = $host;
+				$an->data->{gathered}{clustat}{service}{$name}{'state'} = $state;
+			}
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This gets my hostname (and will later be used to determine the peer's hostname).
+sub gather_hostname
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_clustat" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = $an->data->{path}{hostname};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line)
+		{
+			$an->data->{gathered}{hostname}{me} = $line;
+		}
+	}
+	close $file_handle;
+	
+	if ($an->data->{gathered}{hostname}{me} eq "unknown")
+	{
+		print "error = unknown host name\n";
+		$an->nice_exit({exit_code => 1});
+	}
+	
+	return(0);
+}
+
+# This reports what we've found.
+sub report_findings
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "report_findings" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $variable = "";
+	foreach my $key (sort {$a cmp $b} keys %{$an->data->{gathered}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "key", value1 => $key, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (ref($an->data->{gathered}{$key}) eq "HASH")
+		{
+			walk_hash_reference($an, $an->data->{gathered}{$key}, $key);
+		}
+		else
+		{
+			# This is a terminal key.
+			print "$key = [".$an->data->{gathered}{$key}."]\n";
+		}
+	}
+	
+	return(0);
+}
+
+# This walks a hash reference, decending deeper as needed.
+sub walk_hash_reference
+{
+	my ($an, $hash_reference, $variable) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "walk_hash_reference" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "hash_reference", value1 => $hash_reference,  
+		name2 => "variable",       value2 => $variable,  
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	foreach my $key (sort {$a cmp $b} keys %{$hash_reference})
+	{
+		my $new_variable = $variable."::".$key;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "key",          value1 => $key, 
+			name2 => "new_variable", value2 => $new_variable, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (ref($hash_reference->{$key}) eq "HASH")
+		{
+			walk_hash_reference($an, $hash_reference->{$key}, $new_variable);
+		}
+		else
+		{
+			# This is a terminal key.
+			print "$new_variable = [".$hash_reference->{$key}."]\n";
+		}
+	}
+	
+	return(0);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $an->String->get({key => "ars_message_0001"})."\n";
+	close $file_handle;
+	
+	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");
+
+	return(0);
+}
