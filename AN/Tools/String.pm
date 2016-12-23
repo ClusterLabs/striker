@@ -11,6 +11,7 @@ our $VERSION  = "0.1.001";
 my $THIS_FILE = "String.pm";
 
 ### Methods;
+# clean_spaces
 # force_utf8
 # get
 # get_language_name
@@ -22,8 +23,6 @@ my $THIS_FILE = "String.pm";
 # _process_string_replace
 # _protect
 # _restore_protected
-# 
-
 
 #############################################################################################################
 # House keeping methods                                                                                     #
@@ -60,6 +59,23 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
+# This cleans the leading and trailing spaces off of a line, and compresses all tabs/multi-spaces into a 
+# single space.
+sub clean_spaces
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "comma" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $string =  defined $parameter->{string} ? $parameter->{string} : "";
+	   $string =~ s/^\s+//;
+	   $string =~ s/\s+$//;
+	   $string =~ s/\s+/ /g;
+	
+	return($string);
+}
+
 # This forces UTF8 mode when reading a words file. This should not be used normally as the words file should
 # already be UTF8 encoded.
 sub force_utf8
@@ -69,7 +85,7 @@ sub force_utf8
 	
 	if (defined $set)
 	{
-		if (($set == 0) || ($set == 1))
+		if (($set == 0) or ($set == 1))
 		{
 			$self->{FORCE_UTF8} = $set;
 		}

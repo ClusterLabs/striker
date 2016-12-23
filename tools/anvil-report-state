@@ -16,6 +16,7 @@ use warnings;
 use IO::Handle;
 use AN::Tools;
 use Data::Dumper;
+use XML::Simple;
 
 # Turn off buffering.
 $| = 1;
@@ -41,6 +42,7 @@ my $time = time;
 my $an = AN::Tools->new({
 	data		=> {
 		sys		=>	{
+			hide_empty	=>	1,
 			log_level	=>	2,
 		},
 	},
@@ -92,16 +94,1076 @@ sub gather_data
 	gather_cluster_conf($an);
 	gather_clustat($an);
 	gather_bonds($an);
+	gather_hosts($an);
+	gather_daemons($an);
+	gather_drbd($an);
+	gather_dmidecode($an);
+	gather_meminfo($an);
+	gather_gfs2($an);
+	gather_lvm($an);
+	
+=cut
+	$an->Striker->_parse_virsh             ({node => $node_uuid, data => $virsh});
+	$an->Striker->_parse_server_defs       ({node => $node_uuid, data => $server_defs});
+	$an->Striker->_parse_server_defs_in_mem({node => $node_uuid, data => $server_defs_in_mem});	# Always parse this after 'parse_server_defs()' so that we overwrite it.
+=cut
 	
 	return(0);
 }
 
+=cut
+
+# 
+sub 
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = ;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $an->String->clean_spaces({string => $_});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+	}
+	close $file_handle;
+	
+	return(0);
+}
+=cut
+
+# This is a wrapper for the LVM data gathering functions
+sub gather_lvm
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_lvm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If clustat was hung, this will hang, too.
+	return(0) if $an->data->{gathered}{clustat}{hung};
+	
+	gather_lvm_scan($an);
+	gather_lvm_data($an);
+	
+	return(0);
+}
+
+# This gathers data from pvscan/vgscan/lvscan
+sub gather_lvm_scan
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_lvm_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = "
+".$an->data->{path}{pvscan}."; ".$an->data->{path}{echo}." pvscan:\$?; 
+".$an->data->{path}{vgscan}."; ".$an->data->{path}{echo}." vgscan:\$?; 
+".$an->data->{path}{lvscan},"; ".$an->data->{path}{echo}." lvscan:\$?;
+";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $an->String->clean_spaces({string => $_});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /pvscan:(\d+)/)
+		{
+			my $return_code = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		if ($line =~ /vgscan:(\d+)/)
+		{
+			my $return_code = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		if ($line =~ /lvscan:(\d+)/)
+		{
+			my $return_code = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		if ($line =~ /(.*?)\s+'(.*?)'\s+\[(.*?)\]/)
+		{
+			my $state = $1;
+			my $lv    = $2;
+			my $size  = $3;
+			my $bytes = $an->Readable->hr_to_bytes({size => $size });
+			my $vg    = ($lv =~ /^\/dev\/(.*?)\//)[0];
+			
+			$an->data->{gathered}{lvm}{lv}{$lv}{on_vg} = $vg;
+			$an->data->{gathered}{lvm}{lv}{$lv}{size}  = $bytes." Bytes";
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This gathers data from pvs/vgs/lvs
+sub gather_lvm_data
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_lvm_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $in_pvs     = 0;
+	my $in_vgs     = 0;
+	my $in_lvs     = 0;
+	my $timeout    = 5;
+	my $shell_call = "
+".$an->data->{path}{pvs}." --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; ".$an->data->{path}{echo}." pvs:\$?; 
+".$an->data->{path}{vgs}." --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; ".$an->data->{path}{echo}." vgs:\$?; 
+".$an->data->{path}{lvs}." --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices; ".$an->data->{path}{echo}." lvs:\$?;
+";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $an->String->clean_spaces({string => $_});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^PV/)
+		{
+			$in_pvs = 1;
+			$in_vgs = 0;
+			$in_lvs = 0;
+			next;
+		}
+		if ($line =~ /^VG/)
+		{
+			$in_pvs = 0;
+			$in_vgs = 1;
+			$in_lvs = 0;
+			next;
+		}
+		if ($line =~ /^LV/)
+		{
+			$in_pvs = 0;
+			$in_vgs = 0;
+			$in_lvs = 1;
+			next;
+		}
+		
+		if ($in_pvs)
+		{
+			# pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid
+			if ($line =~ /pvs:(\d+)/)
+			{
+				my $return_code = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			
+			#   pv_name,  vg_name,     pv_fmt,  pv_attr,     pv_size,     pv_free,   pv_used,     pv_uuid
+			my ($this_pv, $used_by_vg, $format, $attributes, $total_size, $free_size, $used_size, $uuid) = (split /#!#/, $line);
+			
+			$total_size =~ s/B$//;
+			$free_size  =~ s/B$//;
+			$used_size  =~ s/B$//;
+			
+			$an->data->{gathered}{lvm}{pv}{$this_pv}{used_by_vg} = $used_by_vg;
+			$an->data->{gathered}{lvm}{pv}{$this_pv}{attributes} = $attributes;
+			$an->data->{gathered}{lvm}{pv}{$this_pv}{total_size} = $total_size." Bytes";
+			$an->data->{gathered}{lvm}{pv}{$this_pv}{free_size}  = $free_size." Bytes";
+			$an->data->{gathered}{lvm}{pv}{$this_pv}{used_size}  = $used_size." Bytes";
+			$an->data->{gathered}{lvm}{pv}{$this_pv}{uuid}       = $uuid;
+		}
+		elsif ($in_vgs)
+		{
+			# vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name
+			if ($line =~ /vgs:(\d+)/)
+			{
+				my $return_code = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			
+			#   vg_name,  vg_attr,     vg_extent_size, vg_extent_count, vg_uuid, vg_size,  vg_free_count, vg_free,  pv_name
+			my ($this_vg, $attributes, $pe_size,       $total_pe,       $uuid,   $vg_size, $free_pe,      $vg_free, $pv_name) = split /#!#/, $line;
+			$pe_size    = "" if not defined $pe_size;
+			$vg_size    = "" if not defined $vg_size;
+			$vg_free    = "" if not defined $vg_free;
+			$attributes = "" if not defined $attributes;
+			
+			$pe_size =~ s/B$//;
+			$vg_size =~ s/B$//;
+			$vg_free =~ s/B$//;
+			
+			my $used_pe    = $total_pe - $free_pe if (($total_pe) && ($free_pe));
+			my $used_space = $vg_size - $vg_free  if (($vg_size) && ($vg_free));
+			$an->data->{gathered}{lvm}{vg}{$this_vg}{clustered}  = $attributes =~ /c$/ ? 1 : 0;
+			$an->data->{gathered}{lvm}{vg}{$this_vg}{pe_size}    = $pe_size." Bytes";
+			$an->data->{gathered}{lvm}{vg}{$this_vg}{total_pe}   = $total_pe;
+			$an->data->{gathered}{lvm}{vg}{$this_vg}{uuid}       = $uuid;
+			$an->data->{gathered}{lvm}{vg}{$this_vg}{size}       = $vg_size." Bytes";
+			$an->data->{gathered}{lvm}{vg}{$this_vg}{used_pe}    = $used_pe;
+			$an->data->{gathered}{lvm}{vg}{$this_vg}{used_space} = $used_space;
+			$an->data->{gathered}{lvm}{vg}{$this_vg}{free_pe}    = $free_pe;
+			$an->data->{gathered}{lvm}{vg}{$this_vg}{free_space} = $vg_free." Bytes";
+			$an->data->{gathered}{lvm}{vg}{$this_vg}{pv_name}    = $pv_name;
+		}
+		elsif ($in_lvs)
+		{
+			# lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices
+			if ($line =~ /lvs:(\d+)/)
+			{
+				my $return_code = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			my ($lv_name, $on_vg, $attributes, $total_size, $uuid, $path, $devices) = (split /#!#/, $line);
+
+			$total_size =~ s/B$//;
+			$devices    =~ s/\(\d+\)//g;	# Strip the starting PE number
+
+			$an->data->{gathered}{lvm}{lv}{$path}{name}       = $lv_name;
+			$an->data->{gathered}{lvm}{lv}{$path}{on_vg}      = $on_vg;
+			$an->data->{gathered}{lvm}{lv}{$path}{active}     = ($attributes =~ /.{4}(.{1})/)[0] eq "a" ? 1 : 0;
+			$an->data->{gathered}{lvm}{lv}{$path}{attributes} = $attributes;
+			$an->data->{gathered}{lvm}{lv}{$path}{total_size} = $total_size." Bytes";
+			$an->data->{gathered}{lvm}{lv}{$path}{uuid}       = $uuid;
+			$an->data->{gathered}{lvm}{lv}{$path}{on_devices} = $devices;
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This gathers data from /proc/meminfo
+sub gather_meminfo
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_meminfo" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### NOTE: Unites report as 'kB' but are 'KiB' (1024 bytes)
+	my $shell_call = $an->data->{path}{proc_meminfo};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $an->String->clean_spaces({string => $_});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /MemTotal: (\d+) kB/)
+		{
+			$an->data->{gathered}{meminfo}{memory}{total} = ($1 * 1024)." Bytes";
+		}
+		elsif ($line =~ /MemFree: (\d+) kB/)
+		{
+			$an->data->{gathered}{meminfo}{memory}{free} = ($1 * 1024)." Bytes";
+		}
+		elsif ($line =~ /SwapTotal: (\d+) kB/)
+		{
+			$an->data->{gathered}{meminfo}{swap}{total} = ($1 * 1024)." Bytes";
+		}
+		elsif ($line =~ /SwapFree: (\d+) kB/)
+		{
+			$an->data->{gathered}{meminfo}{swap}{free} = ($1 * 1024)." Bytes";
+		}
+		elsif ($line =~ /HardwareCorrupted: (\d+) kB/)
+		{
+			$an->data->{gathered}{meminfo}{memory}{corrupted} = ($1 * 1024)." Bytes";
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# Read information from GFS2
+sub gather_gfs2
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return if not -e $an->data->{path}{gfs2_lock};
+	
+	my $block_size    = 1024;
+	my $in_filesystem = 0;
+	my $shell_call    = $an->data->{path}{'grep'}." gfs2 ".$an->data->{path}{etc_fstab}."; ".$an->data->{path}{df}." -P";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /Filesystem/)
+		{
+			if ($line =~ /(\d+)-blocks/)
+			{
+				$block_size = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "block_size", value1 => $block_size, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			$in_filesystem = 1;
+			next;
+		}
+		
+		if ($in_filesystem)
+		{
+			next if $line !~ /^\//;
+			my ($device_path, $total_size, $used_space, $free_space, $percent_used, $mount_point) = ($line =~ /^(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)\s+(.*?)$/);
+			
+			next if not $mount_point;
+			next if not exists $an->data->{gathered}{gfs}{$mount_point};
+			
+			# Still alive?
+			$total_size   = 0 if not defined $total_size;
+			$used_space   = 0 if not defined $used_space;
+			$free_space   = 0 if not defined $free_space;
+			$percent_used = 0 if not defined $percent_used;
+			
+			# Convert to bytes by multiplying the returned block count by the block size
+			$total_size *= $block_size;
+			$used_space *= $block_size;
+			$free_space *= $block_size;
+			
+			$an->data->{gathered}{gfs}{$mount_point}{device_path}  = $device_path;
+			$an->data->{gathered}{gfs}{$mount_point}{total_size}   = $total_size." Bytes";
+			$an->data->{gathered}{gfs}{$mount_point}{used_space}   = $used_space." Bytes";
+			$an->data->{gathered}{gfs}{$mount_point}{free_space}   = $free_space." Bytes";
+			$an->data->{gathered}{gfs}{$mount_point}{percent_used} = $percent_used;
+			$an->data->{gathered}{gfs}{$mount_point}{mounted}      = 1;
+		}
+		else
+		{
+			# Read the GFS info.
+			next if $line !~ /gfs2/;
+			my (undef, $mount_point, $filesystem) = ($line =~ /^(.*?)\s+(.*?)\s+(.*?)\s/);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "mount_point", value1 => $mount_point,
+				name2 => "filesystem",  value2 => $filesystem,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->data->{gathered}{gfs}{$mount_point}{device_path}  = "";
+			$an->data->{gathered}{gfs}{$mount_point}{total_size}   = "";
+			$an->data->{gathered}{gfs}{$mount_point}{used_space}   = "";
+			$an->data->{gathered}{gfs}{$mount_point}{free_space}   = "";
+			$an->data->{gathered}{gfs}{$mount_point}{percent_used} = "";
+			$an->data->{gathered}{gfs}{$mount_point}{mounted}      = 0;
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# Gather dmidecode information
+sub gather_dmidecode
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_dmidecode" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $in_cpu           = 0;
+	my $in_system_ram    = 0;
+	my $in_dimm_module   = 0;
+	
+	# On SMP machines, the CPU socket becomes important. This tracks which CPU I am looking at.
+	my $this_socket      = "";
+	
+	# Same deal with volume groups.
+	my $this_vg          = "";
+	
+	# RAM is all over the place, so I need to record all the bits in strings and push to the hash when I
+	# see a blank line.
+	my $dimm_locator     = "";
+	my $dimm_bank        = "";
+	my $dimm_size        = "";
+	my $dimm_type        = "";
+	my $dimm_speed       = "";
+	my $dimm_form_factor = "";
+	my $dimm_count       = 0;
+	
+	# This will be set to the values I find on this node.
+	$an->data->{gathered}{dmidecode}{total_node_cores}   = 0;
+	$an->data->{gathered}{dmidecode}{total_node_threads} = 0;
+	$an->data->{gathered}{dmidecode}{total_memory}       = 0;
+	
+	# In some cases, like in servers, the CPU core count is not provided. So this keeps a running tally 
+	# of how many times we've gone in and out of 'in_cpu' and will be used as the core count if, when 
+	# it is all done, we have 0 cores listed.
+	$an->data->{gathered}{dmidecode}{cpu}{sockets} = 0;
+	
+	my $shell_call = $an->data->{path}{dmidecode}." -t 4,16,17";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $an->String->clean_spaces({string => $_});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Find out what I am looking at.
+		if (not $line)
+		{
+			# Blank lines break sections. If I had been reading DIMM info, push it into the hash.
+			if ($in_dimm_module)
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+					name1 => "dimm_locator",     value1 => $dimm_locator, 
+					name2 => "dimm_bank",        value2 => $dimm_bank, 
+					name3 => "dimm_type",        value3 => $dimm_type, 
+					name4 => "dimm_speed",       value4 => $dimm_speed, 
+					name5 => "dimm_form_factor", value5 => $dimm_form_factor, 
+					name6 => "dimm_size",        value6 => $dimm_size, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($dimm_size == 0)
+				{
+					$an->data->{gathered}{dmidecode}{dimm}{$dimm_locator}{size} = "open";
+				}
+				else
+				{
+					$an->data->{gathered}{dmidecode}{dimm}{$dimm_locator}{bank}        = $dimm_bank;
+					$an->data->{gathered}{dmidecode}{dimm}{$dimm_locator}{size}        = $dimm_size;
+					$an->data->{gathered}{dmidecode}{dimm}{$dimm_locator}{type}        = $dimm_type;
+					$an->data->{gathered}{dmidecode}{dimm}{$dimm_locator}{speed}       = $dimm_speed;
+					$an->data->{gathered}{dmidecode}{dimm}{$dimm_locator}{form_factor} = $dimm_form_factor;
+				}
+				$dimm_count++;
+			}
+			
+			$in_cpu         = 0;
+			$in_system_ram  = 0;
+			$in_dimm_module = 0;
+			$this_socket    = "";
+			$this_vg        = "";
+			next;
+		}
+		if ($line =~ /Processor Information/)
+		{
+			$in_cpu = 1;
+			$an->data->{gathered}{dmidecode}{cpu}{sockets}++;
+			next;
+		}
+		if ($line =~ /Physical Memory Array/)
+		{
+			$in_system_ram  = 1;
+			next;
+		}
+		if ($line =~ /Memory Device/)
+		{
+			$in_dimm_module = 1;
+			next;
+		}
+		if ((not $in_cpu) && (not $in_system_ram) && (not $in_dimm_module))
+		{
+			next;
+		}
+		
+		# Now pull out data based on where I am.
+		if ($in_cpu)
+		{
+			# The socket is the first line, so I can safely assume that 'this_socket' will be 
+			# populated after this.
+			if ($line =~ /Socket Designation: (.*)/)
+			{
+				$this_socket = $1;
+				next;
+			}
+			
+			# Grab some deets!
+			if ($line =~ /Family: (.*)/)
+			{
+				$an->data->{gathered}{dmidecode}{cpu}{$this_socket}{family} = $1;
+			}
+			if ($line =~ /Manufacturer: (.*)/)
+			{
+				$an->data->{gathered}{dmidecode}{cpu}{$this_socket}{oem} = $1;
+			}
+			if ($line =~ /Version: (.*)/)
+			{
+				$an->data->{gathered}{dmidecode}{cpu}{$this_socket}{version} = $1;
+			}
+			if ($line =~ /Max Speed: (.*)/)
+			{
+				$an->data->{gathered}{dmidecode}{cpu}{$this_socket}{max_speed} = $1;
+			}
+			if ($line =~ /Status: (.*)/)
+			{
+				$an->data->{gathered}{dmidecode}{cpu}{$this_socket}{status} = $1;
+			}
+			if ($line =~ /Core Count: (.*)/)
+			{
+				$an->data->{gathered}{dmidecode}{cpu}{$this_socket}{cores} =  $1;
+				$an->data->{gathered}{dmidecode}{total_node_cores}         += $an->data->{gathered}{dmidecode}{cpu}{$this_socket}{cores};
+			}
+			if ($line =~ /Thread Count: (.*)/)
+			{
+				$an->data->{gathered}{dmidecode}{cpu}{$this_socket}{threads} =  $1;
+				$an->data->{gathered}{dmidecode}{total_node_threads}         += $an->data->{gathered}{dmidecode}{cpu}{$this_socket}{threads};
+			}
+		}
+		if ($in_system_ram)
+		{
+			# Not much in system RAM, but good to know stuff.
+			if ($line =~ /Error Correction Type: (.*)/)
+			{
+				$an->data->{gathered}{dmidecode}{ram}{ecc_support} = $1;
+			}
+			if ($line =~ /Number Of Devices: (.*)/)
+			{
+				# This doesn't seem to be accurate
+				$an->data->{gathered}{dmidecode}{ram}{slots} = $1;
+			}
+			# This needs to be converted to bytes.
+			if ($line =~ /Maximum Capacity: (\d+) (.*)$/)
+			{
+				my $size   = $1;
+				my $suffix = $2;
+				$an->data->{gathered}{dmidecode}{ram}{max_support} = $an->Readable->hr_to_bytes({size => $size, type => $suffix })." Bytes";
+			}
+			if ($line =~ /Maximum Capacity: (.*)/)
+			{
+				$an->data->{gathered}{dmidecode}{ram}{max_support} = $1;
+				$an->data->{gathered}{dmidecode}{ram}{max_support} = $an->Readable->hr_to_bytes({size => $an->data->{gathered}{dmidecode}{ram}{max_support} })." Bytes";
+			}
+		}
+		if ($in_dimm_module)
+		{
+			if    ($line =~ /^Bank Locator: (.*)/i) { $dimm_bank        = $1; }
+			elsif ($line =~ /^Locator: (.*)/i)      { $dimm_locator     = $1; }
+			elsif ($line =~ /^Type: (.*)/i)         { $dimm_type        = $1; }
+			elsif ($line =~ /^Speed: (.*)/i)        { $dimm_speed       = $1; }
+			elsif ($line =~ /^Form Factor: (.*)/i)  { $dimm_form_factor = $1; }
+			elsif ($line =~ /^Size: (.*)/i)
+			{
+				$dimm_size = $1;
+
+				# If the DIMM couldn't be read, it will show "Unknown". I set this to 0 in 
+				# that case.
+				if ($dimm_size !~ /^\d/)
+				{
+					$dimm_size = 0;
+				}
+				else
+				{
+					$dimm_size                                     =  $an->Readable->hr_to_bytes({size => $dimm_size });
+					$an->data->{gathered}{dmidecode}{total_memory} += $dimm_size;
+				}
+			}
+		}
+	}
+	close $file_handle;
+	
+	if ($dimm_count)
+	{
+		$an->data->{gathered}{dmidecode}{ram}{slots} = $dimm_count;
+	}
+	$an->data->{gathered}{dmidecode}{total_memory} .= " Bytes";
+	
+	return(0);
+}
+
+# Gather DRBD information
+sub gather_drbd
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_drbd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Gather drbdadm data
+	gather_drbdadm($an);	# Call this first!
+	gather_proc_drbd($an);	# Call this second.
+	
+	return(0);
+}
+
+# This gathers data from /proc/drbd
+sub gather_proc_drbd
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_proc_drbd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	if (not -e $an->data->{path}{proc_drbd})
+	{
+		$an->data->{gathered}{drbd}{status} = "offline";
+		return(0);
+	}
+	$an->data->{gathered}{drbd}{status} = "online";
+	
+	my $resource     = "";
+	my $minor_number = "";
+	my $shell_call   = $an->data->{path}{proc_drbd};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $an->String->clean_spaces({string => $_});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /version: (.*?) \(/)
+		{
+			$an->data->{gathered}{drbd}{version} = $1;
+			next;
+		}
+		elsif ($line =~ /GIT-hash: (.*?) build by (.*?), (\S+) (.*)$/)
+		{
+			$an->data->{gathered}{drbd}{git_hash}   = $1;
+			$an->data->{gathered}{drbd}{builder}    = $2;
+			$an->data->{gathered}{drbd}{build_date} = $3;
+			$an->data->{gathered}{drbd}{build_time} = $4;
+		}
+		else
+		{
+			# This is just for hash key consistency
+			if ($line =~ /^(\d+): cs:(.*?) ro:(.*?)\/(.*?) ds:(.*?)\/(.*?) (.*?) (.*)$/)
+			{
+				   $minor_number     = $1;
+				my $connection_state = $2;
+				my $my_role          = $3;
+				my $peer_role        = $4;
+				my $my_disk_state    = $5;
+				my $peer_disk_state  = $6;
+				my $drbd_protocol    = $7;
+				my $io_flags         = $8;	# See: http://www.drbd.org/users-guide/ch-admin.html#s-io-flags
+				   $resource         = $an->data->{gathered}{drbd}{minor_number}{$minor_number}{resource};
+				   
+				$an->data->{gathered}{drbd}{resource}{$resource}{minor_number}     = $minor_number;
+				$an->data->{gathered}{drbd}{resource}{$resource}{connection_state} = $connection_state;
+				$an->data->{gathered}{drbd}{resource}{$resource}{my_role}          = $my_role;
+				$an->data->{gathered}{drbd}{resource}{$resource}{peer_role}        = $peer_role;
+				$an->data->{gathered}{drbd}{resource}{$resource}{my_disk_state}    = $my_disk_state;
+				$an->data->{gathered}{drbd}{resource}{$resource}{peer_disk_state}  = $peer_disk_state;
+				$an->data->{gathered}{drbd}{resource}{$resource}{drbd_protocol}    = $drbd_protocol;
+				$an->data->{gathered}{drbd}{resource}{$resource}{io_flags}         = $io_flags;
+			}
+			elsif ($line =~ /ns:(.*?) nr:(.*?) dw:(.*?) dr:(.*?) al:(.*?) bm:(.*?) lo:(.*?) pe:(.*?) ua:(.*?) ap:(.*?) ep:(.*?) wo:(.*?) oos:(.*)$/)
+			{
+				# Details: http://www.drbd.org/users-guide/ch-admin.html#s-performance-indicators
+				my $network_sent            = $1;	# KiB send
+				my $network_received        = $2;	# KiB received
+				my $disk_write              = $3;	# KiB wrote
+				my $disk_read               = $4;	# KiB read
+				my $activity_log_updates    = $5;	# Number of updates of the activity log area of the meta data.
+				my $bitmap_updates          = $6;	# Number of updates of the bitmap area of the meta data.
+				my $local_count             = $7;	# Number of open requests to the local I/O sub-system issued by DRBD.
+				my $pending_requests        = $8;	# Number of requests sent to the partner, but that have not yet been answered by the latter.
+				my $unacknowledged_requests = $9;	# Number of requests received by the partner via the network connection, but that have not yet been answered.
+				my $app_pending_requests    = $10;	# Number of block I/O requests forwarded to DRBD, but not yet answered by DRBD.
+				my $epoch_objects           = $11;	# Number of epoch objects. Usually 1. Might increase under I/O load when using either the barrier or the none write ordering method.
+				my $write_order             = $12;	# Currently used write ordering method: b(barrier), f(flush), d(drain) or n(none).
+				my $out_of_sync             = $13;	# KiB that are out of sync
+				if    ($write_order eq "b") { $write_order = "barrier"; }
+				elsif ($write_order eq "f") { $write_order = "flush"; }
+				elsif ($write_order eq "d") { $write_order = "drain"; }
+				elsif ($write_order eq "n") { $write_order = "none"; }
+				
+				$an->data->{gathered}{drbd}{resource}{$resource}{network_sent}            = $an->Readable->hr_to_bytes({size => $network_sent, type => "KiB" })." Bytes";
+				$an->data->{gathered}{drbd}{resource}{$resource}{network_received}        = $an->Readable->hr_to_bytes({size => $network_received, type => "KiB" })." Bytes";
+				$an->data->{gathered}{drbd}{resource}{$resource}{disk_write}              = $an->Readable->hr_to_bytes({size => $disk_write, type => "KiB" })." Bytes";
+				$an->data->{gathered}{drbd}{resource}{$resource}{disk_read}               = $an->Readable->hr_to_bytes({size => $disk_read, type => "KiB" })." Bytes";
+				$an->data->{gathered}{drbd}{resource}{$resource}{activity_log_updates}    = $activity_log_updates;
+				$an->data->{gathered}{drbd}{resource}{$resource}{bitmap_updates}          = $bitmap_updates;
+				$an->data->{gathered}{drbd}{resource}{$resource}{local_count}             = $local_count;
+				$an->data->{gathered}{drbd}{resource}{$resource}{pending_requests}        = $pending_requests;
+				$an->data->{gathered}{drbd}{resource}{$resource}{unacknowledged_requests} = $unacknowledged_requests;
+				$an->data->{gathered}{drbd}{resource}{$resource}{app_pending_requests}    = $app_pending_requests;
+				$an->data->{gathered}{drbd}{resource}{$resource}{epoch_objects}           = $epoch_objects;
+				$an->data->{gathered}{drbd}{resource}{$resource}{write_order}             = $write_order;
+				$an->data->{gathered}{drbd}{resource}{$resource}{out_of_sync}             = $an->Readable->hr_to_bytes({size => $out_of_sync, type => "KiB" })." Bytes";
+			}
+			else
+			{
+				# The resync lines aren't consistent, so I pull out data one piece at a time.
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /sync'ed: (.*?)%/)
+				{
+					my $percent_synced = $1;
+					$an->data->{gathered}{drbd}{resource}{$resource}{syncing} = 1;
+					$an->data->{gathered}{drbd}{resource}{$resource}{synced}  = $percent_synced." %";
+				}
+				if ($line =~ /\((\d+)\/(\d+)\)M/)
+				{
+					# The 'M' is 'Mibibyte'
+					my $left_to_sync  = $1;
+					my $total_to_sync = $2;
+					
+					$an->data->{gathered}{drbd}{resource}{$resource}{left_to_sync}  = $an->Readable->hr_to_bytes({size => $left_to_sync, type => "MiB" })." Bytes";
+					$an->data->{gathered}{drbd}{resource}{$resource}{total_to_sync} = $an->Readable->hr_to_bytes({size => $total_to_sync, type => "MiB" })." Bytes";
+				}
+				if ($line =~ /finish: (\d+):(\d+):(\d+)/)
+				{
+					my $hours   = $1;
+					my $minutes = $2;
+					my $seconds = $3;
+					$an->data->{gathered}{drbd}{resource}{$resource}{eta_to_sync} = (($hours * 3600) + ($minutes * 60) + $seconds)." Seconds";
+				}
+				if ($line =~ /speed: (.*?) \((.*?)\)/)
+				{
+					my $current_speed =  $1;
+					my $average_speed =  $2;
+					   $current_speed =~ s/,//g;
+					   $average_speed =~ s/,//g;
+					$an->data->{gathered}{drbd}{resource}{$resource}{current_speed} = $an->Readable->hr_to_bytes({size => $current_speed, type => "KiB" })." Bytes";
+					$an->data->{gathered}{drbd}{resource}{$resource}{average_speed} = $an->Readable->hr_to_bytes({size => $average_speed, type => "KiB" })." Bytes";
+				}
+				if ($line =~ /want: (.*?) K/)
+				{
+					# The 'want' line is only calculated on the sync target
+					my $want_speed =  $1;
+					   $want_speed =~ s/,//g;
+					$an->data->{gathered}{drbd}{resource}{$resource}{want_speed} = $an->Readable->hr_to_bytes({size => $want_speed, type => "KiB" })." Bytes";
+				}
+			}
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This gathers data from drbdadm XML dump
+sub gather_drbdadm
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_drbdadm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $xml_data   = "";
+	my $shell_call = $an->data->{path}{drbdadm}." dump-xml";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$xml_data .= "$line\n";
+	}
+	close $file_handle;
+	
+	# Now parse with XML::Simple.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "xml_data", value1 => $xml_data,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($xml_data)
+	{
+		my $xml  = XML::Simple->new();
+		my $data = $xml->XMLin($xml_data, KeyAttr => {node => 'name'}, ForceArray => 1);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "data", value1 => $data,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		foreach my $a (keys %{$data})
+		{
+			if ($a eq "common")
+			{
+				$an->data->{gathered}{drbd}{protocol} = defined $data->{common}->[0]->{protocol} ? $data->{common}->[0]->{protocol} : "";
+				foreach my $b (@{$data->{common}->[0]->{section}})
+				{
+					my $name = $b->{name};
+					if ($name eq "handlers")
+					{
+						$an->data->{gathered}{drbd}{fence}{handler}{name} = defined $b->{option}->[0]->{name}  ? $b->{option}->[0]->{name}  : "";
+						$an->data->{gathered}{drbd}{fence}{handler}{path} = defined $b->{option}->[0]->{value} ? $b->{option}->[0]->{value} : "";
+					}
+					elsif ($name eq "disk")
+					{
+						$an->data->{gathered}{drbd}{fence}{policy} = defined $b->{option}->[0]->{value} ? $b->{option}->[0]->{value} : "";
+					}
+					elsif ($name eq "syncer")
+					{
+						$an->data->{gathered}{drbd}{syncer}{rate} = defined $b->{option}->[0]->{value} ? $b->{option}->[0]->{value} : "";
+					}
+					elsif ($name eq "startup")
+					{
+						foreach my $c (@{$b->{option}})
+						{
+							my $name  = $c->{name};
+							my $value = defined $c->{value} ? $c->{value} : "";
+							$an->data->{gathered}{drbd}{startup}{$name} = $value;
+						}
+					}
+					elsif ($name eq "net")
+					{
+						foreach my $c (@{$b->{option}})
+						{
+							my $name  = $c->{name};
+							my $value = defined $c->{value} ? $c->{value} : "";
+							$an->data->{gathered}{drbd}{net}{$name} = $value;
+							
+							if ($name =~ /timeout/)
+							{
+								$an->data->{gathered}{drbd}{net}{$name} .= " ms";
+							}
+						}
+					}
+					elsif ($name eq "options")
+					{
+						foreach my $c (@{$b->{option}})
+						{
+							my $name  = $c->{name};
+							my $value = defined $c->{value} ? $c->{value} : "";
+							$an->data->{gathered}{drbd}{options}{$name} = $value;
+						}
+					}
+				}
+			}
+			elsif ($a eq "resource")
+			{
+				foreach my $b (@{$data->{resource}})
+				{
+					my $resource = $b->{name};
+					foreach my $c (@{$b->{host}})
+					{
+						my $hostname       = $c->{name};
+						my $ip_type        = defined $c->{address}->[0]->{family}                ? $c->{address}->[0]->{family}                : "";
+						my $ip_address     = defined $c->{address}->[0]->{content}               ? $c->{address}->[0]->{content}               : "";
+						my $tcp_port       = defined $c->{address}->[0]->{port}                  ? $c->{address}->[0]->{port}                  : "";
+						my $metadisk       = defined $c->{volume}->[0]->{'meta-disk'}->[0]       ? $c->{volume}->[0]->{'meta-disk'}->[0]       : "";
+						my $minor_number   = defined $c->{volume}->[0]->{device}->[0]->{minor}   ? $c->{volume}->[0]->{device}->[0]->{minor}   : "";
+						### TODO: Why are these the same?
+						my $drbd_device    = defined $c->{volume}->[0]->{device}->[0]->{content} ? $c->{volume}->[0]->{device}->[0]->{content} : "";
+						my $backing_device = defined $c->{volume}->[0]->{device}->[0]->{content} ? $c->{volume}->[0]->{device}->[0]->{content} : "";
+						
+						# This is used for locating a resource by its minor number
+						$an->data->{gathered}{drbd}{minor_number}{$minor_number}{resource} = $resource;
+						
+						# This is where the data itself is stored.
+						$an->data->{gathered}{drbd}{resource}{$resource}{metadisk}         = $metadisk;
+						$an->data->{gathered}{drbd}{resource}{$resource}{minor_number}     = $minor_number;
+						$an->data->{gathered}{drbd}{resource}{$resource}{drbd_device}      = $drbd_device;
+						$an->data->{gathered}{drbd}{resource}{$resource}{backing_device}   = $backing_device;
+						$an->data->{gathered}{drbd}{resource}{$resource}{connection_state} = "";
+						$an->data->{gathered}{drbd}{resource}{$resource}{role}             = "";
+						$an->data->{gathered}{drbd}{resource}{$resource}{disk_state}       = "";
+						
+						# These entries are per-host.
+						$an->data->{gathered}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_address} = $ip_address;
+						$an->data->{gathered}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_type}    = $ip_type;
+						$an->data->{gathered}{drbd}{resource}{$resource}{hostname}{$hostname}{tcp_port}   = $tcp_port;
+					}
+					foreach my $c (@{$b->{section}})
+					{
+						my $name = $c->{name};
+						if ($name eq "disk")
+						{
+							foreach my $d (@{$c->{options}})
+							{
+								my $name  = $d->{name};
+								my $value = $d->{value};
+								$an->data->{gathered}{drbd}{res_file}{$resource}{disk}{$name} = $value;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return(0);
+}
+
+# Gather information on the daemons.
+sub gather_daemons
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_daemons" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->data->{gathered}{sys}{enable_poweroff} = 1;
+	$an->data->{gathered}{sys}{enable_withdraw} = 0;
+	foreach my $daemon ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd")
+	{
+		$an->data->{gathered}{daemon}{$daemon}{status}    = "unknown";
+		$an->data->{gathered}{daemon}{$daemon}{exit_code} = "";
+	}
+	
+	my $timeout    = 5;
+	my $shell_call = "
+".$an->data->{path}{timeout}." $timeout ".$an->data->{path}{initd}."/rgmanager status; ".$an->data->{path}{echo}." striker:rgmanager:\$?; 
+".$an->data->{path}{timeout}." $timeout ".$an->data->{path}{initd}."/cman status; ".$an->data->{path}{echo}." striker:cman:\$?; 
+".$an->data->{path}{initd}."/drbd status; ".$an->data->{path}{echo}." striker:drbd:\$?; 
+".$an->data->{path}{timeout}." $timeout ".$an->data->{path}{initd}."/clvmd status; ".$an->data->{path}{echo}." striker:clvmd:\$?; 
+".$an->data->{path}{timeout}." $timeout ".$an->data->{path}{initd}."/gfs2 status; ".$an->data->{path}{echo}." striker:gfs2:\$?; 
+".$an->data->{path}{initd}."/libvirtd status; ".$an->data->{path}{echo}." striker:libvirtd:\$?;";
+;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $an->String->clean_spaces({string => $_});
+		next if $line !~ /^striker:/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
+		   $exit_code            = "" if not defined $exit_code;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "daemon",    value1 => $daemon,
+			name2 => "exit_code", value2 => $exit_code,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($exit_code eq "0")
+		{
+			# Running
+			$an->data->{gathered}{daemon}{$daemon}{status} = "running";
+			$an->data->{gathered}{sys}{enable_poweroff}         = 0;
+		}
+		elsif ($exit_code eq "3")
+		{
+			# Stopped
+			$an->data->{gathered}{daemon}{$daemon}{status} = "stopped";
+		}
+		
+		$an->data->{gathered}{daemon}{$daemon}{exit_code} = $exit_code;
+	}
+	close $file_handle;
+	
+	# If cman is running, enable withdrawl. If not, enable shut down.
+	if ($an->data->{gathered}{daemon}{cman}{exit_code} eq "0")
+	{
+		$an->data->{gathered}{sys}{enable_withdraw} = 1;
+	}
+	else
+	{
+		# If something went wrong, one of the storage resources might still be running.
+		if (($an->data->{gathered}{daemon}{rgmanager}{exit_code} eq "0") or
+		    ($an->data->{gathered}{daemon}{drbd}{exit_code}      eq "0") or
+		    ($an->data->{gathered}{daemon}{clvmd}{exit_code}     eq "0") or
+		    ($an->data->{gathered}{daemon}{gfs2}{exit_code}      eq "0"))
+		{
+			# This can happen if the user loads the page (or it auto-loads) while the storage is 
+			# coming online.
+		}
+		else
+		{
+			# Ready to power off the node.
+			$an->data->{gathered}{sys}{enable_poweroff} = 1;
+		}
+	}
+	
+	return(0);
+}
+
+# This gathers information from the node's /etc/hosts file (so that we can report on the hosts and associated
+# IPs this machine cares about).
+sub gather_hosts
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{etc_hosts};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/#.*$//;
+		   $line =~ s/\s+$//;
+		next if not $line;
+		next if $line =~ /^127.0.0.1\s/;
+		next if $line =~ /^::1\s/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $this_ip     = "";
+		my $these_hosts = "";
+		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
+		{
+			$this_ip     = $1;
+			$these_hosts = $2;
+			foreach my $this_host (split/ /, $these_hosts)
+			{
+				next if not $this_host;
+				$an->data->{gathered}{hosts}{by_name}{$this_host} = $this_ip;
+				if (not exists $an->data->{gathered}{hosts}{by_ip}{$this_ip})
+				{
+					$an->data->{gathered}{hosts}{by_ip}{$this_ip} = "";
+				}
+				$an->data->{gathered}{hosts}{by_ip}{$this_ip} .= "$this_host ";
+			}
+		}
+	}
+	close $file_handle;
+	
+	# Sort and cleanup the host name lists.
+	foreach my $this_ip (sort {$a cmp $b} keys %{$an->data->{gathered}{hosts}{by_ip}})
+	{
+		my $sorted = "";
+		my @names  = split/ /, $an->data->{gathered}{hosts}{by_ip}{$this_ip};
+		foreach my $host (sort {$a cmp $b} @names)
+		{
+			$sorted .= $host." ";
+		}
+		$sorted =~ s/^\s+//;
+		$sorted =~ s/\s+$//;
+		$an->data->{gathered}{hosts}{by_ip}{$this_ip} = $sorted;
+	}
+	
+	return(0);
+}
 
 # This gets data from cluster.conf, if it exists.
 sub gather_bonds
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_bonds" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_bonds" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read the bond file names
 	my $files      = [];
@@ -171,7 +1233,7 @@ sub gather_bonds
 			
 			foreach my $line (split/\n/, $bond_data)
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "bond", value1 => $bond, 
 					name2 => "line", value2 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -450,7 +1512,8 @@ sub gather_clustat
 	$an->data->{gathered}{clustat}{enable_join}     = 0;
 	$an->data->{gathered}{clustat}{hung}            = 0;
 	
-	my $shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{clustat}."; ".$an->data->{path}{echo}." clustat:\$?";
+	my $timeout    = 5;
+	my $shell_call = $an->data->{path}{timeout}." $timeout ".$an->data->{path}{clustat}."; ".$an->data->{path}{echo}." clustat:\$?";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -458,10 +1521,7 @@ sub gather_clustat
 	while(<$file_handle>)
 	{
 		chomp;
-		my $line = $_;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
+		my $line = $an->String->clean_spaces({string => $_});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -473,7 +1533,7 @@ sub gather_clustat
 				name1 => "return_code", value1 => $return_code,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($return_code eq "127")
+			if ($return_code eq "124")
 			{
 				# Timeout fired, clustat is hung
 				$an->data->{gathered}{clustat}{hung} = 1;
@@ -631,6 +1691,7 @@ sub report_findings
 		else
 		{
 			# This is a terminal key.
+			next if (($an->data->{sys}{hide_empty}) && ($an->data->{gathered}{$key} eq ""));
 			print "$key = [".$an->data->{gathered}{$key}."]\n";
 		}
 	}
@@ -662,6 +1723,7 @@ sub walk_hash_reference
 		else
 		{
 			# This is a terminal key.
+			next if (($an->data->{sys}{hide_empty}) && ($hash_reference->{$key} eq ""));
 			print "$new_variable = [".$hash_reference->{$key}."]\n";
 		}
 	}
@@ -673,7 +1735,7 @@ sub walk_hash_reference
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
 	print $file_handle $an->String->get({key => "ars_message_0001"})."\n";

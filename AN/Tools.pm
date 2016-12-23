@@ -577,6 +577,7 @@ sub _set_paths
 	$an->data->{path}{fence_check}            = "/usr/sbin/fence_check";
 	$an->data->{path}{fence_node}             = "/usr/sbin/fence_node";
 	$an->data->{path}{fence_tool}             = "/usr/sbin/fence_tool";
+	$an->data->{path}{free}                   = "/usr/bin/free";
 	$an->data->{path}{'grep'}                 = "/bin/grep";
 	$an->data->{path}{gethostip}              = "/usr/bin/gethostip";
 	$an->data->{path}{gfs2_tool}              = "/usr/sbin/gfs2_tool";
@@ -592,6 +593,7 @@ sub _set_paths
 	$an->data->{path}{lsmod}                  = "/sbin/lsmod";
 	$an->data->{path}{lvchange}               = "/sbin/lvchange";
 	$an->data->{path}{lvcreate}               = "/sbin/lvcreate";
+	$an->data->{path}{lvdisplay}              = "/sbin/lvdisplay";
 	$an->data->{path}{lvremove}               = "/sbin/lvremove";
 	$an->data->{path}{lvs}                    = "/sbin/lvs";
 	$an->data->{path}{lvscan}                 = "/sbin/lvscan";
@@ -619,6 +621,7 @@ sub _set_paths
 	$an->data->{path}{psql}                   = "/usr/bin/psql";
 	$an->data->{path}{pvchange}               = "/sbin/pvchange";
 	$an->data->{path}{pvcreate}               = "/sbin/pvcreate";
+	$an->data->{path}{pvdisplay}              = "/sbin/pvdisplay";
 	$an->data->{path}{pvscan}                 = "/sbin/pvscan";
 	$an->data->{path}{pvs}                    = "/sbin/pvs";
 	$an->data->{path}{reboot}                 = "/sbin/reboot";
@@ -645,6 +648,7 @@ sub _set_paths
 	$an->data->{path}{'virt-manager'}         = "/usr/bin/virt-manager";
 	$an->data->{path}{vgchange}               = "/sbin/vgchange";
 	$an->data->{path}{vgcreate}               = "/sbin/vgcreate";
+	$an->data->{path}{vgdisplay}              = "/sbin/vgdisplay";
 	$an->data->{path}{vgscan}                 = "/sbin/vgscan";
 	$an->data->{path}{vgs}                    = "/sbin/vgs";
 	$an->data->{path}{virsh}                  = "/usr/bin/virsh";

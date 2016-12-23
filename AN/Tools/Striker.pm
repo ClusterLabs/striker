@@ -11084,12 +11084,13 @@ sub _parse_dmidecode
 		}
 		if ($in_dimm_module)
 		{
-			if ($line =~ /Locator: (.*)/)      { $dimm_locator     = $1; }
-			if ($line =~ /Bank Locator: (.*)/) { $dimm_bank        = $1; }
-			if ($line =~ /Type: (.*)/)         { $dimm_type        = $1; }
-			if ($line =~ /Speed: (.*)/)        { $dimm_speed       = $1; }
-			if ($line =~ /Form Factor: (.*)/)  { $dimm_form_factor = $1; }
-			if ($line =~ /Size: (.*)/)
+			if    ($line =~ /Bank Locator: (.*)/)     { $dimm_bank        = $1; }
+			elsif ($line =~ /Locator: (.*)/)          { $dimm_locator     = $1; }
+			elsif ($line =~ /Type: (.*)/)             { $dimm_type        = $1; }
+			elsif ($line =~ /Configured Clock Speed/) {  }	# Ignore
+			elsif ($line =~ /Speed: (.*)/)            { $dimm_speed       = $1; }
+			elsif ($line =~ /Form Factor: (.*)/)      { $dimm_form_factor = $1; }
+			elsif ($line =~ /Size: (.*)/)
 			{
 				$dimm_size = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
