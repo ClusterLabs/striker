@@ -11089,7 +11089,7 @@ sub _parse_dmidecode
 			elsif ($line =~ /Type: (.*)/)             { $dimm_type        = $1; }
 			elsif ($line =~ /Configured Clock Speed/) {  }	# Ignore
 			elsif ($line =~ /Speed: (.*)/)            { $dimm_speed       = $1; }
-			elsif ($line =~ /Form Factor: (.*)/)      { $dimm_form_factor = $1; }
+			elsif ($line =~ /Form Factor: (.*)/)  { $dimm_form_factor = $1; }
 			elsif ($line =~ /Size: (.*)/)
 			{
 				$dimm_size = $1;

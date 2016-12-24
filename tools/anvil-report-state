@@ -101,26 +101,418 @@ sub gather_data
 	gather_meminfo($an);
 	gather_gfs2($an);
 	gather_lvm($an);
+	gather_servers($an);
+	gather_shared_files($an);
 	
+	return(0);
+}
+
+# This gathers a list of files in /shared/files
+sub gather_shared_files
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_shared_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $months = {
+		Jan => "01",
+		Feb => "02",
+		Mar => "03", 
+		Apr => "04", 
+		May => "05", 
+		Jun => "06", 
+		Jul => "07", 
+		Aug => "08", 
+		Sep => "09", 
+		Oct => "10", 
+		Nov => "11", 
+		Dec => "12", 
+	};
+	my $shell_call = $an->data->{path}{ls}." -l ".$an->data->{path}{shared_files};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
+		{
+			my $type   = $1;
+			my $mode   = $2;
+			my $user   = $3;
+			my $group  = $4;
+			my $size   = $5;
+			my $month  = $6;
+			my $day    = $7;
+			my $time   = $8; # might be a year, look for '\d+:\d+'.
+			my $file   = $9;
+			my $target = "";
+			if ($type eq "l")
+			{
+				# It is a symlink, strip off the destination.
+				($file, $target) = ($file =~ /^(.*?) -> (.*)$/);
+			}
+			# These are so crude...
+			my $is_iso = 0;
+			if ($file =~ /\.iso$/i)
+			{
+				$is_iso = 1;
+			}
+			my $is_executable = 0;
+			if (($mode =~ /x/) or ($mode =~ /s/))
+			{
+				$is_executable = 1;
+			}
+			my $year = 1900 + (localtime(time))[5];
+			if ($time !~ /:/)
+			{
+				$year = $time;
+				$time = "--";
+			}
+			# Change the month to a number
+			my $say_month = $months->{$month};
+			my $say_day   = sprintf("%02d", $day);
+			my $say_date  = $year."-".$say_month."-".$say_day;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
+				name1  => "type",          value1  => $type, 
+				name2  => "mode",          value2  => $mode, 
+				name3  => "user",          value3  => $user, 
+				name4  => "group",         value4  => $group, 
+				name5  => "size",          value5  => $size, 
+				name6  => "month",         value6  => $month, 
+				name7  => "day",           value7  => $day, 
+				name8  => "time",          value8  => $time, 
+				name9  => "year",          value9  => $year, 
+				name10 => "file",          value10 => $file, 
+				name11 => "target",        value11 => $target, 
+				name12 => "is_iso",        value12 => $is_iso, 
+				name13 => "is_executable", value13 => $is_executable, 
+				name14 => "say_month",     value14 => $say_month, 
+				name15 => "say_day",       value15 => $say_day, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->data->{gathered}{media_library}{$file} = {
+				type       => $type, 
+				mode       => $mode, 
+				user       => $user, 
+				group      => $group, 
+				size       => $size, 
+				date       => $say_date, 
+				'time'     => $time,
+				target     => $target, 
+				optical    => $is_iso,
+				executable => $is_executable,
+			};
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This is a wrapper for the server data gathering functions
+sub gather_servers
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	gather_virsh($an);
+	gather_definition_files($an);	# This won't run if clustat was hung.
+	
+	# Process the XML definition files.
+	foreach my $server (sort {$a cmp $b} keys %{$an->data->{gathered}{server}})
+	{
+		foreach my $source (sort {$a cmp $b} keys %{$an->data->{gathered}{server}{$server}{definition}})
+		{
+			my $definition = $an->data->{gathered}{server}{$server}{definition}{$source};
+			if (($definition =~ /<domain type='kvm' id='\d+'>/ms) && ($definition =~ /<\/domain>/ms))
+			{
+				# Valid XML.
+				parse_definition($an, $server, $source, $definition);
+			}
+		}
+	}
+	
+	return(0);
+}
+
+# This parses out an XML definition file
+sub parse_definition
+{
+	my ($an, $server, $source, $definition) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_definition" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "server",     value1 => $server,  
+		name2 => "source",     value2 => $source,  
+		name3 => "definition", value3 => $definition, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# NOTE: This can get VERY complicated, beyond what we want to support (KISS, folks). For details on what is possible;
+	#       https://libvirt.org/formatdomain.html
+	
+	my $xml  = XML::Simple->new();
+	my $data = $xml->XMLin($definition, ForceArray => 1);
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "data", value1 => $data,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Memory needs to be pieced together.
+	my $current_memory_value  = defined $data->{currentMemory}->[0]->{content} ? $data->{currentMemory}->[0]->{content} : 0;
+	my $current_memory_unit   = defined $data->{currentMemory}->[0]->{unit}    ? $data->{currentMemory}->[0]->{unit}    : "KiB";
+	my $assigned_memory_value = defined $data->{memory}->[0]->{content}        ? $data->{memory}->[0]->{content}        : 0;
+	my $assigned_memory_unit  = defined $data->{memory}->[0]->{unit}           ? $data->{memory}->[0]->{unit}           : "KiB";
+	
+	my $current_memory        = $an->Readable->hr_to_bytes({size => $current_memory_value, type => $current_memory_unit});
+	my $assigned_memory       = $an->Readable->hr_to_bytes({size => $assigned_memory_value, type => $assigned_memory_unit});
+	$an->data->{gathered}{server}{$server}{details}{$source}{memory}{current}  = $current_memory." Bytes";
+	$an->data->{gathered}{server}{$server}{details}{$source}{memory}{assigned} = $assigned_memory." Bytes";
+	
+	# Much stuff can be pulled out directly
+	$an->data->{gathered}{server}{$server}{details}{$source}{name}              = defined $data->{name}->[0]                       ? $data->{name}->[0]                       : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{uuid}              = defined $data->{uuid}->[0]                       ? $data->{uuid}->[0]                       : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{on_poweroff}       = defined $data->{on_poweroff}->[0]                ? $data->{on_poweroff}->[0]                : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{on_reboot}         = defined $data->{on_reboot}->[0]                  ? $data->{on_reboot}->[0]                  : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{on_crash}          = defined $data->{on_crash}->[0]                   ? $data->{on_crash}->[0]                   : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{cpu}{architecture} = defined $data->{os}->[0]->{type}->[0]->{arch}    ? $data->{os}->[0]->{type}->[0]->{arch}    : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{cpu}{cores}        = defined $data->{vcpu}->[0]->{content}            ? $data->{vcpu}->[0]->{content}            : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{host}{machine}     = defined $data->{os}->[0]->{type}->[0]->{machine} ? $data->{os}->[0]->{type}->[0]->{machine} : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{clock}{offset}     = defined $data->{clock}->[0]->{offset}            ? $data->{clock}->[0]->{offset}            : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{emulator}          = defined $data->{devices}->[0]->{emulator}->[0]   ? $data->{devices}->[0]->{emulator}->[0]   : "";
+	
+	# A CPU's topology *might* be defined.
+	if (exists $data->{cpu}->[0]->{topology})
+	{
+		$an->data->{gathered}{server}{$server}{details}{$source}{cpu}{topology}{sockets} = defined $data->{cpu}->[0]->{topology}->[0]->{sockets} ? $data->{cpu}->[0]->{topology}->[0]->{sockets} : "";
+		$an->data->{gathered}{server}{$server}{details}{$source}{cpu}{topology}{cores}   = defined $data->{cpu}->[0]->{topology}->[0]->{cores}   ? $data->{cpu}->[0]->{topology}->[0]->{cores}   : "";
+		$an->data->{gathered}{server}{$server}{details}{$source}{cpu}{topology}{threads} = defined $data->{cpu}->[0]->{topology}->[0]->{threads} ? $data->{cpu}->[0]->{topology}->[0]->{threads} : "";
+	}
+	
+	### These devices are a bit deeper stored
+	# Video
+	$an->data->{gathered}{server}{$server}{details}{$source}{video}{heads}   = defined $data->{devices}->[0]->{video}->[0]->{model}->[0]->{heads} ? $data->{devices}->[0]->{video}->[0]->{model}->[0]->{heads} : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{video}{type}    = defined $data->{devices}->[0]->{video}->[0]->{model}->[0]->{type}  ? $data->{devices}->[0]->{video}->[0]->{model}->[0]->{type}  : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{graphics}{type} = defined $data->{devices}->[0]->{graphics}->[0]->{'listen'}->[0]    ? $data->{devices}->[0]->{video}->[0]->{model}->[0]->{type}  : "";
+	
+	# Digging out the IP it is listening on for video is a touch complicated.
+	foreach my $entry (@{$data->{devices}->[0]->{graphics}->[0]->{'listen'}})
+	{
+		if ((ref($entry) eq "HASH") && ($entry->{type} eq "address"))
+		{
+			$an->data->{gathered}{server}{$server}{details}{$source}{graphics}{listening}{address} = $entry->{address};
+		}
+	}
+	$an->data->{gathered}{server}{$server}{details}{$source}{graphics}{listening}{port} = defined $data->{devices}->[0]->{graphics}->[0]->{port} ? $data->{devices}->[0]->{graphics}->[0]->{port} : "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{graphics}{listening}{type} = defined $data->{devices}->[0]->{graphics}->[0]->{port} ? $data->{devices}->[0]->{graphics}->[0]->{type} : "";
+	
+	# Tease out the video RAM, if we can read it.
+	$an->data->{gathered}{server}{$server}{details}{$source}{video}{ram}   = "";
+	$an->data->{gathered}{server}{$server}{details}{$source}{video}{vram}  = "";
+	my $video_ram  = defined $data->{devices}->[0]->{video}->[0]->{model}->[0]->{ram}  ? $data->{devices}->[0]->{video}->[0]->{model}->[0]->{ram}  : "";
+	my $video_vram = defined $data->{devices}->[0]->{video}->[0]->{model}->[0]->{vram} ? $data->{devices}->[0]->{video}->[0]->{model}->[0]->{vram} : "";
+	if ($video_ram)  { $an->data->{gathered}{server}{$server}{details}{$source}{video}{ram}  = $an->Readable->hr_to_bytes({size => $video_ram, type => "KiB"})." Bytes"; }
+	if ($video_vram) { $an->data->{gathered}{server}{$server}{details}{$source}{video}{vram} = $an->Readable->hr_to_bytes({size => $video_vram, type => "KiB"})." Bytes"; }
+	
+	# Disks (and optical discs)
+	foreach my $hash_ref (@{$data->{devices}->[0]->{disk}})
+	{
+		next if not $hash_ref->{device};
+		my $disk_type     = $hash_ref->{device};									# disk or cdrom
+		
+		my $source_device = defined $hash_ref->{source}->[0]->{device}   ? $hash_ref->{source}->[0]->{device}   : "";
+		my $source_type   = defined $hash_ref->{type}                    ? $hash_ref->{type}                    : "";	# Block or file
+		my $target_bus    = defined $hash_ref->{target}->[0]->{bus}      ? $hash_ref->{target}->[0]->{bus}      : "";
+		my $target_device = defined $hash_ref->{target}->[0]->{device}   ? $hash_ref->{target}->[0]->{device}   : "";
+		my $driver_type   = defined $hash_ref->{driver}->{qemu}->{type}  ? $hash_ref->{driver}->{qemu}->{type}  : "";
+		my $driver_io     = defined $hash_ref->{driver}->{qemu}->{io}    ? $hash_ref->{driver}->{qemu}->{io}    : "";
+		my $driver_cache  = defined $hash_ref->{driver}->{qemu}->{cache} ? $hash_ref->{driver}->{qemu}->{cache} : "";
+		
+		$an->data->{gathered}{server}{$server}{details}{$source}{$disk_type}{$source_device}{source}{type}   = $source_type;
+		$an->data->{gathered}{server}{$server}{details}{$source}{$disk_type}{$source_device}{target}{bus}    = $target_bus;
+		$an->data->{gathered}{server}{$server}{details}{$source}{$disk_type}{$source_device}{target}{device} = $target_device;
+		$an->data->{gathered}{server}{$server}{details}{$source}{$disk_type}{$source_device}{driver}{type}   = $driver_type;
+		$an->data->{gathered}{server}{$server}{details}{$source}{$disk_type}{$source_device}{driver}{io}     = $driver_io;
+		$an->data->{gathered}{server}{$server}{details}{$source}{$disk_type}{$source_device}{driver}{cache}  = $driver_cache;
+	}
+	
+	# Network Interfaces
+	foreach my $hash_ref (@{$data->{devices}->[0]->{interface}})
+	{
+		next if not $hash_ref->{mac}->[0]->{address};
+		my $mac_address = $hash_ref->{mac}->[0]->{address};
+		
+		my $on_bridge   = defined $hash_ref->{source}->[0]->{bridge} ? $hash_ref->{source}->[0]->{bridge} : "";
+		my $using_vnet  = defined $hash_ref->{target}->[0]->{dev}    ? $hash_ref->{target}->[0]->{dev}    : "";
+		my $model       = defined $hash_ref->{model}->[0]->{type}    ? $hash_ref->{model}->[0]->{type}    : "";
+		
+		$an->data->{gathered}{server}{$server}{details}{$source}{network}{$mac_address}{source}{bridge} = $on_bridge;
+		$an->data->{gathered}{server}{$server}{details}{$source}{network}{$mac_address}{source}{device} = $using_vnet;
+		$an->data->{gathered}{server}{$server}{details}{$source}{network}{$mac_address}{model}          = $model;
+	}
+	
+	# Sort out the boot devices and their order.
+	my $boot = 1;
+	foreach my $hash_ref (@{$data->{os}->[0]->{boot}})
+	{
+		$an->data->{gathered}{server}{$server}{details}{$source}{boot}{$boot}{device} = defined $hash_ref->{dev} ? $hash_ref->{dev} : "";
+		$boot++;
+	}
+
 =cut
-	$an->Striker->_parse_virsh             ({node => $node_uuid, data => $virsh});
-	$an->Striker->_parse_server_defs       ({node => $node_uuid, data => $server_defs});
-	$an->Striker->_parse_server_defs_in_mem({node => $node_uuid, data => $server_defs_in_mem});	# Always parse this after 'parse_server_defs()' so that we overwrite it.
+	# This is used for debugging/digging out additional info
+	print "Server: [$server], source: [$source]\n";
+	#print "==========\n$definition==========\n";
+	foreach my $a (keys %{$data})
+	{
+		next if $a eq "name";
+		next if $a eq "uuid";
+		next if $a eq "on_poweroff";
+		next if $a eq "on_reboot";
+		next if $a eq "on_crash";
+		next if $a eq "seclabel";	# We'll worry about this in m3
+		next if $a eq "features";	# We'll worry about this in m3, unless the mode and model/features are needed in 2.1+
+		next if $a eq "currentMemory";
+		next if $a eq "memory";
+		next if $a eq "os";
+		next if $a eq "type";
+		next if $a eq "id";		# We'll worry about this in m3
+		next if $a eq "clock";
+		next if $a eq "cpu";		# We only check for topology at this time
+		next if $a eq "vcpu";
+		print "a: [$a]\n";
+		print "==========\n";
+		print Dumper $data->{$a};
+		print "==========\n";
+	}
+	die;
 =cut
 	
 	return(0);
 }
 
-=cut
+# This gets the XML definition from virsh, reflecting what is actually in memory at the time. The data here 
+# best reflects what the server is consuming at this time.
+sub gather_running_definition
+{
+	my ($an, $server) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_running_definition" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "server", value1 => $server,  
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $definition = "";
+	my $lines      = 0;
+	my $shell_call = $an->data->{path}{virsh}." dumpxml $server";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$definition .= $line."\n";
+		$lines++;
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "definition", value1 => $definition,
+		name2 => "lines",      value2 => $lines,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->data->{gathered}{server}{$server}{definition}{running} = $definition;
+	
+	return(0);
+}
 
-# 
-sub 
+# This reads in the /shared/definitions data for the known servers.
+sub gather_definition_files
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_definition_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $shell_call = ;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	# If clustat was hung, this will hang, too.
+	return(0) if $an->data->{gathered}{clustat}{hung};
+	
+	my $this_server = "";
+	my $in_domain   = 0;
+	my $definition  = "";
+	my $lines       = 0;
+	my $shell_call  = $an->data->{path}{cat}." ".$an->data->{path}{shared_definitions}."/*; ".$an->data->{path}{echo}." rc:\$?";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /rc:(\d+)/)
+		{
+			my $return_code = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		# Find the start of a domain.
+		if ($line =~ /<domain/)
+		{
+			$in_domain = 1;
+		}
+		
+		# Get this name of the current domain
+		if ($line =~ /<name>(.*?)<\/name>/)
+		{
+			$this_server = $1;
+		}
+		
+		# Push all lines into the current domain array.
+		if ($in_domain)
+		{
+			$definition .= $line."\n";
+			$lines++;
+		}
+		
+		# When the end of a domain is found, push the array over to $an->data.
+		if ($line =~ /<\/domain>/)
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "this_server", value1 => $this_server,
+				name2 => "definition",  value2 => $definition,
+				name3 => "lines",       value3 => $lines,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{gathered}{server}{$this_server}{definition}{stored} = $definition;
+			$in_domain  = 0;
+			$lines      = 0;
+			$definition = "";
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# Gather info from virsh list
+sub gather_virsh
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_virsh" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = $an->data->{path}{virsh}." list --all";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -128,16 +520,38 @@ sub
 	{
 		chomp;
 		my $line = $an->String->clean_spaces({string => $_});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		next if $line =~ /--------/;
+		next if not $line;
 		
+		my ($id, $server, $state) = split/ /, $line, 3;
+		next if $id =~ /\D/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "id",     value1 => $id,
+			name2 => "server", value2 => $server,
+			name3 => "state",  value3 => $state,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{gathered}{server}{$server}{'state'} = $state;
+		
+		if ($state eq "paused")
+		{
+			# This server is being migrated here, disable withdrawl of this node and migration of
+			# this server.
+			$an->data->{gathered}{sys}{enable_withdraw}         = 0;
+			$an->data->{gathered}{sys}{enable_poweroff}         = 0;
+			$an->data->{gathered}{server}{$server}{can_migrate} = 0;
+		}
+		
+		# Now gather the in-memory XML definition.
+		gather_running_definition($an, $server);
 	}
 	close $file_handle;
 	
 	return(0);
 }
-=cut
 
 # This is a wrapper for the LVM data gathering functions
 sub gather_lvm
@@ -1724,6 +2138,8 @@ sub walk_hash_reference
 		{
 			# This is a terminal key.
 			next if (($an->data->{sys}{hide_empty}) && ($hash_reference->{$key} eq ""));
+			# For now, we hide the XML data. We may present it later.
+			next if (($new_variable =~ /^server::/) && ($new_variable =~ /::definition::/));
 			print "$new_variable = [".$hash_reference->{$key}."]\n";
 		}
 	}
