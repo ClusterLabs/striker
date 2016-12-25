@@ -15,7 +15,6 @@ use strict;
 use warnings;
 use IO::Handle;
 use AN::Tools;
-use Data::Dumper;
 use XML::Simple;
 
 # Turn off buffering.
@@ -42,6 +41,7 @@ my $time = time;
 my $an = AN::Tools->new({
 	data		=> {
 		sys		=>	{
+			fast		=>	0,
 			hide_empty	=>	1,
 			log_level	=>	2,
 		},
@@ -73,6 +73,12 @@ if (($an->data->{switches}{h})   or
 	$an->nice_exit({exit_code => 0});
 }
 
+if (($an->data->{switches}{f}) or 
+    ($an->data->{switches}{fast}))
+{
+	$an->data->{sys}{fast} = 1;
+}
+
 # Gather whatever we can find.
 gather_data($an);
 report_findings($an);
@@ -88,7 +94,7 @@ $an->nice_exit({exit_code => 0});
 sub gather_data
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	gather_hostname($an);
 	gather_cluster_conf($an);
@@ -111,7 +117,7 @@ sub gather_data
 sub gather_shared_files
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_shared_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_shared_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $months = {
 		Jan => "01",
@@ -222,18 +228,22 @@ sub gather_servers
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	gather_virsh($an);
-	gather_definition_files($an);	# This won't run if clustat was hung.
-	
-	# Process the XML definition files.
-	foreach my $server (sort {$a cmp $b} keys %{$an->data->{gathered}{server}})
+	if (not $an->data->{sys}{fast})
 	{
-		foreach my $source (sort {$a cmp $b} keys %{$an->data->{gathered}{server}{$server}{definition}})
+		# This won't run if clustat was hung.
+		gather_definition_files($an);
+		
+		# Process the XML definition files.
+		foreach my $server (sort {$a cmp $b} keys %{$an->data->{gathered}{server}})
 		{
-			my $definition = $an->data->{gathered}{server}{$server}{definition}{$source};
-			if (($definition =~ /<domain type='kvm' id='\d+'>/ms) && ($definition =~ /<\/domain>/ms))
+			foreach my $source (sort {$a cmp $b} keys %{$an->data->{gathered}{server}{$server}{definition}})
 			{
-				# Valid XML.
-				parse_definition($an, $server, $source, $definition);
+				my $definition = $an->data->{gathered}{server}{$server}{definition}{$source};
+				if (($definition =~ /<domain type='kvm' id='\d+'>/ms) && ($definition =~ /<\/domain>/ms))
+				{
+					# Valid XML.
+					parse_definition($an, $server, $source, $definition);
+				}
 			}
 		}
 	}
@@ -534,19 +544,24 @@ sub gather_virsh
 			name3 => "state",  value3 => $state,
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		# Record the state
 		$an->data->{gathered}{server}{$server}{'state'} = $state;
+		
+		# And if we're alive, disable withdrawl because we're hosting a server (or are about to).
+		$an->data->{gathered}{sys}{enable_withdraw} = 0;
 		
 		if ($state eq "paused")
 		{
-			# This server is being migrated here, disable withdrawl of this node and migration of
-			# this server.
-			$an->data->{gathered}{sys}{enable_withdraw}         = 0;
+			# This server is being migrated here, disable migration of this server.
 			$an->data->{gathered}{sys}{enable_poweroff}         = 0;
 			$an->data->{gathered}{server}{$server}{can_migrate} = 0;
 		}
 		
-		# Now gather the in-memory XML definition.
-		gather_running_definition($an, $server);
+		if (not $an->data->{sys}{fast})
+		{
+			# Now gather the in-memory XML definition.
+			gather_running_definition($an, $server);
+		}
 	}
 	close $file_handle;
 	
@@ -562,7 +577,7 @@ sub gather_lvm
 	# If clustat was hung, this will hang, too.
 	return(0) if $an->data->{gathered}{clustat}{hung};
 	
-	gather_lvm_scan($an);
+	#gather_lvm_scan($an);	# This adds about 30~40ms to the call and should rarely be needed. MAYBE add it back later?
 	gather_lvm_data($an);
 	
 	return(0);
@@ -1440,15 +1455,36 @@ sub gather_daemons
 		$an->data->{gathered}{daemon}{$daemon}{exit_code} = "";
 	}
 	
-	my $timeout    = 5;
+	# A few calls where changed from init.d status calls to speed things up
 	my $shell_call = "
-".$an->data->{path}{timeout}." $timeout ".$an->data->{path}{initd}."/rgmanager status; ".$an->data->{path}{echo}." striker:rgmanager:\$?; 
-".$an->data->{path}{timeout}." $timeout ".$an->data->{path}{initd}."/cman status; ".$an->data->{path}{echo}." striker:cman:\$?; 
+".$an->data->{path}{initd}."/rgmanager status; ".$an->data->{path}{echo}." striker:rgmanager:\$?; 
+".$an->data->{path}{initd}."/corosync status; ".$an->data->{path}{echo}." striker:cman:\$?; 
 ".$an->data->{path}{initd}."/drbd status; ".$an->data->{path}{echo}." striker:drbd:\$?; 
-".$an->data->{path}{timeout}." $timeout ".$an->data->{path}{initd}."/clvmd status; ".$an->data->{path}{echo}." striker:clvmd:\$?; 
-".$an->data->{path}{timeout}." $timeout ".$an->data->{path}{initd}."/gfs2 status; ".$an->data->{path}{echo}." striker:gfs2:\$?; 
-".$an->data->{path}{initd}."/libvirtd status; ".$an->data->{path}{echo}." striker:libvirtd:\$?;";
-;
+if [ -e '".$an->data->{path}{proc_drbd}."' ]; 
+then 
+    ".$an->data->{path}{echo}." striker:drbd:0; 
+else 
+    ".$an->data->{path}{echo}." striker:drbd:3; 
+fi;
+if \$(".$an->data->{path}{'grep'}." -q gfs2 ".$an->data->{path}{proc_mounts}."); 
+then 
+    ".$an->data->{path}{echo}." striker:gfs2:0; 
+else 
+    ".$an->data->{path}{echo}." striker:gfs2:3; 
+fi;
+if [ -e '".$an->data->{path}{libvirtd_pid}."' ]; 
+then 
+    PID=\$(".$an->data->{path}{libvirtd_pid}."); 
+    if [ -d \"/proc/\$PID\" ]; 
+    then 
+        ".$an->data->{path}{echo}." striker:libvirtd:0; 
+    else 
+        ".$an->data->{path}{echo}." striker:libvirtd:2; 
+    fi; 
+else 
+    ".$an->data->{path}{echo}." striker:libvirtd:0; 
+fi;
+";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1768,6 +1804,7 @@ sub gather_cluster_conf
 	my $this_node               = "";
 	my $method_counter          = 0;
 	
+	### TODO: Parse this with XML::Simple.
 	my $shell_call = $an->data->{path}{cluster_conf};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
@@ -1780,6 +1817,11 @@ sub gather_cluster_conf
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /<cluster .*?name="(.*?)"/)
+		{
+			$an->data->{gathered}{anvil}{name} = $1;
+		}
 		
 		# If I didn't get the hostname from clustat, try to find it here.
 		if ($line =~ /<clusternode.*?name="(.*?)"/)

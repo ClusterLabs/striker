@@ -683,6 +683,7 @@ sub _set_paths
 	$an->data->{path}{proc_bonding} = "/proc/net/bonding";
 	$an->data->{path}{proc_drbd}    = "/proc/drbd";
 	$an->data->{path}{proc_meminfo} = "/proc/meminfo";
+	$an->data->{path}{proc_mounts}  = "/proc/self/mounts";
 	$an->data->{path}{proc_sysrq}   = "/proc/sysrq-trigger";
 	$an->data->{path}{proc_uptime}  = "/proc/uptime";
 	$an->data->{path}{proc_virbr0}  = "/proc/sys/net/ipv4/conf/virbr0";
@@ -715,6 +716,7 @@ sub _set_paths
 	$an->data->{path}{'anvil-migrate-server'}      = "/sbin/striker/anvil-migrate-server";
 	$an->data->{path}{'anvil-report-ipmi-details'} = "/sbin/striker/anvil-report-ipmi-details";	# Deprecated, will be deleted soon
 	$an->data->{path}{'anvil-report-memory'}       = "/sbin/striker/anvil-report-memory";
+	$an->data->{path}{'anvil-report-state'}        = "/sbin/striker/anvil-report-state";
 	$an->data->{path}{'anvil-safe-start'}          = "/sbin/striker/anvil-safe-start";
 	$an->data->{path}{'anvil-safe-start_link'}     = "/etc/rc3.d/S99_anvil-safe-start";
 	$an->data->{path}{'anvil-safe-stop'}           = "/sbin/striker/anvil-safe-stop";
@@ -732,6 +734,9 @@ sub _set_paths
 	# Lock files
 	$an->data->{path}{gfs2_lock}     = "/var/lock/subsys/gfs2";
 	$an->data->{path}{scancore_lock} = "/tmp/ScanCore.lock";
+	
+	# PID files
+	$an->data->{path}{libvirtd_pid} = "/var/rune/libvirtd.pid";
 	
 	# Sockets
 	$an->data->{path}{libvirtd_socket} = "/var/run/libvirt/libvirt-sock";

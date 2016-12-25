@@ -3524,7 +3524,7 @@ SUPPORT
 		</key>
 		
 		
-		<!-- Anvil! Repor State -->
+		<!-- Anvil! Report State -->
 		<key name="ars_message_0001"><![CDATA[
  -=] Anvil! Report State
 
@@ -3548,6 +3548,52 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
+		
+		
+		<!-- Anvil! CLI State -->
+		<key name="acs_message_0001"><![CDATA[
+ -=] Anvil! CLI State
+
+DESCRIPTION
+
+This program reports basic status information in a user-friendly way formatted
+for the command line.
+
+
+NOTE
+
+This is designed for a terminal that is at least 110 columns wide.
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+ -f, --fast
+ 
+	This skips rescanning LVM and does not load server XML data. This 
+	increases the run speed by about 25%.
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		
+		<!-- Report output -->
+		<!-- NOTE: This is designed to print in a 110 column terminal. Variabled are front-padded 
+		           with space to give them a consistent width when passed in as variables. -->
+		<key name="acs_report_0001"><![CDATA[
+/-----------------------------------------------------------------------------------------------------------\
+| Anvil!: #!variable!anvil_name!#       #!variable!my_hostname!# :Local - Peer: #!variable!peer_hostname!# |
+\-----------------------------------------------------------------------------------------------------------/
+]]>
+		</key>
+		
 		
 	</lang>
 
