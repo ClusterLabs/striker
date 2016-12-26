@@ -3583,16 +3583,30 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
+		<key name="acs_message_0002">Online</key>
+		<key name="acs_message_0003">Offline</key>
+		<key name="acs_message_0004">Starting</key>
+		<key name="acs_message_0005">Failed</key>
 		
 		<!-- Report output -->
 		<!-- NOTE: This is designed to print in a 110 column terminal. Variabled are front-padded 
 		           with space to give them a consistent width when passed in as variables. -->
 		<key name="acs_report_0001"><![CDATA[
-/-----------------------------------------------------------------------------------------------------------\
-| Anvil!: #!variable!anvil_name!#       #!variable!my_hostname!# :Local - Peer: #!variable!peer_hostname!# |
-\-----------------------------------------------------------------------------------------------------------/
+/---------------------------------------------------------------------------------------------[ #!data!sys::current_time!# ]---\
+| Anvil!: #!variable!anvil_name!#        #!variable!my_hostname!# :Local - Peer: #!variable!peer_hostname!# |
 ]]>
 		</key>
+		<key name="acs_report_0002"><![CDATA[
+|      Node      |      Membership      |   Resource Manager   |   Storage Services   |      Hypervisor      |
+| #!variable!node1_name!# | #!variable!node1_cluster_member!# | #!variable!node1_resource_manager!# | #!variable!node1_storage_services!# | #!variable!node1_hypervisor_service!# |
+| #!variable!node2_name!# | #!variable!node2_cluster_member!# | #!variable!node2_resource_manager!# | #!variable!node2_storage_services!# | #!variable!node2_hypervisor_service!# |
+\------------------------------------------------------------------------------------------------------------/
+]]>
+		</key>
+		<key name="acs_report_0003"><![CDATA[]]></key>
+		<key name="acs_report_0004"><![CDATA[]]></key>
+		<key name="acs_report_0005"><![CDATA[]]></key>
+		<key name="acs_report_0006"><![CDATA[]]></key>
 		
 		
 	</lang>

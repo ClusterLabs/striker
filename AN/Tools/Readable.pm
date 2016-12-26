@@ -13,6 +13,7 @@ my $THIS_FILE = "Readable.pm";
 ### Methods;
 # base2
 # bytes_to_hr
+# center_text
 # comma
 # hr_to_bytes
 # time
@@ -372,6 +373,85 @@ sub bytes_to_hr
 	$hr_size .= " $suffix";
 	
 	return($hr_size);
+}
+
+# This takes a string and an integer and pads the string with spaces on either side until the length is that
+# of the integer. For uneven splits, the smaller number of spaces will be on the left.
+sub center_text
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "center_text" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Pick up the parameters.
+	return("") if not $parameter->{string};
+	my $string = $parameter->{string};
+	my $width  = defined $parameter->{width} ? $parameter->{width} : 0;
+	return($string) if not $width;
+	### NOTE: If a '#!string!x!#' is passed, the Log->entry method will translate it in the log itself,
+	###       so you won't see that string.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "string", value1 => $string,
+		name2 => "width",  value2 => $width,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($string =~ /#!string!(.*?)!#/)
+	{
+		$string = $an->String->get({key => $1});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "string", value1 => $string,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	my $current_length = length($string);
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "current_length", value1 => $current_length,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($current_length < $width)
+	{
+		my $difference = $width - $current_length;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "difference", value1 => $difference,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($difference == 1)
+		{
+			$string .= " ";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "string", value1 => $string,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			my $remainder  =  $difference % 2;
+			   $difference -= $remainder;
+			my $spaces     =  $difference / 2;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "remainder", value1 => $remainder,
+				name2 => "spaces",    value2 => $spaces,
+			}, file => $THIS_FILE, line => __LINE__});
+			for (0..$spaces)
+			{
+				$string = " ".$string." ";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "string", value1 => $string,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($remainder)
+			{
+				$string .= " ";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "string", value1 => $string,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "string", value1 => $string,
+		name2 => "length", value2 => length($string),
+	}, file => $THIS_FILE, line => __LINE__});
+	return($string);
 }
 
 # This takes a large number and inserts commas every three characters left of the decimal place. This method
