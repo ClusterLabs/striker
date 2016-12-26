@@ -3540,6 +3540,11 @@ SWITCHES
 
 	Show this dialoge and exit.
 
+ -f, --fast
+ 
+	This skips rescanning LVM and does not load server XML data. This 
+	increases the run speed by about 25%.
+
                   
 SUPPORT
 
@@ -3570,12 +3575,16 @@ SWITCHES
  -h, -?, --help
 
 	Show this dialoge and exit.
-
- -f, --fast
  
-	This skips rescanning LVM and does not load server XML data. This 
-	increases the run speed by about 25%.
-                  
+ --interval X
+ 
+	This tells the program to run until killed (ctrl + c). The 'X' must be
+	an integer and will set how frequently the program loops.
+	
+	NOTE: It takes about 1 second to gather the details and prepare the 
+	      data for display. So a value of '1' here will mean the delay is
+	      actually about 2 seconds.
+                 
 SUPPORT
 
 #!string!brand_0012!#
@@ -3587,26 +3596,44 @@ SUPPORT
 		<key name="acs_message_0003">Offline</key>
 		<key name="acs_message_0004">Starting</key>
 		<key name="acs_message_0005">Failed</key>
+		<key name="acs_message_0006">Stopping</key>
+		<key name="acs_message_0007">Hung</key>
+		<key name="acs_message_0008">This node is not a member of the Anvil! system. Information is unavailable at this time.</key>
+		<key name="acs_message_0009">The Anvil! system's resource manager is hung. This can happen when a node is being fenced. Please wait...</key>
+		<key name="acs_message_0010">We're a member of the Anvil!, but the resource manager isn't running. Startup or shutdown in progress...</key>
+		<key name="acs_message_0011">Starting or Stopping</key>
 		
 		<!-- Report output -->
 		<!-- NOTE: This is designed to print in a 110 column terminal. Variabled are front-padded 
 		           with space to give them a consistent width when passed in as variables. -->
 		<key name="acs_report_0001"><![CDATA[
-/---------------------------------------------------------------------------------------------[ #!data!sys::current_time!# ]---\
-| Anvil!: #!variable!anvil_name!#        #!variable!my_hostname!# :Local - Peer: #!variable!peer_hostname!# |
++---------------------------------------------------------------------------------------------[ #!data!sys::current_time!# ]---+
+| Anvil!: #!variable!anvil_name!#       Local: #!variable!my_hostname!#    Peer: #!variable!peer_hostname!# |
 ]]>
 		</key>
 		<key name="acs_report_0002"><![CDATA[
++----------------+----------------------+----------------------+----------------------+----------------------+
 |      Node      |      Membership      |   Resource Manager   |   Storage Services   |      Hypervisor      |
 | #!variable!node1_name!# | #!variable!node1_cluster_member!# | #!variable!node1_resource_manager!# | #!variable!node1_storage_services!# | #!variable!node1_hypervisor_service!# |
 | #!variable!node2_name!# | #!variable!node2_cluster_member!# | #!variable!node2_resource_manager!# | #!variable!node2_storage_services!# | #!variable!node2_hypervisor_service!# |
-\------------------------------------------------------------------------------------------------------------/
++------------------------------------------------------------------------------------------------------------+
 ]]>
 		</key>
-		<key name="acs_report_0003"><![CDATA[]]></key>
-		<key name="acs_report_0004"><![CDATA[]]></key>
-		<key name="acs_report_0005"><![CDATA[]]></key>
-		<key name="acs_report_0006"><![CDATA[]]></key>
+		<key name="acs_report_0003"><![CDATA[
++----------------+----------------------+----------------------+----------------------+----------------------+
+| #!variable!state!# |
+| #!variable!message!# |
++------------------------------------------------------------------------------------------------------------+
+]]>
+		</key>
+		<key name="acs_report_0005"><![CDATA[
++----------------+----------------------+----------------------+----------------------+----------------------+
+| Resource | Connection State | 
+| #!variable!node1_name!# | #!variable!node1_cluster_member!# | #!variable!node1_resource_manager!# | #!variable!node1_storage_services!# | #!variable!node1_hypervisor_service!# |
+| #!variable!node2_name!# | #!variable!node2_cluster_member!# | #!variable!node2_resource_manager!# | #!variable!node2_storage_services!# | #!variable!node2_hypervisor_service!# |
++------------------------------------------------------------------------------------------------------------+
+]]>
+		</key>
 		
 		
 	</lang>

@@ -62,6 +62,9 @@ my $an = AN::Tools->new({
 			anvil		=>	{
 				name		=>	"bold magenta",
 				hostnames	=>	"bold blue",
+				node_offline	=>	"bold white",
+				node_hung	=>	"bold red",
+				node_starting	=>	"yellow",
 			},
 			services	=>	{
 				online		=>	"bold green",
@@ -75,10 +78,11 @@ my $an = AN::Tools->new({
 			anvil		=>	{
 				name		=>	14,
 				hostnames	=>	30,
-				short_hostnames	=>	12,
+				short_hostnames	=>	14,
+				whole_line	=>	106,
 			},
 			status		=>	{
-				services	=>	18,
+				services	=>	20,
 			},
 		},
 		status		=>	{
@@ -158,8 +162,8 @@ $an->nice_exit({exit_code => 0});
 # Functions                                                                                                 #
 #############################################################################################################
 
-# This prints out the information we gathered
-sub report_status
+# This builds the header
+sub build_header
 {
 	my ($an) = @_;
 	
@@ -167,14 +171,271 @@ sub report_status
 	# sprintf("%${padding}s", $1);
 	### Pad right
 	# sprintf("%-${padding}s", $1);
-	my $coloured_anvil_name    = colored(sprintf("%-".$an->data->{padding}{anvil}{name}."s",      $an->data->{gathered}{anvil}{name}),         $an->data->{colours}{anvil}{name});
-	my $coloured_my_hostname   = colored(sprintf("%".$an->data->{padding}{anvil}{hostnames}."s",  $an->data->{gathered}{clustat}{name}{me}),   $an->data->{colours}{anvil}{hostnames});
-	my $coloured_peer_hostname = colored(sprintf("%-".$an->data->{padding}{anvil}{hostnames}."s", $an->data->{gathered}{clustat}{name}{peer}), $an->data->{colours}{anvil}{hostnames});
+	my $coloured_anvil_name    = colored(sprintf("%-".$an->data->{padding}{anvil}{name}."s",      $an->data->{gathered}{anvil}{name}),    $an->data->{colours}{anvil}{name});
+	my $coloured_my_hostname   = colored(sprintf("%-".$an->data->{padding}{anvil}{hostnames}."s", $an->data->{gathered}{hostname}{me}),   $an->data->{colours}{anvil}{hostnames});
+	my $coloured_peer_hostname = colored(sprintf("%-".$an->data->{padding}{anvil}{hostnames}."s", $an->data->{gathered}{hostname}{peer}), $an->data->{colours}{anvil}{hostnames});
 	my $page                   = $an->String->get({key => "acs_report_0001", variables => {
 		anvil_name          => $coloured_anvil_name,
 		my_hostname         => $coloured_my_hostname,
 		peer_hostname       => $coloured_peer_hostname,
 	}})."\n";
+	
+	return($page);
+}
+
+# This builds the clustat section
+sub build_clustat_section
+{
+	my ($an, $node1_key, $node2_key) = @_;
+	
+	# If this node is not running cman or rgmanager, we can't report on any state information.
+	if (not $an->data->{gathered}{clustat}{cman}{me})
+	{
+		my $say_offline = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0003"}), width => $an->data->{padding}{anvil}{whole_line} });
+		   $say_offline = colored($say_offline, $an->data->{colours}{anvil}{node_offline});
+		my $say_message = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0008"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $page        = $an->String->get({key => "acs_report_0003", variables => { 
+			'state' => $say_offline,
+			message => $say_message,
+		}})."\n";
+		return($page);
+	}
+	elsif (not $an->data->{gathered}{clustat}{rgmanager}{me})
+	{
+		my $say_starting = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0011"}), width => $an->data->{padding}{anvil}{whole_line} });
+		   $say_starting = colored($say_starting, $an->data->{colours}{anvil}{node_starting});
+		my $say_message  = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0010"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $page         = $an->String->get({key => "acs_report_0003", variables => { 
+			'state' => $say_starting,
+			message => $say_message,
+		}})."\n";
+		return($page);
+	}
+	elsif ($an->data->{gathered}{clustat}{hung})
+	{
+		# This node's clustat is hung.
+		my $say_hung    = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0007"}), width => $an->data->{padding}{anvil}{whole_line} });
+		   $say_hung    = colored($say_hung, $an->data->{colours}{anvil}{node_hung});
+		my $say_message = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0009"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $page        = $an->String->get({key => "acs_report_0003", variables => { 
+			'state' => $say_hung,
+			message => $say_message,
+		}})."\n";
+		return($page);
+	}
+	
+	### Setup my values
+	# Top row (node 1)
+	my $node1_name               = ($an->data->{gathered}{hostname}{$node1_key} =~ /^(.*?)\./)[0];
+	my $say_node1_name           = colored($an->Readable->center_text({string => $node1_name, width => $an->data->{padding}{anvil}{short_hostnames}}), $an->data->{colours}{anvil}{hostnames});
+	my $node1_cluster_member     = "";
+	my $node1_resource_manager   = "";
+	my $node1_storage_services   = "";
+	my $node1_hypervisor_service = "";
+	# cman/corosync
+	if ($an->data->{gathered}{clustat}{cman}{$node1_key})
+	{
+		$node1_cluster_member = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
+		$node1_cluster_member = colored($node1_cluster_member, $an->data->{colours}{services}{online});
+	}
+	else
+	{
+		$node1_cluster_member = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
+		$node1_cluster_member = colored($node1_cluster_member, $an->data->{colours}{services}{offline});
+	}
+	# rgmanager
+	if ($an->data->{gathered}{clustat}{rgmanager}{$node1_key})
+	{
+		$node1_resource_manager = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
+		$node1_resource_manager = colored($node1_resource_manager, $an->data->{colours}{services}{online});
+	}
+	else
+	{
+		$node1_resource_manager = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
+		$node1_resource_manager = colored($node1_resource_manager, $an->data->{colours}{services}{offline});
+	}
+	# Storage services
+	if ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "started")
+	{
+		$node1_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
+		$node1_storage_services = colored($node1_storage_services, $an->data->{colours}{services}{online});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "stopped")
+	{
+		$node1_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
+		$node1_storage_services = colored($node1_storage_services, $an->data->{colours}{services}{offline});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "starting")
+	{
+		$node1_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0004!#", width => $an->data->{padding}{status}{services}});
+		$node1_storage_services = colored($node1_storage_services, $an->data->{colours}{services}{starting});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "stopping")
+	{
+		$node1_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0006!#", width => $an->data->{padding}{status}{services}});
+		$node1_storage_services = colored($node1_storage_services, $an->data->{colours}{services}{starting});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "failed")
+	{
+		$node1_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0005!#", width => $an->data->{padding}{status}{services}});
+		$node1_storage_services = colored($node1_storage_services, $an->data->{colours}{services}{failed});
+	}
+	else
+	{
+		# ?? This will print the raw string we got
+		$node1_storage_services = $an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{storage_n01}{'state'}, width => $an->data->{padding}{status}{services}});
+		$node1_storage_services = colored($node1_storage_services, $an->data->{colours}{services}{unknown});
+	}
+	# Hypervisor service
+	if ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "started")
+	{
+		$node1_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
+		$node1_hypervisor_service = colored($node1_hypervisor_service, $an->data->{colours}{services}{online});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "stopped")
+	{
+		$node1_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
+		$node1_hypervisor_service = colored($node1_hypervisor_service, $an->data->{colours}{services}{offline});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "starting")
+	{
+		$node1_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0004!#", width => $an->data->{padding}{status}{services}});
+		$node1_hypervisor_service = colored($node1_hypervisor_service, $an->data->{colours}{services}{starting});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "stopping")
+	{
+		$node1_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0006!#", width => $an->data->{padding}{status}{services}});
+		$node1_hypervisor_service = colored($node1_hypervisor_service, $an->data->{colours}{services}{starting});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "failed")
+	{
+		$node1_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0005!#", width => $an->data->{padding}{status}{services}});
+		$node1_hypervisor_service = colored($node1_hypervisor_service, $an->data->{colours}{services}{failed});
+	}
+	else
+	{
+		# ?? This will print the raw string we got
+		$node1_hypervisor_service = $an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'}, width => $an->data->{padding}{status}{services}});
+		$node1_hypervisor_service = colored($node1_hypervisor_service, $an->data->{colours}{services}{unknown});
+	}
+	
+	# Bottom row (node 2)
+	my $node2_name               = ($an->data->{gathered}{hostname}{$node2_key} =~ /^(.*?)\./)[0];
+	my $say_node2_name           = colored($an->Readable->center_text({string => $node2_name, width => $an->data->{padding}{anvil}{short_hostnames}}), $an->data->{colours}{anvil}{hostnames});
+	my $node2_cluster_member     = "";
+	my $node2_resource_manager   = "";
+	my $node2_storage_services   = "";
+	my $node2_hypervisor_service = "";
+	# cman/corosync
+	if ($an->data->{gathered}{clustat}{cman}{$node2_key})
+	{
+		$node2_cluster_member = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
+		$node2_cluster_member = colored($node2_cluster_member, $an->data->{colours}{services}{online});
+	}
+	else
+	{
+		$node2_cluster_member = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
+		$node2_cluster_member = colored($node2_cluster_member, $an->data->{colours}{services}{offline});
+	}
+	# rgmanager
+	if ($an->data->{gathered}{clustat}{rgmanager}{$node2_key})
+	{
+		$node2_resource_manager = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
+		$node2_resource_manager = colored($node2_resource_manager, $an->data->{colours}{services}{online});
+	}
+	else
+	{
+		$node2_resource_manager = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
+		$node2_resource_manager = colored($node2_resource_manager, $an->data->{colours}{services}{offline});
+	}
+	# Storage services
+	if ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "started")
+	{
+		$node2_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
+		$node2_storage_services = colored($node2_storage_services, $an->data->{colours}{services}{online});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "stopped")
+	{
+		$node2_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
+		$node2_storage_services = colored($node2_storage_services, $an->data->{colours}{services}{offline});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "starting")
+	{
+		$node2_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0004!#", width => $an->data->{padding}{status}{services}});
+		$node2_storage_services = colored($node2_storage_services, $an->data->{colours}{services}{starting});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "stopping")
+	{
+		$node2_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0006!#", width => $an->data->{padding}{status}{services}});
+		$node2_storage_services = colored($node2_storage_services, $an->data->{colours}{services}{starting});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "failed")
+	{
+		$node2_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0005!#", width => $an->data->{padding}{status}{services}});
+		$node2_storage_services = colored($node2_storage_services, $an->data->{colours}{services}{failed});
+	}
+	else
+	{
+		# ?? This will print the raw string we got
+		$node2_storage_services = $an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{storage_n02}{'state'}, width => $an->data->{padding}{status}{services}});
+		$node2_storage_services = colored($node2_storage_services, $an->data->{colours}{services}{unknown});
+	}
+	# Hypervisor service
+	if ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "started")
+	{
+		$node2_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
+		$node2_hypervisor_service = colored($node2_hypervisor_service, $an->data->{colours}{services}{online});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "stopped")
+	{
+		$node2_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
+		$node2_hypervisor_service = colored($node2_hypervisor_service, $an->data->{colours}{services}{offline});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "starting")
+	{
+		$node2_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0004!#", width => $an->data->{padding}{status}{services}});
+		$node2_hypervisor_service = colored($node2_hypervisor_service, $an->data->{colours}{services}{starting});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "stopping")
+	{
+		$node2_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0006!#", width => $an->data->{padding}{status}{services}});
+		$node2_hypervisor_service = colored($node2_hypervisor_service, $an->data->{colours}{services}{starting});
+	}
+	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "failed")
+	{
+		$node2_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0005!#", width => $an->data->{padding}{status}{services}});
+		$node2_hypervisor_service = colored($node2_hypervisor_service, $an->data->{colours}{services}{failed});
+	}
+	else
+	{
+		# ?? This will print the raw string we got
+		$node2_hypervisor_service = $an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'}, width => $an->data->{padding}{status}{services}});
+		$node2_hypervisor_service = colored($node2_hypervisor_service, $an->data->{colours}{services}{unknown});
+	}
+	
+	my $page = $an->String->get({key => "acs_report_0002", variables => {
+		node1_name               => $say_node1_name,
+		node1_cluster_member     => $node1_cluster_member,
+		node1_resource_manager   => $node1_resource_manager,
+		node1_storage_services   => $node1_storage_services,
+		node1_hypervisor_service => $node1_hypervisor_service, 
+		node2_name               => $say_node2_name,
+		node2_cluster_member     => $node2_cluster_member,
+		node2_resource_manager   => $node2_resource_manager,
+		node2_storage_services   => $node2_storage_services,
+		node2_hypervisor_service => $node2_hypervisor_service, 
+	}})."\n";
+	
+	return($page);
+}
+
+# This prints out the information we gathered
+sub report_status
+{
+	my ($an) = @_;
+	
+	# Build the header
+	my $page = build_header($an);
 	
 	# Am I node 1 or 2? 
 	my $node1_key = "me";
@@ -188,187 +449,59 @@ sub report_status
 		$node2_key = "me";
 	}
 	
-	### Setup my values
-	# Top row (node 1)
-	my $node1_name               = ($an->data->{gathered}{clustat}{name}{$node1_key} =~ /^(.*?)\./)[0];
-	my $say_node1_name           = colored($an->Readable->center_text({string => $node1_name, width => $an->data->{padding}{anvil}{short_hostnames}}), $an->data->{colours}{anvil}{hostnames});
-	my $node1_cluster_member     = "";
-	my $node1_resource_manager   = "";
-	my $node1_storage_services   = "";
-	my $node1_hypervisor_service = "";
-	# cman/corosync
-	if ($an->data->{gathered}{clustat}{cman}{$node1_key})
-	{
-		$node1_cluster_member = colored($an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{online});
-	}
-	else
-	{
-		$node1_cluster_member = colored($an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{offline});
-	}
-	# rgmanager
-	if ($an->data->{gathered}{clustat}{rgmanager}{$node1_key})
-	{
-		$node1_resource_manager = colored($an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{online});
-	}
-	else
-	{
-		$node1_resource_manager = colored($an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{offline});
-	}
-	# Storage services
-	if ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "started")
-	{
-		$node1_storage_services = colored($an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{online});
-	}
-	elsif ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "stopped")
-	{
-		$node1_storage_services = colored($an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{offline});
-	}
-	elsif (($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "starting") or ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "stopping"))
-	{
-		$node1_storage_services = colored($an->Readable->center_text({string => "#!string!acs_message_0004!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{starting});
-	}
-	elsif ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "failed")
-	{
-		$node1_storage_services = colored($an->Readable->center_text({string => "#!string!acs_message_0005!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{failed});
-	}
-	else
-	{
-		# ??
-		$node1_storage_services = colored($an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{storage_n01}{'state'}, width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{unknown});
-	}
-	# Hypervisor service
-	if ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "started")
-	{
-		$node1_hypervisor_service = colored($an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{online});
-	}
-	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "stopped")
-	{
-		$node1_hypervisor_service = colored($an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{offline});
-	}
-	elsif (($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "starting") or ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "stopping"))
-	{
-		$node1_hypervisor_service = colored($an->Readable->center_text({string => "#!string!acs_message_0004!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{starting});
-	}
-	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "failed")
-	{
-		$node1_hypervisor_service = colored($an->Readable->center_text({string => "#!string!acs_message_0005!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{failed});
-	}
-	else
-	{
-		# ??
-		$node1_hypervisor_service = colored($an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'}, width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{unknown});
-	}
+	# Build the clustat section
+	$page .= build_clustat_section($an, $node1_key, $node2_key);
 	
-	# Bottom row (node 2)
-	my $node2_name               = ($an->data->{gathered}{clustat}{name}{$node2_key} =~ /^(.*?)\./)[0];
-	my $say_node2_name           = colored($an->Readable->center_text({string => $node2_name, width => $an->data->{padding}{anvil}{short_hostnames}}), $an->data->{colours}{anvil}{hostnames});
-	my $node2_cluster_member     = "";
-	my $node2_resource_manager   = "";
-	my $node2_storage_services   = "";
-	my $node2_hypervisor_service = "";
-	# cman/corosync
-	if ($an->data->{gathered}{clustat}{cman}{$node2_key})
-	{
-		$node2_cluster_member = colored($an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{online});
-	}
-	else
-	{
-		$node2_cluster_member = colored($an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{offline});
-	}
-	# rgmanager
-	if ($an->data->{gathered}{clustat}{rgmanager}{$node2_key})
-	{
-		$node2_resource_manager = colored($an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{online});
-	}
-	else
-	{
-		$node2_resource_manager = colored($an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{offline});
-	}
-	# Storage services
-	if ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "started")
-	{
-		$node2_storage_services = colored($an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{online});
-	}
-	elsif ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "stopped")
-	{
-		$node2_storage_services = colored($an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{offline});
-	}
-	elsif (($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "starting") or ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "stopping"))
-	{
-		$node2_storage_services = colored($an->Readable->center_text({string => "#!string!acs_message_0004!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{starting});
-	}
-	elsif ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "failed")
-	{
-		$node2_storage_services = colored($an->Readable->center_text({string => "#!string!acs_message_0005!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{failed});
-	}
-	else
-	{
-		# ??
-		$node2_storage_services = colored($an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{storage_n01}{'state'}, width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{unknown});
-	}
-	# Hypervisor service
-	if ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "started")
-	{
-		$node2_hypervisor_service = colored($an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{online});
-	}
-	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "stopped")
-	{
-		$node2_hypervisor_service = colored($an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{offline});
-	}
-	elsif (($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "starting") or ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "stopping"))
-	{
-		$node2_hypervisor_service = colored($an->Readable->center_text({string => "#!string!acs_message_0004!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{starting});
-	}
-	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "failed")
-	{
-		$node2_hypervisor_service = colored($an->Readable->center_text({string => "#!string!acs_message_0005!#", width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{failed});
-	}
-	else
-	{
-		# ??
-		$node2_hypervisor_service = colored($an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'}, width => $an->data->{padding}{status}{services}}), $an->data->{colours}{services}{unknown});
-	}
-	
-	$page .= $an->String->get({key => "acs_report_0002", variables => {
-		node1_name               => $say_node1_name,
-		node1_cluster_member     => $node1_cluster_member,
-		node1_resource_manager   => $node1_resource_manager,
-		node1_storage_services   => $node1_storage_services,
-		node1_hypervisor_service => $node1_hypervisor_service, 
-		node2_name               => $say_node2_name,
-		node2_cluster_member     => $node2_cluster_member,
-		node2_resource_manager   => $node2_resource_manager,
-		node2_storage_services   => $node2_storage_services,
-		node2_hypervisor_service => $node2_hypervisor_service, 
-	}})."\n";
 =cut
-				online		=>	"bold greed",
-				offline		=>	"faint white",
-				starting	=>	"bold yellow",
-				failed		=>	"bold red",
-	
-clustat::cman::me = [1]
-clustat::cman::peer = [0]
-clustat::enable_join = [0]
-clustat::hung = [0]
-clustat::name::me = [an-a07n01.alteeve.ca]
-clustat::name::peer = [an-a07n02.alteeve.ca]
-clustat::rgmanager::me = [1]
-clustat::rgmanager::peer = [0]
-clustat::server::vm01-c6-test::host = [an-a07n01.alteeve.ca]
-clustat::server::vm01-c6-test::state = [started]
-clustat::server::vm02-c7-foo::host = [an-a07n01.alteeve.ca]
-clustat::server::vm02-c7-foo::state = [started]
-clustat::server::vm03-Desktop::host = [an-a07n01.alteeve.ca]
-clustat::server::vm03-Desktop::state = [started]
-clustat::service::libvirtd_n01::host = [an-a07n01.alteeve.ca]
-clustat::service::libvirtd_n01::state = [started]
-clustat::service::libvirtd_n02::host = [an-a07n02.alteeve.ca]
-clustat::service::libvirtd_n02::state = [stopped]
-clustat::service::storage_n01::host = [an-a07n01.alteeve.ca]
-clustat::service::storage_n01::state = [started]
-clustat::service::storage_n02::host = [an-a07n02.alteeve.ca]
-clustat::service::storage_n02::state = [stopped]
+drbd::build_date = [2016-07-18]
+drbd::build_time = [15:13:48]
+drbd::builder = [root@rhel6-builder-production.alteeve.ca]
+drbd::fence::handler::name = [fence-peer]
+drbd::fence::handler::path = [/sbin/striker/rhcs_fence]
+drbd::fence::policy = [resource-and-stonith]
+drbd::git_hash = [22b4c802192646e433d3f7399d578ec7fecc6272]
+drbd::minor_number::0::resource = [r0]
+drbd::net::after-sb-0pri = [discard-zero-changes]
+drbd::net::after-sb-1pri = [discard-secondary]
+drbd::net::after-sb-2pri = [disconnect]
+drbd::net::allow-two-primaries = [yes]
+drbd::net::ping-timeout = [100 ms]
+drbd::net::protocol = [C]
+drbd::net::timeout = [100 ms]
+drbd::options::on-no-data-accessible = [suspend-io]
+drbd::resource::r0::activity_log_updates = [147]
+drbd::resource::r0::app_pending_requests = [0]
+drbd::resource::r0::backing_device = [/dev/drbd0]
+drbd::resource::r0::bitmap_updates = [0]
+drbd::resource::r0::connection_state = [WFConnection]
+drbd::resource::r0::disk_read = [3485253632 Bytes]
+drbd::resource::r0::disk_write = [265224192 Bytes]
+drbd::resource::r0::drbd_device = [/dev/drbd0]
+drbd::resource::r0::drbd_protocol = [C]
+drbd::resource::r0::epoch_objects = [1]
+drbd::resource::r0::hostname::an-a07n01.alteeve.ca::ip_address = [10.10.70.1]
+drbd::resource::r0::hostname::an-a07n01.alteeve.ca::ip_type = [ipv4]
+drbd::resource::r0::hostname::an-a07n01.alteeve.ca::tcp_port = [7788]
+drbd::resource::r0::hostname::an-a07n02.alteeve.ca::ip_address = [10.10.70.2]
+drbd::resource::r0::hostname::an-a07n02.alteeve.ca::ip_type = [ipv4]
+drbd::resource::r0::hostname::an-a07n02.alteeve.ca::tcp_port = [7788]
+drbd::resource::r0::io_flags = [r-----]
+drbd::resource::r0::local_count = [0]
+drbd::resource::r0::metadisk = [internal]
+drbd::resource::r0::minor_number = [0]
+drbd::resource::r0::my_disk_state = [UpToDate]
+drbd::resource::r0::my_role = [Primary]
+drbd::resource::r0::network_received = [51499008 Bytes]
+drbd::resource::r0::network_sent = [163241984 Bytes]
+drbd::resource::r0::out_of_sync = [20021248 Bytes]
+drbd::resource::r0::peer_disk_state = [Outdated]
+drbd::resource::r0::peer_role = [Unknown]
+drbd::resource::r0::pending_requests = [0]
+drbd::resource::r0::unacknowledged_requests = [0]
+drbd::resource::r0::write_order = [drain]
+drbd::startup::become-primary-on = [both]
+drbd::status = [online]
+drbd::version = [8.4.8-1]
 	
 	my $node2_name     = ($an->data->{status}{anvil}{hostname}{$node2_key} =~ /^(.*?)\./);
 	my $say_node2_name = colored(sprintf("%".$mode1_name."s", $an->data->{status}{anvil}{hostname}{$node2_key}), $an->data->{colours}{anvil}{hostnames});
@@ -377,7 +510,8 @@ clustat::service::storage_n02::state = [stopped]
 	my $node1_membership_state       =  $an->Readable->center_text({string => "#!string!acs_report_0002!#", width => $an->data->{padding}{status}{services}});
 =cut
 	
-	print $page."\n";
+	# We're ready!
+	print $page;
 	
 	return(0);
 }

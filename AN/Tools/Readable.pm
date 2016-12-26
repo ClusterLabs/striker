@@ -430,7 +430,7 @@ sub center_text
 				name1 => "remainder", value1 => $remainder,
 				name2 => "spaces",    value2 => $spaces,
 			}, file => $THIS_FILE, line => __LINE__});
-			for (0..$spaces)
+			for (1..$spaces)
 			{
 				$string = " ".$string." ";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
