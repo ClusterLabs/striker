@@ -718,7 +718,7 @@ sub time
 			#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 		}
 	}
-	if ( $rem_min > 0 )
+	if ($rem_min > 0)
 	{
 		$hr_time =~ s/ sec.$/$suffix_seconds/;
 		$hr_time =  sprintf("%01d", $rem_min).$suffix_minutes." $hr_time";
@@ -729,7 +729,7 @@ sub time
 		$hr_time = "0".$suffix_minutes." ".$hr_time;
 		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
-	if ( $rem_hours > 0 )
+	if ($rem_hours > 0)
 	{
 		$hr_time = sprintf("%01d", $rem_hours)."$suffix_hours $hr_time";
 		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
@@ -739,7 +739,7 @@ sub time
 		$hr_time = "0".$suffix_hours." ".$hr_time;
 		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
-	if ( $days > 0 )
+	if ($days > 0)
 	{
 		$hr_time = sprintf("%01d", $rem_days).$suffix_days." ".$hr_time;
 		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
@@ -749,7 +749,7 @@ sub time
 		$hr_time = "0".$suffix_days." ".$hr_time;
 		#print "$THIS_FILE ".__LINE__."; hr_time: [$hr_time]\n";
 	}
-	if ( $weeks > 0 )
+	if ($weeks > 0)
 	{
 		$weeks   = $an->Readable->comma($weeks);
 		$hr_time = $weeks.$suffix_weeks." ".$hr_time;

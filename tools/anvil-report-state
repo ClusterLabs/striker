@@ -1198,13 +1198,24 @@ sub gather_proc_drbd
 				my $drbd_protocol    = $7;
 				my $io_flags         = $8;	# See: http://www.drbd.org/users-guide/ch-admin.html#s-io-flags
 				   $resource         = $an->data->{gathered}{drbd}{minor_number}{$minor_number}{resource};
-				   
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+					name1 => "minor_number",     value1 => $minor_number, 
+					name2 => "connection_state", value2 => $connection_state, 
+					name3 => "my_role",          value3 => $my_role, 
+					name4 => "peer_role",        value4 => $peer_role, 
+					name5 => "my_disk_state",    value5 => $my_disk_state, 
+					name6 => "peer_disk_state",  value6 => $peer_disk_state, 
+					name7 => "drbd_protocol",    value7 => $drbd_protocol, 
+					name8 => "io_flags",         value8 => $io_flags, 
+					name9 => "resource",         value9 => $resource, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				$an->data->{gathered}{drbd}{resource}{$resource}{minor_number}     = $minor_number;
 				$an->data->{gathered}{drbd}{resource}{$resource}{connection_state} = $connection_state;
-				$an->data->{gathered}{drbd}{resource}{$resource}{my_role}          = $my_role;
-				$an->data->{gathered}{drbd}{resource}{$resource}{peer_role}        = $peer_role;
-				$an->data->{gathered}{drbd}{resource}{$resource}{my_disk_state}    = $my_disk_state;
-				$an->data->{gathered}{drbd}{resource}{$resource}{peer_disk_state}  = $peer_disk_state;
+				$an->data->{gathered}{drbd}{resource}{$resource}{role}{me}         = $my_role;
+				$an->data->{gathered}{drbd}{resource}{$resource}{role}{peer}       = $peer_role;
+				$an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{me}   = $my_disk_state;
+				$an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{peer} = $peer_disk_state;
 				$an->data->{gathered}{drbd}{resource}{$resource}{drbd_protocol}    = $drbd_protocol;
 				$an->data->{gathered}{drbd}{resource}{$resource}{io_flags}         = $io_flags;
 			}
@@ -1391,6 +1402,9 @@ sub gather_drbdadm
 				foreach my $b (@{$data->{resource}})
 				{
 					my $resource = $b->{name};
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "resource", value1 => $resource, 
+					}, file => $THIS_FILE, line => __LINE__});
 					foreach my $c (@{$b->{host}})
 					{
 						my $hostname       = $c->{name};
@@ -1412,8 +1426,10 @@ sub gather_drbdadm
 						$an->data->{gathered}{drbd}{resource}{$resource}{drbd_device}      = $drbd_device;
 						$an->data->{gathered}{drbd}{resource}{$resource}{backing_device}   = $backing_device;
 						$an->data->{gathered}{drbd}{resource}{$resource}{connection_state} = "";
-						$an->data->{gathered}{drbd}{resource}{$resource}{role}             = "";
-						$an->data->{gathered}{drbd}{resource}{$resource}{disk_state}       = "";
+						$an->data->{gathered}{drbd}{resource}{$resource}{role}{me}         = "";
+						$an->data->{gathered}{drbd}{resource}{$resource}{role}{peer}       = "";
+						$an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{me}   = "";
+						$an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{peer} = "";
 						
 						# These entries are per-host.
 						$an->data->{gathered}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_address} = $ip_address;

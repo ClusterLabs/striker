@@ -3576,7 +3576,7 @@ SWITCHES
 
 	Show this dialoge and exit.
  
- --interval X
+ -i, --interval X
  
 	This tells the program to run until killed (ctrl + c). The 'X' must be
 	an integer and will set how frequently the program loops.
@@ -3602,6 +3602,48 @@ SUPPORT
 		<key name="acs_message_0009">The Anvil! system's resource manager is hung. This can happen when a node is being fenced. Please wait...</key>
 		<key name="acs_message_0010">We're a member of the Anvil!, but the resource manager isn't running. Startup or shutdown in progress...</key>
 		<key name="acs_message_0011">Starting or Stopping</key>
+		<key name="acs_message_0012">Module Loaded</key>
+		<key name="acs_message_0013">Module Unloaded</key>
+		<key name="acs_message_0014">Replicated storage is currently offline.</key>
+		<key name="acs_message_0015">Replicated storage is loaded, but no resources are online yet.</key>
+		<!-- 16 through 37 are limited to 16 characters -->
+		<key name="acs_message_0016">Stand Alone</key>
+		<key name="acs_message_0017">Disconnecting</key>
+		<key name="acs_message_0018">Unconnected</key>
+		<key name="acs_message_0019">Timeout</key>
+		<key name="acs_message_0020">Broken Pipe</key>
+		<key name="acs_message_0021">Network Failure</key>
+		<key name="acs_message_0022">Protocol Error</key>
+		<key name="acs_message_0023">Tear Down</key>
+		<key name="acs_message_0024">WF Connection</key>
+		<key name="acs_message_0025">WF Report Params</key>
+		<key name="acs_message_0026">Connected</key>
+		<key name="acs_message_0027">Start SyncSource</key>
+		<key name="acs_message_0028">Start SyncTarget</key>
+		<key name="acs_message_0029">WF Bitmap Source</key>
+		<key name="acs_message_0030">WF Bitmap Target</key>
+		<key name="acs_message_0031">WF Sync UUID</key>
+		<key name="acs_message_0032">Sync Source</key>
+		<key name="acs_message_0033">Sync Target</key>
+		<key name="acs_message_0034">Pause SyncSource</key>
+		<key name="acs_message_0035">Pause SyncTarget</key>
+		<key name="acs_message_0036">Verify Source</key>
+		<key name="acs_message_0037">Verify Target</key>
+		<!-- 38 through 46 are limited to 12 -->
+		<key name="acs_message_0038">Diskless</key>
+		<key name="acs_message_0039">Attaching</key>
+		<key name="acs_message_0040">Failed</key>
+		<key name="acs_message_0041">Negotiating</key>
+		<key name="acs_message_0042">Inconsistent</key>
+		<key name="acs_message_0043">Outdated</key>
+		<key name="acs_message_0044">Unknown</key>
+		<key name="acs_message_0045">Consistent</key>
+		<key name="acs_message_0046">Up To Date</key>
+		<!-- 47 through 49 are limited to 12 -->
+		<key name="acs_message_0047">Primary</key>
+		<key name="acs_message_0048">Secondary</key>
+		<key name="acs_message_0049">Unknown</key>
+		
 		
 		<!-- Report output -->
 		<!-- NOTE: This is designed to print in a 110 column terminal. Variabled are front-padded 
@@ -3612,7 +3654,7 @@ SUPPORT
 ]]>
 		</key>
 		<key name="acs_report_0002"><![CDATA[
-+----------------+----------------------+----------------------+----------------------+----------------------+
++------------------------------------------------------------------------------------------------------------+
 |      Node      |      Membership      |   Resource Manager   |   Storage Services   |      Hypervisor      |
 | #!variable!node1_name!# | #!variable!node1_cluster_member!# | #!variable!node1_resource_manager!# | #!variable!node1_storage_services!# | #!variable!node1_hypervisor_service!# |
 | #!variable!node2_name!# | #!variable!node2_cluster_member!# | #!variable!node2_resource_manager!# | #!variable!node2_storage_services!# | #!variable!node2_hypervisor_service!# |
@@ -3620,17 +3662,30 @@ SUPPORT
 ]]>
 		</key>
 		<key name="acs_report_0003"><![CDATA[
-+----------------+----------------------+----------------------+----------------------+----------------------+
++------------------------------------------------------------------------------------------------------------+
 | #!variable!state!# |
 | #!variable!message!# |
 +------------------------------------------------------------------------------------------------------------+
 ]]>
 		</key>
 		<key name="acs_report_0005"><![CDATA[
-+----------------+----------------------+----------------------+----------------------+----------------------+
-| Resource | Connection State | 
-| #!variable!node1_name!# | #!variable!node1_cluster_member!# | #!variable!node1_resource_manager!# | #!variable!node1_storage_services!# | #!variable!node1_hypervisor_service!# |
-| #!variable!node2_name!# | #!variable!node2_cluster_member!# | #!variable!node2_resource_manager!# | #!variable!node2_storage_services!# | #!variable!node2_hypervisor_service!# |
+| DRBD ver. #!variable!version!# - #!variable!header_state!#                                            Timeout: #!variable!timeout!# |
+]]>
+		</key>
+		<key name="acs_report_0006"><![CDATA[
+|                                              Disk State                      Role                          |
+|   Resource     |    Connection    | #!variable!disk_state_node1!# . #!variable!disk_state_node2!# | #!variable!role_node1!# . #!variable!role_node2!# | To Resync. |
+]]>
+		</key>
+		<key name="acs_report_0007"><![CDATA[
+| #!variable!resource_name!# | #!variable!connection_state!# | #!variable!node1_disk_state!# | #!variable!node2_disk_state!# | #!variable!node1_role!# | #!variable!node2_role!# | #!variable!to_resync!# |
+]]>
+		</key>
+		<key name="acs_report_0008"><![CDATA[
+| - Resync in progress; ETA:      #!variable!sync_eta!#       Completed: #!variable!sync_percent!# |
+]]>
+		</key>
+		<key name="acs_report_0009"><![CDATA[
 +------------------------------------------------------------------------------------------------------------+
 ]]>
 		</key>

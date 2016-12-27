@@ -60,18 +60,81 @@ my $an = AN::Tools->new({
 	data		=> {
 		colours		=>	{
 			anvil		=>	{
-				name		=>	"bold magenta",
+				name		=>	"bold cyan",
 				hostnames	=>	"bold blue",
 				node_offline	=>	"bold white",
 				node_hung	=>	"bold red",
 				node_starting	=>	"yellow",
+				short_hostnames	=>	"bold white",
+			},
+			drbd		=>	{
+				connection_state =>	{
+					StandAlone	=>	"bold cyan",
+					Disconnecting	=>	"yellow", 
+					Unconnected	=>	"yellow",
+					Timeout		=>	"bold red",
+					BrokenPipe	=>	"bold red",
+					NetworkFailure	=>	"bold red",
+					ProtocolError	=>	"bold red",
+					TearDown	=>	"yellow",
+					WFConnection	=>	"bold blue",
+					WFReportParams	=>	"bold blue",
+					Connected	=>	"bold green",
+					StartingSyncS	=>	"bold green",
+					StartingSyncT	=>	"yellow",
+					WFBitMapS	=>	"bold green",
+					WFBitMapT	=>	"yellow",
+					WFSyncUUID	=>	"bold cyan",
+					SyncSource	=>	"bold green",
+					SyncTarget	=>	"yellow",
+					PausedSyncS	=>	"bold green",
+					PausedSyncT	=>	"yellow",
+					VerifyS		=>	"bold green",
+					VerifyT		=>	"yellow",
+					unknown_entry	=>	"bold magenta",
+				},
+				disk_state	=>	{
+					Diskless	=>	"bold red",
+					Attaching	=>	"yellow",
+					Failed		=>	"bold red",
+					Negotiating	=>	"yellow",
+					Inconsistent	=>	"yellow",
+					Outdated	=>	"yellow",
+					DUnknown	=>	"yellow",
+					Consistent	=>	"bold cyan",
+					UpToDate	=>	"bold green",
+					unknown_entry	=>	"bold magenta",
+				},
+				module		=>	{
+					loaded		=>	"bold white",
+					unloaded	=>	"faint white",
+				},
+				resource	=>	{
+					online		=>	"bold green",
+					offline		=>	"faint white",
+				},
+				role		=>	{
+					Primary		=>	"bold green",
+					Secondary	=>	"yellow",
+					Unknown		=>	"faint white",
+					unknown_entry	=>	"bold magenta",
+				},
+				starting	=>	"yellow",	# or stopping
+				to_resync	=>	{
+					nothing		=>	"faint white", 
+					something	=>	"yellow", 
+					eta		=>	"yellow",
+					percent		=>	"yellow",
+				},
+				timeout		=>	"bold white",
+				version		=>	"bold white",
 			},
 			services	=>	{
 				online		=>	"bold green",
 				offline		=>	"faint white",
-				starting	=>	"yellow",
+				starting	=>	"yellow",	# or stopping
 				failed		=>	"bold red",
-				unknown		=>	"bold magenta",
+				unknown_entry	=>	"bold magenta",
 			},
 		},
 		padding		=>	{
@@ -80,6 +143,18 @@ my $an = AN::Tools->new({
 				hostnames	=>	30,
 				short_hostnames	=>	14,
 				whole_line	=>	106,
+			},
+			drbd		=>	{
+				connection_state =>	16, 
+				disk_state	=>	12, 
+				header_state	=>	20, 
+				ping_timeout	=>	10, 
+				resource_name	=>	14, 
+				role		=>	12,
+				to_resync	=>	10, 
+				version		=>	10, 
+				sync_eta	=>	50, 
+				sync_percent	=>	6,
 			},
 			status		=>	{
 				services	=>	20,
@@ -124,9 +199,10 @@ if (($an->data->{switches}{h})   or
 if (($an->data->{switches}{interval}) && ($an->data->{switches}{interval} =~ /^\d+$/))
 {
 	$an->data->{sys}{interval} = $an->data->{switches}{interval};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::interval", value1 => $an->data->{sys}{interval}, 
-	}, file => $THIS_FILE, line => __LINE__});
+}
+if (($an->data->{switches}{i}) && ($an->data->{switches}{i} =~ /^\d+$/))
+{
+	$an->data->{sys}{interval} = $an->data->{switches}{i};
 }
 
 my $run = 1;
@@ -147,6 +223,8 @@ while($run)
 	
 	if ($an->data->{sys}{interval})
 	{
+		# Delete the previously gathered data and then go to sleep.
+		delete $an->data->{gathered};
 		sleep $an->data->{sys}{interval};
 	}
 	else
@@ -166,6 +244,7 @@ $an->nice_exit({exit_code => 0});
 sub build_header
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "build_header" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### Pad left
 	# sprintf("%${padding}s", $1);
@@ -187,6 +266,10 @@ sub build_header
 sub build_clustat_section
 {
 	my ($an, $node1_key, $node2_key) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "build_clustat_section" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node1_key", value1 => $node1_key,  
+		name2 => "node2_key", value2 => $node2_key,  
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If this node is not running cman or rgmanager, we can't report on any state information.
 	if (not $an->data->{gathered}{clustat}{cman}{me})
@@ -227,7 +310,8 @@ sub build_clustat_section
 	### Setup my values
 	# Top row (node 1)
 	my $node1_name               = ($an->data->{gathered}{hostname}{$node1_key} =~ /^(.*?)\./)[0];
-	my $say_node1_name           = colored($an->Readable->center_text({string => $node1_name, width => $an->data->{padding}{anvil}{short_hostnames}}), $an->data->{colours}{anvil}{hostnames});
+	my $say_node1_name           = $an->Readable->center_text({string => $node1_name, width => $an->data->{padding}{anvil}{short_hostnames}});
+	   $say_node1_name           = colored($say_node1_name, $an->data->{colours}{anvil}{short_hostnames});
 	my $node1_cluster_member     = "";
 	my $node1_resource_manager   = "";
 	my $node1_storage_services   = "";
@@ -260,7 +344,7 @@ sub build_clustat_section
 		$node1_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
 		$node1_storage_services = colored($node1_storage_services, $an->data->{colours}{services}{online});
 	}
-	elsif ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "stopped")
+	elsif (($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "stopped") or ($an->data->{gathered}{clustat}{service}{storage_n01}{'state'} eq "disabled"))
 	{
 		$node1_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
 		$node1_storage_services = colored($node1_storage_services, $an->data->{colours}{services}{offline});
@@ -283,8 +367,8 @@ sub build_clustat_section
 	else
 	{
 		# ?? This will print the raw string we got
-		$node1_storage_services = $an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{storage_n01}{'state'}, width => $an->data->{padding}{status}{services}});
-		$node1_storage_services = colored($node1_storage_services, $an->data->{colours}{services}{unknown});
+		$node1_storage_services = $an->Readable->center_text({string => "?".$an->data->{gathered}{clustat}{service}{storage_n01}{'state'}."?", width => $an->data->{padding}{status}{services}});
+		$node1_storage_services = colored($node1_storage_services, $an->data->{colours}{services}{unknown_entry});
 	}
 	# Hypervisor service
 	if ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "started")
@@ -292,7 +376,7 @@ sub build_clustat_section
 		$node1_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
 		$node1_hypervisor_service = colored($node1_hypervisor_service, $an->data->{colours}{services}{online});
 	}
-	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "stopped")
+	elsif (($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "stopped") or ($an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'} eq "disabled"))
 	{
 		$node1_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
 		$node1_hypervisor_service = colored($node1_hypervisor_service, $an->data->{colours}{services}{offline});
@@ -315,13 +399,14 @@ sub build_clustat_section
 	else
 	{
 		# ?? This will print the raw string we got
-		$node1_hypervisor_service = $an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'}, width => $an->data->{padding}{status}{services}});
-		$node1_hypervisor_service = colored($node1_hypervisor_service, $an->data->{colours}{services}{unknown});
+		$node1_hypervisor_service = $an->Readable->center_text({string => "?".$an->data->{gathered}{clustat}{service}{libvirtd_n01}{'state'}."?", width => $an->data->{padding}{status}{services}});
+		$node1_hypervisor_service = colored($node1_hypervisor_service, $an->data->{colours}{services}{unknown_entry});
 	}
 	
 	# Bottom row (node 2)
 	my $node2_name               = ($an->data->{gathered}{hostname}{$node2_key} =~ /^(.*?)\./)[0];
-	my $say_node2_name           = colored($an->Readable->center_text({string => $node2_name, width => $an->data->{padding}{anvil}{short_hostnames}}), $an->data->{colours}{anvil}{hostnames});
+	my $say_node2_name           = $an->Readable->center_text({string => $node2_name, width => $an->data->{padding}{anvil}{short_hostnames}});
+	   $say_node2_name           = colored($say_node2_name, $an->data->{colours}{anvil}{short_hostnameshostnames});
 	my $node2_cluster_member     = "";
 	my $node2_resource_manager   = "";
 	my $node2_storage_services   = "";
@@ -354,7 +439,7 @@ sub build_clustat_section
 		$node2_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
 		$node2_storage_services = colored($node2_storage_services, $an->data->{colours}{services}{online});
 	}
-	elsif ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "stopped")
+	elsif (($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "stopped") or ($an->data->{gathered}{clustat}{service}{storage_n02}{'state'} eq "disabled"))
 	{
 		$node2_storage_services = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
 		$node2_storage_services = colored($node2_storage_services, $an->data->{colours}{services}{offline});
@@ -377,8 +462,8 @@ sub build_clustat_section
 	else
 	{
 		# ?? This will print the raw string we got
-		$node2_storage_services = $an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{storage_n02}{'state'}, width => $an->data->{padding}{status}{services}});
-		$node2_storage_services = colored($node2_storage_services, $an->data->{colours}{services}{unknown});
+		$node2_storage_services = $an->Readable->center_text({string => "?".$an->data->{gathered}{clustat}{service}{storage_n02}{'state'}."?", width => $an->data->{padding}{status}{services}});
+		$node2_storage_services = colored($node2_storage_services, $an->data->{colours}{services}{unknown_entry});
 	}
 	# Hypervisor service
 	if ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "started")
@@ -386,7 +471,7 @@ sub build_clustat_section
 		$node2_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{services}});
 		$node2_hypervisor_service = colored($node2_hypervisor_service, $an->data->{colours}{services}{online});
 	}
-	elsif ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "stopped")
+	elsif (($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "stopped") or ($an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'} eq "disabled"))
 	{
 		$node2_hypervisor_service = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{services}});
 		$node2_hypervisor_service = colored($node2_hypervisor_service, $an->data->{colours}{services}{offline});
@@ -409,8 +494,8 @@ sub build_clustat_section
 	else
 	{
 		# ?? This will print the raw string we got
-		$node2_hypervisor_service = $an->Readable->center_text({string => $an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'}, width => $an->data->{padding}{status}{services}});
-		$node2_hypervisor_service = colored($node2_hypervisor_service, $an->data->{colours}{services}{unknown});
+		$node2_hypervisor_service = $an->Readable->center_text({string => "?".$an->data->{gathered}{clustat}{service}{libvirtd_n02}{'state'}."?", width => $an->data->{padding}{status}{services}});
+		$node2_hypervisor_service = colored($node2_hypervisor_service, $an->data->{colours}{services}{unknown_entry});
 	}
 	
 	my $page = $an->String->get({key => "acs_report_0002", variables => {
@@ -425,6 +510,472 @@ sub build_clustat_section
 		node2_storage_services   => $node2_storage_services,
 		node2_hypervisor_service => $node2_hypervisor_service, 
 	}})."\n";
+	
+	return($page);
+}
+
+# This builds the clustat section
+sub build_drbd_section
+{
+	my ($an, $node1_key, $node2_key) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "build_drbd_section" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node1_key", value1 => $node1_key,  
+		name2 => "node2_key", value2 => $node2_key,  
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $page              = "";
+	my $say_version       = $an->Readable->center_text({string => $an->data->{gathered}{drbd}{version}, width => $an->data->{padding}{drbd}{version}});
+	   $say_version       = colored($say_version, $an->data->{colours}{drbd}{version});
+	my $say_timeout       = $an->Readable->center_text({string => $an->data->{gathered}{drbd}{net}{'ping-timeout'}, width => $an->data->{padding}{drbd}{ping_timeout}});
+	   $say_timeout       = colored($say_timeout, $an->data->{colours}{drbd}{timeout});
+	my $say_module_status = "";
+	if ($an->data->{gathered}{drbd}{status} eq "offline")
+	{
+		# We're offline. Only show the header section.
+		   $say_module_status = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0013"}), width => $an->data->{padding}{drbd}{header_state}});
+		   $say_module_status = colored($say_module_status, $an->data->{colours}{drbd}{module}{loaded});
+		   $say_module_status = colored($say_module_status, $an->data->{colours}{drbd}{module}{unloaded});
+		my $say_offline       = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0003"}), width => $an->data->{padding}{anvil}{whole_line} });
+		   $say_offline       = colored($say_offline, $an->data->{colours}{drbd}{module}{unloaded});
+		my $say_message       = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0014"}), width => $an->data->{padding}{anvil}{whole_line} });
+		
+		# Return, nothing more to show.
+		$page .= $an->String->get({key => "acs_report_0005", variables => {
+			version      => $say_version,
+			header_state => $say_module_status, 
+			timeout      => $say_timeout,
+		}})."\n";
+		$page .= $an->String->get({key => "acs_report_0003", variables => { 
+			'state' => $say_offline,
+			message => $say_message,
+		}})."\n";
+		return($page);
+	}
+	else
+	{
+		# Online
+		$say_module_status = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0012"}), width => $an->data->{padding}{drbd}{header_state}});
+		$say_module_status = colored($say_module_status, $an->data->{colours}{drbd}{module}{loaded});
+		$page .= $an->String->get({key => "acs_report_0005", variables => {
+			version      => $say_version,
+			header_state => $say_module_status, 
+			timeout      => $say_timeout,
+		}})."\n";
+		
+		# But how many resources?
+		my $resource_count = 0;
+		foreach my $resource (sort {$a cmp $b} keys %{$an->data->{gathered}{drbd}{resource}})
+		{
+			if ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state})
+			{
+				$resource_count++;
+			}
+		}
+		
+		if (not $resource_count)
+		{
+			# Module is loaded but no resources are running.
+			my $say_no_resources = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0011"}), width => $an->data->{padding}{anvil}{whole_line} });
+			   $say_no_resources = colored($say_no_resources, $an->data->{colours}{drbd}{starting});
+			my $say_message      = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0015"}), width => $an->data->{padding}{anvil}{whole_line} });
+			
+			# Return, nothing more to show.
+			$page .= $an->String->get({key => "acs_report_0003", variables => { 
+				'state' => $say_no_resources,
+				message => $say_message,
+			}})."\n";
+			return($page);
+		}
+	}
+	
+	### Still here? At least one resource is running!
+	# print the column headers
+	my $node1_name               = ($an->data->{gathered}{hostname}{$node1_key} =~ /^(.*?)\./)[0];
+	my $node2_name               = ($an->data->{gathered}{hostname}{$node2_key} =~ /^(.*?)\./)[0];
+	
+	my $say_disk_state_node1 = $an->Readable->center_text({string => $node1_name, width => $an->data->{padding}{drbd}{disk_state}});
+	   $say_disk_state_node1 = colored($say_disk_state_node1, $an->data->{colours}{anvil}{short_hostnames});
+	my $say_disk_state_node2 = $an->Readable->center_text({string => $node2_name, width => $an->data->{padding}{drbd}{disk_state}});
+	   $say_disk_state_node2 = colored($say_disk_state_node2, $an->data->{colours}{anvil}{short_hostnames});
+	my $say_role_node1       = $an->Readable->center_text({string => $node1_name, width => $an->data->{padding}{drbd}{role}});
+	   $say_role_node1       = colored($say_role_node1, $an->data->{colours}{anvil}{short_hostnames});
+	my $say_role_node2       = $an->Readable->center_text({string => $node2_name, width => $an->data->{padding}{drbd}{role}});
+	   $say_role_node2       = colored($say_role_node2, $an->data->{colours}{anvil}{short_hostnames});
+	$page .= $an->String->get({key => "acs_report_0006", variables => { 
+			disk_state_node1 => $say_disk_state_node1,
+			disk_state_node2 => $say_disk_state_node2,
+			role_node1       => $say_role_node1,
+			role_node2       => $say_role_node2,
+		}})."\n";
+	
+	# Now loop through the resources.
+	foreach my $resource (sort {$a cmp $b} keys %{$an->data->{gathered}{drbd}{resource}})
+	{
+		my $say_resource_name    = $resource.":".$an->data->{gathered}{drbd}{resource}{$resource}{drbd_device};
+		   $say_resource_name    = $an->Readable->center_text({string => $say_resource_name, width => $an->data->{padding}{drbd}{resource_name}});
+		my $say_connection_state = "";
+		my $say_node1_disk_state = "";
+		my $say_node1_role       = "";
+		my $say_node2_disk_state = "";
+		my $say_node2_role       = "";
+		my $bytes_to_resync      = ($an->data->{gathered}{drbd}{resource}{$resource}{out_of_sync} =~ /^(\d+) Bytes/i)[0]; 
+		my $say_to_resync        = "";
+		my $resync_in_progress   = "";
+		
+		if ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state})
+		{
+			# Resource is up!
+			$say_resource_name    = colored($say_resource_name, $an->data->{colours}{drbd}{resource}{online});
+			
+			# Connection states, lots of connection states... - http://www.drbd.org/en/doc/users-guide-84/ch-admin#s-connection-states
+			if ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "StandAlone")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0016!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{StandAlone});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "Disconnecting")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0017!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{Disconnecting});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "Unconnected")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0018!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{Unconnected});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "Timeout")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0019!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{Timeout});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "BrokenPipe")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0020!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{BrokenPipe});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "NetworkFailure")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0021!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{NetworkFailure});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "ProtocolError")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0022!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{ProtocolError});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "TearDown")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0023!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{TearDown});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "WFConnection")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0024!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{WFConnection});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "WFReportParams")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0025!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{WFReportParams});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "Connected")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0026!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{Connected});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "StartingSyncS")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0027!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{StartingSyncS});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "StartingSyncT")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0028!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{StartingSyncT});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "WFBitMapS")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0029!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{WFBitMapS});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "WFBitMapT")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0030!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{WFBitMapT});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "WFSyncUUID")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0031!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{WFSyncUUID});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "SyncSource")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0032!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{SyncSource});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "SyncTarget")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0033!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{SyncTarget});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "PausedSyncS")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0034!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{PausedSyncS});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "PausedSyncT")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0035!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{PausedSyncT});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "VerifyS")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0036!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{VerifyS});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "VerifyT")
+			{
+				$say_connection_state = $an->Readable->center_text({string => "#!string!acs_message_0037!#", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{VerifyT});
+			}
+			else
+			{
+				# Dunno what this is...
+				$say_connection_state = $an->Readable->center_text({string => "?".$an->data->{gathered}{drbd}{resource}{$resource}{connection_state}."?", width => $an->data->{padding}{drbd}{connection_state}});
+				$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{connection_state}{unknown_entry});
+			}
+			
+			### Disk states, one per node. - http://www.drbd.org/en/doc/users-guide-84/ch-admin#s-disk-states
+			# Node 1
+			if ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node1_key} eq "Diskless")
+			{
+				$say_node1_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0038!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{disk_state}{Diskless});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node1_key} eq "Attaching")
+			{
+				$say_node1_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0039!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{disk_state}{Attaching});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node1_key} eq "Failed")
+			{
+				$say_node1_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0040!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{disk_state}{Failed});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node1_key} eq "Negotiating")
+			{
+				$say_node1_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0041!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{disk_state}{Negotiating});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node1_key} eq "Inconsistent")
+			{
+				$say_node1_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0042!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{disk_state}{Inconsistent});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node1_key} eq "Outdated")
+			{
+				$say_node1_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0043!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{disk_state}{Outdated});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node1_key} eq "DUnknown")
+			{
+				$say_node1_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0044!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{disk_state}{DUnknown});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node1_key} eq "Consistent")
+			{
+				$say_node1_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0045!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{disk_state}{Consistent});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node1_key} eq "UpToDate")
+			{
+				$say_node1_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0046!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{disk_state}{UpToDate});
+			}
+			else
+			{
+				# Dunno what this is...
+				$say_node1_disk_state = $an->Readable->center_text({string => "?".$an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node1_key}."?", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{disk_state}{unknown_entry});
+			}
+			# Node 2
+			if ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node2_key} eq "Diskless")
+			{
+				$say_node2_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0038!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{disk_state}{Diskless});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node2_key} eq "Attaching")
+			{
+				$say_node2_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0039!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{disk_state}{Attaching});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node2_key} eq "Failed")
+			{
+				$say_node2_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0040!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{disk_state}{Failed});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node2_key} eq "Negotiating")
+			{
+				$say_node2_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0041!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{disk_state}{Negotiating});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node2_key} eq "Inconsistent")
+			{
+				
+				$say_node2_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0042!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{disk_state}{Inconsistent});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node2_key} eq "Outdated")
+			{
+				$say_node2_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0043!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{disk_state}{Outdated});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node2_key} eq "DUnknown")
+			{
+				$say_node2_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0044!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{disk_state}{DUnknown});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node2_key} eq "Consistent")
+			{
+				$say_node2_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0045!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{disk_state}{Consistent});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node2_key} eq "UpToDate")
+			{
+				$say_node2_disk_state = $an->Readable->center_text({string => "#!string!acs_message_0046!#", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{disk_state}{UpToDate});
+			}
+			else
+			{
+				# Dunno what this is...
+				$say_node2_disk_state = $an->Readable->center_text({string => "?".$an->data->{gathered}{drbd}{resource}{$resource}{disk_state}{$node2_key}."?", width => $an->data->{padding}{drbd}{disk_state}});
+				$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{disk_state}{unknown_entry});
+			}
+			
+			### Resource Roles - http://www.drbd.org/en/doc/users-guide-84/ch-admin#s-roles
+			# Node 1
+			if ($an->data->{gathered}{drbd}{resource}{$resource}{role}{$node1_key} eq "Primary")
+			{
+				$say_node1_role = $an->Readable->center_text({string => "#!string!acs_message_0047!#", width => $an->data->{padding}{drbd}{role}});
+				$say_node1_role = colored($say_node1_role, $an->data->{colours}{drbd}{role}{Primary});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{role}{$node1_key} eq "Secondary")
+			{
+				$say_node1_role = $an->Readable->center_text({string => "#!string!acs_message_0048!#", width => $an->data->{padding}{drbd}{role}});
+				$say_node1_role = colored($say_node1_role, $an->data->{colours}{drbd}{role}{Secondary});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{role}{$node1_key} eq "Unknown")
+			{
+				$say_node1_role = $an->Readable->center_text({string => "#!string!acs_message_0049!#", width => $an->data->{padding}{drbd}{role}});
+				$say_node1_role = colored($say_node1_role, $an->data->{colours}{drbd}{role}{Unknown});
+			}
+			else
+			{
+				# Dunno what this is...
+				$say_node1_role = $an->Readable->center_text({string => "?".$an->data->{gathered}{drbd}{resource}{$resource}{role}{$node1_key}."?", width => $an->data->{padding}{drbd}{role}});
+				$say_node1_role = colored($say_node1_role, $an->data->{colours}{drbd}{role}{unknown_entry});
+			}
+			# Node 2
+			if ($an->data->{gathered}{drbd}{resource}{$resource}{role}{$node2_key} eq "Primary")
+			{
+				$say_node2_role = $an->Readable->center_text({string => "#!string!acs_message_0047!#", width => $an->data->{padding}{drbd}{role}});
+				$say_node2_role = colored($say_node2_role, $an->data->{colours}{drbd}{role}{Primary});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{role}{$node2_key} eq "Secondary")
+			{
+				$say_node2_role = $an->Readable->center_text({string => "#!string!acs_message_0048!#", width => $an->data->{padding}{drbd}{role}});
+				$say_node2_role = colored($say_node2_role, $an->data->{colours}{drbd}{role}{Secondary});
+			}
+			elsif ($an->data->{gathered}{drbd}{resource}{$resource}{role}{$node2_key} eq "Unknown")
+			{
+				$say_node2_role = $an->Readable->center_text({string => "#!string!acs_message_0049!#", width => $an->data->{padding}{drbd}{role}});
+				$say_node2_role = colored($say_node2_role, $an->data->{colours}{drbd}{role}{Unknown});
+			}
+			else
+			{
+				# Dunno what this is...
+				$say_node2_role = $an->Readable->center_text({string => "?".$an->data->{gathered}{drbd}{resource}{$resource}{role}{$node2_key}."?", width => $an->data->{padding}{drbd}{role}});
+				$say_node2_role = colored($say_node2_role, $an->data->{colours}{drbd}{role}{unknown_entry});
+			}
+			
+			my $bytes_to_resync = ($an->data->{gathered}{drbd}{resource}{$resource}{out_of_sync} =~ /^(\d+) Bytes/i)[0]; 
+			if (($bytes_to_resync) && ($bytes_to_resync > 0))
+			{
+				# Stuff to sync
+				$say_to_resync      = $an->Readable->center_text({string => $an->Readable->bytes_to_hr({'bytes' => $bytes_to_resync}), width => $an->data->{padding}{drbd}{to_resync}});
+				$say_to_resync      = colored($say_to_resync, $an->data->{colours}{drbd}{to_resync}{something});
+			}
+			else
+			{
+				# Nothing to sync.
+				$say_to_resync = $an->Readable->center_text({string => "--", width => $an->data->{padding}{drbd}{to_resync}});
+				$say_to_resync = colored($say_to_resync, $an->data->{colours}{drbd}{to_resync}{nothing});
+			}
+			
+				$resync_in_progress = 1;
+		}
+		else
+		{
+			# Resource is down.
+			$say_resource_name    = colored($say_resource_name, $an->data->{colours}{drbd}{resource}{offline});
+			$say_connection_state = $an->Readable->center_text({string => "--", width => $an->data->{padding}{drbd}{connection_state}});
+			$say_connection_state = colored($say_connection_state, $an->data->{colours}{drbd}{resource}{offline});
+			$say_node1_disk_state = $an->Readable->center_text({string => "--", width => $an->data->{padding}{drbd}{disk_state}});
+			$say_node1_disk_state = colored($say_node1_disk_state, $an->data->{colours}{drbd}{resource}{offline});
+			$say_node1_role       = $an->Readable->center_text({string => "--", width => $an->data->{padding}{drbd}{role}});
+			$say_node1_role       = colored($say_node1_role, $an->data->{colours}{drbd}{resource}{offline});
+			$say_node2_disk_state = $an->Readable->center_text({string => "--", width => $an->data->{padding}{drbd}{disk_state}});
+			$say_node2_disk_state = colored($say_node2_disk_state, $an->data->{colours}{drbd}{resource}{offline});
+			$say_node2_role       = $an->Readable->center_text({string => "--", width => $an->data->{padding}{drbd}{role}});
+			$say_node2_role       = colored($say_node2_role, $an->data->{colours}{drbd}{resource}{offline});
+			$say_to_resync        = $an->Readable->center_text({string => "--", width => $an->data->{padding}{drbd}{to_resync}});
+			$say_to_resync        = colored($say_to_resync, $an->data->{colours}{drbd}{resource}{offline});
+		}
+		
+		# Put this resource string together.
+		$page .= $an->String->get({key => "acs_report_0007", variables => { 
+			resource_name    => $say_resource_name,
+			connection_state => $say_connection_state,
+			node1_disk_state => $say_node1_disk_state, 
+			node2_disk_state => $say_node2_disk_state, 
+			node1_role       => $say_node1_role, 
+			node2_role       => $say_node2_role, 
+			to_resync        => $say_to_resync, 
+		}})."\n";
+
+		if ($an->data->{gathered}{drbd}{resource}{$resource}{syncing})
+		{
+			### NOTE: This will be used later to show the percentage complete and ETA of a resync
+			my $percent_synced =  ($an->data->{gathered}{drbd}{resource}{$resource}{synced} =~ /(\d.*?) %/)[0];
+			   $percent_synced .= "%";
+			my $eta_seconds    =  ($an->data->{gathered}{drbd}{resource}{$resource}{eta_to_sync} =~ /(\d+) Seconds/i)[0];
+			my $say_eta        =  $an->Readable->time({
+					'time'  => $eta_seconds, 
+					process => 1, 
+					suffix  => "long"
+				});
+			if (not defined $percent_synced)
+			{
+				$percent_synced = $an->data->{gathered}{drbd}{resource}{$resource}{synced};
+			}
+			if (not defined $eta_seconds)
+			{
+				$say_eta = $an->data->{gathered}{drbd}{resource}{$resource}{eta_to_sync};
+			}
+			$percent_synced = $an->Readable->center_text({string => $percent_synced, width => $an->data->{padding}{drbd}{sync_percent}});
+			$percent_synced = colored($percent_synced, $an->data->{colours}{drbd}{to_resync}{percent});
+			$say_eta        = $an->Readable->center_text({string => $say_eta, width => $an->data->{padding}{drbd}{sync_eta}});
+			$say_eta        = colored($say_eta, $an->data->{colours}{drbd}{to_resync}{eta});
+			
+			$page .= $an->String->get({key => "acs_report_0008", variables => { 
+				sync_percent => $percent_synced,
+				sync_eta     => $say_eta,
+			}})."\n";
+		}
+	}
+	
+	# Close 'er up.
+	$page .= $an->String->get({key => "acs_report_0009"})."\n";
 	
 	return($page);
 }
@@ -452,63 +1003,8 @@ sub report_status
 	# Build the clustat section
 	$page .= build_clustat_section($an, $node1_key, $node2_key);
 	
-=cut
-drbd::build_date = [2016-07-18]
-drbd::build_time = [15:13:48]
-drbd::builder = [root@rhel6-builder-production.alteeve.ca]
-drbd::fence::handler::name = [fence-peer]
-drbd::fence::handler::path = [/sbin/striker/rhcs_fence]
-drbd::fence::policy = [resource-and-stonith]
-drbd::git_hash = [22b4c802192646e433d3f7399d578ec7fecc6272]
-drbd::minor_number::0::resource = [r0]
-drbd::net::after-sb-0pri = [discard-zero-changes]
-drbd::net::after-sb-1pri = [discard-secondary]
-drbd::net::after-sb-2pri = [disconnect]
-drbd::net::allow-two-primaries = [yes]
-drbd::net::ping-timeout = [100 ms]
-drbd::net::protocol = [C]
-drbd::net::timeout = [100 ms]
-drbd::options::on-no-data-accessible = [suspend-io]
-drbd::resource::r0::activity_log_updates = [147]
-drbd::resource::r0::app_pending_requests = [0]
-drbd::resource::r0::backing_device = [/dev/drbd0]
-drbd::resource::r0::bitmap_updates = [0]
-drbd::resource::r0::connection_state = [WFConnection]
-drbd::resource::r0::disk_read = [3485253632 Bytes]
-drbd::resource::r0::disk_write = [265224192 Bytes]
-drbd::resource::r0::drbd_device = [/dev/drbd0]
-drbd::resource::r0::drbd_protocol = [C]
-drbd::resource::r0::epoch_objects = [1]
-drbd::resource::r0::hostname::an-a07n01.alteeve.ca::ip_address = [10.10.70.1]
-drbd::resource::r0::hostname::an-a07n01.alteeve.ca::ip_type = [ipv4]
-drbd::resource::r0::hostname::an-a07n01.alteeve.ca::tcp_port = [7788]
-drbd::resource::r0::hostname::an-a07n02.alteeve.ca::ip_address = [10.10.70.2]
-drbd::resource::r0::hostname::an-a07n02.alteeve.ca::ip_type = [ipv4]
-drbd::resource::r0::hostname::an-a07n02.alteeve.ca::tcp_port = [7788]
-drbd::resource::r0::io_flags = [r-----]
-drbd::resource::r0::local_count = [0]
-drbd::resource::r0::metadisk = [internal]
-drbd::resource::r0::minor_number = [0]
-drbd::resource::r0::my_disk_state = [UpToDate]
-drbd::resource::r0::my_role = [Primary]
-drbd::resource::r0::network_received = [51499008 Bytes]
-drbd::resource::r0::network_sent = [163241984 Bytes]
-drbd::resource::r0::out_of_sync = [20021248 Bytes]
-drbd::resource::r0::peer_disk_state = [Outdated]
-drbd::resource::r0::peer_role = [Unknown]
-drbd::resource::r0::pending_requests = [0]
-drbd::resource::r0::unacknowledged_requests = [0]
-drbd::resource::r0::write_order = [drain]
-drbd::startup::become-primary-on = [both]
-drbd::status = [online]
-drbd::version = [8.4.8-1]
-	
-	my $node2_name     = ($an->data->{status}{anvil}{hostname}{$node2_key} =~ /^(.*?)\./);
-	my $say_node2_name = colored(sprintf("%".$mode1_name."s", $an->data->{status}{anvil}{hostname}{$node2_key}), $an->data->{colours}{anvil}{hostnames});
-	
-	# Build the header
-	my $node1_membership_state       =  $an->Readable->center_text({string => "#!string!acs_report_0002!#", width => $an->data->{padding}{status}{services}});
-=cut
+	# Build the DRBD section.
+	$page .= build_drbd_section($an, $node1_key, $node2_key);
 	
 	# We're ready!
 	print $page;
