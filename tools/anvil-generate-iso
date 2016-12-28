@@ -4116,9 +4116,6 @@ sub get_package_list
 		"patch.x86_64",
 		"pciutils-libs.x86_64",
 		"pciutils.x86_64",
-		"pcp-conf.x86_64",
-		"pcp-libs.x86_64",
-		"pcp.x86_64",
 		"pcre.x86_64",
 		"perl.x86_64",
 		"perl-CGI.x86_64",
@@ -4434,7 +4431,10 @@ sub get_package_list
 		# These are not available on RHEL's ISO, so we get them from the AN!Repo when the user is
 		# using RHEL, but from CentOS when the user is using CentOS.
 		"mtr-gtk.x86_64",
+		"pcp.x86_64",
+		"pcp-conf.x86_64",
 		"pcp-gui.x86_64",
+		"pcp-libs.x86_64",
 		"perl-Algorithm-Diff.noarch",
 		"perl-Text-Diff.noarch",
 		"sharutils.x86_64",
@@ -4472,7 +4472,10 @@ sub get_package_list
 	if ($conf->{sys}{os_type} eq "rhel")
 	{
 		push @{$conf->{sys}{packages}{alteeve}}, "mtr-gtk.x86_64";		# See rhbz#1315856
+		push @{$conf->{sys}{packages}{alteeve}}, "pcp.x86_64";			# Only pcp-gui is missing, but it's RPM complains about the other three not having .anvil...
+		push @{$conf->{sys}{packages}{alteeve}}, "pcp-conf.x86_64";
 		push @{$conf->{sys}{packages}{alteeve}}, "pcp-gui.x86_64";
+		push @{$conf->{sys}{packages}{alteeve}}, "pcp-libs.x86_64";
 		push @{$conf->{sys}{packages}{alteeve}}, "perl-Algorithm-Diff.noarch";
 		push @{$conf->{sys}{packages}{alteeve}}, "perl-Text-Diff.noarch";
 		push @{$conf->{sys}{packages}{alteeve}}, "sharutils.x86_64";
