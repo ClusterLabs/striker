@@ -65,7 +65,38 @@ my $an = AN::Tools->new({
 				node_offline	=>	"bold white",
 				node_hung	=>	"bold red",
 				node_starting	=>	"yellow",
-				short_hostnames	=>	"bold white",
+				short_hostnames	=>	"bold blue",
+				servers		=>	{
+					name		=>	"bold blue",
+					node1_host	=>	"bold green",		# The idea is to have a quick visual queue to tell when all servers are on the same node
+					node2_host	=>	"bold cyan",
+				},
+			},
+			bond	=>	{
+				active_interface =>	"bold green", 
+				bond_name	=>	"bold blue",
+				duplex		=>	{
+					full		=>	"bold green", 
+					half		=>	"yellow",
+					unknown_entry	=>	"bold magenta",
+				},
+				interface	=>	"bold blue",
+				speed		=>	{
+					'10'		=>	"red", 
+					'100'		=>	"yellow",
+					'1000'		=>	"bold green", 
+					'10000'		=>	"bold cyan", 	# Anything over 10 Gbps will get this
+					unknown_entry	=>	"bold magenta",
+				},
+				'state'		=>	{
+					up		=>	"bold green",
+					down		=>	"bold red", 
+					unknown_entry	=>	"bold magenta",
+				},
+				updelay		=>	{
+					good		=>	"bold green",
+					unknown_entry	=>	"bold magenta",
+				},
 			},
 			drbd		=>	{
 				connection_state =>	{
@@ -110,6 +141,7 @@ my $an = AN::Tools->new({
 					unloaded	=>	"faint white",
 				},
 				resource	=>	{
+					name		=>	"bold blue", 
 					online		=>	"bold green",
 					offline		=>	"faint white",
 				},
@@ -129,10 +161,11 @@ my $an = AN::Tools->new({
 				timeout		=>	"bold white",
 				version		=>	"bold white",
 			},
+			# https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/High_Availability_Add-On_Overview/s2-rgmanager-opstates-states.html
 			services	=>	{
 				online		=>	"bold green",
-				offline		=>	"faint white",
-				starting	=>	"yellow",	# or stopping
+				offline		=>	"faint white",	# stopped or disabled
+				starting	=>	"yellow",	# or stopping, recovering
 				failed		=>	"bold red",
 				unknown_entry	=>	"bold magenta",
 			},
@@ -144,20 +177,35 @@ my $an = AN::Tools->new({
 				short_hostnames	=>	14,
 				whole_line	=>	106,
 			},
+			bond	=>	{
+				bond_name	=>	10,
+				'state'		=>	4,
+				interface	=>	10,
+				'link'		=>	{
+					speed		=>	5,
+					duplex		=>	2,
+				},
+				updelay		=>	11,
+			},
 			drbd		=>	{
-				connection_state =>	16, 
+				connection_state =>	15, 
 				disk_state	=>	12, 
 				header_state	=>	20, 
 				ping_timeout	=>	10, 
 				resource_name	=>	14, 
 				role		=>	12,
-				to_resync	=>	10, 
+				to_resync	=>	11, 
 				version		=>	10, 
 				sync_eta	=>	50, 
 				sync_percent	=>	6,
 			},
 			status		=>	{
 				services	=>	20,
+				server		=>	{
+					name		=>	40,
+					'state'		=>	12,
+					host		=>	30,
+				},
 			},
 		},
 		status		=>	{
@@ -274,9 +322,9 @@ sub build_clustat_section
 	# If this node is not running cman or rgmanager, we can't report on any state information.
 	if (not $an->data->{gathered}{clustat}{cman}{me})
 	{
-		my $say_offline = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0003"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $say_offline = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0003"}), width => $an->data->{padding}{anvil}{whole_line}});
 		   $say_offline = colored($say_offline, $an->data->{colours}{anvil}{node_offline});
-		my $say_message = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0008"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $say_message = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0008"}), width => $an->data->{padding}{anvil}{whole_line}});
 		my $page        = $an->String->get({key => "acs_report_0003", variables => { 
 			'state' => $say_offline,
 			message => $say_message,
@@ -285,9 +333,9 @@ sub build_clustat_section
 	}
 	elsif (not $an->data->{gathered}{clustat}{rgmanager}{me})
 	{
-		my $say_starting = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0011"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $say_starting = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0011"}), width => $an->data->{padding}{anvil}{whole_line}});
 		   $say_starting = colored($say_starting, $an->data->{colours}{anvil}{node_starting});
-		my $say_message  = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0010"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $say_message  = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0010"}), width => $an->data->{padding}{anvil}{whole_line}});
 		my $page         = $an->String->get({key => "acs_report_0003", variables => { 
 			'state' => $say_starting,
 			message => $say_message,
@@ -297,9 +345,9 @@ sub build_clustat_section
 	elsif ($an->data->{gathered}{clustat}{hung})
 	{
 		# This node's clustat is hung.
-		my $say_hung    = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0007"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $say_hung    = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0007"}), width => $an->data->{padding}{anvil}{whole_line}});
 		   $say_hung    = colored($say_hung, $an->data->{colours}{anvil}{node_hung});
-		my $say_message = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0009"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $say_message = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0009"}), width => $an->data->{padding}{anvil}{whole_line}});
 		my $page        = $an->String->get({key => "acs_report_0003", variables => { 
 			'state' => $say_hung,
 			message => $say_message,
@@ -406,7 +454,7 @@ sub build_clustat_section
 	# Bottom row (node 2)
 	my $node2_name               = ($an->data->{gathered}{hostname}{$node2_key} =~ /^(.*?)\./)[0];
 	my $say_node2_name           = $an->Readable->center_text({string => $node2_name, width => $an->data->{padding}{anvil}{short_hostnames}});
-	   $say_node2_name           = colored($say_node2_name, $an->data->{colours}{anvil}{short_hostnameshostnames});
+	   $say_node2_name           = colored($say_node2_name, $an->data->{colours}{anvil}{short_hostnames});
 	my $node2_cluster_member     = "";
 	my $node2_resource_manager   = "";
 	my $node2_storage_services   = "";
@@ -511,6 +559,115 @@ sub build_clustat_section
 		node2_hypervisor_service => $node2_hypervisor_service, 
 	}})."\n";
 	
+	# Get the total available RAM and then tally the amount assigned to servers so that we car report the available RAM in reserve
+	
+	# Loop through the VGs and report their free disk space.
+	
+	# Now show the servers.
+	my $server_count = 0;
+	foreach my $server (sort {$a cmp $b} keys %{$an->data->{gathered}{clustat}{server}})
+	{
+		$server_count++;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "server_count",                                value1 => $server_count, 
+			name2 => "server",                                      value2 => $server, 
+			name3 => "gathered::clustat::server::${server}::host",  value3 => $an->data->{gathered}{clustat}{server}{$server}{host}, 
+			name4 => "gathered::clustat::server::${server}::state", value4 => $an->data->{gathered}{clustat}{server}{$server}{'state'}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If this is the first server, print the header.
+		if ($server_count == 1)
+		{
+			$page .= $an->String->get({key => "acs_report_0011"})."\n";
+		}
+		
+		my $padding    = $an->data->{padding}{status}{server}{name};
+		my $say_server = sprintf("%-${padding}s", $server);
+		   $say_server = colored($say_server, $an->data->{colours}{anvil}{servers}{name});
+		   $padding    = $an->data->{padding}{status}{server}{host};
+		my $say_host   = $an->data->{gathered}{clustat}{server}{$server}{host};
+		my $say_state  = "";
+		if ($say_host eq "none")
+		{
+			$say_host  = sprintf("%-${padding}s", $an->data->{gathered}{clustat}{server}{$server}{host});
+			$say_host  = sprintf("%-${padding}s", "--");
+			$say_host  = colored($say_host, $an->data->{colours}{services}{offline});
+			$say_state = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{server}{'state'}});
+			$say_state = colored($say_state, $an->data->{colours}{services}{offline});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "server",    value1 => $server, 
+				name2 => "say_host",  value2 => $say_host, 
+				name3 => "say_state", value3 => $say_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# We colour the host names to make it easy to visually see if all servers are on the
+			# same node.
+			if (($say_host =~ /n01/) or ($say_host =~ /n1/) or ($say_host =~ /node01/) or ($say_host =~ /node01/))
+			{
+				$say_host = sprintf("%-${padding}s", $an->data->{gathered}{clustat}{server}{$server}{host});
+				$say_host = colored($say_host, $an->data->{colours}{anvil}{servers}{node1_host});
+			}
+			else
+			{
+				$say_host = sprintf("%-${padding}s", $an->data->{gathered}{clustat}{server}{$server}{host});
+				$say_host = colored($say_host, $an->data->{colours}{anvil}{servers}{node2_host});
+			}
+			$say_state = $an->data->{gathered}{clustat}{server}{$server}{'state'};
+			if ($say_state eq "started")
+			{
+				$say_state = $an->Readable->center_text({string => "#!string!acs_message_0002!#", width => $an->data->{padding}{status}{server}{'state'}});
+				$say_state = colored($say_state, $an->data->{colours}{services}{online});
+			}
+			elsif (($say_state eq "disabled") or ($say_state eq "stopped"))
+			{
+				$say_state = $an->Readable->center_text({string => "#!string!acs_message_0003!#", width => $an->data->{padding}{status}{server}{'state'}});
+				$say_state = colored($say_state, $an->data->{colours}{services}{offline});
+			}
+			elsif (($say_state eq "starting") or ($say_state eq "recovering"))
+			{
+				$say_state = $an->Readable->center_text({string => "#!string!acs_message_0004!#", width => $an->data->{padding}{status}{server}{'state'}});
+				$say_state = colored($say_state, $an->data->{colours}{services}{starting});
+			}
+			elsif ($say_state eq "stopping")
+			{
+				$say_state = $an->Readable->center_text({string => "#!string!acs_message_0006!#", width => $an->data->{padding}{status}{server}{'state'}});
+				$say_state = colored($say_state, $an->data->{colours}{services}{starting});
+			}
+			elsif (($say_state eq "failed") or ($say_state or "recoverable"))
+			{
+				$say_state = $an->Readable->center_text({string => "#!string!acs_message_0005!#", width => $an->data->{padding}{status}{server}{'state'}});
+				$say_state = colored($say_state, $an->data->{colours}{services}{failed});
+			}
+			else
+			{
+				$say_state = $an->Readable->center_text({string => "?".$say_state."?", width => $an->data->{padding}{status}{server}{'state'}});
+				$say_state = colored($say_state, $an->data->{colours}{services}{unknown_entry});
+			}
+		}
+		
+		$page .= $an->String->get({key => "acs_report_0012", variables => {
+			server_name => $say_server,
+			'state'     => $say_state,
+			host        => $say_host, 
+		}})."\n";
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "server_count", value1 => $server_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($server_count)
+	{
+		# Print the footer
+		$page .= $an->String->get({key => "acs_report_0009"})."\n";
+	}
+	else
+	{
+		# Print the 'no servers found' message.
+		$page .= $an->String->get({key => "acs_report_0013"})."\n";
+	}
+	
 	return($page);
 }
 
@@ -535,9 +692,9 @@ sub build_drbd_section
 		   $say_module_status = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0013"}), width => $an->data->{padding}{drbd}{header_state}});
 		   $say_module_status = colored($say_module_status, $an->data->{colours}{drbd}{module}{loaded});
 		   $say_module_status = colored($say_module_status, $an->data->{colours}{drbd}{module}{unloaded});
-		my $say_offline       = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0003"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $say_offline       = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0003"}), width => $an->data->{padding}{anvil}{whole_line}});
 		   $say_offline       = colored($say_offline, $an->data->{colours}{drbd}{module}{unloaded});
-		my $say_message       = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0014"}), width => $an->data->{padding}{anvil}{whole_line} });
+		my $say_message       = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0014"}), width => $an->data->{padding}{anvil}{whole_line}});
 		
 		# Return, nothing more to show.
 		$page .= $an->String->get({key => "acs_report_0005", variables => {
@@ -575,9 +732,9 @@ sub build_drbd_section
 		if (not $resource_count)
 		{
 			# Module is loaded but no resources are running.
-			my $say_no_resources = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0011"}), width => $an->data->{padding}{anvil}{whole_line} });
+			my $say_no_resources = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0011"}), width => $an->data->{padding}{anvil}{whole_line}});
 			   $say_no_resources = colored($say_no_resources, $an->data->{colours}{drbd}{starting});
-			my $say_message      = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0015"}), width => $an->data->{padding}{anvil}{whole_line} });
+			my $say_message      = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0015"}), width => $an->data->{padding}{anvil}{whole_line}});
 			
 			# Return, nothing more to show.
 			$page .= $an->String->get({key => "acs_report_0003", variables => { 
@@ -625,7 +782,7 @@ sub build_drbd_section
 		if ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state})
 		{
 			# Resource is up!
-			$say_resource_name    = colored($say_resource_name, $an->data->{colours}{drbd}{resource}{online});
+			$say_resource_name = colored($say_resource_name, $an->data->{colours}{drbd}{resource}{name});
 			
 			# Connection states, lots of connection states... - http://www.drbd.org/en/doc/users-guide-84/ch-admin#s-connection-states
 			if ($an->data->{gathered}{drbd}{resource}{$resource}{connection_state} eq "StandAlone")
@@ -980,10 +1137,259 @@ sub build_drbd_section
 	return($page);
 }
 
+# This builds the section for bonds and their interfaces.
+sub build_bond_section
+{
+	my ($an, $node1_key, $node2_key) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "build_bond_section" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node1_key", value1 => $node1_key,  
+		name2 => "node2_key", value2 => $node2_key,  
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $bonds = 0;
+	my $page  = "";
+	foreach my $bond (sort {$a cmp $b} keys %{$an->data->{gathered}{bonds}})
+	{
+		$bonds++;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "bonds", value1 => $bonds, 
+			name2 => "bond",  value2 => $bond, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($bonds == 1)
+		{
+			# Print the header
+			$page .= $an->String->get({key => "acs_report_0014"})."\n";
+		}
+		
+		# Padding values for easier use in sprintf
+		my $pad_bond_name = $an->data->{padding}{bond}{bond_name};
+		my $pad_interface = $an->data->{padding}{bond}{interface};
+		my $pad_updelay   = $an->data->{padding}{bond}{updelay};
+		
+		# Gather the data
+		my $bond_name     = $bond;
+		   $bond_name     = sprintf("%-${pad_bond_name}s", $bond_name);
+		   $bond_name     = colored($bond_name, $an->data->{colours}{bond}{bond_name});
+		my $bond_state    = $an->data->{gathered}{bonds}{$bond}{mii_status};		# up / down
+		my $active_iface  = $an->data->{gathered}{bonds}{$bond}{active_interface};	# 
+		   $active_iface  = sprintf("%-${pad_interface}s", $active_iface);
+		   $active_iface  = colored($active_iface, $an->data->{colours}{bond}{active_interface});
+		my $iface_updelay = ($an->data->{gathered}{bonds}{$bond}{up_delay} =~ /^(\d+) /)[0];
+		
+		# Translate the state
+		if ($bond_state eq "up")
+		{
+			$bond_state = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0050"}), width => $an->data->{padding}{bond}{'state'}});
+			$bond_state = colored($bond_state, $an->data->{colours}{bond}{'state'}{up});
+		}
+		elsif ($bond_state eq "down")
+		{
+			$bond_state = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0051"}), width => $an->data->{padding}{bond}{'state'}});
+			$bond_state = colored($bond_state, $an->data->{colours}{bond}{'state'}{down});
+		}
+		else
+		{
+			$bond_state = $an->Readable->center_text({string => "?".$bond_state."?", width => $an->data->{padding}{bond}{'state'}});
+			$bond_state = colored($bond_state, $an->data->{colours}{bond}{'state'}{unknown_entry});
+		}
+		
+		# and the up delay
+		if ($iface_updelay =~ /^\d+$/)
+		{
+			$iface_updelay /= 1000;
+			$iface_updelay .= $iface_updelay == 1 ? " ".$an->String->get({key => "suffix_0014"}) : " ".$an->String->get({key => "suffix_0015"});	# Singular vs plural
+			$iface_updelay =  sprintf("%-${pad_updelay}s", $iface_updelay);
+			$iface_updelay =  colored($iface_updelay, $an->data->{colours}{bond}{updelay}{good});
+		}
+		else
+		{
+			$iface_updelay = sprintf("%-${pad_updelay}s", "?".$iface_updelay."?");
+			$iface_updelay = colored($iface_updelay, $an->data->{colours}{bond}{updelay}{unknown_entry});
+		}
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "bond_name",   value1 => $bond_name, 
+			name2 => "bond_state",  value2 => $bond_state, 
+			name3 => "active_iface",  value3 => $active_iface, 
+			name4 => "iface_updelay", value4 => $iface_updelay, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Now sort out the interfaces
+		my $link1_name    = "";
+		my $link1_speed   = "";
+		my $link1_duplex  = "";
+		my $link1_state   = "";
+		my $link2_name    = "";
+		my $link2_speed   = "";
+		my $link2_duplex  = "";
+		my $link2_state   = "";
+		foreach my $iface (sort {$a cmp $b} keys %{$an->data->{gathered}{bonds}{$bond}{interface}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "iface",                                                     value1 => $iface, 
+				name2 => "gathered::bonds::${bond}::interface::${iface}::speed",      value2 => $an->data->{gathered}{bonds}{$bond}{interface}{$iface}{speed}, 
+				name3 => "gathered::bonds::${bond}::interface::${iface}::duplex",     value3 => $an->data->{gathered}{bonds}{$bond}{interface}{$iface}{duplex}, 
+				name4 => "gathered::bonds::${bond}::interface::${iface}::mii_status", value4 => $an->data->{gathered}{bonds}{$bond}{interface}{$iface}{mii_status}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Interface name
+			
+			my $interface_name = sprintf("%-${pad_interface}s", $iface);
+			   $interface_name = colored($interface_name, $an->data->{colours}{bond}{interface});
+			
+			# Process the state
+			my $link_state = $an->data->{gathered}{bonds}{$bond}{interface}{$iface}{mii_status};
+			if ($link_state eq "up")
+			{
+				$link_state = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0050"}), width => $an->data->{padding}{bond}{'state'}});
+				$link_state = colored($link_state, $an->data->{colours}{bond}{'state'}{up});
+			}
+			elsif ($link_state eq "down")
+			{
+				$link_state = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0051"}), width => $an->data->{padding}{bond}{'state'}});
+				$link_state = colored($link_state, $an->data->{colours}{bond}{'state'}{down});
+			}
+			else
+			{
+				$link_state = $an->Readable->center_text({string => "?".$link_state."?", width => $an->data->{padding}{bond}{'state'}});
+				$link_state = colored($link_state, $an->data->{colours}{bond}{'state'}{unknown_entry});
+			}
+			
+			# Process the speed
+			my $pad_speed  = $an->data->{padding}{bond}{'link'}{speed};
+			my $link_speed = ($an->data->{gathered}{bonds}{$bond}{interface}{$iface}{speed} =~ /^(\d+) /)[0];
+			if ($link_speed > 1001)
+			{
+				# 10 Gbps or better
+				$link_speed = sprintf("%-${pad_speed}s", $link_speed);
+				$link_speed = colored($link_speed, $an->data->{colours}{bond}{speed}{'10000'});
+			}
+			elsif ($link_speed == 1000)
+			{
+				# Gbit
+				$link_speed = sprintf("%-${pad_speed}s", $link_speed);
+				$link_speed = colored($link_speed, $an->data->{colours}{bond}{speed}{'1000'});
+			}
+			elsif ($link_speed == 100)
+			{
+				# 100 Mbit... uh oh
+				$link_speed = sprintf("%-${pad_speed}s", $link_speed);
+				$link_speed = colored($link_speed, $an->data->{colours}{bond}{speed}{'100'});
+			}
+			elsif ($link_speed == 10)
+			{
+				# 10 Mbit. Hello 90s.
+				$link_speed = sprintf("%-${pad_speed}s", $link_speed);
+				$link_speed = colored($link_speed, $an->data->{colours}{bond}{speed}{'10'});
+			}
+			else
+			{
+				# wat?
+				$link_speed = sprintf("%-${pad_speed}s", "?".$link_speed."?");
+				$link_speed = colored($link_speed, $an->data->{colours}{bond}{speed}{unknown_entry});
+			}
+			
+			# Process the duplex
+			my $pad_duplex  = $an->data->{padding}{bond}{'link'}{duplex};
+			my $link_duplex = $an->data->{gathered}{bonds}{$bond}{interface}{$iface}{duplex};
+			if ($link_duplex eq "full")
+			{
+				# Full duplex
+				$link_duplex = $an->String->get({key => "acs_message_0052"});
+				$link_duplex = sprintf("%-${pad_duplex}s", $link_duplex);
+				$link_duplex = colored($link_duplex, $an->data->{colours}{bond}{duplex}{full});
+			}
+			elsif ($link_duplex eq "half")
+			{
+				# Half duplex... not good.
+				$link_duplex = $an->String->get({key => "acs_message_0053"});
+				$link_duplex = sprintf("%-${pad_duplex}s", $link_duplex);
+				$link_duplex = colored($link_duplex, $an->data->{colours}{bond}{duplex}{half});
+			}
+			else
+			{
+				# *sigh*
+				$link_duplex = sprintf("%-${pad_duplex}s", "?".$link_duplex."?");
+				$link_duplex = colored($link_duplex, $an->data->{colours}{bond}{duplex}{unknown_entry});
+			}
+			
+			# Now store it
+			if ($iface =~ /1$/)
+			{
+				# Link 1
+				$link1_name   = $interface_name;
+				$link1_speed  = $link_speed;
+				$link1_duplex = $link_duplex;
+				$link1_state  = $link_state;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "link1_name",   value1 => $link1_name, 
+					name2 => "link1_speed",  value2 => $link1_speed, 
+					name3 => "link1_duplex", value3 => $link1_duplex, 
+					name4 => "link1_state",  value4 => $link1_state, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Link 2
+				$link2_name   = $interface_name;
+				$link2_speed  = $link_speed;
+				$link2_duplex = $link_duplex;
+				$link2_state  = $link_state;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "link2_name",   value1 => $link2_name, 
+					name2 => "link2_speed",  value2 => $link2_speed, 
+					name3 => "link2_duplex", value3 => $link2_duplex, 
+					name4 => "link2_state",  value4 => $link2_state, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+			name1  => "bond_name",     value1  => $bond_name, 
+			name2  => "bond_state",    value2  => $bond_state, 
+			name3  => "active_iface",  value3  => $active_iface, 
+			name4  => "iface_updelay", value4  => $iface_updelay, 
+			name5  => "link1_name",    value5  => $link1_name, 
+			name6  => "link1_speed",   value6  => $link1_speed, 
+			name7  => "link1_duplex",  value7  => $link1_duplex, 
+			name8  => "link1_state",   value8  => $link1_state, 
+			name9  => "link2_name",    value9  => $link2_name, 
+			name10 => "link2_speed",   value10 => $link2_speed, 
+			name11 => "link2_duplex",  value11 => $link2_duplex, 
+			name12 => "link2_state",   value12 => $link2_state, 
+		}, file => $THIS_FILE, line => __LINE__});
+		# #!variable!!#
+		# | #!variable!bond_name!# - #!variable!bond_state!# | #!variable!active_iface!# | #!variable!link1_name!# - #!variable!link1_state!# - #!variable!link1_speed!# #!variable!link1_duplex!# | #!variable!link2_name!# - #!variable!link2_state!# - #!variable!link2_speed!# #!variable!link2_duplex!# | #!variable!iface_updelay!# |
+		$page .= $an->String->get({key => "acs_report_0015", variables => {
+			bond_name     => $bond_name, 
+			bond_state    => $bond_state, 
+			active_iface  => $active_iface, 
+			iface_updelay => $iface_updelay, 
+			link1_name    => $link1_name, 
+			link1_speed   => $link1_speed, 
+			link1_duplex  => $link1_duplex, 
+			link1_state   => $link1_state, 
+			link2_name    => $link2_name, 
+			link2_speed   => $link2_speed, 
+			link2_duplex  => $link2_duplex, 
+			link2_state   => $link2_state, 
+		}})."\n";
+		
+	}
+	
+	if ($bonds)
+	{
+		$page .= $an->String->get({key => "acs_report_0009"})."\n";
+	}
+	
+	return($page);
+}
+
 # This prints out the information we gathered
 sub report_status
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "report_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Build the header
 	my $page = build_header($an);
@@ -1005,6 +1411,9 @@ sub report_status
 	
 	# Build the DRBD section.
 	$page .= build_drbd_section($an, $node1_key, $node2_key);
+	
+	# Build the Bonds section.
+	$page .= build_bond_section($an, $node1_key, $node2_key);
 	
 	# We're ready!
 	print $page;

@@ -332,7 +332,16 @@ sub parse_definition
 		next if not $hash_ref->{device};
 		my $disk_type     = $hash_ref->{device};									# disk or cdrom
 		
-		my $source_device = defined $hash_ref->{source}->[0]->{device}   ? $hash_ref->{source}->[0]->{device}   : "";
+		# The source device/file name might use a few different keys
+		my $source_device = $hash_ref->{source}->[0]->{device} ? $hash_ref->{source}->[0]->{device} : "";
+		if (not $source_device)
+		{
+			$source_device = $hash_ref->{source}->[0]->{dev} ? $hash_ref->{source}->[0]->{dev} : "";
+		}
+		if (not $source_device)
+		{
+			$source_device = $hash_ref->{source}->[0]->{file} ? $hash_ref->{source}->[0]->{file} : "";
+		}
 		my $source_type   = defined $hash_ref->{type}                    ? $hash_ref->{type}                    : "";	# Block or file
 		my $target_bus    = defined $hash_ref->{target}->[0]->{bus}      ? $hash_ref->{target}->[0]->{bus}      : "";
 		my $target_device = defined $hash_ref->{target}->[0]->{device}   ? $hash_ref->{target}->[0]->{device}   : "";

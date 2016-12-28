@@ -3643,6 +3643,12 @@ SUPPORT
 		<key name="acs_message_0047">Primary</key>
 		<key name="acs_message_0048">Secondary</key>
 		<key name="acs_message_0049">Unknown</key>
+		<!-- 50 and 51 are limited to 4 -->
+		<key name="acs_message_0050">Up</key>
+		<key name="acs_message_0051">Down</key>
+		<!-- 52 and 53 are limited to 2 -->
+		<key name="acs_message_0052">FD</key>
+		<key name="acs_message_0053">HD</key>
 		
 		
 		<!-- Report output -->
@@ -3668,28 +3674,28 @@ SUPPORT
 +------------------------------------------------------------------------------------------------------------+
 ]]>
 		</key>
-		<key name="acs_report_0005"><![CDATA[
-| DRBD ver. #!variable!version!# - #!variable!header_state!#                                            Timeout: #!variable!timeout!# |
-]]>
-		</key>
+		<key name="acs_report_0005"><![CDATA[| DRBD ver. #!variable!version!# - #!variable!header_state!#                                            Timeout: #!variable!timeout!# |]]></key>
 		<key name="acs_report_0006"><![CDATA[
 |                                              Disk State                      Role                          |
-|   Resource     |    Connection    | #!variable!disk_state_node1!# . #!variable!disk_state_node2!# | #!variable!role_node1!# . #!variable!role_node2!# | To Resync. |
+|   Resource     |    Connection   | #!variable!disk_state_node1!# . #!variable!disk_state_node2!# | #!variable!role_node1!# . #!variable!role_node2!# | To Resync.  |
 ]]>
 		</key>
-		<key name="acs_report_0007"><![CDATA[
-| #!variable!resource_name!# | #!variable!connection_state!# | #!variable!node1_disk_state!# | #!variable!node2_disk_state!# | #!variable!node1_role!# | #!variable!node2_role!# | #!variable!to_resync!# |
-]]>
-		</key>
+		<key name="acs_report_0007"><![CDATA[| #!variable!resource_name!# | #!variable!connection_state!# | #!variable!node1_disk_state!# | #!variable!node2_disk_state!# | #!variable!node1_role!# | #!variable!node2_role!# | #!variable!to_resync!# |]]></key>
 		<key name="acs_report_0008"><![CDATA[
 | - Resync in progress; ETA:      #!variable!sync_eta!#       Completed: #!variable!sync_percent!# |
 ]]>
 		</key>
-		<key name="acs_report_0009"><![CDATA[
+		<key name="acs_report_0009"><![CDATA[+------------------------------------------------------------------------------------------------------------+]]></key>
+		<key name="acs_report_0010"><![CDATA[| Server: #!variable!server_name!# - Status:                                                 |]]></key>
+		<key name="acs_report_0011"><![CDATA[| Server Name                              |    State     | Host                                             |]]></key>
+		<key name="acs_report_0012"><![CDATA[| #!variable!server_name!# | #!variable!state!# | #!variable!host!#                   |]]></key>
+		<key name="acs_report_0013"><![CDATA[
+|                                  No servers found on this Anvil! system.                                   |
 +------------------------------------------------------------------------------------------------------------+
 ]]>
 		</key>
-		
+		<key name="acs_report_0014"><![CDATA[|       Bond        |   Active   |            Link 1            |            Link 2            |  Up Delay   |]]></key>
+		<key name="acs_report_0015"><![CDATA[| #!variable!bond_name!# - #!variable!bond_state!# | #!variable!active_iface!# | #!variable!link1_name!# - #!variable!link1_state!# - #!variable!link1_speed!# #!variable!link1_duplex!# | #!variable!link2_name!# - #!variable!link2_state!# - #!variable!link2_speed!# #!variable!link2_duplex!# | #!variable!iface_updelay!# |]]></key>
 		
 	</lang>
 
