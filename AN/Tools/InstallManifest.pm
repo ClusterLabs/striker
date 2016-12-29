@@ -9140,8 +9140,8 @@ sub enable_tools_on_node
 		$shell_call = $an->data->{path}{nodes}{'anvil-safe-start'}." --enable\n";
 	}
 	$shell_call .= "
-if [ -e ".$an->data->{path}{nodes}{'anvil-safe-start_link'}." ];
-then 
+if \$(".$an->data->{path}{'grep'}." ^tools::anvil-safe-start::enabled ".$an->data->{path}{striker_config}." | ".$an->data->{path}{'grep'}." -q 1\$); 
+then
     ".$an->data->{path}{echo}." enabled; 
 else 
     ".$an->data->{path}{echo}." disabled;

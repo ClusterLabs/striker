@@ -5,6 +5,7 @@
 # 
 # Return Codes:
 # 0  = OK
+# 1  = Not run on a node.
 # 
 
 use strict;
@@ -76,6 +77,7 @@ my $an = AN::Tools->new({
 				active_interface =>	"bold green", 
 				bond_name	=>	"bold blue",
 				duplex		=>	{
+					down		=>	"faint white",
 					full		=>	"bold green", 
 					half		=>	"yellow",
 					unknown_entry	=>	"bold magenta",
@@ -86,11 +88,13 @@ my $an = AN::Tools->new({
 					'100'		=>	"yellow",
 					'1000'		=>	"bold green", 
 					'10000'		=>	"bold cyan", 	# Anything over 10 Gbps will get this
+					down		=>	"faint white",
 					unknown_entry	=>	"bold magenta",
 				},
 				'state'		=>	{
 					up		=>	"bold green",
-					down		=>	"bold red", 
+					down		=>	"red", 
+					going_back	=>	"yellow", 
 					unknown_entry	=>	"bold magenta",
 				},
 				updelay		=>	{
@@ -251,6 +255,13 @@ if (($an->data->{switches}{interval}) && ($an->data->{switches}{interval} =~ /^\
 if (($an->data->{switches}{i}) && ($an->data->{switches}{i} =~ /^\d+$/))
 {
 	$an->data->{sys}{interval} = $an->data->{switches}{i};
+}
+
+# This tool was designed to run on nodes, not dashboards.
+if (not -e $an->data->{path}{cluster_conf})
+{
+	print $an->String->get({key => "acs_error_0001"})."\n";
+	$an->nice_exit({exit_code => 1});
 }
 
 my $run = 1;
@@ -1239,7 +1250,12 @@ sub build_bond_section
 			
 			# Process the state
 			my $link_state = $an->data->{gathered}{bonds}{$bond}{interface}{$iface}{mii_status};
-			if ($link_state eq "up")
+			if ($link_state eq "going back")
+			{
+				$link_state = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0052"}), width => $an->data->{padding}{bond}{'state'}});
+				$link_state = colored($link_state, $an->data->{colours}{bond}{'state'}{going_back});
+			}
+			elsif ($link_state eq "up")
 			{
 				$link_state = $an->Readable->center_text({string => $an->String->get({key => "acs_message_0050"}), width => $an->data->{padding}{bond}{'state'}});
 				$link_state = colored($link_state, $an->data->{colours}{bond}{'state'}{up});
@@ -1258,7 +1274,13 @@ sub build_bond_section
 			# Process the speed
 			my $pad_speed  = $an->data->{padding}{bond}{'link'}{speed};
 			my $link_speed = ($an->data->{gathered}{bonds}{$bond}{interface}{$iface}{speed} =~ /^(\d+) /)[0];
-			if ($link_speed > 1001)
+			if ((not $link_speed) or ($link_speed =~ /Unknown/i))
+			{
+				# 10 Gbps or better
+				$link_speed = $an->Readable->center_text({string => "--", width => $pad_speed});
+				$link_speed = colored($link_speed, $an->data->{colours}{bond}{speed}{down});
+			}
+			elsif ($link_speed > 1001)
 			{
 				# 10 Gbps or better
 				$link_speed = sprintf("%-${pad_speed}s", $link_speed);
@@ -1292,17 +1314,23 @@ sub build_bond_section
 			# Process the duplex
 			my $pad_duplex  = $an->data->{padding}{bond}{'link'}{duplex};
 			my $link_duplex = $an->data->{gathered}{bonds}{$bond}{interface}{$iface}{duplex};
-			if ($link_duplex eq "full")
+			if ($link_duplex =~ /Unknown/i)
 			{
 				# Full duplex
-				$link_duplex = $an->String->get({key => "acs_message_0052"});
+				$link_duplex = sprintf("%-${pad_duplex}s", "--");
+				$link_duplex = colored($link_duplex, $an->data->{colours}{bond}{duplex}{down});
+			}
+			elsif ($link_duplex eq "full")
+			{
+				# Full duplex
+				$link_duplex = $an->String->get({key => "acs_message_0053"});
 				$link_duplex = sprintf("%-${pad_duplex}s", $link_duplex);
 				$link_duplex = colored($link_duplex, $an->data->{colours}{bond}{duplex}{full});
 			}
 			elsif ($link_duplex eq "half")
 			{
 				# Half duplex... not good.
-				$link_duplex = $an->String->get({key => "acs_message_0053"});
+				$link_duplex = $an->String->get({key => "acs_message_0054"});
 				$link_duplex = sprintf("%-${pad_duplex}s", $link_duplex);
 				$link_duplex = colored($link_duplex, $an->data->{colours}{bond}{duplex}{half});
 			}

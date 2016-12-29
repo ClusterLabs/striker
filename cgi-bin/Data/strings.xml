@@ -2642,8 +2642,8 @@ Deadline Scheduler Configuration (sda):
 
 		<!-- anvil-safe-start -->
 		<key name="asst_log_0001">#!variable!this_file!# has started.</key>
-		<key name="asst_log_0002">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] was created.</key>
-		<key name="asst_log_0003">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] already exists.</key>
+		<key name="asst_log_0002">...free...</key>
+		<key name="asst_log_0003">...free...</key>
 		<key name="asst_log_0004">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] was removed.</key>
 		<key name="asst_log_0005">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] already removed.</key>
 		<key name="asst_log_0006">#!variable!this_file!# has finished.</key>
@@ -3643,12 +3643,13 @@ SUPPORT
 		<key name="acs_message_0047">Primary</key>
 		<key name="acs_message_0048">Secondary</key>
 		<key name="acs_message_0049">Unknown</key>
-		<!-- 50 and 51 are limited to 4 -->
+		<!-- 50 through 52 are limited to 4 -->
 		<key name="acs_message_0050">Up</key>
 		<key name="acs_message_0051">Down</key>
+		<key name="acs_message_0052">Wait</key>	<!-- 'going back' -->
 		<!-- 52 and 53 are limited to 2 -->
-		<key name="acs_message_0052">FD</key>
-		<key name="acs_message_0053">HD</key>
+		<key name="acs_message_0053">FD</key>
+		<key name="acs_message_0054">HD</key>
 		
 		
 		<!-- Report output -->
@@ -3696,6 +3697,9 @@ SUPPORT
 		</key>
 		<key name="acs_report_0014"><![CDATA[|       Bond        |   Active   |            Link 1            |            Link 2            |  Up Delay   |]]></key>
 		<key name="acs_report_0015"><![CDATA[| #!variable!bond_name!# - #!variable!bond_state!# | #!variable!active_iface!# | #!variable!link1_name!# - #!variable!link1_state!# - #!variable!link1_speed!# #!variable!link1_duplex!# | #!variable!link2_name!# - #!variable!link2_state!# - #!variable!link2_speed!# #!variable!link2_duplex!# | #!variable!iface_updelay!# |]]></key>
+		
+		<!-- errors -->
+		<key name="acs_error_0001"><![CDATA[This tool was designed to run on Anvil! nodes, which this machine does not appear to be. Exiting.]]></key>
 		
 	</lang>
 
