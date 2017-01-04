@@ -986,6 +986,10 @@ The 'AN::Tools::ScanCore' module's 'check_ram_usage()' method was called without
 
 The 'AN::Tools::DB' module's 'connect_to_databases()' method tried to connect to the same database twice.
 
+=head2 C<194>
+
+The 'AN::Tools::System' module's 'configure_ipmi()' was called without a password being set.
+
 
 =head2 C<999>
 

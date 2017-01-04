@@ -582,6 +582,7 @@ sub _set_paths
 	$an->data->{path}{gethostip}              = "/usr/bin/gethostip";
 	$an->data->{path}{gfs2_tool}              = "/usr/sbin/gfs2_tool";
 	$an->data->{path}{hostname}               = "/bin/hostname";
+	$an->data->{path}{htpasswd}               = "/usr/bin/htpasswd";
 	$an->data->{path}{ip}                     = "/sbin/ip";
 	$an->data->{path}{ipmitool}               = "/usr/bin/ipmitool";
 	$an->data->{path}{'iptables-save'}        = "/sbin/iptables-save";
@@ -658,6 +659,7 @@ sub _set_paths
 	$an->data->{path}{yum}                    = "/usr/bin/yum";
 	
 	# Text files
+	$an->data->{path}{htpasswd_access}  = "/var/www/home/htpasswd";
 	$an->data->{path}{cman_config}      = "/etc/cluster/cluster.conf";
 	$an->data->{path}{cluster_conf}     = "/etc/cluster/cluster.conf";
 	$an->data->{path}{dhcpd_conf}       = "/etc/dhcp/dhcpd.conf";

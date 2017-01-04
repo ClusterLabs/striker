@@ -2294,6 +2294,8 @@
 		<key name="log_0268">[ Warning ] - One or more services failed to start. An attempt will be made to restart.</key>
 		<key name="log_0269">The restart appears to have been successful</key>
 		<key name="log_0270">Node: [#!variable!active_node!#] is hosting servers, so its '#!variable!file!#' will be used on the peer.</key>
+		<key name="log_0271">Checking if the daemon: [#!variable!daemon!#] is currently running locally.</key>
+		<key name="log_0272">The daemon: [#!variable!daemon!#] is not installed on this machine.</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
 		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2016]]></key>
@@ -3700,6 +3702,110 @@ SUPPORT
 		
 		<!-- errors -->
 		<key name="acs_error_0001"><![CDATA[This tool was designed to run on Anvil! nodes, which this machine does not appear to be. Exiting.]]></key>
+		
+		
+		<!-- Striker Change Password -->
+		<key name="scp_message_0001"><![CDATA[
+ -=] Striker Change Password
+
+DESCRIPTION
+
+This program is used to change the password of the local striker dashboard or
+of an Anvil! node pair. 
+
+When changing the local Striker dashboard password, it will attempt to log into
+any Anvil! nodes it knows about and update their password for this dashboard's 
+ScanCore database. However, if any node is unavailable, you will need to 
+manually update the password later.
+
+NOTE: 
+
+1. This tool only runs on Striker dashboards.
+2. This tool must be run as the 'root' user.
+3. This tool does NOT require the old password.
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+ --anvil <anvil>
+
+	This is used to change the password on an Anvil! node pair. It will
+	change the root and ricci user passwords on both nodes. 
+ 
+ --local
+ 
+	This is used to change the local dashboard's password. It will change
+	the root user's password, the Striker web interface password and the 
+	ScanCore database password.
+
+ --force
+	
+	When changing the local Striker dashboard password, the program will 
+	log into all nodes and our peer dashboard(s) that we know of. If any 
+	are not accessible, the program will abort. 
+	
+	This switch force the password change to happen even when nodes are 
+	offline. This means you will have to update the inaccessible nodes'
+	striker.conf file manually.
+	
+	This switch will also override minimum password length requirements.
+	
+	This switch will NOT override changing an Anvil! password with a node
+	being offline.
+
+--password <new_password>
+	
+	This is the new password that will be set. 
+	
+	NOTE: You must be aware of standard shell escaping! See:
+	      http://www.tldp.org/LDP/abs/html/escapingsection.html
+
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		<key name="scp_message_0002"></key>
+		<key name="scp_message_0003">You have used '--force', the password will change even if nodes are inaccessible.</key>
+		<key name="scp_message_0004"><![CDATA[
+You have asked to change the passwords on this dashboard. 
+We will update the password for this machine on accessible nodes as well.
+]]>
+		</key>
+		<key name="scp_message_0005"><![CDATA[
+About to change the passwords to: [#!variable!password!#].
+Proceed? [y/N] 
+]]>
+		</key>
+		<key name="scp_message_0006">Proceeding!</key>
+		<key name="scp_message_0007">Aborting.</key>
+		<key name="scp_message_0008">- Checking the nodes in: [#!variable!anvil_name!#]</key>
+		<key name="scp_message_0009"> - Attempting to access: [#!variable!node_name!#]... </key>
+		<key name="scp_message_0010">Accessed!</key>
+		<key name="scp_message_0011">Checking access prior to making any changes.</key>
+		<key name="scp_message_0012"><![CDATA[About to change the passwords on the Anvil!: [#!variable!anvil_name!#]]]></key>
+		
+		<!-- errors -->
+		<key name="scp_error_0001">You must be root (or use sudo) to change passwords.</key>
+		<key name="scp_error_0002">You must change the password from a Striker dashboard.</key>
+		<key name="scp_error_0003"><![CDATA[You didn't set a password. Please use '--password "<new_password>" (the quotes are optional, normal shell escaping required).]]></key>
+		<key name="scp_error_0004"><![CDATA[Please use either '--local' or '--anvil <name>' so that we know what password you wish to change.]]></key>
+		<key name="scp_error_0005">Failed to connect to any ScanCore database.</key>
+		<key name="scp_error_0006">The password is too short. The password needs to be at least: [#!data!password::minimum_length!#] characters long.</key>
+		<key name="scp_error_0007">Both nodes must be accessible in order to change the Anvil! password.</key>
+		<key name="scp_error_0008">The requested Anvil!: [#!variable!anvil_name!#] was not found.</key>
+		
+		<!-- warnings -->
+		<key name="scp_warning_0001">The password is too short, but '--force' was used. Proceeding.</key>
+		<key name="scp_warning_0002">The password is longer than: [#!data!password::truncate::ipmi!#], so if we change the password on IPMI, we will truncated it to: [#!variable!ipmi_password!#].</key>
+		<key name="scp_warning_0003">No access!</key>
+		
 		
 	</lang>
 

@@ -373,7 +373,7 @@ sub load_anvil
 	}
 	
 	# Last test; Do I know about my nodes? If this is the root user calling us, don't die (because it is 
-	# ScanCore).
+	# ScanCore or a command line tool).
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvils::${anvil_uuid}::node1::name", value1 => $an->data->{anvils}{$anvil_uuid}{node1}{name},
 		name2 => "anvils::${anvil_uuid}::node2::name", value2 => $an->data->{anvils}{$anvil_uuid}{node2}{name},
@@ -439,7 +439,7 @@ sub load_anvil
 			name1 => "node_key",   value1 => $node_key, 
 			name2 => "anvil_uuid", value2 => $anvil_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->data->{sys}{anvil}{$node_key}{uuid}           =  $an->data->{anvils}{$anvil_uuid}{$node_key}{uuid};
+		$an->data->{sys}{anvil}{$node_key}{uuid}           =  $an->data->{anvils}{$anvil_uuid}{$node_key}{uuid};	# node_uuid
 		$an->data->{sys}{anvil}{$node_key}{name}           =  $an->data->{anvils}{$anvil_uuid}{$node_key}{name};
 		$an->data->{sys}{anvil}{$node_key}{short_name}     =  $an->data->{anvils}{$anvil_uuid}{$node_key}{name};
 		$an->data->{sys}{anvil}{$node_key}{short_name}     =~ s/\..*//;

@@ -3093,22 +3093,22 @@ sub configure_ipmi_on_node
 	my $ipmi_password = $parameter->{ipmi_password} ? $parameter->{ipmi_password} : "";
 	my $ipmi_user     = $parameter->{ipmi_user}     ? $parameter->{ipmi_user}     : "";
 	my $ipmi_gateway  = $parameter->{ipmi_gateway}  ? $parameter->{ipmi_gateway}  : "";
-	my $node          = $parameter->{node}          ? $parameter->{node}     : "";
-	my $target        = $parameter->{target}        ? $parameter->{target}   : "";
+	my $node          = $parameter->{node}          ? $parameter->{node}          : "";
+	my $target        = $parameter->{target}        ? $parameter->{target}        : "";
 	my $port          = $parameter->{port}          ? $parameter->{port}          : "";
 	my $password      = $parameter->{password}      ? $parameter->{password}      : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 		name1 => "ipmi_ip",       value1 => $ipmi_ip, 
 		name2 => "ipmi_netmask",  value2 => $ipmi_netmask, 
-		name3 => "ipmi_password", value3 => $ipmi_password, 
-		name4 => "ipmi_user",     value4 => $ipmi_user, 
-		name5 => "ipmi_gateway",  value5 => $ipmi_gateway, 
-		name6 => "node",          value6 => $node, 
-		name7 => "target",        value7 => $target, 
-		name8 => "port",          value8 => $port, 
+		name3 => "ipmi_user",     value3 => $ipmi_user, 
+		name4 => "ipmi_gateway",  value4 => $ipmi_gateway, 
+		name5 => "node",          value5 => $node, 
+		name6 => "target",        value6 => $target, 
+		name7 => "port",          value7 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-		name1 => "password", value1 => $password, 
+		name1 => "ipmi_password", value1 => $ipmi_password, 
+		name2 => "password",      value2 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 255;
@@ -10167,6 +10167,7 @@ sub get_chkconfig_data
 	return($init3, $init5);
 }
 
+### NOTE: Deprecated, using System->get_daemon_state()
 # This checks to see if a daemon is running or not.
 sub get_daemon_state
 {
