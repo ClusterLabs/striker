@@ -812,10 +812,10 @@ sub is_ipv4
 			name4 => "fourth_octal", value4 => $fourth_octal,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if (($first_octal  < 0) || ($first_octal  > 255) ||
-		    ($second_octal < 0) || ($second_octal > 255) ||
-		    ($third_octal  < 0) || ($third_octal  > 255) ||
-		    ($fourth_octal < 0) || ($fourth_octal > 255))
+		if (($first_octal  < 0) or ($first_octal  > 255) or
+		    ($second_octal < 0) or ($second_octal > 255) or
+		    ($third_octal  < 0) or ($third_octal  > 255) or
+		    ($fourth_octal < 0) or ($fourth_octal > 255))
 		{
 			# One of the octals is out of range.
 			$valid = 0;

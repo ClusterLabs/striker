@@ -13,8 +13,10 @@ my $THIS_FILE = "Striker.pm";
 
 ### Methods;
 # access_all_upses
+# build_local_host_list
 # configure
 # configure_ssh_local
+# get_db_id_from_striker_conf
 # load_anvil
 # mark_node_as_clean_off
 # mark_node_as_clean_on
@@ -22,6 +24,7 @@ my $THIS_FILE = "Striker.pm";
 # scan_node
 # scan_servers
 # update_peers
+# update_striker_conf
 ### NOTE: All of these private methods are ports of functions from the old Striker.pm. None will be developed
 ###       further and all will be phased out over time. Do not use any of these in new dev work.
 # _add_server_to_anvil
@@ -218,6 +221,37 @@ sub access_all_upses
 	return($access);
 }
 
+# This builds a list of possible host names and IPs that other machines might call us by and returns the list
+# in an array reference.
+sub build_local_host_list
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "build_local_host_list" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $ip_list        = $an->System->get_local_ip_addresses();
+	my $possible_hosts = [];
+	push @{$possible_hosts}, $an->hostname;
+	push @{$possible_hosts}, $an->short_hostname;
+	foreach my $device (sort {$a cmp $b} keys %{$ip_list})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ip_list->$device", value1 => $ip_list->{$device}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$possible_hosts}, $ip_list->{$device};
+	}
+	
+	### DEBUG
+	foreach my $host (sort {$a cmp $b} @{$possible_hosts})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "host", value1 => $host, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return($possible_hosts);
+}
 
 # This presents and manages the 'configure' component of Striker.
 sub configure
@@ -276,6 +310,118 @@ sub configure_ssh_local
 	close $file_handle;
 	
 	return($output);
+}
+
+# This takes an array reference of names/IPs and tries to match it to a 'scancore::db::X::host' entry. If it 
+# is found, 'X' is returned.
+sub get_db_id_from_striker_conf
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $hosts    = $parameter->{hosts}    ? $parameter->{hosts}    : "";
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure I have at least one host
+	if (ref($hosts) ne "ARRAY")
+	{
+		# Not an array
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0205", code => 205, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	elsif (@{$hosts} < 1)
+	{
+		# Nothing in the array
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0206", code => 206, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	my $db_id       = "";
+	my $return_code = 255;
+	my $return      = [];
+	my $shell_call  = $an->data->{path}{cat}." ".$an->data->{path}{striker_config};
+	if ($target)
+	{
+		# Remote call.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^scancore::db::(\d+)::host\s*=\s*(.*)$/)
+		{
+			my $this_db_id = $1;
+			my $this_host  = $2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_db_id", value1 => $this_db_id, 
+				name2 => "this_host",  value2 => $this_host, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			foreach my $host (sort {$a cmp $b} @{$hosts})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "host",      value1 => $host, 
+					name2 => "this_host", value2 => $this_host, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($host eq $this_host)
+				{
+					$db_id = $this_db_id;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_id", value1 => $db_id, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+		}
+		last if $db_id;
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "db_id", value1 => $db_id, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($db_id);
 }
 
 # This uses the 'cgi::anvil_uuid' to load the anvil data into the active system variables.
@@ -1646,6 +1792,103 @@ sub update_peers
 	return($updated_peers);
 }
 
+# This uses sed to update a local or remote striker.conf value.
+sub update_striker_conf
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_striker_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $variable = $parameter->{variable} ? $parameter->{variable} : "";
+	my $value    = $parameter->{value}    ? $parameter->{value}    : "";
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "variable", value1 => $variable, 
+		name2 => "target",   value2 => $target, 
+		name3 => "port",     value3 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	# The value might be a password, so it is log level 4
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+		name1 => "value",    value1 => $value, 
+		name2 => "password", value2 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Do I have a variable (values are allowed to be blank)?
+	if (not $variable)
+	{
+		# Woops!
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0204", code => 204, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	### TODO: Should this require root? What about for local calls only?
+	
+	# Clean up the value for use in "".
+	$value =~ s/"/\"/g;
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "value", value1 => $value, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Still alive? Good!
+	my $return_code = 255;
+	my $return      = [];
+	my $shell_call  = $an->data->{path}{sed}." -i.bak \"s/^$variable\\(\\s*\\)=\\(\\s*\\).*/$variable\\1=\\2$value/\" ".$an->data->{path}{striker_config}."; ".$an->data->{path}{'echo'}." return_code:\$1";
+	if ($target)
+	{
+		# Remote call.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+# 		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+# 			target		=>	$target,
+# 			port		=>	$port, 
+# 			password	=>	$password,
+# 			shell_call	=>	$shell_call,
+# 		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+# 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+# 		while(<$file_handle>)
+# 		{
+# 			chomp;
+# 			my $line = $_;
+# 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+# 				name1 => "line", value1 => $line, 
+# 			}, file => $THIS_FILE, line => __LINE__});
+# 			
+# 			push @{$return}, $line;
+# 		}
+# 		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^return_code:(\d+)$/)
+		{
+			$return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($return_code);
+}
 
 
 #############################################################################################################

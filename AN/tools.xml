@@ -942,6 +942,18 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0192"><![CDATA[The 'AN::Tools::ScanCore' module's 'check_ram_usage()' method was called without a program name to check.]]></key>
 		<key name="error_message_0193"><![CDATA[The 'AN::Tools::DB' module's 'connect_to_databases()' method tried to connect to the same database twice: [#!variable!target!#].]]></key>
 		<key name="error_message_0194"><![CDATA[The 'AN::Tools::System' module's 'configure_ipmi()' was called without a password being set.]]></key>
+		<key name="error_message_0195"><![CDATA[The 'AN::Tools::System' module's 'change_shell_user_password()' was called without a user name to change the password for.]]></key>
+		<key name="error_message_0196"><![CDATA[The 'AN::Tools::System' module's 'change_shell_user_password()' wanting to change the password for the user: [#!variable!user!#], but no password was given.]]></key>
+		<key name="error_message_0197"><![CDATA[The 'AN::Tools::System' module's 'change_shell_user_password()' wanting to change the password for the user: [#!variable!user!#], but was called without root privileges.]]></key>
+		<key name="error_message_0198"><![CDATA[The 'AN::Tools::System' module's 'change_apache_password()' wanting to change the password for the user: [#!variable!user!#], but no password was given.]]></key>
+		<key name="error_message_0199"><![CDATA[The 'AN::Tools::System' module's 'change_apache_password()' wanting to change the password for the user: [#!variable!user!#], but was called without root privileges.]]></key>
+		<key name="error_message_0200"><![CDATA[The 'AN::Tools::System' module's 'change_apache_password()' without a user being defined and the: [#!data!path::htpasswd_access!#] file doesn't exist, so no user names could be divined.]]></key>
+		<key name="error_message_0201"><![CDATA[The 'AN::Tools::System' module's 'change_postgresql_password()' was called without a user name to change the password for.]]></key>
+		<key name="error_message_0202"><![CDATA[The 'AN::Tools::System' module's 'change_postgresql_password()' wanting to change the password for the user: [#!variable!user!#], but no password was given.]]></key>
+		<key name="error_message_0203"><![CDATA[The 'AN::Tools::System' module's 'change_postgresql_password()' wanting to change the password for the user: [#!variable!user!#], but was called without root privileges.]]></key>
+		<key name="error_message_0204"><![CDATA[The 'AN::Tools::Striker' module's 'update_striker_conf()' was called without a vairable to work on.]]></key>
+		<key name="error_message_0205"><![CDATA[The 'AN::Tools::Striker' module's 'get_db_id_from_striker_conf()' was called without an array reference of host(s) to match.]]></key>
+		<key name="error_message_0206"><![CDATA[The 'AN::Tools::Striker' module's 'get_db_id_from_striker_conf()' was called with an empty array reference of host(s) to match.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

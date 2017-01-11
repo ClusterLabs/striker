@@ -1581,11 +1581,14 @@ sub ip_from_hostname
 		}
 		
 		# If I still don't have an IP, try to resolve it locally.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ip", value1 => $ip, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not $ip)
 		{
 			# Try to resolve it using 'gethostip'.
 			my $shell_call = $an->data->{path}{gethostip}." -d $host_name";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -1593,11 +1596,12 @@ sub ip_from_hostname
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($an->Validate->is_ipv4({ip => $line}))
 				{
+					$ip = $line;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "ip", value1 => $ip, 
 					}, file => $THIS_FILE, line => __LINE__});

@@ -1208,6 +1208,7 @@
 		<key name="state_0133">Skipped</key>
 		<key name="state_0134"><![CDATA[The service: [<span class="highlight_detail">#!variable!service!#</span>] is in a 'failed' state.<br />Manual intervention is required.]]></key>
 		<key name="state_0135">No active downloads</key>
+		<key name="state_0136">Finished!</key>
 		
 		
 		<!-- Titles used in tables (and options in <select> fields) -->
@@ -3772,7 +3773,7 @@ SUPPORT
 ]]>
 		</key>
 		<key name="scp_message_0002"></key>
-		<key name="scp_message_0003">You have used '--force', the password will change even if nodes are inaccessible.</key>
+		<key name="scp_message_0003">You have used '--force', the password will change even though nodes or dashboards are inaccessible.</key>
 		<key name="scp_message_0004"><![CDATA[
 You have asked to change the passwords on this dashboard. 
 We will update the password for this machine on accessible nodes as well.
@@ -3790,6 +3791,17 @@ Proceed? [y/N]
 		<key name="scp_message_0010">Accessed!</key>
 		<key name="scp_message_0011">Checking access prior to making any changes.</key>
 		<key name="scp_message_0012"><![CDATA[About to change the passwords on the Anvil!: [#!variable!anvil_name!#]]]></key>
+		<key name="scp_message_0013">Starting!</key>
+		<key name="scp_message_0014">Updating the system's 'root' user password: </key>
+		<key name="scp_message_0015">Updating Striker configuration with new ScanCore database password:</key>
+		<key name="scp_message_0016">Updating Striker web interface password: </key>
+		<key name="scp_message_0017">Updating ScanCore databse user's password: </key>
+		<key name="scp_message_0018">Updating the local IPMI admin password (if applicable): </key>
+		<key name="scp_message_0019">- Locally: </key>
+		<key name="scp_message_0020">- Peer dashboard: [#!variable!peer_name!#]: </key>
+		<key name="scp_message_0021">- Updating the nodes in the Anvil!: [#!variable!anvil_name!#]</key>
+		<key name="scp_message_0022">  - Node: [#!variable!node_name!#]: </key>
+		<key name="scp_message_0023">- Attempting to access Striker: [#!variable!peer_name!#]... </key>
 		
 		<!-- errors -->
 		<key name="scp_error_0001">You must be root (or use sudo) to change passwords.</key>
@@ -3800,12 +3812,42 @@ Proceed? [y/N]
 		<key name="scp_error_0006">The password is too short. The password needs to be at least: [#!data!password::minimum_length!#] characters long.</key>
 		<key name="scp_error_0007">Both nodes must be accessible in order to change the Anvil! password.</key>
 		<key name="scp_error_0008">The requested Anvil!: [#!variable!anvil_name!#] was not found.</key>
+		<key name="scp_error_0009">Failed to connect to the local ScanCore database and '--local' requested.</key>
+		<key name="scp_error_0010">One or more nodes are offline and '--force' wasn't used.</key>
+		<key name="scp_error_0011">One or more Striker peers are offline and '--force' wasn't used.</key>
 		
 		<!-- warnings -->
-		<key name="scp_warning_0001">The password is too short, but '--force' was used. Proceeding.</key>
-		<key name="scp_warning_0002">The password is longer than: [#!data!password::truncate::ipmi!#], so if we change the password on IPMI, we will truncated it to: [#!variable!ipmi_password!#].</key>
+		<key name="scp_warning_0001">[ Warning ] - The password is too short, but '--force' was used. Proceeding.</key>
+		<key name="scp_warning_0002">
+*******************************************************************************
+[ Warning ] - The password is longer than: [#!data!password::truncate::ipmi!#], so if we change the password on IPMI, we will truncated it to: [#!variable!ipmi_password!#].
+*******************************************************************************
+		</key>
 		<key name="scp_warning_0003">No access!</key>
-		
+		<key name="scp_warning_0004">
+*******************************************************************************
+[ Warning ] - Expected the return code '0' but got: [#!variable!rc!#].
+              You will need to manually update the password if the new one doesn't work.
+*******************************************************************************
+		</key>
+		<key name="scp_warning_0005">
+*******************************************************************************
+[ Warning ] - The peer: [#!variable!peer!#] is not accessible. 
+              You will need to manually update the password for this dashboard.
+*******************************************************************************
+		</key>
+		<key name="scp_warning_0006">
+*******************************************************************************
+[ Warning ] - The node appears to be offline at this time.
+	      You will need to manually update the password if the new one doesn't work.
+*******************************************************************************
+		</key>
+		<key name="scp_warning_0007"><![CDATA[
+*******************************************************************************
+[ Warning ] - Failed to find a 'scancore::db::X::host = <this_host>'.
+              You will need to manually update the password if the new one doesn't work.
+*******************************************************************************
+		]]></key>
 		
 	</lang>
 

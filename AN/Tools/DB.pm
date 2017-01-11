@@ -191,6 +191,11 @@ sub connect_to_databases
 		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# This will be used in a few cases where the local DB ID is needed (or the lack of it being set 
+	# showing we failed to connect to the local DB).
+	$an->data->{sys}{local_db_id} = "";
+	
+	# Now setup or however-many connections
 	my $seen_connections       = [];
 	my $connections            = 0;
 	my $failed_connections     = [];
@@ -378,8 +383,9 @@ sub connect_to_databases
 			    ($host eq "127.0.0.1")         or 
 			    (not $an->data->{sys}{read_db_id}))
 			{
-				$an->data->{sys}{read_db_id} = $id;
-				$an->data->{sys}{use_db_fh}  = $an->data->{dbh}{$id};
+				$an->data->{sys}{read_db_id}  = $id;
+				$an->data->{sys}{local_db_id} = $id;
+				$an->data->{sys}{use_db_fh}   = $an->data->{dbh}{$id};
 				
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 

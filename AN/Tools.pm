@@ -615,7 +615,6 @@ sub _set_paths
 	$an->data->{path}{postfix_relay_file}     = "/etc/postfix/relay_password";
 	$an->data->{path}{postmap}                = "/usr/sbin/postmap";
 	$an->data->{path}{pgrep}                  = "/usr/bin/pgrep";
-	$an->data->{path}{psql}                   = "/usr/bin/psql";
 	$an->data->{path}{pmap}                   = "/usr/bin/pmap";
 	$an->data->{path}{poweroff}               = "/sbin/poweroff";
 	$an->data->{path}{ps}                     = "/bin/ps";

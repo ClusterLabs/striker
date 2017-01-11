@@ -990,6 +990,54 @@ The 'AN::Tools::DB' module's 'connect_to_databases()' method tried to connect to
 
 The 'AN::Tools::System' module's 'configure_ipmi()' was called without a password being set.
 
+=head2 C<195>
+
+The 'AN::Tools::System' module's 'change_shell_user_password()' was called without a user name to change the password for.
+
+=head2 C<196>
+
+The 'AN::Tools::System' module's 'change_shell_user_password()' was called without a new password being set.
+
+=head2 C<197>
+
+The 'AN::Tools::System' module's 'change_shell_user_password()' was called without root privileges.
+
+=head2 C<198>
+
+The 'AN::Tools::System' module's 'change_apache_password()' was called without a new password being set.
+
+=head2 C<199>
+
+The 'AN::Tools::System' module's 'change_apache_password()' was called without root privileges.
+
+=head2 C<200>
+
+The 'AN::Tools::System' module's 'change_apache_password()' without a user being defined and the htpasswd users file doesn't exist, so no user names could be divined.
+
+=head2 C<201>
+
+The 'AN::Tools::System' module's 'change_postgresql_password()' was called without a user name to change the password for.
+
+=head2 C<202>
+
+The 'AN::Tools::System' module's 'change_postgresql_password()' was called without a new password being set.
+
+=head2 C<203>
+
+The 'AN::Tools::System' module's 'change_postgresql_password()' was called without root privileges.
+
+=head2 C<204>
+
+The 'AN::Tools::Striker' module's 'update_striker_conf()' was called without a vairable to work on.
+
+=head2 C<205>
+
+The 'AN::Tools::Striker' module's 'get_db_id_from_striker_conf()' was called without an array reference of host(s) to match.
+
+=head2 C<206>
+
+The 'AN::Tools::Striker' module's 'get_db_id_from_striker_conf()' was called with an empty array reference of host(s) to match.
+
 
 =head2 C<999>
 

@@ -30,6 +30,7 @@ my $THIS_FILE = "ScanCore.pm";
 # get_recipients
 # get_servers
 # get_smtp
+# get_striker_peers
 # host_state
 # insert_or_update_anvils
 # insert_or_update_dr_jobs
@@ -1452,6 +1453,88 @@ WHERE
 	}
 	
 	return($return);
+}
+
+# This gets information on Striker peers.
+sub get_striker_peers
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_striker_peers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Loop through the Striker peers that we know of and test access to each.
+	my $return_code = 0;
+	my $local_db_id = "";
+	if ($an->data->{sys}{local_db_id})
+	{
+		$local_db_id = $an->data->{sys}{local_db_id};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "local_db_id", value1 => $local_db_id, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		my $possible_hosts = $an->Striker->build_local_host_list();
+		   $local_db_id    = $an->Striker->get_db_id_from_striker_conf({hosts => $possible_hosts});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "local_db_id", value1 => $local_db_id, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	foreach my $db_id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		next if (($local_db_id) && ($db_id eq $local_db_id));
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "db_id", value1 => $db_id, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		### TODO: We should have a way to know if we need a non-standard port to SSH into a 
+		###       peer's dashboard...
+		# Try to connect.
+		my $target   =  $an->data->{scancore}{db}{$db_id}{host};
+			$target   =~ s/:.*//;
+		my $port     =  22;
+		my $password =  $an->data->{scancore}{db}{$db_id}{password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target", value1 => $target, 
+			name2 => "port",   value2 => $port, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $access =  $an->Check->access({
+				target   => $target,
+				port     => $port,
+				password => $password,
+			});
+		
+		# Record this
+		$an->data->{sys}{dashboard}{$target}{use_ip}   = $target;
+		$an->data->{sys}{dashboard}{$target}{use_port} = $port; 
+		$an->data->{sys}{dashboard}{$target}{password} = $password; 
+		$an->data->{sys}{dashboard}{$target}{online}   = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "access",                              value1 => $access, 
+			name2 => "sys::dashboard::${target}::use_ip",   value2 => $an->data->{sys}{dashboard}{$target}{use_ip}, 
+			name3 => "sys::dashboard::${target}::use_port", value3 => $an->data->{sys}{dashboard}{$target}{use_port}, 
+			name4 => "sys::dashboard::${target}::online",   value4 => $an->data->{sys}{dashboard}{$target}{online}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::dashboard::${target}::password", value1 => $an->data->{sys}{dashboard}{$target}{password}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($access)
+		{
+			# Woot!
+			$an->data->{sys}{dashboard}{$target}{online} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::dashboard::${target}::online", value1 => $an->data->{sys}{dashboard}{$target}{online}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
 }
 
 # Returns (and sets, if requested) the health of the target.
