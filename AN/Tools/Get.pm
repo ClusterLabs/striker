@@ -1502,7 +1502,7 @@ sub ip_from_hostname
 	
 	my $ip        = "";
 	my $host_name = $parameter->{host_name} ? $parameter->{host_name} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "host_name", value1 => $host_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1513,28 +1513,28 @@ sub ip_from_hostname
 	}
 	
 	# First, is this one of the nodes?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "sys::anvil::node1::name", value1 => $an->data->{sys}{anvil}{node1}{name}, 
 		name2 => "sys::anvil::node2::name", value2 => $an->data->{sys}{anvil}{node2}{name}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{sys}{anvil}{node1}{name}) && ($host_name eq $an->data->{sys}{anvil}{node1}{name}))
 	{
 		# If the 'use_ip' has been set, return that. Otherwise return the bcn_ip.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "sys::anvil::node1::use_ip", value1 => $an->data->{sys}{anvil}{node1}{use_ip}, 
 			name2 => "sys::anvil::node1::bcn_ip", value2 => $an->data->{sys}{anvil}{node1}{bcn_ip}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{sys}{anvil}{node1}{use_ip})
 		{
 			$ip = $an->data->{sys}{anvil}{node1}{use_ip};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "ip", value1 => $ip, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			$ip = $an->data->{sys}{anvil}{node1}{bcn_ip};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "ip", value1 => $ip, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1542,21 +1542,21 @@ sub ip_from_hostname
 	elsif (($an->data->{sys}{anvil}{node2}{name}) && ($host_name eq $an->data->{sys}{anvil}{node2}{name}))
 	{
 		# If the 'use_ip' has been set, return that. Otherwise return the bcn_ip.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "sys::anvil::node2::use_ip", value1 => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			name2 => "sys::anvil::node2::bcn_ip", value2 => $an->data->{sys}{anvil}{node2}{bcn_ip}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{sys}{anvil}{node2}{use_ip})
 		{
 			$ip = $an->data->{sys}{anvil}{node2}{use_ip};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "ip", value1 => $ip, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			$ip = $an->data->{sys}{anvil}{node2}{bcn_ip};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "ip", value1 => $ip, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1567,28 +1567,28 @@ sub ip_from_hostname
 		foreach my $hash_ref (@{$node_data})
 		{
 			my $node_name = $hash_ref->{host_name};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_name", value1 => $node_name, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($node_name eq $host_name)
 			{
 				# Match! Return the BCN IP.
 				$ip = $hash_ref->{node_bcn};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "ip", value1 => $ip, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		
 		# If I still don't have an IP, try to resolve it locally.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ip", value1 => $ip, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $ip)
 		{
 			# Try to resolve it using 'gethostip'.
 			my $shell_call = $an->data->{path}{gethostip}." -d $host_name";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -1596,13 +1596,13 @@ sub ip_from_hostname
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($an->Validate->is_ipv4({ip => $line}))
 				{
 					$ip = $line;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "ip", value1 => $ip, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1611,7 +1611,7 @@ sub ip_from_hostname
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "ip", value1 => $ip, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($ip);

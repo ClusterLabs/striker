@@ -1469,7 +1469,7 @@ sub get_striker_peers
 	if ($an->data->{sys}{local_db_id})
 	{
 		$local_db_id = $an->data->{sys}{local_db_id};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "local_db_id", value1 => $local_db_id, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1477,7 +1477,7 @@ sub get_striker_peers
 	{
 		my $possible_hosts = $an->Striker->build_local_host_list();
 		   $local_db_id    = $an->Striker->get_db_id_from_striker_conf({hosts => $possible_hosts});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "local_db_id", value1 => $local_db_id, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1485,7 +1485,7 @@ sub get_striker_peers
 	foreach my $db_id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		next if (($local_db_id) && ($db_id eq $local_db_id));
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "db_id", value1 => $db_id, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1496,7 +1496,7 @@ sub get_striker_peers
 			$target   =~ s/:.*//;
 		my $port     =  22;
 		my $password =  $an->data->{scancore}{db}{$db_id}{password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target", value1 => $target, 
 			name2 => "port",   value2 => $port, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1515,7 +1515,7 @@ sub get_striker_peers
 		$an->data->{sys}{dashboard}{$target}{use_port} = $port; 
 		$an->data->{sys}{dashboard}{$target}{password} = $password; 
 		$an->data->{sys}{dashboard}{$target}{online}   = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "access",                              value1 => $access, 
 			name2 => "sys::dashboard::${target}::use_ip",   value2 => $an->data->{sys}{dashboard}{$target}{use_ip}, 
 			name3 => "sys::dashboard::${target}::use_port", value3 => $an->data->{sys}{dashboard}{$target}{use_port}, 
@@ -1528,7 +1528,7 @@ sub get_striker_peers
 		{
 			# Woot!
 			$an->data->{sys}{dashboard}{$target}{online} = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::dashboard::${target}::online", value1 => $an->data->{sys}{dashboard}{$target}{online}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}

@@ -65,14 +65,14 @@ sub change_apache_password
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "change_apache_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "change_apache_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $user         = $parameter->{user}         ? $parameter->{user}         : "";
 	my $new_password = $parameter->{new_password} ? $parameter->{new_password} : "";
 	my $target       = $parameter->{target}       ? $parameter->{target}       : "";
 	my $port         = $parameter->{port}         ? $parameter->{port}         : "";
 	my $password     = $parameter->{password}     ? $parameter->{password}     : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "user",   value1 => $user, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
@@ -116,7 +116,7 @@ fi;";
 	if ($target)
 	{
 		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -130,7 +130,7 @@ fi;";
 	else
 	{
 		# Local call
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -148,7 +148,7 @@ fi;";
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -188,7 +188,7 @@ fi;";
 	}
 	
 	# If we're creating the file, make sure we have at least one user.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "create_file", value1 => $create_file, 
 		name2 => "user_count",  value2 => $user_count, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -199,67 +199,74 @@ fi;";
 		return("");
 	}
 	
-	# Clean up the password for use in ''.
-	$new_password =~ s/'/\'/g;
+	# Clean up the password for use in "".
+	$new_password =~ s/"/\\\"/g;
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "new_password", value1 => $new_password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Still alive? Good!
-	$return      = [];
-	$shell_call  = $an->data->{path}{htpasswd}." -b '$new_password'; ".$an->data->{path}{'echo'}." return_code:\$1";
-	if ($target)
+	my $changed_users = {};
+	foreach my $user (sort {$a cmp $b} keys %{$to_update})
 	{
-		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "shell_call", value2 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-# 		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-# 			target		=>	$target,
-# 			port		=>	$port, 
-# 			password	=>	$password,
-# 			shell_call	=>	$shell_call,
-# 		});
-	}
-	else
-	{
-		# Local call
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-# 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-# 		while(<$file_handle>)
-# 		{
-# 			chomp;
-# 			my $line = $_;
-# 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-# 				name1 => "line", value1 => $line, 
-# 			}, file => $THIS_FILE, line => __LINE__});
-# 			
-# 			push @{$return}, $line;
-# 		}
-# 		close $file_handle;
-	}
-	foreach my $line (@{$return})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /^return_code:(\d+)$/)
+		$changed_users->{$user} = 255;
+		   
+		# Still alive? Good!
+		my $return     = [];
+		my $shell_call = $an->data->{path}{htpasswd}." -b ".$an->data->{path}{htpasswd_access}." $user \"$new_password\" &>/dev/null; ".$an->data->{path}{'echo'}." return_code:\$?";
+		if ($create_file)
 		{
-			$return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "return_code", value1 => $return_code, 
+			$shell_call = $an->data->{path}{htpasswd}." -cb \"$new_password\" &>/dev/null; ".$an->data->{path}{'echo'}." return_code:\$?";
+		}
+		if ($target)
+		{
+			# Remote call.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+		}
+		else
+		{
+			# Local call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$return}, $line;
+			}
+			close $file_handle;
+		}
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^return_code:(\d+)$/)
+			{
+				$changed_users->{$user} = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "changed_users->$user", value1 => $changed_users->{$user}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "return_code", value1 => $return_code, 
-	}, file => $THIS_FILE, line => __LINE__});
-	return($return_code);
+	return($changed_users);
 }
 
 # This changes the password for a postgres user account.
@@ -310,8 +317,9 @@ sub change_postgresql_password
 		return("");
 	}
 	
-	# Clean up the password for use in ''.
-	$new_password =~ s/'/\'/g;
+	# Clean up the password for use in "".
+	$new_password =~ s/'/''/g;
+	$new_password =~ s/"/\\\"/g;
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "new_password", value1 => $new_password, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -320,7 +328,7 @@ sub change_postgresql_password
 	# Still alive? Good!
 	my $return_code = 255;
 	my $return      = [];
-	my $shell_call  = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." template1 -c \\\"ALTER ROLE $user WITH PASSWORD '$user';\\\"\"; ".$an->data->{path}{'echo'}." return_code:\$1";
+	my $shell_call  = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." template1 -c \\\"ALTER ROLE $user WITH PASSWORD '${new_password}';\\\"\"; ".$an->data->{path}{'echo'}." return_code:\$?";
 	if ($target)
 	{
 		# Remote call.
@@ -328,12 +336,12 @@ sub change_postgresql_password
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-# 		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-# 			target		=>	$target,
-# 			port		=>	$port, 
-# 			password	=>	$password,
-# 			shell_call	=>	$shell_call,
-# 		});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
 	}
 	else
 	{
@@ -341,18 +349,18 @@ sub change_postgresql_password
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-# 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-# 		while(<$file_handle>)
-# 		{
-# 			chomp;
-# 			my $line = $_;
-# 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-# 				name1 => "line", value1 => $line, 
-# 			}, file => $THIS_FILE, line => __LINE__});
-# 			
-# 			push @{$return}, $line;
-# 		}
-# 		close $file_handle;
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
 	}
 	foreach my $line (@{$return})
 	{
@@ -423,8 +431,8 @@ sub change_shell_user_password
 		return("");
 	}
 	
-	# Clean up the password for use in ''.
-	$new_password =~ s/'/\'/g;
+	# Clean up the password for use in "".
+	$new_password =~ s/"/\\\"/g;
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "new_password", value1 => $new_password, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -432,7 +440,7 @@ sub change_shell_user_password
 	# Still alive? Good!
 	my $return_code = 255;
 	my $return      = [];
-	my $shell_call  = $an->data->{path}{'echo'}." '$new_password' | ".$an->data->{path}{passwd}." $user --stdin; ".$an->data->{path}{'echo'}." return_code:\$1";
+	my $shell_call  = $an->data->{path}{'echo'}." \"$new_password\" | ".$an->data->{path}{passwd}." $user --stdin; ".$an->data->{path}{'echo'}." return_code:\$?";
 	if ($target)
 	{
 		# Remote call.
@@ -440,12 +448,12 @@ sub change_shell_user_password
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-# 		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-# 			target		=>	$target,
-# 			port		=>	$port, 
-# 			password	=>	$password,
-# 			shell_call	=>	$shell_call,
-# 		});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
 	}
 	else
 	{
@@ -453,18 +461,18 @@ sub change_shell_user_password
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-# 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-# 		while(<$file_handle>)
-# 		{
-# 			chomp;
-# 			my $line = $_;
-# 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-# 				name1 => "line", value1 => $line, 
-# 			}, file => $THIS_FILE, line => __LINE__});
-# 			
-# 			push @{$return}, $line;
-# 		}
-# 		close $file_handle;
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
 	}
 	foreach my $line (@{$return})
 	{
@@ -481,6 +489,9 @@ sub change_shell_user_password
 		}
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code);
 }
 
@@ -628,7 +639,7 @@ sub configure_ipmi
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state,
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($state eq "7")
+	if ($state eq "undefined:7")
 	{
 		# IPMI not found
 		$return_code = 2;
@@ -806,12 +817,12 @@ sub configure_ipmi
 						name1 => "target",     value1 => $target,
 						name2 => "shell_call", value2 => $shell_call,
 					}, file => $THIS_FILE, line => __LINE__});
-# 					(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-# 						target		=>	$target,
-# 						port		=>	$port, 
-# 						password	=>	$password,
-# 						shell_call	=>	$shell_call,
-# 					});
+					(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+						target		=>	$target,
+						port		=>	$port, 
+						password	=>	$password,
+						shell_call	=>	$shell_call,
+					});
 				}
 				else
 				{
@@ -819,18 +830,18 @@ sub configure_ipmi
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "shell_call", value1 => $shell_call,
 					}, file => $THIS_FILE, line => __LINE__});
-# 					open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-# 					while(<$file_handle>)
-# 					{
-# 						chomp;
-# 						my $line = $_;
-# 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-# 							name1 => "line", value1 => $line, 
-# 						}, file => $THIS_FILE, line => __LINE__});
-# 						
-# 						push @{$return}, $line;
-# 					}
-# 					close $file_handle;
+					open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line = $_;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						push @{$return}, $line;
+					}
+					close $file_handle;
 				}
 				foreach my $line (@{$return})
 				{
@@ -851,12 +862,12 @@ sub configure_ipmi
 						name1 => "target",     value1 => $target,
 						name2 => "shell_call", value2 => $shell_call,
 					}, file => $THIS_FILE, line => __LINE__});
-# 					(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-# 						target		=>	$target,
-# 						port		=>	$port, 
-# 						password	=>	$password,
-# 						shell_call	=>	$shell_call,
-# 					});
+					(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+						target		=>	$target,
+						port		=>	$port, 
+						password	=>	$password,
+						shell_call	=>	$shell_call,
+					});
 				}
 				else
 				{
@@ -864,18 +875,18 @@ sub configure_ipmi
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "shell_call", value1 => $shell_call,
 					}, file => $THIS_FILE, line => __LINE__});
-# 					open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-# 					while(<$file_handle>)
-# 					{
-# 						chomp;
-# 						my $line = $_;
-# 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-# 							name1 => "line", value1 => $line, 
-# 						}, file => $THIS_FILE, line => __LINE__});
-# 						
-# 						push @{$return}, $line;
-# 					}
-# 					close $file_handle;
+					open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line = $_;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						push @{$return}, $line;
+					}
+					close $file_handle;
 				}
 				foreach my $line (@{$return})
 				{
@@ -912,12 +923,12 @@ sub configure_ipmi
 							name1 => "target",     value1 => $target,
 							name2 => "shell_call", value2 => $shell_call,
 						}, file => $THIS_FILE, line => __LINE__});
-# 						(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-# 							target		=>	$target,
-# 							port		=>	$port, 
-# 							password	=>	$password,
-# 							shell_call	=>	$shell_call,
-# 						});
+						(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+							target		=>	$target,
+							port		=>	$port, 
+							password	=>	$password,
+							shell_call	=>	$shell_call,
+						});
 					}
 					else
 					{
@@ -925,18 +936,18 @@ sub configure_ipmi
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "shell_call", value1 => $shell_call,
 						}, file => $THIS_FILE, line => __LINE__});
-# 						open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-# 						while(<$file_handle>)
-# 						{
-# 							chomp;
-# 							my $line = $_;
-# 							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-# 								name1 => "line", value1 => $line, 
-# 							}, file => $THIS_FILE, line => __LINE__});
-# 							
-# 							push @{$return}, $line;
-# 						}
-# 						close $file_handle;
+						open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+						while(<$file_handle>)
+						{
+							chomp;
+							my $line = $_;
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+								name1 => "line", value1 => $line, 
+							}, file => $THIS_FILE, line => __LINE__});
+							
+							push @{$return}, $line;
+						}
+						close $file_handle;
 					}
 					foreach my $line (@{$return})
 					{
@@ -982,7 +993,7 @@ sub configure_ipmi
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code,
 	}, file => $THIS_FILE, line => __LINE__});
-	return($return);
+	return($return_code);
 }
 
 # This checks/sets whether a daemon is set to start on boot or not.
@@ -1105,6 +1116,7 @@ sub daemon_boot_config
 	return($state);
 }
 
+### TODO: Shouldn't the s/'/\'/ be s/'/\\\'/ ?
 # This uses 'anvil-run-jobs' to run a job in the future (or just to run it in the background)
 sub delayed_run
 {
@@ -1373,7 +1385,7 @@ sub get_daemon_state
 	# Check if the daemon is running currently.
 	my $return     = [];
 	my $i_am_a     = $an->Get->what_am_i();
-	my $shell_call = $an->data->{path}{initd}."/$daemon status; ".$an->data->{path}{echo}." return_code:\$?";
+	my $shell_call = $an->data->{path}{initd}."/$daemon status &>/dev/null; ".$an->data->{path}{echo}." return_code:\$?";
 	if ($target)
 	{
 		# Remote call.

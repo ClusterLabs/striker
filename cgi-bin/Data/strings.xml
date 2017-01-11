@@ -3736,12 +3736,6 @@ SWITCHES
 
 	This is used to change the password on an Anvil! node pair. It will
 	change the root and ricci user passwords on both nodes. 
- 
- --local
- 
-	This is used to change the local dashboard's password. It will change
-	the root user's password, the Striker web interface password and the 
-	ScanCore database password.
 
  --force
 	
@@ -3757,13 +3751,24 @@ SWITCHES
 	
 	This switch will NOT override changing an Anvil! password with a node
 	being offline.
+ 
+ --local
+ 
+	This is used to change the local dashboard's password. It will change
+	the root user's password, the Striker web interface password and the 
+	ScanCore database password.
 
---password <new_password>
+ --password <new_password>
 	
 	This is the new password that will be set. 
 	
 	NOTE: You must be aware of standard shell escaping! See:
 	      http://www.tldp.org/LDP/abs/html/escapingsection.html
+
+ -y, --yes
+ 
+	Don't prompt for confirmation before proceeding.
+
 
 SUPPORT
 
@@ -3791,10 +3796,10 @@ Proceed? [y/N]
 		<key name="scp_message_0010">Accessed!</key>
 		<key name="scp_message_0011">Checking access prior to making any changes.</key>
 		<key name="scp_message_0012"><![CDATA[About to change the passwords on the Anvil!: [#!variable!anvil_name!#]]]></key>
-		<key name="scp_message_0013">Starting!</key>
+		<key name="scp_message_0013"></key>
 		<key name="scp_message_0014">Updating the system's 'root' user password: </key>
 		<key name="scp_message_0015">Updating Striker configuration with new ScanCore database password:</key>
-		<key name="scp_message_0016">Updating Striker web interface password: </key>
+		<key name="scp_message_0016">Updating Striker web interface password for: [#!variable!user!#]: </key>
 		<key name="scp_message_0017">Updating ScanCore databse user's password: </key>
 		<key name="scp_message_0018">Updating the local IPMI admin password (if applicable): </key>
 		<key name="scp_message_0019">- Locally: </key>
@@ -3802,6 +3807,7 @@ Proceed? [y/N]
 		<key name="scp_message_0021">- Updating the nodes in the Anvil!: [#!variable!anvil_name!#]</key>
 		<key name="scp_message_0022">  - Node: [#!variable!node_name!#]: </key>
 		<key name="scp_message_0023">- Attempting to access Striker: [#!variable!peer_name!#]... </key>
+		<key name="scp_message_0024">Proceeding without prompt.</key>
 		
 		<!-- errors -->
 		<key name="scp_error_0001">You must be root (or use sudo) to change passwords.</key>
@@ -3824,25 +3830,25 @@ Proceed? [y/N]
 *******************************************************************************
 		</key>
 		<key name="scp_warning_0003">No access!</key>
-		<key name="scp_warning_0004">
+		<key name="scp_warning_0004">Problem!
 *******************************************************************************
 [ Warning ] - Expected the return code '0' but got: [#!variable!rc!#].
               You will need to manually update the password if the new one doesn't work.
 *******************************************************************************
 		</key>
-		<key name="scp_warning_0005">
+		<key name="scp_warning_0005">Problem!
 *******************************************************************************
 [ Warning ] - The peer: [#!variable!peer!#] is not accessible. 
               You will need to manually update the password for this dashboard.
 *******************************************************************************
 		</key>
-		<key name="scp_warning_0006">
+		<key name="scp_warning_0006">Problem!
 *******************************************************************************
 [ Warning ] - The node appears to be offline at this time.
 	      You will need to manually update the password if the new one doesn't work.
 *******************************************************************************
 		</key>
-		<key name="scp_warning_0007"><![CDATA[
+		<key name="scp_warning_0007"><![CDATA[Problem!
 *******************************************************************************
 [ Warning ] - Failed to find a 'scancore::db::X::host = <this_host>'.
               You will need to manually update the password if the new one doesn't work.
