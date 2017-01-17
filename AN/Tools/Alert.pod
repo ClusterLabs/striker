@@ -1038,6 +1038,82 @@ The 'AN::Tools::Striker' module's 'get_db_id_from_striker_conf()' was called wit
 
 The 'AN::Tools::Striker' module's 'get_db_id_from_striker_conf()' was called with an empty array reference of host(s) to match.
 
+=head2 C<207>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called with an Anvil! UUID string that wasn't actually a UUID.
+
+=head2 C<208>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called without an Anvil! UUID being passed in.
+
+=head2 C<209>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called without a task to perform.
+
+=head2 C<210>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called with an invalid task.
+
+=head2 C<211>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called with a valid task, but no sub-task.
+
+=head2 C<212>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change or set the shutdown delay for a server, but no time was given.
+
+=head2 C<213>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change or set the shutdown delay for a server, but the time was given wasn't a whole number.
+
+=head2 C<214>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to manipulate a server, but an invalid sub-task was requested.
+
+=head2 C<215>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to manipulate a server, but no sub-task was requested.
+
+=head2 C<216>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called with an Anvil! UUID that doesn't match any known Anvil! system.
+
+=head2 C<217>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the node with the fence delay, but no node was given.
+
+=head2 C<218>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the node with the fence delay, but the node name given didn't match either node in the Anvil! system.
+
+=head2 C<219>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password used for a fence device, but no device name was given.
+
+=head2 C<220>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password used for a fence device, but no new password was given.
+
+=head2 C<221>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to manipulate a fence device, but an invalid sub-task was requested.
+
+=head2 C<222>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to manipulate a fence device, but no sub-task was requested.
+
+=head2 C<223>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called, but one or both nodes is not accessible.
+
+=head2 C<224>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called, but one or both nodes is not a member of the cluster stack (cman isn't running).
+
+=head2 C<225>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password of a fence device for a node, but the node name given didn't match either node in the Anvil! system.
+
 
 =head2 C<999>
 

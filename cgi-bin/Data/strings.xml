@@ -3796,7 +3796,7 @@ Proceed? [y/N]
 		<key name="scp_message_0010">Accessed!</key>
 		<key name="scp_message_0011">Checking access prior to making any changes.</key>
 		<key name="scp_message_0012"><![CDATA[About to change the passwords on the Anvil!: [#!variable!anvil_name!#]]]></key>
-		<key name="scp_message_0013"></key>
+		<key name="scp_message_0013">Updating the IPMI password on the node: [#!variable!node_name!#]: </key>
 		<key name="scp_message_0014">Updating the system's 'root' user password: </key>
 		<key name="scp_message_0015">Updating Striker configuration with new ScanCore database password:</key>
 		<key name="scp_message_0016">Updating Striker web interface password for: [#!variable!user!#]: </key>
@@ -3821,6 +3821,7 @@ Proceed? [y/N]
 		<key name="scp_error_0009">Failed to connect to the local ScanCore database and '--local' requested.</key>
 		<key name="scp_error_0010">One or more nodes are offline and '--force' wasn't used.</key>
 		<key name="scp_error_0011">One or more Striker peers are offline and '--force' wasn't used.</key>
+		<key name="scp_error_0012">Both nodes must be online to change an Anvil! system's password.</key>
 		
 		<!-- warnings -->
 		<key name="scp_warning_0001">[ Warning ] - The password is too short, but '--force' was used. Proceeding.</key>
@@ -3854,6 +3855,7 @@ Proceed? [y/N]
               You will need to manually update the password if the new one doesn't work.
 *******************************************************************************
 		]]></key>
+		<key name="scp_warning_0008">[ Warning ] - The node: [#!variable!node_name!#] is not accessible!</key>
 		
 	</lang>
 

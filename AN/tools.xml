@@ -954,6 +954,25 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0204"><![CDATA[The 'AN::Tools::Striker' module's 'update_striker_conf()' was called without a vairable to work on.]]></key>
 		<key name="error_message_0205"><![CDATA[The 'AN::Tools::Striker' module's 'get_db_id_from_striker_conf()' was called without an array reference of host(s) to match.]]></key>
 		<key name="error_message_0206"><![CDATA[The 'AN::Tools::Striker' module's 'get_db_id_from_striker_conf()' was called with an empty array reference of host(s) to match.]]></key>
+		<key name="error_message_0207"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called without an invalid Anvil! UUID string: [#!variable!anvil_uuid!#].]]></key>
+		<key name="error_message_0208"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called without an Anvil! UUID being passed in.]]></key>
+		<key name="error_message_0209"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called without a task to perform.]]></key>
+		<key name="error_message_0210"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called with the task: [#!variable!task!#], which is not a valid task.]]></key>
+		<key name="error_message_0211"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called with the task: [#!variable!task!#], but without a sub-task.]]></key>
+		<key name="error_message_0212"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change or set the shutdown delay for the server: [#!variable!server!#], but no time was given.]]></key>
+		<key name="error_message_0213"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change or set the shutdown delay for the server: [#!variable!server!#], but the requested shutdown time: [#!variable!timeout!#] wasn't a whole number.]]></key>
+		<key name="error_message_0214"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to work on the server: [#!variable!server!#], but the requested sub-task: [#!variable!subtask!#] isn't valid.]]></key>
+		<key name="error_message_0215"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to work on the server: [#!variable!server!#], but no sub-task was requested.]]></key>
+		<key name="error_message_0216"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called with an Anvil! UUID: [#!variable!anvil_uuid!#] that doesn't match any known Anvil! system.]]></key>
+		<key name="error_message_0217"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change which node has the fence delay, but not node was specified.]]></key>
+		<key name="error_message_0218"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change which node has the fence delay to: [#!variable!node!#], but that node doesn't match either node in the Anvil! system: [#!variable!anvil!#]; node 1 is: [#!variable!node1_name!#] and node 2 is: [#!variable!node2_name!#].]]></key>
+		<key name="error_message_0219"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password used for a fence device, but no device name was given.]]></key>
+		<key name="error_message_0220"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password used for the: [#!variable!device!#] fence device, but no new password was given.]]></key>
+		<key name="error_message_0221"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to work on a fence device, but the requested sub-task: [#!variable!subtask!#] isn't valid.]]></key>
+		<key name="error_message_0222"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to work on a fence device, but no sub-task was requested.]]></key>
+		<key name="error_message_0223"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called, but one or both nodes is not accessible.]]></key>
+		<key name="error_message_0224"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called, but one or both nodes is not a member of the cluster stack (cman isn't running).]]></key>
+		<key name="error_message_0225"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password for the fence device: [#!variable!device!#] on the node: [#!variable!node!#], but that node doesn't match either node in the Anvil! system: [#!variable!anvil!#]; node 1 is: [#!variable!node1_name!#] and node 2 is: [#!variable!node2_name!#].]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

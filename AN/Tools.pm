@@ -659,7 +659,7 @@ sub _set_paths
 	
 	# Text files
 	$an->data->{path}{htpasswd_access}  = "/var/www/home/htpasswd";
-	$an->data->{path}{cman_config}      = "/etc/cluster/cluster.conf";
+	$an->data->{path}{cman_config}      = "/etc/cluster/cluster.conf";	# TODO: Phase this out
 	$an->data->{path}{cluster_conf}     = "/etc/cluster/cluster.conf";
 	$an->data->{path}{dhcpd_conf}       = "/etc/dhcp/dhcpd.conf";
 	$an->data->{path}{etc_fstab}        = "/etc/fstab";

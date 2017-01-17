@@ -22,6 +22,7 @@ my $THIS_FILE = "Cman.pm";
 # peer_hostname
 # peer_short_hostname
 # stop_server
+# update_cluster_conf
 # withdraw_node
 # _read_cluster_conf
 # _recover_rgmanager
@@ -1470,6 +1471,560 @@ WHERE
 	}
 	
 	return($output);
+}
+
+# This updates cluster.conf in a limited set of ways. It can change which node has the fence delay, the 
+# shutdown timer for a given server or change a fence device password. It will validate and then push the
+# changes. 
+sub update_cluster_conf
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_uuid   = $parameter->{anvil_uuid}   ? $parameter->{anvil_uuid}   : "";
+	my $task         = $parameter->{task}         ? $parameter->{task}         : "";
+	my $subtask      = $parameter->{subtask}      ? $parameter->{subtask}      : "";
+	my $server       = $parameter->{server}       ? $parameter->{server}       : "";
+	my $device       = $parameter->{device}       ? $parameter->{device}       : "";
+	my $node         = $parameter->{node}         ? $parameter->{node}         : "";
+	my $timeout      = $parameter->{timeout}      ? $parameter->{timeout}      : "";
+	my $new_password = $parameter->{new_password} ? $parameter->{new_password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid, 
+		name2 => "task",       value2 => $task, 
+		name3 => "subtask",    value3 => $subtask, 
+		name4 => "server",     value4 => $server, 
+		name5 => "device",     value5 => $device, 
+		name6 => "timeout",    value6 => $timeout, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "new_password", value1 => $new_password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# The current default shutdown timeout is 120 seconds. I doubt this will ever change, but...
+	my $default_timeout     = 120;
+	my $default_fence_delay = 15;
+	
+	# Return codes:
+	# 0  = Successfully updated the config.
+	# 1  = Did not need to update the config.
+	# 2  = Something went wrong. Details will be reported in the error.
+	my $return_code = 2;
+	
+	# Do I have a valid anvil_uuid?
+	if ($an->Validate->is_uuid({uuid => $anvil_uuid}))
+	{
+		# It's a valud UUID. Is it a valid Anvil! though?
+		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+		if (not $an->data->{sys}{anvil}{name})
+		{
+			# Unknown Anvil!
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0207", message_variables => { anvil_uuid => $anvil_uuid }, code => 207, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
+	}
+	elsif ($anvil_uuid)
+	{
+		# What iz zis?!
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0207", message_variables => { anvil_uuid => $anvil_uuid }, code => 207, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	else
+	{
+		# Can't do much, now can I?
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0208", code => 208, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# Do I have a valid task?
+	if (not $task)
+	{
+		# No task at all...
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0209", code => 209, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	elsif (($task ne "server") && ($task ne "fence"))
+	{
+		# Have a task, but it isn't valid.
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0210", message_variables => { task => $task }, code => 210, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	### NOTE: The task can be 'server' or 'fence'
+	#         The subtasks can be:
+	#         - server -> delay (requires 'timeout')
+	#         - fence  -> password (requires 'device'), delay (requires 'node')
+	# Do I have a valid sub-task?
+	if (not $subtask)
+	{
+		# No sub task at all...
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0211", message_variables => { task => $task }, code => 211, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	elsif ($task eq "server")
+	{
+		if ($subtask eq "delay")
+		{
+			# Valid, but do I have a timeout set?
+			if (not $timeout)
+			{
+				# Nope
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0212", message_variables => { server => $server }, code => 212, file => $THIS_FILE, line => __LINE__});
+				return("");
+			}
+			elsif ($timeout !~ /^\d+$/)
+			{
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0213", message_variables => { 
+					server  => $server, 
+					timeout => $timeout, 
+				}, code => 213, file => $THIS_FILE, line => __LINE__});
+				return("");
+			}
+		}
+		elsif ($subtask)
+		{
+			# Invalid subtask
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0214", message_variables => { 
+				server  => $server, 
+				subtask => $subtask, 
+			}, code => 214, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
+		else
+		{
+			# No sub-task
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0215", message_variables => { server => $server }, code => 215, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
+	}
+	elsif ($task eq "fence")
+	{
+		if ($subtask eq "delay")
+		{
+			# Valid, but I need a node.
+			if (not $node)
+			{
+				# Nope
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0217", code => 217, file => $THIS_FILE, line => __LINE__});
+				return("");
+			}
+			elsif (($node ne $an->data->{sys}{anvil}{node1}{name}) && ($node ne $an->data->{sys}{anvil}{node2}{name}))
+			{
+				# Node name doesn't match a known node.
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0218", message_variables => { 
+					anvil      => $an->data->{sys}{anvil}{name},
+					node       => $node, 
+					node1_name => $an->data->{sys}{anvil}{node1}{name}, 
+					node2_name => $an->data->{sys}{anvil}{node2}{name}, 
+				}, code => 218, file => $THIS_FILE, line => __LINE__});
+				return("");
+			}
+		}
+		elsif ($subtask eq "password")
+		{
+			# Valid, but I need a device and new password.
+			if (not $device)
+			{
+				# Nope
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0219", code => 219, file => $THIS_FILE, line => __LINE__});
+				return("");
+			}
+			elsif (not $new_password)
+			{
+				# Nope
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0220", code => 220, message_variables => { device => $device }, file => $THIS_FILE, line => __LINE__});
+				return("");
+			}
+			elsif (($node) && (($node ne $an->data->{sys}{anvil}{node1}{name}) && ($node ne $an->data->{sys}{anvil}{node2}{name})))
+			{
+				# Node name doesn't match a known node.
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0225", message_variables => { 
+					anvil      => $an->data->{sys}{anvil}{name},
+					node       => $node, 
+					device     => $device, 
+					node1_name => $an->data->{sys}{anvil}{node1}{name}, 
+					node2_name => $an->data->{sys}{anvil}{node2}{name}, 
+				}, code => 225, file => $THIS_FILE, line => __LINE__});
+				return("");
+			}
+		}
+		elsif ($subtask)
+		{
+			# Invalid sub-task
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0221", message_variables => { subtask => $subtask }, code => 221, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Invalid sub-task
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0222", code => 222, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
+	}
+	
+	# Make sure both nodes are online. We'll check for cman membership later.
+	if ((not $an->data->{sys}{anvil}{node1}{online}) or (not $an->data->{sys}{anvil}{node2}{online}))
+	{
+		# Both nodes need to be online.
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0223", code => 223, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# Am I a node or dashboard? If I am a dashboard, I'll call node1. If I am a node, I'll work on myself.
+	my $i_am = $an->Get->what_am_i();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "i_am", value1 => $i_am, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Before we proceed, we need to decide two things. Are we a node, and are both nodes in the cluster?
+	my $return       = [];
+	my $shell_call   = $an->data->{path}{'anvil-report-state'};
+	my $target       = "";
+	my $port         = "";
+	my $password     = "";
+	my $node1_cman   = 0;
+	my $node2_cman   = 0;
+	if ($i_am eq "node")
+	{
+		# Operate locally
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# Operate on node 1.
+		$target   = $an->data->{sys}{anvil}{node1}{use_ip};
+		$port     = $an->data->{sys}{anvil}{node1}{use_port};
+		$password = $an->data->{sys}{anvil}{node1}{password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "port",       value2 => $port,
+			name3 => "shell_call", value3 => $shell_call,
+			name4 => "target",     value4 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /clustat::cman::me = \[(\d+)\]/)
+		{
+			$node1_cman = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node1_cman", value1 => $node1_cman, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /clustat::cman::me = \[(\d+)\]/)
+		{
+			$node2_cman = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node2_cman", value1 => $node2_cman, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# Finally; Are both nodes running cman?
+	if ((not $node1_cman) or (not $node2_cman))
+	{
+		# Both nodes need to be a cluster member.
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0224", code => 224, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	### Still alive? NOW we're ready to proceed!
+	# Read in the current config!
+	my $file_changed = 0;
+	   $return       = [];
+	my $new_config   = "";
+	   $shell_call   = $an->data->{path}{'cat'}." ".$an->data->{path}{cluster_conf};
+	
+	# We'll now use 'target' to determine if a call is local or remote.
+	if ($target)
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Remote call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	
+	# The 'return' should be the full cluster.conf. We'll verify though as we loop through.
+	my $new_file          = "";
+	my $close_found       = 0;
+	my $this_server       = "";
+	my $this_stop_timeout = $default_timeout;
+	my $this_node         = "";
+	my $this_fence_device = "";
+	my $this_device       = "";
+	my $first_device      = 1;
+	foreach my $line (@{$return})
+	{
+		### WARNING: This exposes passwords!
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /<\/cluster>/)
+		{
+			# Close found.
+			$close_found = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "close_found", value1 => $close_found, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# If this is a closing VM statement, process.
+		if ($this_server)
+		{
+			# I'm in a <vm> element... 
+			if (($line =~ /<action/) && ($line =~ /name="stop"/))
+			{
+				# We're in the stop timeout section. 
+				my $old_timeout = ($line =~ /timeout="(.*?)"/)[0];
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "old_timeout", value1 => $old_timeout, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($old_timeout =~ /^(\d+)m$/)
+				{
+					# It's expressed in minutes, convert it.
+					$old_timeout =  $1;
+					$old_timeout *= 60;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "old_timeout", value1 => $old_timeout, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# Now, does it differ?
+				if ($old_timeout ne $timeout)
+				{
+					# Changed!
+					$line =~ s/timeout=".*?"/timeout="$timeout"/;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			if ($line =~ /<\/vm>/)
+			{
+				# End of this server's element.
+				$this_server = "";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_server", value1 => $this_server, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# If this is a VM, start processing (we'll close if it's a self-closing element).
+		if ($line =~ /<vm .*?>/)
+		{
+			# In a VM line
+			$this_server = ($line =~ /name="(.*?)"/)[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_server", value1 => $this_server, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# If this is a self-closing vm entry, process it now.
+			if ($line =~ /<vm .*?\/>/)
+			{
+				# This is a self-closing line, so the shutdown timer will be the default of 120.
+				if (($task eq "server") && ($subtask eq "delay") && ($server eq $this_server))
+				{
+					# This is the file we're working on. 
+					if ($timeout ne $default_timeout)
+					{
+						# The user has asked us to set a timeout, so do so now. Note
+						# that we'll change the line from self-closing the havinf a 
+						# child element, mark the file as changed and clear 
+						# 'this_server' now. Then we'll write out the element and 
+						# 'child element and loop out.
+						my $line         =~ s/\/>/>/;
+						   $file_changed =  1;
+						   $this_server  =  "";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "file_changed", value1 => $file_changed, 
+							name2 => "line",         value2 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# Record the new element and loop.
+						$new_file .= $line."\n";
+						$new_file .= "\t\t<action name=\"stop\" timeout=\"$timeout\"/>\n";
+						$new_file .= "\t</vm>\n";
+						next;
+					}
+				}
+			}
+		}
+		
+		### NOTE: At this time, we *change* passwords, we can't set them when none existed.
+		### TODO: Track is a password was seen for a given fence device and set it, if not.
+		# If I am processing a node, we'll look for both it's fence delay and timing, if any, as well
+		# as any possible passwords set for it's fence devices. If we don't find a password in them,
+		# we'll not worry until we also fail to see a password of the corresponding fence device.
+		if ($line =~ /<clusternode/)
+		{
+			$this_node = ($line =~ /name="(.*)"/)[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_node", value1 => $this_node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($this_node)
+		{
+			# We're inside a node element
+			if ($line =~ /<\/clusternode/)
+			{
+				# Done with this node
+				$this_node    = "";
+				$first_device = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "this_node",    value1 => $this_node, 
+					name2 => "first_device", value2 => $first_device, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /<method name="(.*?)">/)
+			{
+				# I know... method, not device.
+				$this_device = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_device", value1 => $this_node, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($this_device)
+			{
+				if ($line =~ /<\/method>/)
+				{
+					# Done with this method.
+					$this_device = "";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "this_device", value1 => $this_node, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($line =~ /<device /)
+				{
+					# If this is the first device and if we've been asked to change the 
+					# node with the fence delay, do so now (if needed).
+					if ($line =~ /delay="(\d+)"/)
+					{
+						my $old_delay = $1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "old_delay", value1 => $old_delay, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						if (($task eq "fence") && ($subtask eq "delay") && ($node ne $this_node))
+						{
+							# Remove the delay.
+							$file_changed =  1;
+							$line         =~ s/ delay="\d+"//;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "file_changed", value1 => $file_changed, 
+								name2 => "line",         value2 => $line, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					elsif (($task eq "fence") && ($subtask eq "delay") && ($first_device) && ($node eq $this_node))
+					{
+						# Add it.
+						$file_changed =  1;
+						$line         =~ s/ delay=".*?"//;
+						$line         =~ s/name="(.*?)"/name="$1" delay="$default_fence_delay"/;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "file_changed", value1 => $file_changed, 
+							name2 => "line",         value2 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					elsif (($task eq "fence") && ($subtask eq "password") && ($device eq $this_device))
+					{
+						# If we've been given a specific node, work on it. Otherwise,
+						# change all devices that match.
+						if ((not $node) or ($node eq $this_node))
+						{
+							# Pull the password out and see if we need to change it.
+							if ($line =~ /passwd="(.*?)"/)
+							{
+								# Password found
+								my $old_password = $1;
+								$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+									name1 => "old_password", value1 => $old_password, 
+								}, file => $THIS_FILE, line => __LINE__});
+								
+								if ($old_password ne $new_password)
+								{
+									# Change it!
+									$file_changed =  1;
+									$line         =~ s/passwd=".*?"/passwd="$new_password"/;
+									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										name1 => "file_changed", value1 => $file_changed, 
+									}, file => $THIS_FILE, line => __LINE__});
+									$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+										name1 => "line", value1 => $line, 
+									}, file => $THIS_FILE, line => __LINE__});
+								}
+							}
+						}
+					}
+					
+					# Clear the "first device" flag so that we don't add a delay to a 
+					# second fence method.
+					$first_device = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "first_device", value1 => $first_device, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		
+		# Record the line (modified or not)
+		$new_file .= $line."\n";
+	}
+	
+	### WARNING: This exposes passwords!
+	# Now I have the current config.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "new_file", value1 => $new_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	
+	return($return_code);
 }
 
 # Withdraw a node from the cluster, using a delayed run that stops gfs2 and clvmd in case rgmanager gets stuck.

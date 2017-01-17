@@ -6353,6 +6353,7 @@ sub target_power
 		name2 => "target", value2 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# This should really be 'fence_target'...
 	my $ipmi_target = "";
 	my $state       = "unknown";
 	if (($task ne "status") && ($task ne "on") && ($task ne "off"))

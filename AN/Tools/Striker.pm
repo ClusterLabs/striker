@@ -2446,6 +2446,7 @@ domain=\"$failover_domain\" \\
 path=\"".$an->data->{path}{shared_definitions}."/\" \\
 autostart=\"0\" \\
 exclusive=\"0\" \\
+no_kill=\"1\" \\
 recovery=\"restart\" \\
 max_restarts=\"2\" \\
 restart_expire_time=\"600\" \\
