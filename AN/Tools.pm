@@ -128,8 +128,9 @@ sub new
 	$an->Validate->parent($an);
 	$an->Web->parent($an);
 	
-	# Set some system paths
+	# Set some system paths and arguments
 	$an->_set_paths;
+	$an->_set_args;
 	
 	# Check the operating system and set any OS-specific values.
 	$an->Check->_os;
@@ -542,6 +543,18 @@ sub nice_exit
 	}
 	
 	exit($exit_code);
+}
+
+# This sets a bunch of default arguments used by some commands.
+sub _set_args
+{
+	my ($self) = shift;
+	my $an = $self;
+	
+	$an->data->{args}{check_dvd} = "--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd";
+	$an->data->{args}{rsync}     = "-av --partial";
+	
+	return(0);
 }
 
 # This sets a bunch of default paths to executables and a few system files.

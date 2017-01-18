@@ -1088,19 +1088,19 @@ The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the n
 
 =head2 C<219>
 
-The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password used for a fence device, but no device name was given.
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password used for a fence method, but no method name was given.
 
 =head2 C<220>
 
-The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password used for a fence device, but no new password was given.
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password used for a fence method, but no new password was given.
 
 =head2 C<221>
 
-The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to manipulate a fence device, but an invalid sub-task was requested.
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to manipulate a fence method, but an invalid sub-task was requested.
 
 =head2 C<222>
 
-The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to manipulate a fence device, but no sub-task was requested.
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to manipulate a fence method, but no sub-task was requested.
 
 =head2 C<223>
 
@@ -1112,7 +1112,11 @@ The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called, but one or bo
 
 =head2 C<225>
 
-The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password of a fence device for a node, but the node name given didn't match either node in the Anvil! system.
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the password of a fence method for a node, but the node name given didn't match either node in the Anvil! system.
+
+=head2 C<226>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to parse the 'cluster.conf' file properly. either the closing '</cluster>' element or the 'config_variable' attribute was not found.
 
 
 =head2 C<999>

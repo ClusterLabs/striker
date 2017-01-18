@@ -2059,7 +2059,7 @@
 		<key name="log_0032">Opening an SSH connection to: [#!variable!user!#@#!variable!node!#:#!variable!port!#].</key>
 		<key name="log_0033">Extra element in install manifest file: [#!variable!file!#]; element: [#!variable!element!#], value: [#!variable!value!#].</key>
 		<key name="log_0034">Creating initial Striker config.</key>
-		<key name="log_0035">Ensuring we've recorded: [#!variable!node!#]'s RSA fingerprint.</key>
+		<key name="log_0035">Ensuring we've recorded: [#!variable!target!#]'s RSA fingerprint.</key>
 		<key name="log_0036">Striker config already exists, skipping.</key>
 		<key name="log_0037">Node: [#!variable!node!#] has an unknown NIC: [#!variable!this_nic!#] (line: [#!variable!line!#])</key>
 		<key name="log_0038">Saw an interface without first determining if we're in node 1 or 2's element. Are the node names using 'n0X', 'nX', 'node0X' or 'nodeX' (where 'X' is 1 or 2)?</key>

@@ -1487,7 +1487,7 @@ sub update_cluster_conf
 	my $task         = $parameter->{task}         ? $parameter->{task}         : "";
 	my $subtask      = $parameter->{subtask}      ? $parameter->{subtask}      : "";
 	my $server       = $parameter->{server}       ? $parameter->{server}       : "";
-	my $device       = $parameter->{device}       ? $parameter->{device}       : "";
+	my $method       = $parameter->{method}       ? $parameter->{method}       : "";
 	my $node         = $parameter->{node}         ? $parameter->{node}         : "";
 	my $timeout      = $parameter->{timeout}      ? $parameter->{timeout}      : "";
 	my $new_password = $parameter->{new_password} ? $parameter->{new_password} : "";
@@ -1496,7 +1496,7 @@ sub update_cluster_conf
 		name2 => "task",       value2 => $task, 
 		name3 => "subtask",    value3 => $subtask, 
 		name4 => "server",     value4 => $server, 
-		name5 => "device",     value5 => $device, 
+		name5 => "method",     value5 => $method, 
 		name6 => "timeout",    value6 => $timeout, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
@@ -1555,7 +1555,7 @@ sub update_cluster_conf
 	### NOTE: The task can be 'server' or 'fence'
 	#         The subtasks can be:
 	#         - server -> delay (requires 'timeout')
-	#         - fence  -> password (requires 'device'), delay (requires 'node')
+	#         - fence  -> password (requires 'method'), delay (requires 'node')
 	# Do I have a valid sub-task?
 	if (not $subtask)
 	{
@@ -1624,8 +1624,8 @@ sub update_cluster_conf
 		}
 		elsif ($subtask eq "password")
 		{
-			# Valid, but I need a device and new password.
-			if (not $device)
+			# Valid, but I need a method and new password.
+			if (not $method)
 			{
 				# Nope
 				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0219", code => 219, file => $THIS_FILE, line => __LINE__});
@@ -1634,7 +1634,7 @@ sub update_cluster_conf
 			elsif (not $new_password)
 			{
 				# Nope
-				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0220", code => 220, message_variables => { device => $device }, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0220", code => 220, message_variables => { method => $method }, file => $THIS_FILE, line => __LINE__});
 				return("");
 			}
 			elsif (($node) && (($node ne $an->data->{sys}{anvil}{node1}{name}) && ($node ne $an->data->{sys}{anvil}{node2}{name})))
@@ -1643,7 +1643,7 @@ sub update_cluster_conf
 				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0225", message_variables => { 
 					anvil      => $an->data->{sys}{anvil}{name},
 					node       => $node, 
-					device     => $device, 
+					method     => $method, 
 					node1_name => $an->data->{sys}{anvil}{node1}{name}, 
 					node2_name => $an->data->{sys}{anvil}{node2}{name}, 
 				}, code => 225, file => $THIS_FILE, line => __LINE__});
@@ -1688,7 +1688,7 @@ sub update_cluster_conf
 	if ($i_am eq "node")
 	{
 		# Operate locally
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -1706,7 +1706,7 @@ sub update_cluster_conf
 		$target   = $an->data->{sys}{anvil}{node1}{use_ip};
 		$port     = $an->data->{sys}{anvil}{node1}{use_port};
 		$password = $an->data->{sys}{anvil}{node1}{password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "port",       value2 => $port,
 			name3 => "shell_call", value3 => $shell_call,
@@ -1724,7 +1724,7 @@ sub update_cluster_conf
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /clustat::cman::me = \[(\d+)\]/)
@@ -1734,7 +1734,7 @@ sub update_cluster_conf
 				name1 => "node1_cman", value1 => $node1_cman, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		if ($line =~ /clustat::cman::me = \[(\d+)\]/)
+		if ($line =~ /clustat::cman::peer = \[(\d+)\]/)
 		{
 			$node2_cman = $1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1743,6 +1743,8 @@ sub update_cluster_conf
 		}
 	}
 	
+	### NOTE: I know, "node1" could be node 2 if we're running this on node 2, but the results are the 
+	###       same.
 	# Finally; Are both nodes running cman?
 	if ((not $node1_cman) or (not $node2_cman))
 	{
@@ -1761,7 +1763,7 @@ sub update_cluster_conf
 	# We'll now use 'target' to determine if a call is local or remote.
 	if ($target)
 	{
-		# Local call
+		# Remote call
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
@@ -1775,7 +1777,7 @@ sub update_cluster_conf
 	}
 	else
 	{
-		# Remote call
+		# Local call
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1791,13 +1793,14 @@ sub update_cluster_conf
 	
 	# The 'return' should be the full cluster.conf. We'll verify though as we loop through.
 	my $new_file          = "";
+	my $config_version    = "";
 	my $close_found       = 0;
 	my $this_server       = "";
 	my $this_stop_timeout = $default_timeout;
 	my $this_node         = "";
-	my $this_fence_device = "";
-	my $this_device       = "";
-	my $first_device      = 1;
+	my $this_fence_method = "";
+	my $this_method       = "";
+	my $first_method      = 1;
 	foreach my $line (@{$return})
 	{
 		### WARNING: This exposes passwords!
@@ -1805,11 +1808,26 @@ sub update_cluster_conf
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		# If the file gets rewritten, we'll need to increment the cluster.conf version.
+		if ($line =~ /<cluster /)
+		{
+			# Dig out and increment the config version, but DON'T set the 'file_changed' flag.
+			$config_version = ($line =~ /config_version="(\d+)"/)[0];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "config_version", value1 => $config_version, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Increment the version now.
+			$config_version++;
+			$line =~ s/config_version="\d+"/config_version="$config_version"/;
+		}
+		
+		# We won't do anything unless we see the cluster.conf close.
 		if ($line =~ /<\/cluster>/)
 		{
 			# Close found.
 			$close_found = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "close_found", value1 => $close_found, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1818,7 +1836,7 @@ sub update_cluster_conf
 		if ($this_server)
 		{
 			# I'm in a <vm> element... 
-			if (($line =~ /<action/) && ($line =~ /name="stop"/))
+			if (($line =~ /<action /) && ($line =~ /name="stop"/))
 			{
 				# We're in the stop timeout section. 
 				my $old_timeout = ($line =~ /timeout="(.*?)"/)[0];
@@ -1897,13 +1915,13 @@ sub update_cluster_conf
 		}
 		
 		### NOTE: At this time, we *change* passwords, we can't set them when none existed.
-		### TODO: Track is a password was seen for a given fence device and set it, if not.
+		### TODO: Track is a password was seen for a given fence method and set it, if not.
 		# If I am processing a node, we'll look for both it's fence delay and timing, if any, as well
-		# as any possible passwords set for it's fence devices. If we don't find a password in them,
-		# we'll not worry until we also fail to see a password of the corresponding fence device.
-		if ($line =~ /<clusternode/)
+		# as any possible passwords set for it's fence methods. If we don't find a password in them,
+		# we'll not worry until we also fail to see a password of the corresponding fence method.
+		if ($line =~ /<clusternode /)
 		{
-			$this_node = ($line =~ /name="(.*)"/)[0];
+			$this_node = ($line =~ /name="(.*?)"/)[0];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "this_node", value1 => $this_node, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1911,37 +1929,36 @@ sub update_cluster_conf
 		if ($this_node)
 		{
 			# We're inside a node element
-			if ($line =~ /<\/clusternode/)
+			if ($line =~ /<\/clusternode>/)
 			{
 				# Done with this node
 				$this_node    = "";
-				$first_device = 0;
+				$first_method = 0;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_node",    value1 => $this_node, 
-					name2 => "first_device", value2 => $first_device, 
+					name2 => "first_method", value2 => $first_method, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /<method name="(.*?)">/)
 			{
-				# I know... method, not device.
-				$this_device = $1;
+				$this_method = $1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "this_device", value1 => $this_node, 
+					name1 => "this_method", value1 => $this_method, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			if ($this_device)
+			if ($this_method)
 			{
 				if ($line =~ /<\/method>/)
 				{
 					# Done with this method.
-					$this_device = "";
+					$this_method = "";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "this_device", value1 => $this_node, 
+						name1 => "this_method", value1 => $this_method, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /<device /)
 				{
-					# If this is the first device and if we've been asked to change the 
+					# If this is the first method and if we've been asked to change the 
 					# node with the fence delay, do so now (if needed).
 					if ($line =~ /delay="(\d+)"/)
 					{
@@ -1961,7 +1978,7 @@ sub update_cluster_conf
 							}, file => $THIS_FILE, line => __LINE__});
 						}
 					}
-					elsif (($task eq "fence") && ($subtask eq "delay") && ($first_device) && ($node eq $this_node))
+					if (($task eq "fence") && ($subtask eq "delay") && ($first_method) && ($node eq $this_node))
 					{
 						# Add it.
 						$file_changed =  1;
@@ -1972,10 +1989,14 @@ sub update_cluster_conf
 							name2 => "line",         value2 => $line, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
-					elsif (($task eq "fence") && ($subtask eq "password") && ($device eq $this_device))
+					if (($task eq "fence") && ($subtask eq "password") && ($method eq $this_method))
 					{
 						# If we've been given a specific node, work on it. Otherwise,
-						# change all devices that match.
+						# change all methods that match.
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "node",      value1 => $node, 
+							name2 => "this_node", value2 => $this_node, 
+						}, file => $THIS_FILE, line => __LINE__});
 						if ((not $node) or ($node eq $this_node))
 						{
 							# Pull the password out and see if we need to change it.
@@ -2003,11 +2024,11 @@ sub update_cluster_conf
 						}
 					}
 					
-					# Clear the "first device" flag so that we don't add a delay to a 
+					# Clear the "first method" flag so that we don't add a delay to a 
 					# second fence method.
-					$first_device = 0;
+					$first_method = 0;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "first_device", value1 => $first_device, 
+						name1 => "first_method", value1 => $first_method, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
@@ -2017,12 +2038,106 @@ sub update_cluster_conf
 		$new_file .= $line."\n";
 	}
 	
-	### WARNING: This exposes passwords!
-	# Now I have the current config.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "new_file", value1 => $new_file, 
+		name1 => "file_changed", value1 => $file_changed, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
+	if ($file_changed)
+	{
+		### WARNING: This exposes passwords!
+		# Now I have the current config.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "new_file", value1 => $new_file, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# We're only going to proceed *if* we set the version number AND saw the close of the XML.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "close_found",    value1 => $close_found, 
+			name2 => "config_version", value2 => $config_version, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ((not $close_found) or (not $config_version))
+		{
+			# Something went wrong, abort.
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0226", code => 226, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
+		
+		# Still alive? Write out the file to /tmp/ before to test it with ccs_config_validate. If 
+		# we're not a node, we'll rsync it to node 1.
+		my $temp_file  = "/tmp/cluster.conf";
+		my $shell_call = $temp_file;
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle $new_file;
+		close $file_handle;
+		
+		# Now rsync the file, if necessary.
+		if ($target)
+		{
+			# Remote, send over the temp file.
+			my $source      = $temp_file;
+			my $destination = "root\@${target}:/tmp/";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "source",      value1 => $source,
+				name2 => "destination", value2 => $destination,
+				name3 => "target",      value3 => $target,
+				name4 => "port",        value4 => $port,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
+			my $failed = $an->Storage->rsync({
+				source      => $source,
+				destination => $destination,
+				switches    => $an->data->{args}{rsync},
+				target      => $target,
+				port        => $port,
+				password    => $password,
+			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "failed", value1 => $failed,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Now call ccs_config_validate
+		my $return     = [];
+		   $shell_call = $an->data->{path}{ccs_config_validate}." -f ".$temp_file;
+		if ($target)
+		{
+			# Remote call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "target",     value2 => $target,
+			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+		}
+		else
+		{
+			# Local call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				push @{$return}, $line;
+			}
+			close $file_handle;
+		}
+		
+		# The 'return' should be the full cluster.conf. We'll verify though as we loop through.
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}	
 	
 	return($return_code);
 }

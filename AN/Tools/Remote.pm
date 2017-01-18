@@ -870,7 +870,7 @@ sub _check_known_hosts_for_target
 	my $known_hosts     = $parameter->{known_hosts}     ? $parameter->{known_hosts}     : "";
 	my $user            = $parameter->{user}            ? $parameter->{user}            : "";
 	my $delete_if_found = $parameter->{delete_if_found} ? $parameter->{delete_if_found} : 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "target",          value1 => $target,
 		name2 => "port",            value2 => $port,
 		name3 => "known_hosts",     value3 => $known_hosts,
@@ -881,7 +881,7 @@ sub _check_known_hosts_for_target
 	# read it in and search.
 	my $known_machine = 0;
 	my $shell_call    = $known_hosts;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -897,7 +897,7 @@ sub _check_known_hosts_for_target
 			# We already know this machine (or rather, we already have a fingerprint for
 			# this machine).
 			$known_machine = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "known_machine", value1 => $known_machine, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}

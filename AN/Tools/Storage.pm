@@ -974,9 +974,7 @@ sub rsync
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
+	my $an        = $self->parent;
 	$an->Alert->_set_error;
 	
 	# Check my parameters.
@@ -1048,8 +1046,7 @@ sub rsync
 	if ($remote_machine)
 	{
 		# Make sure we know the fingerprint of the remote machine
-		$an->Log->entry({log_level => 2, message_key => "log_0035", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
-		
+		$an->Log->entry({log_level => 2, message_key => "log_0035", message_variables => { target => $remote_machine }, file => $THIS_FILE, line => __LINE__});
 		$an->Remote->add_target_to_known_hosts({target => $remote_machine});
 		
 		# Make sure we have a target and password for the remote machine.
@@ -1081,7 +1078,7 @@ sub rsync
 			target   => $target,
 			password => $password, 
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "wrapper", value1 => $wrapper, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1089,7 +1086,7 @@ sub rsync
 		$shell_call = "$wrapper $switches $source $destination";
 	}
 	# Now make the call
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -1099,7 +1096,7 @@ sub rsync
 		chomp;
 		my $line = $_;
 		   $line =~ s/\r//g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1173,7 +1170,7 @@ sub _create_rsync_wrapper
 		name1 => "target",   value1 => $target, 
 		name2 => "password", value2 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $target) || (not $password))
+	if ((not $target) or (not $password))
 	{
 		# Can't do much without a target or password.
 		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0034", code => 21, file => $THIS_FILE, line => __LINE__});

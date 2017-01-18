@@ -464,7 +464,7 @@ sub gather_definition_files
 	my $in_domain   = 0;
 	my $definition  = "";
 	my $lines       = 0;
-	my $shell_call  = $an->data->{path}{cat}." ".$an->data->{path}{shared_definitions}."/*; ".$an->data->{path}{echo}." rc:\$?";
+	my $shell_call  = $an->data->{path}{cat}." ".$an->data->{path}{shared_definitions}."/* &>/dev/null; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1816,7 +1816,7 @@ sub gather_bonds
 sub gather_cluster_conf
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_clustat" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	return if not -e $an->data->{path}{cluster_conf};
 	
@@ -2121,7 +2121,7 @@ sub gather_clustat
 sub gather_hostname
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_clustat" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_hostname" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $an->data->{path}{hostname};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

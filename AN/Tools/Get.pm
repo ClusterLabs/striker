@@ -4924,10 +4924,21 @@ sub users_home
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "users_home" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $user = $parameter->{user};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "user", value1 => $user, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not $user)
+	
+	# If the user is numerical, convert it to a name.
+	if ($user =~ /^\d+$/)
+	{
+		$user = getpwuid($user);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "user", value1 => $user, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Still don't have a name? fail...
+	if ($user eq "")
 	{
 		# No user? No bueno...
 		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0041", message_variables => { user => $user }, code => 38, file => $THIS_FILE, line => __LINE__});
@@ -4947,7 +4958,7 @@ sub users_home
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /$user:/)
+		if ($line =~ /^$user:/)
 		{
 			$users_home = (split/:/, $line)[5];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -4964,7 +4975,7 @@ sub users_home
 		return("");
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "users_home", value1 => $users_home, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($users_home);
