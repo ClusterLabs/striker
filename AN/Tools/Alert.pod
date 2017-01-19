@@ -1118,6 +1118,22 @@ The 'AN::Tools::Cman' module's 'update_cluster_conf()' was asked to change the p
 
 The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to parse the 'cluster.conf' file properly. either the closing '</cluster>' element or the 'config_variable' attribute was not found.
 
+=head2 C<227>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to validate the new cluster.conf. The failed cluster.conf can be found in /tmp/.
+
+=head2 C<228>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to create a backup of cluster.conf prior to replacing it with the new version.
+
+=head2 C<229>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to copy the new cluster.conf file. The expected 'config_version' wasn't found in the generated file.
+
+=head2 C<230>
+
+The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to push the new configuration file out to the cluster. The returned version number was less than what it should have been with the requested changes.
+
 
 =head2 C<999>
 

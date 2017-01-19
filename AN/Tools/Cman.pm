@@ -1764,7 +1764,7 @@ sub update_cluster_conf
 	if ($target)
 	{
 		# Remote call
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1778,7 +1778,7 @@ sub update_cluster_conf
 	else
 	{
 		# Local call
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -1804,7 +1804,7 @@ sub update_cluster_conf
 	foreach my $line (@{$return})
 	{
 		### WARNING: This exposes passwords!
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1922,7 +1922,7 @@ sub update_cluster_conf
 		if ($line =~ /<clusternode /)
 		{
 			$this_node = ($line =~ /name="(.*?)"/)[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "this_node", value1 => $this_node, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1934,7 +1934,7 @@ sub update_cluster_conf
 				# Done with this node
 				$this_node    = "";
 				$first_method = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_node",    value1 => $this_node, 
 					name2 => "first_method", value2 => $first_method, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1942,7 +1942,7 @@ sub update_cluster_conf
 			if ($line =~ /<method name="(.*?)">/)
 			{
 				$this_method = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "this_method", value1 => $this_method, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1963,7 +1963,7 @@ sub update_cluster_conf
 					if ($line =~ /delay="(\d+)"/)
 					{
 						my $old_delay = $1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "old_delay", value1 => $old_delay, 
 						}, file => $THIS_FILE, line => __LINE__});
 						
@@ -1972,7 +1972,7 @@ sub update_cluster_conf
 							# Remove the delay.
 							$file_changed =  1;
 							$line         =~ s/ delay="\d+"//;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "file_changed", value1 => $file_changed, 
 								name2 => "line",         value2 => $line, 
 							}, file => $THIS_FILE, line => __LINE__});
@@ -1984,7 +1984,7 @@ sub update_cluster_conf
 						$file_changed =  1;
 						$line         =~ s/ delay=".*?"//;
 						$line         =~ s/name="(.*?)"/name="$1" delay="$default_fence_delay"/;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "file_changed", value1 => $file_changed, 
 							name2 => "line",         value2 => $line, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -1993,7 +1993,7 @@ sub update_cluster_conf
 					{
 						# If we've been given a specific node, work on it. Otherwise,
 						# change all methods that match.
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "node",      value1 => $node, 
 							name2 => "this_node", value2 => $this_node, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2013,7 +2013,7 @@ sub update_cluster_conf
 									# Change it!
 									$file_changed =  1;
 									$line         =~ s/passwd=".*?"/passwd="$new_password"/;
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 										name1 => "file_changed", value1 => $file_changed, 
 									}, file => $THIS_FILE, line => __LINE__});
 									$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
@@ -2027,7 +2027,7 @@ sub update_cluster_conf
 					# Clear the "first method" flag so that we don't add a delay to a 
 					# second fence method.
 					$first_method = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "first_method", value1 => $first_method, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -2041,104 +2041,303 @@ sub update_cluster_conf
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "file_changed", value1 => $file_changed, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($file_changed)
+	if (not $file_changed)
 	{
-		### WARNING: This exposes passwords!
-		# Now I have the current config.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "new_file", value1 => $new_file, 
+		# We're done.
+		$return_code = 1;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "return_code", value1 => $return_code, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# We're only going to proceed *if* we set the version number AND saw the close of the XML.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "close_found",    value1 => $close_found, 
-			name2 => "config_version", value2 => $config_version, 
+		return($return_code);
+	}
+
+	### WARNING: This exposes passwords!
+	# Now I have the current config.
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "new_file", value1 => $new_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# We're only going to proceed *if* we set the version number AND saw the close of the XML.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "close_found",    value1 => $close_found, 
+		name2 => "config_version", value2 => $config_version, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $close_found) or (not $config_version))
+	{
+		# Something went wrong, abort.
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0226", code => 226, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# Still alive? Write out the file to /tmp/ before to test it with ccs_config_validate. If 
+	# we're not a node, we'll rsync it to node 1.
+	my $temp_file  = "/tmp/cluster.conf";
+	   $shell_call = $temp_file;
+	open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	print $file_handle $new_file;
+	close $file_handle;
+	
+	# Now rsync the file, if necessary.
+	if ($target)
+	{
+		# Remote, send over the temp file.
+		my $source      = $temp_file;
+		my $destination = "root\@${target}:/tmp/";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "source",      value1 => $source,
+			name2 => "destination", value2 => $destination,
+			name3 => "target",      value3 => $target,
+			name4 => "port",        value4 => $port,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ((not $close_found) or (not $config_version))
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		my $failed = $an->Storage->rsync({
+			source      => $source,
+			destination => $destination,
+			switches    => $an->data->{args}{rsync},
+			target      => $target,
+			port        => $port,
+			password    => $password,
+		});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "failed", value1 => $failed,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Now call ccs_config_validate
+	$return     = [];
+	$shell_call = $an->data->{path}{ccs_config_validate}." -f ".$temp_file."; ".$an->data->{path}{echo}." return_code:\$?";
+	if ($target)
+	{
+		# Remote call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
 		{
-			# Something went wrong, abort.
-			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0226", code => 226, file => $THIS_FILE, line => __LINE__});
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /return_code:(\d+)/)
+		{
+			# 0 = success
+			my $return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($return_code)
+			{
+				# Validation failed.
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0227", code => 227, file => $THIS_FILE, line => __LINE__});
+				return("");
+			}
+		}
+	}
+	
+	# Backup the cluster.conf, move the temp file over the old one and then push out the changes with 
+	# 'ccs'.
+	my $date_stamp  = $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
+	my $backup_file = $an->data->{path}{cluster_conf}.".".$date_stamp;
+	   $shell_call  = "
+".$an->data->{path}{cp}." --force ".$an->data->{path}{cluster_conf}." ".$backup_file."
+if [ -e '$backup_file' ]
+then
+    ".$an->data->{path}{echo}." ok
+else
+    ".$an->data->{path}{echo}." failed
+fi;
+";
+	$return     = [];
+	if ($target)
+	{
+		# Remote call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /failed/)
+		{
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0228", message_variables => { backup_file => $backup_file }, code => 228, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
-		
-		# Still alive? Write out the file to /tmp/ before to test it with ccs_config_validate. If 
-		# we're not a node, we'll rsync it to node 1.
-		my $temp_file  = "/tmp/cluster.conf";
-		my $shell_call = $temp_file;
-		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-		print $file_handle $new_file;
-		close $file_handle;
-		
-		# Now rsync the file, if necessary.
-		if ($target)
-		{
-			# Remote, send over the temp file.
-			my $source      = $temp_file;
-			my $destination = "root\@${target}:/tmp/";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-				name1 => "source",      value1 => $source,
-				name2 => "destination", value2 => $destination,
-				name3 => "target",      value3 => $target,
-				name4 => "port",        value4 => $port,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-				name1 => "password", value1 => $password,
-			}, file => $THIS_FILE, line => __LINE__});
-			my $failed = $an->Storage->rsync({
-				source      => $source,
-				destination => $destination,
-				switches    => $an->data->{args}{rsync},
-				target      => $target,
-				port        => $port,
-				password    => $password,
-			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "failed", value1 => $failed,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		# Now call ccs_config_validate
-		my $return     = [];
-		   $shell_call = $an->data->{path}{ccs_config_validate}." -f ".$temp_file;
-		if ($target)
-		{
-			# Remote call
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "shell_call", value1 => $shell_call,
-				name2 => "target",     value2 => $target,
-			}, file => $THIS_FILE, line => __LINE__});
-			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$target,
-				port		=>	$port, 
-				password	=>	$password,
-				shell_call	=>	$shell_call,
-			});
-		}
-		else
-		{
-			# Local call
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "shell_call", value1 => $shell_call, 
-			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line =  $_;
-				push @{$return}, $line;
-			}
-			close $file_handle;
-		}
-		
-		# The 'return' should be the full cluster.conf. We'll verify though as we loop through.
-		foreach my $line (@{$return})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}	
+	}
 	
+	# If we're still alive, copy the temp over and validate it.
+	$shell_call  = "
+".$an->data->{path}{cp}." --force ".$temp_file." ".$an->data->{path}{cluster_conf}."
+if \$(".$an->data->{path}{'grep'}." -q 'config_version=\"$config_version\"' ".$an->data->{path}{cluster_conf}.");
+then
+    ".$an->data->{path}{echo}." ok
+else
+    ".$an->data->{path}{echo}." failed
+fi;
+";
+	$return     = [];
+	if ($target)
+	{
+		# Remote call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /failed/)
+		{
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0229", message_variables => { version => $config_version }, code => 229, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
+	}
+	
+	# Push it!
+	$shell_call = $an->data->{path}{ccs}." -h localhost --activate --sync --password \"".$an->data->{sys}{anvil}{password}."\" && ".$an->data->{path}{ccs}." --getversion";
+	$return     = [];
+	if ($target)
+	{
+		# Remote call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^(\d+)$/)
+		{
+			### NOTE: 'ccs' will bump the version above what we set.
+			my $new_version = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "new_version",    value1 => $new_version, 
+				name2 => "config_version", value2 => $config_version, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($new_version < $config_version)
+			{
+				# Failed.
+				$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0230", message_variables => { 
+					config_version => $config_version,
+					new_version    => $new_version, 
+				}, code => 230, file => $THIS_FILE, line => __LINE__});
+				return("");
+			}
+			else
+			{
+				# Success!
+				$return_code = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code);
 }
 
