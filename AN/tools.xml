@@ -978,6 +978,9 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0228"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to create the backup of cluster.conf: [#!variable!backup_file!#] prior to replacing it with the new version.]]></key>
 		<key name="error_message_0229"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to copy the new #!data!path::cluster_conf!# file. The expected 'config_version': [#!variable!version!#] wasn't found in the generated file.]]></key>
 		<key name="error_message_0230"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to push the new configuration file out to the cluster. The returned version number: [#!variable!new_version!#] was less than what it should have been: [#!variable!config_version!#] with the requested changes.]]></key>
+		<key name="error_message_0231"><![CDATA[The 'AN::Tools::System' module's 'configure_ipmi()' was called without a task being set.]]></key>
+		<key name="error_message_0232"><![CDATA[The 'AN::Tools::System' module's 'configure_ipmi()' was called with an invalid task: [#!variable!task!#]. Valid tasks are 'password', 'network' or 'both'.]]></key>
+		<key name="error_message_0233"><![CDATA[The 'AN::Tools::System' module's 'configure_ipmi()' was asked to change the IPMI user password, but was not given the name of the user to work on.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

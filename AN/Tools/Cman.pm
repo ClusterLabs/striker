@@ -530,6 +530,101 @@ sub boot_server
 	return($booted, $boot_return);
 }
 
+# This checks to see if fencing is working by calling 'fence_check'
+sub check_fencing
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_fencing" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# This will be set to '0' if OK and '1' if it fails.
+	my $return_code = 2;
+	
+	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+	my $shell_call = $an->data->{path}{fence_check}." -f; ".$an->data->{path}{echo}." return_code:\$?";
+	my $return     = [];
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+	{
+		### Remote calls
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		### Local calls
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /return_code:(\d+)/)
+		{
+			# 0 == OK
+			# 5 == Failed
+			my $rc = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "rc", value1 => $rc, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($rc eq "0")
+			{
+				# Passed
+				$return_code = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "log_0118", file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Failed
+				$return_code = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 1, message_key => "log_0119", message_variables => { return_code => $rc }, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($return_code);
+}
+
 ### NOTE: At this time, this can only be called against the local machine.
 # This uses 'fence_tool' to see if there is a pending fence. If so, it returns '1'. Otherwise it returns '0'.
 sub check_for_pending_fence
@@ -1878,7 +1973,7 @@ sub update_cluster_conf
 		{
 			# In a VM line
 			$this_server = ($line =~ /name="(.*?)"/)[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "this_server", value1 => $this_server, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -1952,7 +2047,7 @@ sub update_cluster_conf
 				{
 					# Done with this method.
 					$this_method = "";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "this_method", value1 => $this_method, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -2024,12 +2119,41 @@ sub update_cluster_conf
 						}
 					}
 					
+					# If the method is 'ipmi' and we have a login attribute, record it.
+					if (($method eq "ipmi") && ($line =~ /login="(.*?)"/))
+					{
+						$an->data->{ipmi}{$this_node}{ipmi_user} = $1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "ipmi::${this_node}::ipmi_user", value1 => $an->data->{ipmi}{$this_node}{ipmi_user}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					
 					# Clear the "first method" flag so that we don't add a delay to a 
 					# second fence method.
 					$first_method = 0;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "first_method", value1 => $first_method, 
 					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		
+		# Check for some fence device info.
+		if ($line =~ /<fencedevice /)
+		{
+			if (($line =~ /agent="fence_ipmilan"/) && ($line =~ /login="(.*?)"/))
+			{
+				my $login = $1;
+				foreach my $node_key ("node1", "node2")
+				{
+					if ($an->data->{sys}{anvil}{$node_key}{name})
+					{
+						my $this_node = $an->data->{sys}{anvil}{$node_key}{name};
+						$an->data->{ipmi}{$this_node}{ipmi_user} = $1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "ipmi::${this_node}::ipmi_user", value1 => $an->data->{ipmi}{$this_node}{ipmi_user}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
 				}
 			}
 		}

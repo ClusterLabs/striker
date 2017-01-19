@@ -594,10 +594,11 @@ sub configure_ipmi
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_ipmi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return       = 0;
-	my $ipmi_ip      = $parameter->{ipmi_ip}       ? $parameter->{ipmi_ip}       : "";
-	my $ipmi_netmask = $parameter->{ipmi_netmask}  ? $parameter->{ipmi_netmask}  : "";
-	my $ipmi_user    = $parameter->{ipmi_user}     ? $parameter->{ipmi_user}     : "";
-	my $ipmi_gateway = $parameter->{ipmi_gateway}  ? $parameter->{ipmi_gateway}  : "";
+	my $task         = $parameter->{task}         ? $parameter->{task}         : "";
+	my $ipmi_ip      = $parameter->{ipmi_ip}      ? $parameter->{ipmi_ip}      : "";
+	my $ipmi_netmask = $parameter->{ipmi_netmask} ? $parameter->{ipmi_netmask} : "";
+	my $ipmi_user    = $parameter->{ipmi_user}    ? $parameter->{ipmi_user}    : "";
+	my $ipmi_gateway = $parameter->{ipmi_gateway} ? $parameter->{ipmi_gateway} : "";
 	my $new_password = $parameter->{new_password} ? $parameter->{new_password} : "";
 	my $target       = $parameter->{target}       ? $parameter->{target}       : "";
 	my $port         = $parameter->{port}         ? $parameter->{port}         : "";
@@ -615,10 +616,31 @@ sub configure_ipmi
 		name2 => "password",     value2 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Make sure a file was passed and, if it was, that it looks sane.
-	if (not $new_password)
+	# Do we have a task? It could be 'password', 'network' or 'both'
+	if (not $task)
+	{
+		# Missing task.
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0231", code => 231, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	if (($task ne "password") && ($task ne "network") && ($task ne "both"))
+	{
+		# Invalid task
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0232", message_variables => { task => $task }, code => 232, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# If we're changing a password (no IP to set), 
+	if ((($task eq "password") or ($task eq "both")) && (not $new_password))
 	{
 		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0194", code => 194, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# Make sure I have a user, if I am setting a new password.
+	if ((($task eq "password") or ($task eq "both")) && (not $ipmi_user))
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0233", code => 233, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -636,7 +658,7 @@ sub configure_ipmi
 			password => $password,
 			daemon   => "ipmi", 
 		});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($state eq "undefined:7")
@@ -654,7 +676,7 @@ sub configure_ipmi
 		my $channel   = 0;
 		while (not $lan_found)
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "channel", value1 => $channel,
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($channel > 10)
@@ -672,7 +694,7 @@ sub configure_ipmi
 			if ($target)
 			{
 				# Remote call.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "target",     value1 => $target,
 					name2 => "shell_call", value2 => $shell_call,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -686,7 +708,7 @@ sub configure_ipmi
 			else
 			{
 				# Local call
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -704,13 +726,13 @@ sub configure_ipmi
 			}
 			foreach my $line (@{$return})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				if ($line =~ /Invalid channel: /)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "channel", value1 => $channel,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -723,89 +745,50 @@ sub configure_ipmi
 			}
 			$channel++ if not $lan_found;
 		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "channel", value1 => $channel,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "channel",   value1 => $channel,
+			name2 => "lan_found", value2 => $lan_found,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Now find the admin user ID number
-		my $user_id   = 0;
-		my $uid_found = 0;
+		my $user_id = "";
 		if ($lan_found)
 		{
-			while (not $uid_found)
+			# check to see if this is the correct channel
+			my $shell_call  = $an->data->{path}{ipmitool}." user list $channel";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "user_id", value1 => $user_id,
+				$line =~ s/\s+/ /g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "ipmi_user", value1 => $ipmi_user, 
+					name2 => "line",      value2 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if ($user_id > 20)
+				
+				if ($line =~ /^(\d+) $ipmi_user /)
 				{
-					# Give up...
-					$an->Log->entry({log_level => 1, message_key => "log_0129", file => $THIS_FILE, line => __LINE__});
-					$user_id = "";
+					$user_id = $1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "user_id", value1 => $user_id,
+					}, file => $THIS_FILE, line => __LINE__});
 					last;
 				}
-				
-				# check to see if this is the write channel
-				my $return_code = "";
-				my $return      = [];
-				my $shell_call  = $an->data->{path}{ipmitool}." user list $channel";
-				if ($target)
-				{
-					# Remote call.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "target",     value1 => $target,
-						name2 => "shell_call", value2 => $shell_call,
-					}, file => $THIS_FILE, line => __LINE__});
-					(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-						target		=>	$target,
-						port		=>	$port, 
-						password	=>	$password,
-						shell_call	=>	$shell_call,
-					});
-				}
-				else
-				{
-					# Local call
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "shell_call", value1 => $shell_call,
-					}, file => $THIS_FILE, line => __LINE__});
-					open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-					while(<$file_handle>)
-					{
-						chomp;
-						my $line = $_;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "line", value1 => $line, 
-						}, file => $THIS_FILE, line => __LINE__});
-						
-						push @{$return}, $line;
-					}
-					close $file_handle;
-				}
-				foreach my $line (@{$return})
-				{
-					$line =~ s/\s+/ /g;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line, 
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					if ($line =~ /^(\d+) $ipmi_user /)
-					{
-						$user_id   = $1;
-						$uid_found = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "user_id", value1 => $user_id,
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-				}
-				$user_id++ if not $uid_found;
 			}
 			
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "ipmi_user", value1 => $ipmi_user,
 				name2 => "user_id",   value2 => $user_id,
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($uid_found)
+			if ($user_id =~ /^\d/)
 			{
 				# Set the password.
 				my $return     = [];
@@ -813,7 +796,7 @@ sub configure_ipmi
 				if ($target)
 				{
 					# Remote call.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 						name1 => "target",     value1 => $target,
 						name2 => "shell_call", value2 => $shell_call,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -827,7 +810,7 @@ sub configure_ipmi
 				else
 				{
 					# Local call
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 						name1 => "shell_call", value1 => $shell_call,
 					}, file => $THIS_FILE, line => __LINE__});
 					open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -897,7 +880,8 @@ sub configure_ipmi
 					if ($line =~ /Success/i)
 					{
 						# Woo!
-						$an->Log->entry({log_level => 2, message_key => "log_0130", message_variables => { channel => $channel }, file => $THIS_FILE, line => __LINE__});
+						$return_code = 0;
+						$an->Log->entry({log_level => 2, message_key => "log_0130", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 					}
 					elsif ($line =~ /wrong password size/i)
 					{
@@ -909,7 +893,7 @@ sub configure_ipmi
 					{
 						# Password didn't take. :(
 						$return_code = 1;
-						$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => { channel => $channel }, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				if ($try_20)
@@ -958,17 +942,14 @@ sub configure_ipmi
 						if ($line =~ /Success/i)
 						{
 							# Woo!
-							$an->Log->entry({log_level => 2, message_key => "log_0133", message_variables => {
-								channel => $channel, 
-							}, file => $THIS_FILE, line => __LINE__});
+							$return_code = 0;
+							$an->Log->entry({log_level => 2, message_key => "log_0133", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 						}
 						elsif ($line =~ /password incorrect/i)
 						{
 							# Password didn't take. :(
 							$return_code = 1;
-							$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => {
-								channel => $channel, 
-							}, file => $THIS_FILE, line => __LINE__});
+							$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => { target => $target }, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 				}
@@ -980,7 +961,7 @@ sub configure_ipmi
 		{
 			$return_code = 3;
 		}
-		elsif (not $uid_found)
+		elsif ($user_id eq "")
 		{
 			$return_code = 4;
 		}
@@ -1346,17 +1327,16 @@ sub get_daemon_state
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_daemon_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_daemon_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $daemon   = $parameter->{daemon}   ? $parameter->{daemon}   : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "daemon", value1 => $daemon, 
 		name2 => "target", value2 => $target, 
-		name3 => "target", value3 => $target, 
-		name4 => "port",   value4 => $port, 
+		name3 => "port",   value3 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
@@ -1389,11 +1369,11 @@ sub get_daemon_state
 	if ($target)
 	{
 		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "log_0150", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "log_0150", message_variables => {
 			target => $target, 
 			daemon => $daemon,
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1407,8 +1387,8 @@ sub get_daemon_state
 	else
 	{
 		# Local call
-		$an->Log->entry({log_level => 2, message_key => "log_0271", message_variables => { daemon => $daemon }, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "log_0271", message_variables => { daemon => $daemon }, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -1426,7 +1406,7 @@ sub get_daemon_state
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1451,7 +1431,7 @@ sub get_daemon_state
 		if ($line =~ /^return_code:(\d+)/)
 		{
 			my $return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "return_code",         value1 => $return_code,
 				name2 => "stopped_return_code", value2 => $stopped_return_code,
 				name3 => "running_return_code", value3 => $running_return_code,
@@ -1468,14 +1448,14 @@ sub get_daemon_state
 			{
 				$state = "undefined:$return_code";
 			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "return_code", value1 => $return_code,
 				name2 => "state",       value2 => $state,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($state);

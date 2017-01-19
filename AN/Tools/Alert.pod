@@ -1134,6 +1134,18 @@ The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to copy the new cl
 
 The 'AN::Tools::Cman' module's 'update_cluster_conf()' failed to push the new configuration file out to the cluster. The returned version number was less than what it should have been with the requested changes.
 
+=head2 C<231>
+
+The 'AN::Tools::System' module's 'configure_ipmi()' was called without a task being set.
+
+=head2 C<232>
+
+The 'AN::Tools::System' module's 'configure_ipmi()' was called with an invalid task being requested. Valid tasks are 'password', 'network' or 'both'.
+
+=head2 C<233>
+
+The 'AN::Tools::System' module's 'configure_ipmi()' was asked to change the IPMI user password, but was not given the name of the user to work on.
+
 
 =head2 C<999>
 

@@ -735,6 +735,7 @@ sub _set_paths
 	$an->data->{path}{'anvil-safe-start_link'}     = "/etc/rc3.d/S99_anvil-safe-start";
 	$an->data->{path}{'anvil-safe-stop'}           = "/sbin/striker/anvil-safe-stop";
 	$an->data->{path}{'anvil-stop-server'}         = "/sbin/striker/anvil-stop-server";
+	$an->data->{path}{'striker-change-password'}   = "/sbin/striker/striker-change-password";
 	$an->data->{path}{'striker-push-ssh'}          = "/sbin/striker/striker-push-ssh";
 	$an->data->{path}{ScanCore}                    = "/sbin/striker/ScanCore/ScanCore";
 	

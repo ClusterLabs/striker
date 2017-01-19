@@ -330,7 +330,7 @@
 		<key name="explain_0177"><![CDATA[The name of this #!string!brand_0003!# system. It must match '#!string!row_0005!#' used in the #!variable!row_0240!# used to build the system.]]></key>
 		<key name="explain_0178">There are no existing sending (smtp) mail servers yet.</key>
 		<key name="explain_0179">A short (one line) description which is shown in the #!string!brand_0003!# selection list.</key>
-		<key name="explain_0180"><![CDATA[<span class="highlight_note_bold">Note</span>: The password here will be displayed back to you.]]></key>
+		<key name="explain_0180"><![CDATA[<span class="highlight_note_bold">Note</span>: The password here will be displayed back to you.<br /><span class="highlight_note_bold">Note</span>: To change the password, use the '<span class="code">#!data!path::striker-change-password!#</span>' tool.]]></key>
 		<key name="explain_0181">This is the password used to connect to and control the #!string!brand_0003!#.</key>
 		<key name="explain_0182"><![CDATA[The address (name or ip) of node 1.<br />If you need to use a non-standard port, use '<span class="highlight_detail">address:port</span>'.]]></key>
 		<key name="explain_0183"><![CDATA[The same for node 2.]]></key>
@@ -2154,10 +2154,10 @@
 		<key name="log_0127">Failed to find the IPMI LAN channel!</key>
 		<key name="log_0128">Found the lan channel. It is: [#!variable!channel!#].</key>
 		<key name="log_0129">Failed to find the IPMI admin user ID!</key>
-		<key name="log_0130">IPMI password set successfully as a 16-byte string on node: [#!variable!node!#].</key>
+		<key name="log_0130">IPMI password set successfully as a 16-byte string on node: [#!variable!target!#].</key>
 		<key name="log_0131">IPMI password is not a 16-byte string, will try 20-byte.</key>
-		<key name="log_0132">IPMI password failed to be set properly on node: [#!variable!node!#].</key>
-		<key name="log_0133">IPMI password set successfully as a 20-byte string on node: [#!variable!node!#].</key>
+		<key name="log_0132">IPMI password failed to be set properly on node: [#!variable!target!#].</key>
+		<key name="log_0133">IPMI password set successfully as a 20-byte string on node: [#!variable!target!#].</key>
 		<key name="log_0134">IPMI IP is now statically assigned on node: [#!variable!node!#].</key>
 		<key name="log_0135">Failed to set the IPMI IP to static on node: [#!variable!node!#]!</key>
 		<key name="log_0136">The reported IPMI IP: [#!variable!current_ip!#] does not match the desired IP: [#!variable!desired_ip!#] on node: [#!variable!node!#]!</key>
@@ -2174,7 +2174,7 @@
 		<key name="log_0147">The daemon: [#!variable!daemon!#] is already stopped on node: [#!variable!node!#].</key>
 		<key name="log_0148">The daemon: [#!variable!daemon!#] has been stopped on node: [#!variable!node!#].</key>
 		<key name="log_0149">Failed to stop the daemon: [#!variable!daemon!#] on the node: [#!variable!node!#]!</key>
-		<key name="log_0150">Checking if the daemon: [#!variable!daemon!#] is currently running on the node: [#!variable!node!#].</key>
+		<key name="log_0150">Checking if the daemon: [#!variable!daemon!#] is currently running on the node: [#!variable!target!#].</key>
 		<key name="log_0151">The daemon: [#!variable!daemon!#] is not installed on the node: [#!variable!node!#], pretending it is off.</key>
 		<key name="log_0152">Matching custom LVM filters on node both nodes.</key>
 		<key name="log_0153">Different custom filters on both nodes! Unable to proceed.</key>
@@ -3807,7 +3807,14 @@ Proceed? [y/N]
 		<key name="scp_message_0021">- Updating the nodes in the Anvil!: [#!variable!anvil_name!#]</key>
 		<key name="scp_message_0022">  - Node: [#!variable!node_name!#]: </key>
 		<key name="scp_message_0023">- Attempting to access Striker: [#!variable!peer_name!#]... </key>
-		<key name="scp_message_0024">Proceeding without prompt.</key>
+		<key name="scp_message_0024">'Yes' set on command line, proceeding without prompt.</key>
+		<key name="scp_message_0025">- IPMI user not found, skipping.</key>
+		<key name="scp_message_0026">Verifying that fencing still works on node: [#!variable!node_name!#]: </key>
+		<key name="scp_message_0027">Updating systems users on node: [#!variable!node_name!#]...</key>
+		<key name="scp_message_0028">- User: [#!variable!user!#]: </key>
+		<key name="scp_message_0029">Updating ScanCore password for the node: [#!variable!node_name!#]: </key>
+		<key name="scp_message_0030">Updating ScanCore password for the Anvil!: [#!variable!anvil_name!#]: </key>
+		<key name="scp_message_0031">Updating the Anvil! passwords are complete!</key>
 		
 		<!-- errors -->
 		<key name="scp_error_0001">You must be root (or use sudo) to change passwords.</key>
@@ -3822,6 +3829,15 @@ Proceed? [y/N]
 		<key name="scp_error_0010">One or more nodes are offline and '--force' wasn't used.</key>
 		<key name="scp_error_0011">One or more Striker peers are offline and '--force' wasn't used.</key>
 		<key name="scp_error_0012">Both nodes must be online to change an Anvil! system's password.</key>
+		<key name="scp_error_0013">Error!
+[ Error ] - We tried to change the IPMI password and cluster.conf, but now
+[ Error ]   'fence_check' fails on: [#!variable!node!#].
+		</key>
+		<key name="scp_error_0014">Error!
+[ Error ] - We tried to change the IPMI password and cluster.conf, but now
+[ Error ]   'fence_check' returned an unexpected return code: [#!variable!rc!#] on: 
+[ Error ]   [#!variable!node!#].
+		</key>
 		
 		<!-- warnings -->
 		<key name="scp_warning_0001">[ Warning ] - The password is too short, but '--force' was used. Proceeding.</key>
@@ -3856,6 +3872,18 @@ Proceed? [y/N]
 *******************************************************************************
 		]]></key>
 		<key name="scp_warning_0008">[ Warning ] - The node: [#!variable!node_name!#] is not accessible!</key>
+		<key name="scp_warning_0009">Problem!
+*******************************************************************************
+[ Warning ] - We called 'fence_check', but it appears to have not run.
+*******************************************************************************
+		</key>
+		<key name="scp_warning_0010">
+*******************************************************************************
+[ Warning ] - Updating an Anvil! system password is not without risk. Please be
+[ Warning ]   careful and, when possible, update the password during a 
+[ Warning ]   maintenance window.
+*******************************************************************************
+		</key>
 		
 	</lang>
 
