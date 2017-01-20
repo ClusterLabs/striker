@@ -46,7 +46,7 @@ all strings with 'scan_clustat_'.
 		<key name="scan_clustat_note_0024">The server: [#!variable!service!#] has shutdown.</key>
 		<key name="scan_clustat_note_0025">The service: [#!variable!service!#] is being stopped on the host: [#!variable!host!#].</key>
 		<key name="scan_clustat_note_0026">The service: [#!variable!service!#] has been stopped.</key>
-		<key name="scan_clustat_note_0027"></key>
+		<key name="scan_clustat_note_0027">All servers are now running on: [#!variable!node!#], so the fence delay was changed to favour this node.</key>
 		<key name="scan_clustat_note_0028">The server: [#!variable!service!#] has been migrated from: [#!variable!source!#] to: [#!variable!target!#].</key>
 		
 		<!-- Warnings. -->
@@ -112,6 +112,7 @@ This means that the node can no longer participate in the #!string!brand_0004!#.
 This should never happen. 
 #!string!scancore_brand_0005!#
 		</key>
+		<key name="scan_clustat_warning_0025">There are no servers running on the peer node, and we have: [#!variable!servers!#] hosted here. The fence delay does not favour us, so that will now be fixed.</key>
 		
 		<!-- Errors -->
 		<key name="scan_clustat_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>

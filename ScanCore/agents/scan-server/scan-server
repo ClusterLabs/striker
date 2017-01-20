@@ -16,8 +16,6 @@
 #    own.
 # 
 # TODO: 
-#  - If all servers are running on one node, make sure that node has the fence delay. Use the new 
-#    Cman->update_cluster_conf() method (still needs testing for the delay shift)
 #  - Check each pass if the server is running and, if so, update /shared/definition. Do this before looking
 #    for changes!
 #  - Add a 'maintenance mode' where the VM is no longer monitored by the cluster. When in maintenance mode,

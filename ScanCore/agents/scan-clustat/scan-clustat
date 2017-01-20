@@ -18,10 +18,10 @@
 #    services.
 # 
 # TODO: 
+#  - If all servers are running on one node, make sure that node has the fence delay. Use the new 
+#    Cman->update_cluster_conf() method (still needs testing for the delay shift)
 #  - Have it check 'virsh list' if any VM is listed as off in clustat and if the server is found, start it on
 #    the proper node. Editing <vm ... /> causes the server to be listed as off.
-#  - Check to see where the (most) servers are running and ensure that the host node is the one with the 
-#    'delay' set in its IPMI fence method.
 # 
 
 # Use my modules.
@@ -85,6 +85,9 @@ my $an = AN::Tools->new({data =>
 		sys		=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			clustat_uuid_query	=>	"",
+			# This will store the number of servers running on each node. If the peer has zero,
+			# we'll check if the fence delay is on us and, if not, move it to us.
+			host_count		=>	{},
 			# When a lock is requested, this is set to the time the lock was set. 
 			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
@@ -132,9 +135,7 @@ if (parse_clustat($an))
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => {
-	connections	=>	$connections,
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
 
 # Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
 # running ScanCore, it won't be.
@@ -2216,6 +2217,127 @@ WHERE
 	# Now commit the changes.
 	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	
+	# Lastly, see if we have servers and our peer doesn't. If that is the case, move the delay to us, if
+	# not already done.
+	check_fence_delay($an);
+	
+	return(0);
+}
+
+# This looks to see if there are servers running on this node but none on the peer. If so, check to see if 
+# the fence delay favours us and, if not, change it.
+sub check_fence_delay
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_fence_delay", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $my_name = $an->hostname();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => { 
+		name1 => "my_name", value1 => $my_name,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $peer_name = "";
+	foreach my $host (sort {$a cmp $b} keys %{$an->data->{sys}{host_count}})
+	{
+		if ($host ne $my_name)
+		{
+			$peer_name = $host;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => { 
+				name1 => "peer_name", value1 => $peer_name,
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
+		name1 => "sys::host_count::${my_name}",   value1 => $an->data->{sys}{host_count}{$my_name},
+		name2 => "sys::host_count::${peer_name}", value2 => $an->data->{sys}{host_count}{$peer_name},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($an->data->{sys}{host_count}{$my_name}) && (not $an->data->{sys}{host_count}{$peer_name}))
+	{
+		# Check to see who have the fence delay currently.
+		my $delay_favours = "";
+		my $this_node     = "";
+		my $shell_call    = $an->data->{path}{cluster_conf};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => { 
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => { 
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /<clusternode /)
+			{
+				$this_node = ($line =~ /name="(.*?)"/)[0];
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => { 
+					name1 => "this_node", value1 => $this_node,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			next if not $this_node;
+			
+			if ($line =~ /<\/clusternode>/)
+			{
+				$this_node = "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => { 
+					name1 => "this_node", value1 => $this_node,
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			
+			if ($line =~ /<device /)
+			{
+				# In a node's fence device.
+				if ($line =~ /delay="\d+"/)
+				{
+					$delay_favours = $this_node;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => { 
+						name1 => "delay_favours", value1 => $delay_favours,
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+		}
+		close $file_handle;
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
+			name1 => "delay_favours", value1 => $delay_favours,
+			name2 => "my_name",       value2 => $my_name,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($delay_favours ne $my_name)
+		{
+			$an->Log->entry({log_level => 1, message_key => "scan_clustat_warning_0025", message_variables => { servers => $an->data->{sys}{host_count}{$my_name} }, file => $THIS_FILE, line => __LINE__});
+			
+			my $rc = $an->Cman->update_cluster_conf({
+				task    => "fence", 
+				subtask => "delay", 
+				node    => $my_name, 
+			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => { 
+				name1 => "rc", value1 => $rc,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# 0 = success
+			if (not $rc)
+			{
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_clustat_note_0027",
+					alert_message_variables	=>	{
+						node			=>	$my_name,
+					},
+				});
+			}
+		}
+	}
+	
 	return(0);
 }
 
@@ -2655,6 +2777,15 @@ sub parse_clustat
 					name2 => "clustat::service::${service}::status",    value2 => $an->data->{clustat}{service}{$service}{status},
 					name3 => "clustat::service::${service}::is_server", value3 => $an->data->{clustat}{service}{$service}{is_server},
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If this is a server, record the host.
+				if (($type eq "vm") && ($status =~ /start/))
+				{
+					$an->data->{sys}{host_count}{$host}++;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => { 
+						name1 => "sys::host_count::${host}", value1 => $an->data->{sys}{host_count}{$host},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 			# Parse nodes. Note the '\d' to differentiate node lines from service lines.
 			elsif ($line =~ /^(.*?) (\d+) (.*)/)
@@ -2671,9 +2802,14 @@ sub parse_clustat
 				$an->data->{clustat}{node}{$node}{cluster_id} = $node_id ? $node_id : "--";
 				$an->data->{clustat}{node}{$node}{status}     = $status  ? $status  : "--";
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
+				# Record there being 0 servers on this node. We'll increment this if/when we 
+				# find servers later.
+				$an->data->{sys}{host_count}{$node} = 0;
+				
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => { 
 					name1 => "clustat::node::${node}::cluster_id", value1 => $an->data->{clustat}{node}{$node}{cluster_id},
 					name2 => "clustat::node::${node}::status",     value2 => $an->data->{clustat}{node}{$node}{status},
+					name3 => "sys::host_count::${node}",           value3 => $an->data->{sys}{host_count}{$node},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}

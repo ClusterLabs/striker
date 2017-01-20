@@ -431,11 +431,11 @@ sub load_anvil
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Did the user specify an anvil_uuid?
 	my $anvil_uuid = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -443,7 +443,7 @@ sub load_anvil
 	if ((not $anvil_uuid) && ($an->data->{cgi}{anvil_uuid}))
 	{
 		$anvil_uuid = $an->data->{cgi}{anvil_uuid};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "anvil_uuid", value1 => $anvil_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -451,7 +451,7 @@ sub load_anvil
 	# If we've already loaded this Anvil!, return now.
 	if ((defined $an->data->{sys}{anvil}{uuid}) && ($an->data->{sys}{anvil}{uuid} eq $anvil_uuid))
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid},
 		}, file => $THIS_FILE, line => __LINE__});
 		return(0);
@@ -464,7 +464,7 @@ sub load_anvil
 		# See if we can divine the UUID by reading the cluster name from the local cluster.conf, if 
 		# it exists.
 		my $cluster_name = $an->Cman->cluster_name();
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "cluster_name", value1 => $cluster_name,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -472,7 +472,7 @@ sub load_anvil
 		foreach my $hash_ref (@{$anvil_data})
 		{
 			my $anvil_name = $hash_ref->{anvil_name};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "anvil_name", value1 => $anvil_name,
 			}, file => $THIS_FILE, line => __LINE__});
 
@@ -480,7 +480,7 @@ sub load_anvil
 			{
 				# Found it.
 				$anvil_uuid = $hash_ref->{anvil_uuid};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "anvil_uuid", value1 => $anvil_uuid,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -495,7 +495,7 @@ sub load_anvil
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->Validate->is_uuid({uuid => $anvil_uuid}))
@@ -508,7 +508,7 @@ sub load_anvil
 	{
 		# Load Anvil! data and try again.
 		$an->ScanCore->parse_anvil_data();
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $an->data->{anvils}{$anvil_uuid}{name})
@@ -521,7 +521,7 @@ sub load_anvil
 	
 	# Last test; Do I know about my nodes? If this is the root user calling us, don't die (because it is 
 	# ScanCore or a command line tool).
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvils::${anvil_uuid}::node1::name", value1 => $an->data->{anvils}{$anvil_uuid}{node1}{name},
 		name2 => "anvils::${anvil_uuid}::node2::name", value2 => $an->data->{anvils}{$anvil_uuid}{node2}{name},
 	}, file => $THIS_FILE, line => __LINE__});

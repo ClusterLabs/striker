@@ -429,7 +429,7 @@ sub no_fatal_errors
 	# Have to check if defined because '0' is valid.
 	if (defined $parameter->{set})
 	{
-		$an->Alert->{NO_FATAL_ERRORS} = $parameter->{set} if (($parameter->{set} == 0) || ($parameter->{set} == 1));
+		$an->Alert->{NO_FATAL_ERRORS} = $parameter->{set} if (($parameter->{set} == 0) or ($parameter->{set} == 1));
 	}
 	
 	return ($an->Alert->{NO_FATAL_ERRORS});

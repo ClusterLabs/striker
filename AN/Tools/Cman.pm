@@ -1576,7 +1576,7 @@ sub update_cluster_conf
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_uuid   = $parameter->{anvil_uuid}   ? $parameter->{anvil_uuid}   : "";
 	my $task         = $parameter->{task}         ? $parameter->{task}         : "";
@@ -1586,13 +1586,14 @@ sub update_cluster_conf
 	my $node         = $parameter->{node}         ? $parameter->{node}         : "";
 	my $timeout      = $parameter->{timeout}      ? $parameter->{timeout}      : "";
 	my $new_password = $parameter->{new_password} ? $parameter->{new_password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid, 
 		name2 => "task",       value2 => $task, 
 		name3 => "subtask",    value3 => $subtask, 
 		name4 => "server",     value4 => $server, 
 		name5 => "method",     value5 => $method, 
-		name6 => "timeout",    value6 => $timeout, 
+		name6 => "node",       value6 => $node, 
+		name7 => "timeout",    value7 => $timeout, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "new_password", value1 => $new_password, 
@@ -1601,6 +1602,45 @@ sub update_cluster_conf
 	# The current default shutdown timeout is 120 seconds. I doubt this will ever change, but...
 	my $default_timeout     = 120;
 	my $default_fence_delay = 15;
+	
+	# If I don't have an Anvil! UUID, try to divine it. CGI first
+	if ((not $anvil_uuid) && ($an->data->{cgi}{anvil_uuid}))
+	{
+		$anvil_uuid = $an->data->{cgi}{anvil_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvil_uuid", value1 => $anvil_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Next, loading the anvil.
+	if (not $anvil_uuid)
+	{
+		if ($an->Validate->is_uuid({uuid => $an->data->{sys}{anvil}{uuid}}))
+		{
+			$anvil_uuid = $an->data->{sys}{anvil}{uuid};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_uuid", value1 => $anvil_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Try loading the anvil
+			$an->Striker->load_anvil();
+			
+			# Now do we have the UUID? If not, we'll fail shortly.
+			if ($an->Validate->is_uuid({uuid => $an->data->{sys}{anvil}{uuid}}))
+			{
+				$anvil_uuid = $an->data->{sys}{anvil}{uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "anvil_uuid", value1 => $anvil_uuid,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Do a quick scan of the nodes.
+				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
+				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
+			}
+		}
+	}
 	
 	# Return codes:
 	# 0  = Successfully updated the config.
@@ -2016,9 +2056,11 @@ sub update_cluster_conf
 		# we'll not worry until we also fail to see a password of the corresponding fence method.
 		if ($line =~ /<clusternode /)
 		{
-			$this_node = ($line =~ /name="(.*?)"/)[0];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "this_node", value1 => $this_node, 
+			$this_node    = ($line =~ /name="(.*?)"/)[0];
+			$first_method = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_node",    value1 => $this_node, 
+				name2 => "first_method", value2 => $first_method, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($this_node)
@@ -2055,10 +2097,10 @@ sub update_cluster_conf
 				{
 					# If this is the first method and if we've been asked to change the 
 					# node with the fence delay, do so now (if needed).
-					if ($line =~ /delay="(\d+)"/)
+					if ($line =~ / delay="(\d+)"/)
 					{
 						my $old_delay = $1;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "old_delay", value1 => $old_delay, 
 						}, file => $THIS_FILE, line => __LINE__});
 						
@@ -2067,7 +2109,8 @@ sub update_cluster_conf
 							# Remove the delay.
 							$file_changed =  1;
 							$line         =~ s/ delay="\d+"//;
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							# WARNING: Exposes passwords
+							$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 								name1 => "file_changed", value1 => $file_changed, 
 								name2 => "line",         value2 => $line, 
 							}, file => $THIS_FILE, line => __LINE__});
@@ -2079,7 +2122,8 @@ sub update_cluster_conf
 						$file_changed =  1;
 						$line         =~ s/ delay=".*?"//;
 						$line         =~ s/name="(.*?)"/name="$1" delay="$default_fence_delay"/;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						# WARNING: Exposes passwords
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 							name1 => "file_changed", value1 => $file_changed, 
 							name2 => "line",         value2 => $line, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2123,7 +2167,7 @@ sub update_cluster_conf
 					if (($method eq "ipmi") && ($line =~ /login="(.*?)"/))
 					{
 						$an->data->{ipmi}{$this_node}{ipmi_user} = $1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "ipmi::${this_node}::ipmi_user", value1 => $an->data->{ipmi}{$this_node}{ipmi_user}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -2150,7 +2194,7 @@ sub update_cluster_conf
 					{
 						my $this_node = $an->data->{sys}{anvil}{$node_key}{name};
 						$an->data->{ipmi}{$this_node}{ipmi_user} = $1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "ipmi::${this_node}::ipmi_user", value1 => $an->data->{ipmi}{$this_node}{ipmi_user}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -2250,6 +2294,9 @@ sub update_cluster_conf
 	else
 	{
 		# Local call
+		# When we're running from cron, PATH isn't set and 'ccs_config_validate' calls 
+		# '/usr/sbin/ccs_update_schema', but without the path. So we'll set PATH here.
+		$shell_call = "PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin; $shell_call";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2257,7 +2304,7 @@ sub update_cluster_conf
 		while(<$file_handle>)
 		{
 			chomp;
-			my $line =  $_;
+			my $line = $_;
 			push @{$return}, $line;
 		}
 		close $file_handle;
@@ -2297,7 +2344,7 @@ else
     ".$an->data->{path}{echo}." failed
 fi;
 ";
-	$return     = [];
+	$return = [];
 	if ($target)
 	{
 		# Remote call
