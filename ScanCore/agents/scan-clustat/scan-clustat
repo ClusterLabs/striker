@@ -2326,9 +2326,9 @@ sub check_fence_delay
 			if (not $rc)
 			{
 				$an->Alert->register_alert({
-					alert_level		=>	"notice", 
+					alert_level		=>	"warning", 
 					alert_agent_name	=>	$THIS_FILE,
-					alert_title_key		=>	"an_alert_title_0003",
+					alert_title_key		=>	"an_alert_title_0004",
 					alert_message_key	=>	"scan_clustat_note_0027",
 					alert_message_variables	=>	{
 						node			=>	$my_name,
