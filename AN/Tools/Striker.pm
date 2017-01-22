@@ -236,7 +236,7 @@ sub build_local_host_list
 	push @{$possible_hosts}, $an->short_hostname;
 	foreach my $device (sort {$a cmp $b} keys %{$ip_list})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ip_list->$device", value1 => $ip_list->{$device}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$possible_hosts}, $ip_list->{$device};
@@ -245,7 +245,7 @@ sub build_local_host_list
 	### DEBUG
 	foreach my $host (sort {$a cmp $b} @{$possible_hosts})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "host", value1 => $host, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -253,6 +253,7 @@ sub build_local_host_list
 	return($possible_hosts);
 }
 
+### NOTE: Not used, obviously
 # This presents and manages the 'configure' component of Striker.
 sub configure
 {
@@ -260,8 +261,6 @@ sub configure
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	
 	
 	return(0);
 }
@@ -376,10 +375,6 @@ sub get_db_id_from_striker_conf
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
 			push @{$return}, $line;
 		}
 		close $file_handle;
@@ -395,14 +390,15 @@ sub get_db_id_from_striker_conf
 		{
 			my $this_db_id = $1;
 			my $this_host  = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "this_db_id", value1 => $this_db_id, 
 				name2 => "this_host",  value2 => $this_host, 
+				name3 => "line",       value3 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			foreach my $host (sort {$a cmp $b} @{$hosts})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_host", value1 => $this_host, 
 					name2 => "host",      value2 => $host, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -431,11 +427,11 @@ sub load_anvil
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Did the user specify an anvil_uuid?
 	my $anvil_uuid = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -443,7 +439,7 @@ sub load_anvil
 	if ((not $anvil_uuid) && ($an->data->{cgi}{anvil_uuid}))
 	{
 		$anvil_uuid = $an->data->{cgi}{anvil_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "anvil_uuid", value1 => $anvil_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -451,7 +447,7 @@ sub load_anvil
 	# If we've already loaded this Anvil!, return now.
 	if ((defined $an->data->{sys}{anvil}{uuid}) && ($an->data->{sys}{anvil}{uuid} eq $anvil_uuid))
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid},
 		}, file => $THIS_FILE, line => __LINE__});
 		return(0);
@@ -464,7 +460,7 @@ sub load_anvil
 		# See if we can divine the UUID by reading the cluster name from the local cluster.conf, if 
 		# it exists.
 		my $cluster_name = $an->Cman->cluster_name();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cluster_name", value1 => $cluster_name,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -472,7 +468,7 @@ sub load_anvil
 		foreach my $hash_ref (@{$anvil_data})
 		{
 			my $anvil_name = $hash_ref->{anvil_name};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "anvil_name", value1 => $anvil_name,
 			}, file => $THIS_FILE, line => __LINE__});
 
@@ -480,7 +476,7 @@ sub load_anvil
 			{
 				# Found it.
 				$anvil_uuid = $hash_ref->{anvil_uuid};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "anvil_uuid", value1 => $anvil_uuid,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -495,7 +491,7 @@ sub load_anvil
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->Validate->is_uuid({uuid => $anvil_uuid}))
@@ -508,7 +504,7 @@ sub load_anvil
 	{
 		# Load Anvil! data and try again.
 		$an->ScanCore->parse_anvil_data();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $an->data->{anvils}{$anvil_uuid}{name})
@@ -521,7 +517,7 @@ sub load_anvil
 	
 	# Last test; Do I know about my nodes? If this is the root user calling us, don't die (because it is 
 	# ScanCore or a command line tool).
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvils::${anvil_uuid}::node1::name", value1 => $an->data->{anvils}{$anvil_uuid}{node1}{name},
 		name2 => "anvils::${anvil_uuid}::node2::name", value2 => $an->data->{anvils}{$anvil_uuid}{node2}{name},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -931,7 +927,7 @@ SET
     host_health         = 'ok', 
     modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
+    host_uuid           = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
 ;";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
@@ -1797,14 +1793,14 @@ sub update_striker_conf
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_striker_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_striker_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $variable = $parameter->{variable} ? $parameter->{variable} : "";
 	my $value    = $parameter->{value}    ? $parameter->{value}    : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "variable", value1 => $variable, 
 		name2 => "target",   value2 => $target, 
 		name3 => "port",     value3 => $port, 
@@ -1839,7 +1835,7 @@ sub update_striker_conf
 	if ($target)
 	{
 		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1853,7 +1849,7 @@ sub update_striker_conf
 	else
 	{
 		# Local call
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -1861,30 +1857,26 @@ sub update_striker_conf
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
 			push @{$return}, $line;
 		}
 		close $file_handle;
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^return_code:(\d+)$/)
 		{
 			$return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code);

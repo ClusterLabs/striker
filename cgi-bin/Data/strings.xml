@@ -3737,6 +3737,12 @@ SWITCHES
 	This is used to change the password on an Anvil! node pair. It will
 	change the root and ricci user passwords on both nodes. 
 
+ --ipmi-user
+
+	When using a local dashboard that has IPMI (iRMC, iLO, DRAC, etc), you
+	can use this switch to indicate which IPMI user's password to updated.
+	Without this switch, IPMI on a Striker dashboard will NOT be changed.
+
  --force
 	
 	When changing the local Striker dashboard password, the program will 
@@ -3843,7 +3849,8 @@ Proceed? [y/N]
 		<key name="scp_warning_0001">[ Warning ] - The password is too short, but '--force' was used. Proceeding.</key>
 		<key name="scp_warning_0002">
 *******************************************************************************
-[ Warning ] - The password is longer than: [#!data!password::truncate::ipmi!#], so if we change the password on IPMI, we will truncated it to: [#!variable!ipmi_password!#].
+[ Warning ] - The password is longer than: [#!data!password::truncate::ipmi!#], so if we change the password 
+[ Warning ]   on IPMI, we will truncated it to: [#!variable!ipmi_password!#].
 *******************************************************************************
 		</key>
 		<key name="scp_warning_0003">No access!</key>

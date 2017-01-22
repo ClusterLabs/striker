@@ -156,21 +156,21 @@ fi;";
 		{
 			# No file, so use '-c' for htpasswd
 			$create_file = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "create_file", value1 => $create_file, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /^return_code:(\d+)$/)
 		{
 			$return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /^(.*?):/)
 		{
 			my $this_user = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "this_user", value1 => $this_user, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -179,7 +179,7 @@ fi;";
 				# This is the requested user to update (or no specific user was requested).
 				$to_update->{$this_user} = 1;
 				$user_count++;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "to_update->$this_user", value1 => $to_update->{$this_user}, 
 					name2 => "user_count",            value2 => $user_count, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -219,8 +219,9 @@ fi;";
 		}
 		if ($target)
 		{
+			### WARNING: Exposes passwords
 			# Remote call.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 				name1 => "target",     value1 => $target,
 				name2 => "shell_call", value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -233,8 +234,9 @@ fi;";
 		}
 		else
 		{
+			### WARNING: Exposes passwords
 			# Local call
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -242,24 +244,20 @@ fi;";
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
 				push @{$return}, $line;
 			}
 			close $file_handle;
 		}
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($line =~ /^return_code:(\d+)$/)
 			{
 				$changed_users->{$user} = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changed_users->$user", value1 => $changed_users->{$user}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -275,14 +273,14 @@ sub change_postgresql_password
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "change_postgresql_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "change_postgresql_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $user         = $parameter->{user}         ? $parameter->{user}         : "";
 	my $new_password = $parameter->{new_password} ? $parameter->{new_password} : "";
 	my $target       = $parameter->{target}       ? $parameter->{target}       : "";
 	my $port         = $parameter->{port}         ? $parameter->{port}         : "";
 	my $password     = $parameter->{password}     ? $parameter->{password}     : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "user",   value1 => $user, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
@@ -331,8 +329,9 @@ sub change_postgresql_password
 	my $shell_call  = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." template1 -c \\\"ALTER ROLE $user WITH PASSWORD '${new_password}';\\\"\"; ".$an->data->{path}{'echo'}." return_code:\$?";
 	if ($target)
 	{
+		### WARNING: Exposes passwords
 		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -345,8 +344,9 @@ sub change_postgresql_password
 	}
 	else
 	{
+		### WARNING: Exposes passwords
 		# Local call
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -364,20 +364,20 @@ sub change_postgresql_password
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^return_code:(\d+)$/)
 		{
 			$return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code);
@@ -389,14 +389,14 @@ sub change_shell_user_password
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "change_shell_user_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "change_shell_user_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $user         = $parameter->{user}         ? $parameter->{user}         : "";
 	my $new_password = $parameter->{new_password} ? $parameter->{new_password} : "";
 	my $target       = $parameter->{target}       ? $parameter->{target}       : "";
 	my $port         = $parameter->{port}         ? $parameter->{port}         : "";
 	my $password     = $parameter->{password}     ? $parameter->{password}     : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "user",   value1 => $user, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
@@ -443,8 +443,9 @@ sub change_shell_user_password
 	my $shell_call  = $an->data->{path}{'echo'}." \"$new_password\" | ".$an->data->{path}{passwd}." $user --stdin; ".$an->data->{path}{'echo'}." return_code:\$?";
 	if ($target)
 	{
+		### WARNING: Exposes passwords
 		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -457,8 +458,9 @@ sub change_shell_user_password
 	}
 	else
 	{
+		### WARNING: Exposes passwords
 		# Local call
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -476,20 +478,20 @@ sub change_shell_user_password
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^return_code:(\d+)$/)
 		{
 			$return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code);
@@ -1467,12 +1469,12 @@ sub get_local_ip_addresses
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_local_ip_addresses" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_local_ip_addresses" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $in_device  = "";
 	my $ip_list    = {};
 	my $shell_call = $an->data->{path}{ip}." addr list";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
