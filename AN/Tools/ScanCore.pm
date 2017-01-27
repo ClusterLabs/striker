@@ -3082,7 +3082,7 @@ sub insert_or_update_servers
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $server_uuid                     = $parameter->{server_uuid}                     ? $parameter->{server_uuid}                     : "";
 	my $server_anvil_uuid               = $parameter->{server_anvil_uuid}               ? $parameter->{server_anvil_uuid}               : "";
@@ -3100,7 +3100,7 @@ sub insert_or_update_servers
 	my $server_post_migration_script    = $parameter->{server_post_migration_script}    ? $parameter->{server_post_migration_script}    : "";
 	my $server_post_migration_arguments = $parameter->{server_post_migration_arguments} ? $parameter->{server_post_migration_arguments} : "";
 	my $just_definition                 = $parameter->{just_definition}                 ? $parameter->{just_definition}                 : 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
 		name1  => "server_uuid",                     value1  => $server_uuid, 
 		name2  => "server_anvil_uuid",               value2  => $server_anvil_uuid, 
 		name3  => "server_name",                     value3  => $server_name, 
@@ -3146,20 +3146,20 @@ WHERE
 AND 
     server_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_anvil_uuid)." 
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
 			$server_uuid = $row->[0] ? $row->[0] : "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "server_uuid", value1 => $server_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3169,7 +3169,7 @@ AND
 	if (not $server_migration_type)
 	{
 		$server_migration_type = $an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "cold" : "live";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_migration_type", value1 => $server_migration_type, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -3195,7 +3195,7 @@ FROM
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3207,11 +3207,16 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			my $old_server_definition = defined $row->[0] ? $row->[0] : "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "old_server_definition", value1 => $old_server_definition, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($old_server_definition ne $server_definition)
+			if ($old_server_definition eq $server_definition)
+			{
+				# No change.
+				$an->Log->entry({log_level => 2, message_key => "message_0065", file => $THIS_FILE, line => __LINE__});
+			}
+			else
 			{
 				# Update.
 				my $query = "
@@ -3224,7 +3229,7 @@ WHERE
     server_uuid       = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});

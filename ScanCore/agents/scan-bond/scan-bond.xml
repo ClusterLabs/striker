@@ -52,6 +52,10 @@ all strings with 'scan_bond_'.
 		<key name="scan_bond_reselect_0">Always</key>
 		<key name="scan_bond_reselect_1">If Better (If primary has equal or better speed and duplex)</key>
 		<key name="scan_bond_reselect_2">On Failure (Stay on active interface until it fails)</key>
+		<!-- This can happen if the digit wasn't set and the agent failed to convert the null value to 9999 -->
+		<key name="scan_bond_reselect_">Unknown</key>
+		<key name="scan_bond_reselect_--">Unknown</key>
+		<key name="scan_bond_reselect_9999">Unknown</key>
 		
 		<!-- Notices -->
 		<key name="scan_bond_note_0001"></key>

@@ -172,7 +172,7 @@ sub check_for_removed_files
 	
 	# This should only ever run on a node in an Anvil!.
 	$an->data->{scancore}{i_am_a} = $an->Get->what_am_i();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::i_am_a", value1 => $an->data->{scancore}{i_am_a}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((not -e $an->data->{path}{shared_files}) or ($an->data->{scancore}{i_am_a} ne "node"))
@@ -184,7 +184,7 @@ sub check_for_removed_files
 	# Get the Anvil! data.
 	my $anvil_name = $an->data->{sys}{anvil_name};
 	my $anvil_uuid = $an->data->{sys}{anvil_uuid};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_name", value1 => $anvil_name, 
 		name2 => "anvil_uuid", value2 => $anvil_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -193,7 +193,7 @@ sub check_for_removed_files
 	my ($files, $partition) = $an->Get->shared_files();
 	foreach my $file (sort {$a cmp $b} keys %{$files})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 			name1  => "${file}::type",       value1  => $files->{$file}{type},
 			name2  => "${file}::mode",       value2  => $files->{$file}{mode},
 			name3  => "${file}::owner",      value3  => $files->{$file}{user},
@@ -239,6 +239,16 @@ sub check_for_removed_files
 		# Skip this server if it isn't on this Anvil!.
 		next if $anvil_uuid ne $server_anvil_uuid;
 		
+		# Skip this server if it wasn't found locallt.
+		if (($server_uuid) && (not exists $an->data->{server_uuid}{$server_uuid}{name}))
+		{
+			$an->Log->entry({log_level => 3, message_key => "scan_server_message_0015", message_variables => { 
+				server_name => $server_name, 
+				server_uuid => $server_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
 		# OK, now look for mounted ISOs. 
 		my $in_cdrom    = 0;
 		my $this_device = "";
@@ -254,7 +264,7 @@ sub check_for_removed_files
 			{
 				# Found an optical disk (DVD/CD).
 				$in_cdrom = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "in_cdrom", value1 => $in_cdrom, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -264,7 +274,7 @@ sub check_for_removed_files
 				{
 					# Done. Eject if needed.
 					$in_cdrom = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "in_cdrom", value1 => $in_cdrom, 
 						name2 => "do_eject", value2 => $do_eject, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -274,14 +284,14 @@ sub check_for_removed_files
 						# I don't have a scanned Anvil!, so I need to directly see if
 						# the server is running or not.
 						my $server_is_running = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "server_host", value1 => $server_host,
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($server_host)
 						{
 							# Read the current server config from virsh.
 							$server_is_running = 1;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "server_is_running", value1 => $server_is_running,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -291,7 +301,7 @@ sub check_for_removed_files
 						$an->data->{cgi}{anvil_uuid} = $server_anvil_uuid;
 						$an->data->{cgi}{server}     = $server_name;
 						$an->data->{cgi}{device}     = $this_device;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 							name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid}, 
 							name2 => "cgi::server",     value2 => $an->data->{cgi}{server}, 
 							name3 => "cgi::device",     value3 => $an->data->{cgi}{device}, 
@@ -317,7 +327,7 @@ sub check_for_removed_files
 					$do_eject    = 0;
 					$this_device = "";
 					$file        = "";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "do_eject",    value1 => $do_eject, 
 						name2 => "this_device", value2 => $this_device, 
 						name3 => "file",        value3 => $file, 
@@ -327,7 +337,7 @@ sub check_for_removed_files
 				{
 					# Found the device.
 					$this_device = $1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "this_device", value1 => $this_device, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -335,26 +345,26 @@ sub check_for_removed_files
 				{
 					# Found media
 					$file = $1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "file", value1 => $file, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Take the path off.
 					my $shared_files = $an->data->{path}{shared_files};
 					$file =~ s/^$shared_files\///;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "shared_files", value1 => $shared_files, 
 						name2 => "file",         value2 => $file, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "files->{$file}{type}", value1 => $files->{$file}{type}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if (not $files->{$file}{type})
 					{
 						# Eject this disk
 						$do_eject = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "do_eject", value1 => $do_eject, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -375,7 +385,7 @@ sub check_libvirtd
 	my $state = $an->System->daemon_boot_config({daemon => "libvirtd"});
 	my $rc3   = $state->{3};
 	my $rc5   = $state->{5};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "rc3", value1 => $rc3, 
 		name2 => "rc5", value2 => $rc5, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -393,7 +403,7 @@ sub check_libvirtd
 			});
 		my $rc3   = $state->{3};
 		my $rc5   = $state->{5};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "rc3", value1 => $rc3, 
 			name2 => "rc5", value1 => $rc5, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -589,6 +599,7 @@ sub scan_servers
 					if (not $already_found)
 					{
 						# Read in the definition file and record its data.
+						my $valid_xml   = 0;
 						my $definition  = "";
 						my $server_uuid = "";
 						my $shell_call  = $full_path;
@@ -612,12 +623,20 @@ sub scan_servers
 									name1 => "server_uuid", value1 => $server_uuid, 
 								}, file => $THIS_FILE, line => __LINE__});
 							}
+							if ($line =~ /<\/domain>/)
+							{
+								$valid_xml = 1;
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+									name1 => "valid_xml", value1 => $valid_xml, 
+								}, file => $THIS_FILE, line => __LINE__});
+							}
 						}
 						# Record it if we found the UUID.
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "server_uuid", value1 => $server_uuid, 
+							name2 => "valid_xml",   value2 => $valid_xml, 
 						}, file => $THIS_FILE, line => __LINE__});
-						if ($server_uuid)
+						if (($server_uuid) && ($valid_xml))
 						{
 							# We're not setting the host or state because we 
 							# don't know if it is running on another Anvil!.
@@ -798,7 +817,7 @@ WHERE
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -807,7 +826,7 @@ WHERE
 				# The host Anvil! system?
 				if ($an->data->{sys}{anvil_uuid} ne $old_server_anvil_uuid)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1  => "old_server_anvil_uuid", value1  => $old_server_anvil_uuid, 
 						name2  => "sys::anvil_uuid",       value2  => $an->data->{sys}{anvil_uuid}, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -828,7 +847,7 @@ WHERE
 				# The server name?
 				if ($new_server_name ne $old_server_name)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_server_name", value1 => $old_server_name, 
 						name2 => "new_server_name", value2 => $new_server_name, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -869,7 +888,7 @@ WHERE
 				# The current state?
 				if ($new_server_state ne $old_server_state)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_server_state", value1 => $old_server_state, 
 						name2 => "new_server_state", value2 => $new_server_state, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -909,7 +928,7 @@ WHERE
 				# The definition file?
 				if ($new_server_definition ne $old_server_definition)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "old_server_definition", value1 => $old_server_definition, 
 						name2 => "new_server_definition", value2 => $new_server_definition, 
 						name3 => "diff",                  value3 => diff \$old_server_definition, \$new_server_definition, { STYLE => 'Unified' },

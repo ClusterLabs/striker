@@ -13979,11 +13979,11 @@ sub _server_eject_media
 	my $device            = $an->data->{cgi}{device};
 	my $drive             = $an->data->{cgi}{device};
 	my $definition_file   = $an->data->{path}{shared_definitions}."/${server}.xml";
-	my $server_is_running = $parameter->{server_is_running} ? $parameter->{server_is_running} : "";
-	my $target            = $parameter->{target}            ? $parameter->{target}            : "";
-	my $port              = $parameter->{port}              ? $parameter->{port}              : "";
-	my $password          = $parameter->{password}          ? $parameter->{password}          : "";
-	my $quiet             = $parameter->{quiet}             ? $parameter->{quiet}             : 0;
+	my $server_is_running = defined $parameter->{server_is_running} ? $parameter->{server_is_running} : 0;
+	my $target            = defined $parameter->{target}            ? $parameter->{target}            : "";
+	my $port              = defined $parameter->{port}              ? $parameter->{port}              : "";
+	my $password          = defined $parameter->{password}          ? $parameter->{password}          : "";
+	my $quiet             =defined  $parameter->{quiet}             ? $parameter->{quiet}             : 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 		name1  => "anvil_uuid",        value1  => $anvil_uuid, 
 		name2  => "anvil_name",        value2  => $anvil_name, 
@@ -14167,10 +14167,6 @@ sub _server_eject_media
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
 				push @{$return}, $line;
 			}
 			close $file_handle;
@@ -14182,9 +14178,6 @@ sub _server_eject_media
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			$new_definition .= "$line\n";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line,
-			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /<uuid>(.*?)<\/uuid>/)
 			{
 				$server_uuid = $1;
@@ -14277,10 +14270,6 @@ sub _server_eject_media
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
 				push @{$return}, $line;
 			}
 			close $file_handle;

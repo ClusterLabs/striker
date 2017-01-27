@@ -208,7 +208,7 @@ sub bridge_name
 	
 	my $bridge     = "";
 	my $shell_call = $an->data->{path}{brctl}." show";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -220,21 +220,21 @@ sub bridge_name
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^(.*?)\s+\d/)
 		{
 			$bridge = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "bridge", value1 => $bridge,
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "bridge", value1 => $bridge,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($bridge);
@@ -676,7 +676,7 @@ sub dr_target_data
 	my $return     = {};
 	my $dr_target_name = $parameter->{name} ? $parameter->{name} : "";
 	my $dr_target_uuid = $parameter->{uuid} ? $parameter->{uuid} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "dr_target_name", value1 => $dr_target_name, 
 		name2 => "dr_target_uuid", value2 => $dr_target_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1401,7 +1401,7 @@ sub ip
 		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0047", code => 47, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "host",      value1 => $host, 
 		name2 => "node_uuid", value2 => $node_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1413,21 +1413,21 @@ sub ip
 				target => $node_uuid, 
 				type   => "etc_hosts",
 			});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "etc_hosts", value1 => $etc_hosts, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($etc_hosts)
 		{
 			foreach my $line (split/\n/, $etc_hosts)
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+(.*)$/)
 				{
 					my $this_ip   = $1;
 					my $this_host = $2;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "this_ip",   value1 => $this_ip, 
 						name2 => "this_host", value2 => $this_host, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -1436,13 +1436,13 @@ sub ip
 						foreach my $sub_host (split/\s/, $this_host)
 						{
 							next if not $sub_host;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "sub_host", value1 => $sub_host, 
 							}, file => $THIS_FILE, line => __LINE__});
 							if ($sub_host eq $host)
 							{
 								$ip = $this_ip;
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "ip", value1 => $ip, 
 								}, file => $THIS_FILE, line => __LINE__});
 								last;
@@ -1452,7 +1452,7 @@ sub ip
 					elsif ($this_host eq $host)
 					{
 						$ip = $this_ip;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "ip", value1 => $ip, 
 						}, file => $THIS_FILE, line => __LINE__});
 						last;
@@ -1463,13 +1463,13 @@ sub ip
 	}
 	
 	# If I don't have an IP now, try to read it with gethostip.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "ip", value1 => $ip, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $ip)
 	{
 		my $shell_call = $an->data->{path}{gethostip}." -d $host";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -1477,7 +1477,7 @@ sub ip
 		{
 			chomp;
 			$ip = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "ip", value1 => $ip, 
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
@@ -1485,7 +1485,7 @@ sub ip
 		close $file_handle;
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "ip", value1 => $ip, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return ($ip);
@@ -1624,7 +1624,7 @@ sub local_anvil_details
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "local_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "local_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If no host name is passed in, use this machine's host name.
 	my $hostname_full  = $parameter->{hostname_full}  ? $parameter->{hostname_full}  : $an->hostname;
@@ -1676,14 +1676,14 @@ sub local_anvil_details
 	if (not $an->data->{sys}{anvil}{uuid})
 	{
 		$an->Striker->load_anvil();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Find the servers running locally and store their details, if we're in the cluster.
 	my $clustat_data = $an->Cman->get_clustat_data();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "clustat_data->cluster::name", value1 => $clustat_data->{cluster}{name}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($clustat_data->{cluster}{name})
@@ -1714,7 +1714,7 @@ sub local_anvil_details
 				# Found it.
 				$return->{anvil_password} = $hash_ref->{anvil_password};
 				$return->{anvil_uuid}     = $hash_ref->{anvil_uuid};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "return->anvil_uuid", value1 => $return->{anvil_uuid}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1725,7 +1725,7 @@ sub local_anvil_details
 	$return->{health}{'local'} = $an->ScanCore->host_state();
 	$return->{health}{peer}    = $an->ScanCore->host_state({target => $an->Cman->peer_hostname});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "local_node",    value1 => $return->{local_node}, 
 		name2 => "peer_node",     value2 => $return->{peer_node}, 
 		name3 => "anvil_name",    value3 => $return->{anvil_name}, 
@@ -2322,7 +2322,7 @@ sub node_info
 	
 	# If no host name is passed in, use this machine's host name.
 	my $node_name = $parameter->{node_name} ? $parameter->{node_name} : $an->hostname;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2333,7 +2333,7 @@ sub node_info
 	{
 		my $this_node_name       = $hash_ref->{host_name};
 		my $this_node_anvil_uuid = $hash_ref->{node_anvil_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "this_node_name",       value1 => $this_node_name,
 			name2 => "this_node_anvil_uuid", value2 => $this_node_anvil_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2356,7 +2356,7 @@ sub node_info
 			$return->{use_port}    = $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port};
 			$return->{host_uuid}   = $hash_ref->{host_uuid};
 			$return->{password}    = $an->data->{sys}{anvil}{$node_key}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "return->local",       value1 => $return->{'local'}, 
 				name2 => "return->peer",        value2 => $return->{peer}, 
 				name3 => "return->anvil_uuid",  value3 => $return->{anvil_uuid}, 
@@ -2385,11 +2385,11 @@ sub node_upses
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "node_upses" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "node_upses" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_uuid = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
 	my $node_name  = $parameter->{node_name}  ? $parameter->{node_name}  : "both";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid, 
 		name2 => "node_name",  value2 => $node_name, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2484,7 +2484,7 @@ AND
 	# Summarize for the logs.
 	foreach my $ip (sort {$a cmp $b} keys %{$upses})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "upses->${ip}::name", value1 => $upses->{$ip}{name}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -2678,14 +2678,14 @@ sub peer_network_details
 	if ($an->hostname eq $an->data->{sys}{anvil}{node1}{name})
 	{
 		$node_key = "node2";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_key", value1 => $node_key, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($an->hostname eq $an->data->{sys}{anvil}{node2}{name})
 	{
 		$node_key = "node1";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_key", value1 => $node_key, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -2912,7 +2912,7 @@ sub ram_used_by_program
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ram_used_by_program" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $program_name = $parameter->{program_name} ? $parameter->{program_name} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "program_name", value1 => $program_name, 
 	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	
@@ -2925,7 +2925,7 @@ sub ram_used_by_program
 	
 	my $total_bytes = 0;
 	my $shell_call  = $an->data->{path}{'anvil-report-memory'}." --program $program_name";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
@@ -3001,7 +3001,7 @@ WHERE
 	}
 	$query .= "
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -3019,7 +3019,7 @@ WHERE
 		my $recipient_notify_level = $row->[3] ? $row->[3] : "NULL";
 		my $recipient_note         = $row->[4] ? $row->[4] : "NULL";
 		my $modified_date          = $row->[5];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "recipient_uuid",         value1 => $recipient_uuid, 
 			name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid, 
 			name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid, 
@@ -3227,7 +3227,7 @@ sub server_data
 	my $server_name = $parameter->{server}     ? $parameter->{server}     : "";
 	my $server_uuid = $parameter->{uuid}       ? $parameter->{uuid}       : "";
 	my $anvil_uuid  = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "server_name", value1 => $server_name, 
 		name2 => "server_uuid", value2 => $server_uuid, 
 		name3 => "anvil_uuid",  value3 => $anvil_uuid, 
@@ -3244,7 +3244,7 @@ sub server_data
 		server => $server_name, 
 		anvil  => $anvil_uuid, 
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_uuid", value1 => $server_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -3547,7 +3547,7 @@ sub server_uuid
 	my $uuid       = "";
 	my $server     = $parameter->{server} ? $parameter->{server} : "";
 	my $anvil_uuid = $parameter->{anvil}  ? $parameter->{anvil}  : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "server",     value1 => $server, 
 		name2 => "anvil_uuid", value2 => $anvil_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3560,27 +3560,27 @@ sub server_uuid
 	# If an anvil wasn't specified, see if one was set by cgi.
 	if (not $anvil_uuid)
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_uuid})
 		{
 			$anvil_uuid = $an->data->{cgi}{anvil_uuid};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "anvil_uuid", value1 => $anvil_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			# Was the Anvil! UUID set by an earlier load?
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($an->data->{sys}{anvil}{uuid})
 			{
 				# Yup.
 				$anvil_uuid = $an->data->{sys}{anvil}{uuid};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "anvil_uuid", value1 => $anvil_uuid, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3588,14 +3588,14 @@ sub server_uuid
 			{
 				# Note, try loading the Anvil! now.
 				$an->Striker->load_anvil();
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($an->data->{sys}{anvil}{uuid})
 				{
 					# Success!
 					$anvil_uuid = $an->data->{sys}{anvil}{uuid};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "anvil_uuid", value1 => $anvil_uuid, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -3604,7 +3604,7 @@ sub server_uuid
 	}
 	
 	# Make sure I loaded the Anvil! node data.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::anvil::name", value1 => $an->data->{sys}{anvil}{name}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $an->data->{sys}{anvil}{name}) && ($anvil_uuid))
@@ -3614,7 +3614,7 @@ sub server_uuid
 		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::anvil::node1::use_ip", value1 => $an->data->{sys}{anvil}{node1}{use_ip}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{sys}{anvil}{node1}{use_ip})
@@ -3622,7 +3622,7 @@ sub server_uuid
 		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::anvil::node2::use_ip", value1 => $an->data->{sys}{anvil}{node2}{use_ip}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{sys}{anvil}{node2}{use_ip})
@@ -3648,7 +3648,7 @@ sub server_uuid
 	my $node2_port     = $an->data->{sys}{anvil}{node2}{port};
 	my $node2_online   = $an->data->{sys}{anvil}{node2}{online};
 	my $node2_password = $an->data->{sys}{anvil}{node2}{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 		name1 => "node1_name",   value1 => $node1_name, 
 		name2 => "node1_online", value2 => $node1_online, 
 		name3 => "node1_use_ip", value3 => $node1_use_ip, 
@@ -3676,7 +3676,7 @@ sub server_uuid
 		$target   = $node1_use_ip;
 		$port     = $node1_port;
 		$password = $node1_password;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target", value1 => $target, 
 			name2 => "port",   value2 => $port, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3689,7 +3689,7 @@ sub server_uuid
 		$target   = $node2_use_ip;
 		$port     = $node2_port;
 		$password = $node2_password;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target", value1 => $target, 
 			name2 => "port",   value2 => $port, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3700,7 +3700,7 @@ sub server_uuid
 	
 	# Was one of the nodes online? If so, find the current host, if any. 
 	my $xml = "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "target", value1 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($target)
@@ -3713,7 +3713,7 @@ sub server_uuid
 			});
 		my $state = $clustat_data->{server}{$server}{status} ? $clustat_data->{server}{$server}{status} : "unknown";
 		my $host  = $clustat_data->{server}{$server}{host}   ? $clustat_data->{server}{$server}{host}   : "unknown";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "state", value1 => $state, 
 			name2 => "host",  value2 => $host, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3818,7 +3818,7 @@ WHERE
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "server::${server}::uuid", value1 => $an->data->{server}{$server}{uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($an->data->{server}{$server}{uuid});
@@ -4515,7 +4515,7 @@ sub target_details
 	my $target   = $parameter->{target}   ? $parameter->{target}   : $an->hostname;
 	my $port     = $parameter->{port}     ? $parameter->{port}     : 22;
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target, 
 		name2 => "port",   value2 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4547,7 +4547,7 @@ sub target_details
 	{
 		### Remote calls
 		# UUID
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "uuid_shell_call", value1 => $uuid_shell_call,
 			name2 => "target",          value2 => $target,
 			name3 => "port",            value3 => $port,
@@ -4561,7 +4561,7 @@ sub target_details
 		});
 		
 		# IP info
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "ip_shell_call", value1 => $ip_shell_call,
 			name2 => "target",        value2 => $target,
 			name3 => "port",          value3 => $port,
@@ -4587,7 +4587,7 @@ sub target_details
 		# NOTE: I know some of these could have been direct file reads, but it keeps the calls and 
 		#       output processing consistent.
 		# UUID
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "uuid_shell_call", value1 => $uuid_shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$uuid_shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $uuid_shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -4595,7 +4595,7 @@ sub target_details
 		{
 			chomp;
 			my $line =  $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -4604,7 +4604,7 @@ sub target_details
 		close $file_handle;
 		
 		# IP Info
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ip_shell_call", value1 => $ip_shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, "$ip_shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $ip_shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -4624,13 +4624,13 @@ sub target_details
 	# UUID
 	foreach my $line (@{$uuid_return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/)
 		{
 			$return->{uuid} = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "uuid", value1 => $return->{uuid}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -4751,7 +4751,7 @@ sub upses
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "users_home" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_uuid = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $anvil_uuid)
@@ -4761,7 +4761,7 @@ sub upses
 		return("");
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "sys::anvil::node1::uuid", value1 => $an->data->{sys}{anvil}{node1}{uuid},
 		name2 => "sys::anvil::node2::uuid", value2 => $an->data->{sys}{anvil}{node2}{uuid},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4779,7 +4779,7 @@ sub upses
 	foreach my $ip (sort {$a cmp $b} keys %{$node1_upses})
 	{
 		my $names = $node1_upses->{$ip};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "ip",    value1 => $ip,
 			name2 => "names", value2 => $names,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4789,7 +4789,7 @@ sub upses
 	foreach my $ip (sort {$a cmp $b} keys %{$node2_upses})
 	{
 		my $names = $node1_upses->{$ip};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "ip",    value1 => $ip,
 			name2 => "names", value2 => $names,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4811,7 +4811,7 @@ sub upses_under_node
 	my $upses     = {};
 	my $node_name = $parameter->{node_name} ? $parameter->{node_name} : "";
 	my $node_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node_name", value1 => $node_name, 
 		name2 => "node_uuid", value2 => $node_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4825,7 +4825,7 @@ sub upses_under_node
 	elsif (not $node_uuid)
 	{
 		$node_uuid = $an->ScanCore->get_node_uuid_from_node_name({node_name => $node_name});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_uuid", value1 => $node_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -4841,7 +4841,7 @@ sub upses_under_node
 	{
 		# Get the name for convenience sake.
 		$node_name = $an->ScanCore->get_node_name_from_node_uuid({node_uuid => $node_uuid});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_name", value1 => $node_name, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -4851,7 +4851,7 @@ sub upses_under_node
 			target => $node_uuid, 
 			type   => "etc_hosts",
 		});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "etc_hosts", value1 => $etc_hosts, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4859,7 +4859,7 @@ sub upses_under_node
 	foreach my $line (split/\n/, $etc_hosts)
 	{
 		next if $line !~ /ups\d/;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -4868,7 +4868,7 @@ sub upses_under_node
 			my $ip    =  $1;
 			my $names =  $2;
 			   $names =~ s/\s+/ /;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "ip",    value1 => $ip, 
 				name2 => "names", value2 => $names, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -4879,19 +4879,19 @@ sub upses_under_node
 			# Loops through the name(s) 
 			foreach my $name (split/ /, $names)
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "name", value1 => $name, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($name =~ /ups\d/)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "upses->$ip", value1 => $upses->{$ip}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($upses->{$ip})
 					{
 						next if $upses->{$ip} =~ /$name/;
 						$upses->{$ip} .= ",".$name;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "upses->$ip", value1 => $upses->{$ip}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -4902,7 +4902,7 @@ sub upses_under_node
 						# for this.
 						$upses->{$ip}                                        = $name;
 						$an->data->{node_name}{$node_name}{upses}{$ip}{name} = $name;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "upses->$ip",                                  value1 => $upses->{$ip}, 
 							name2 => "node_name::${node_name}::upses::${ip}::name", value2 => $an->data->{node_name}{$node_name}{upses}{$ip}{name}, 
 						}, file => $THIS_FILE, line => __LINE__});

@@ -105,6 +105,7 @@ Old: [#!variable!old!#]
 		</key>
 		<key name="scan_server_message_0013">The server: [#!variable!server!#]'s has moved to a new Anvil! system: [#!variable!anvil_name!#]:</key>
 		<key name="scan_server_message_0014">The server: [#!variable!server!#] had the disc image: [#!variable!file!#] mounted, which no longer exists. The disc has been ejected.</key>
+		<key name="scan_server_message_0015">The server: [#!variable!server_name!#] with UUID: [#!variable!server_uuid!#] wasn't found in this scan, ignoring it.</key>
 		
 		<!-- These are state strings added to other strings. -->
 		<key name="scan_server_state_0001">Live</key>
