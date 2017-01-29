@@ -19,7 +19,10 @@
 # 13 = During single-node start, the 'cman' daemon was found to already be running which should not happen.
 #
 # TODO:
-# - Make this work without DB access
+# - 
+#
+# BUG:
+# - 
 #
 
 use strict;
@@ -2367,14 +2370,6 @@ sub wait_for_access
 		name3 => "peer_name", value3 => $peer_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Get the node_key for my peer.
-	my ($peer_bcn, $peer_sn, $peer_ifn) = $an->Get->peer_network_details();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "peer_bcn", value1 => $peer_bcn, 
-		name2 => "peer_sn",  value2 => $peer_sn, 
-		name3 => "peer_ifn", value3 => $peer_ifn, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
 	# If 'sys::single_node_start::enabled' is enabled and the peer was last known to be offline, we'll 
 	# only wait for so long. This tracks when we started waiting.
 	my $waiting_started_at = time;
@@ -2395,12 +2390,19 @@ sub wait_for_access
 		my $sn_access  = 0;
 		my $ifn_access = 0;
 		
+		# Get the node_key for my peer (done inside the loop to pickup changes to /etc/hosts).
+		my ($peer_bcn, $peer_sn, $peer_ifn) = $an->Get->peer_network_details();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "peer_bcn", value1 => $peer_bcn, 
+			name2 => "peer_sn",  value2 => $peer_sn, 
+			name3 => "peer_ifn", value3 => $peer_ifn, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		# Test access now. RC == 1; pinged. 0 == no response.
 		my $bcn_return_code = $an->Check->ping({ping => $peer_bcn});
 		my $sn_return_code  = $an->Check->ping({ping => $peer_sn});
 		my $ifn_return_code = $an->Check->ping({ping => $peer_ifn});
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "bcn_return_code", value1 => $bcn_return_code, 
 			name2 => "sn_return_code",  value2 => $sn_return_code, 
 			name3 => "ifn_return_code", value3 => $ifn_return_code, 
@@ -2429,8 +2431,7 @@ sub wait_for_access
 			sleep 5;
 		}
 		
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "sys::single_node_start::ran", value1 => $an->data->{sys}{single_node_start}{ran},
 			name2 => "can_ping",                    value2 => $can_ping,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2471,10 +2472,10 @@ sub wait_for_access
 		}
 		
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
-			port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
-			password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
-			shell_call	=>	$shell_call,
+			target     => $an->data->{sys}{anvil}{$peer_key}{use_ip},
+			port       => $an->data->{sys}{anvil}{$peer_key}{use_port}, 
+			password   => $an->data->{sys}{anvil}{$peer_key}{password},
+			shell_call => $shell_call,
 		});
 		foreach my $line (@{$return})
 		{

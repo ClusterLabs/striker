@@ -2699,13 +2699,89 @@ sub peer_network_details
 	my $peer_bcn = $an->data->{sys}{anvil}{$node_key}{bcn_ip};
 	my $peer_sn  = $an->data->{sys}{anvil}{$node_key}{sn_ip};
 	my $peer_ifn = $an->data->{sys}{anvil}{$node_key}{ifn_ip};
-	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "peer_bcn", value1 => $peer_bcn, 
 		name2 => "peer_sn",  value2 => $peer_sn, 
 		name3 => "peer_ifn", value3 => $peer_ifn, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# If I am a node, and in case the local hosts file has been updated, we'll read it and overwrite what
+	# we got above (from cache) if it differs.
+	my $i_am = $an->Get->what_am_i();
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "i_am", value1 => $i_am, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($i_am eq "node")
+	{
+		# Re-read the hosts file.
+		$an->Storage->read_hosts();
+		
+		my $short_peer_hostname = $an->Cman->peer_short_hostname();
+		my $peer_bcn_name       = $short_peer_hostname.".bcn";
+		my $peer_sn_name        = $short_peer_hostname.".sn";
+		my $peer_ifn_name       = $short_peer_hostname.".ifn";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "short_peer_hostname", value1 => $short_peer_hostname, 
+			name2 => "peer_bcn_name",       value2 => $peer_bcn_name, 
+			name3 => "peer_sn_name",        value3 => $peer_sn_name, 
+			name4 => "peer_ifn_name",       value4 => $peer_ifn_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		foreach my $this_host (sort {$a cmp $b} keys %{$an->data->{hosts}})
+		{
+			if ($this_host eq $peer_bcn_name)
+			{
+				my $hosts_ip = $an->data->{hosts}{$this_host}{ip};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "hosts_ip", value1 => $hosts_ip, 
+					name2 => "peer_bcn", value2 => $peer_bcn, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($peer_bcn ne $hosts_ip)
+				{
+					$peer_bcn = $hosts_ip;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "peer_bcn", value1 => $peer_bcn, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			elsif ($this_host eq $peer_sn_name)
+			{
+				my $hosts_ip = $an->data->{hosts}{$this_host}{ip};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "hosts_ip", value1 => $hosts_ip, 
+					name2 => "peer_sn", value2 => $peer_sn, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($peer_sn ne $hosts_ip)
+				{
+					$peer_sn = $hosts_ip;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "peer_sn", value1 => $peer_sn, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			elsif ($this_host eq $peer_ifn_name)
+			{
+				my $hosts_ip = $an->data->{hosts}{$this_host}{ip};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "hosts_ip", value1 => $hosts_ip, 
+					name2 => "peer_ifn", value2 => $peer_ifn, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($peer_ifn ne $hosts_ip)
+				{
+					$peer_ifn = $hosts_ip;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "peer_ifn", value1 => $peer_ifn, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "peer_bcn", value1 => $peer_bcn, 
+		name2 => "peer_sn",  value2 => $peer_sn, 
+		name3 => "peer_ifn", value3 => $peer_ifn, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($peer_bcn, $peer_sn, $peer_ifn);
 }
 

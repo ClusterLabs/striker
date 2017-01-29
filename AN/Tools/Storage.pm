@@ -496,7 +496,7 @@ sub read_conf
 	return ($hash);
 }
 
-# This reads in the /etc/hosts file so that entries for the deleted nodes can be removed.
+# This reads in the /etc/hosts file.
 sub read_hosts
 {
 	my $self      = shift;
