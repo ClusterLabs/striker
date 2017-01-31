@@ -2299,7 +2299,7 @@
 		<key name="log_0272">The daemon: [#!variable!daemon!#] is not installed on this machine.</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
-		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2016]]></key>
+		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2017]]></key>
 		<key name="legal_0002"><![CDATA[This program is released under the <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_new">GNU GPL v2</a>]]></key>
 		<key name="legal_0003">Release version #!conf!sys::version!#</key>
 		
@@ -3659,7 +3659,7 @@ SUPPORT
 		<!-- NOTE: This is designed to print in a 110 column terminal. Variabled are front-padded 
 		           with space to give them a consistent width when passed in as variables. -->
 		<key name="acs_report_0001"><![CDATA[
-+---------------------------------------------------------------------------------------------[ #!data!sys::current_time!# ]---+
++---[ 'ctrl + c' to quit ]--------------------------------------------------------------------[ #!data!sys::current_time!# ]---+
 | Anvil!: #!variable!anvil_name!#       Local: #!variable!my_hostname!#    Peer: #!variable!peer_hostname!# |
 ]]>
 		</key>

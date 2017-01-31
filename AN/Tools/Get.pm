@@ -3370,7 +3370,7 @@ FROM
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3397,7 +3397,7 @@ WHERE
 			my $server_post_migration_script    = $row->[12] ? $row->[12] : "";
 			my $server_post_migration_arguments = $row->[13] ? $row->[13] : "";
 			my $modified_date                   = $row->[14] ? $row->[14] : "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0015", message_variables => {
 				name1  => "server_anvil_uuid",               value1  => $server_anvil_uuid, 
 				name2  => "server_name",                     value2  => $server_name, 
 				name3  => "server_stop_reason",              value3  => $server_stop_reason, 

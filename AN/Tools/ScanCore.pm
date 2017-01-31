@@ -1255,7 +1255,7 @@ sub get_servers
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "include_deleted", value1 => $include_deleted, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1287,7 +1287,7 @@ WHERE
 	}
 	$query .= "
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1316,7 +1316,7 @@ WHERE
 		my $server_post_migration_script    = defined $row->[13] ? $row->[13] : "";
 		my $server_post_migration_arguments = defined $row->[14] ? $row->[14] : "";
 		my $modified_date                   =         $row->[15];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
 			name1  => "server_uuid",                     value1  => $server_uuid, 
 			name2  => "server_anvil_uuid",               value2  => $server_anvil_uuid, 
 			name3  => "server_name",                     value3  => $server_name, 
@@ -3252,6 +3252,9 @@ WHERE
 		}
 		
 		# Return now.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "server_uuid", value1 => $server_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
 		return($server_uuid);
 	}
 	
@@ -3308,7 +3311,7 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -3337,7 +3340,7 @@ FROM
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3362,7 +3365,7 @@ WHERE
 			my $old_server_pre_migration_arguments  = defined $row->[11] ? $row->[11] : "";
 			my $old_server_post_migration_script    = defined $row->[12] ? $row->[12] : "";
 			my $old_server_post_migration_arguments = defined $row->[13] ? $row->[13] : "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
 				name1  => "old_server_anvil_uuid",               value1  => $old_server_anvil_uuid, 
 				name2  => "old_server_name",                     value2  => $old_server_name, 
 				name3  => "old_server_stop_reason",              value3  => $old_server_stop_reason, 
@@ -3419,7 +3422,7 @@ WHERE
     server_uuid                     = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -6486,23 +6489,20 @@ sub target_power
 			{
 				chomp;
 				my $line = $_;
-				### NOTE: Customer requested, move to 2 before v2.0 release
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ / On$/i)
 				{
 					$state = "on";
-					### NOTE: Customer requested, move to 2 before v2.0 release
-					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "state", value1 => $state,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ / Off$/i)
 				{
 					$state = "off";
-					### NOTE: Customer requested, move to 2 before v2.0 release
-					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "state", value1 => $state,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -6523,8 +6523,7 @@ sub target_power
 	}
 	
 	# Set to 'unknown', 'on' or 'off'.
-	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "ipmi_target", value1 => $ipmi_target,
 		name2 => "state",       value2 => $state,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6541,7 +6540,7 @@ sub update_server_stop_reason
 	
 	my $server_name = $parameter->{server_name} ? $parameter->{server_name} : "";
 	my $stop_reason = $parameter->{stop_reason} ? $parameter->{stop_reason} : "NULL";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "server_name", value1 => $server_name,
 		name2 => "stop_reason", value2 => $stop_reason,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6559,7 +6558,7 @@ sub update_server_stop_reason
 		my $this_server_uuid        = $hash_ref->{server_uuid};
 		my $this_server_name        = $hash_ref->{server_name};
 		my $this_server_stop_reason = $hash_ref->{server_stop_reason};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "this_server_uuid",        value1 => $this_server_uuid,
 			name2 => "this_server_name",        value2 => $this_server_name,
 			name3 => "this_server_stop_reason", value3 => $this_server_stop_reason,
@@ -6581,7 +6580,7 @@ WHERE
     server_uuid        = ".$an->data->{sys}{use_db_fh}->quote($this_server_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});

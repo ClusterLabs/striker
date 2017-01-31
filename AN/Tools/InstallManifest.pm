@@ -3783,7 +3783,7 @@ sub configure_network_on_node
 	   $ifcfg_bcn_bond1 .= "MTU=\"$mtu\"\n" if $mtu;
 	   $ifcfg_bcn_bond1 .= "BOOTPROTO=\"static\"\n";
 	   $ifcfg_bcn_bond1 .= "ONBOOT=\"yes\"\n";
-	   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=60000 downdelay=0 primary=bcn_link1 primary_reselect=always\"\n";
+	   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=bcn_link1 primary_reselect=always\"\n";
 	   $ifcfg_bcn_bond1 .= "IPADDR=\"".$an->data->{cgi}{$bcn_ip_key}."\"\n";
 	   $ifcfg_bcn_bond1 .= "NETMASK=\"".$an->data->{cgi}{anvil_bcn_subnet}."\"\n";
 	   $ifcfg_bcn_bond1 .= "DEFROUTE=\"no\"";
@@ -3821,7 +3821,7 @@ sub configure_network_on_node
 	   $ifcfg_sn_bond1 .= "MTU=\"$mtu\"\n" if $mtu;
 	   $ifcfg_sn_bond1 .= "BOOTPROTO=\"static\"\n";
 	   $ifcfg_sn_bond1 .= "ONBOOT=\"yes\"\n";
-	   $ifcfg_sn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=60000 downdelay=0 primary=sn_link1 primary_reselect=always\"\n";
+	   $ifcfg_sn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=sn_link1 primary_reselect=always\"\n";
 	   $ifcfg_sn_bond1 .= "IPADDR=\"".$an->data->{cgi}{$sn_ip_key}."\"\n";
 	   $ifcfg_sn_bond1 .= "NETMASK=\"".$an->data->{cgi}{anvil_sn_subnet}."\"\n";
 	   $ifcfg_sn_bond1 .= "DEFROUTE=\"no\"";
@@ -3863,7 +3863,7 @@ sub configure_network_on_node
 	   $ifcfg_ifn_bond1 .= "BRIDGE=\"ifn_bridge1\"\n";
 	   $ifcfg_ifn_bond1 .= "BOOTPROTO=\"none\"\n";
 	   $ifcfg_ifn_bond1 .= "ONBOOT=\"yes\"\n";
-	   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=60000 downdelay=0 primary=ifn_link1 primary_reselect=always\"";
+	   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn_link1 primary_reselect=always\"";
 	
 	### NOTE: We don't set the MTU here because the bridge will ignore it. Bridges always take the MTU of
 	###       the connected device with the lowest MTU.

@@ -919,7 +919,7 @@ WHERE
     server_uuid        = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query, 
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
@@ -967,7 +967,7 @@ WHERE
 			my $server_state          = $an->data->{server_uuid}{$server_uuid}{'state'};
 			my $server_definition     = $an->data->{server_uuid}{$server_uuid}{definition};
 			my $server_migration_type = $an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "cold" : "live";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 				name1 => "server_uuid",           value1 => $server_uuid, 
 				name2 => "server_name",           value2 => $server_name, 
 				name3 => "server_stop_reason",    value3 => $server_stop_reason, 
