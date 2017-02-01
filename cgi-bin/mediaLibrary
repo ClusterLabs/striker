@@ -36,9 +36,9 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
 # Log our startup
 my ($date, $time) = $an->Get->date_and_time();
-$an->Log->entry({log_level => 1, message_key => "log_0001", message_variables => {
-	date	=>	$date, 
-	'time'	=>	$time,
+$an->Log->entry({log_level => 3, message_key => "log_0001", message_variables => {
+	date   => $date, 
+	'time' => $time,
 }, file => $THIS_FILE, line => __LINE__});
 
 # Get (create if needed) my UUID.

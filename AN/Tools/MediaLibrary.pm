@@ -945,6 +945,11 @@ sub _download_url
 		password => $password,
 		port     => $port,
 	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "token",              value1 => $token,
+		name2 => "problem",            value2 => $problem,
+		name3 => "delayed_run_output", value3 => $delayed_run_output,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Tell the user that the download will be starting in a moment.
 	print $an->Web->template({file => "media-library.html", template => "download_queued", replace => { 

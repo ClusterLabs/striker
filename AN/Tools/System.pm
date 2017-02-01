@@ -1114,7 +1114,7 @@ sub delayed_run
 	my $target   =         $parameter->{target}   ? $parameter->{target}   : "local";
 	my $password =         $parameter->{password} ? $parameter->{password} : "";
 	my $port     =         $parameter->{port}     ? $parameter->{port}     : 22;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "command", value1 => $command, 
 		name2 => "delay",   value2 => $delay, 
 		name3 => "target",  value3 => $target, 
@@ -1143,7 +1143,7 @@ sub delayed_run
 		$token  =  $an->Get->uuid();
 		$output =  $an->data->{path}{'anvil-jobs-output'};
 		$output =~ s/#!token!#/$token/;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "token",  value1 => $token, 
 			name2 => "output", value2 => $output, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1153,7 +1153,7 @@ sub delayed_run
 		my $run_time =  $time + $delay;
 		my $job_line =  "$run_time:".$token.":$command";
 		   $job_line =~ s/'/\'/g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "time",     value1 => $time, 
 			name2 => "run_time", value2 => $run_time, 
 			name3 => "job_line", value3 => $job_line, 
@@ -1167,7 +1167,7 @@ sub delayed_run
 		if ((not $target) or ($target eq "local") or ($target eq $an->hostname) or ($target eq $an->short_hostname))
 		{
 			# Local call.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -1175,10 +1175,6 @@ sub delayed_run
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
 				push @{$return}, $line;
 			}
 			close $file_handle;
@@ -1186,7 +1182,7 @@ sub delayed_run
 		else
 		{
 			# Remote call
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "target",     value1 => $target,
 				name2 => "port",       value2 => $port,
 				name3 => "shell_call", value3 => $shell_call,
@@ -1203,7 +1199,7 @@ sub delayed_run
 		foreach my $line (@{$return})
 		{
 			next if not $line;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$problem .= "$line\n";
@@ -1223,7 +1219,7 @@ sub delayed_run
 	}
 	
 	# This method doesn't wait. We'll return the token and let the caller decide whether to wait or not.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "token",   value1 => $token,
 		name2 => "output",  value2 => $output,
 		name3 => "problem", value3 => $problem,

@@ -390,7 +390,7 @@
 		<key name="explain_0237"><![CDATA[The database user's password.<br /><span class="highlight_note_bold">Note</span>: Changing this will <b>NOT</b> change the current database password!]]></key>
 		<key name="explain_0238"><![CDATA[<b>It looks like we are about to rebuild or replace a node.</b><br />Please be sure to check that the passwords set in the manifest match the ones currently in use!]]></key>
 		<key name="explain_0239"><![CDATA[A server was found to be running on a node while the 'cman' daemon was stopped.<br />This should never happen.]]></key>
-		<key name="explain_0240"><![CDATA[The download has been queued and will start within one minute.<br />In a moment, the download progress page will load.<br />You can safely go back to the main page if you wish.]]></key>
+		<key name="explain_0240"><![CDATA[The download has been queued and will start shortly.<br />In a moment, the download progress page will load.<br />You can safely go back to the main page if you wish.]]></key>
 		<key name="explain_0241"><![CDATA[The URL: [<span class="code">#!variable!url!#</span>] is in queue for download]]></key>
 		<key name="explain_0242"><![CDATA[Any pending or active downloads will be shown below.]]></key>
 		

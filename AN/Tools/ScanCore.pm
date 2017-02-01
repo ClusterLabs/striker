@@ -96,7 +96,7 @@ sub check_ram_usage
 	my $program_name = defined $parameter->{program_name} ? $parameter->{program_name} : "";
 	my $check_usage  = defined $parameter->{check_usage}  ? $parameter->{check_usage}  : 1;
 	my $maximum_ram  = defined $parameter->{maximum_ram}  ? $parameter->{maximum_ram}  : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "program_name", value1 => $program_name, 
 		name2 => "check_usage",  value2 => $check_usage, 
 		name3 => "maximum_ram",  value3 => $maximum_ram, 
@@ -124,7 +124,7 @@ sub check_ram_usage
 	if (not $an->data->{sys}{host_uuid})
 	{
 		$an->Get->uuid({get => 'host_uuid'});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -142,7 +142,7 @@ WHERE
 AND
     ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		my $ram_used_bytes = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
@@ -168,7 +168,7 @@ INSERT INTO
 );
 ";
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -186,13 +186,16 @@ WHERE
 AND
     ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		} # RAM used hasn't changed
 	} # No DB connection
 	
 	if ($check_usage)
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "maximum_ram", value1 => $maximum_ram, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -208,22 +211,18 @@ AND
 		{
 			# Bad value, set the default.
 			$maximum_ram = 1073741824;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "maximum_ram", value1 => $maximum_ram, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "used_ram",    value1 => $used_ram." (".$an->Readable->bytes_to_hr({'bytes' => $used_ram}).")", 
 			name2 => "maximum_ram", value2 => $maximum_ram." (".$an->Readable->bytes_to_hr({'bytes' => $maximum_ram}).")", 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($used_ram > $maximum_ram)
 		{
-			# Much, too much, much music!
-			# err, too much RAM...
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "exiting", value1 => 5, 
-			}, file => $THIS_FILE, line => __LINE__});
+			# Much, too much, much music!  err, too much RAM...
 			$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0013", message_variables => { 
 				used_ram    => $an->Readable->bytes_to_hr({'bytes' => $used_ram}), 
 				maximum_ram => $an->Readable->bytes_to_hr({'bytes' => $maximum_ram})
