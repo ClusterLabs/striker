@@ -1048,9 +1048,9 @@ sub find_myself
 	
 	# Collect information about this Anvil!
 	my $return = $an->Get->local_anvil_details({
-		hostname_full	=>	$an->hostname,
-		hostname_short	=>	$an->short_hostname,
-		config_file	=>	$an->data->{path}{cluster_conf},
+		hostname_full  => $an->hostname,
+		hostname_short => $an->short_hostname,
+		config_file    => $an->data->{path}{cluster_conf},
 	});
 	$an->data->{sys}{local_node}     = $return->{local_node};
 	$an->data->{sys}{peer_node}      = $return->{peer_node};

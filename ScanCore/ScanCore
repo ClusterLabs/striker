@@ -379,7 +379,11 @@ while(1)
 	$an->DB->update_time({file => $THIS_FILE});
 	
 	# Check RAM usage and bail if it looks like we're leaking.
-	$an->ScanCore->check_ram_usage({program_name => $THIS_FILE, check_usage => 1});
+	$an->ScanCore->check_ram_usage({
+		program_name => $THIS_FILE, 
+		check_usage  => 1,
+		maximum_ram  => $an->data->{scancore}{maximum_ram},
+	});
 	
 	# Archive, if needed.
 	archive_if_needed($an);
@@ -11976,7 +11980,11 @@ WHERE
 		}
 		
 		# Make sure we're not eating too much RAM.
-		$an->ScanCore->check_ram_usage({program_name => $THIS_FILE, check_usage => 1});
+		$an->ScanCore->check_ram_usage({
+			program_name => $THIS_FILE, 
+			check_usage  => 1,
+			maximum_ram  => $an->data->{scancore}{maximum_ram},
+		});
 	}
 	
 	# Clear the agent list.

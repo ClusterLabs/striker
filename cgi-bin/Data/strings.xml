@@ -2297,6 +2297,7 @@
 		<key name="log_0270">Node: [#!variable!active_node!#] is hosting servers, so its '#!variable!file!#' will be used on the peer.</key>
 		<key name="log_0271">Checking if the daemon: [#!variable!daemon!#] is currently running locally.</key>
 		<key name="log_0272">The daemon: [#!variable!daemon!#] is not installed on this machine.</key>
+		<key name="log_0273">Shell call: [#!variable!shell_call!#].</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
 		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2017]]></key>

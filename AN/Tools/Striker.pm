@@ -3870,7 +3870,8 @@ sub _cold_stop_anvil
 		
 		# Start the UPS timer here and abort if the timer doesn't start.
 		
-		
+		### TODO: Redo this so that we use $an->System->dual_command_run()' and then go into a loop 
+		###       watching the output.
 		# Now, stop the nodes. If both nodes are up, we'll call '--cold-stop' to invoke 
 		# 'anvil-safe-stop's logic to determine which node should die first. We'll look for 
 		# 'poweroff: X' to determine which node went down.

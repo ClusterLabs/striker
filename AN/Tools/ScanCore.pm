@@ -84,7 +84,7 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
-# This checks the amount RAM used by ScanCore and exits if it exceeds a scancore::maximum_ram bytes. It looks
+# This checks the amount RAM used by ScanCore and exits if it exceeds a maximum_ram bytes. It looks
 # for any process with our name and sums the RAM used.
 sub check_ram_usage
 {
@@ -95,9 +95,11 @@ sub check_ram_usage
 	
 	my $program_name = defined $parameter->{program_name} ? $parameter->{program_name} : "";
 	my $check_usage  = defined $parameter->{check_usage}  ? $parameter->{check_usage}  : 1;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	my $maximum_ram  = defined $parameter->{maximum_ram}  ? $parameter->{maximum_ram}  : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "program_name", value1 => $program_name, 
 		name2 => "check_usage",  value2 => $check_usage, 
+		name3 => "maximum_ram",  value3 => $maximum_ram, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $program_name)
 	{
@@ -118,8 +120,19 @@ sub check_ram_usage
 		$an->data->{sys}{'exit'} = 1;
 	}
 	
-	# Records the RAM used.
-	my $query = "
+	# Make sure I have my host system id
+	if (not $an->data->{sys}{host_uuid})
+	{
+		$an->Get->uuid({get => 'host_uuid'});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Records the RAM used, if we have a DB connection.
+	if (defined $an->data->{sys}{use_db_fh})
+	{
+		my $query = "
 SELECT 
     ram_used_bytes 
 FROM 
@@ -129,17 +142,17 @@ WHERE
 AND
     ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1  => "query", value1 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	my $ram_used_bytes = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "ram_used_bytes", value1 => $ram_used_bytes
-	}, file => $THIS_FILE, line => __LINE__});
-	if (not $ram_used_bytes)
-	{
-		# Add this agent to the DB
-		my $query = "
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my $ram_used_bytes = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "ram_used_bytes", value1 => $ram_used_bytes
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $ram_used_bytes)
+		{
+			# Add this agent to the DB
+			my $query = "
 INSERT INTO 
     ram_used 
 (
@@ -154,15 +167,15 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($ram_used_bytes ne $used_ram)
-	{
-		# It exists and the value has changed.
-		my $query = "
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($ram_used_bytes ne $used_ram)
+		{
+			# It exists and the value has changed.
+			my $query = "
 UPDATE 
     ram_used 
 SET
@@ -173,50 +186,47 @@ WHERE
 AND
     ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# The amount of RAM used is unchanged.
-		#print __LINE__."; The amount of RAM used by ".$program_name." is unchanged.\n";
-	}
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		} # RAM used hasn't changed
+	} # No DB connection
 	
 	if ($check_usage)
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "scancore::maximum_ram", value1 => $an->data->{scancore}{maximum_ram}, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "maximum_ram", value1 => $maximum_ram, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{scancore}{maximum_ram})
+		
+		# Set a sane value if Max RAM wasn't set
+		if (not $maximum_ram)
 		{
-			if ($an->data->{scancore}{maximum_ram} =~ /\D/)
-			{
-				# Bad value, set the default.
-				$an->data->{scancore}{maximum_ram} = 1073741824;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "scancore::maximum_ram", value1 => $an->data->{scancore}{maximum_ram}, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
+			$maximum_ram = $an->data->{scancore}{maximum_ram} ? $an->data->{scancore}{maximum_ram} : (128 * 1048576);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "maximum_ram", value1 => $maximum_ram, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
-		else
+		if ($maximum_ram =~ /\D/)
 		{
-			# No valid value, set 1 GiB.
-			$an->data->{scancore}{maximum_ram} = 1073741824;
+			# Bad value, set the default.
+			$maximum_ram = 1073741824;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "scancore::maximum_ram", value1 => $an->data->{scancore}{maximum_ram}, 
+				name1 => "maximum_ram", value1 => $maximum_ram, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "used_ram",              value1 => $used_ram, 
-			name2 => "scancore::maximum_ram", value2 => $an->data->{scancore}{maximum_ram}, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "used_ram",    value1 => $used_ram." (".$an->Readable->bytes_to_hr({'bytes' => $used_ram}).")", 
+			name2 => "maximum_ram", value2 => $maximum_ram." (".$an->Readable->bytes_to_hr({'bytes' => $maximum_ram}).")", 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($used_ram > $an->data->{scancore}{maximum_ram})
+		if ($used_ram > $maximum_ram)
 		{
 			# Much, too much, much music!
 			# err, too much RAM...
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "exiting", value1 => 5, 
+			}, file => $THIS_FILE, line => __LINE__});
 			$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0013", message_variables => { 
 				used_ram    => $an->Readable->bytes_to_hr({'bytes' => $used_ram}), 
-				maximum_ram => $an->Readable->bytes_to_hr({'bytes' => $an->data->{scancore}{maximum_ram}})
+				maximum_ram => $an->Readable->bytes_to_hr({'bytes' => $maximum_ram})
 			}, code => 5, file => $THIS_FILE, line => __LINE__});
 		}
 	}

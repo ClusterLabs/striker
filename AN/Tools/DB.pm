@@ -777,7 +777,11 @@ sub do_db_write
 						
 						# This can get memory intensive, so check our RAM usage and 
 						# bail if we're eating too much.
-						$an->ScanCore->check_ram_usage({program_name => $source, check_usage => 1});
+						$an->ScanCore->check_ram_usage({
+							program_name => $THIS_FILE, 
+							check_usage  => 1,
+							maximum_ram  => $an->data->{scancore}{maximum_ram},
+						});
 						
 						# Wipe out the old set array, create it as a new anonymous array and reset 'i'.
 						undef $query_set;
