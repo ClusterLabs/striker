@@ -10,7 +10,7 @@
 # with this spirit in mind and do not make available the resulting ISOs for general download unless you get
 # written permission from Alteeve's Niche! and either Red Hat or CentOS, depending on the generated ISO.
 # 
-# (c) Alteeve's Niche! Inc, 2016 - https://alteeve.ca
+# (c) Alteeve's Niche! Inc, 2016 - https://alteeve.com
 # 
 # This program is released under the GPL v2+
 # 
@@ -160,15 +160,15 @@ my $conf = {
 		# These are the request for permission to download third-party tools.
 		third_party	=>	{
 			ASIX		=>	{
-				terms		=>	"https://alteeve.ca/an-repo/el6/Third_Party/ASIX/#tc",
+				terms		=>	"https://alteeve.com/an-repo/el6/Third_Party/ASIX/#tc",
 				agreed		=>	0,
 			},
 			Avago		=>	{
-				terms		=>	"https://alteeve.ca/an-repo/el6/Third_Party/Avago/#tc",
+				terms		=>	"https://alteeve.com/an-repo/el6/Third_Party/Avago/#tc",
 				agreed		=>	0,
 			},
 			Fujitsu		=>	{
-				terms		=>	"https://alteeve.ca/an-repo/el6/Third_Party/Fujitsu/#tc",
+				terms		=>	"https://alteeve.com/an-repo/el6/Third_Party/Fujitsu/#tc",
 				agreed		=>	0,
 			},
 		},
@@ -180,8 +180,8 @@ my $conf = {
 			bcn_netmask	=>	"16",
 			company_name	=>	"Alteeve's Niche! Inc.",
 			byline		=>	"Intelligent Availability Platform",
-			support_url	=>	"https://alteeve.ca/w/Support",
-			domain		=>	"alteeve.ca",
+			support_url	=>	"https://alteeve.com/w/Support",
+			domain		=>	"alteeve.com",
 			ifn_dns1	=>	"8.8.8.8",
 			ifn_dns2	=>	"8.8.4.4",
 			ifn_gateway	=>	"10.255.255.254",
@@ -203,31 +203,27 @@ my $conf = {
 		# master with '--master', in which case we will download the 'striker_master' URL. In all
 		# cases, the downloaded file will be saved as 'striker_zip_file'.
 		striker_default	=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-rc4.zip",
-		striker_latest	=>	"https://alteeve.ca/striker_latest.txt",
+		striker_latest	=>	"https://alteeve.com/striker_latest.txt",
 		striker_master	=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
 		striker_zip_file =>	"striker.zip",
-		'an-repo'	=>	"https://alteeve.ca/an-repo/el6/RPMS",
-		third_party	=>	"https://alteeve.ca/an-repo/el6/Third_Party",
+		'an-repo'	=>	"https://alteeve.com/an-repo/el6/RPMS",
+		third_party	=>	"https://alteeve.com/an-repo/el6/Third_Party",
 		# These are non-RPM packages we want to download for the ISO.
 		ASIX		=>	{
 			ax8817x		=>	{
-				url		=>	"https://alteeve.ca/an-repo/el6/Third_Party/ASIX/AX88179_178A_LINUX_DRIVER_v1.14.4_SOURCE.zip",
+				url		=>	"https://alteeve.com/an-repo/el6/Third_Party/ASIX/AX88179_178A_LINUX_DRIVER_v1.14.4_SOURCE.zip",
 				mode		=>	0644,
 			},
 		},
 		Fujitsu		=>	{
 			primecollect	=>	{
-				url		=>	"https://alteeve.ca/an-repo/el6/Third_Party/Fujitsu/PrimeCollect.shar",
+				url		=>	"https://alteeve.com/an-repo/el6/Third_Party/Fujitsu/PrimeCollect.shar",
 				mode		=>	0755,
 			},
 		},
 		Tools		=>	{
 			fence_raritan_snmp =>	{
 				url		=>	"https://raw.githubusercontent.com/digimer/fence_raritan_snmp/master/fence_raritan_snmp",
-				mode		=>	0755,
-			},
-			vm_sh		=>	{
-				url		=>	"https://alteeve.ca/files/vm.sh",
 				mode		=>	0755,
 			},
 		},
@@ -640,12 +636,6 @@ echo \"Downloading 'anvil-map-network'.\"
 curl http://$conf->{sys}{ks}{striker_bcn}.${source}/$os_dir/x86_64/img/striker/tools/anvil-map-network > /sbin/striker/anvil-map-network
 chown root:root /sbin/striker/hap-map-network
 chmod 755 /sbin/striker/anvil-map-network
-
-### TEMPORARY (Remove once https://bugzilla.redhat.com/show_bug.cgi?id=1285921 has a new resource-agents RPM).
-echo \"Downloading 'vm.sh'.\"
-curl http://$conf->{sys}{ks}{striker_bcn}.${source}/$os_dir/x86_64/img/Tools/vm.sh > /root/vm.sh
-chown root:root /root/vm.sh
-chmod 755 /root/vm.sh
 
 # Show details on boot.
 echo \"Setting plymouth to use detailed boot screen\"
@@ -2444,17 +2434,6 @@ sub download_anrepo_tools
 		download_file($conf, $source, $target, $mode);
 	}
 	
-	# Fixed vm.sh until https://bugzilla.redhat.com/show_bug.cgi?id=1285921 is closed.
-	if (1)
-	{
-		my $file_name = ($conf->{url}{Tools}{vm_sh}{url} =~ /^.*\/(.*)$/)[0];
-		my $source    = $conf->{url}{Tools}{vm_sh}{url};
-		my $target    = $conf->{path}{iso}{iso_tools}."/".$file_name;
-		my $mode      = $conf->{url}{Tools}{vm_sh}{mode};
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
-		download_file($conf, $source, $target, $mode);
-	}
-	
 	return(0);
 }
 
@@ -2714,16 +2693,16 @@ sub download_anrepo_rpms
 	{
 		my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
 		my $found         = 0;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 3;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 2;
 		
 		foreach my $download_package (sort {$a cmp $b} keys %{$conf->{download_packages}})
 		{
 			next if $download_package !~ /^\Q$file\E/;
 			next if $download_package !~ /\Q$arch\E/;
-			print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 3;
+			print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
 			if ($download_package =~ /^\Q$file\E-\d/)
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 3;
+				print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 2;
 				$found++;
 				$conf->{download}{$package}{url} = $conf->{download_packages}{$download_package};
 			}
