@@ -1146,6 +1146,14 @@ The 'AN::Tools::System' module's 'configure_ipmi()' was called with an invalid t
 
 The 'AN::Tools::System' module's 'configure_ipmi()' was asked to change the IPMI user password, but was not given the name of the user to work on.
 
+=head2 C<234>
+
+The 'AN::Tools::System' module's 'pick_shutdown_target()' was called without an Anvil! UUID.
+
+=head2 C<235>
+
+The 'AN::Tools::ScanCore' module's 'get_node_health()' method was passes in a target which could not be translated to a host UUID.
+
 
 =head2 C<999>
 

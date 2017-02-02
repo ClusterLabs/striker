@@ -444,15 +444,6 @@ sub load_anvil
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# If we've already loaded this Anvil!, return now.
-	if ((defined $an->data->{sys}{anvil}{uuid}) && ($an->data->{sys}{anvil}{uuid} eq $anvil_uuid))
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid},
-		}, file => $THIS_FILE, line => __LINE__});
-		return(0);
-	}
-	
 	# If we still don't have an anvil_uuid, see if this is an Anvil! node and, if so, if we can locate 
 	# the anvil_uuid by matching the cluster name to an entry in 'anvils'.
 	if (not $anvil_uuid)
@@ -489,6 +480,15 @@ sub load_anvil
 			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0102", code => 102, file => $THIS_FILE, line => __LINE__});
 			return(1);
 		}
+	}
+	
+	# If we've already loaded this Anvil!, return now.
+	if ((defined $an->data->{sys}{anvil}{uuid}) && ($an->data->{sys}{anvil}{uuid} eq $anvil_uuid))
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::anvil::uuid", value1 => $an->data->{sys}{anvil}{uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+		return(0);
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -3728,8 +3728,6 @@ sub _cold_stop_anvil
 		name3 => "anvil_name", value3 => $anvil_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $proceed = 1;
-	
 	# Has the timer expired?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "current time", value1 => time,
@@ -3747,8 +3745,23 @@ sub _cold_stop_anvil
 		return(1);
 	}
 	
+	# This will flip if there is an error.
+	my $proceed = 1;
+	
 	# Scan the Anvil!
 	$an->Striker->scan_anvil();
+	
+	# Find out which node to terminate first.
+	my $first_off = $an->System->pick_shutdown_target({
+		anvil_uuid     => $anvil_uuid, 
+		ignore_servers => 0,
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "first_off", value1 => $first_off,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+# 	print $THIS_FILE." ".__LINE__."; testing...\n";
+# 	$an->nice_exit({exit_code => 1});
 	
 	# Set the delay. This will set the hosts -> host_stop_reason to be time + sys::power_off_delay if we
 	# have a sub-task. We'll also check to see if the UPSes are still accessing. Even if 'note=no_abort',
@@ -4521,11 +4534,13 @@ sub _confirm_migrate_server
 	# Calculate roughly how long the migration will take.
 	my $server_data             =  $an->Get->server_data({server => $an->data->{cgi}{server}});
 	my $server_ram              =  $server_data->{current_ram};
+	my $migration_type          =  $server_data->{migration_type};
 	my $migration_time_estimate =  $server_ram / 1073741824; # Get # of GB.
 	   $migration_time_estimate *= 10; # ~10s / GB
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "server_ram",              value1 => $server_ram,
-		name2 => "migration_time_estimate", value2 => $migration_time_estimate,
+		name2 => "migration_type",          value2 => $migration_type,
+		name3 => "migration_time_estimate", value3 => $migration_time_estimate,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Find the target node.
@@ -4534,28 +4549,35 @@ sub _confirm_migrate_server
 			port     => $an->data->{sys}{anvil}{node1}{use_port},
 			password => $an->data->{sys}{anvil}{node1}{password},
 		});
-	my $host         = $clustat_data->{server}{$server}{host};
-	my $target       = $clustat_data->{server}{$server}{host} eq $clustat_data->{node}{'local'}{name} ? $clustat_data->{node}{peer}{name} : $clustat_data->{node}{'local'}{name};
+	my $host   = $clustat_data->{server}{$server}{host};
+	my $target = $clustat_data->{server}{$server}{host} eq $clustat_data->{node}{'local'}{name} ? $clustat_data->{node}{peer}{name} : $clustat_data->{node}{'local'}{name};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "host",   value1 => $host,
 		name2 => "target", value2 => $target,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title = $an->String->get({key => "title_0047", variables => { 
-			server	=>	$an->data->{cgi}{server},
-			target	=>	$target,
+	my $title_key   = "title_0210";
+	my $message_key = "message_0507";
+	if ($migration_type eq "cold")
+	{
+		$title_key   = "title_0047";
+		$message_key = "message_0177";
+	}
+	my $say_title = $an->String->get({key => $title_key, variables => { 
+			server => $an->data->{cgi}{server},
+			target => $target,
 		}});
-	my $say_message = $an->String->get({key => "message_0177", variables => { 
-			server			=>	$an->data->{cgi}{server},
-			target			=>	$target,
-			ram			=>	$an->Readable->bytes_to_hr({'bytes' => $server_ram }),
-			migration_time_estimate	=>	$migration_time_estimate,
-		}});
+	my $say_message = $an->String->get({key => $message_key, variables => { 
+				server                  => $an->data->{cgi}{server},
+				target                  => $target,
+				ram                     => $an->Readable->bytes_to_hr({'bytes' => $server_ram }),
+				migration_time_estimate => $migration_time_estimate,
+			}});
 	print $an->Web->template({file => "server.html", template => "confirm-migrate-server", replace => { 
-		title		=>	$say_title,
-		message		=>	$say_message,
-		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+		title       => $say_title,
+		message     => $say_message,
+		confirm_url => $an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 	
 	return (0);
@@ -11827,7 +11849,7 @@ sub _parse_lvm_scan
 			my $size      = $3;
 			my $bytes     = $an->Readable->hr_to_bytes({size => $size });
 			my $vg        = ($lv =~ /^\/dev\/(.*?)\//)[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "node_name", value1 => $node_name,
 				name2 => "state",     value2 => $state,
 				name3 => "vg",        value3 => $vg,
@@ -11843,7 +11865,7 @@ sub _parse_lvm_scan
 					lv	=>	$lv,
 					node	=>	$node_name,
 				}});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "message", value1 => $message,
 				}, file => $THIS_FILE, line => __LINE__});
 				print $an->Web->template({file => "main-page.html", template => "lv-inactive-error", replace => { message => $message }});
@@ -11941,9 +11963,7 @@ sub _parse_proc_drbd
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /drbd offline/)
 		{
-			$an->Log->entry({log_level => 3, message_key => "log_0267", message_variables => {
-				node => $node_name
-			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "log_0267", message_variables => { node => $node_name }, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 		$line =~ s/^\s+//;
@@ -12584,7 +12604,7 @@ sub _post_scan_calculations
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
 	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "anvil_uuid",  value1 => $anvil_uuid,
 		name2 => "anvil_name",  value2 => $anvil_name,
 		name3 => "node1_name",  value3 => $node1_name,
@@ -12599,59 +12619,59 @@ sub _post_scan_calculations
 	if (($an->data->{node}{$node1_name}{daemon}{gfs2}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{gfs2}{exit_code} ne "0"))
 	{
 		$an->data->{sys}{gfs2_down} = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::gfs2_down", value1 => $an->data->{sys}{gfs2_down},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->data->{sys}{clvmd_down} = 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node1_name}::daemon::clvmd::exit_code", value1 => $an->data->{node}{$node1_name}{daemon}{clvmd}{exit_code},
 		name2 => "node::${node2_name}::daemon::clvmd::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{clvmd}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{node}{$node1_name}{daemon}{clvmd}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{clvmd}{exit_code} ne "0"))
 	{
 		$an->data->{sys}{clvmd_down} = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::clvmd_down", value1 => $an->data->{sys}{clvmd_down},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->data->{sys}{drbd_down} = 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node1_name}::daemon::drbd::exit_code", value1 => $an->data->{node}{$node1_name}{daemon}{drbd}{exit_code},
 		name2 => "node::${node2_name}::daemon::drbd::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{drbd}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{node}{$node1_name}{daemon}{drbd}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{drbd}{exit_code} ne "0"))
 	{
 		$an->data->{sys}{drbd_down} = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::drbd_down", value1 => $an->data->{sys}{drbd_down},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->data->{sys}{rgmanager_down} = 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node1_name}::daemon::rgmanager::exit_code", value1 => $an->data->{node}{$node1_name}{daemon}{rgmanager}{exit_code},
 		name2 => "node::${node2_name}::daemon::rgmanager::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{rgmanager}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{node}{$node1_name}{daemon}{rgmanager}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{rgmanager}{exit_code} ne "0"))
 	{
 		$an->data->{sys}{rgmanager_down} = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::rgmanager_down", value1 => $an->data->{sys}{rgmanager_down},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->data->{sys}{cman_down} = 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node1_name}::daemon::cman::exit_code", value1 => $an->data->{node}{$node1_name}{daemon}{cman}{exit_code},
 		name2 => "node::${node2_name}::daemon::cman::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{cman}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{node}{$node1_name}{daemon}{cman}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{cman}{exit_code} ne "0"))
 	{
 		$an->data->{sys}{cman_down} = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::cman_down", value1 => $an->data->{sys}{cman_down},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -12660,13 +12680,13 @@ sub _post_scan_calculations
 	# withdrawing that node. 
 	foreach my $node_name ($node1_name, $node2_name)
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_name", value1 => $node_name,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $resource (sort {$a cmp $b} keys %{$an->data->{node}{$node_name}{drbd}{resource}})
 		{
 			my $connection_state = $an->data->{node}{$node_name}{drbd}{resource}{$resource}{connection_state};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "resource",         value1 => $resource,
 				name2 => "connection_state", value2 => $connection_state,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -12674,7 +12694,7 @@ sub _post_scan_calculations
 			if ($connection_state =~ /SyncSource/)
 			{
 				$an->data->{node}{$node_name}{enable_withdraw} = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "node::${node_name}::enable_withdraw", value1 => $an->data->{node}{$node_name}{enable_withdraw},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -13501,6 +13521,11 @@ sub _provision_server
 			{
 				my $size = $1;
 				$provision .= "    ".$an->data->{path}{lvcreate}." -l $size\%FREE -n ".$an->data->{new_server}{name}."_$i $vg\n";
+			}
+			elsif ($lv_size =~ /^(\d+\.?\d+?) MiB$/)
+			{
+				my $size = $1;
+				$provision .= "    ".$an->data->{path}{lvcreate}." -L ${size}MiB -n ".$an->data->{new_server}{name}."_$i $vg\n";
 			}
 			else
 			{
@@ -15275,6 +15300,15 @@ sub _verify_server_config
 				elsif ($an->data->{cgi}{$vg_suffix_key} eq "%")
 				{
 					push @{$an->data->{new_server}{vg}{$vg}{lvcreate_size}}, "${lv_size}%";
+				}
+				elsif ($an->data->{cgi}{$vg_suffix_key} eq "MiB")
+				{
+					# The user requested MiBs
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "cgi::${vg_key}",        value1 => $lv_size,
+						name2 => "cgi::${vg_suffix_key}", value2 => $an->data->{cgi}{$vg_suffix_key},
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{new_server}{vg}{$vg}{lvcreate_size}}, "$lv_size MiB";
 				}
 				else
 				{

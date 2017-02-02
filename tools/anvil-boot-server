@@ -85,7 +85,7 @@ $an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_v
 if ($connections)
 {
 	my ($booted, $boot_return) = $an->Cman->boot_server({server => $an->data->{switches}{server}});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "booted", value1 => $booted, 
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (@{$boot_return})

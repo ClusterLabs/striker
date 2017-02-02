@@ -179,7 +179,7 @@
 		<key name="explain_0027">You server will boot and install of this disc.</key>
 		<key name="explain_0028">This is optional.</key>
 		<key name="explain_0029"><![CDATA[If you need a drivers to install your server,<br />please select the appropriate disc here.]]></key>
-		<key name="explain_0030">Most servers work well between 2 and 8 GiB.</key>
+		<key name="explain_0030">Most servers work well between 2 and 8 GiB, with 64 MiB being the minimum.</key>
 		<key name="explain_0031">Windows servers tend to work best with 2 CPUs.</key>
 		<key name="explain_0032">More is not always better. When in doubt, start with 2 to 4. You can change this easily later.</key>
 		<key name="explain_0033">Please use only one node's storage pool.</key>
@@ -1420,6 +1420,7 @@
 		<key name="title_0207">Download progress.</key>
 		<key name="title_0208">About to abort the download.</key>
 		<key name="title_0209">Download aborted.</key>
+		<key name="title_0210"><![CDATA[About to live-migrate the server: [<span class="highlight_detail">#!variable!server!#</span>] to: [<b><span class="highlight_detail">#!variable!target!#</span></b>].]]></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1941,6 +1942,7 @@
 		<key name="message_0504"><![CDATA[About to abort the download of: [<span class="highlight_detail">#!variable!url!#</span>].<br />The partially downloaded file will be <span class="highlight_bad">deleted</span>.]]></key>
 		<key name="message_0505"><![CDATA[The download of: [<span class="highlight_detail">#!variable!url!#</span>] has been aborted.]]></key>
 		<key name="message_0506"><![CDATA[The download of: [<span class="highlight_detail">#!variable!url!#</span>] has been aborted.<br />The output file has been deleted.]]></key>
+		<key name="message_0507"><![CDATA[The server named <span class="highlight_detail">#!variable!server!#</span> will be live-migrated to the node <span class="highlight_detail">#!variable!target!#</span>.<br />Live migration means that the users of the server should no notice any interruption. <br /><span class="highlight_note">Note</span>: Heavily loaded servers could take some time to migrate.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

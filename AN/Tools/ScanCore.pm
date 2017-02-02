@@ -22,6 +22,7 @@ my $THIS_FILE = "ScanCore.pm";
 # get_migration_target
 # get_node_name_from_node_uuid
 # get_node_uuid_from_node_name
+# get_node_health
 # get_nodes
 # get_nodes_cache
 # get_notifications
@@ -767,6 +768,84 @@ WHERE
 		name1 => "node_name", value1 => $node_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($node_name);
+}
+
+# This returns the health score for a node.
+sub get_node_health
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_node_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $target = $parameter->{target} ? $parameter->{target} : "host_uuid";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $an->Validate->is_uuid({uuid => $target}))
+	{
+		# Translate the target to a host_uuid
+		$target = $an->Get->uuid({get => $target});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "target", value1 => $target, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $valid = $an->Validate->is_uuid({uuid => $target});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "valid", value1 => $valid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $valid)
+		{
+			# No host 
+			$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0235", message_variables => { target => $parameter->{target} }, code => 235, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
+	}
+	
+	# Read in any values.
+	my $query = "
+SELECT 
+    health_agent_name, 
+    health_source_name, 
+    health_source_weight 
+FROM 
+    health 
+WHERE 
+    health_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($target)."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+		
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# This will have any weights added to it.
+	my $health_score = 0;
+	foreach my $row (@{$results})
+	{
+		my $health_agent_name    = $row->[0]; 
+		my $health_source_name   = $row->[1]; 
+		my $health_source_weight = $row->[2];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "health_agent_name",    value1 => $health_agent_name, 
+			name2 => "health_source_name",   value2 => $health_source_name, 
+			name3 => "health_source_weight", value3 => $health_source_weight, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$health_score += $health_source_weight;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "health_score", value1 => $health_score, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "health_score", value1 => $health_score, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($health_score);
 }
 
 # Get a list of Anvil! nodes as an array of hash references

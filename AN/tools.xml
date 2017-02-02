@@ -981,6 +981,8 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0231"><![CDATA[The 'AN::Tools::System' module's 'configure_ipmi()' was called without a task being set.]]></key>
 		<key name="error_message_0232"><![CDATA[The 'AN::Tools::System' module's 'configure_ipmi()' was called with an invalid task: [#!variable!task!#]. Valid tasks are 'password', 'network' or 'both'.]]></key>
 		<key name="error_message_0233"><![CDATA[The 'AN::Tools::System' module's 'configure_ipmi()' was asked to change the IPMI user password, but was not given the name of the user to work on.]]></key>
+		<key name="error_message_0234"><![CDATA[The 'AN::Tools::System' module's 'pick_shutdown_target()' was called without an Anvil! UUID.]]></key>
+		<key name="error_message_0235"><![CDATA[The 'AN::Tools::ScanCore' module's 'get_node_health()' method was passes in the target: [#!variable!target!#] which could not be translated to a host UUID.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

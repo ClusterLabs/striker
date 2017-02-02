@@ -22,6 +22,7 @@ my $THIS_FILE = "System.pm";
 # get_daemon_state
 # get_local_ip_addresses
 # get_uptime
+# pick_shutdown_target
 # poweroff
 # synchronous_command_run
 # _avoid_duplicate_delayed_runs
@@ -1570,6 +1571,446 @@ sub get_uptime
 	}
 	
 	return($uptime);
+}
+
+# This looks at both nodes to see which should be shutdown first (when both are online). It returns "alone" 
+# if the peer is not up or running cman/drbd, "none" when both are drbd synctarget, or one of the nodes 
+# names. The selection criteria depends on a few things;
+# 
+# 1. If one node is the 'SyncSource' for the other, then the Inconsistent peer will be chosen.
+# 
+# 2. If one of the nodes is NOT in the cluster and the other is, the withdrawn one will be chosen.
+# 
+# 3. If both nodes are UpToDate, and one node's health is not 'OK', then the sick node will be chosen.
+# 
+# *If* not 'ignore_servers';
+# 
+# 4. If both nodes are UpToDate and healthy, the the sum of the RAM used by servers on each node is added. 
+#    The node with the least amount of RAM used by servers is chosen.
+#    
+# 5. If the RAM in use by servers on both nodes is the same, the node with the fewest servers will be chosen.
+# 
+# 6. If no differences are found at all, node 2 will be chosen.
+sub pick_shutdown_target
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "pick_shutdown_target" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_uuid     = $parameter->{anvil_uuid}     ? $parameter->{anvil_uuid}     : "";
+	my $ignore_servers = $parameter->{ignore_servers} ? $parameter->{ignore_servers} : 0;	# Set for cold-stop
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil_uuid",     value1 => $anvil_uuid, 
+		name2 => "ignore_servers", value2 => $ignore_servers, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $anvil_uuid)
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0234", code => 234, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	my $target     = "";
+	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
+	my $node1_uuid = $an->data->{sys}{anvil}{node1}{uuid};
+	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
+	my $node2_uuid = $an->data->{sys}{anvil}{node2}{uuid};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "node1_name", value1 => $node1_name, 
+		name2 => "node1_uuid", value2 => $node1_uuid, 
+		name3 => "node2_name", value3 => $node2_name, 
+		name4 => "node2_uuid", value4 => $node2_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If either node's power is 'unknown', set to 'on' if 'online' was set. Otherwise, check manually.
+	if ($an->data->{sys}{anvil}{node1}{power} eq "unknown")
+	{
+		if ($an->data->{sys}{anvil}{node1}{online})
+		{
+			$an->data->{sys}{anvil}{node1}{power} = "on";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::anvil::node1::power", value1 => $an->data->{sys}{anvil}{node1}{power}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$an->data->{sys}{anvil}{node1}{power} = $an->ScanCore->target_power({target => $node1_uuid});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::anvil::node1::power", value1 => $an->data->{sys}{anvil}{node1}{power}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	if ($an->data->{sys}{anvil}{node2}{power} eq "unknown")
+	{
+		if ($an->data->{sys}{anvil}{node2}{online})
+		{
+			$an->data->{sys}{anvil}{node2}{power} = "on";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::anvil::node2::power", value1 => $an->data->{sys}{anvil}{node2}{power}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$an->data->{sys}{anvil}{node2}{power} = $an->ScanCore->target_power({target => $node2_uuid});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::anvil::node2::power", value1 => $an->data->{sys}{anvil}{node2}{power}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If both nodes are off, or if either node can't be reached but is powered on, return 'none' (abort).
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online}, 
+		name2 => "sys::anvil::node1::power",  value2 => $an->data->{sys}{anvil}{node1}{power}, 
+		name3 => "sys::anvil::node2::online", value3 => $an->data->{sys}{anvil}{node2}{online}, 
+		name4 => "sys::anvil::node2::power",  value4 => $an->data->{sys}{anvil}{node2}{power}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $an->data->{sys}{anvil}{node1}{online}) && (not $an->data->{sys}{anvil}{node2}{online}))
+	{
+		# Neither node is online. Are both known off?
+		if (($an->data->{sys}{anvil}{node1}{power} eq "off") && ($an->data->{sys}{anvil}{node2}{power} eq "off"))
+		{
+			# Both nodes are off.
+			$target = "none:both_off";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# At least one node is not accessible but appears on. Abort.
+			$target = "none:unknown_state";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	elsif ((not $an->data->{sys}{anvil}{node1}{online}) && ($an->data->{sys}{anvil}{node1}{power} ne "off"))
+	{
+		# Node 1 is offline. but powered on, abort.
+		$target = "none:unknown_state";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "target", value1 => $target, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ((not $an->data->{sys}{anvil}{node2}{online}) && ($an->data->{sys}{anvil}{node2}{power} ne "off"))
+	{
+		# Node 2 is offline. but powered on, abort.
+		$target = "none:unknown_state";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "target", value1 => $target, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif (($an->data->{sys}{anvil}{node1}{power} eq "off") && ($an->data->{sys}{anvil}{node2}{online}))
+	{
+		# Node 1 is known off and node 2 is accessible.
+		$target = "node2:".$an->data->{sys}{anvil}{node2}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "target", value1 => $target, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif (($an->data->{sys}{anvil}{node2}{power} eq "off") && ($an->data->{sys}{anvil}{node1}{online}))
+	{
+		# Node 2 is known off and node 1 is accessible.
+		$target = "node1:".$an->data->{sys}{anvil}{node1}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "target", value1 => $target, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# 1. If one node is the 'SyncSource' for the other, then the Inconsistent peer will be chosen.
+	if (not $target)
+	{
+		if ((not $an->data->{node}{$node1_name}{drbd}{version}) && (not $an->data->{node}{$node2_name}{drbd}{version}))
+		{
+			# Neither node is running DRBD, shut down node 2.
+			$target = "node2:".$an->data->{sys}{anvil}{node2}{name};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (not $an->data->{node}{$node1_name}{drbd}{version})
+		{
+			# Node 1 is not running DRBD, stop it first.
+			$target = "node1:".$an->data->{sys}{anvil}{node1}{name};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (not $an->data->{node}{$node2_name}{drbd}{version})
+		{
+			# Node 2 is not running DRBD, stop it first.
+			$target = "node2:".$an->data->{sys}{anvil}{node2}{name};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Look to see if any resource is SyncSource on either node
+			my $node1_syncsource = 0;
+			my $node2_syncsource = 0;
+			
+			# Node 1's perspective
+			foreach my $resource (sort {$a cmp $b} keys %{$an->data->{node}{$node1_name}{drbd}{resource}})
+			{
+				my $node1_disk_state = $an->data->{node}{$node1_name}{drbd}{resource}{$resource}{my_disk_state};
+				my $node2_disk_state = $an->data->{node}{$node2_name}{drbd}{resource}{$resource}{peer_disk_state};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node1_disk_state", value1 => $node1_disk_state, 
+					name2 => "node2_disk_state", value2 => $node2_disk_state, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (($node1_disk_state =~ /SyncSource/i) or ($node2_disk_state =~ /Diskless/i))
+				{
+					$node1_syncsource = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "node1_syncsource", value1 => $node1_syncsource, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if (($node2_disk_state =~ /SyncTarget/i) or ($node1_disk_state =~ /Diskless/i))
+				{
+					$node2_syncsource = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "node2_syncsource", value1 => $node2_syncsource, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			# Node 2's perspective
+			foreach my $resource (sort {$a cmp $b} keys %{$an->data->{node}{$node2_name}{drbd}{resource}})
+			{
+				my $node1_disk_state = $an->data->{node}{$node1_name}{drbd}{resource}{$resource}{peer_disk_state};
+				my $node2_disk_state = $an->data->{node}{$node2_name}{drbd}{resource}{$resource}{my_disk_state};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node1_disk_state", value1 => $node1_disk_state, 
+					name2 => "node2_disk_state", value2 => $node2_disk_state, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (($node1_disk_state =~ /SyncSource/i) or ($node2_disk_state =~ /Diskless/i))
+				{
+					$node1_syncsource = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "node1_syncsource", value1 => $node1_syncsource, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if (($node2_disk_state =~ /SyncTarget/i) or ($node1_disk_state =~ /Diskless/i))
+				{
+					$node2_syncsource = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "node2_syncsource", value1 => $node2_syncsource, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			
+			# If both are syncsource, return 'none'
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node1_syncsource", value1 => $node1_syncsource, 
+				name2 => "node2_syncsource", value2 => $node2_syncsource, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($node1_syncsource) && ($node2_syncsource))
+			{
+				# Both are needed to operate
+				$target = "none:both_drbdsource";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "target", value1 => $target, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($node1_syncsource)
+			{
+				# Node 1 is needed, shut down node 2 first.
+				$target = "node2:".$an->data->{sys}{anvil}{node2}{name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "target", value1 => $target, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($node2_syncsource)
+			{
+				# Node 2 is needed, shut down node 1 first.
+				$target = "node1:".$an->data->{sys}{anvil}{node1}{name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "target", value1 => $target, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# 2. If one of the nodes is NOT in the cluster and the other is, the withdrawn one will be chosen.
+	if (not $target)
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node1_name", value1 => $node1_name, 
+			name2 => "node2_name", value2 => $node2_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($an->data->{node}{$node1_name}{daemon}{cman}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{cman}{exit_code} ne "0"))
+		{
+			# Neither node is in the cluster, shut down node 2 first.
+			$target = "node2:".$node2_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{node}{$node1_name}{daemon}{cman}{exit_code} ne "0")
+		{
+			# Node 1 is in the cluster, node 2 isn't. Withdraw node 2.
+			$target = "node2:".$node2_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($an->data->{node}{$node2_name}{daemon}{cman}{exit_code} ne "0")
+		{
+			# Node 2 is in the cluster, node 1 isn't. Withdraw node 1.
+			$target = "node1:".$node1_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# 3. If both nodes are UpToDate, and one node's health is not 'OK', then the sick node will be chosen.
+	if (not $target)
+	{
+		### TODO: Switch this to using the 'health' ScanCore table.
+		# Read in the node health score.
+		my $node1_health = $an->ScanCore->get_node_health({target => $node1_name});
+		my $node2_health = $an->ScanCore->get_node_health({target => $node2_name});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node1_health", value1 => $node1_health, 
+			name2 => "node2_health", value2 => $node2_health, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($node1_health > $node2_health)
+		{
+			# Node 1 is healthier
+			$target = "node1:".$node1_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($node2_health > $node1_health)
+		{
+			# Node 2 is healthier
+			$target = "node2:".$node2_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	if (not $target)
+	{
+		if ($ignore_servers)
+		{
+			# No selection criteria helped, so set node 2.
+			$target = "node2:".$node2_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			### We're NOT ignoring servers.
+			# 4. If both nodes are UpToDate and healthy, the the sum of the RAM used by servers on each node is added. 
+			#    The node with the least amount of RAM used by servers is chosen.
+			my $node1_ram          = 0;
+			my $node1_server_count = 0;
+			my $node2_ram          = 0;
+			my $node2_server_count = 0;
+			foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
+			{
+				my $ram  = $an->data->{server}{$server}{details}{ram};
+				my $host = $an->data->{server}{$server}{host};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "server", value1 => $server,
+					name2 => "ram",    value2 => $ram." (".$an->Readable->bytes_to_hr({'bytes' => $ram}).")",
+					name3 => "host",   value3 => $host,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($host eq $node1_name)
+				{
+					$node1_ram += $ram;
+					$node1_server_count++;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "node1_ram",          value1 => $node1_ram." (".$an->Readable->bytes_to_hr({'bytes' => $node1_ram}).")",
+						name2 => "node1_server_count", value2 => $node1_server_count,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($host eq $node2_name)
+				{
+					$node2_ram += $ram;
+					$node2_server_count++;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "node2_ram",          value1 => $node2_ram." (".$an->Readable->bytes_to_hr({'bytes' => $node2_ram}).")",
+						name2 => "node2_server_count", value2 => $node2_server_count,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			
+			# Does one node have more RAM in use by hosted servers than the other?
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node1_ram", value1 => $node1_ram." (".$an->Readable->bytes_to_hr({'bytes' => $node1_ram}).")",
+				name2 => "node2_ram", value2 => $node2_ram." (".$an->Readable->bytes_to_hr({'bytes' => $node2_ram}).")",
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($node1_ram > $node2_ram)
+			{
+				# Node 1 has more RAM used by node 2, so nix node 2.
+				$target = "node2:".$node2_name;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "target", value1 => $target, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($node2_ram > $node1_ram)
+			{
+				# Node 1 has more RAM used by node 2, so nix node 2.
+				$target = "node1:".$node1_name;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "target", value1 => $target, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Does one node have more servers than the other?
+			if (not $target)
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node1_server_count", value1 => $node1_server_count,
+					name2 => "node2_server_count", value2 => $node2_server_count,
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($node1_server_count > $node2_server_count)
+				{
+					# Node 1 has more RAM used by node 2, so nix node 2.
+					$target = "node2:".$node2_name;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "target", value1 => $target, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($node2_server_count > $node1_server_count)
+				{
+					# Node 1 has more RAM used by node 2, so nix node 2.
+					$target = "node1:".$node1_name;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "target", value1 => $target, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			
+			# 5. Finally; If I still don't have a target, set node 2.
+			if (not $target)
+			{
+				$target = "node2:".$node2_name;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "target", value1 => $target, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# none = Couldn't select either one.
+	# off  = Both nodes are off.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($target);
 }
 
 # This calls 'poweroff' on a machine (possibly this one).

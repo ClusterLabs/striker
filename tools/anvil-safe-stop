@@ -746,11 +746,12 @@ sub local_shut_down
 			}, file => $THIS_FILE, line => __LINE__});
 			if (($i_am_synctarget) && ($peer_is_synctarget))
 			{
+				# We're sync'ing to each other, we can't stop.
 				$an->Alert->error({title_key => "an_0003", message_key => "assp_error_0003", code => 4, file => $THIS_FILE, line => __LINE__});
 				$an->nice_exit({exit_code => 4});
 			}
 			
-			# If we're sync target (or the peer is diskless), abort.
+			# If we're sync target (or the peer is diskless, which sets 'synctarget'), abort.
 			if ($i_am_synctarget)
 			{
 				$an->Alert->error({title_key => "an_0003", message_key => "assp_error_0004", code => 5, file => $THIS_FILE, line => __LINE__});
