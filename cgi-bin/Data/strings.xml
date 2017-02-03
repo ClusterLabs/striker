@@ -1920,7 +1920,7 @@
 		<key name="message_0482"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] was already on, no action taken.]]></key>
 		<key name="message_0483"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown power state. It can't be booted.]]></key>
 		<key name="message_0484"><![CDATA[No #!string!brand_0003!# selected (or configured) yet, redirecting, one moment...]]></key>
-		<key name="message_0485"><![CDATA[The new: [<span class="highlight_detail">#!variable!anvil!#</span>] Anvil! system has been saved.<br /><a href="#!variable!notification_url!#" target="_new">Click here</a> to manage alert recipients.<br /><a href="#!variable!manage_url!#">Click here</a> to start using it!]]></key>
+		<key name="message_0485"><![CDATA[The new: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# system has been saved.<br /><a href="#!variable!notification_url!#" target="_new">Click here</a> to manage alert recipients.<br /><a href="#!variable!manage_url!#">Click here</a> to start using it!]]></key>
 		<key name="message_0486"><![CDATA[The sending email server password must be set unless '<span class="highlight_detail">#!string!row_0303!#</span>' is set to '<span class="highlight_detail">#!string!select_0004!#</span>'.]]></key>
 		<key name="message_0487"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been aborted because one or more UPSes is not accessible.]]></key>
 		<key name="message_0488"><![CDATA[System call started at: [<span class="highlight_detail">#!variable!timestamp!#</span>]. Output, if any, will be below:]]></key>
@@ -1943,6 +1943,9 @@
 		<key name="message_0505"><![CDATA[The download of: [<span class="highlight_detail">#!variable!url!#</span>] has been aborted.]]></key>
 		<key name="message_0506"><![CDATA[The download of: [<span class="highlight_detail">#!variable!url!#</span>] has been aborted.<br />The output file has been deleted.]]></key>
 		<key name="message_0507"><![CDATA[The server named <span class="highlight_detail">#!variable!server!#</span> will be live-migrated to the node <span class="highlight_detail">#!variable!target!#</span>.<br />Live migration means that the users of the server should no notice any interruption. <br /><span class="highlight_note">Note</span>: Heavily loaded servers could take some time to migrate.]]></key>
+		<key name="message_0508"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been aborted because replicated storage on both nodes requires the other.<br />Manual shutdown will be required.]]></key>
+		<key name="message_0509"><![CDATA[The node [<span class="highlight_detail">#!variable!node_name!#</span>] should now be shutting down.]]></key>
+		<key name="message_0510"><![CDATA[Withdrawing the node [<span class="highlight_detail">#!variable!node_name!#</span>] from the #!string!brand_0003!#, please wait...]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

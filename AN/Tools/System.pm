@@ -1577,7 +1577,8 @@ sub get_uptime
 # if the peer is not up or running cman/drbd, "none" when both are drbd synctarget, or one of the nodes 
 # names. The selection criteria depends on a few things;
 # 
-# 1. If one node is the 'SyncSource' for the other, then the Inconsistent peer will be chosen.
+# 1. If one node is the 'Inconsistent' or 'Diskless', it will be chosen. If both are this way, 'none' will be
+#    returned.
 # 
 # 2. If one of the nodes is NOT in the cluster and the other is, the withdrawn one will be chosen.
 # 
@@ -1719,7 +1720,7 @@ sub pick_shutdown_target
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# 1. If one node is the 'SyncSource' for the other, then the Inconsistent peer will be chosen.
+	# 1. If one node is the 'Inconsistent' for the other, then the Inconsistent peer will be chosen.
 	if (not $target)
 	{
 		if ((not $an->data->{node}{$node1_name}{drbd}{version}) && (not $an->data->{node}{$node2_name}{drbd}{version}))
@@ -1748,67 +1749,67 @@ sub pick_shutdown_target
 		}
 		else
 		{
-			# Look to see if any resource is SyncSource on either node
-			my $node1_syncsource = 0;
-			my $node2_syncsource = 0;
+			# Look to see if any resource is Inconsistent on either node
+			my $node1_is_source = 0;
+			my $node2_is_source = 0;
 			
 			# Node 1's perspective
 			foreach my $resource (sort {$a cmp $b} keys %{$an->data->{node}{$node1_name}{drbd}{resource}})
 			{
 				my $node1_disk_state = $an->data->{node}{$node1_name}{drbd}{resource}{$resource}{my_disk_state};
-				my $node2_disk_state = $an->data->{node}{$node2_name}{drbd}{resource}{$resource}{peer_disk_state};
+				my $node2_disk_state = $an->data->{node}{$node1_name}{drbd}{resource}{$resource}{peer_disk_state};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "node1_disk_state", value1 => $node1_disk_state, 
 					name2 => "node2_disk_state", value2 => $node2_disk_state, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				if (($node1_disk_state =~ /SyncSource/i) or ($node2_disk_state =~ /Diskless/i))
+				if (($node1_disk_state =~ /Inconsistent/i) or ($node1_disk_state =~ /Diskless/i))
 				{
-					$node1_syncsource = 1;
+					$node2_is_source = 1;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "node1_syncsource", value1 => $node1_syncsource, 
+						name1 => "node2_is_source", value1 => $node2_is_source, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
-				if (($node2_disk_state =~ /SyncTarget/i) or ($node1_disk_state =~ /Diskless/i))
+				if (($node2_disk_state =~ /Inconsistent/i) or ($node2_disk_state =~ /Diskless/i))
 				{
-					$node2_syncsource = 1;
+					$node1_is_source = 1;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "node2_syncsource", value1 => $node2_syncsource, 
+						name1 => "node1_is_source", value1 => $node1_is_source, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			# Node 2's perspective
 			foreach my $resource (sort {$a cmp $b} keys %{$an->data->{node}{$node2_name}{drbd}{resource}})
 			{
-				my $node1_disk_state = $an->data->{node}{$node1_name}{drbd}{resource}{$resource}{peer_disk_state};
+				my $node1_disk_state = $an->data->{node}{$node2_name}{drbd}{resource}{$resource}{peer_disk_state};
 				my $node2_disk_state = $an->data->{node}{$node2_name}{drbd}{resource}{$resource}{my_disk_state};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "node1_disk_state", value1 => $node1_disk_state, 
 					name2 => "node2_disk_state", value2 => $node2_disk_state, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				if (($node1_disk_state =~ /SyncSource/i) or ($node2_disk_state =~ /Diskless/i))
+				if (($node1_disk_state =~ /Inconsistent/i) or ($node1_disk_state =~ /Diskless/i))
 				{
-					$node1_syncsource = 1;
+					$node2_is_source = 1;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "node1_syncsource", value1 => $node1_syncsource, 
+						name1 => "node2_is_source", value1 => $node2_is_source, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
-				if (($node2_disk_state =~ /SyncTarget/i) or ($node1_disk_state =~ /Diskless/i))
+				if (($node2_disk_state =~ /Inconsistent/i) or ($node2_disk_state =~ /Diskless/i))
 				{
-					$node2_syncsource = 1;
+					$node1_is_source = 1;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "node2_syncsource", value1 => $node2_syncsource, 
+						name1 => "node1_is_source", value1 => $node1_is_source, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			
 			# If both are syncsource, return 'none'
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "node1_syncsource", value1 => $node1_syncsource, 
-				name2 => "node2_syncsource", value2 => $node2_syncsource, 
+				name1 => "node1_is_source", value1 => $node1_is_source, 
+				name2 => "node2_is_source", value2 => $node2_is_source, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if (($node1_syncsource) && ($node2_syncsource))
+			if (($node1_is_source) && ($node2_is_source))
 			{
 				# Both are needed to operate
 				$target = "none:both_drbdsource";
@@ -1816,7 +1817,7 @@ sub pick_shutdown_target
 					name1 => "target", value1 => $target, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($node1_syncsource)
+			elsif ($node1_is_source)
 			{
 				# Node 1 is needed, shut down node 2 first.
 				$target = "node2:".$an->data->{sys}{anvil}{node2}{name};
@@ -1824,7 +1825,7 @@ sub pick_shutdown_target
 					name1 => "target", value1 => $target, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($node2_syncsource)
+			elsif ($node2_is_source)
 			{
 				# Node 2 is needed, shut down node 1 first.
 				$target = "node1:".$an->data->{sys}{anvil}{node1}{name};
@@ -2005,8 +2006,13 @@ sub pick_shutdown_target
 		}
 	}
 	
-	# none = Couldn't select either one.
-	# off  = Both nodes are off.
+	# none:both_off        = Both were off
+	# none:unknown_state   = One or both of the nodes couldn't be accessed and aren't powered off (or the
+	#                        power state is unknown)
+	# none:both_drbdsource = Both nodes are acting as SyncSource for one or more resources (or one or 
+	#                        more peer resource's disk state is Diskless).
+	# node1:<node_name>    = Node 1 was was chosed to turn off first.
+	# node2:<node_name>    = Node 2 was was chosed to turn off first.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "target", value1 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});

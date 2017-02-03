@@ -3751,18 +3751,6 @@ sub _cold_stop_anvil
 	# Scan the Anvil!
 	$an->Striker->scan_anvil();
 	
-	# Find out which node to terminate first.
-	my $first_off = $an->System->pick_shutdown_target({
-		anvil_uuid     => $anvil_uuid, 
-		ignore_servers => 0,
-	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "first_off", value1 => $first_off,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-# 	print $THIS_FILE." ".__LINE__."; testing...\n";
-# 	$an->nice_exit({exit_code => 1});
-	
 	# Set the delay. This will set the hosts -> host_stop_reason to be time + sys::power_off_delay if we
 	# have a sub-task. We'll also check to see if the UPSes are still accessing. Even if 'note=no_abort',
 	# we can not proceed unless both/all UPSes are available
@@ -3782,7 +3770,7 @@ sub _cold_stop_anvil
 			# <sad sad sounds>
 			my $say_title   = $an->String->get({key => "title_0184"});
 			my $say_message = $an->String->get({key => "message_0487", variables => { anvil => $anvil_name }});
-			print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
+			print $an->Web->template({file => "server.html", template => "cold-stop-aborted", replace => { 
 				title	=>	$say_title,
 				message	=>	$say_message,
 			}});
@@ -3881,31 +3869,71 @@ sub _cold_stop_anvil
 			}
 		}
 		
-		# Start the UPS timer here and abort if the timer doesn't start.
-		
-		### TODO: Redo this so that we use $an->System->dual_command_run()' and then go into a loop 
-		###       watching the output.
-		# Now, stop the nodes. If both nodes are up, we'll call '--cold-stop' to invoke 
-		# 'anvil-safe-stop's logic to determine which node should die first. We'll look for 
-		# 'poweroff: X' to determine which node went down.
+		# Now stop the node(s).
+		my $stop_order = ["node2", "node1"];
 		if (($an->data->{sys}{anvil}{node1}{online}) && ($an->data->{sys}{anvil}{node2}{online}))
 		{
-			# Both are up, so call the load-shed from node 1.
-			my $node_name = $an->data->{sys}{anvil}{node1}{name};
-			my $target    = $an->data->{sys}{anvil}{node1}{use_ip};
-			my $port      = $an->data->{sys}{anvil}{node1}{use_port};
-			my $password  = $an->data->{sys}{anvil}{node1}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "node_name", value1 => $node_name,
-				name2 => "target",    value2 => $target,
-				name3 => "port",      value3 => $port,
+			# Both are up, so make sure I want to still stop node 2 first.
+			my $first_off = $an->System->pick_shutdown_target({
+				anvil_uuid     => $anvil_uuid, 
+				ignore_servers => 0,
+			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "first_off", value1 => $first_off,
+			}, file => $THIS_FILE, line => __LINE__});
+			### NOTE: We know both nodes are on if we're here, so we don't check for other 'none'
+			###       types.
+			# none:both_drbdsource = Both nodes are acting as SyncSource for one or more resources (or one or 
+			#                        more peer resource's disk state is Diskless).
+			# node1:<node_name>    = Node 1 was was chosed to turn off first.
+			# node2:<node_name>    = Node 2 was was chosed to turn off first.
+			
+			# If 'none:both_drbdsource', abort.
+			if ($first_off eq "none:both_drbdsource")
+			{
+				# Wow... really?
+				my $say_title   = $an->String->get({key => "title_0184"});
+				my $say_message = $an->String->get({key => "message_0508", variables => { anvil => $anvil_name }});
+				print $an->Web->template({file => "server.html", template => "cold-stop-aborted", replace => { 
+					title	=>	$say_title,
+					message	=>	$say_message,
+				}});
+				return(1);
+			}
+			elsif ($first_off =~ /^node1/)
+			{
+				$stop_order = ["node1", "node2"];
+			}
+		}
+		elsif ($an->data->{sys}{anvil}{node1}{online})
+		{
+			# Only node 1 is up
+			$stop_order = ["node1"];
+		}
+		elsif ($an->data->{sys}{anvil}{node2}{online})
+		{
+			# Only node 2 is up
+			$stop_order = ["node2"];
+		}
+		
+		# Now loop through the node(s)
+		foreach my $node_key (@{$stop_order})
+		{
+			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+			my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+			my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
+			my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "node_key",  value1 => $node_key,
+				name2 => "node_name", value2 => $node_name,
+				name3 => "target",    value3 => $target,
+				name4 => "port",      value4 => $port,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "password", value1 => $password,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# If 'cancel_ups' is set, we will stop the UPS timer. 
-			my $shell_output = "";
+			my $shell_output = $an->String->get({key => "message_0510", variables => { node_name => $node_name }})."<br />\n";;
 			my $shell_call   = $an->data->{path}{timeout}." 120 ".$an->data->{path}{'anvil-safe-stop'}." --local --reason cold_stop; ".$an->data->{path}{echo}." rc:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "target",     value1 => $target,
@@ -3926,21 +3954,13 @@ sub _cold_stop_anvil
 				if ($line =~ /poweroff: (.*)$/)
 				{
 					# This is the first node to die. Mark it as offline.
-					my $node_name = $1;
-					my $node_key  = $an->data->{sys}{node_name}{$node_name}{node_key};
-					my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+					my $shutdown_name = $1;
+					my $node_uuid     = $an->data->{sys}{anvil}{$node_key}{uuid};
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-						name1 => "node_name", value1 => $node_name,
-						name2 => "node_key",  value2 => $node_key,
-						name3 => "node_uuid", value3 => $node_uuid,
+						name1 => "shutdown_name", value1 => $shutdown_name,
+						name2 => "node_name",     value2 => $node_name,
+						name3 => "node_uuid",     value3 => $node_uuid,
 					}, file => $THIS_FILE, line => __LINE__});
-					
-					# Error out if we failed to get the node name.
-					if (not $node_name)
-					{
-						$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0142", code => 142, file => $THIS_FILE, line => __LINE__});
-						return("");
-					}
 					if (not $node_uuid)
 					{
 						$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0157", message_variables => { node_name => $node_name }, code => 157, file => $THIS_FILE, line => __LINE__});
@@ -3957,6 +3977,9 @@ sub _cold_stop_anvil
 						delay => $delay, 
 					}, file => $THIS_FILE, line => __LINE__});
 					$an->Striker->mark_node_as_clean_off({node_uuid => $node_uuid, delay => $delay});
+					
+					# Add some output
+					$shell_output .= $an->String->get({key => "message_0509", variables => { node_name => $node_name }})."<br />\n";
 				}
 				elsif ($line =~ /rc:(\d+)/)
 				{
@@ -3971,8 +3994,8 @@ sub _cold_stop_anvil
 				}
 				else
 				{
-					$line         =  $an->Web->parse_text_line({line => $line});
-					$shell_output .= "$line<br />\n";
+					# Just show the user the raw string
+					$shell_output .= $an->Web->parse_text_line({line => $line})."<br />\n";
 				}
 			}
 			
@@ -3985,133 +4008,6 @@ sub _cold_stop_anvil
 				message_class	=>	"quoted_text",
 				message		=>	$shell_output,
 			}});
-		}
-		
-		# Now, only one node should be left up
-		foreach my $node_key ("node1", "node2")
-		{
-			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
-			my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
-			my $online    = $an->data->{sys}{anvil}{$node_key}{online};
-			my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-			my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-			my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-				name1 => "node_name", value1 => $node_name,
-				name2 => "node_uuid", value2 => $node_uuid,
-				name3 => "online",    value3 => $online,
-				name4 => "target",    value4 => $target,
-				name5 => "port",      value5 => $port,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-				name1 => "password", value1 => $password,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($online)
-			{
-				### NOTE: Madi: Even with 'timeout 1200', it stopped loading the page, 
-				###             removing timeout entirely but the problem probably lies 
-				###             elsewhere. Not that nothing is recorded in http/error_log.
-				# We'll shut down with 'anvil-safe-stop'. No servers should be running, but 
-				# just in case we oopsed and left one up, set the stop reason.
-				my $shell_output = "";
-				my $shell_call   = $an->data->{path}{'anvil-safe-stop'}." --local --reason cold_stop; ".$an->data->{path}{echo}." rc:\$?";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "target",     value1 => $target,
-					name2 => "shell_call", value2 => $shell_call,
-				}, file => $THIS_FILE, line => __LINE__});
-				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-					target		=>	$target,
-					port		=>	$port, 
-					password	=>	$password,
-					shell_call	=>	$shell_call,
-				});
-				foreach my $line (@{$return})
-				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line,
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					if ($line =~ /poweroff: (.*)$/)
-					{
-						my $node_name = $1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "node_name", value1 => $node_name,
-						}, file => $THIS_FILE, line => __LINE__});
-						
-						# Loop until I can't ping it.
-						my $stop_waiting = time + 30;
-						my $waiting      = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "stop_waiting", value1 => $stop_waiting,
-						}, file => $THIS_FILE, line => __LINE__});
-						while ($waiting)
-						{
-							my $ping = $an->Check->ping({ping => $target});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-								name1 => "ping", value1 => $ping,
-							}, file => $THIS_FILE, line => __LINE__});
-							if ($ping)
-							{
-								# Still alive, wait.
-								sleep 1;
-							}
-							else
-							{
-								# It's down, we're done.
-								$waiting = 0;
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-									name1 => "waiting", value1 => $waiting,
-								}, file => $THIS_FILE, line => __LINE__});
-							}
-							
-							my $current_time = time;
-							my $difference   = $stop_waiting - $current_time;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-								name1 => "stop_waiting", value1 => $stop_waiting,
-								name2 => "current_time", value2 => $current_time,
-								name3 => "difference",   value3 => $difference,
-							}, file => $THIS_FILE, line => __LINE__});
-							if (time > $stop_waiting)
-							{
-								# Taking too long, stop waiting.
-								$waiting = 0;
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-									name1 => "waiting", value1 => $waiting,
-								}, file => $THIS_FILE, line => __LINE__});
-							}
-						}
-					}
-					elsif ($line =~ /rc:(\d+)/)
-					{
-						# Something went wrong.
-						my $return_code = $1;
-						
-						if ($return_code eq "124")
-						{
-							$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0190", message_variables => { node_name => $node_name }, code => 190, file => $THIS_FILE, line => __LINE__});
-							return("");
-						}
-					}
-					else
-					{
-						$line = $an->Web->parse_text_line({line => $line});
-						$shell_output .= "$line<br />\n";
-					}
-				}
-				$an->Striker->mark_node_as_clean_off({node_uuid => $node_uuid, delay => $delay});
-		
-				$shell_output =~ s/\n$//;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "shell_output", value1 => $shell_output,
-				}, file => $THIS_FILE, line => __LINE__});
-				print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
-					row_class	=>	"code",
-					row		=>	"#!string!row_0127!#",
-					message_class	=>	"quoted_text",
-					message		=>	$shell_output,
-				}});
-			}
 		}
 		
 		# All done!
@@ -9973,7 +9869,7 @@ sub _parse_anvil_safe_start
 	$an->data->{node}{$node_name}{'anvil-safe-start'} = 0;
 	foreach my $line (@{$data})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "node_name", value1 => $node_name,
 			name2 => "line",      value2 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9981,7 +9877,7 @@ sub _parse_anvil_safe_start
 		if (($line =~ /\[running\]/i) or ($line =~ /\[queued\]/i))
 		{
 			$an->data->{node}{$node_name}{'anvil-safe-start'} = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node::${node_name}::anvil-safe-start", value1 => $an->data->{node}{$node_name}{'anvil-safe-start'},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -9997,14 +9893,14 @@ sub _parse_anvil_safe_start
 				port		=>	$port, 
 				password	=>	$password,
 			});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "uptime", value1 => $uptime,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($uptime > 600)
 		{
 			$an->data->{node}{$node_name}{'anvil-safe-start'} = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node::${node_name}::anvil-safe-start", value1 => $an->data->{node}{$node_name}{'anvil-safe-start'},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -10023,7 +9919,7 @@ sub _parse_cluster_conf
 	
 	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
 	my $data      = $parameter->{data} ? $parameter->{data} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node_uuid", value1 => $node_uuid,
 		name2 => "data",      value2 => $data,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -10039,7 +9935,7 @@ sub _parse_cluster_conf
 		   $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
 		   $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
 		   $password  = $an->data->{sys}{anvil}{$node_key}{password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "node_key",  value1 => $node_key,
 			name2 => "node_name", value2 => $node_name,
 			name3 => "target",    value3 => $target,
@@ -10497,7 +10393,7 @@ sub _parse_clustat
 		{
 			### TODO: If this is 124, make sure sane null values are set because timeout fired.
 			my $return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code,
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
@@ -10506,7 +10402,7 @@ sub _parse_clustat
 		if ($line =~ /Could not connect to CMAN/i)
 		{
 			# CMAN isn't running.
-			$an->Log->entry({log_level => 2, message_key => "log_0022", message_variables => { node => $node_name }, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "log_0022", message_variables => { node => $node_name }, file => $THIS_FILE, line => __LINE__});
 			$an->data->{node}{$node_name}{get_host_from_cluster_conf} = 1;
 			$an->data->{node}{$node_name}{enable_join}                = 1;
 		}
@@ -10569,7 +10465,7 @@ sub _parse_clustat
 				my ($server, $host, $state) = split/ /, $line, 3;
 				$server =~ s/^vm://;
 				$host   =~ s/^\((.*?)\)$/$1/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "server", value1 => $server,
 					name2 => "host",   value2 => $host,
 					name3 => "state",  value3 => $state,
@@ -10578,7 +10474,7 @@ sub _parse_clustat
 				{
 					# Set host to 'none'.
 					$host = $an->String->get({key => "state_0002"});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "host", value1 => $host,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -10589,14 +10485,14 @@ sub _parse_clustat
 					# do. This can happen if, for example, the XML file is temporarily
 					# removed or corrupted.
 					$host = $an->String->get({key => "state_0001", variables => { host => $host }});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "host", value1 => $host,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				
 				# If the service is disabled, it will have '()' around the host name which I 
 				# need to remove.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "server", value1 => $server,
 					name2 => "host",   value2 => $host,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -10604,20 +10500,20 @@ sub _parse_clustat
 				$host                                 = "none" if not $host;
 				$an->data->{server}{$server}{host}    = $host;
 				$an->data->{server}{$server}{'state'} = $state;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "server::${server}::host",  value1 => $an->data->{server}{$server}{host},
 					name2 => "server::${server}::state", value2 => $an->data->{server}{$server}{'state'},
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Pick out who the peer node is.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "host",                         value1 => $host,
 					name2 => "node::${node_name}::me::name", value2 => $an->data->{node}{$node_name}{me}{name},
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($host eq $an->data->{node}{$node_name}{me}{name})
 				{
 					$an->data->{server}{$server}{peer} = $an->data->{node}{$node_name}{peer}{name};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "node_name",               value1 => $node_name,
 						name2 => "server::${server}::peer", value2 => $an->data->{server}{$server}{peer},
 					}, file => $THIS_FILE, line => __LINE__});
@@ -10625,7 +10521,7 @@ sub _parse_clustat
 				else
 				{
 					$an->data->{server}{$server}{peer} = $an->data->{node}{$node_name}{me}{name};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "node_name",               value1 => $node_name,
 						name2 => "server::${server}::peer", value2 => $an->data->{server}{$server}{peer},
 					}, file => $THIS_FILE, line => __LINE__});
@@ -10646,7 +10542,7 @@ sub _parse_clustat
 				{
 					# Disable the service.
 					my $shell_call = $an->data->{path}{clusvcadm}." -d service:$name";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "target",     value1 => $target,
 						name2 => "shell_call", value2 => $shell_call,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -10661,7 +10557,7 @@ sub _parse_clustat
 						$line =~ s/^\s+//;
 						$line =~ s/\s+$//;
 						$line =~ s/\s+/ /g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "line", value1 => $line, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -10670,7 +10566,7 @@ sub _parse_clustat
 					# Sleep for a short bit and the start the service back up.
 					sleep 5;
 					$shell_call = $an->data->{path}{clusvcadm}." -e service:$name";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "target",     value1 => $target,
 						name2 => "shell_call", value2 => $shell_call,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -10685,7 +10581,7 @@ sub _parse_clustat
 						$line =~ s/^\s+//;
 						$line =~ s/\s+$//;
 						$line =~ s/\s+/ /g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "line", value1 => $line, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -10808,7 +10704,7 @@ sub _parse_daemons
 		next if $line !~ /^striker:/;
 		my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
 		   $exit_code            = "" if not defined $exit_code;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "node_name", value1 => $node_name,
 			name2 => "daemon",    value2 => $daemon,
 			name3 => "exit_code", value3 => $exit_code,
@@ -10819,14 +10715,14 @@ sub _parse_daemons
 			# Running
 			$an->data->{node}{$node_name}{daemon}{$daemon}{status} = "<span class=\"highlight_good\">#!string!an_state_0003!#</span>";
 			$an->data->{node}{$node_name}{enable_poweroff}         = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "node::${node_name}::daemon::${daemon}::status", value1 => $an->data->{node}{$node_name}{daemon}{$daemon}{status},
 				name2 => "node::${node_name}::enable_poweroff",           value2 => $an->data->{node}{$node_name}{enable_poweroff},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		$an->data->{node}{$node_name}{daemon}{$daemon}{exit_code} = $exit_code;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "node::${node_name}::daemon::${daemon}::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{$daemon}{exit_code},
 			name2 => "node::${node_name}::daemon::${daemon}::status",    value2 => $an->data->{node}{$node_name}{daemon}{$daemon}{status},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10871,7 +10767,7 @@ sub _parse_daemons
 			if ($an->data->{node}{$node_name}{connected})
 			{
 				$an->data->{node}{$node_name}{enable_poweroff} = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "node::${node_name}::enable_poweroff", value1 => $an->data->{node}{$node_name}{enable_poweroff},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -12428,7 +12324,7 @@ sub _write_node_cache
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 		name1 => "node_uuid",  value1 => $node_uuid,
 		name2 => "node_key",   value2 => $node_key,
 		name3 => "anvil_uuid", value3 => $anvil_uuid,
