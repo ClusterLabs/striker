@@ -15,6 +15,7 @@ our $VERSION  = "0.1.001";
 my $THIS_FILE = "DB.pm";
 
 ### Methods;
+# archive_table
 # check_lock_age
 # check_hostname
 # commit_sql
@@ -67,13 +68,368 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
+# This takes an array of table columns and a hash of colum=variable pairs and uses that to archive the data
+# from the history schema to a plain-text dump. 
+# NOTE: 'modified_date' and 'history_id' should NOT be passed in to 'columns'. They will be ignored.
+# NOTE: If we're asked to use an offset that is too high, we'll go into a loop and may end up doing some 
+#       empty loops. We don't check to see if the offset is sensible, though setting it too high won't cause
+#       the archive operation to fail, but it won't chunk as expected.
+sub archive_table
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_table" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $table        = $parameter->{table}                        ? $parameter->{table}        : "";
+	my $offset       = $parameter->{offset}                       ? $parameter->{offset}       : 0;
+	my $loop         = $parameter->{loop}                         ? $parameter->{loop}         : 0;
+	my $division     = $parameter->{division}                     ? $parameter->{division}     : $an->data->{scancore}{archive}{division};
+	my $compress     = $parameter->{compress}                     ? $parameter->{compress}     : 1;
+	my $conditionals = ref($parameter->{conditionals}) eq "HASH"  ? $parameter->{conditionals} : "";
+	my $columns      = ref($parameter->{columns})      eq "ARRAY" ? $parameter->{columns}      : [];
+	my $column_count = @{$columns};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		name1 => "table",        value1 => $table, 
+		name2 => "offset",       value2 => $offset, 
+		name3 => "loop",         value3 => $loop, 
+		name4 => "division",     value4 => $division, 
+		name5 => "compress",     value5 => $compress, 
+		name6 => "conditionals", value6 => ref($conditionals), 
+		name7 => "column_count", value7 => $column_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make these proper errors.
+	if (not $table)
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0236", code => 236, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	if (not $offset)
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0237", message_variables => { table => $table }, code => 237, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	if (@{$columns} < 1)
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0238", message_variables => { table => $table }, code => 238, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# If the 'division' is not valid, override it
+	$division = "" if not defined $division;
+	if ($division !~ /^\d+$/)
+	{
+		$division = 60000;
+		# Warn the user
+		$an->Log->entry({log_level => 1, message_key => "notice_message_0016", message_variables => { 
+			division => $division, 
+			table    => $table, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# This will store the archive file(s).
+	my $archives = [];
+	
+	# If the offset is greater than 'division' and 'loop' is '0', don't actually archive here. Instead,
+	# go into a loop, setting the offset to the division amount until we hit the original offset.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "loop",                        value1 => $loop, 
+		name2 => "division",                    value2 => $division,
+		name3 => "scancore::archive::division", value3 => $an->data->{scancore}{archive}{division},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (((not $loop) && ($division > 0) && ($offset > $division)))
+	{
+		# OK, how many chunks do we need, and how big will they be?
+		my $chunk      = 0;
+		my $chunk_size = 0;
+		my $chunks     = ($offset / $division);
+		# Round up if 'chunks' isn't a real number
+		if ($chunks != int($chunks))
+		{
+			$chunks = int($chunks += 1);
+		}
+		# If the offset isn't divided evenly, pull the remainder and we'll add it to the first chunk.
+		my $remainder  =  ($offset % $chunks);
+		   $offset     -= $remainder;
+		   $chunk_size =  ($offset / $chunks);
+		$an->Log->entry({log_level => 2, message_key => "tools_log_0042", message_variables => {
+			chunks     => $chunks, 
+			chunk_size => $chunk_size, 
+			remainder  => $remainder,
+		}, file => $THIS_FILE, line => __LINE__});
+		# Enter the loop (the 'left' is mainly for logging purposes).
+		my $left       = $offset;
+		my $start_time =  time;
+		for (1..$chunks)
+		{
+			$chunk++;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "chunk", value1 => $chunk, 
+			}, file => $THIS_FILE, line => __LINE__});
+			my $this_chunk = $chunk_size;
+			if ($remainder)
+			{
+				# Adding the remainder to this chunk
+				$this_chunk += $remainder;
+				$remainder = 0;
+			}
+			$left -= $this_chunk;
+			$left = 0 if $left < 0;
+			
+			# Re-enter, this time with a smaller offset
+			$an->Log->entry({log_level => 2, message_key => "tools_log_0043", message_variables => {
+				chunk      => $chunk, 
+				this_chunk => $this_chunk, 
+				left       => $left,
+			}, file => $THIS_FILE, line => __LINE__});
+			my $this_archive = $an->DB->archive_table({
+				table        => $table, 
+				offset       => $this_chunk, 
+				division     => $division, 
+				conditionals => $conditionals,
+				columns      => $columns,
+				loop         => $chunk, 
+			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_archive",      value1 => $this_archive, 
+				name2 => "this_archive->[0]", value2 => $this_archive->[0], 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$archives}, $this_archive->[0];
+		}
+		
+		# Logging...
+		foreach my $archive_file (@{$archives})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "archive_file", value1 => $archive_file, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		my $total_archive_time = time - $start_time;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "total_archive_time", value1 => $total_archive_time, 
+		}, file => $THIS_FILE, line => __LINE__});
+		return($archives);
+	}
+	
+	# Get the datestamp for the requested offset
+	my $said_where = 0;
+	my $query      = "
+SELECT 
+    modified_date 
+FROM 
+    history.$table 
+";
+	if (ref($conditionals) eq "HASH")
+	{
+		foreach my $key (sort {$a cmp $b} keys %{$conditionals})
+		{
+			my $value = $conditionals->{$key};
+			my $say   = $said_where ? "AND" : "WHERE";
+			$query .= "$say 
+    $key = ".$an->data->{sys}{use_db_fh}->quote($value)."
+";
+			$said_where = 1;
+		}
+	}
+	$query .= "ORDER BY 
+    modified_date ASC 
+OFFSET ".$an->data->{sys}{use_db_fh}->quote($offset)." 
+LIMIT 1
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $date = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	   $date = "" if not defined $date;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "date", value1 => $date, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I got a date, proceed.
+	my $archive_file = "";
+	if ($date)
+	{
+		# Start the output file.
+		my $start_time    =  time;
+		my $date_and_time =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
+		   $date_and_time =~ s/:/-/g;
+		   $archive_file  =  $an->data->{path}{scancore_archive}."/scancore-archive_".$table."_".$an->hostname."_".$date_and_time."_".$loop.".out";
+		   $archive_file  =~ s/\/+/\//g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "loop",          value1 => $loop,
+			name2 => "date_and_time", value2 => $date_and_time,
+			name3 => "archive_file",  value3 => $archive_file,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Build the 'COPY' header and query.
+		my $header = "COPY $table (";
+		my $query  = "\nSELECT \n";
+		foreach my $column (@{$columns})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "column", value1 => $column, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next if (($column eq "modified_date") or ($column eq "history_id"));
+			$header .= "$column, ";
+			$query  .= "    $column, \n";
+		}
+		$header .= "modified_date) FROM stdin;\n";
+		$query  .= "    modified_date 
+FROM 
+    history.$table 
+WHERE 
+    modified_date <= '$date'
+";
+		my $said_where = 0;
+		if (ref($conditionals) eq "HASH")
+		{
+			foreach my $key (sort {$a cmp $b} keys %{$conditionals})
+			{
+				my $value = $conditionals->{$key};
+				$query .= "AND 
+    $key = ".$an->data->{sys}{use_db_fh}->quote($value)." 
+";
+			}
+		}
+	$query .= "ORDER BY 
+    modified_date DESC
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "header", value1 => $header, 
+			name2 => "query",  value2 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Open the file
+		my $header_date = $an->Get->date_and_time({split_date_time => 0});
+		my $shell_call  = $archive_file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		print $file_handle "-- $header_date\n";
+		print $file_handle $an->data->{scancore}{archive}{dump_file_header}."\n";
+		print $file_handle $header;
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "count",   value1 => $count, 
+			name2 => "results", value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			# Build the string.
+			my $line = "";
+			my $i    = 0;
+			foreach my $column (@{$columns})
+			{
+				next if (($column eq "modified_date") or ($column eq "history_id"));
+				my $value = defined $row->[$i] ? $row->[$i] : '\N';
+				$i++;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "i",      value1 => $i, 
+					name2 => "column", value2 => $column, 
+					name3 => "value",  value3 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# We need to convert tabs and newlines into \t and \n
+				$value =~ s/\t/\\t/g;
+				$value =~ s/\n/\\n/g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< value", value1 => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			
+				$line .= $value."\t";
+			}
+			
+			# Add the modified_date and close the line
+			my $modified_date =  defined $row->[$i] ? $row->[$i] : '\N';
+			   $line          .= $modified_date."\n";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "i",             value1 => $i, 
+				name2 => "modified_date", value2 => $modified_date, 
+				name3 => "line",          value3 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# The 'history_id' is NOT consistent between databases! So we don't record it here.
+			print $file_handle $line;
+		}
+		
+		# Close it up.
+		print $file_handle "\\.\n\n";;
+		close $file_handle;
+		
+		# Compress, if requested.
+		if ($compress)
+		{
+			my ($compressed_file, $output) = $an->System->compress_file({file => $archive_file});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "compressed_file", value1 => $compressed_file, 
+				name2 => "output",          value2 => $output, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($compressed_file)
+			{
+				$archive_file = $compressed_file;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "archive_file", value1 => $archive_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Delete the records now.
+		$said_where = 0;
+		$query      = "
+DELETE FROM 
+    history.$table 
+";
+		if (ref($conditionals) eq "HASH")
+		{
+			foreach my $key (sort {$a cmp $b} keys %{$conditionals})
+			{
+				my $value =  $conditionals->{$key};
+				my $say   = $said_where ? "AND" : "WHERE";
+				   $query .= "$say 
+    $key = ".$an->data->{sys}{use_db_fh}->quote($value)." 
+";
+				$said_where = 1;
+			}
+		}
+		my $say   = $said_where ? "AND" : "WHERE";
+		   $query .= "$say 
+    modified_date <= '$date' 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the delete
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		
+		# Record how long all this took
+		my $archive_time = time - $start_time;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "archive_time", value1 => $archive_time, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	push @{$archives}, $archive_file;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "archives", value1 => $archives, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($archives);
+}
+
 # This checks to see if 'sys::local_lock_active' is set. If it is, its age is checked and if the age is >50%
 # of scancore::locking::reap_age, it will renew the lock.
 sub check_lock_age
 {
 	my $self = shift;
 	my $an   = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_lock_age", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_lock_age" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure we've got the 'local_lock_active' and 'reap_age' variables set.
 	if ((not defined $an->data->{sys}{local_lock_active}) or ($an->data->{sys}{local_lock_active} =~ /\D/))
@@ -128,7 +484,7 @@ sub check_hostname
 {
 	my $self = shift;
 	my $an   = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_hostname", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_hostname" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	#$an->hostname();
 	
@@ -141,7 +497,7 @@ sub commit_sql
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "commit_sql", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "commit_sql" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $source = defined $parameter->{source} ? $parameter->{source} : $THIS_FILE;
 	my $line   = defined $parameter->{line}   ? $parameter->{line}   : __LINE__;
@@ -873,7 +1229,7 @@ sub find_behind_databases
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_behind_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_behind_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $file = $parameter->{file} ? $parameter->{file} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1717,7 +2073,7 @@ sub mark_active
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_active", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_active" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $set = defined $parameter->{set} ? $parameter->{set} : 1;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1758,7 +2114,7 @@ sub prep_for_archive
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_flag", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $string = defined $parameter->{string} ? $parameter->{string} : '\N';
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1781,7 +2137,7 @@ sub set_update_db_flag
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_flag", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $set  = defined $parameter->{set}    ? $parameter->{set}    : 0;
 	my $wait = defined $parameter->{'wait'} ? $parameter->{'wait'} : 0;
@@ -1817,7 +2173,7 @@ sub update_time
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_time", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_time" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $id   = $parameter->{id};
 	my $file = $parameter->{file};

@@ -201,6 +201,8 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0039">The host: [#!variable!host!#] has renewed its database lock.</key>
 		<key name="tools_log_0040">The host: [#!variable!host!#] has released its database lock.</key>
 		<key name="tools_log_0041"><![CDATA[AN::Tools::Cman->boot_server() was asked to boot: [#!variable!server!#] which is in a failed state. Attempting to disable it.]]></key>
+		<key name="tools_log_0042">Chunks needed: [#!variable!chunks!#] of size: [#!variable!chunk_size!#] with a remainder of: [#!variable!remainder!#].</key>
+		<key name="tools_log_0043">Chunk: [#!variable!chunk!#], size: [#!variable!this_chunk!#] (left: [#!variable!left!#]).</key>
 	
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -705,6 +707,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="notice_message_0013">Connected to: [#!variable!connections!#] database(s).</key>
 		<key name="notice_message_0014">SSH session opened without a password to: [#!variable!target!#].</key>
 		<key name="notice_message_0015">It appears that the node has already joined the #!string!brand_0003!#.</key>
+		<key name="notice_message_0016">Either the 'division' value passed to the 'AN::Tools::DB' module's 'archive_table()' method was invalid (table: [#!variable!table!#]), or the 'scancore::archive::division' value is not a real number. Setting it to: [#!variable!division!#].</key>
 		
 		<!-- Error titles -->
 		<key name="error_title_0001">Invalid Argument</key>
@@ -983,6 +986,9 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0233"><![CDATA[The 'AN::Tools::System' module's 'configure_ipmi()' was asked to change the IPMI user password, but was not given the name of the user to work on.]]></key>
 		<key name="error_message_0234"><![CDATA[The 'AN::Tools::System' module's 'pick_shutdown_target()' was called without an Anvil! UUID.]]></key>
 		<key name="error_message_0235"><![CDATA[The 'AN::Tools::ScanCore' module's 'get_node_health()' method was passes in the target: [#!variable!target!#] which could not be translated to a host UUID.]]></key>
+		<key name="error_message_0236"><![CDATA[The 'AN::Tools::DB' module's 'archive_table()' method was called without a table name given.]]></key>
+		<key name="error_message_0237"><![CDATA[The 'AN::Tools::DB' module's 'archive_table()' method was called for the table: [#!variable!table!#] without number of records to archive (no offset).]]></key>
+		<key name="error_message_0238"><![CDATA[The 'AN::Tools::DB' module's 'archive_table()' method was called for the table: [#!variable!table!#] without any columns being passed in (expected an array reference with one or more columns).]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

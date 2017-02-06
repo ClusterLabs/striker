@@ -1154,6 +1154,18 @@ The 'AN::Tools::System' module's 'pick_shutdown_target()' was called without an 
 
 The 'AN::Tools::ScanCore' module's 'get_node_health()' method was passes in a target which could not be translated to a host UUID.
 
+=head2 C<236>
+
+The 'AN::Tools::DB' module's 'archive_table()' method was called without a table name given.
+
+=head2 C<237>
+
+The 'AN::Tools::DB' module's 'archive_table()' method was called without a number of records to archive.
+
+=head2 C<237>
+
+The 'AN::Tools::DB' module's 'archive_table()' method was called without an array reference of columns.
+
 
 =head2 C<999>
 

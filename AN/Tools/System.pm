@@ -533,12 +533,25 @@ sub compress_file
 		return("");
 	}
 	
+	my $new_file   = "";
 	my $return     = [];
 	my $start_time = time;
 	my $i_am_a     = $an->Get->what_am_i();
 	my $say_keep   = $keep             ? "--keep"  : "";
 	my $say_small  = $i_am_a eq "node" ? "--small" : "";
-	my $shell_call = $an->data->{path}{bzip2}." --compress $say_keep $say_small ".$file;
+	my $shell_call = "
+if [ -e '$file' ];
+then
+    ".$an->data->{path}{bzip2}." --compress $say_keep $say_small $file; ".$an->data->{path}{'echo'}." rc:\$?
+    if [ -e '".$file.".bz2' ];
+    then
+        ".$an->data->{path}{'echo'}." 'success:".$file.".bz2'
+    else
+        ".$an->data->{path}{'echo'}." 'compress failed'
+    fi;
+else
+    ".$an->data->{path}{'echo'}." 'file not found'
+fi";
 	if ($target)
 	{
 		# Remote call.
@@ -564,10 +577,6 @@ sub compress_file
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
 			push @{$return}, $line;
 		}
 		close $file_handle;
@@ -577,6 +586,14 @@ sub compress_file
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /success:(.*)$/)
+		{
+			$new_file = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "new_file", value1 => $new_file, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
 	my $compress_time = time - $start_time;
@@ -584,7 +601,7 @@ sub compress_file
 		name1 => "compress_time", value1 => $compress_time, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	return($return);
+	return($new_file, $return);
 }
 
 # This sets the IPMI password on the target machine (remote or local). It's name is this because, later, it 
