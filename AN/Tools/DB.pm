@@ -189,6 +189,7 @@ sub archive_table
 			}, file => $THIS_FILE, line => __LINE__});
 			my $this_archive = $an->DB->archive_table({
 				table        => $table, 
+				join_table   => $join_table, 
 				offset       => $this_chunk, 
 				division     => $division, 
 				conditionals => $conditionals,
