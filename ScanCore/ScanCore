@@ -20,6 +20,8 @@
 # 
 # TODO:
 #   
+# - Convert the archive calls in the agents to use DB->archive_table().
+#   
 # - Add '--summary' to all agents where they will not compare values in that pass, but will alert on 
 #   anomolous readings, and instead print a summary of all data in a nice screen.
 # 
@@ -257,8 +259,8 @@ if (not $connections)
 	$an->nice_exit({exit_code => 1});
 }
 
-# Should I live?
-avoid_duplicate_run($an);
+# If another instance is running, we'll exit or wait, unless we're being --force'd
+avoid_duplicate_run($an) if not $an->data->{switches}{force};
 
 # Before we can process or sync alerts, we need to make sure we've read in the strings files for any
 # agents that have registered alerts (pending or historical).
@@ -651,7 +653,6 @@ WHERE
 			}
 			elsif ($table eq "health")
 			{
-				### NOTE: Not tested yet.
 				$an->DB->archive_table({
 					table        => "health", 
 					offset       => $an->data->{archive}{table}{health}{offset}, 
@@ -661,7 +662,6 @@ WHERE
 			}
 			elsif ($table eq "power")
 			{
-				### NOTE: Not tested yet.
 				$an->DB->archive_table({
 					table        => "power", 
 					offset       => $an->data->{archive}{table}{power}{offset}, 
@@ -671,7 +671,6 @@ WHERE
 			}
 			elsif ($table eq "temperature")
 			{
-				### NOTE: Not tested yet.
 				$an->DB->archive_table({
 					table        => "temperature", 
 					offset       => $an->data->{archive}{table}{temperature}{offset}, 

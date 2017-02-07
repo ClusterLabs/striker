@@ -74,6 +74,8 @@ sub parent
 # NOTE: If we're asked to use an offset that is too high, we'll go into a loop and may end up doing some 
 #       empty loops. We don't check to see if the offset is sensible, though setting it too high won't cause
 #       the archive operation to fail, but it won't chunk as expected.
+# NOTE: If using 'join_table', the table being archived will use the 'a.' prefix and the 'join_table' will 
+#       use the 'b.' prefix. Please setup the conditionals accordingly.
 sub archive_table
 {
 	my $self      = shift;
@@ -82,6 +84,7 @@ sub archive_table
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_table" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $table        = $parameter->{table}                        ? $parameter->{table}        : "";
+	my $join_table   = $parameter->{join_table}                   ? $parameter->{join_table}   : "";
 	my $offset       = $parameter->{offset}                       ? $parameter->{offset}       : 0;
 	my $loop         = $parameter->{loop}                         ? $parameter->{loop}         : 0;
 	my $division     = $parameter->{division}                     ? $parameter->{division}     : $an->data->{scancore}{archive}{division};
@@ -89,14 +92,15 @@ sub archive_table
 	my $conditionals = ref($parameter->{conditionals}) eq "HASH"  ? $parameter->{conditionals} : "";
 	my $columns      = ref($parameter->{columns})      eq "ARRAY" ? $parameter->{columns}      : [];
 	my $column_count = @{$columns};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 		name1 => "table",        value1 => $table, 
-		name2 => "offset",       value2 => $offset, 
-		name3 => "loop",         value3 => $loop, 
-		name4 => "division",     value4 => $division, 
-		name5 => "compress",     value5 => $compress, 
-		name6 => "conditionals", value6 => ref($conditionals), 
-		name7 => "column_count", value7 => $column_count, 
+		name2 => "join_table",   value2 => $join_table, 
+		name3 => "offset",       value3 => $offset, 
+		name4 => "loop",         value4 => $loop, 
+		name5 => "division",     value5 => $division, 
+		name6 => "compress",     value6 => $compress, 
+		name7 => "conditionals", value7 => ref($conditionals), 
+		name8 => "column_count", value8 => $column_count, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Make these proper errors.
@@ -212,7 +216,8 @@ sub archive_table
 		return($archives);
 	}
 	
-	# Get the datestamp for the requested offset
+	# Get the datestamp for the requested offset (first query is the usual one, second one is used when 
+	# we've got a joined table).
 	my $said_where = 0;
 	my $query      = "
 SELECT 
@@ -224,9 +229,9 @@ FROM
 	{
 		foreach my $key (sort {$a cmp $b} keys %{$conditionals})
 		{
-			my $value = $conditionals->{$key};
-			my $say   = $said_where ? "AND" : "WHERE";
-			$query .= "$say 
+			my $value =  $conditionals->{$key};
+			my $say   =  $said_where ? "AND" : "WHERE";
+			   $query .= "$say 
     $key = ".$an->data->{sys}{use_db_fh}->quote($value)."
 ";
 			$said_where = 1;
@@ -237,6 +242,41 @@ FROM
 OFFSET ".$an->data->{sys}{use_db_fh}->quote($offset)." 
 LIMIT 1
 ;";
+
+	# If we are using a joined table, re-write this accordingly.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "join_table", value1 => $join_table, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($join_table)
+	{
+		my $said_where = 0;
+		   $query      = "
+SELECT 
+    a.modified_date 
+FROM 
+    history.$table a, 
+    $join_table b 
+";
+		foreach my $key (sort {$a cmp $b} keys %{$conditionals})
+		{
+			my $say   =  $said_where ? "AND" : "WHERE";
+			my $value =  $conditionals->{$key};
+			# I usually want to quote the value, unless it's a referenced column 
+			# from the joined table (which will always start with 'a.foo' or 
+			# 'b.foo').
+			if ($value !~ /^[ab]\./)
+			{
+				$value = $an->data->{sys}{use_db_fh}->quote($value);
+			}
+			$said_where =  1;
+			$query      .= "$say \n    $key = $value \n";
+		}
+		$query .= "ORDER BY 
+    a.modified_date ASC 
+OFFSET ".$an->data->{sys}{use_db_fh}->quote($offset)." 
+LIMIT 1
+";
+	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -263,12 +303,12 @@ LIMIT 1
 			name3 => "archive_file",  value3 => $archive_file,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Build the 'COPY' header and query.
+		# Build the 'COPY' header and query (we'll rebuild the query if we have a join table)
 		my $header = "COPY $table (";
 		my $query  = "\nSELECT \n";
 		foreach my $column (@{$columns})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "column", value1 => $column, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next if (($column eq "modified_date") or ($column eq "history_id"));
@@ -282,20 +322,59 @@ FROM
 WHERE 
     modified_date <= '$date'
 ";
-		my $said_where = 0;
 		if (ref($conditionals) eq "HASH")
 		{
 			foreach my $key (sort {$a cmp $b} keys %{$conditionals})
 			{
 				my $value = $conditionals->{$key};
-				$query .= "AND 
-    $key = ".$an->data->{sys}{use_db_fh}->quote($value)." 
-";
+				$query .= "AND \n    $key = ".$an->data->{sys}{use_db_fh}->quote($value)." \n";
 			}
 		}
 	$query .= "ORDER BY 
     modified_date DESC
 ;";
+		# Rebuild the query if we have a join table.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "join_table", value1 => $join_table, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($join_table)
+		{
+			# Rebuild the query...
+			$query = "\nSELECT \n";
+			foreach my $column (@{$columns})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "column", value1 => $column, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next if (($column eq "modified_date") or ($column eq "history_id"));
+				$query  .= "    a.".$column.", \n";
+			}
+			$query  .= "    a.modified_date 
+FROM 
+    history.$table a, 
+    $join_table b
+WHERE 
+    a.modified_date <= '$date'
+";
+			if (ref($conditionals) eq "HASH")
+			{
+				foreach my $key (sort {$a cmp $b} keys %{$conditionals})
+				{
+					my $value = $conditionals->{$key};
+					# I usually want to quote the value, unless it's a referenced column 
+					# from the joined table (which will always start with 'a.foo' or 
+					# 'b.foo').
+					if ($value !~ /^[ab]\./)
+					{
+						$value = $an->data->{sys}{use_db_fh}->quote($value);
+					}
+					$query .= "AND \n    $key = $value \n";
+				}
+			}
+			$query .= "ORDER BY 
+    a.modified_date DESC
+;";
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "header", value1 => $header, 
 			name2 => "query",  value2 => $query, 
@@ -380,7 +459,7 @@ WHERE
 			}
 		}
 		
-		# Delete the records now.
+		# Delete the records now (I'll redo this if there is a join table in a moment).
 		$said_where = 0;
 		$query      = "
 DELETE FROM 
@@ -402,6 +481,37 @@ DELETE FROM
 		   $query .= "$say 
     modified_date <= '$date' 
 ;";
+		# Rebuild the query if we have a join table.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "join_table", value1 => $join_table, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($join_table)
+		{
+			$query = "
+DELETE FROM 
+    history.$table a
+USING 
+    $join_table b
+WHERE 
+    a.modified_date <= '$date'
+";
+			if (ref($conditionals) eq "HASH")
+			{
+				foreach my $key (sort {$a cmp $b} keys %{$conditionals})
+				{
+					my $value =  $conditionals->{$key};
+					# I usually want to quote the value, unless it's a referenced column 
+					# from the joined table (which will always start with 'a.foo' or 
+					# 'b.foo').
+					if ($value !~ /^[ab]\./)
+					{
+						$value = $an->data->{sys}{use_db_fh}->quote($value);
+					}
+					$query .= "AND \n    $key = $value \n";
+				}
+			}
+			$query .= ";";
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});

@@ -76,6 +76,7 @@ my $an = AN::Tools->new({data =>
 		scancore		=>	{
 			archive			=>	{
 				directory		=>	"/var/ScanCore/archives/",
+				division		=>	60000,
 				trigger			=>	100000,
 				count			=>	50000,
 				dump_file_header	=>	"
