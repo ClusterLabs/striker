@@ -3238,11 +3238,13 @@ sub configure_ipmi_on_node
 					
 					if ($line =~ /^(\d+) $ipmi_user /)
 					{
+						# Found it.
 						$user_id   = $1;
 						$uid_found = 1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "user_id", value1 => $user_id,
 						}, file => $THIS_FILE, line => __LINE__});
+						last;
 					}
 				}
 				$user_id++ if not $uid_found;
@@ -10649,8 +10651,10 @@ sub get_partition_data
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $disk (@disks)
 	{
-		# We need to count how many existing partitions there are as we go.
-		$an->data->{node}{$node}{disk}{$disk}{partition_count} = 0;
+		# We need to count how many existing partitions there are as we go. We'll also start the free
+		# size off at 0 so that we can do numerical comparison later.
+		$an->data->{node}{$node}{disk}{$disk}{partition_count}  = 0;
+		$an->data->{node}{$node}{disk}{$disk}{free_space}{size} = 0;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node::${node}::disk::${disk}::partition_count", value1 => $an->data->{node}{$node}{disk}{$disk}{partition_count},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10750,26 +10754,31 @@ fi";
 			}
 			elsif ($line =~ /^(\d+)B (\d+)B (\d+)B Free Space/)
 			{
-				# If there was some space left because of optimal alignment, it will be 
-				# overwritten.
+				# In some cases, there will be two or more "Free Space" entries. We'll watch
+				# for the largest.
 				my $free_space_start  = $1;
 				my $free_space_end    = $2;
 				my $free_space_size   = $3;
-				$an->data->{node}{$node}{disk}{$disk}{free_space}{start} = $free_space_start;
-				$an->data->{node}{$node}{disk}{$disk}{free_space}{end}   = $free_space_end;
-				$an->data->{node}{$node}{disk}{$disk}{free_space}{size}  = $free_space_size;
-				# For our logs...
-				my $say_free_space_start = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{free_space}{start}});
-				my $say_free_space_end   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{free_space}{end}});
-				my $say_free_space_size  = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{free_space}{size}});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-					name1 => "node::${node}::disk::${disk}::free_space::start", value1 => $an->data->{node}{$node}{disk}{$disk}{free_space}{start},
-					name2 => "node::${node}::disk::${disk}::free_space::end",   value2 => $an->data->{node}{$node}{disk}{$disk}{free_space}{end},
-					name3 => "node::${node}::disk::${disk}::free_space::size",  value3 => $an->data->{node}{$node}{disk}{$disk}{free_space}{size},
-					name4 => "say_free_space_start",                            value4 => $say_free_space_start,
-					name5 => "say_free_space_end",                              value5 => $say_free_space_end,
-					name6 => "say_free_space_size",                             value6 => $say_free_space_size,
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "free_space_start",                               value1 => $free_space_start,
+					name2 => "free_space_end",                                 value2 => $free_space_end,
+					name3 => "free_space_size",                                value3 => $free_space_size,
+					name4 => "node::${node}::disk::${disk}::free_space::size", value4 => $an->data->{node}{$node}{disk}{$disk}{free_space}{size},
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If it is the first free space, or larger than ones seen before, record it.
+				if (($free_space_size =~ /^\d+$/) && ($free_space_size > $an->data->{node}{$node}{disk}{$disk}{free_space}{size}))
+				{
+					# This is bigger than any free space we saw before...
+					$an->data->{node}{$node}{disk}{$disk}{free_space}{start} = $free_space_start;
+					$an->data->{node}{$node}{disk}{$disk}{free_space}{end}   = $free_space_end;
+					$an->data->{node}{$node}{disk}{$disk}{free_space}{size}  = $free_space_size;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "node::${node}::disk::${disk}::free_space::start", value1 => $an->data->{node}{$node}{disk}{$disk}{free_space}{start}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{free_space}{start}}).")",
+						name2 => "node::${node}::disk::${disk}::free_space::end",   value2 => $an->data->{node}{$node}{disk}{$disk}{free_space}{end}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{free_space}{end}}).")",
+						name3 => "node::${node}::disk::${disk}::free_space::size",  value3 => $an->data->{node}{$node}{disk}{$disk}{free_space}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{free_space}{size}}).")",
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 		}
 	}
