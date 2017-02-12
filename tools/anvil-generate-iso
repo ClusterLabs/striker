@@ -824,6 +824,12 @@ cp /mnt/source/striker/tools/list-ips /mnt/sysimage/sbin/striker/list-ips
 chown root:root /sbin/striker/list-ips
 chmod 755 /sbin/striker/list-ips
 
+# Setup the repo rebuild program
+echo \"Setting up 'striker-rebuild-repo.sh'.\"
+cp /mnt/source/striker/tools/striker-rebuild-repo.sh /mnt/sysimage/sbin/striker/striker-rebuild-repo.sh
+chown root:root /sbin/striker/striker-rebuild-repo.sh
+chmod 755 /sbin/striker/striker-rebuild-repo.sh
+
 # Copy the raritan fence agent into place.
 echo 'Copying fence_raritan_snmp into /usr/sbin/'
 cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
@@ -1080,8 +1086,8 @@ EOF
 echo \"Disabling the default libvirtd bridge 'virbr0'.\"
 cat /dev/null >/etc/libvirt/qemu/networks/default.xml
 
-echo 'Creating the repo...'
-/usr/bin/createrepo /var/www/html/$os_dir/x86_64/img/
+# Rebuild the repo
+/sbin/striker/striker-rebuild-repo.sh
 
 echo \"'chroot'ed post install script complete.\"
 \%end
