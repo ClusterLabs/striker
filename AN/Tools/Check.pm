@@ -70,13 +70,29 @@ sub access
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : 22;
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target, 
 		name2 => "port",   value2 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# We're sometimes called to see if access is back after a reboot. So we will close the SSH file 
+	# handle, if it is found, in case it is stale.
+	my $ssh_fh_key                              = $target.":".$port;
+	   $an->data->{target}{$ssh_fh_key}{ssh_fh} = defined $an->data->{target}{$ssh_fh_key}{ssh_fh} ? $an->data->{target}{$ssh_fh_key}{ssh_fh} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "target::${ssh_fh_key}::ssh_fh", value1 => $an->data->{target}{$ssh_fh_key}{ssh_fh},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{target}{$ssh_fh_key}{ssh_fh})
+	{
+		$an->data->{target}{$ssh_fh_key}{ssh_fh}->disconnect();
+		$an->data->{target}{$ssh_fh_key}{ssh_fh} = "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "target::${ssh_fh_key}::ssh_fh", value1 => $an->data->{target}{$ssh_fh_key}{ssh_fh},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 
 	my $access     = 0;
 	my $shell_call = $an->data->{path}{echo}." 1";
@@ -105,7 +121,7 @@ sub access
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "access", value1 => $access, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($access);

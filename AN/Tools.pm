@@ -612,6 +612,7 @@ sub _set_paths
 	$an->data->{path}{lvs}                    = "/sbin/lvs";
 	$an->data->{path}{lvscan}                 = "/sbin/lvscan";
 	$an->data->{path}{mailx}                  = "/bin/mailx";
+	$an->data->{path}{md5sum}                 = "/usr/bin/md5sum";
 	$an->data->{path}{megacli64}              = "/sbin/MegaCli64";
 	$an->data->{path}{'mkfs.gfs2'}            = "/sbin/mkfs.gfs2";
 	$an->data->{path}{modprobe}               = "/sbin/modprobe";

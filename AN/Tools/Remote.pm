@@ -371,6 +371,9 @@ sub remote_call
 	
 	# This will store the SSH file handle for the given target after the initial connection.
 	$an->data->{target}{$ssh_fh_key}{ssh_fh} = defined $an->data->{target}{$ssh_fh_key}{ssh_fh} ? $an->data->{target}{$ssh_fh_key}{ssh_fh} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "target::${ssh_fh_key}::ssh_fh", value1 => $an->data->{target}{$ssh_fh_key}{ssh_fh},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now pick up the rest of the variables.
 	my $user       =         $parameter->{user}       ? $parameter->{user}       : "root";

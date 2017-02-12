@@ -151,6 +151,9 @@ SET search_path = history, pg_catalog;
 			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
 			# scancore::locking::reap_age, it will renew the lock.
 			local_lock_active	=>	0,
+			# This stores the sum of the current copy of this file. If the sum changes (because 
+			# of an edit or upgrade), the program will exit and restart.
+			md5sum			=>	"",
 			read_db_id		=>	"",
 			# These are used to avoid repeatedly logging that something has happened.
 			reported		=>	{
@@ -400,6 +403,7 @@ while(1)
 	# Did the user disabled ScanCore while the agents were running (or was this a '--one-shot')?
 	exit_if_one_shot($an);
 	exit_if_disabled($an);
+	exit_if_md5sum_changed($an);
 	
 	# Exit if I hit an error.
 	if ($an->data->{sys}{'exit'})
@@ -874,6 +878,73 @@ sub report_state
 	else
 	{
 		print $an->String->get({key => "scancore_message_0011"})."\n";
+	}
+	
+	return(0);
+}
+
+# We'll sum our file and compare it against the last one we saw. If it differs, we'll restart.
+sub exit_if_md5sum_changed
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "exit_if_md5sum_changed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $full_path  = $0;
+	my $new_sum    = "";
+	my $shell_call = $an->data->{path}{md5sum}." ".$full_path;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^(.*?)\s+$full_path/)
+		{
+			$new_sum = $1;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "new_sum",     value1 => $new_sum, 
+		name2 => "sys::md5sum", value2 => $an->data->{sys}{md5sum}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return(1) if not $new_sum;
+	
+	if (not $an->data->{sys}{md5sum})
+	{
+		# First loop, store the current sum.
+		$an->data->{sys}{md5sum} = $new_sum;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::md5sum", value1 => $an->data->{sys}{md5sum}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($new_sum ne $an->data->{sys}{md5sum})
+	{
+		# The sum has changed, exit.
+		my $variables = {
+			old_sum => $an->data->{sys}{md5sum},
+			new_sum => $new_sum, 
+		};
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0096", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->register_alert({
+			alert_level		=>	"notice", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0003",
+			alert_message_key	=>	"scancore_log_0096",
+			alert_message_variables	=>	$variables,
+		});
+		process_alerts($an, 0);
+		$an->nice_exit({exit_code => 0});
 	}
 	
 	return(0);

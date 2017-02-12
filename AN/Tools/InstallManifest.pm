@@ -446,7 +446,7 @@ sub calculate_storage_pool_sizes
 	my $pool1_size = "";
 	my $pool2_size = "";
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node1}::pool1::existing_size", value1 => $an->data->{node}{$node1}{pool1}{existing_size},
 		name2 => "node::${node2}::pool1::existing_size", value2 => $an->data->{node}{$node2}{pool1}{existing_size},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -460,7 +460,7 @@ sub calculate_storage_pool_sizes
 			{
 				# Golden
 				$pool1_size = $an->data->{node}{$node1}{pool1}{existing_size};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "pool1_size", value1 => $pool1_size,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -468,13 +468,13 @@ sub calculate_storage_pool_sizes
 			{
 				# Nothing we can do but warn the user.
 				$pool1_size = $an->data->{node}{$node1}{pool1}{existing_size};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "pool1_size", value1 => $pool1_size,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($an->data->{node}{$node1}{pool1}{existing_size} < $an->data->{node}{$node2}{pool1}{existing_size})
 				{
 					$pool1_size = $an->data->{node}{$node2}{pool1}{existing_size};
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "pool1_size", value1 => $pool1_size,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -499,8 +499,9 @@ sub calculate_storage_pool_sizes
 			# Node 2 isn't partitioned yet but node 1 is.
 			$pool1_size                                     = $an->data->{node}{$node1}{pool1}{existing_size};
 			$an->data->{cgi}{anvil_storage_pool1_byte_size} = $an->data->{node}{$node1}{pool1}{existing_size};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "pool1_size", value1 => $pool1_size,
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "pool1_size",                         value1 => $pool1_size,
+				name2 => "cgi::anvil_storage_pool1_byte_size", value2 => $an->data->{cgi}{anvil_storage_pool1_byte_size},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($an->data->{node}{$node2}{pool1}{existing_size})
@@ -508,13 +509,14 @@ sub calculate_storage_pool_sizes
 			# Node 1 isn't partitioned yet but node 2 is.
 			$pool1_size                                    = $an->data->{node}{$node2}{pool1}{existing_size};
 			$an->data->{cgi}{anvil_storage_pool1_byte_size} = $an->data->{node}{$node2}{pool1}{existing_size};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "pool1_size", value1 => $pool1_size,
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "pool1_size",                         value1 => $pool1_size,
+				name2 => "cgi::anvil_storage_pool1_byte_size", value2 => $an->data->{cgi}{anvil_storage_pool1_byte_size},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		$an->data->{cgi}{anvil_storage_pool1_byte_size} = $pool1_size;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $an->data->{cgi}{anvil_storage_pool1_byte_size},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -611,7 +613,7 @@ sub calculate_storage_pool_sizes
 	my $media_library_unit      = $an->data->{cgi}{anvil_media_library_unit};
 	my $media_library_byte_size = $an->Readable->hr_to_bytes({size => $media_library_size, type => $media_library_unit });
 	my $minimum_space_needed    = $media_library_byte_size;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "media_library_byte_size", value1 => $media_library_byte_size,
 		name2 => "minimum_space_needed",    value2 => $minimum_space_needed,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -626,15 +628,21 @@ sub calculate_storage_pool_sizes
 	# Knowing the smallest This will be useful in a few places.
 	my $node1_disk = $an->data->{node}{$node1}{pool1}{disk};
 	my $node2_disk = $an->data->{node}{$node2}{pool1}{disk};
+
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node1}::disk::${node1_disk}::free_space::size", value1 => $an->data->{node}{$node1}{disk}{$node1_disk}{free_space}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node1}{disk}{$node1_disk}{free_space}{size} }).")",
+		name2 => "node::${node2}::disk::${node2_disk}::free_space::size", value2 => $an->data->{node}{$node2}{disk}{$node2_disk}{free_space}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node2}{disk}{$node2_disk}{free_space}{size} }).")",
+	}, file => $THIS_FILE, line => __LINE__});
+
 	
 	my $smallest_free_size = $an->data->{node}{$node1}{disk}{$node1_disk}{free_space}{size};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "smallest_free_size", value1 => $smallest_free_size,
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "smallest_free_size", value1 => $smallest_free_size." (".$an->Readable->bytes_to_hr({'bytes' => $smallest_free_size }).")",
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{node}{$node1}{disk}{$node1_disk}{free_space}{size} > $an->data->{node}{$node2}{disk}{$node2_disk}{free_space}{size})
 	{
 		$smallest_free_size = $an->data->{node}{$node2}{disk}{$node2_disk}{free_space}{size};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "smallest_free_size", value1 => $smallest_free_size,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -670,7 +678,7 @@ sub calculate_storage_pool_sizes
 				$an->data->{cgi}{anvil_storage_pool1_byte_size} = $pool1_size;
 				$an->data->{cgi}{anvil_storage_pool2_byte_size} = 0;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "pool1_size", value1 => $pool1_size,
+					name1 => "pool1_size", value1 => $pool1_size." (".$an->Readable->bytes_to_hr({'bytes' => $pool1_size }).")",
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
@@ -905,7 +913,7 @@ sub calculate_storage_pool_sizes
 					# If pool1's requested size is larger than is available, shrink it.
 					if ($pool1_byte_size > $free_space_left)
 					{
-						# Round down a meg, as the next stage will round up a bit if 
+						# Round down a MiB, as the next stage will round up a bit if 
 						# needed.
 						$pool1_byte_size = ($free_space_left - 1048576);
 						$an->Log->entry({log_level => 2, message_key => "log_0262", message_variables => {
@@ -1935,8 +1943,8 @@ sub check_storage
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "node1",           value1 => $node1,
 		name2 => "node2",           value2 => $node2,
-		name3 => "node1_disk_size", value3 => $node1_disk_size,
-		name4 => "node2_disk_size", value4 => $node2_disk_size,
+		name3 => "node1_disk_size", value3 => $node1_disk_size." (".$an->Readable->bytes_to_hr({'bytes' => $node1_disk_size }).")",
+		name4 => "node2_disk_size", value4 => $node2_disk_size." (".$an->Readable->bytes_to_hr({'bytes' => $node2_disk_size }).")",
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now I need to know which partitions I will use for pool 1 and 2. Only then can I sanity check space
@@ -1947,6 +1955,9 @@ sub check_storage
 	# Now we can calculate partition sizes.
 	$an->InstallManifest->calculate_storage_pool_sizes();
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::pool1_shrunk", value1 => $an->data->{sys}{pool1_shrunk},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{pool1_shrunk})
 	{
 		my $requested_byte_size = $an->Readable->hr_to_bytes({size => $an->data->{cgi}{anvil_storage_pool1_size}, type => $an->data->{cgi}{anvil_storage_pool1_unit} });
@@ -1965,8 +1976,8 @@ sub check_storage
 		}});
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $an->data->{cgi}{anvil_storage_pool1_byte_size},
-		name2 => "cgi::anvil_storage_pool2_byte_size", value2 => $an->data->{cgi}{anvil_storage_pool2_byte_size},
+		name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $an->data->{cgi}{anvil_storage_pool1_byte_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }).")",
+		name2 => "cgi::anvil_storage_pool2_byte_size", value2 => $an->data->{cgi}{anvil_storage_pool2_byte_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }).")",
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $an->data->{cgi}{anvil_storage_pool1_byte_size}) && (not $an->data->{cgi}{anvil_storage_pool2_byte_size}))
 	{
@@ -5786,14 +5797,24 @@ sub configure_storage_stage1
 	my $node1_pool2_created = 0;
 	my $node2_pool1_created = 0;
 	my $node2_pool2_created = 0;
+	
 	# Node 1
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node::node1::has_servers", value1 => $an->data->{node}{node2}{has_servers},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{node}{node1}{has_servers})
 	{
 		# Pool 1.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::${node1}::disk::${node1_pool1_disk}::partition::${node1_pool1_partition}::size", value1 => $an->data->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size})
 		{
 			# Already exists
 			$node1_pool1_created = 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node1_pool1_created", value1 => $node1_pool1_created,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -5827,7 +5848,7 @@ sub configure_storage_stage1
 			{
 				# Succcess
 				$node1_pool1_created = 1;
-				$an->Log->entry({log_level => 2, message_key => "log_0178", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "log_0178", message_variables => {
 					type    => $node1_partition_type, 
 					pool    => "1", 
 					node    => $node1, 
@@ -5838,6 +5859,9 @@ sub configure_storage_stage1
 			}
 		}
 		# Pool 2.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_storage_pool2_byte_size", value1 => $an->data->{cgi}{anvil_storage_pool2_byte_size},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_storage_pool2_byte_size})
 		{
 			if ($an->data->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size})
@@ -5896,13 +5920,22 @@ sub configure_storage_stage1
 	}
 	
 	# Node 2
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node::node2::has_servers", value1 => $an->data->{node}{node2}{has_servers},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{node}{node2}{has_servers})
 	{
 		# Pool 1.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::${node2}::disk::${node2_pool1_disk}::partition::${node2_pool1_partition}::size", value1 => $an->data->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition}{size},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition}{size})
 		{
 			# Already exists
 			$node2_pool1_created = 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node2_pool1_created", value1 => $node2_pool1_created,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -5947,6 +5980,9 @@ sub configure_storage_stage1
 			}
 		}
 		# Node 2, Pool 2.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_storage_pool2_byte_size", value1 => $an->data->{cgi}{anvil_storage_pool2_byte_size},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_storage_pool2_byte_size})
 		{
 			if ($an->data->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition}{size})
@@ -6664,10 +6700,7 @@ sub connect_to_node
 	if ($ping)
 	{
 		# Pingable! Can we log in?
-		$an->Log->entry({log_level => 2, message_key => "log_0162", message_variables => {
-			node => "$node ($target)", 
-		}, file => $THIS_FILE, line => __LINE__});
-		
+		$an->Log->entry({log_level => 2, message_key => "log_0162", message_variables => { node => "$node ($target)" }, file => $THIS_FILE, line => __LINE__});
 		   $return_code = 1;
 		my ($access)    = $an->Check->access({
 				target   => $target, 
@@ -7142,6 +7175,14 @@ sub create_partition_on_node
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Just for logging...
+	if ($partition_size =~ /^\d+$/)
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "partition_size", value1 => $partition_size." (".$an->Readable->bytes_to_hr({'bytes' => $partition_size }).")", 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	my $created = 0;
 	my $ok      = 1;
 	my $start   = 0;
@@ -7155,10 +7196,10 @@ sub create_partition_on_node
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$target,
-		port		=>	$port, 
-		password	=>	$password,
-		shell_call	=>	$shell_call,
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
 	});
 	foreach my $line (@{$return})
 	{
@@ -7174,16 +7215,52 @@ sub create_partition_on_node
 			name2 => "disk",   value2 => $disk,
 			name3 => "return", value3 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /([\d\.]+)GiB ([\d\.]+)GiB ([\d\.]+)GiB Free/i)
+		
+		# If I am creating a logical partition, then I want to find the start of the free space 
+		# inside 'extended'. Otherwise, I want the actual free space.
+		if ($type eq "logical")
 		{
-			$start = $1;
-			$end   = $2;
-			$size  = $3;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "start", value1 => $start,
-				name2 => "end",   value2 => $end,
-				name3 => "size",  value3 => $size,
-			}, file => $THIS_FILE, line => __LINE__});
+			# I want to use the start of the extended partition, *unless* there is already a 
+			# logical partition. If there is a logical partition, we will use it's end as the new
+			# partition's start.
+			if ($line =~ /([\d\.]+)GiB ([\d\.]+)GiB ([\d\.]+)GiB extended/)
+			{
+				$start = $1;
+				$end   = $2;
+				$size  = $3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "start", value1 => $start,
+					name2 => "end",   value2 => $end,
+					name3 => "size",  value3 => $size,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /([\d\.]+)GiB ([\d\.]+)GiB ([\d\.]+)GiB logical/)
+			{
+				my $logical_start = $1;
+				my $logical_end   = $2;
+				my $logical_size  = $3;
+				   $start         = $logical_end;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "logical_start", value1 => $logical_start,
+					name2 => "logical_end",   value2 => $logical_end,
+					name3 => "logical_size",  value3 => $logical_size,
+					name4 => "start",         value4 => $start,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		else
+		{
+			if ($line =~ /([\d\.]+)GiB ([\d\.]+)GiB ([\d\.]+)GiB Free/i)
+			{
+				$start = $1;
+				$end   = $2;
+				$size  = $3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "start", value1 => $start,
+					name2 => "end",   value2 => $end,
+					name3 => "size",  value3 => $size,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	
@@ -7205,11 +7282,11 @@ sub create_partition_on_node
 			name4 => "partition_size", value4 => $partition_size,
 		}, file => $THIS_FILE, line => __LINE__});
 		my $message = $an->String->get({key => "message_0389", variables => { 
-				node		=>	$node, 
-				disk		=>	$disk,
-				type		=>	$type,
-				size		=>	$an->Readable->bytes_to_hr({'bytes' => $partition_size })." ($partition_size #!string!suffix_0009!#)",
-				shell_call	=>	$shell_call,
+				node       => $node, 
+				disk       => $disk,
+				type       => $type,
+				size       => $an->Readable->bytes_to_hr({'bytes' => $partition_size })." ($partition_size #!string!suffix_0009!#)",
+				shell_call => $shell_call,
 			}});
 		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 			message	=>	$message,
@@ -7242,20 +7319,39 @@ sub create_partition_on_node
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($use_end > $end)
 			{
-				# Warn the user and then shrink the end.
-				my $message = $an->String->get({key => "message_0391", variables => { 
-						node		=>	$node, 
-						disk		=>	$disk,
-						type		=>	$type,
-						old_end		=>	$use_end." #!string!suffix_0006!#",
-						new_end		=>	$end." #!string!suffix_0006!#",
-						shell_call	=>	$shell_call,
+				# Make sure this isn't a fraction of a GiB difference before we warn the user
+				my $int_use_end =  $use_end;
+				   $int_use_end =~ s/\..*$//;
+				my $int_end     =  $end;
+				   $int_end     =~ s/\..*$//;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "int_use_end", value1 => $int_use_end,
+					name2 => "int_end",     value2 => $int_end,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (($int_use_end) && ($int_use_end ne $int_end))
+				{
+					# Warn the user and then shrink the end.
+					my $message = $an->String->get({key => "message_0391", variables => { 
+							node       => $node, 
+							disk       => $disk,
+							type       => $type,
+							old_end    => $use_end." #!string!suffix_0006!#",
+							new_end    => $end." #!string!suffix_0006!#",
+							shell_call => $shell_call,
+						}});
+					print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
+						message => $message,
+						row     => "#!string!state_0043!#",
 					}});
-				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
-					message	=>	$message,
-					row	=>	"#!string!state_0043!#",
-				}});
+				}
+				
+				# Update the 'use_end'
 				$use_end = $end;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "use_end", value1 => $use_end,
+				}, file => $THIS_FILE, line => __LINE__});
+				
 			}
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
@@ -7283,7 +7379,7 @@ sub create_partition_on_node
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -7297,16 +7393,16 @@ sub create_partition_on_node
 					name4 => "end",   value4 => $end,
 				}, file => $THIS_FILE, line => __LINE__});
 				my $message = $an->String->get({key => "message_0390", variables => { 
-						node		=>	$node, 
-						disk		=>	$disk,
-						type		=>	$type,
-						start		=>	$an->Readable->bytes_to_hr({'bytes' => $start })." ($start #!string!suffix_0009!#)",
-						end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
-						shell_call	=>	$shell_call,
+						node       => $node, 
+						disk       => $disk,
+						type       => $type,
+						start      => $an->Readable->bytes_to_hr({'bytes' => $start })." ($start #!string!suffix_0009!#)",
+						end        => $an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
+						shell_call => $shell_call,
 					}});
 				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
-					message	=>	$message,
-					row	=>	"#!string!state_0042!#",
+					message => $message,
+					row     => "#!string!state_0042!#",
 				}});
 			}
 			if ($line =~ /not properly aligned/i)
@@ -7320,24 +7416,22 @@ sub create_partition_on_node
 					name4 => "end",   value4 => $end,
 				}, file => $THIS_FILE, line => __LINE__});
 				my $message = $an->String->get({key => "message_0431", variables => { 
-						node		=>	$node, 
-						disk		=>	$disk,
-						type		=>	$type,
-						start		=>	$an->Readable->bytes_to_hr({'bytes' => $start })." ($start #!string!suffix_0009!#)",
-						end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
-						shell_call	=>	$shell_call,
+						node       => $node, 
+						disk       => $disk,
+						type       => $type,
+						start      => $an->Readable->bytes_to_hr({'bytes' => $start })." ($start #!string!suffix_0009!#)",
+						end        => $an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
+						shell_call => $shell_call,
 					}});
 				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
-					message	=>	$message,
-					row	=>	"#!string!state_0099!#",
+					message => $message,
+					row     => "#!string!state_0099!#",
 				}});
 			}
 			if ($line =~ /reboot/)
 			{
 				# Reboot needed.
-				$an->Log->entry({log_level => 2, message_key => "log_0159", message_variables => {
-					node => $node, 
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 1, message_key => "log_0159", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
 				$an->data->{node}{$node}{reboot_needed} = 1;
 			}
 		}
@@ -7350,7 +7444,7 @@ sub create_partition_on_node
 		$ok = 2;
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($ok);
@@ -8210,9 +8304,7 @@ sub do_node_reboot
 	{
 		### NOTE: We can't use 'anvil-safe-stop' here because a new node won't be in the database yet.
 		# Reboot... Close the SSH FH as well.
-		$an->Log->entry({log_level => 1, message_key => "log_0159", message_variables => {
-			node => $node, 
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 1, message_key => "log_0159", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
 		my $shell_call = $an->data->{path}{reboot};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
@@ -8232,44 +8324,51 @@ sub do_node_reboot
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		### TODO: This can be racey when the server reboots very quickly (like a VM on a fast host)
-		###       If the timeout is hit, log in and read the 'uptime'.
 		# We need to give the system time to shut down.
 		my $has_shutdown = 0;
 		my $time_limit   = 120;
 		my $uptime_max   = $time_limit + 60;
 		my $timeout      = time + $time_limit;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "time",    value1 => time,
-			name2 => "timeout", value2 => $timeout,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "time",       value1 => time,
+			name2 => "timeout",    value2 => $timeout,
+			name3 => "uptime_max", value3 => $uptime_max,
 		}, file => $THIS_FILE, line => __LINE__});
 		while (not $has_shutdown)
 		{
 			# 1 == pinged, 0 == failed.
-			my $ping = $an->Check->ping({ping => $node, count => 3});
+			my $ping = $an->Check->ping({ping => $target, count => 3});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target", value1 => $target,
+				name2 => "ping",   value2 => $ping,
+			}, file => $THIS_FILE, line => __LINE__});
 			if (not $ping)
 			{
-				# Switch the target
-				$has_shutdown = 1;
-				$target       = $new_bcn_ip;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "has_shutdown", value1 => $has_shutdown,
-					name2 => "target",       value2 => $target,
-				}, file => $THIS_FILE, line => __LINE__});
+				if (not $has_shutdown)
+				{
+					# Switch the target
+					$has_shutdown = 1;
+					$target       = $new_bcn_ip;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "has_shutdown", value1 => $has_shutdown,
+						name2 => "target",       value2 => $target,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 			else
 			{
-				# Log in and see if the uptime is short.
+				# We can ping it, so log in and see if the uptime is short. Failure to log in
+				# will cause the uptime to return '0'.
 				my $uptime = $an->System->get_uptime({
-						target		=>	$target,
-						port		=>	$port, 
-						password	=>	$password,
+						target   => $target,
+						port     => $port, 
+						password => $password,
 					});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "uptime",     value1 => $uptime, 
 					name2 => "uptime_max", value2 => $uptime_max, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if ($uptime < $uptime_max)
+				if (($uptime) && ($uptime < $uptime_max))
 				{
 					# We rebooted and missed it.
 					$has_shutdown = 1;
@@ -8279,6 +8378,10 @@ sub do_node_reboot
 				}
 			}
 			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "time",    value1 => time,
+				name2 => "timeout", value2 => $timeout,
+			}, file => $THIS_FILE, line => __LINE__});
 			if (time > $timeout)
 			{
 				$return_code = 4;
@@ -8307,10 +8410,8 @@ sub do_node_reboot
 			{
 				my $time      = time;
 				my $will_wait = ($give_up_time - $time);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "time",         value1 => $time,
-					name2 => "give_up_time", value2 => $give_up_time,
-					name3 => "will wait",    value3 => $will_wait,
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "will_wait", value1 => $will_wait,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($time > $give_up_time)
 				{
@@ -8323,9 +8424,10 @@ sub do_node_reboot
 						password => $password,
 					});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "new_bcn_ip",       value1 => $new_bcn_ip,
+					name1 => "target",           value1 => $target,
 					name2 => "wait_return_code", value2 => $wait_return_code,
 				}, file => $THIS_FILE, line => __LINE__});
+				
 				# Return codes:
 				# 0 = Successfully logged in
 				# 1 = Could ping, but couldn't log in
@@ -8345,7 +8447,7 @@ sub do_node_reboot
 						name3 => "target",                          value3 => $target,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
-				sleep 1;
+				sleep 3;
 			}
 			
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -8440,6 +8542,11 @@ sub drbd_first_start
 	{
 		$node_key = "node2";
 	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::node1::has_servers", value1 => $an->data->{node}{node1}{has_servers},
+		name2 => "node_key",                 value2 => $node_key,
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $node       = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
@@ -8646,7 +8753,7 @@ sub drbd_first_start
 	# 4 == Both nodes entered connencted state but didn't actually connect
 	# 5 == Promotion to 'Primary' failed.
 	# 6 == Failed to install 'wait-for-drbd'.
-	my $ok = 1;
+	my $ok            = 1;
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0014!#";
 	my $node2_class   = "highlight_good_bold";
@@ -10176,14 +10283,14 @@ sub get_daemon_state
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_daemon_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_daemon_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $daemon   = $parameter->{daemon}   ? $parameter->{daemon}   : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "daemon", value1 => $daemon, 
 		name2 => "node",   value2 => $node, 
 		name3 => "target", value3 => $target, 
@@ -10215,12 +10322,12 @@ sub get_daemon_state
 	my $state = "";
 	
 	# Check if the daemon is running currently.
-	$an->Log->entry({log_level => 2, message_key => "log_0150", message_variables => {
-		node   => $node, 
+	$an->Log->entry({log_level => 3, message_key => "log_0150", message_variables => {
+		target => $node, 
 		daemon => $daemon,
 	}, file => $THIS_FILE, line => __LINE__});
 	my $shell_call = $an->data->{path}{initd}."/$daemon status; ".$an->data->{path}{echo}." return_code:\$?";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -10232,14 +10339,14 @@ sub get_daemon_state
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /No such file or directory/i)
 		{
 			# Not installed, pretend it is off.
-			$an->Log->entry({log_level => 2, message_key => "log_0151", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "log_0151", message_variables => {
 				node   => $node, 
 				daemon => $daemon,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -10249,7 +10356,7 @@ sub get_daemon_state
 		if ($line =~ /^return_code:(\d+)/)
 		{
 			my $return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "return_code",         value1 => $return_code,
 				name2 => "stopped_return_code", value2 => $stopped_return_code,
 				name3 => "running_return_code", value3 => $running_return_code,
@@ -10266,14 +10373,14 @@ sub get_daemon_state
 			{
 				$state = "undefined:$return_code";
 			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "return_code", value1 => $return_code,
 				name2 => "state",       value2 => $state,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($state);
@@ -10613,7 +10720,7 @@ sub get_partition_data
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -10726,30 +10833,19 @@ fi";
 			elsif ($line =~ /^(\d+) (\d+)B (\d+)B (\d+)B(.*)$/)
 			{
 				# Existing partitions
-				my $partition       =  $1;
-				my $partition_start =  $2;
-				my $partition_end   =  $3;
-				my $partition_size  =  $4;
-				my $partition_type  =  $5;
-				   $partition_type  =~ s/\s+(\S+).*$/$1/;	# cuts off 'extended lba' to 'extended'
-				$an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{start} = $partition_start;
-				$an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{end}   = $partition_end;
-				$an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size}  = $partition_size;
-				$an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{type}  = $partition_type;
-				$an->data->{node}{$node}{disk}{$disk}{partition_count}++;
-				# For our logs...
-				my $say_partition_start = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{start}});
-				my $say_partition_end   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{end}});
-				my $say_partition_size  = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size}});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
-					name1 => "node::${node}::disk::${disk}::partition::${partition}::start", value1 => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{start},
-					name2 => "node::${node}::disk::${disk}::partition::${partition}::end",   value2 => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{end},
-					name3 => "node::${node}::disk::${disk}::partition::${partition}::size",  value3 => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size},
+				my $partition                                                          =  $1;
+				   $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{start} =  $2;
+				   $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{end}   =  $3;
+				   $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size}  =  $4;
+				   $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{type}  =  $5;
+				   $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{type}  =~ s/\s+(\S+).*$/$1/;	# cuts off 'extended lba' to 'extended'
+				   $an->data->{node}{$node}{disk}{$disk}{partition_count}++;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+					name1 => "node::${node}::disk::${disk}::partition::${partition}::start", value1 => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{start}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{start} }).")",
+					name2 => "node::${node}::disk::${disk}::partition::${partition}::end",   value2 => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{end}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{end} }).")",
+					name3 => "node::${node}::disk::${disk}::partition::${partition}::size",  value3 => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size} }).")",
 					name4 => "node::${node}::disk::${disk}::partition::${partition}::type",  value4 => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{type},
 					name5 => "node::${node}::disk::${disk}::partition_count",                value5 => $an->data->{node}{$node}{disk}{$disk}{partition_count},
-					name6 => "say_partition_start",                                          value6 => $say_partition_start,
-					name7 => "say_partition_end",                                            value7 => $say_partition_end,
-					name8 => "say_partition_size",                                           value8 => $say_partition_size,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /^(\d+)B (\d+)B (\d+)B Free Space/)

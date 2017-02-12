@@ -229,6 +229,16 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 $an->Log->adjust_log_level({key => $THIS_FILE});
 
+# Help?
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or
+    ($an->data->{switches}{help}))
+{
+	# Help!
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+
 # Exit if we're disabled.
 if ($an->data->{'scan-apc-ups'}{disable})
 {
@@ -241,18 +251,32 @@ print $an->String->get({key => "scan_apc_ups_message_0001"})."\n";
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 $an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
 
-# Find the UPSes.
-find_upses($an);
-
 # Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
 # running ScanCore, it won't be.
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
-		uuid => $an->data->{sys}{host_uuid},
-	}, code => 255, file => $THIS_FILE, line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
 }
+
+# If we were called with '--prep-db', we'll prep the database schema regardless of whether any upses are
+# found.
+if ($an->data->{switches}{'prep-db'})
+{
+	if ($connections)
+	{
+		prep_databases($an);
+	}
+	else
+	{
+		# Failed
+		$an->Log->entry({log_level => 1, message_key => "scancore_warning_0031", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "scancore_warning_0031"})."\n";
+	}
+}
+
+# Find the UPSes.
+find_upses($an);
 
 # Gather details on UPSes. Returns '1' if no UPSes were found.
 if (gather_ups_data($an))

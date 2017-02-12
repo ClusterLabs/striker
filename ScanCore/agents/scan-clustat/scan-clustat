@@ -118,6 +118,16 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 $an->Log->adjust_log_level({key => $THIS_FILE});
 
+# Help?
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or
+    ($an->data->{switches}{help}))
+{
+	# Help!
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+
 # Exit if we're disabled.
 if ($an->data->{'scan-clustat'}{disable})
 {
@@ -142,9 +152,22 @@ $an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
-	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
-		uuid => $an->data->{sys}{host_uuid},
-	}, code => 255, file => $THIS_FILE, line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
+}
+
+# If we were called with '--prep-db', we'll prep the database schema regardless of whether clustat is found.
+if ($an->data->{switches}{'prep-db'})
+{
+	if ($connections)
+	{
+		prep_databases($an);
+	}
+	else
+	{
+		# Failed
+		$an->Log->entry({log_level => 1, message_key => "scancore_warning_0031", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "scancore_warning_0031"})."\n";
+	}
 }
 
 # Setup some repeatedly used subqueries for easier use later.

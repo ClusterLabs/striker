@@ -394,7 +394,18 @@ restart nodes that have gone into emergency-stop.
 
 SWITCHES
 
- -upses <ups1>[,<ups2>,...,<upsN>]
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+ --prep-db
+
+	If passed, the schema will be loaded into the database (if not 
+	already), even if no APC brand UPSes are found. Note: This won't work
+	if the agent has been manually disabled via 'scan-apc-ups::disable'.
+
+ --upses <ups1>[,<ups2>,...,<upsN>]
 
 	Specify the UPS(es) to query. If host names are used, they must be 
 	convertable to IP addresses. Two or more UPSes can be defined using
@@ -408,10 +419,6 @@ SWITCHES
 	
 	This will tell ScanCore to call this agent using this switch.
 
-
- -h, -?, --help
-
-	Show this dialog and exit.
 
                   
 SUPPORT

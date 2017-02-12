@@ -163,6 +163,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0093">#!string!scancore_brand_0001!# invoked with '--clear-resync-flag'. Will now connect to all available databases and clear the resync flag.</key>
 		<key name="scancore_log_0094">Failed to connect to any ScanCore databases. Unable to clear the resync flag.</key>
 		<key name="scancore_log_0095">The 'shorewall' daemon was set to start on boot in run-level 3 and/or 5 (3: [#!variable!3!#], 5: [#!variable!5!#]), turning it off again.</key>
+		<key name="scancore_log_0096">#!string!scancore_brand_0001!# appears to have been updated (old hash: [#!variable!old_sum!#], now: #!variable!new_sum!#]). Exiting now so that the new version can be loaded.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -236,6 +237,7 @@ Another instance of ScanCore registered that it was starting to sync the databas
 If you are getting this message repeatedly, then it might be failing to terminate the hung instance. If that happens, please feel free to contact #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) and we will do our best to assist.
 		</key>
 		<key name="scancore_warning_0030">Failed to create the ScanCore database archive directory: [#!variable!directory!#]. Archiving is disabled on this dashboard.</key>
+		<key name="scancore_warning_0031">I was asked to prepare the database, but I was not able to connect to any ScanCore databases.</key>
 		
 		<!-- Cleared warnings. -->
 		<key name="scancore_cleared_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

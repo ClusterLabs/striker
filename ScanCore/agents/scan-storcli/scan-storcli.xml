@@ -595,6 +595,12 @@ SWITCHES
 
 	Show this dialog and exit.
 
+ --prep-db
+
+	If passed, the schema will be loaded into the database (if not 
+	already), even if no controllers are found. Note: This won't work if 
+	the agent has been manually disabled via 'scan-storclI::disable'.
+
                   
 SUPPORT
 

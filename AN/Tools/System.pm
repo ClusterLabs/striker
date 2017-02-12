@@ -1524,12 +1524,12 @@ sub get_uptime
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_uptime" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_uptime" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target, 
 		name2 => "port",   value2 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1537,7 +1537,7 @@ sub get_uptime
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $uptime     = 99999999;
+	my $uptime     = 0;
 	my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_uptime};
 	my $return     = [];
 	
@@ -1587,6 +1587,9 @@ sub get_uptime
 		}
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "uptime", value1 => $uptime, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($uptime);
 }
 

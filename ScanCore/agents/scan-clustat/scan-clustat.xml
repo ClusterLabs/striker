@@ -133,6 +133,7 @@ nodes joining, leaving and recovering.
 
 SWITCHES
 
+
  -c <host>, --caller <host>
 	
 	This is to be set by the ScanCore server and 'host' must match the
@@ -141,10 +142,15 @@ SWITCHES
 	to an entry in the 'hosts' table will cause the agent to exit with the
 	return code of '1'.
 
-
  -h, -?, --help
 
 	Show this dialog and exit.
+
+ --prep-db
+
+	If passed, the schema will be loaded into the database (if not 
+	already), even if 'clustat' is not found. Note: This won't work if the
+	agent has been manually disabled via 'scan-clustat::disable'.
 
                   
 SUPPORT

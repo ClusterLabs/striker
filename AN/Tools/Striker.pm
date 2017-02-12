@@ -9889,15 +9889,15 @@ sub _parse_anvil_safe_start
 	if ($an->data->{node}{$node_name}{'anvil-safe-start'})
 	{
 		my $uptime = $an->System->get_uptime({
-				target		=>	$target,
-				port		=>	$port, 
-				password	=>	$password,
+				target   => $target,
+				port     => $port, 
+				password => $password,
 			});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "uptime", value1 => $uptime,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($uptime > 600)
+		if (($uptime) && ($uptime > 600))
 		{
 			$an->data->{node}{$node_name}{'anvil-safe-start'} = 0;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
