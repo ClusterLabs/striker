@@ -8418,7 +8418,6 @@ sub sanity_check_network
 			# This is a warning, not an error.
 			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The IFN gateway is not specified. This means there will be no", 0);
 			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   access to *any* external networks.", 0);
-			$bad_value = 1;
 		}
 		
 		# DNS 1 and 2, if defined.
