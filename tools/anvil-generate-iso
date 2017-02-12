@@ -846,8 +846,16 @@ cp      /mnt/source/$conf->{path}{iso}{striker}/tools/striker-installer /mnt/sys
 echo \"Copying 'Tools' into /mnt/sysimage/var/www/html/$os_dir/x86_64/files/\"
 rsync -av /mnt/source/Tools /mnt/sysimage/var/www/html/$os_dir/x86_64/files/
 
-echo 'Configuring /etc/fstab to mount the ISO on boot.'
-echo '/var/www/html/$os_dir/x86_64/iso/$conf->{path}{iso}{file_name}	/var/www/html/$os_dir/x86_64/img	iso9660	loop	0 0' >> /mnt/sysimage/etc/fstab
+### No longer doing it this way. Now we'll rsync the contents of the ISO to the
+### img directory.
+#echo 'Configuring /etc/fstab to mount the ISO on boot.'
+#echo '/var/www/html/$os_dir/x86_64/iso/$conf->{path}{iso}{file_name}	/var/www/html/$os_dir/x86_64/img	iso9660	loop	0 0' >> /mnt/sysimage/etc/fstab
+
+# Copy the ISO contents to the apache 'img' folder.
+echo 'Copying the ISO source to apache...'
+cp -Rvp /mnt/source/*         /mnt/sysimage/var/www/html/$os_dir/x86_64/img/
+cp      /mnt/source/.discinfo /mnt/sysimage/var/www/html/$os_dir/x86_64/img/
+cp      /mnt/source/.treeinfo /mnt/sysimage/var/www/html/$os_dir/x86_64/img/
 
 echo 'Copying isolinux to /var/lib/tftpboot/boot/$os_dir/x86_64/'
 rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/$os_dir/x86_64/
@@ -1071,6 +1079,9 @@ EOF
 # Disable the libvirtd default bridge.
 echo \"Disabling the default libvirtd bridge 'virbr0'.\"
 cat /dev/null >/etc/libvirt/qemu/networks/default.xml
+
+echo 'Creating the repo...'
+/usr/bin/createrepo /var/www/html/$os_dir/x86_64/img/
 
 echo \"'chroot'ed post install script complete.\"
 \%end

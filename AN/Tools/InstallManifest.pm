@@ -3887,9 +3887,9 @@ sub configure_network_on_node
 	   $ifcfg_ifn_bridge1 .= "BOOTPROTO=\"static\"\n";
 	   $ifcfg_ifn_bridge1 .= "IPADDR=\"".$an->data->{cgi}{$ifn_ip_key}."\"\n";
 	   $ifcfg_ifn_bridge1 .= "NETMASK=\"".$an->data->{cgi}{anvil_ifn_subnet}."\"\n";
-	   $ifcfg_ifn_bridge1 .= "GATEWAY=\"".$an->data->{cgi}{anvil_ifn_gateway}."\"\n";
-	   $ifcfg_ifn_bridge1 .= "DNS1=\"".$an->data->{cgi}{anvil_dns1}."\"\n" if $an->data->{cgi}{anvil_dns1};
-	   $ifcfg_ifn_bridge1 .= "DNS2=\"".$an->data->{cgi}{anvil_dns2}."\"\n" if $an->data->{cgi}{anvil_dns2};
+	   $ifcfg_ifn_bridge1 .= "GATEWAY=\"".$an->data->{cgi}{anvil_ifn_gateway}."\"\n" if $an->data->{cgi}{anvil_ifn_gateway};
+	   $ifcfg_ifn_bridge1 .= "DNS1=\"".$an->data->{cgi}{anvil_dns1}."\"\n"           if $an->data->{cgi}{anvil_dns1};
+	   $ifcfg_ifn_bridge1 .= "DNS2=\"".$an->data->{cgi}{anvil_dns2}."\"\n"           if $an->data->{cgi}{anvil_dns2};
 	   $ifcfg_ifn_bridge1 .= "DEFROUTE=\"yes\"";
 	   
 	# Create the 'anvil-adjust-vnet' udev rules file.
@@ -14433,24 +14433,15 @@ sub sanity_check_manifest_answers
 	$an->data->{cgi}{anvil_open_vnc_ports}  = "" if $an->data->{cgi}{anvil_open_vnc_ports}  eq "--";
 	
 	## Check the common IFN values.
-	# Check the gateway
-	if (not $an->data->{cgi}{anvil_ifn_gateway})
-	{
-		# Not allowed to be blank.
-		$an->data->{form}{anvil_ifn_gateway_star} = "#!string!symbol_0012!#";
-		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0188!#" }});
-		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
-		$problem = 1;
-	}
-	elsif (not $an->Validate->is_ipv4({ip => $an->data->{cgi}{anvil_ifn_gateway}}))
+	# Check the gateway and DNS server(s). They are allowed to be blank for air-gapped systems). So we 
+	# only check that they are valid, if set.
+	if (not $an->Validate->is_ipv4({ip => $an->data->{cgi}{anvil_ifn_gateway}}))
 	{
 		$an->data->{form}{anvil_ifn_gateway_star} = "#!string!symbol_0012!#";
 		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0188!#" }});
 		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	
-	### DNS is allowed to be blank but, if it is set, it must be IPv4.
 	# Check DNS 1
 	if (($an->data->{cgi}{anvil_dns1}) && (not $an->Validate->is_ipv4({ip => $an->data->{cgi}{anvil_dns1}})))
 	{
