@@ -3966,8 +3966,6 @@ COMMIT";
 	my ($pdu2_short_name)     = ($an->data->{cgi}{anvil_pdu2_name}     =~ /^(.*?)\./);
 	my ($pdu3_short_name)     = ($an->data->{cgi}{anvil_pdu3_name}     =~ /^(.*?)\./);
 	my ($pdu4_short_name)     = ($an->data->{cgi}{anvil_pdu4_name}     =~ /^(.*?)\./);
-	my ($pts1_short_name)     = ($an->data->{cgi}{anvil_pts1_name}     =~ /^(.*?)\./);
-	my ($pts2_short_name)     = ($an->data->{cgi}{anvil_pts2_name}     =~ /^(.*?)\./);
 	my ($ups1_short_name)     = ($an->data->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
 	my ($ups2_short_name)     = ($an->data->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
 	my ($striker1_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
@@ -4004,20 +4002,6 @@ COMMIT";
 	   $hosts .= $an->data->{cgi}{anvil_ups1_ip}."	$ups1_short_name ".$an->data->{cgi}{anvil_ups1_name}."\n";
 	   $hosts .= $an->data->{cgi}{anvil_ups2_ip}."	$ups2_short_name ".$an->data->{cgi}{anvil_ups2_name}."\n";
 	   $hosts .= "\n";
-	   # Only add the PTS entries if they're defined.
-	   if (($an->data->{cgi}{anvil_pts1_ip}) or ($an->data->{cgi}{anvil_pts2_ip}))
-	   {
-		$hosts .= "# PTSes\n";
-		if ($an->data->{cgi}{anvil_pts1_ip})
-		{
-			$hosts .= $an->data->{cgi}{anvil_pts1_ip}."	$pts1_short_name ".$an->data->{cgi}{anvil_pts1_name}."\n";
-		}
-		if ($an->data->{cgi}{anvil_pts2_ip})
-		{
-			$hosts .= $an->data->{cgi}{anvil_pts2_ip}."	$pts2_short_name ".$an->data->{cgi}{anvil_pts2_name}."\n";
-		}
-		$hosts .= "\n";
-	   }
 	   $hosts .= "# Striker dashboards\n";
 	   $hosts .= $an->data->{cgi}{anvil_striker1_bcn_ip}."	$striker1_short_name.bcn $striker1_short_name ".$an->data->{cgi}{anvil_striker1_name}."\n";
 	   $hosts .= $an->data->{cgi}{anvil_striker1_ifn_ip}."	$striker1_short_name.ifn\n";
@@ -14399,9 +14383,9 @@ sub sanity_check_manifest_answers
 	### Convery anything with the value '--' to ''.
 	$an->data->{cgi}{anvil_ifn_gateway}     = "" if $an->data->{cgi}{anvil_ifn_gateway}     eq "--";
 	$an->data->{cgi}{anvil_dns1}            = "" if $an->data->{cgi}{anvil_dns1}            eq "--";
-	$an->data->{cgi}{anvil_dns2}            = "" if $an->data->{cgi}{anvil_dns1}            eq "--";
+	$an->data->{cgi}{anvil_dns2}            = "" if $an->data->{cgi}{anvil_dns2}            eq "--";
 	$an->data->{cgi}{anvil_ntp1}            = "" if $an->data->{cgi}{anvil_ntp1}            eq "--";
-	$an->data->{cgi}{anvil_ntp2}            = "" if $an->data->{cgi}{anvil_ntp1}            eq "--";
+	$an->data->{cgi}{anvil_ntp2}            = "" if $an->data->{cgi}{anvil_ntp2}            eq "--";
 	$an->data->{cgi}{anvil_switch1_name}    = "" if $an->data->{cgi}{anvil_switch1_name}    eq "--";
 	$an->data->{cgi}{anvil_switch1_ip}      = "" if $an->data->{cgi}{anvil_switch1_ip}      eq "--";
 	$an->data->{cgi}{anvil_switch2_name}    = "" if $an->data->{cgi}{anvil_switch2_name}    eq "--";
@@ -14418,10 +14402,6 @@ sub sanity_check_manifest_answers
 	$an->data->{cgi}{anvil_ups1_ip}         = "" if $an->data->{cgi}{anvil_ups1_ip}         eq "--";
 	$an->data->{cgi}{anvil_ups2_name}       = "" if $an->data->{cgi}{anvil_ups2_name}       eq "--";
 	$an->data->{cgi}{anvil_ups2_ip}         = "" if $an->data->{cgi}{anvil_ups2_ip}         eq "--";
-	$an->data->{cgi}{anvil_pts1_name}       = "" if $an->data->{cgi}{anvil_pts1_name}       eq "--";
-	$an->data->{cgi}{anvil_pts1_ip}         = "" if $an->data->{cgi}{anvil_pts1_ip}         eq "--";
-	$an->data->{cgi}{anvil_pts2_name}       = "" if $an->data->{cgi}{anvil_pts2_name}       eq "--";
-	$an->data->{cgi}{anvil_pts2_ip}         = "" if $an->data->{cgi}{anvil_pts2_ip}         eq "--";
 	$an->data->{cgi}{anvil_striker1_name}   = "" if $an->data->{cgi}{anvil_striker1_name}   eq "--";
 	$an->data->{cgi}{anvil_striker1_bcn_ip} = "" if $an->data->{cgi}{anvil_striker1_bcn_ip} eq "--";
 	$an->data->{cgi}{anvil_striker1_ifn_ip} = "" if $an->data->{cgi}{anvil_striker1_ifn_ip} eq "--";
@@ -14435,7 +14415,7 @@ sub sanity_check_manifest_answers
 	## Check the common IFN values.
 	# Check the gateway and DNS server(s). They are allowed to be blank for air-gapped systems). So we 
 	# only check that they are valid, if set.
-	if (not $an->Validate->is_ipv4({ip => $an->data->{cgi}{anvil_ifn_gateway}}))
+	if (($an->data->{cgi}{anvil_ifn_gateway}) && (not $an->Validate->is_ipv4({ip => $an->data->{cgi}{anvil_ifn_gateway}})))
 	{
 		$an->data->{form}{anvil_ifn_gateway_star} = "#!string!symbol_0012!#";
 		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0188!#" }});
@@ -14811,38 +14791,6 @@ sub sanity_check_manifest_answers
 	{
 		$an->data->{form}{anvil_ups2_ip_star} = "#!string!symbol_0012!#";
 		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0173!#" }});
-		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
-		$problem = 1;
-	}
-	
-	# Check that PTS #1's host name and IP are sane.
-	if (($an->data->{cgi}{anvil_pts1_name}) && (not $an->Validate->is_domain_name({name => $an->data->{cgi}{anvil_pts1_name}})))
-	{
-		$an->data->{form}{anvil_pts1_name_star} = "#!string!symbol_0012!#";
-		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0296!#" }});
-		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
-		$problem = 1;
-	}
-	if (($an->data->{cgi}{anvil_pts1_ip}) && (not $an->Validate->is_ipv4({ip => $an->data->{cgi}{anvil_pts1_ip}})))
-	{
-		$an->data->{form}{anvil_pts1_ip_star} = "#!string!symbol_0012!#";
-		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0297!#" }});
-		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
-		$problem = 1;
-	}
-	
-	# Check that PTS #2's host name and IP are sane.
-	if (($an->data->{cgi}{anvil_pts2_name}) && (not $an->Validate->is_domain_name({name => $an->data->{cgi}{anvil_pts2_name}})))
-	{
-		$an->data->{form}{anvil_pts2_name_star} = "#!string!symbol_0012!#";
-		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0298!#" }});
-		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
-		$problem = 1;
-	}
-	if (($an->data->{cgi}{anvil_pts2_ip}) && (not $an->Validate->is_ipv4({ip => $an->data->{cgi}{anvil_pts2_ip}})))
-	{
-		$an->data->{form}{anvil_pts2_ip_star} = "#!string!symbol_0012!#";
-		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0299!#" }});
 		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
@@ -16589,18 +16537,6 @@ sub show_summary_manifest
 		column4		=>	$an->data->{cgi}{anvil_ups2_ip},
 	}});
 	
-	# PTSes
-	if (($an->data->{cgi}{anvil_pts1_name}) or ($an->data->{cgi}{anvil_pts1_ip}) or ($an->data->{cgi}{anvil_pts2_name}) or ($an->data->{cgi}{anvil_pts2_ip}))
-	{
-		print $an->Web->template({file => "config.html", template => "install-manifest-summay-four-column-entry", replace => { 
-			row		=>	"#!string!row_0225!#",
-			column1		=>	$an->data->{cgi}{anvil_pts1_name},
-			column2		=>	$an->data->{cgi}{anvil_pts1_ip},
-			column3		=>	$an->data->{cgi}{anvil_pts2_name},
-			column4		=>	$an->data->{cgi}{anvil_pts2_ip},
-		}});
-	}
-	
 	### PDUs are, surprise, a little more complicated.
 	my $say_apc        = $an->String->get({key => "brand_0017"});
 	my $say_raritan    = $an->String->get({key => "brand_0018"});
@@ -16714,7 +16650,7 @@ sub show_summary_manifest
 	# Default Gateway
 	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0188!#",
-		column1		=>	$an->data->{cgi}{anvil_ifn_gateway},
+		column1		=>	$an->data->{cgi}{anvil_ifn_gateway} ? $an->data->{cgi}{anvil_ifn_gateway} : "#!string!symbol_0011!#",
 		column2		=>	"&nbsp;",
 	}});
 	
@@ -16813,10 +16749,6 @@ sub show_summary_manifest
 		anvil_ups1_ip			=>	$an->data->{cgi}{anvil_ups1_ip},
 		anvil_ups2_name			=>	$an->data->{cgi}{anvil_ups2_name},
 		anvil_ups2_ip			=>	$an->data->{cgi}{anvil_ups2_ip},
-		anvil_pts1_name			=>	$an->data->{cgi}{anvil_pts1_name},
-		anvil_pts1_ip			=>	$an->data->{cgi}{anvil_pts1_ip},
-		anvil_pts2_name			=>	$an->data->{cgi}{anvil_pts2_name},
-		anvil_pts2_ip			=>	$an->data->{cgi}{anvil_pts2_ip},
 		anvil_pdu1_name			=>	$an->data->{cgi}{anvil_pdu1_name},
 		anvil_pdu1_ip			=>	$an->data->{cgi}{anvil_pdu1_ip},
 		anvil_pdu1_agent		=>	$an->data->{cgi}{anvil_pdu1_agent},

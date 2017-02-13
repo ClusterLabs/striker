@@ -2944,10 +2944,6 @@ sub manifests_menu
 	$an->data->{form}{anvil_ups1_ip_star}                   = "";
 	$an->data->{form}{anvil_ups2_name_star}                 = "";
 	$an->data->{form}{anvil_ups2_ip_star}                   = "";
-	$an->data->{form}{anvil_pts1_name_star}                 = "";
-	$an->data->{form}{anvil_pts1_ip_star}                   = "";
-	$an->data->{form}{anvil_pts2_name_star}                 = "";
-	$an->data->{form}{anvil_pts2_ip_star}                   = "";
 	$an->data->{form}{anvil_striker1_name_star}             = "";
 	$an->data->{form}{anvil_striker1_bcn_ip_star}           = "";
 	$an->data->{form}{anvil_striker1_ifn_ip_star}           = "";
@@ -3343,10 +3339,6 @@ WHERE
 			if (not $an->data->{cgi}{anvil_ups1_ip})            { $an->data->{cgi}{anvil_ups1_ip}            = $an->data->{sys}{install_manifest}{'default'}{ups1_ip}; }
 			if (not $an->data->{cgi}{anvil_ups2_name})          { $an->data->{cgi}{anvil_ups2_name}          = $an->data->{sys}{install_manifest}{'default'}{ups2_name}; }
 			if (not $an->data->{cgi}{anvil_ups2_ip})            { $an->data->{cgi}{anvil_ups2_ip}            = $an->data->{sys}{install_manifest}{'default'}{ups2_ip}; }
-			if (not $an->data->{cgi}{anvil_pts1_name})          { $an->data->{cgi}{anvil_pts1_name}          = $an->data->{sys}{install_manifest}{'default'}{pts1_name}; }
-			if (not $an->data->{cgi}{anvil_pts1_ip})            { $an->data->{cgi}{anvil_pts1_ip}            = $an->data->{sys}{install_manifest}{'default'}{pts1_ip}; }
-			if (not $an->data->{cgi}{anvil_pts2_name})          { $an->data->{cgi}{anvil_pts2_name}          = $an->data->{sys}{install_manifest}{'default'}{pts2_name}; }
-			if (not $an->data->{cgi}{anvil_pts2_ip})            { $an->data->{cgi}{anvil_pts2_ip}            = $an->data->{sys}{install_manifest}{'default'}{pts2_ip}; }
 			if (not $an->data->{cgi}{anvil_pdu1_name})          { $an->data->{cgi}{anvil_pdu1_name}          = $an->data->{sys}{install_manifest}{'default'}{pdu1_name}; }
 			if (not $an->data->{cgi}{anvil_pdu1_ip})            { $an->data->{cgi}{anvil_pdu1_ip}            = $an->data->{sys}{install_manifest}{'default'}{pdu1_ip}; }
 			if (not $an->data->{cgi}{anvil_pdu2_name})          { $an->data->{cgi}{anvil_pdu2_name}          = $an->data->{sys}{install_manifest}{'default'}{pdu2_name}; }
@@ -4299,83 +4291,6 @@ WHERE
 					value		=>	$an->data->{cgi}{$ip_key},
 					star		=>	$an->data->{form}{$ip_star_key},
 					more_info	=>	"$network_ups_ip_more_info",
-				}});
-			}
-		}
-		
-		# PTSes
-		foreach my $i (1, 2)
-		{
-			my $name_key         = "anvil_pts${i}_name";
-			my $name_star_key    = "anvil_pts${i}_name_star";
-			my $ip_key           = "anvil_pts${i}_ip";
-			my $ip_star_key      = "anvil_pts${i}_ip_star";
-			my $say_name_row     = "";
-			my $say_name_explain = "";
-			my $say_name_url     = "";
-			my $say_ip_row       = "";
-			my $say_ip_explain   = "";
-			my $say_ip_url       = "";
-			if ($i == 1)
-			{
-				$say_name_row     = "#!string!row_0296!#";
-				$say_name_explain = $an->data->{sys}{expert_ui} ? "#!string!terse_0162!#" : "#!string!explain_0162!#";
-				$say_name_url     = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
-				$say_ip_row       = "#!string!row_0297!#";
-				$say_ip_explain   = $an->data->{sys}{expert_ui} ? "#!string!terse_0163!#" : "#!string!explain_0163!#";
-				$say_ip_url       = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Network_Managed_PTSes_Are_Worth_It";
-			}
-			elsif ($i == 2)
-			{
-				$say_name_row     = "#!string!row_0298!#";
-				$say_name_explain = $an->data->{sys}{expert_ui} ? "#!string!terse_0164!#" : "#!string!explain_0164!#";
-				$say_name_url     = "";
-				$say_ip_row       = "#!string!row_0299!#";
-				$say_ip_explain   = $an->data->{sys}{expert_ui} ? "#!string!terse_0165!#" : "#!string!explain_0165!#";
-				$say_ip_url       = "";
-			}
-			
-			# PTSes
-			if (not $an->data->{sys}{install_manifest}{show}{pts_fields})
-			{
-				# PTS name
-				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	$name_key,
-					id		=>	$name_key,
-					value		=>	$an->data->{cgi}{$name_key},
-				}});
-				
-				# PTS IP
-				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	$ip_key,
-					id		=>	$ip_key,
-					value		=>	$an->data->{cgi}{$ip_key},
-				}});
-			}
-			else
-			{
-				# PTS name
-				my $network_pts_name_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
-				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	$say_name_row,
-					explain		=>	$say_name_explain,
-					name		=>	$name_key,
-					id		=>	$name_key,
-					value		=>	$an->data->{cgi}{$name_key},
-					star		=>	$an->data->{form}{$name_star_key},
-					more_info	=>	$network_pts_name_more_info,
-				}});
-				
-				# PTS IP
-				my $network_pts_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ip_url }});
-				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	$say_ip_row,
-					explain		=>	$say_ip_explain,
-					name		=>	$ip_key,
-					id		=>	$ip_key,
-					value		=>	$an->data->{cgi}{$ip_key},
-					star		=>	$an->data->{form}{$ip_star_key},
-					more_info	=>	$network_pts_ip_more_info,
 				}});
 			}
 		}
@@ -8271,10 +8186,6 @@ sub _initialize_an
 					pool1_size			=>	"100",
 					pool1_unit			=>	"%",
 					prefix				=>	"",
-					pts1_ip				=>	"",
-					pts1_name			=>	"",
-					pts2_ip				=>	"",
-					pts2_name			=>	"",
 					repositories			=>	"",
 					sequence			=>	"01",
 					ssh_keysize			=>	8191,

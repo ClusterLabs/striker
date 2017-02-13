@@ -5471,23 +5471,6 @@ sub parse_install_manifest
 		}, file => $THIS_FILE, line => __LINE__});
 		$i++;
 	}
-	# PTSes
-	$i = 1;
-	foreach my $pts (sort {$a cmp $b} keys %{$an->data->{install_manifest}{$uuid}{common}{pts}})
-	{
-		my $name_key = "anvil_pts".$i."_name";
-		my $ip_key   = "anvil_pts".$i."_ip";
-		$an->data->{cgi}{$name_key} = $pts;
-		$an->data->{cgi}{$ip_key}   = $an->data->{install_manifest}{$uuid}{common}{pts}{$pts}{ip};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-			name1 => "PTS",       value1 => $pts,
-			name2 => "name_key",  value2 => $name_key,
-			name3 => "ip_key",    value3 => $ip_key,
-			name4 => "CGI; Name", value4 => $an->data->{cgi}{$name_key},
-			name5 => "IP",        value5 => $an->data->{cgi}{$ip_key},
-		}, file => $THIS_FILE, line => __LINE__});
-		$i++;
-	}
 	# Striker Dashboards
 	$i = 1;
 	foreach my $striker (sort {$a cmp $b} keys %{$an->data->{install_manifest}{$uuid}{common}{striker}{name}})
@@ -6130,8 +6113,6 @@ sub save_install_manifest
 		my ($pdu4_short_name)     = ($an->data->{cgi}{anvil_pdu4_name}     =~ /^(.*?)\./);
 		my ($ups1_short_name)     = ($an->data->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
 		my ($ups2_short_name)     = ($an->data->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
-		my ($pts1_short_name)     = ($an->data->{cgi}{anvil_pts1_name}     =~ /^(.*?)\./);
-		my ($pts2_short_name)     = ($an->data->{cgi}{anvil_pts2_name}     =~ /^(.*?)\./);
 		my ($striker1_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
 		my ($striker2_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
 		my ($now_date, $now_time) = $an->Get->date_and_time();
@@ -6319,10 +6300,6 @@ Striker Version: ".$an->data->{sys}{version}."
 			<ups name=\"".$an->data->{cgi}{anvil_ups1_name}."\" type=\"apc\" port=\"3551\" ip=\"".$an->data->{cgi}{anvil_ups1_ip}."\" />
 			<ups name=\"".$an->data->{cgi}{anvil_ups2_name}."\" type=\"apc\" port=\"3552\" ip=\"".$an->data->{cgi}{anvil_ups2_ip}."\" />
 		</ups>
-		<pts>
-			<pts name=\"".$an->data->{cgi}{anvil_pts1_name}."\" type=\"raritan\" port=\"161\" ip=\"".$an->data->{cgi}{anvil_pts1_ip}."\" />
-			<pts name=\"".$an->data->{cgi}{anvil_pts2_name}."\" type=\"raritan\" port=\"161\" ip=\"".$an->data->{cgi}{anvil_pts2_ip}."\" />
-		</pts>
 		<pdu>";
 		# PDU 1 and 2 always exist.
 		my $pdu1_agent = $an->data->{cgi}{anvil_pdu1_agent} ? $an->data->{cgi}{anvil_pdu1_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
