@@ -614,7 +614,7 @@ $packages
 		# Nodes are easier because they're only ever PXE.
 		$ks_body .= "
 # Now it is time for the first chroot'ed configuration steps.
-\%post --log=/tmp/post-install_chroot.log
+\%post --log=/root/install/post-install_chroot.log
 
 $common_post
 
@@ -821,14 +821,14 @@ cp -v /mnt/source/$conf->{path}{iso}{file_name} /mnt/sysimage/var/www/html/$os_d
 echo \"Setting up 'list-ips'.\"
 mkdir /mnt/sysimage/sbin/striker
 cp /mnt/source/striker/tools/list-ips /mnt/sysimage/sbin/striker/list-ips
-chown root:root /sbin/striker/list-ips
-chmod 755 /sbin/striker/list-ips
+chown root:root /mnt/sysimage/sbin/striker/list-ips
+chmod 755 /mnt/sysimage/sbin/striker/list-ips
 
 # Setup the repo rebuild program
 echo \"Setting up 'striker-rebuild-repo.sh'.\"
 cp /mnt/source/striker/tools/striker-rebuild-repo.sh /mnt/sysimage/sbin/striker/striker-rebuild-repo.sh
-chown root:root /sbin/striker/striker-rebuild-repo.sh
-chmod 755 /sbin/striker/striker-rebuild-repo.sh
+chown root:root /mnt/sysimage/sbin/striker/striker-rebuild-repo.sh
+chmod 755 /mnt/sysimage/sbin/striker/striker-rebuild-repo.sh
 
 # Copy the raritan fence agent into place.
 echo 'Copying fence_raritan_snmp into /usr/sbin/'
@@ -870,7 +870,7 @@ rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/$os_dir/x86
 
 
 # Now it is time for the first chroot'ed configuration steps.
-\%post --log=/tmp/post-install_chroot.log
+\%post --log=/root/install/post-install_chroot.log
 
 $common_post
 
@@ -930,6 +930,7 @@ cat > ".$conf->{path}{example_install}." << EOF
 			$ks_body .= " --router-mode\n";
 		}
 		$ks_body .= "EOF
+chmod 755 $conf->{path}{example_install}
 
 
 # This writes out the custom PXE menu used when installing nodes and dashboard
@@ -1087,7 +1088,7 @@ echo \"Disabling the default libvirtd bridge 'virbr0'.\"
 cat /dev/null >/etc/libvirt/qemu/networks/default.xml
 
 # Rebuild the repo
-/sbin/striker/striker-rebuild-repo.sh
+#/sbin/striker/striker-rebuild-repo.sh
 
 echo \"'chroot'ed post install script complete.\"
 \%end
@@ -1173,6 +1174,8 @@ sub get_packages
 # requirements.
 \%packages
 # Common packages
+#-\@Core
+#-\@Base
 acl
 acpid
 aic94xx-firmware

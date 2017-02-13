@@ -6744,7 +6744,7 @@ sub verify_internet_access
 	else
 	{
 		# Disable external repos
-		$conf->{sys}{yum_switches} = "-y --disablerepo='*' --enablerepo='striker*'";
+		$conf->{sys}{yum_switches} = "-y --disablerepo=* --enablerepo=*striker*";
 		logger($conf, $THIS_FILE, __LINE__, "- No internet access detected, disabling external repositories.", 1);
 	}
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);

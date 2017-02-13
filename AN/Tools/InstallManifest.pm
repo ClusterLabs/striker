@@ -18700,7 +18700,7 @@ sub verify_internet_access
 	if ((not $node1_online) or (not $node2_online))
 	{
 		# No internet, restrict access to local only.
-		$an->data->{sys}{yum_switches} = "-y --disablerepo='*' --enablerepo='striker*'";
+		$an->data->{sys}{yum_switches} = "-y --disablerepo=* --enablerepo=*striker*";
 		$an->Log->entry({log_level => 2, message_key => "log_0197", file => $THIS_FILE, line => __LINE__});
 	}
 	
