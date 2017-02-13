@@ -14356,6 +14356,7 @@ sub _server_insert_media
 		print $an->Web->template({file => "server.html", template => "insert-media-server-off", replace => { message => $message }});
 		my $server_uuid    = "";
 		my $new_definition = "";
+		my $this_device    = "";
 		my $shell_call     = $an->data->{path}{cat}." $definition_file";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
@@ -14377,11 +14378,23 @@ sub _server_insert_media
 			{
 				$server_uuid = $1;
 			}
+			if ($line =~ /<\/disk>/)
+			{
+				$this_device = "";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_device", value1 => $this_device,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if (($this_device) && ($this_device eq $insert_drive) && ($line =~ /<source file/))
+			{
+				# This was an existing disc which we are replacing, so skip it.
+				next;
+			}
 			if ($line =~ /dev='(.*?)'/)
 			{
-				my $this_device = $1;
+				$this_device = $1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "Found the device", value1 => $this_device,
+					name1 => "this_device", value1 => $this_device,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($this_device eq $insert_drive)
 				{

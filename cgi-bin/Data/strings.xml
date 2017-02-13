@@ -1493,7 +1493,7 @@
 		<key name="message_0068">It would appear that something went wrong!</key>
 		<key name="message_0069"><![CDATA[I tried to insert the disc <span class="fixed_width">#!variable!media!#</span> into the drive <span class="fixed_width">#!variable!drive!#</span> and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!variable!virsh_exit_code!#</span>] was received.]]></key>
 		<key name="message_0070"><![CDATA[Updating <span class="fixed_width">#!variable!server!#</span>'s definition file directly.]]></key>
-		<key name="message_0071">It would appear that someone else already ejected the disc.</key>
+		<key name="message_0071">It would appear that either the drive is locked by the OS or someone else already ejected the disc.</key>
 		<key name="message_0072">The optical drive's media has been ejected.</key>
 		<key name="message_0073"><![CDATA[I tried to eject the disc in drive <span class="fixed_width">#!variable!drive!#</span> and the command should have returned [<span class="fixed_width">0</span>], but [<span class="fixed_width">#!variable!virsh_exit_code!#</span>] was received.]]></key>
 		<key name="message_0074">Saving the new configuration...</key>
@@ -3898,6 +3898,39 @@ Proceed? [y/N]
 *******************************************************************************
 		</key>
 		
+		
+		<!-- Striker Update -->
+		<key name="su_message_0001"><![CDATA[
+ -=] Striker Update
+
+DESCRIPTION
+
+This program will update the local OS, the Striker/ScanCore data and Update the
+ScanCore database. Packages updated when the OS is updated will be integrated
+into the loca repository. Optionally, updated RPMs on a target node can also be
+integrated into the local repository.
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+ --node-name <node>
+ --node-uuid <uuid>
+
+	This is the node name or UUID to search for updates on. The node must
+	be a member of an Anvil! we know of.
+
+
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
 	</lang>
 
 	<!-- Japanese -->

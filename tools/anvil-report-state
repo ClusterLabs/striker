@@ -62,7 +62,7 @@ $an->Log->level          ($an->data->{sys}{log_level});
 $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
-$an->Log->db_transactions(1) if $an->data->{'anvil-safe-start'}{log_db_transactions};
+$an->Log->db_transactions(1) if $an->data->{$THIS_FILE}{log_db_transactions};
 $an->Readable->base2(1);
 
 if (($an->data->{switches}{h})   or 
