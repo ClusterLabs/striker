@@ -2523,7 +2523,7 @@ echo ccs:\$?";
 		message	=>	"#!string!message_0113!#",
 	}});
 	
-	### TODO: Get the Anvil!'s idea of the node name and use '-m ...'.
+	### TODO: On very slow systems, this can fail because clustat doesn't yet show the server...
 	# Tell the Anvil! to start the server. I don't bother to check for readiness because I confirmed it
 	# was running on this node earlier.
 	my $clusvcadm_exit_code = 255;
@@ -9079,6 +9079,48 @@ sub _manage_server
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	### NOTE: We need to pull the boot device from the XML on disk, as it may differ from the XML in
+	###       memory and it is the one on disk that will matter on boot.
+	my $server_xml = $an->data->{server}{$server}{definition};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "server::${server}::definition_file", value1 => $an->data->{server}{$server}{definition_file},
+		name2 => "server::${server}::current_host",    value2 => $an->data->{server}{$server}{current_host},
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If there is a host, the server is running. So switch to the on-disk XML.
+	if (($an->data->{server}{$server}{current_host}) && ($an->data->{server}{$server}{definition_file}))
+	{
+		my $on_disk_xml = "";
+		my $shell_call  = $an->data->{path}{cat}." ".$an->data->{server}{$server}{definition_file};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$line = $an->String->clean_spaces({string => $line});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$on_disk_xml .= $line."\n";
+			if ($line =~ /<\/domain>/)
+			{
+				# Looks like we got the XML properly
+				$server_xml = $on_disk_xml;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_xml", value1 => $server_xml, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
 	# Find the list of bootable devices and present them in a selection box. Also pull out the server's
 	# UUID.
 	my $boot_select = "<select name=\"boot_device\" style=\"width: 165px;\">";
@@ -9093,9 +9135,9 @@ sub _manage_server
 	my $server_uuid                                         = "";
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "server::${server}::definition", value1 => $an->data->{server}{$server}{definition},
+		name1 => "server_xml", value1 => $server_xml,
 	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $line (split/\n/, $an->data->{server}{$server}{definition})
+	foreach my $line (split/\n/, $server_xml)
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "in_os", value1 => $in_os,
@@ -9579,7 +9621,7 @@ FROM
 WHERE 
     server_uuid !=  ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 AND 
-    server_name IS DISTINCT FROM 'DELETED'
+    server_note IS DISTINCT FROM 'DELETED'
 ORDER BY 
     server_name ASC
 ;";
