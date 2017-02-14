@@ -3346,6 +3346,7 @@ Starting download:
 		<key name="adf_error_0004">The requested URL: [#!variable!url!#] failed because the remote host refused the connection.</key>
 		<key name="adf_error_0005">The requested URL: [#!variable!url!#] failed because there is no route to that host.</key>
 		<key name="adf_error_0006">I was asked to abort another download, but the passed in string: [#!variable!abort!#] is not a UUID or PID.</key>
+		<key name="adf_error_0007">The requested URL: [#!variable!url!#] failed because the network is unreachable.</key>
 		
 		<!-- messages -->
 		<key name="adf_message_0001"><![CDATA[

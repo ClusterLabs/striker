@@ -128,10 +128,9 @@ sub new
 	$an->Validate->parent($an);
 	$an->Web->parent($an);
 	
-	# Set some system paths and arguments
-	$an->_set_args;
-	$an->_set_defaults;
+	# Set some system paths and system default variables
 	$an->_set_paths;
+	$an->_set_defaults;
 	
 	# Check the operating system and set any OS-specific values.
 	$an->Check->_os;
@@ -546,25 +545,444 @@ sub nice_exit
 	exit($exit_code);
 }
 
-# This sets a bunch of default arguments used by some commands.
-sub _set_args
-{
-	my ($self) = shift;
-	my $an     = $self;
-	
-	$an->data->{args}{check_dvd} = "--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd";
-	$an->data->{args}{rsync}     = "-av --partial";
-	
-	return(0);
-}
-
 # This sets a bunch of default values used in several callers. All can be overriden in config files later.
 sub _set_defaults
 {
 	my ($self) = shift;
 	my $an     = $self;
 	
-	$an->data->{sys}{network}{internet_test_ip} = "8.8.8.8";
+	# This is a consolidation of the '_initialize_an()' function that used to be called by CGI scripts.
+	$an->data->{args}{check_dvd}  = "--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd";
+	$an->data->{args}{rsync}      = "-av --partial";
+	$an->data->{check_using_node} = "";
+	$an->data->{online_nodes}     = [];
+	$an->data->{handles}{'log'}   = "";
+	$an->data->{'log'}{file}      = "/var/log/striker.log";
+	$an->data->{'log'}{language}  = "en_CA";
+	$an->data->{'log'}{level}     = 1;
+	$an->data->{online_nodes}     = [];
+	
+	### TODO: Phase all this out...
+	# These are files on nodes, not on the dashboard machin itself.
+	$an->data->{path}{nodes}{'anvil-adjust-vnet'}     = "/sbin/striker/anvil-adjust-vnet";
+	$an->data->{path}{nodes}{'anvil-kick-apc-ups'}    = "/sbin/striker/anvil-kick-apc-ups";
+	$an->data->{path}{nodes}{'anvil-safe-start'}      = "/sbin/striker/anvil-safe-start";
+	# This is the actual DRBD wait script
+	$an->data->{path}{nodes}{'anvil-wait-for-drbd'}   = "/sbin/striker/anvil-wait-for-drbd";
+	$an->data->{path}{nodes}{backups}                 = "/root/backups";
+	$an->data->{path}{nodes}{bcn_bond1_config}        = "/etc/sysconfig/network-scripts/ifcfg-bcn_bond1";
+	$an->data->{path}{nodes}{bcn_link1_config}        = "/etc/sysconfig/network-scripts/ifcfg-bcn_link1";
+	$an->data->{path}{nodes}{bcn_link2_config}        = "/etc/sysconfig/network-scripts/ifcfg-bcn_link2";
+	$an->data->{path}{nodes}{cat}                     = "/bin/cat";
+	$an->data->{path}{nodes}{cluster_conf}            = "/etc/cluster/cluster.conf";
+	$an->data->{path}{nodes}{cron_root}               = "/var/spool/cron/root";
+	$an->data->{path}{nodes}{drbd}                    = "/etc/drbd.d";
+	$an->data->{path}{nodes}{drbd_global_common}      = "/etc/drbd.d/global_common.conf";
+	$an->data->{path}{nodes}{drbd_r0}                 = "/etc/drbd.d/r0.res";
+	$an->data->{path}{nodes}{drbd_r1}                 = "/etc/drbd.d/r1.res";
+	$an->data->{path}{nodes}{drbdadm}                 = "/sbin/drbdadm";
+	$an->data->{path}{nodes}{fstab}                   = "/etc/fstab";
+	$an->data->{path}{nodes}{getsebool}               = "/usr/sbin/getsebool";
+	$an->data->{path}{nodes}{'grep'}                  = "/bin/grep";
+	# This stores this node's UUID. It is used to track all our sensor data in the
+	# database. If you change this here, change it in the ScanCore, too.
+	$an->data->{path}{nodes}{host_uuid}               = "/etc/striker/host.uuid";
+	$an->data->{path}{nodes}{hostname}                = "/etc/sysconfig/network";
+	$an->data->{path}{nodes}{hosts}                   = "/etc/hosts";
+	$an->data->{path}{nodes}{ifcfg_directory}         = "/etc/sysconfig/network-scripts/";
+	$an->data->{path}{nodes}{ifn_bond1_config}        = "/etc/sysconfig/network-scripts/ifcfg-ifn_bond1";
+	$an->data->{path}{nodes}{ifn_bridge1_config}      = "/etc/sysconfig/network-scripts/ifcfg-ifn_bridge1";
+	$an->data->{path}{nodes}{ifn_link1_config}        = "/etc/sysconfig/network-scripts/ifcfg-ifn_link1";
+	$an->data->{path}{nodes}{ifn_link2_config}        = "/etc/sysconfig/network-scripts/ifcfg-ifn_link2";
+	$an->data->{path}{nodes}{iptables}                = "/etc/sysconfig/iptables";
+	$an->data->{path}{nodes}{lvm_conf}                = "/etc/lvm/lvm.conf";
+	$an->data->{path}{nodes}{MegaCli64}               = "/opt/MegaRAID/MegaCli/MegaCli64";
+	$an->data->{path}{nodes}{network_scripts}         = "/etc/sysconfig/network-scripts";
+	$an->data->{path}{nodes}{ntp_conf}                = "/etc/ntp.conf";
+	$an->data->{path}{nodes}{perl_library}            = "/usr/share/perl5";
+	$an->data->{path}{nodes}{post_install}            = "/root/post_install";
+	$an->data->{path}{nodes}{'anvil-safe-start'}      = "/sbin/striker/anvil-safe-start";
+	# Used to verify it was enabled properly.
+	$an->data->{path}{nodes}{'anvil-safe-start_link'} = "/etc/rc3.d/S99_anvil-safe-start";
+	$an->data->{path}{nodes}{scancore}                = "/sbin/striker/ScanCore/ScanCore";
+	$an->data->{path}{nodes}{sed}                     = "/bin/sed";
+	$an->data->{path}{nodes}{setsebool}               = "/usr/sbin/setsebool";
+	$an->data->{path}{nodes}{shadow}                  = "/etc/shadow";
+	$an->data->{path}{nodes}{shared_subdirectories}   = ["definitions", "provision", "archive", "files", "status"];
+	$an->data->{path}{nodes}{sn_bond1_config}         = "/etc/sysconfig/network-scripts/ifcfg-sn_bond1";
+	$an->data->{path}{nodes}{sn_link1_config}         = "/etc/sysconfig/network-scripts/ifcfg-sn_link1";
+	$an->data->{path}{nodes}{sn_link2_config}         = "/etc/sysconfig/network-scripts/ifcfg-sn_link2";
+	$an->data->{path}{nodes}{storcli64}               = "/opt/MegaRAID/storcli/storcli64";
+	$an->data->{path}{nodes}{striker_config}          = "/etc/striker/striker.conf";
+	$an->data->{path}{nodes}{striker_tarball}         = "/sbin/striker/striker_tools.tar.bz2";
+	$an->data->{path}{nodes}{tar}                     = "/bin/tar";
+	$an->data->{path}{nodes}{udev_net_rules}          = "/etc/udev/rules.d/70-persistent-net.rules";
+	$an->data->{path}{nodes}{udev_vnet_rules}         = "/etc/udev/rules.d/99-anvil-adjust-vnet.rules";
+	# This is the LSB wrapper.
+	$an->data->{path}{nodes}{'wait-for-drbd'}         = "/sbin/striker/wait-for-drbd";
+	$an->data->{path}{nodes}{'wait-for-drbd_initd'}   = "/etc/init.d/wait-for-drbd";
+	
+	# ScanCore things set here are meant to be overwritable by the user in striker.conf.
+	$an->data->{scancore}{language}           = "en_CA";
+	$an->data->{scancore}{log_level}          = 2;
+	$an->data->{scancore}{log_language}       = "en_CA";
+	$an->data->{striker}{log_db_transactions} = 0;
+	
+	# The actual strings hash
+	$an->data->{string}               = {};
+	# Config values needed to managing strings
+	$an->data->{strings}{encoding}    = "";
+	$an->data->{strings}{force_utf8}  = 1;
+	$an->data->{strings}{xml_version} = "";
+	
+	### General system stuff
+	# Some actions, like powering off servers and nodes, have a timeout set so that later, reloading the
+	# page doesn't reload a previous confirmation URL and reinitiate the power off when it wasn't 
+	# desired. This defines that timeout in seconds.
+	$an->data->{sys}{actime_timeout}                   = 180;
+	### NOTE: If you change these, also change in anvil-kick-apc-ups!
+	$an->data->{sys}{apc}{reboot}{power_off_delay}     = 60;
+	$an->data->{sys}{apc}{reboot}{sleep_time}          = 60;
+	$an->data->{sys}{apc}{'shutdown'}{power_off_delay} = 60;
+	$an->data->{sys}{auto_populate_ssh_users}          = "";
+	$an->data->{sys}{backup_url}                       = "/striker-backup_#!hostname!#_#!date!#.txt";
+	$an->data->{sys}{clustat_timeout}                  = 120;
+	$an->data->{sys}{cluster_conf}                     = "";
+	$an->data->{sys}{config_read}                      = 0;
+	$an->data->{sys}{daemons}{enable}                  = [
+		"gpm",		# LSB compliant
+		"ipmi",		# NOT LSB compliant! 0 == running, 6 == stopped
+		"iptables",	# LSB compliant
+		"irqbalance",	# LSB compliant
+		"ktune",	# LSB compliant
+		"modclusterd",	# LSB compliant
+		"network",	# Does NOT appear to be LSB compliant; returns '0' for 'stopped'
+		"ntpd",		# LSB compliant
+		"ntpdate",
+		"ricci",	# LSB compliant
+		"snmpd",
+		"tuned",	# LSB compliant
+	];
+	$an->data->{sys}{daemons}{disable}                 = [
+		"acpid",
+		"clvmd",	# Appears to be LSB compliant
+		"cman",		#
+		"drbd",		#
+		"gfs2",		#
+		"ip6tables",	#
+		"ipmidetectd",	# Not needed on the Anvil!
+		"libvirt-guests",
+		"numad",	# LSB compliant
+		"rgmanager",	#
+		"snmptrapd",	#
+		"systemtap",	#
+	];
+	$an->data->{sys}{date_seperator}                   = "-",	# Should put these in the strings.xml file
+	$an->data->{sys}{dd_block_size}                    = "1M";
+	$an->data->{sys}{debug}                            = 1;
+	$an->data->{sys}{'default'}{migration_type}        = "live";
+	# When set to '1', (almost) all external links will be disabled. Useful for sites without an Internet
+	# connection.
+	$an->data->{sys}{disable_links}                    = 0;
+	$an->data->{sys}{error_limit}                      = 10000;
+	# This will significantly cut down on the text shown on the screen to make information more 
+	# digestable for experts.
+	$an->data->{sys}{expert_ui}                        = 0;
+	$an->data->{sys}{footer_printed}                   = 0;
+	$an->data->{sys}{html_lang}                        = "en";
+	$an->data->{sys}{ignore_missing_vm}                = 0;
+	
+	# These options control some of the Install Manifest options. They can be overwritten by adding 
+	# matching entries is striker.conf.
+	$an->data->{sys}{install_manifest}{'default'}{bcn_ethtool_opts}                = "";
+	$an->data->{sys}{install_manifest}{'default'}{bcn_network}                     = "10.20.0.0";
+	$an->data->{sys}{install_manifest}{'default'}{bcn_subnet}                      = "255.255.0.0";
+	$an->data->{sys}{install_manifest}{'default'}{bcn_defroute}                    = "no";
+	$an->data->{sys}{install_manifest}{'default'}{cluster_name}                    = "anvil";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'}  = "false";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'}  = "false";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}    = "false";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-plan-ahead'}  = "7";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-max-rate'}    = "110M";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-min-rate'}    = "30M";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_c-fill-target'} = "1M";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'}   = "";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}    = "";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}    = "";
+	$an->data->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}    = "";
+	$an->data->{sys}{install_manifest}{'default'}{dns1}                            = "8.8.8.8";
+	$an->data->{sys}{install_manifest}{'default'}{dns2}                            = "8.8.4.4";
+	$an->data->{sys}{install_manifest}{'default'}{domain}                          = "";
+	$an->data->{sys}{install_manifest}{'default'}{ifn_ethtool_opts}                = "";
+	$an->data->{sys}{install_manifest}{'default'}{ifn_gateway}                     = "";
+	$an->data->{sys}{install_manifest}{'default'}{ifn_network}                     = "10.255.0.0";
+	$an->data->{sys}{install_manifest}{'default'}{ifn_subnet}                      = "255.255.0.0";
+	$an->data->{sys}{install_manifest}{'default'}{ifn_defroute}                    = "yes";
+	$an->data->{sys}{install_manifest}{'default'}{'immediate-uptodate'}            = 0;
+	$an->data->{sys}{install_manifest}{'default'}{library_size}                    = "40";
+	$an->data->{sys}{install_manifest}{'default'}{library_unit}                    = "GiB";
+	$an->data->{sys}{install_manifest}{'default'}{mtu_size}                        = 1500;
+	$an->data->{sys}{install_manifest}{'default'}{name}                            = "";
+	$an->data->{sys}{install_manifest}{'default'}{node1_bcn_ip}                    = "";
+	$an->data->{sys}{install_manifest}{'default'}{node1_ifn_ip}                    = "";
+	$an->data->{sys}{install_manifest}{'default'}{node1_ipmi_ip}                   = "";
+	$an->data->{sys}{install_manifest}{'default'}{node1_name}                      = "";
+	$an->data->{sys}{install_manifest}{'default'}{node1_sn_ip}                     = "";
+	$an->data->{sys}{install_manifest}{'default'}{node2_bcn_ip}                    = "";
+	$an->data->{sys}{install_manifest}{'default'}{node2_ifn_ip}                    = "";
+	$an->data->{sys}{install_manifest}{'default'}{node2_ipmi_ip}                   = "";
+	$an->data->{sys}{install_manifest}{'default'}{node2_name}                      = "";
+	$an->data->{sys}{install_manifest}{'default'}{node2_sn_ip}                     = "";
+	$an->data->{sys}{install_manifest}{'default'}{node1_pdu1_outlet}               = "";
+	$an->data->{sys}{install_manifest}{'default'}{node1_pdu2_outlet}               = "";
+	$an->data->{sys}{install_manifest}{'default'}{node1_pdu3_outlet}               = "";
+	$an->data->{sys}{install_manifest}{'default'}{node1_pdu4_outlet}               = "";
+	$an->data->{sys}{install_manifest}{'default'}{node2_pdu1_outlet}               = "";
+	$an->data->{sys}{install_manifest}{'default'}{node2_pdu2_outlet}               = "";
+	$an->data->{sys}{install_manifest}{'default'}{node2_pdu3_outlet}               = "";
+	$an->data->{sys}{install_manifest}{'default'}{node2_pdu4_outlet}               = "";
+	$an->data->{sys}{install_manifest}{'default'}{ntp1}                            = "";
+	$an->data->{sys}{install_manifest}{'default'}{ntp2}                            = "";
+	$an->data->{sys}{install_manifest}{'default'}{open_vnc_ports}                  = 100;
+	$an->data->{sys}{install_manifest}{'default'}{password}                        = "Initial1";
+	$an->data->{sys}{install_manifest}{'default'}{pdu1_name}                       = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu1_ip}                         = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu1_agent}                      = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu2_name}                       = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu2_ip}                         = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu2_agent}                      = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu3_name}                       = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu3_ip}                         = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu3_agent}                      = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu4_name}                       = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu4_ip}                         = "";
+	$an->data->{sys}{install_manifest}{'default'}{pdu4_agent}                      = "";
+	$an->data->{sys}{install_manifest}{'default'}{pool1_size}                      = "100";
+	$an->data->{sys}{install_manifest}{'default'}{pool1_unit}                      = "%";
+	$an->data->{sys}{install_manifest}{'default'}{prefix}                          = "";
+	$an->data->{sys}{install_manifest}{'default'}{repositories}                    = "";
+	$an->data->{sys}{install_manifest}{'default'}{sequence}                        = "01";
+	$an->data->{sys}{install_manifest}{'default'}{ssh_keysize}                     = 8191;
+	$an->data->{sys}{install_manifest}{'default'}{sn_ethtool_opts}                 = "";
+	$an->data->{sys}{install_manifest}{'default'}{sn_network}                      = "10.10.0.0";
+	$an->data->{sys}{install_manifest}{'default'}{sn_subnet}                       = "255.255.0.0";
+	$an->data->{sys}{install_manifest}{'default'}{sn_defroute}                     = "no";
+	$an->data->{sys}{install_manifest}{'default'}{striker_database}                = "scancore";
+	$an->data->{sys}{install_manifest}{'default'}{striker_user}                    = "striker";
+	$an->data->{sys}{install_manifest}{'default'}{striker1_bcn_ip}                 = "";
+	$an->data->{sys}{install_manifest}{'default'}{striker1_ifn_ip}                 = "";
+	$an->data->{sys}{install_manifest}{'default'}{striker1_name}                   = "";
+	$an->data->{sys}{install_manifest}{'default'}{striker1_user}                   = "",	# Defaults to 'striker_user' if not set
+	$an->data->{sys}{install_manifest}{'default'}{striker2_bcn_ip}                 = "";
+	$an->data->{sys}{install_manifest}{'default'}{striker2_ifn_ip}                 = "";
+	$an->data->{sys}{install_manifest}{'default'}{striker2_name}                   = "";
+	$an->data->{sys}{install_manifest}{'default'}{striker2_user}                   = "",	# Defaults to 'striker_user' if not set
+	$an->data->{sys}{install_manifest}{'default'}{switch1_ip}                      = "";
+	$an->data->{sys}{install_manifest}{'default'}{switch1_name}                    = "";
+	$an->data->{sys}{install_manifest}{'default'}{switch2_ip}                      = "";
+	$an->data->{sys}{install_manifest}{'default'}{switch2_name}                    = "";
+	$an->data->{sys}{install_manifest}{'default'}{ups1_ip}                         = "";
+	$an->data->{sys}{install_manifest}{'default'}{ups1_name}                       = "";
+	$an->data->{sys}{install_manifest}{'default'}{ups2_ip}                         = "";
+	$an->data->{sys}{install_manifest}{'default'}{ups2_name}                       = "";
+	$an->data->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'}        = 0;
+	$an->data->{sys}{install_manifest}{'default'}{'use_anvil-safe-start'}          = 1;
+	$an->data->{sys}{install_manifest}{'default'}{use_scancore}                    = 0;
+	# If the user wants to build install manifests for environments with 4 PDUs, this will be set to '4'.
+	$an->data->{sys}{install_manifest}{pdu_count}                                  = 2;
+	# This sets the default fence agent to use for the PDUs.
+	$an->data->{sys}{install_manifest}{pdu_fence_agent}                            = "fence_apc_snmp";
+	# These variables control whether certain fields are displayed or not when generating Install 
+	# Manifests. If you set any of these to '0', please be sure to have an appropriate default set above.
+	### Primary
+	$an->data->{sys}{install_manifest}{show}{prefix_field}                         = 1;
+	$an->data->{sys}{install_manifest}{show}{sequence_field}                       = 1;
+	$an->data->{sys}{install_manifest}{show}{domain_field}                         = 1;
+	$an->data->{sys}{install_manifest}{show}{password_field}                       = 1;
+	$an->data->{sys}{install_manifest}{show}{bcn_network_fields}                   = 1;
+	$an->data->{sys}{install_manifest}{show}{sn_network_fields}                    = 1;
+	$an->data->{sys}{install_manifest}{show}{ifn_network_fields}                   = 1;
+	$an->data->{sys}{install_manifest}{show}{library_fields}                       = 1;
+	$an->data->{sys}{install_manifest}{show}{pool1_fields}                         = 1;
+	$an->data->{sys}{install_manifest}{show}{repository_field}                     = 1;
+	### Shared
+	$an->data->{sys}{install_manifest}{show}{name_field}                           = 1;
+	$an->data->{sys}{install_manifest}{show}{dns_fields}                           = 1;
+	$an->data->{sys}{install_manifest}{show}{ntp_fields}                           = 1;
+	### Foundation pack
+	$an->data->{sys}{install_manifest}{show}{switch_fields}                        = 1;
+	$an->data->{sys}{install_manifest}{show}{ups_fields}                           = 1;
+	$an->data->{sys}{install_manifest}{show}{pdu_fields}                           = 1;
+	$an->data->{sys}{install_manifest}{show}{pts_fields}                           = 1;
+	$an->data->{sys}{install_manifest}{show}{dashboard_fields}                     = 1;
+	### Nodes
+	$an->data->{sys}{install_manifest}{show}{nodes_name_field}                     = 1;
+	$an->data->{sys}{install_manifest}{show}{nodes_bcn_field}                      = 1;
+	$an->data->{sys}{install_manifest}{show}{nodes_ipmi_field}                     = 1;
+	$an->data->{sys}{install_manifest}{show}{nodes_sn_field}                       = 1;
+	$an->data->{sys}{install_manifest}{show}{nodes_ifn_field}                      = 1;
+	$an->data->{sys}{install_manifest}{show}{nodes_pdu_fields}                     = 1;
+	# Control tests/output shown when the install runs. Mainly useful when a site will never have 
+	# Internet access.
+	$an->data->{sys}{install_manifest}{show}{internet_check}                       = 1;
+	$an->data->{sys}{install_manifest}{show}{rhn_checks}                           = 1;
+	# This sets anvil-kick-apc-ups to start on boot
+	$an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}                   = 0;
+	# This controls whether anvil-safe-start is enabled or not.
+	$an->data->{sys}{install_manifest}{'use_anvil-safe-start'}                     = 1;
+	# This controls whether ScanCore will run on boot or not (now required, never disable).
+	$an->data->{sys}{install_manifest}{use_scancore}                               = 1;
+	
+	### Back to our regularly scheduled system stuff...
+	$an->data->{sys}{language}                             = "en_CA";
+	$an->data->{sys}{'log'}{log_pid}                       = 0;
+	$an->data->{sys}{log_language}                         = "en_CA";
+	$an->data->{sys}{log_level}                            = 2;
+	$an->data->{sys}{logrotate}{'striker.log'}{count}      = 5,		# Backups made before deletion.
+	$an->data->{sys}{logrotate}{'striker.log'}{frequency}  = "weekly",	# daily, weekly, monthly, yearly
+	$an->data->{sys}{logrotate}{'striker.log'}{maxsize}    = "100M",		# Rotates if bigger than this, regardless of frequency
+	$an->data->{sys}{logrotate}{'ScanCore.log'}{count}     = 5,		# Backups made before deletion.
+	$an->data->{sys}{logrotate}{'ScanCore.log'}{frequency} = "weekly",	# daily, weekly, monthly, yearly
+	$an->data->{sys}{logrotate}{'ScanCore.log'}{maxsize}   = "100M",		# Rotates if bigger than this, regardless of frequency
+	$an->data->{sys}{lvm_conf}                             = "";
+	$an->data->{sys}{lvm_filter}                           = "filter = [ \"a|/dev/drbd*|\", \"r/.*/\" ]";
+	# This allows for custom MTU sizes in an Install Manifest
+	$an->data->{sys}{mtu_size}                             = 1500;
+	$an->data->{sys}{network}{internet_test_ip}            = "8.8.8.8";
+	# This tells the install manifest generator how many ports to open on the IFN for incoming VNC 
+	# connections.
+	$an->data->{sys}{node_names}                           = [];
+	$an->data->{sys}{online_nodes}                         = 0;
+	$an->data->{sys}{os_variant}                           = [
+		"win7#!#Microsoft Windows 7",
+		"win7#!#Microsoft Windows 8",
+		"win7#!#Microsoft Windows 10",
+		"vista#!#Microsoft Windows Vista",
+		"winxp64#!#Microsoft Windows XP (x86_64)",
+		"winxp#!#Microsoft Windows XP",
+		"win2k#!#Microsoft Windows 2000",
+		"win2k3#!#Microsoft Windows Server 2003",
+		"win2k8#!#Microsoft Windows Server 2008 (R2)",
+		"win2k8#!#Microsoft Windows Server 2012 (R2)",
+		"win2k8#!#Microsoft Windows Server 2016",
+		"openbsd4#!#OpenBSD 4.x",
+		"freebsd8#!#FreeBSD 8.x",
+		"freebsd7#!#FreeBSD 7.x",
+		"freebsd6#!#FreeBSD 6.x",
+		"solaris9#!#Sun Solaris 9",
+		"solaris10#!#Sun Solaris 10",
+		"opensolaris#!#Sun OpenSolaris",
+		"netware6#!#Novell Netware 6",
+		"netware5#!#Novell Netware 5",
+		"netware4#!#Novell Netware 4",
+		"msdos#!#MS-DOS",
+		"generic#!#Generic",
+		"debianjessie#!#Debian Jessie",
+		"debianwheezy#!#Debian Wheezy",
+		"debiansqueeze#!#Debian Squeeze",
+		"debianlenny#!#Debian Lenny",
+		"debianetch#!#Debian Etch",
+		"fedora18#!#Fedora 23",
+		"fedora18#!#Fedora 22",
+		"fedora18#!#Fedora 21",
+		"fedora18#!#Fedora 20",
+		"fedora18#!#Fedora 19",
+		"fedora18#!#Fedora 18",
+		"fedora17#!#Fedora 17",
+		"fedora16#!#Fedora 16",
+		"fedora15#!#Fedora 15",
+		"fedora14#!#Fedora 14",
+		"fedora13#!#Fedora 13",
+		"fedora12#!#Fedora 12",
+		"fedora11#!#Fedora 11",
+		"fedora10#!#Fedora 10",
+		"fedora9#!#Fedora 9",
+		"fedora8#!#Fedora 8",
+		"fedora7#!#Fedora 7",
+		"fedora6#!#Fedora Core 6",
+		"fedora5#!#Fedora Core 5",
+		"mageia1#!#Mageia 1 and later",
+		"mes5.1#!#Mandriva Enterprise Server 5.1 and later",
+		"mes5#!#Mandriva Enterprise Server 5.0",
+		"mandriva2010#!#Mandriva Linux 2010 and later",
+		"mandriva2009#!#Mandriva Linux 2009 and earlier",
+		"rhel7#!#Red Hat Enterprise Linux 7",
+		"rhel6#!#Red Hat Enterprise Linux 6",
+		"rhel5.4#!#Red Hat Enterprise Linux 5.4 or later",
+		"rhel5#!#Red Hat Enterprise Linux 5",
+		"rhel4#!#Red Hat Enterprise Linux 4",
+		"rhel3#!#Red Hat Enterprise Linux 3",
+		"rhel2.1#!#Red Hat Enterprise Linux 2.1",
+		"sles11#!#Suse Linux Enterprise Server 11",
+		"sles10#!#Suse Linux Enterprise Server",
+		"opensuse12#!#openSuse 12",
+		"opensuse11#!#openSuse 11",
+		"ubuntuquantal#!#Ubuntu 12.10 (Quantal Quetzal)",
+		"ubuntuprecise#!#Ubuntu 12.04 LTS (Precise Pangolin)",
+		"ubuntuoneiric#!#Ubuntu 11.10 (Oneiric Ocelot)",
+		"ubuntunatty#!#Ubuntu 11.04 (Natty Narwhal)",
+		"ubuntumaverick#!#Ubuntu 10.10 (Maverick Meerkat)",
+		"ubuntulucid#!#Ubuntu 10.04 LTS (Lucid Lynx)",
+		"ubuntukarmic#!#Ubuntu 9.10 (Karmic Koala)",
+		"ubuntujaunty#!#Ubuntu 9.04 (Jaunty Jackalope)",
+		"ubuntuintrepid#!#Ubuntu 8.10 (Intrepid Ibex)",
+		"ubuntuhardy#!#Ubuntu 8.04 LTS (Hardy Heron)",
+		"virtio26#!#Generic 2.6.25 or later kernel with virtio",
+		"generic26#!#Generic 2.6.x kernel",
+		"generic24#!#Generic 2.4.x kernel",
+	];
+	$an->data->{sys}{output}                               = "web";
+	$an->data->{sys}{pool1_shrunk}                         = 0;
+	# When shutting down the nodes prior to power-cycling or powering off the entire rack, instead of the
+	# nodes being marked 'clean' off (which would leave them off until a human turned them on), the 
+	# 'host_stop_reason' is set to unix-time + this number of seconds. When the dashboard sees this time 
+	# set, it will not boot the nodes until time > host_stop_reason. This way, the nodes will not be 
+	# powered on before the UPS shuts off.
+	# NOTE: Be sure that this time is greater than the UPS shutdown delay!
+	$an->data->{sys}{power_off_delay}                      = 300;
+	$an->data->{sys}{reboot_timeout}                       = 600;
+	$an->data->{sys}{root_password}                        = "";
+	# Set this to an integer to have the main Striker page and the hardware status pages automatically 
+	# reload.
+	$an->data->{sys}{reload_page_timer}                    = 0;
+	# These options allow customization of newly provisioned servers.
+	### If you change these, change the matching values in striker-installer so that it stays in sync.
+	$an->data->{sys}{scancore_database}                    = "scancore";
+	$an->data->{sys}{striker_user}                         = "admin";
+	$an->data->{sys}{server}{nic_count}                    = 1;
+	$an->data->{sys}{server}{alternate_nic_model}          = "e1000";
+	$an->data->{sys}{server}{minimum_ram}                  = 67108864;
+	$an->data->{sys}{server}{bcn_nic_driver}               = "";
+	$an->data->{sys}{server}{sn_nic_driver}                = "";
+	$an->data->{sys}{server}{ifn_nic_driver}               = "";
+	$an->data->{sys}{shared_fs_uuid}                       = "";
+	$an->data->{sys}{show_nodes}                           = 0;
+	$an->data->{sys}{show_refresh}                         = 1;
+	$an->data->{sys}{skin}                                 = "alteeve";
+	$an->data->{sys}{striker_uid}                          = $<;
+	$an->data->{sys}{system_timezone}                      = "America/Toronto";
+	$an->data->{sys}{time_seperator}                       = ":";
+	# ~3 GiB, but in practice more because it will round down the available RAM before subtracting this 
+	# to leave the user with an even number of GiB of RAM to allocate to servers.
+	$an->data->{sys}{unusable_ram}                         = (3 * (1024 ** 3));
+	$an->data->{sys}{up_nodes}                             = 0;
+	$an->data->{sys}{update_os}                            = 1;
+	$an->data->{sys}{use_24h}                              = 1,			# Set to 0 for am/pm time, 1 for 24h time
+	$an->data->{sys}{username}                             = getpwuid( $< );
+	# If a user wants to use spice + qxl for video in VMs, set this to '1'. NOTE: This disables web-based VNC!
+	$an->data->{sys}{use_spice_graphics}                   = 1;
+	$an->data->{sys}{version}                              = "2.0.0b";
+	# Adds: [--disablerepo='*' --enablerepo='striker*'] if
+	# no internet connection found.
+	$an->data->{sys}{yum_switches}                         = "-y";
+	# Tools default valies
+	$an->data->{tools}{'anvil-kick-apc-ups'}{enabled}      = 0;
+	$an->data->{tools}{'anvil-safe-start'}{enabled}        = 0;
+	$an->data->{tools}{disaster_recovery}{cache_signature} = ".dr_cache";
+	$an->data->{tools}{'striker-push-ssh'}{enabled}        = 0;
+	$an->data->{up_nodes}                                  = [];
+	$an->data->{url}{skins}                                = "/skins";
+	$an->data->{url}{cgi}                                  = "/cgi-bin";
 
 	return(0);
 }
@@ -608,6 +1026,7 @@ sub _set_paths
 	$an->data->{path}{gfs2_tool}              = "/usr/sbin/gfs2_tool";
 	$an->data->{path}{hostname}               = "/bin/hostname";
 	$an->data->{path}{htpasswd}               = "/usr/bin/htpasswd";
+	$an->data->{path}{ifconfig}               = "/sbin/ifconfig";
 	$an->data->{path}{ip}                     = "/sbin/ip";
 	$an->data->{path}{ipmitool}               = "/usr/bin/ipmitool";
 	$an->data->{path}{'iptables-save'}        = "/sbin/iptables-save";
@@ -669,6 +1088,7 @@ sub _set_paths
 	$an->data->{path}{storcli64}              = "/sbin/storcli64";
 	$an->data->{path}{su}                     = "/bin/su";
 	$an->data->{path}{timeout}                = "/usr/bin/timeout";
+	$an->data->{path}{tput}                   = "/usr/bin/tput";
 	$an->data->{path}{uuidgen}                = "/usr/bin/uuidgen";
 	$an->data->{path}{touch}                  = "/bin/touch";
 	$an->data->{path}{'virt-manager'}         = "/usr/bin/virt-manager";
@@ -685,8 +1105,9 @@ sub _set_paths
 	
 	# Text files
 	$an->data->{path}{htpasswd_access}  = "/var/www/home/htpasswd";
-	$an->data->{path}{cman_config}      = "/etc/cluster/cluster.conf";	# TODO: Phase this out
 	$an->data->{path}{cluster_conf}     = "/etc/cluster/cluster.conf";
+	$an->data->{path}{cman_config}      = "/etc/cluster/cluster.conf";	# TODO: Phase this out
+	$an->data->{path}{common_strings}   = "Data/common.xml";		# Relative to the install path
 	$an->data->{path}{dhcpd_conf}       = "/etc/dhcp/dhcpd.conf";
 	$an->data->{path}{etc_fstab}        = "/etc/fstab";
 	$an->data->{path}{etc_hosts}        = "/etc/hosts";
@@ -694,11 +1115,18 @@ sub _set_paths
 	$an->data->{path}{etc_virbr0}       = "/etc/libvirt/qemu/networks/default.xml";
 	$an->data->{path}{gdm_presession}   = "/etc/gdm/PreSession/Default";
 	$an->data->{path}{host_uuid}        = "/etc/striker/host.uuid";
+	$an->data->{path}{hosts}            = "/etc/hosts";
 	$an->data->{path}{logrotate_config} = "/etc/logrotate.d/anvil";
+	$an->data->{path}{'redhat-release'} = "/etc/redhat-release";
+	$an->data->{path}{scancore_strings} = "/sbin/striker/ScanCore/ScanCore.xml";
+	$an->data->{path}{scancore_sql}     = "/sbin/striker/ScanCore/ScanCore.sql";
 	$an->data->{path}{ssh_config}       = "/etc/ssh/ssh_config";
 	$an->data->{path}{striker_config}   = "/etc/striker/striker.conf";
 	$an->data->{path}{striker_strings}  = "/sbin/striker/Data/strings.xml";
 	$an->data->{path}{root_crontab}     = "/var/spool/cron/root";
+	
+	# init.d stuff
+	$an->data->{path}{initd_libvirtd} = "/etc/init.d/libvirtd";
 	
 	# Log files
 	$an->data->{path}{log_file} = "/var/log/striker.log";
@@ -719,10 +1147,15 @@ sub _set_paths
 	$an->data->{path}{sysfs_block} = "/sys/block";
 
 	# Directories
+	$an->data->{path}{agents_directory}   = "/var/www/ScanCore/ScanCore/agents";
 	$an->data->{path}{alert_emails}       = "/var/log/alert_emails";
 	$an->data->{path}{alert_files}        = "/var/log";
 	$an->data->{path}{fence_agents}       = "/usr/sbin";
 	$an->data->{path}{initd}              = "/etc/init.d";
+	$an->data->{path}{media}              = "/var/www/home/media/";
+	$an->data->{path}{repo_centos}        = "/var/www/html/centos6/x86_64/img/repodata";
+	$an->data->{path}{repo_generic}       = "/var/www/html/repo/repodata";
+	$an->data->{path}{repo_rhel}          = "/var/www/html/rhel6/x86_64/img/repodata";
 	$an->data->{path}{scancore_archive}   = "/var/ScanCore/archives/";	# The user can override this with 'scancore::archive::directory'
 	$an->data->{path}{shared}             = "/shared";
 	$an->data->{path}{shared_archive}     = "/shared/archive";
@@ -731,27 +1164,44 @@ sub _set_paths
 	$an->data->{path}{shared_privision}   = "/shared/provision";
 	$an->data->{path}{skins}              = "/var/www/html/skins";
 	$an->data->{path}{striker_backups}    = "/root/anvil";
+	$an->data->{path}{striker_cache}      = "/var/www/home/cache";
 	$an->data->{path}{striker_tools}      = "/sbin/striker";
 	$an->data->{path}{update_cache}       = "/var/striker/cache";
 	$an->data->{path}{yum_repos}          = "/etc/yum.repos.d";
 	
 	# Tools
-	$an->data->{path}{'anvil-boot-server'}         = "/sbin/striker/anvil-boot-server";
-	$an->data->{path}{'anvil-download-file'}       = "/sbin/striker/anvil-download-file";
-	$an->data->{path}{'anvil-kick-apc-ups'}        = "/sbin/striker/anvil-kick-apc-ups";
-	$an->data->{path}{'anvil-run-jobs'}            = "/sbin/striker/anvil-run-jobs";
-	$an->data->{path}{'anvil-map-network'}         = "/sbin/striker/anvil-map-network";
-	$an->data->{path}{'anvil-migrate-server'}      = "/sbin/striker/anvil-migrate-server";
-	$an->data->{path}{'anvil-report-ipmi-details'} = "/sbin/striker/anvil-report-ipmi-details";	# Deprecated, will be deleted soon
-	$an->data->{path}{'anvil-report-memory'}       = "/sbin/striker/anvil-report-memory";
-	$an->data->{path}{'anvil-report-state'}        = "/sbin/striker/anvil-report-state";
-	$an->data->{path}{'anvil-safe-start'}          = "/sbin/striker/anvil-safe-start";
-	$an->data->{path}{'anvil-safe-start_link'}     = "/etc/rc3.d/S99_anvil-safe-start";
-	$an->data->{path}{'anvil-safe-stop'}           = "/sbin/striker/anvil-safe-stop";
-	$an->data->{path}{'anvil-stop-server'}         = "/sbin/striker/anvil-stop-server";
-	$an->data->{path}{'striker-change-password'}   = "/sbin/striker/striker-change-password";
-	$an->data->{path}{'striker-push-ssh'}          = "/sbin/striker/striker-push-ssh";
-	$an->data->{path}{ScanCore}                    = "/sbin/striker/ScanCore/ScanCore";
+	$an->data->{path}{'anvil-boot-server'}             = "/sbin/striker/anvil-boot-server";
+	$an->data->{path}{'anvil-download-file'}           = "/sbin/striker/anvil-download-file";
+	$an->data->{path}{'anvil-kick-apc-ups'}            = "/sbin/striker/anvil-kick-apc-ups";
+	$an->data->{path}{'anvil-run-jobs'}                = "/sbin/striker/anvil-run-jobs";
+	$an->data->{path}{'anvil-map-network'}             = "/sbin/striker/anvil-map-network";
+	$an->data->{path}{'anvil-migrate-server'}          = "/sbin/striker/anvil-migrate-server";
+	$an->data->{path}{'anvil-report-ipmi-details'}     = "/sbin/striker/anvil-report-ipmi-details";	# Deprecated, will be deleted soon
+	$an->data->{path}{'anvil-report-memory'}           = "/sbin/striker/anvil-report-memory";
+	$an->data->{path}{'anvil-report-state'}            = "/sbin/striker/anvil-report-state";
+	$an->data->{path}{'anvil-safe-start'}              = "/sbin/striker/anvil-safe-start";
+	$an->data->{path}{'anvil-safe-start_link'}         = "/etc/rc3.d/S99_anvil-safe-start";
+	$an->data->{path}{'anvil-safe-stop'}               = "/sbin/striker/anvil-safe-stop";
+	$an->data->{path}{'anvil-stop-server'}             = "/sbin/striker/anvil-stop-server";
+	$an->data->{path}{'call_anvil-kick-apc-ups'}       = "/sbin/striker/call_anvil-kick-apc-ups";
+	$an->data->{path}{'call_gather-system-info'}       = "/sbin/striker/call_gather-system-info";
+	$an->data->{path}{'call_striker-push-ssh'}         = "/sbin/striker/call_striker-push-ssh";
+	$an->data->{path}{'call_striker-configure-vmm'}    = "/sbin/striker/call_striker-configure-vmm";
+	$an->data->{path}{'call_striker-delete-anvil'}     = "/sbin/striker/call_striker-delete-anvil";
+	$an->data->{path}{'call_striker-merge-dashboards'} = "/sbin/striker/call_striker-merge-dashboards";
+	$an->data->{path}{check_dvd}                       = "/sbin/striker/check_dvd";
+	$an->data->{path}{control_dhcpd}                   = "/sbin/striker/control_dhcpd";
+	$an->data->{path}{control_iptables}                = "/sbin/striker/control_iptables";
+	$an->data->{path}{control_libvirtd}                = "/sbin/striker/control_libvirtd";
+	$an->data->{path}{control_shorewall}               = "/sbin/striker/control_shorewall";
+	$an->data->{path}{do_dd}                           = "/sbin/striker/do_dd";
+	$an->data->{path}{'striker-configure-vmm'}         = "/sbin/striker/striker-configure-vmm";
+	$an->data->{path}{'striker-delete-anvil'}          = "/sbin/striker/striker-delete-anvil";
+	$an->data->{path}{'striker-merge-dashboards'}      = "/sbin/striker/striker-merge-dashboards";
+	$an->data->{path}{'striker-change-password'}       = "/sbin/striker/striker-change-password";
+	$an->data->{path}{'striker-push-ssh'}              = "/sbin/striker/striker-push-ssh";
+	$an->data->{path}{ScanCore}                        = "/sbin/striker/ScanCore/ScanCore";
+	$an->data->{path}{'touch_striker.log'}             = "/sbin/striker/touch_striker.log";
 	
 	# Temporary/progress files
 	$an->data->{path}{'anvil-jobs'}        = "/tmp/anvil.jobs";

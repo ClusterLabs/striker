@@ -10499,7 +10499,7 @@ sub get_node_os_version
 	my $brand      = "";
 	my $major      = 0;
 	my $minor      = 0;
-	my $shell_call = $an->data->{path}{cat}." /etc/redhat-release";
+	my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{'redhat-release'};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,

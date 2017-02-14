@@ -11,6 +11,7 @@
 # 4 = The requested URL failed because the remote host refused the connection.
 # 5 = The requested URL failed because there is no route to that host.
 # 6 = Abort requested, but UUID or PID not passed
+# 7 = The requested URL failed because the network is unreachable.
 # 
 
 use strict; 
@@ -506,7 +507,7 @@ sub download_file
 	my $unix_start    = time;
 	my $say_start     = $an->Get->date_and_time({use_time => $unix_start, split_date_time => 0});
 	my $progress_file = "/tmp/".$THIS_FILE.".progress.".$uuid;
-	$an->Log->entry({log_level => 3, message_key => "adf_log_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, message_key => "adf_log_0002", message_variables => { 
 		file       => $file, 
 		url        => $url, 
 		out_file   => $out_file, 
@@ -552,7 +553,7 @@ sub download_file
 	my $report_interval  = 5;	# Seconds between status file update
 	my $next_report      = time + $report_interval;
 	my $shell_call       = $progress_file;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -572,7 +573,9 @@ sub download_file
 		   $line =~ s/^\s+//;
 		   $line =~ s/\s+$//;
 		   $line =~ s/\s+/ /g;
-		#print "out: [$line]\n";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Check for problems
 		if (($line =~ /404/) && ($line =~ /Not Found/i))
@@ -594,6 +597,11 @@ sub download_file
 		{
 			$an->Log->entry({log_level => 0, message_key => "adf_error_0005", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
 			$failed = 5;
+		}
+		if ($line =~ /Network is unreachable/i)
+		{
+			$an->Log->entry({log_level => 0, message_key => "adf_error_0007", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
+			$failed = 7;
 		}
 		
 		if ($line =~ /^(\d+)K .*? (\d+)% (.*?) (\d+.*)$/)
@@ -693,7 +701,7 @@ sub download_file
 		if (-e $bad_file)
 		{
 			# Try to unlink the file, if possible.
-			$an->Log->entry({log_level => 0, message_key => "adf_log_0003", message_variables => { url => $url }, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 0, message_key => "adf_log_0003", message_variables => { bad_file => $bad_file }, file => $THIS_FILE, line => __LINE__});
 			unlink $bad_file or $an->Log->entry({log_level => 0, message_key => "adf_warning_0001", message_variables => { bad_file => $bad_file, error => $! }, file => $THIS_FILE, line => __LINE__});
 		}
 		my $key = "adf_error_000".$failed;
