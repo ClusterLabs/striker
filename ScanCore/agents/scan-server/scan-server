@@ -168,7 +168,7 @@ $an->nice_exit({exit_code => 0});
 sub check_for_removed_files
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_for_removed_files", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_for_removed_files", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This should only ever run on a node in an Anvil!.
 	$an->data->{scancore}{i_am_a} = $an->Get->what_am_i();
@@ -210,6 +210,8 @@ sub check_for_removed_files
 	}
 	
 	### NOTE: For now, we don't delete pre/post migration scripts as them missing isn't critical.
+	### NOTE: We will use on-disk XML as that is most relevant for booting, which is where missing files
+	###       are a problem.
 	# Now loop through each server on this Anvil! and parse their XML files to see if they have a mounted
 	# ISO that no longer exists. If so, eject it.
 	my $server_data = $an->ScanCore->get_servers();
@@ -217,34 +219,80 @@ sub check_for_removed_files
 	{
 		my $server_uuid                     = $hash_ref->{server_uuid};
 		my $server_name                     = $hash_ref->{server_name};
-		my $server_definition               = $hash_ref->{server_definition};
 		my $server_pre_migration_script     = $hash_ref->{server_pre_migration_script};
 		my $server_pre_migration_arguments  = $hash_ref->{server_pre_migration_arguments};
 		my $server_post_migration_script    = $hash_ref->{server_post_migration_script};
 		my $server_post_migration_arguments = $hash_ref->{server_post_migration_arguments};
 		my $server_anvil_uuid               = $hash_ref->{server_anvil_uuid};
 		my $server_host                     = $hash_ref->{server_host};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "server_uuid",                     value1 => $server_uuid,
 			name2 => "server_name",                     value2 => $server_name,
-			name3 => "server_definition",               value3 => $server_definition,
-			name4 => "server_pre_migration_script",     value4 => $server_pre_migration_script,
-			name5 => "server_pre_migration_arguments",  value5 => $server_pre_migration_arguments,
-			name6 => "server_post_migration_script",    value6 => $server_post_migration_script,
-			name7 => "server_post_migration_arguments", value7 => $server_post_migration_arguments,
-			name8 => "server_anvil_uuid",               value8 => $server_anvil_uuid,
-			name9 => "server_host",                     value9 => $server_host,
+			name3 => "server_pre_migration_script",     value3 => $server_pre_migration_script,
+			name4 => "server_pre_migration_arguments",  value4 => $server_pre_migration_arguments,
+			name5 => "server_post_migration_script",    value5 => $server_post_migration_script,
+			name6 => "server_post_migration_arguments", value6 => $server_post_migration_arguments,
+			name7 => "server_anvil_uuid",               value7 => $server_anvil_uuid,
+			name8 => "server_host",                     value8 => $server_host,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Skip this server if it isn't on this Anvil!.
 		next if $anvil_uuid ne $server_anvil_uuid;
 		
-		# Skip this server if it wasn't found locallt.
+		# Skip this server if it wasn't found locally.
 		if (($server_uuid) && (not exists $an->data->{server_uuid}{$server_uuid}{name}))
 		{
 			$an->Log->entry({log_level => 3, message_key => "scan_server_message_0015", message_variables => { 
 				server_name => $server_name, 
 				server_uuid => $server_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		# Get the on-disk XML.
+		my $definition_file = $an->data->{path}{shared_definitions}."/".$server_name.".xml";
+		if (not -e $definition_file)
+		{
+			# No sense proceeding.
+			$an->Log->entry({log_level => 2, message_key => "scan_server_message_0016", message_variables => { 
+				server_name     => $server_name, 
+				definition_file => $definition_file, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		my $server_definition = "";
+		my $on_disk_xml       = "";
+		my $shell_call        = $definition_file;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$on_disk_xml .= $line."\n";
+			if ($line =~ /<\/domain>/)
+			{
+				# Looks like we got the XML properly
+				$server_definition = $on_disk_xml;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_definition", value1 => $server_definition, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Did I read the file successfully?
+		if (not $server_definition)
+		{
+			# Nope.
+			$an->Log->entry({log_level => 2, message_key => "scan_server_message_0017", message_variables => { 
+				server_name     => $server_name, 
+				definition_file => $definition_file, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -364,7 +412,7 @@ sub check_for_removed_files
 					{
 						# Eject this disk
 						$do_eject = 1;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "do_eject", value1 => $do_eject, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -817,7 +865,7 @@ WHERE
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
