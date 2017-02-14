@@ -129,8 +129,9 @@ sub new
 	$an->Web->parent($an);
 	
 	# Set some system paths and arguments
-	$an->_set_paths;
 	$an->_set_args;
+	$an->_set_defaults;
+	$an->_set_paths;
 	
 	# Check the operating system and set any OS-specific values.
 	$an->Check->_os;
@@ -549,7 +550,7 @@ sub nice_exit
 sub _set_args
 {
 	my ($self) = shift;
-	my $an = $self;
+	my $an     = $self;
 	
 	$an->data->{args}{check_dvd} = "--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd";
 	$an->data->{args}{rsync}     = "-av --partial";
@@ -557,11 +558,22 @@ sub _set_args
 	return(0);
 }
 
+# This sets a bunch of default values used in several callers. All can be overriden in config files later.
+sub _set_defaults
+{
+	my ($self) = shift;
+	my $an     = $self;
+	
+	$an->data->{sys}{network}{internet_test_ip} = "8.8.8.8";
+
+	return(0);
+}
+
 # This sets a bunch of default paths to executables and a few system files.
 sub _set_paths
 {
 	my ($self) = shift;
-	my $an = $self;
+	my $an     = $self;
 	
 	### TODO: Use '$an->Storage->find()' to locate these in case they aren't found at the set location
 	###       below.
@@ -720,6 +732,7 @@ sub _set_paths
 	$an->data->{path}{skins}              = "/var/www/html/skins";
 	$an->data->{path}{striker_backups}    = "/root/anvil";
 	$an->data->{path}{striker_tools}      = "/sbin/striker";
+	$an->data->{path}{update_cache}       = "/var/striker/cache";
 	$an->data->{path}{yum_repos}          = "/etc/yum.repos.d";
 	
 	# Tools

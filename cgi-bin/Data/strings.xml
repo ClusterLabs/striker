@@ -3911,6 +3911,23 @@ into the loca repository. Optionally, updated RPMs on a target node can also be
 integrated into the local repository.
 
 
+NOTE
+
+If your system has no internet connection, you can manually copy files to:
+
+#!data!path::update_cache!#/rpms/
+#!data!path::update_cache!#/source/
+
+Any RPMs found in the 'rpms' directory will be loaded into the local repository
+prior to running the OS update. If 'striker*.zip' (striker.zip, 
+striker-master.zip, etc) is found under the 'source' directory, that will be
+unpacked and used to update Striker (on dashboards) and ScanCore (on all 
+machines). 
+
+You only need to pre-populate on Striker dashboards. This program will use the
+local data to update nodes.
+
+
 SWITCHES
 
  -h, -?, --help
@@ -3920,9 +3937,19 @@ SWITCHES
  --node-name <node>
  --node-uuid <uuid>
 
-	This is the node name or UUID to search for updates on. The node must
-	be a member of an Anvil! we know of.
+	This is the node name or UUID connect to. The node must be a member of
+	an Anvil! we know of. 
+	
+	By default, we will check to see if the node is withdrawn and, if it 
+	is, we will update its OS and ScanCore tools prior to pulling updates
+	over to integrate. 
+	
+	If '--gather-only' is used, or if the node is still a member of the 
+	Anvil!, no update will be performed. 
 
+ --gather-only
+
+	When called without a node being defined, 
 
 SUPPORT
 

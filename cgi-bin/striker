@@ -600,6 +600,9 @@ sub _initialize_an
 			lvm_filter		=>	"filter = [ \"a|/dev/drbd*|\", \"r/.*/\" ]",
 			# This allows for custom MTU sizes in an Install Manifest
 			mtu_size		=>	1500,
+			network			=>	{
+				internet_test_ip	=>	"8.8.8.8",
+			},
 			# This tells the install manifest generator how many ports to open on the IFN for 
 			# incoming VNC connections
 			node_names		=>	[],
