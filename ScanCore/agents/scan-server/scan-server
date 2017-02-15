@@ -832,7 +832,7 @@ sub find_changes
 			my $old_server_definition = $an->data->{sql}{$server_uuid}{server_definition};
 			
 			# Diff?
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 				name1  => "old_server_anvil_uuid", value1  => $old_server_anvil_uuid, 
 				name2  => "sys::anvil_uuid",       value2  => $an->data->{sys}{anvil_uuid}, 
 				name3  => "old_server_name",       value3  => $old_server_name, 
@@ -936,7 +936,7 @@ WHERE
 				# The current state?
 				if ($new_server_state ne $old_server_state)
 				{
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_server_state", value1 => $old_server_state, 
 						name2 => "new_server_state", value2 => $new_server_state, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -953,9 +953,7 @@ WHERE
 							old			=>	$old_server_state,
 						},
 					});
-					# If this server's new state is 'started', make sure we clear the
-					# 'server' -> 'server_stop_reason'
-					if ($new_server_state eq /started/i)
+					if ($new_server_state eq "started")
 					{
 						my $query = "
 UPDATE 

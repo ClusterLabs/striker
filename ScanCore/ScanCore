@@ -10927,6 +10927,9 @@ sub scan_directory
 		name1 => "directory", value1 => "$directory" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::agents_directory", value1 => $an->data->{path}{agents_directory}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	local(*DIRECTORY);
 	opendir(DIRECTORY, $an->data->{path}{agents_directory});
 	while(my $file = readdir(DIRECTORY))

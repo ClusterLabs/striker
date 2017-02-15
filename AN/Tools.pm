@@ -1147,7 +1147,7 @@ sub _set_paths
 	$an->data->{path}{sysfs_block} = "/sys/block";
 
 	# Directories
-	$an->data->{path}{agents_directory}   = "/var/www/ScanCore/ScanCore/agents";
+	$an->data->{path}{agents_directory}   = "/sbin/striker/ScanCore/agents";
 	$an->data->{path}{alert_emails}       = "/var/log/alert_emails";
 	$an->data->{path}{alert_files}        = "/var/log";
 	$an->data->{path}{fence_agents}       = "/usr/sbin";
