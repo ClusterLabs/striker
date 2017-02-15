@@ -1970,6 +1970,7 @@ sub gather_cluster_conf
 	return(0);
 }
 
+### TODO: Change this over to use 'clustat -x', a-la Striker.pm's new '_parse_clustat_xml()' method.
 # This gathers data from 'clustat'
 sub gather_clustat
 {
