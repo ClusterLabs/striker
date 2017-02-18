@@ -1813,7 +1813,7 @@
 		<key name="message_0375"><![CDATA[The requested pool 1 size was: [<span class="highlight_detail">#!variable!say_requested_size!#</span>], but only: [<span class="highlight_detail">#!variable!say_new_size!#</span>] is available,<br />which is: [<span class="highlight_detail">#!variable!say_difference!#</span>] less than requested.<br />The pool was reduced to fit and pool 2 <b>not</b> will be created.]]></key>
 		<key name="message_0376"><![CDATA[Updated: [<span class="highlight_detail">#!conf!cgi::run!#</span>]<br />The new MAC address mapping has been recorded.]]></key>
 		<key name="message_0377">Saved.</key>
-		<key name="message_0378"><![CDATA[<span class="highlight_bad_bold">Error</span>: The tool <span class="code">anvil-map-network</span> was not found on the node.<br />Please make sure it is in <span class="code">#!conf!path::anvil-map-network!#</span> on both nodes and.<br />Once fixed, please reload this page.]]></key>
+		<key name="message_0378"><![CDATA[<span class="highlight_bad_bold">Error</span>: The tool <span class="code">anvil-map-network</span> was not found on the node.<br />Did you run the Striker dashboard stage-1 install by mistake, perhaps?<br />Once fixed, please try reloading this page.]]></key>
 		<key name="message_0379"><![CDATA[The: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been deleted.]]></key>
 		<key name="message_0380"><![CDATA[Both nodes need (at least) six network cards. If you have six network cards, then there might be a program problems.<br />(Sorry about that)]]></key>
 		<key name="message_0381"><![CDATA[Failed to download <span class="code">anvil-map-network</span> to the node.<br />Please manually copy it to <span class="code">#!conf!path::anvil-map-network!#</span> on both nodes.<br />(Sorry about that)]]></key>
@@ -1946,6 +1946,7 @@
 		<key name="message_0508"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been aborted because replicated storage on both nodes requires the other.<br />Manual shutdown will be required.]]></key>
 		<key name="message_0509"><![CDATA[The node [<span class="highlight_detail">#!variable!node_name!#</span>] should now be shutting down.]]></key>
 		<key name="message_0510"><![CDATA[Withdrawing the node [<span class="highlight_detail">#!variable!node_name!#</span>] from the #!string!brand_0003!#, please wait...]]></key>
+		<key name="message_0511"><![CDATA[#!string!message_0068!#<br />The call to add the new server to the #!string!brand_0003!# management appears to have succeeded,<br />but the server didn't show up in the resource manament list after two minutes.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

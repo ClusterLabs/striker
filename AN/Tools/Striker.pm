@@ -2505,8 +2505,59 @@ echo ccs:\$?";
 			message	=>	"#!string!message_0111!#",
 		}});
 		
-		### TODO: Make this watch 'clustat' for the server to appear.
-		sleep 10;
+		# Now loop until the server shows up in clustat. This can take a while on really slow 
+		# systems. We'll wait up to 2 minutes.
+		my $stop_waiting = time + 120;
+		my $wait         = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "time",         value1 => time,
+			name2 => "stop_waiting", value2 => $stop_waiting,
+		}, file => $THIS_FILE, line => __LINE__});
+		while ($wait)
+		{
+			my $give_up_in = $stop_waiting - time;
+			my $shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{clustat}." -x; ".$an->data->{path}{echo}." clustat:\$?";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "give_up_in", value1 => $give_up_in,
+				name2 => "target",     value2 => $target,
+				name3 => "shell_call", value3 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				next if not $line;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /name="vm:$server"/)
+				{
+					# Found it!
+					$wait = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "wait", value1 => $wait, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+			
+			if (($wait) && (time > $stop_waiting))
+			{
+				# Give up...
+				$wait = 0;
+				print $an->Web->template({file => "server.html", template => "general-error-message", replace => { 
+					row	=>	"#!string!row_0096!#",
+					message	=>	"#!string!message_0511!#",
+				}});
+				return (1);
+			}
+			sleep 3;
+		}
 	}
 	else
 	{
