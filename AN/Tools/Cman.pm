@@ -1017,6 +1017,7 @@ sub find_node_in_cluster
 	return($target, $port, $password, $node_name);
 }
 
+### NOTE: This is largely a copy of Striker->_parse_clustat_xml()'. Both will be removed eventually.
 # This returns a hash reference containing the cluster information from 'clustat'.
 sub get_clustat_data
 {
@@ -1036,7 +1037,8 @@ sub get_clustat_data
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $shell_call = $an->data->{path}{clustat};
+	### TODO: This needs to change to use -x.
+	my $shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{clustat}." -x; ".$an->data->{path}{echo}." clustat:\$?";
 	my $return     = [];
 	my $details    = {
 			cluster		=>	{
@@ -1089,72 +1091,74 @@ sub get_clustat_data
 		}
 		close $file_handle;
 	}
+	my $xml_data = "";
 	foreach my $line (@{$return})
 	{
-		   $line =~ s/^\s+//;
-		   $line =~ s/\s+$//;
-		   $line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# If cman isn't running, we'll get nothing
+		if ($line =~ /clustat:(\d+)/)
+		{
+			### TODO: If this is 124, make sure sane null values are set because timeout fired.
+			my $return_code = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
 		if ($line =~ /Could not connect to CMAN/i)
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			# CMAN isn't running.
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
+		$xml_data .= $line."\n";
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "xml_data", value1 => $xml_data,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($xml_data)
+	{
+		my $xml     = XML::Simple->new();
+		my $clustat = $xml->XMLin($xml_data, KeyAttr => {node => 'name'}, ForceArray => 1);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "clustat", value1 => $clustat,
+		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Header
-		if ($line =~ /Cluster Status for (.*?) \@/)
-		{
-			$details->{cluster}{name} = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "details->cluster::name", value1 => $details->{cluster}{name}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		if ($line =~ /Member Status: (.*)$/)
-		{
-			my $quorate = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "quorate", value1 => $quorate, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			$details->{cluster}{quorate} = lc($quorate) eq "quorate" ? 1 : 0;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "details->cluster::quorate", value1 => $details->{cluster}{quorate}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
+		# Gather the data we used to parse out of a normal clustat call...
+		$details->{cluster}{name}    = $clustat->{cluster}->[0]->{name};
+		$details->{cluster}{quorate} = $clustat->{quorum}->[0]->{quorate};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "details->cluster::name",    value1 => $details->{cluster}{name}, 
+			name2 => "details->cluster::quorate", value2 => $details->{cluster}{quorate}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Parse out nodes.
-		if ($line =~ /^(.*?) (\d+) (.*)$/)
+		# Gather the node details.
+		foreach my $this_node (sort {$a cmp $b} keys %{$clustat->{nodes}->[0]->{node}})
 		{
-			my $node_name  = $1;
-			my $node_id    = $2;
-			my $node_state = $3;
-			my $cman       = $node_state =~ /online/i    ? 1 : 0;
-			my $rgmanager  = $node_state =~ /rgmanager/i ? 1 : 0;
+			my $is_local     =  $clustat->{nodes}->[0]->{node}{$this_node}{'local'};
+			my $rgmanager_up =  $clustat->{nodes}->[0]->{node}{$this_node}{rgmanager};
+			my $cman_up      =  $clustat->{nodes}->[0]->{node}{$this_node}{'state'};
+			my $node_id      =  $clustat->{nodes}->[0]->{node}{$this_node}{nodeid};
+			   $node_id      =~ s/^0x0+//;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name1 => "node_name",  value1 => $node_name, 
-				name2 => "node_id",    value2 => $node_id, 
-				name3 => "node_state", value3 => $node_state, 
-				name4 => "cman",       value4 => $cman, 
-				name5 => "rgmanager",  value5 => $rgmanager, 
+				name1 => "this_node",    value1 => $this_node,
+				name2 => "is_local",     value2 => $is_local,
+				name3 => "rgmanager_up", value3 => $rgmanager_up,
+				name4 => "cman_up",      value4 => $cman_up,
+				name5 => "node_id",      value5 => $node_id,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# Is this us or our peer?
-			if ($node_state =~ /local/i)
+			if ($is_local)
 			{
-				# Us.
+				# It's moi!
 				$details->{node}{'local'} = {
-					name      => $node_name,
-					id        => $node_id,
-					cman      => $cman,
-					rgmanager => $rgmanager
+					name      => $this_node, 
+					id        => $node_id, 
+					cman      => $cman_up, 
+					rgmanager => $rgmanager_up, 
 				},
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 					name1 => "details->node::local::name",      value1 => $details->{node}{'local'}{name}, 
 					name2 => "details->node::local::id",        value2 => $details->{node}{'local'}{id}, 
 					name3 => "details->node::local::cman",      value3 => $details->{node}{'local'}{cman}, 
@@ -1163,14 +1167,14 @@ sub get_clustat_data
 			}
 			else
 			{
-				# Peer
+				# C'est le peer.
 				$details->{node}{peer} = {
-					name      => $node_name,
+					name      => $this_node,
 					id        => $node_id,
-					cman      => $cman,
-					rgmanager => $rgmanager
+					cman      => $cman_up,
+					rgmanager => $rgmanager_up
 				},
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 					name1 => "details->node::peer::name",      value1 => $details->{node}{peer}{name}, 
 					name2 => "details->node::peer::id",        value2 => $details->{node}{peer}{id}, 
 					name3 => "details->node::peer::cman",      value3 => $details->{node}{peer}{cman}, 
@@ -1180,81 +1184,68 @@ sub get_clustat_data
 		}
 		
 		# Parse out services.
-		if ($line =~ /service:(.*?) (.*?) (.*)$/)
+		foreach my $hash_ref (@{$clustat->{groups}->[0]->{group}})
 		{
-			my $service = $1;
-			my $host    = $2;
-			my $status  = $3;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "service", value1 => $service, 
-				name2 => "host",    value2 => $host, 
-				name3 => "status",  value3 => $status, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# If the service isn't starting, started or stopping, the host is useless.
-			if (($status !~ /start/) && ($status !~ /stopping/))
-			{
-				$host = "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "host", value1 => $host, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			
-			# If the host is bracketed, it is not running and it is showing where it last ran. 
-			# This doesn't matter to us.
-			if ($host =~ /^\(.*\)$/)
-			{
-				$host = "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "host", value1 => $host, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			
-			$details->{service}{$service}{host}   = $host;
-			$details->{service}{$service}{status} = $status;
+			my $service_name =  $hash_ref->{name};
+			my $is_server    =  $service_name =~ /^vm:/ ? 1 : 0;
+			   $service_name =~ s/^.*?://;
+			my $host         =  $hash_ref->{owner};
+			my $state        =  $hash_ref->{state_str};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "details->service::${service}::host",   value1 => $details->{service}{$service}{host}, 
-				name2 => "details->service::${service}::status", value2 => $details->{service}{$service}{status}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		# Parse out servers.
-		if ($line =~ /vm:(.*?) (.*?) (.*)$/)
-		{
-			my $server = $1;
-			my $host   = $2;
-			my $status = $3;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "server", value1 => $server, 
-				name2 => "host",   value2 => $host, 
-				name3 => "status", value3 => $status, 
+				name1 => "is_server",    value1 => $is_server, 
+				name2 => "service_name", value2 => $service_name, 
+				name3 => "host",         value3 => $host, 
+				name4 => "state",        value4 => $state, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# If the server isn't starting, started or stopping, the host is useless.
-			if (($status !~ /start/) && ($status !~ /stopping/))
+			if (($state eq "disabled") or ($state eq "stopped"))
 			{
-				$host = "";
+				# Set host to 'none'.
+				$host = $an->String->get({key => "state_0002"});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "host", value1 => $host, 
+					name1 => "host", value1 => $host,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($state eq "failed")
+			{
+				# Don't do anything here now, it is possible the server is still running. Set
+				# the host to 'Unknown' and let the user decide what to do. This can happen 
+				# if, for example, the XML file is temporarily removed or corrupted.
+				$host = $an->String->get({key => "state_0001", variables => { host => $host }});
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "host", value1 => $host,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if (not $host)
+			{
+				$host = "none";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "host", value1 => $host,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# If the host is bracketed, it is not running and it is showing where it last ran. 
-			# This doesn't matter to us.
-			if ($host =~ /^\(.*\)$/)
+			if ($is_server)
 			{
-				$host = "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "host", value1 => $host, 
+				# For historical reasons...
+				my $server                             = $service_name;
+				   $details->{server}{$server}{host}   = $host;
+				   $details->{server}{$server}{status} = $state;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "details->server::${server}::host",   value1 => $details->{server}{$server}{host}, 
+					name2 => "details->server::${server}::status", value2 => $details->{server}{$server}{status}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			
-			$details->{server}{$server}{host}   = $host;
-			$details->{server}{$server}{status} = $status;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "details->server::${server}::host",   value1 => $details->{server}{$server}{host}, 
-				name2 => "details->server::${server}::status", value2 => $details->{server}{$server}{status}, 
-			}, file => $THIS_FILE, line => __LINE__});
+			else
+			{
+				# Also for historical reasons...
+				my $service                              = $service_name;
+				   $details->{service}{$service}{host}   = $host;
+				   $details->{service}{$service}{status} = $state;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "details->service::${service}::host",   value1 => $details->{service}{$service}{host}, 
+					name2 => "details->service::${service}::status", value2 => $details->{service}{$service}{status}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	

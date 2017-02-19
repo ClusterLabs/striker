@@ -97,9 +97,7 @@ if (not $connections)
 }
 
 # Log our startup
-$an->Log->entry({log_level => 3, message_key => "ams_log_0001", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 3, message_key => "ams_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 # Make sure both I and my peer are in the cluster.
 sanity_check_cluster($an);

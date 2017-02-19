@@ -3960,6 +3960,84 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
+		
+		
+		<!-- Anvil! Test Pre Migration script -->
+		<key name="atprem_message_0001"><![CDATA[
+ -=] Striker Update
+
+DESCRIPTION
+
+This is a test script used during Striker release testing use to varify the
+pre-migration script functionality. 
+
+It takes '--server <name>' and logs it to the main Striker log file, and 
+nothing more.
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+ --server <name>
+
+	The name of the server that is about to be migrated.
+
+
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		<key name="atprem_message_0002">The server: [#!variable!server!#] is currently on: [#!variable!host!#] and is about to be migrated to: [#!variable!peer!#].</key>
+		
+		<!-- warnings -->
+		<key name="atprem_warning_0001"><![CDATA[The 'anvil-test-pre-migration' script was invoked without '--server <name>'.]]></key>
+		<key name="atprem_warning_0002"><![CDATA[The 'anvil-test-pre-migration' script was called for the server: [#!variable!server!#] which does not appear to exist in this #!string!brand_0004!#.]]></key>
+		<key name="atprem_warning_0003"><![CDATA[The 'anvil-test-pre-migration' script was called for the server: [#!variable!server!#] which appears to not be running.]]></key>
+		
+		
+		<!-- Anvil! Test Post Migration script -->
+		<key name="atpostm_message_0001"><![CDATA[
+ -=] Striker Update
+
+DESCRIPTION
+
+This is a test script used during Striker release testing use to varify the
+post-migration script functionality. 
+
+It takes '--server <name>' and logs it to the main Striker log file, and 
+nothing more.
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+ --server <name>
+
+	The name of the server that was just migrated.
+
+
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		<key name="atpostm_message_0002">The server: [#!variable!server!#] is currently on: [#!variable!host!#] and was migrated from: [#!variable!peer!#].</key>
+		
+		<!-- warnings -->
+		<key name="atpostm_warning_0001"><![CDATA[The 'anvil-test-post-migration' script was invoked without '--server <name>'.]]></key>
+		<key name="atpostm_warning_0002"><![CDATA[The 'anvil-test-post-migration' script was called for the server: [#!variable!server!#] which does not appear to exist in this #!string!brand_0004!#.]]></key>
+		<key name="atpostm_warning_0003"><![CDATA[The 'anvil-test-post-migration' script was called for the server: [#!variable!server!#] which appears to not be running.]]></key>
 	</lang>
 
 	<!-- Japanese -->
