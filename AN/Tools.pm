@@ -623,10 +623,62 @@ sub _set_defaults
 	$an->data->{path}{nodes}{'wait-for-drbd_initd'}   = "/etc/init.d/wait-for-drbd";
 	
 	# ScanCore things set here are meant to be overwritable by the user in striker.conf.
-	$an->data->{scancore}{language}           = "en_CA";
-	$an->data->{scancore}{log_level}          = 2;
-	$an->data->{scancore}{log_language}       = "en_CA";
-	$an->data->{striker}{log_db_transactions} = 0;
+	$an->data->{scancore}{archive}{directory}              = "/var/ScanCore/archives/";
+	$an->data->{scancore}{archive}{trigger}                = 100000;
+	$an->data->{scancore}{archive}{count}                  = 50000;
+	$an->data->{scancore}{dashboard}{dlm_hung_timeout}     = 300;
+	$an->data->{scancore}{archive}{division}               = 60000;
+	$an->data->{scancore}{disable}{boot_nodes}             = 0;
+	$an->data->{scancore}{disable}{load_shedding}          = 0;
+	$an->data->{scancore}{disable}{power_shutdown}         = 0;
+	$an->data->{scancore}{disable}{preventative_migration} = 0;
+	$an->data->{scancore}{disable}{thermal_shutdown}       = 0;
+	$an->data->{scancore}{enabled}                         = 1;
+	$an->data->{scancore}{language}                        = "en_CA";
+	$an->data->{scancore}{locking}{reap_age}               = 300;
+	$an->data->{scancore}{log_db_transactions}             = 0;
+	$an->data->{scancore}{log_file}                        = "/var/log/ScanCore.log";
+	$an->data->{scancore}{log_level}                       = 2;
+	$an->data->{scancore}{log_language}                    = "en_CA";
+	$an->data->{scancore}{maximum_ram}                     = 1073741824;
+	$an->data->{scancore}{minimum_ups_runtime}             = 600;
+	$an->data->{scancore}{minimum_safe_charge}             = 45;
+	$an->data->{scancore}{health}{migration_delay}         = 120;
+	$an->data->{scancore}{power}{load_shed_delay}          = 300;
+	$an->data->{scancore}{sleep_time}                      = 60;
+	$an->data->{scancore}{temperature}{load_shed_delay}    = 120;
+	$an->data->{scancore}{temperature}{shutdown_limit}     = 5;
+	$an->data->{scancore}{thermal_reboot_delay}{'1'}       = 600;
+	$an->data->{scancore}{thermal_reboot_delay}{'2'}       = 1800;
+	$an->data->{scancore}{thermal_reboot_delay}{'3'}       = 3600;
+	$an->data->{scancore}{thermal_reboot_delay}{'4'}       = 7200;
+	$an->data->{scancore}{thermal_reboot_delay}{more}      = 21600;
+	$an->data->{scancore}{update_age_limit}                = 1200;
+	
+	# Generic scan agent stuff
+	$an->data->{'scan-ipmitool'}{offline_sensor_list}      = "Ambient,Systemboard";
+	
+	# Striker stuff
+	$an->data->{striker}{log_db_transactions}              = 0;
+	
+	# Remote USB stuff
+	$an->data->{'remote-usb'}{enable_remote_usb_mount}     = 0;
+	$an->data->{'remote-usb'}{'local'}{host}               = "#!short_hostname!#";
+	$an->data->{'remote-usb'}{'local'}{user}               = "root";
+	$an->data->{'remote-usb'}{'local'}{password}           = "";
+	$an->data->{'remote-usb'}{'local'}{mount}              = "/mnt/remote";
+	$an->data->{'remote-usb'}{'local'}{export_options}     = "-i -o rw,sync,no_root_squash";
+	$an->data->{'remote-usb'}{remote}{host}                = "";
+	$an->data->{'remote-usb'}{remote}{user}                = "root";
+	$an->data->{'remote-usb'}{remote}{password}            = "";
+	$an->data->{'remote-usb'}{remote}{mount}               = "/mnt/remote";
+	$an->data->{'remote-usb'}{remote}{mount_options}       = "-t nfs -o sync";
+	$an->data->{'remote-usb'}{luks}{passphrase}            = "";
+	$an->data->{'remote-usb'}{luks}{force_initialize}      = 0;
+	$an->data->{'remote-usb'}{luks}{use_filesystem}        = "ext4";
+	$an->data->{'remote-usb'}{luks}{fs_label}              = "anvil";
+	$an->data->{'remote-usb'}{luks}{fs_options}            = "-L #!variable!fs_label!#";
+	$an->data->{'remote-usb'}{luks}{protected_label}       = "protect";
 	
 	# The actual strings hash
 	$an->data->{string}               = {};
@@ -640,10 +692,18 @@ sub _set_defaults
 	# page doesn't reload a previous confirmation URL and reinitiate the power off when it wasn't 
 	# desired. This defines that timeout in seconds.
 	$an->data->{sys}{actime_timeout}                   = 180;
-	### NOTE: If you change these, also change in anvil-kick-apc-ups!
+	# These two options are used when a manual "power cycle system" is requested. They override the 
+	# default power-off delay and sleep time.
 	$an->data->{sys}{apc}{reboot}{power_off_delay}     = 60;
 	$an->data->{sys}{apc}{reboot}{sleep_time}          = 60;
 	$an->data->{sys}{apc}{'shutdown'}{power_off_delay} = 60;
+	# If you enable 'anvil-kick-apc-ups', this will control how often the UPSes are "kicked".
+	$an->data->{sys}{apc}{ups}{kick_frequency}         = 60;
+	# This will control how far in the future to tell the UPS to shut off. 
+	$an->data->{sys}{apc}{ups}{power_off_delay}        = 600;
+	# If the timer runs out and the UPS shuts down, this controls how long the UPS "sleeps" for before 
+	# turning back on.
+	$an->data->{sys}{apc}{ups}{sleep_time}             = 60;
 	$an->data->{sys}{auto_populate_ssh_users}          = "";
 	$an->data->{sys}{backup_url}                       = "/striker-backup_#!hostname!#_#!date!#.txt";
 	$an->data->{sys}{clustat_timeout}                  = 120;
@@ -678,6 +738,7 @@ sub _set_defaults
 		"systemtap",	#
 	];
 	$an->data->{sys}{date_seperator}                   = "-",	# Should put these in the strings.xml file
+	$an->data->{sys}{db}{maximum_batch_size}           = 25000;
 	$an->data->{sys}{dd_block_size}                    = "1M";
 	$an->data->{sys}{debug}                            = 1;
 	$an->data->{sys}{'default'}{migration_type}        = "live";
@@ -781,6 +842,7 @@ sub _set_defaults
 	$an->data->{sys}{install_manifest}{'default'}{switch1_name}                    = "";
 	$an->data->{sys}{install_manifest}{'default'}{switch2_ip}                      = "";
 	$an->data->{sys}{install_manifest}{'default'}{switch2_name}                    = "";
+	$an->data->{sys}{install_manifest}{'default'}{update_os}                       = 1;
 	$an->data->{sys}{install_manifest}{'default'}{ups1_ip}                         = "";
 	$an->data->{sys}{install_manifest}{'default'}{ups1_name}                       = "";
 	$an->data->{sys}{install_manifest}{'default'}{ups2_ip}                         = "";
@@ -832,9 +894,13 @@ sub _set_defaults
 	$an->data->{sys}{install_manifest}{'use_anvil-safe-start'}                     = 1;
 	# This controls whether ScanCore will run on boot or not (now required, never disable).
 	$an->data->{sys}{install_manifest}{use_scancore}                               = 1;
+	# Set to '1' to not ask for confirmation when enabling the install target feature
+	$an->data->{sys}{install_target}{no_warning}                                   = 0;
+
 	
 	### Back to our regularly scheduled system stuff...
 	$an->data->{sys}{language}                             = "en_CA";
+	# Set to '1' to include the PID in log entries
 	$an->data->{sys}{'log'}{log_pid}                       = 0;
 	$an->data->{sys}{log_language}                         = "en_CA";
 	$an->data->{sys}{log_level}                            = 2;
@@ -958,6 +1024,11 @@ sub _set_defaults
 	$an->data->{sys}{shared_fs_uuid}                       = "";
 	$an->data->{sys}{show_nodes}                           = 0;
 	$an->data->{sys}{show_refresh}                         = 1;
+	
+	$an->data->{sys}{single_node_start}{enabled}           = 0;
+	$an->data->{sys}{single_node_start}{boot_frequency}    = 86400;
+	$an->data->{sys}{single_node_start}{boot_delay}        = 300;
+	
 	$an->data->{sys}{skin}                                 = "alteeve";
 	$an->data->{sys}{striker_uid}                          = $<;
 	$an->data->{sys}{system_timezone}                      = "America/Toronto";
@@ -975,11 +1046,41 @@ sub _set_defaults
 	# Adds: [--disablerepo='*' --enablerepo='striker*'] if
 	# no internet connection found.
 	$an->data->{sys}{yum_switches}                         = "-y";
-	# Tools default valies
+	
+	### Tools default valies
 	$an->data->{tools}{'anvil-kick-apc-ups'}{enabled}      = 0;
-	$an->data->{tools}{'anvil-safe-start'}{enabled}        = 0;
+	
+	 # If 'tools::striker-push-ssh::enabled' is enabled, this will control whether changed RSA 
+	 # fingerprints will automatically be updated. Setting this to '0' improves security.
+	$an->data->{tools}{'auto-update-ssh-fingerprints'}{enabled} = 1;
+	
+	### TODO: prefix the anvil-safe-start::drbd::* stuff with 'tools::', make sure to handle this in 
+	###       updates
+	# These control whether we boost resync speed during anvil-safe-start and, if so, to what degree. 
+	$an->data->{tools}{'anvil-safe-start'}{enabled}        = 1;
+	# Set to '0' to disable entirely
+	$an->data->{'anvil-safe-start'}{drbd}{always_boost}    = 0;
+	# How fast (MiB/sec) to boost to
+	$an->data->{'anvil-safe-start'}{drbd}{boost_speed}     = 80;
+	# If the boosted sync speed still requires more than this number of seconds, the boost will abort and
+	# the node will join while still Inconsistent. Setting 'wait' means it will wait forever.
+	$an->data->{'anvil-safe-start'}{drbd}{max_wait_time}   = "wait";
+	# After boosting, how long do we wait before checking the resync ETA
+	$an->data->{'anvil-safe-start'}{drbd}{resync_delay}    = 15;
+	
+	# This sets a minimum password length. Default is '6'.
+	$an->data->{tools}{'anvil-self-destruct'}{minimum_length} = 6;
+	$an->data->{tools}{'anvil-self-destruct'}{hash}           = "vSsar3708Jvp9Szi2NWZZ02Bqp1qRCFpbcTZPdBhnWgs5WtNZKnvCXdhztmeD2cmW192CF5bDufKRpayrW/isg";
+
 	$an->data->{tools}{disaster_recovery}{cache_signature} = ".dr_cache";
-	$an->data->{tools}{'striker-push-ssh'}{enabled}        = 0;
+	$an->data->{tools}{'striker-push-ssh'}{enabled}        = 1;
+	
+	# Set this to '1' to have Striker automatically configure Virtual Machine Manager when new Anvil! 
+	# systems are added to Striker.
+	$an->data->{tools}{'striker-configure-vmm'}{enabled}   = 1;
+	$an->data->{tools}{striker}{'auto-sync'}               = 1;
+
+	
 	$an->data->{up_nodes}                                  = [];
 	$an->data->{url}{skins}                                = "/skins";
 	$an->data->{url}{cgi}                                  = "/cgi-bin";
