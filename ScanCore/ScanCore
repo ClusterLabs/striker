@@ -2140,6 +2140,10 @@ sub do_post_scan_node_tasks
 		name1 => "node_power_ok", value1 => $node_power_ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# 1 = OK, 
+	# 2 = Warning, 
+	# 3 = Critical (should shut down), 
+	# 4 = Warning:load_shed (if peer is also).
 	my ($node_temperature_ok) = check_local_temperature_health($an);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
@@ -2594,7 +2598,10 @@ sub check_local_temperature_health
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_local_temperature_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# 1 == OK, 2 == Warning, 3 == Critical (should shut down), 4 == Warning:load_shed (if peer is also).
+	# 1 == OK, 
+	# 2 == Warning, 
+	# 3 == Critical (should shut down), 
+	# 4 == Warning:load_shed (if peer is also).
 	my $node_temperature_ok           = 1;
 	my $default_sensor_weight         = $an->data->{scancore}{temperature}{default_sensor_weight} ? $an->data->{scancore}{temperature}{default_sensor_weight} : 1;
 	my $shutdown_threshold            = $an->data->{scancore}{temperature}{shutdown_limit}        ? $an->data->{scancore}{temperature}{shutdown_limit}        : 5;

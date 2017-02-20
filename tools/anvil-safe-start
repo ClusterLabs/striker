@@ -264,10 +264,12 @@ sub update_striker_conf
 	
 	# $an->data->{tools}{anvil-safe-start}{enabled}
 	my $changed = 0;
+	my $found   = 0;
 	my $set     = $task eq "enable" ? 1 : 0;
 	
 	# Read in striker.conf.
 	my $new_config = "";
+	my $old_config = "";
 	my $shell_call = $an->data->{path}{striker_config};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
@@ -286,9 +288,11 @@ sub update_striker_conf
 			my $space1 = $1;
 			my $space2 = $2;
 			my $value  = $3;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			   $found  = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "value", value1 => $value, 
 				name2 => "set",   value2 => $set, 
+				name3 => "found", value3 => $found, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($value ne $set)
 			{
@@ -301,9 +305,35 @@ sub update_striker_conf
 			}
 		}
 		
-		$new_config .= "$line\n";
+		$new_config .= $line."\n";
+		$old_config .= $line."\n";
 	}
 	close $file_handle;
+	
+	# If I didn't find the value, loop through the new config and insert the value when we see the 
+	# commented out version. If we don't see a commented out version, we'll stick it on the end of the 
+	# file.
+	if (not $found)
+	{
+		$new_config = "";
+		foreach my $line (split/\n/, $old_config)
+		{
+			$new_config .= $line."\n";
+			if ($line =~ /tools::anvil-safe-start::enabled(\s+)=(\s+)/)
+			{
+				my $lhs     = $1;
+				my $rhs     = $2;
+				   $found   = 1;
+				   $changed = 1;
+				$new_config .= "tools::anvil-safe-start::enabled".$lhs."=".$rhs."$set\n";
+			}
+		}
+		if (not $found)
+		{
+			$changed    =  1;
+			$new_config .= "tools::anvil-safe-start::enabled\t=\t$set\n";
+		}
+	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "changed", value1 => $changed, 

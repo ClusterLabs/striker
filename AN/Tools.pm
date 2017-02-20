@@ -691,7 +691,7 @@ sub _set_defaults
 	# Some actions, like powering off servers and nodes, have a timeout set so that later, reloading the
 	# page doesn't reload a previous confirmation URL and reinitiate the power off when it wasn't 
 	# desired. This defines that timeout in seconds.
-	$an->data->{sys}{actime_timeout}                   = 180;
+	$an->data->{sys}{expire_timeout}                   = 180;
 	# These two options are used when a manual "power cycle system" is requested. They override the 
 	# default power-off delay and sleep time.
 	$an->data->{sys}{apc}{reboot}{power_off_delay}     = 60;

@@ -1787,6 +1787,7 @@ sub update_peers
 	return($updated_peers);
 }
 
+### TODO: This needs to handle adding the variable and setting it, if it never existed before.
 # This uses sed to update a local or remote striker.conf value.
 sub update_striker_conf
 {
@@ -4274,7 +4275,7 @@ sub _confirm_cold_stop_anvil
 		$say_message = $an->String->get({key => "message_0440", variables => { anvil => $anvil_name }});
 	}
 	
-	my $expire_time                 =  time + $an->data->{sys}{actime_timeout};
+	my $expire_time                 =  time + $an->data->{sys}{expire_timeout};
 	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-cold-stop", replace => { 
 		message		=>	$say_message,
@@ -4296,7 +4297,7 @@ sub _confirm_delete_server
 	my $say_title   = $an->String->get({key => "title_0045", variables => { server => $an->data->{cgi}{server} }});
 	my $say_message = $an->String->get({key => "message_0178", variables => { server => $an->data->{cgi}{server} }});
 	
-	my $expire_time =  time + $an->data->{sys}{actime_timeout};
+	my $expire_time =  time + $an->data->{sys}{expire_timeout};
 	if ($an->data->{sys}{cgi_string} =~ /expire=/)
 	{
 		$an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
@@ -4378,7 +4379,7 @@ sub _confirm_fence_node
 	# Ask the user to confirm
 	my $say_title                   =  $an->String->get({key => "title_0038", variables => { node_name => $an->data->{cgi}{node_name} }});
 	my $say_message                 =  $an->String->get({key => "message_0151", variables => { node_name => $an->data->{cgi}{node_name} }});
-	my $expire_time                 =  time + $an->data->{sys}{actime_timeout};
+	my $expire_time                 =  time + $an->data->{sys}{expire_timeout};
 	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-fence-node", replace => { 
 		title		=>	$say_title,
@@ -4401,7 +4402,7 @@ sub _confirm_force_off_server
 	my $say_title   = $an->String->get({key => "title_0044", variables => { server => $an->data->{cgi}{server} }});
 	my $say_message = $an->String->get({key => "message_0168", variables => { server => $an->data->{cgi}{server} }});
 	
-	my $expire_time = time + $an->data->{sys}{actime_timeout};
+	my $expire_time = time + $an->data->{sys}{expire_timeout};
 	if ($an->data->{sys}{cgi_string} =~ /expire=/)
 	{
 		$an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
@@ -4543,7 +4544,7 @@ sub _confirm_poweroff_node
 	# Ask the user to confirm
 	my $say_title                   =  $an->String->get({key => "title_0039", variables => { node_name => $an->data->{cgi}{node_name} }});
 	my $say_message                 =  $an->String->get({key => "message_0156", variables => { node_name => $an->data->{cgi}{node_name} }});
-	my $expire_time                 =  time + $an->data->{sys}{actime_timeout};
+	my $expire_time                 =  time + $an->data->{sys}{expire_timeout};
 	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-poweroff-node", replace => { 
 		title		=>	$say_title,
@@ -4924,7 +4925,7 @@ sub _confirm_stop_server
 	my $say_message    = $an->String->get({key => "message_0165", variables => { server => $an->data->{cgi}{server} }});
 	my $say_warning    =  $an->String->get({key => "message_0166", variables => { server => $an->data->{cgi}{server} }});
 	my $say_precaution =  $an->String->get({key => "message_0167"});
-	my $expire_time    =  time + $an->data->{sys}{actime_timeout};
+	my $expire_time    =  time + $an->data->{sys}{expire_timeout};
 	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-stop-server", replace => { 
 		title		=>	$say_title,
@@ -5952,7 +5953,7 @@ sub _display_node_controls
 	my @say_fence;
 	
 	# I want to map storage service to nodes for the "Withdraw" buttons.
-	my $expire_time  = time + $an->data->{sys}{actime_timeout};
+	my $expire_time  = time + $an->data->{sys}{expire_timeout};
 	my $disable_join = 0;
 	my $anvil_uuid   = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name   = $an->data->{sys}{anvil}{name};
@@ -6028,7 +6029,7 @@ sub _display_node_controls
 		# Fence button
 		# If the node is already confirmed off, no need to fence.
 		my $say_fence_node_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0037!#" }});
-		my $expire_time                    = time + $an->data->{sys}{actime_timeout};
+		my $expire_time                    = time + $an->data->{sys}{expire_timeout};
 		# &expire=$expire_time
 		my $say_fence_node_enabled_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"highlight_dangerous",
@@ -6057,7 +6058,7 @@ sub _display_node_controls
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($cold_stop)
 			{
-				my $expire_time      = time + $an->data->{sys}{actime_timeout};
+				my $expire_time      = time + $an->data->{sys}{expire_timeout};
 				   $say_boot_or_stop = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 						button_class	=>	"bold_button",
 						button_link	=>	"?anvil_uuid=$anvil_uuid&expire=$expire_time&task=cold_stop",
@@ -6562,7 +6563,7 @@ sub _display_server_state_and_controls
 				name1 => "host node",           value1 => $host_node,
 				name2 => "server::${server}::host", value2 => $an->data->{server}{$server}{host},
 			}, file => $THIS_FILE, line => __LINE__});
-			my $expire_time = time + $an->data->{sys}{actime_timeout};
+			my $expire_time = time + $an->data->{sys}{expire_timeout};
 			   $stop_button = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 					button_link	=>	"?anvil_uuid=$anvil_uuid&server=$server&task=stop_server",
 					button_text	=>	"#!string!button_0028!#",
@@ -6709,7 +6710,7 @@ sub _display_watchdog_panel
 	###       node.
 	
 	my $note             = $parameter->{note} ? $parameter->{note} : "";
-	my $expire_time      = time + $an->data->{sys}{actime_timeout};
+	my $expire_time      = time + $an->data->{sys}{expire_timeout};
 	my $power_cycle_link = "?anvil_uuid=$anvil_uuid&expire=$expire_time&task=cold_stop&subtask=power_cycle";
 	my $power_off_link   = "?anvil_uuid=$anvil_uuid&expire=$expire_time&task=cold_stop&subtask=power_off";
 	my $watchdog_panel   = "";
