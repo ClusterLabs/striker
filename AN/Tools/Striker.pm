@@ -1895,12 +1895,67 @@ sub _add_server_to_anvil
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_add_server_to_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	### TODO: This should see which node servers are running on and choose that one if the server to be 
+	###       added is off.
 	my $skip_scan  = $parameter->{skip_scan} ? $parameter->{skip_scan} : 0;
 	my $server     = $an->data->{cgi}{name};
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $definition = $an->data->{path}{shared_definitions}."/$server.xml";
 	my $node_name  = $an->data->{new_server}{host_node} ? $an->data->{new_server}{host_node} : $an->data->{cgi}{node_name};
+	if (not $node_name)
+	{
+		# If I don't have a node name, check to see if the server is running on one of the nodes. If
+		# it is, use that node. Otherwise, use node 1.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::anvil::node2::online", value1 => $an->data->{sys}{anvil}{node2}{online},
+		}, file => $THIS_FILE, line => __LINE__});
+		my $use_node2 = 0;
+		if ($an->data->{sys}{anvil}{node2}{online})
+		{
+			my $target   = $an->data->{sys}{anvil}{node2}{use_ip};
+			my $port     = $an->data->{sys}{anvil}{node2}{use_port};
+			my $password = $an->data->{sys}{anvil}{node2}{password};
+			my $shell_call = $an->data->{path}{virsh}." list --all";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "port",       value2 => $port,
+				name3 => "shell_call", value3 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /\s$server\s+running/)
+				{
+					# It's running on node 2
+					$use_node2 = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "use_node2", value1 => $use_node2,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		if ((not $use_node2) && (not $an->data->{sys}{anvil}{node1}{online}))
+		{
+			$use_node2 = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "use_node2", value1 => $use_node2,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		$node_name = $use_node2 ? $an->data->{sys}{anvil}{node2}{name} : $an->data->{sys}{anvil}{node1}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_name", value1 => $node_name,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	my $node_key   = $an->data->{sys}{node_name}{$node_name}{node_key};
 	my $node_uuid  = $an->data->{sys}{anvil}{$node_key}{uuid};
 	my $peer_key   = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
@@ -1928,12 +1983,15 @@ sub _add_server_to_anvil
 		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# First, find the failover domain...
-	my $failover_domain = "";
-	$an->data->{sys}{ignore_missing_server} = 1;
+	# We always use 'primary_n01' now.
+	my $failover_domain = "primary_n01";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "failover_domain", value1 => $failover_domain,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If this is being called after provisioning a server, we'll skip scanning the Anvil! and we'll not 
 	# print the opening header. 
+	$an->data->{sys}{ignore_missing_server} = 1;
 	if (not $skip_scan)
 	{
 		$an->Striker->scan_anvil();
@@ -1942,64 +2000,6 @@ sub _add_server_to_anvil
 	}
 	
 	# Find the failover domain.
-	foreach my $fod (keys %{$an->data->{failoverdomain}})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "fod", value1 => $fod,
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($fod =~ /primary_(.*?)$/)
-		{
-			my $node_suffix = $1;
-			my $alt_suffix  = (($node_suffix eq "n01") or ($node_suffix eq "n1")) ? "node01" : "node02";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "node_suffix", value1 => $node_suffix,
-				name2 => "alt_suffix",  value2 => $alt_suffix,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# If the user has named their nodes 'nX' or 'nodeX', the 'n0X'/'node0X' won't match,
-			# so we fudge it here.
-			my $say_node = $node_name;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "say_node", value1 => $say_node,
-			}, file => $THIS_FILE, line => __LINE__});
-			if (($node_name !~ /node0\d/) && ($node_name !~ /n0\d/))
-			{
-				if ($node_name =~ /node(\d)/)
-				{
-					my $integer  = $1;
-					   $say_node = "node0".$integer;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "say_node", value1 => $say_node,
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				elsif ($node_name =~ /n(\d)/)
-				{
-					my $integer  = $1;
-					   $say_node = "n0".$integer;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "say_node", value1 => $say_node,
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-				name1 => "node_name",   value1 => $node_name,
-				name2 => "say_node",    value2 => $say_node,
-				name3 => "node_suffix", value3 => $node_suffix,
-				name4 => "alt_suffix",  value4 => $alt_suffix,
-			}, file => $THIS_FILE, line => __LINE__});
-			if (($say_node =~ /$node_suffix/) or ($say_node =~ /$alt_suffix/))
-			{
-				$failover_domain = $fod;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "failover_domain", value1 => $failover_domain,
-				}, file => $THIS_FILE, line => __LINE__});
-				last;
-			}
-		}
-	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "failover_domain", value1 => $failover_domain,
-	}, file => $THIS_FILE, line => __LINE__});
 	
 	# How I print the next message depends on whether I'm doing a stand-alone addition or on the heels of
 	# a new provisioning.
@@ -2043,16 +2043,6 @@ sub _add_server_to_anvil
 			message	=>	$an->String->get({key => "message_0088", variables => { manage_url => "/cgi-bin/configure&anvil_uuid=$anvil_uuid" }}),
 		}});
 		return(1);
-	}
-
-	if (not $failover_domain)
-	{
-		# No failover domain found
-		print $an->Web->template({file => "server.html", template => "general-message", replace => { 
-			row	=>	"#!string!row_0096!#",
-			message	=>	"#!string!message_0089!#",
-		}});
-		return (1);
 	}
 	
 	### Lets get started!
@@ -2231,6 +2221,7 @@ sub _add_server_to_anvil
 	
 	my @new_server_xml;
 	my $virsh_exit_code = 255;
+	my $in_xml          = 0;
 	my $shell_call      = $an->data->{path}{virsh}." dumpxml $server; ".$an->data->{path}{echo}." virsh:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
@@ -2245,17 +2236,35 @@ sub _add_server_to_anvil
 	foreach my $line (@{$return})
 	{
 		next if not $line;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /virsh:(\d+)/)
 		{
 			$virsh_exit_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "virsh_exit_code", value1 => $virsh_exit_code, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
-		else
+		if ($line =~ /<domain /)
+		{
+			$in_xml = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_xml", value1 => $in_xml, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		if ($in_xml)
 		{
 			push @new_server_xml, $line;
+			if ($line =~ /<\/domain>/)
+			{
+				$in_xml = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_xml", value1 => $in_xml, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	
@@ -2273,13 +2282,64 @@ sub _add_server_to_anvil
 	}
 	else
 	{
-		# Failed to write the definition file.
-		my $say_error = $an->String->get({key => "message_0100", variables => { virsh_exit_code	=> $virsh_exit_code }});
-		print $an->Web->template({file => "server.html", template => "general-error-message", replace => { 
-			row	=>	"&nbsp;",
-			message	=>	$say_error,
-		}});
-		return (1);
+		# Failed to dump the definition file. It might be off, in which case we'll read the definition from disk. 
+		my $definition_file = $an->data->{path}{shared_definitions}."/${server}.xml";
+		my $definition_ok   = 0;
+		my $shell_call      = "
+if [ -e $definition_file ]
+then
+    ".$an->data->{path}{cat}." $definition_file
+else
+    ".$an->data->{path}{'echo'}." 'no definition found'
+fi
+";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			next if not $line;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @new_server_xml, $line;
+			if ($line =~ /<\/domain>/)
+			{
+				$definition_ok = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "definition_ok", value1 => $definition_ok, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "definition_ok", value1 => $definition_ok, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($definition_ok)
+		{
+			# Definition was already there.
+			my $say_message = $an->String->get({key => "message_0512", variables => { definition => $definition }});
+			print $an->Web->template({file => "server.html", template => "general-message", replace => { 
+				row	=>	"&nbsp;",
+				message	=>	$say_message,
+			}});
+		}
+		else
+		{
+			my $say_error = $an->String->get({key => "message_0100", variables => { virsh_exit_code	=> $virsh_exit_code }});
+			print $an->Web->template({file => "server.html", template => "general-error-message", replace => { 
+				row	=>	"&nbsp;",
+				message	=>	$say_error,
+			}});
+			return (1);
+		}
 	}
 	
 	# We'll switch to boot the 'hd' first if needed and add a cdrom if it doesn't exist.

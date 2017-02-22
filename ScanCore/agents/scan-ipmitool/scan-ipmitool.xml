@@ -113,7 +113,10 @@ The temperature sensor: [#!variable!sensor_name!#] has gone critically high!
 		<key name="scan_ipmitool_message_0005">
 The temperature sensor: [#!variable!sensor_name!#] has entered a high warning state!
 - [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
-  Note: If the temperature continues to rise, the sensor will go critical. If enough sensors go critical, the node will withdraw and power off.
+  Note: If both nodes have enough thermal sensors go into 'warning' state, and 
+	if load shedding is enabled, a node will power off to reduce thermal 
+	output. If enough sensors reach critical levels, the node will withdraw
+	and power off.
 		</key>
 		<key name="scan_ipmitool_message_0006">
 The temperature sensor: [#!variable!sensor_name!#] has returned to normal levels.

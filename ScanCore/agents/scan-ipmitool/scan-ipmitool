@@ -157,6 +157,7 @@ SET search_path = history, pg_catalog;
 					###       using: 
 					###       ipmitool ... sensor get "Ambient"
 					buffer				=>	2,
+					weight				=>	1,
 				},
 				# If the user wants to assign manual values for a given sensor, they can do 
 				# so by creating an entry hear where the key is the IPMI-returned sensor 
@@ -1268,14 +1269,15 @@ sub check_sensor_health
 		my $ipmitool_sensor_high_warning  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning};
 		my $ipmitool_sensor_low_critical  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical};
 		my $ipmitool_sensor_low_warning   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-			name1 => "ipmitool_value_sensor_value",   value1 => $ipmitool_value_sensor_value, 
-			name2 => "ipmitool_sensor_units",         value2 => $ipmitool_sensor_units, 
-			name3 => "ipmitool_sensor_status",        value3 => $ipmitool_sensor_status, 
-			name4 => "ipmitool_sensor_high_critical", value4 => $ipmitool_sensor_high_critical, 
-			name5 => "ipmitool_sensor_high_warning",  value5 => $ipmitool_sensor_high_warning, 
-			name6 => "ipmitool_sensor_low_critical",  value6 => $ipmitool_sensor_low_critical, 
-			name7 => "ipmitool_sensor_low_warning",   value7 => $ipmitool_sensor_low_warning, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "ipmitool_sensor_name",          value1 => $ipmitool_sensor_name, 
+			name2 => "ipmitool_value_sensor_value",   value2 => $ipmitool_value_sensor_value, 
+			name3 => "ipmitool_sensor_units",         value3 => $ipmitool_sensor_units, 
+			name4 => "ipmitool_sensor_status",        value4 => $ipmitool_sensor_status, 
+			name5 => "ipmitool_sensor_high_critical", value5 => $ipmitool_sensor_high_critical, 
+			name6 => "ipmitool_sensor_high_warning",  value6 => $ipmitool_sensor_high_warning, 
+			name7 => "ipmitool_sensor_low_critical",  value7 => $ipmitool_sensor_low_critical, 
+			name8 => "ipmitool_sensor_low_warning",   value8 => $ipmitool_sensor_low_warning, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ((lc($ipmitool_sensor_units) eq "c") or (lc($ipmitool_sensor_units) eq "f"))
@@ -1324,7 +1326,30 @@ sub check_sensor_health
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($an->data->{sys}{scanning_myself})
 			{
-				$an->data->{health}{new}{$health_source_name} = 1;
+				# Set this to the user's requested weight, if set. Otherwise, use the default.
+				my $weight = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{weight};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "weight", value1 => $weight, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (exists $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{weight})
+				{
+					# If it a number?
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::weight", value1 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{weight}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if (($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{weight} =~ /^\d+$/) or ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{weight} =~ /^\d+\.\d+$/))
+					{
+						$weight = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{weight};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "weight", value1 => $weight, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				
+				# Default to '1' if not set.
+				$weight = 1 if not $weight;
+				
+				$an->data->{health}{new}{$health_source_name} = $weight;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1411,18 +1436,37 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{sys}{scanning_myself})
 		{
-			if ($new_temperature_state eq "warning")
+			# What weight will we apply to this sensor?
+			my $weight  = $an->data->{'scan-ipmitool'}{thresholds}{'default'}{weight};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "weight", value1 => $weight, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (exists $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{weight})
 			{
-				my $health_source_name                           = "temperature:".$ipmitool_sensor_name;
-				   $an->data->{health}{new}{$health_source_name} = 1;
+				# If it a number?
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+					name1 => "scan-ipmitool::thresholds::${ipmitool_sensor_name}::weight", value1 => $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{weight}, 
 				}, file => $THIS_FILE, line => __LINE__});
+				if (($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{weight} =~ /^\d+$/) or ($an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{weight} =~ /^\d+\.\d+$/))
+				{
+					$weight = $an->data->{'scan-ipmitool'}{thresholds}{$ipmitool_sensor_name}{weight};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "weight", value1 => $weight, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
-			elsif ($new_temperature_state eq "critical")
+			
+			# Default to '1' if not set.
+			$weight = 1 if not $weight;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "weight", value1 => $weight, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# If it's not OK, set the weight
+			if ($new_temperature_state ne "ok")
 			{
 				my $health_source_name                           = "temperature:".$ipmitool_sensor_name;
-				   $an->data->{health}{new}{$health_source_name} = 2;
+				   $an->data->{health}{new}{$health_source_name} = $weight;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});

@@ -205,7 +205,7 @@ The error was:
 		<key name="scancore_warning_0012">
 The node: [#!variable!node!#] has entered a 'warning' state. 
 Warning: If the peer goes critical, it will not migrate to this node and instead gracefully shut down its server.</key>
-		<key name="scancore_warning_0013">The node: [#!variable!node!#] has returned to being healthy. It is again a migration target should the peer go into emergency shutdown.</key>
+		<key name="scancore_warning_0013">The node: [#!variable!node!#] has returned to being healthy.</key>
 		<key name="scancore_warning_0014">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] failed because the name could not be translated to an IP address. Is this database setup in '/etc/hosts'?</key>
 		<key name="scancore_warning_0015">Failed to disable #!string!scancore_brand_0001!#!</key>
 		<key name="scancore_warning_0016">Failed to enable #!string!scancore_brand_0001!#!</key>

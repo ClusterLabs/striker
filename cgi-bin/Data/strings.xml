@@ -1548,8 +1548,7 @@
 		<key name="message_0113">Informing the #!string!brand_0003!# that the server is running.</key>
 		<key name="message_0114">The server has been added to the #!string!brand_0003!#.</key>
 		<key name="message_0115"><![CDATA[#!string!message_0068!#<br />
-			The call to tell the #!string!brand_0003!# that the new server is running should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!clusvcadm_exit_code!#</span> was received.<br />
-			#!variable!instructions!#<br />
+			The call to start (or tell) the #!string!brand_0003!# that the new server is running should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!clusvcadm_exit_code!#</span> was received.<br />
 			#!string!brand_0011!#]]></key>
 		<key name="message_0116">In just a moment, your new server should begin installing.</key>
 		<key name="message_0117"><![CDATA[A program called <span class="highlight_detail">libvirtd</span> was found to be running on the dashboard.<br />This program could block the install target function, so it was turned off.]]></key>
@@ -1947,6 +1946,7 @@
 		<key name="message_0509"><![CDATA[The node [<span class="highlight_detail">#!variable!node_name!#</span>] should now be shutting down.]]></key>
 		<key name="message_0510"><![CDATA[Withdrawing the node [<span class="highlight_detail">#!variable!node_name!#</span>] from the #!string!brand_0003!#, please wait...]]></key>
 		<key name="message_0511"><![CDATA[#!string!message_0068!#<br />The call to add the new server to the #!string!brand_0003!# management appears to have succeeded,<br />but the server didn't show up in the resource manament list after two minutes.]]></key>
+		<key name="message_0512"><![CDATA[The definition file: [<span class="fixed_width">#!variable!definition!#</span>] already exists, using it.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>
