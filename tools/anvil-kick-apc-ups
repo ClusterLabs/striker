@@ -30,7 +30,7 @@
 # 8  = Time since last run was too short.
 # 
 # TODO
-# 
+# - Rewrite this whole thing...
 
 # Play safe!
 use strict;
@@ -271,10 +271,11 @@ my $conf = {
 			ups		=>	{
 				device			=>	{},
 				devices			=>	[],
-				power_off_delay		=>	600,
-				sleep_time		=>	300,	# How long to sleep once the UPS is off, in seconds
+				power_off_delay		=>	300,
+				sleep_time		=>	60,	# How long to sleep once the UPS is off, in seconds
 				ticks			=>	10,	# ms
 				kick_every_minutes	=>	2,	# Sets the cron job to run this script (kick the UPS) every X minutes
+				kick_frequency		=>	0,	# This can limit the number of times the UPSes are kicked.
 			},
 			### NOTE: If you change these, also change in Common.pm!
 			reboot		=>	{
@@ -333,17 +334,15 @@ if (($conf->{switches}{'state'}) or ($conf->{switches}{status}))
 if ($conf->{switches}{disable})
 {
 	logger($conf, $THIS_FILE, __LINE__, "Cancelling and disabling the UPS watchdog timer.");
-	get_ups_ips($conf);
-	my $ok   = cancel_countdown($conf);
 	my $exit = 0;
-	if ($ok)
+	my $ok   = update_configuration($conf, "disable");
+	if (not $ok)
 	{
-		my $ok = update_configuration($conf, "disable");
-		if (not $ok)
-		{
-			$exit = 6;
-		}
+		$exit = 6;
 	}
+	
+	get_ups_ips($conf);
+	$ok = cancel_countdown($conf);
 	exit($exit);
 }
 
@@ -436,7 +435,8 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 	}
 	
 	# If this UPS was processed too recently, skip it.
-	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
+	$conf->{sys}{apc}{ups}{target}{$ups}{kick} = 0 if not defined $conf->{sys}{apc}{ups}{target}{$ups}{kick};
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
 	if ((not $conf->{sys}{apc}{ups}{target}{$ups}{kick}) && (not $conf->{switches}{force}))
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The UPS: [$ups] is not scheduled to be kicked on this pass, skipping it.");
@@ -891,10 +891,6 @@ sub check_timing
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups].");
 		
-		# If this is set to 0, the UPS won't be kicked.
-		$conf->{sys}{apc}{ups}{target}{$ups}{kick} = 1;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
-		
 		my $last_run    = 0;
 		my $timing_file = $conf->{path}{timing}.".".$ups;
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups], path::timing: [$conf->{path}{timing}], timing_file: [$timing_file].");
@@ -1344,6 +1340,10 @@ sub get_ups_ips
 				{
 					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups] has IP: [$ip], recording.");
 					push @{$conf->{sys}{apc}{ups}{devices}}, $ups;
+					
+					# If this is set to 0 in check_timing(), the UPS won't be kicked.
+					$conf->{sys}{apc}{ups}{target}{$ups}{kick} = 1;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
 				}
 				else
 				{
@@ -1419,7 +1419,13 @@ sub parse_hosts
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ]   - name: [$name]");
 			}
 		}
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - pushing ip: [$ip] to the 'sys::apc::ups::devices' array.");
 		push @{$conf->{sys}{apc}{ups}{devices}}, $ip;
+		
+		# If this is set to 0 in check_timing(), the UPS won't be kicked.
+		my $ups                                       = $ip;
+		   $conf->{sys}{apc}{ups}{target}{$ups}{kick} = 1;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::apc::ups::target::${ups}::kick: [$conf->{sys}{apc}{ups}{target}{$ups}{kick}].");
 	}
 	
 	return(0);

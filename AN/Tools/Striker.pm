@@ -3868,10 +3868,26 @@ sub _cold_stop_anvil
 	# Set the delay. This will set the hosts -> host_stop_reason to be time + sys::power_off_delay if we
 	# have a sub-task. We'll also check to see if the UPSes are still accessing. Even if 'note=no_abort',
 	# we can not proceed unless both/all UPSes are available
-	my $delay = 0;
+	my $ups_list = "";
+	my $delay    = 0;
 	if (($an->data->{cgi}{subtask} eq "power_cycle") or ($an->data->{cgi}{subtask} eq "power_off"))
 	{
 		$delay = 1;
+		
+		# Build the list of UPSes by IP
+		my $upses = $an->Get->upses({anvil_uuid => $an->data->{sys}{anvil}{uuid}});
+		foreach my $ip (sort {$a cmp $b} keys %{$upses})
+		{
+			$ups_list .= $ip.",";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ip",       value1 => $ip,
+				name2 => "ups_list", value2 => $ups_list,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		$ups_list =~ s/,$//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ups_list", value1 => $ups_list,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If any UPSes are inaccessible, abort.
 		my $access = $an->Striker->access_all_upses({anvil_uuid => $an->data->{sys}{anvil}{uuid}});
@@ -4220,7 +4236,14 @@ sub _cold_stop_anvil
 		}});
 		
 		# Nighty night, see you in the morning!
-		my $shell_call = $an->data->{path}{'call_anvil-kick-apc-ups'}." --reboot --force";
+		my $shell_call = $an->data->{path}{'call_anvil-kick-apc-ups'}." --reboot --force --ups $ups_list";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ups_list", value1 => $ups_list,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($ups_list)
+		{
+			$shell_call .= " --ups $ups_list";
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4285,6 +4308,13 @@ sub _cold_stop_anvil
 		
 		# Do eet!
 		my $shell_call = $an->data->{path}{'call_anvil-kick-apc-ups'}." --shutdown --force";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ups_list", value1 => $ups_list,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($ups_list)
+		{
+			$shell_call .= " --ups $ups_list";
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
