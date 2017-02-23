@@ -3932,9 +3932,21 @@ local data to update nodes.
 
 SWITCHES
 
+ --gather-only
+
+	When called without a node being defined, 
+
  -h, -?, --help
 
 	Show this dialoge and exit.
+
+ --master
+
+	This will upgrade to the latest (master branch) version available on 
+	GitHub: https://github.com/ClusterLabs/striker
+	
+	### WARNING: This is only recommended for developers or testers. Do not
+	###          upgrade to master on production systems!
 
  --node-name <node>
  --node-uuid <uuid>
@@ -3949,9 +3961,14 @@ SWITCHES
 	If '--gather-only' is used, or if the node is still a member of the 
 	Anvil!, no update will be performed. 
 
- --gather-only
+ --offline
 
-	When called without a node being defined, 
+	Don't try to update anything from the Internet. This will use files 
+	already in:
+	
+	RPMS: .. #!data!path::updates::rpms!#
+	Striker: #!data!path::updates::striker!#
+
 
 SUPPORT
 

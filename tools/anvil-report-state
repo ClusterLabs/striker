@@ -1970,7 +1970,6 @@ sub gather_cluster_conf
 	return(0);
 }
 
-### TODO: Change this over to use 'clustat -x', a-la Striker.pm's new '_parse_clustat_xml()' method.
 # This gathers data from 'clustat'
 sub gather_clustat
 {
@@ -1994,9 +1993,10 @@ sub gather_clustat
 	$an->data->{gathered}{clustat}{enable_join}     = 0;
 	$an->data->{gathered}{clustat}{hung}            = 0;
 	
+	my $xml_data   = "";
 	my $timeout    = 5;
-	my $shell_call = $an->data->{path}{timeout}." $timeout ".$an->data->{path}{clustat}."; ".$an->data->{path}{echo}." clustat:\$?";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	my $shell_call = $an->data->{path}{timeout}." $timeout ".$an->data->{path}{clustat}." -x; ".$an->data->{path}{echo}." clustat:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -2007,9 +2007,10 @@ sub gather_clustat
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
+
 		if ($line =~ /clustat:(\d+)/)
 		{
+			### TODO: If this is 124, make sure sane null values are set because timeout fired.
 			my $return_code = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code,
@@ -2022,96 +2023,136 @@ sub gather_clustat
 			}
 			next;
 		}
-		
 		if ($line =~ /Could not connect to CMAN/i)
 		{
 			# CMAN isn't running.
 			$an->data->{gathered}{clustat}{enable_join} = 1;
+			next;
 		}
-		next if not $line;
-		next if $line =~ /^-/;
+		$xml_data .= $line."\n";
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "xml_data", value1 => $xml_data,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($xml_data)
+	{
+		my $xml     = XML::Simple->new();
+		my $clustat = $xml->XMLin($xml_data, KeyAttr => {node => 'name'}, ForceArray => 1);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "clustat", value1 => $clustat,
+		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /^Member Name/)
+		# Record the cluster name and current version
+		$an->data->{gathered}{clustat}{cluster}{version} = $clustat->{cluster}->[0]->{generation};
+		$an->data->{gathered}{clustat}{cluster}{name}    = $clustat->{cluster}->[0]->{name};
+		
+		# Dig out the node details
+		foreach my $this_node (sort {$a cmp $b} keys %{$clustat->{nodes}->[0]->{node}})
 		{
-			$in_member  = 1;
-			$in_service = 0;
-			next;
-		}
-		elsif ($line =~ /^Service Name/)
-		{
-			$in_member  = 0;
-			$in_service = 1;
-			next;
-		}
-		if ($in_member)
-		{
-			if ($line =~ /Local/)
+			my $is_local     = $clustat->{nodes}->[0]->{node}{$this_node}{'local'};
+			my $rgmanager_up = $clustat->{nodes}->[0]->{node}{$this_node}{rgmanager};
+			my $cman_up      = $clustat->{nodes}->[0]->{node}{$this_node}{'state'};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "this_node",    value1 => $this_node,
+				name2 => "is_local",     value2 => $is_local,
+				name3 => "rgmanager_up", value3 => $rgmanager_up,
+				name4 => "cman_up",      value4 => $cman_up,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($is_local)
 			{
-				# Split the node name and services out
-				($an->data->{gathered}{clustat}{name}{me}, undef, my $services) = (split/ /, $line, 3);
-				
-				# Now parse the daemon states
-				$services =~ s/local//;
-				$services =~ s/ //g;
-				$services =~ s/,,/,/g;
-				$an->data->{gathered}{clustat}{cman}{me}      =  1 if $services =~ /Online/;
-				$an->data->{gathered}{clustat}{rgmanager}{me} =  1 if $services =~ /rgmanager/;
+				# It's moi!
+				$an->data->{gathered}{clustat}{name}{me}      = $this_node;
+				$an->data->{gathered}{clustat}{cman}{me}      = $cman_up;
+				$an->data->{gathered}{clustat}{rgmanager}{me} = $rgmanager_up;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "gathered::clustat::name::me",      value1 => $an->data->{gathered}{clustat}{name}{me},
+					name2 => "gathered::clustat::cman::me",      value2 => $an->data->{gathered}{clustat}{cman}{me},
+					name3 => "gathered::clustat::rgmanager::me", value3 => $an->data->{gathered}{clustat}{rgmanager}{me},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				# Split the node name and service out
-				($an->data->{gathered}{clustat}{name}{peer}, undef, my $services) = split/ /, $line, 3;
-				
-				# Now parse the daemon states
-				$services =~ s/ //g;
-				$services =~ s/,,/,/g;
-				$an->data->{gathered}{clustat}{cman}{peer}      = 1 if $services =~ /Online/;
-				$an->data->{gathered}{clustat}{rgmanager}{peer} = 1 if $services =~ /rgmanager/;
+				# C'est le peer.
+				$an->data->{gathered}{clustat}{name}{peer}      = $this_node;
+				$an->data->{gathered}{clustat}{cman}{peer}      = $cman_up;
+				$an->data->{gathered}{clustat}{rgmanager}{peer} = $rgmanager_up;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "gathered::clustat::name::peer",      value1 => $an->data->{gathered}{clustat}{name}{peer},
+					name2 => "gathered::clustat::cman::peer",      value2 => $an->data->{gathered}{clustat}{cman}{peer},
+					name3 => "gathered::clustat::rgmanager::peer", value3 => $an->data->{gathered}{clustat}{rgmanager}{peer},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
-		elsif ($in_service)
+		
+		# Dig out the service (group) details
+		foreach my $hash_ref (@{$clustat->{groups}->[0]->{group}})
 		{
-			if ($line =~ /^vm:/)
+			my $service_name =  $hash_ref->{name};
+			my $is_server    =  $service_name =~ /^vm:/ ? 1 : 0;
+			   $service_name =~ s/^.*?://;
+			my $host         =  $hash_ref->{owner};
+			my $state        =  $hash_ref->{state_str};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "is_server",    value1 => $is_server, 
+				name2 => "service_name", value2 => $service_name, 
+				name3 => "host",         value3 => $host, 
+				name4 => "state",        value4 => $state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Clean up the state
+			if (($state eq "disabled") or ($state eq "stopped"))
 			{
-				# Parse the server state line
-				my ($server, $host, $state) = split/ /, $line, 3;
-				
-				# Now sort out the details.
-				$server =~ s/^vm://;
-				$host   =~ s/^\((.*?)\)$/$1/g;
-				
-				if (($state eq "disabled") or ($state eq "stopped"))
-				{
-					# Set host to 'none'.
-					$host = "none";
-				}
-				elsif ($state eq "failed")
-				{
-					# It is possible the server is still running. We don't know...
-					$host = "unknown";
-				}
-				elsif (not $host)
-				{
-					$host = "none" if not $host;
-				}
-				
-				$an->data->{gathered}{clustat}{server}{$server}{host}    = $host;
-				$an->data->{gathered}{clustat}{server}{$server}{'state'} = $state;
+				# Set host to 'none'.
+				$host = "none";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "host", value1 => $host,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($line =~ /^service:(.*?)\s+(.*?)\s+(.*)$/)
+			elsif ($state eq "failed")
 			{
-				my $name  = $1;
-				my $host  = $2;
-				my $state = $3;
-				
-				# If the service is disabled, it will have '()' which I need to remove.
-				$host =~ s/\(//g;
-				$host =~ s/\)//g;
-				
-				$an->data->{gathered}{clustat}{service}{$name}{host}    = $host;
-				$an->data->{gathered}{clustat}{service}{$name}{'state'} = $state;
+				# It is possible the server is still running. We don't know...
+				$host = "unknown";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "host", value1 => $host,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if (not $host)
+			{
+				$host = "none";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "host", value1 => $host,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Record the data... Server or service?
+			if ($is_server)
+			{
+				# Server
+				$an->data->{gathered}{clustat}{server}{$service_name}{host}    = $host;
+				$an->data->{gathered}{clustat}{server}{$service_name}{'state'} = $state;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "gathered::clustat::server::${service_name}::host",  value1 => $an->data->{gathered}{clustat}{server}{$service_name}{host}, 
+					name2 => "gathered::clustat::server::${service_name}::state", value2 => $an->data->{gathered}{clustat}{server}{$service_name}{'state'}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Service
+				$an->data->{gathered}{clustat}{service}{$service_name}{host}    = $host;
+				$an->data->{gathered}{clustat}{service}{$service_name}{'state'} = $state;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "gathered::clustat::service::${service_name}::host",  value1 => $an->data->{gathered}{clustat}{service}{$service_name}{host}, 
+					name2 => "gathered::clustat::service::${service_name}::state", value2 => $an->data->{gathered}{clustat}{service}{$service_name}{'state'}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
+		
+		### NOTE: There is a lot more data in here that we don't, currently, care about.
+		#print "<pre>\n";
+		#print Dumper $clustat;
+		#print "</pre>\n";
 	}
 	close $file_handle;
 	
