@@ -14,6 +14,10 @@
 # 1  = Not run on a Striker dashboard.
 # 2  = Not run as root.
 # 3  = The temporary directory didn't end in /temp, indicating a program error.
+# 4  = Failed to connect to the ScanCore database.
+# 5  = Failed to look up the Anvil! UUID for the given name.
+# 6  = Failed to look up the Anvil! name for the given uuid.
+# 7  = Neither node was online or reachable.
 # 
 
 use strict;
@@ -50,6 +54,7 @@ my $an = AN::Tools->new({
 			curl		=>	"/usr/bin/curl",
 			current_dir	=>	$ENV{PWD},
 			# This file is checked to verify that we're on a Striker dashboard.
+			find		=>	"/bin/find",
 			striker		=>	"/var/www/cgi-bin/striker",
 			tarball_dir	=>	"",
 			unzip		=>	"/usr/bin/unzip",
@@ -66,6 +71,7 @@ my $an = AN::Tools->new({
 				# This is used to store temporary files
 				temp		=>	$THIS_FILE."/temp",
 			},
+			yum_cache	=>	"/var/cache/yum",
 		},
 		url		=>	{
 			# By default, we will read the latest release from 'striker_latest'. If, however, we can't
@@ -187,6 +193,15 @@ if (not $an->data->{sys}{offline})
 	# Download any updates to the OS.
 	print "Downloading OS updates.\n";
 	download_os_updates($an);
+	cache_updated_rpms($an);
+	
+	# If I've been asked to 'gather-only' and an Anvil! name or UUID was passed, pick a node to do a 
+	# 'yum -y update --downloadonly' and then pull it's updated RPMs over, too.
+	if (($an->data->{switches}{'gather-only'}) && (($an->data->{switches}{'anvil-uuid'}) or ($an->data->{switches}{'anvil-name'})))
+	{
+		# Gather the RPMs from one of the nodes.
+		gather_updated_rpms_from_anvil($an);
+	}
 }
 
 # What am I doing?
@@ -210,6 +225,140 @@ exit(0);
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This calls 'yum -y update --downloadonly' on one of the Anvil! nodes
+sub gather_updated_rpms_from_anvil
+{
+	my ($an) = @_;
+	
+	print "Downloading updated RPMs for Anvil! nodes...\n";
+	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - connections: [$connections]\n" if $an->data->{sys}{debug} >= 3;
+	if (not $connections)
+	{
+		print "[ Error ] - Failed to connect to the ScanCore database. Is postgres running?\n";
+		exit(4);
+	}
+	
+	# If I have a UUID, look up the name. If I have a name, look up the UUID.
+	my $anvil_uuid = "";
+	my $anvil_name = "";
+	if ($an->data->{switches}{'anvil-name'})
+	{
+		   $anvil_name = $an->data->{switches}{'anvil-name'};
+		my $query      = "SELECT anvil_uuid FROM anvils WHERE anvil_name = ".$an->data->{sys}{use_db_fh}->quote($anvil_name).";";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 3;
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$anvil_uuid = $row->[0];
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 3;
+		}
+		
+		if (not $anvil_uuid)
+		{
+			print "[ Error ] - Failed to find an Anvil! UUID for the name: [$anvil_name]\n";
+			exit(5);
+		}
+	}
+	else
+	{
+		   $anvil_uuid = $an->data->{switches}{'anvil-uuid'};
+		my $query      = "SELECT anvil_name FROM anvils WHERE anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid).";";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 2;
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$anvil_name = $row->[0];
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name]\n" if $an->data->{sys}{debug} >= 2;
+		}
+		
+		if (not $anvil_name)
+		{
+			print "[ Error ] - Failed to find an Anvil! name for the UUID: [$anvil_uuid]\n";
+			exit(6);
+		}
+	}
+	
+	# If I am still alive, we've got a good Anvil!.
+	print "- Picking a node in the Anvil!: [$anvil_name ($anvil_uuid)]\n";
+	$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+	
+	my $use_node = "";
+	foreach my $node_key ("node1", "node2")
+	{
+		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+		print "- Doing a quick scan of: [$node_name ($node_uuid)]\n";
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
+		if ($an->data->{sys}{anvil}{$node_key}{online})
+		{
+			print "- The node is online.\n";
+			$use_node = $node_key if not $use_node;
+		}
+		else
+		{
+			print "- The node appears to be offline or unreachable.\n";
+		}
+	}
+	if (not $use_node)
+	{
+		print "[ Error ] - Neither node is online or reachable. Unable to proceed.\n";
+		exit(7);
+	}
+	
+	return(0);
+}
+
+# This walks through the yum cache and copies any found RPMs to 'path::rpm_cache'.
+sub cache_updated_rpms
+{
+	my ($an) = @_;
+	
+	print "- Caching updated RPMs...\n";
+	my $rpm_files  = [];
+	my $shell_call = $an->data->{path}{find}." ".$an->data->{path}{yum_cache};
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		if ($line =~ /^(\/.*?\.rpm)$/)
+		{
+			my $rpm = $1;
+			push @{$rpm_files}, $rpm;
+		}
+	}
+	close $file_handle;
+	
+	foreach my $rpm_file (sort {$a cmp $b} @{$rpm_files})
+	{
+		my $file_name   = ($rpm_file =~ /^.*\/(.*)$/)[0];
+		my $target_file = $an->data->{path}{rpm_cache}."/".$file_name;
+		next if -e $target_file;
+		print "- Caching: [$rpm_file]\n";
+		my $shell_call = $an->data->{path}{rsync}." -a $rpm_file ".$an->data->{path}{rpm_cache}."/";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		}
+		close $file_handle;
+	}
+	print "- Done. RPMs are now stored in: [".$an->data->{path}{rpm_cache}."/]\n\n";
+	
+	return(0);
+}
+
+# This downloads, and if '--gather-only' is not specified, installs OS update on the local machine.
 sub download_os_updates
 {
 	my ($an) = @_;
@@ -232,12 +381,22 @@ sub download_os_updates
 	{
 		chomp;
 		my $line = $_;
-		print "| $line\n"
+		print "| $line\n";
+		if ($line =~ /Downloading Packages/i)
+		{
+			print "| ################################################################\n";
+			print "| Please be patient! Packages are downloading in the background.\n";
+			print "| You can verify the download is running with 'ps aux | grep yum'.\n";
+			print "| ################################################################\n";
+		}
 	}
 	close $file_handle;
 	print "\\-----------------------------------------------------------------------------\n";
 	
-	
+	if (not $an->data->{switches}{'gather-only'})
+	{
+		manage_scancore($an, "enable");
+	}
 	
 	return(0);
 }

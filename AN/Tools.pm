@@ -1122,6 +1122,7 @@ sub _set_paths
 	$an->data->{path}{fence_check}            = "/usr/sbin/fence_check";
 	$an->data->{path}{fence_node}             = "/usr/sbin/fence_node";
 	$an->data->{path}{fence_tool}             = "/usr/sbin/fence_tool";
+	$an->data->{path}{find}                   = "/bin/find";
 	$an->data->{path}{free}                   = "/usr/bin/free";
 	$an->data->{path}{'grep'}                 = "/bin/grep";
 	$an->data->{path}{gethostip}              = "/usr/bin/gethostip";
@@ -1270,6 +1271,7 @@ sub _set_paths
 	$an->data->{path}{striker_cache}      = "/var/www/home/cache";
 	$an->data->{path}{striker_tools}      = "/sbin/striker";
 	$an->data->{path}{update_cache}       = "/var/striker/cache";
+	$an->data->{path}{yum_cache}          = "/var/cache/yum";
 	$an->data->{path}{yum_repos}          = "/etc/yum.repos.d";
 	
 	# Tools
