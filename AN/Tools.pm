@@ -1107,9 +1107,10 @@ sub _set_paths
 	$an->data->{path}{'chmod'}                = "/bin/chmod";
 	$an->data->{path}{chkconfig}              = "/sbin/chkconfig";
 	$an->data->{path}{'chown'}                = "/bin/chown";
-	$an->data->{path}{cp}                     = "/bin/cp";
 	$an->data->{path}{clustat}                = "/usr/sbin/clustat";
 	$an->data->{path}{clusvcadm}              = "/usr/sbin/clusvcadm";
+	$an->data->{path}{cp}                     = "/bin/cp";
+	$an->data->{path}{curl}                   = "/usr/bin/curl";
 	$an->data->{path}{df}                     = "/bin/df";
 	$an->data->{path}{dmesg}                  = "/bin/dmesage";
 	$an->data->{path}{dmidecode}              = "/usr/sbin/dmidecode";
@@ -1190,6 +1191,7 @@ sub _set_paths
 	$an->data->{path}{su}                     = "/bin/su";
 	$an->data->{path}{timeout}                = "/usr/bin/timeout";
 	$an->data->{path}{tput}                   = "/usr/bin/tput";
+	$an->data->{path}{unzip}                  = "/usr/bin/unzip";
 	$an->data->{path}{uuidgen}                = "/usr/bin/uuidgen";
 	$an->data->{path}{touch}                  = "/bin/touch";
 	$an->data->{path}{'virt-manager'}         = "/usr/bin/virt-manager";

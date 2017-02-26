@@ -4,91 +4,124 @@
 # uses cached RPMs to update its own local repository. Optionally, it can be pointed at a node and pull and
 # integrate its updated RPMs into the local repository.
 # 
+### NOTE: The local machine needs to be updated before trying to update the other dashboard or nodes.
+#
+### NOTE: This program doesn't use translated strings because it is too likely that the old version won't 
+#         have all the strings we need, which would cause String->get() to error out.
+# 
 # Return Codes:
 # 0  = OK
 # 1  = Not run on a Striker dashboard.
 # 2  = Not run as root.
+# 3  = The temporary directory didn't end in /temp, indicating a program error.
 # 
 
 use strict;
 use warnings;
 use IO::Handle;
+use AN::Tools;
+use XML::Simple;
 
-my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
-my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $program_name        =  $0;
+my $THIS_FILE           =  ($program_name =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($program_name =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
 	$running_directory =~ s/^\./$ENV{PWD}/;
 }
+my $time = time;
 
-# We can't use the AN::Tools here because it will be part of what we're updating.
-my $conf = {
-	executable	=>	{
-		createrepo	=>	"createrepo",
-		'mkdir'		=>	"/bin/mkdir",
-		ping		=>	"/bin/ping",
-	},
-	path		=>	{
-		current_dir	=>	$ENV{PWD},
-		# This file is checked to verify that we're on a Striker dashboard.
-		striker		=>	"/var/www/cgi-bin/striker",
-		# These are appended to 'path::current_dir'
-		updates		=>	{
-			# If this directory exists and has RPMs in it, we'll use what is in it to 
-			# update the local repository before doing the OS update. Once the update is
-			# done, all downloaded RPMs will be copied into this directory
-			rpms		=>	$THIS_FILE."/rpms/",
-			# The striker source files will be saved in this directory. If there is no
-			# internet access to download the latest version, files found in here will be
-			# used instead.
-			striker		=>	$THIS_FILE."/source/",
-			# This is used to store temporary files
-			temp		=>	$THIS_FILE."/temp/",
+my $an = AN::Tools->new({
+	data		=> {
+		path		=>	{
+			# This wasn't defined in older versions of Tools.pm
+			curl		=>	"/usr/bin/curl",
+			current_dir	=>	$ENV{PWD},
+			# This file is checked to verify that we're on a Striker dashboard.
+			striker		=>	"/var/www/cgi-bin/striker",
+			tarball_dir	=>	"",
+			unzip		=>	"/usr/bin/unzip",
+			# These are appended to 'path::current_dir'
+			updates		=>	{
+				# If this directory exists and has RPMs in it, we'll use what is in it to 
+				# update the local repository before doing the OS update. Once the update is
+				# done, all downloaded RPMs will be copied into this directory
+				rpms		=>	$THIS_FILE."/rpms",
+				# The striker source files will be saved in this directory. If there is no
+				# internet access to download the latest version, files found in here will be
+				# used instead.
+				striker		=>	$THIS_FILE."/source",
+				# This is used to store temporary files
+				temp		=>	$THIS_FILE."/temp",
+			},
+		},
+		url		=>	{
+			# By default, we will read the latest release from 'striker_latest'. If, however, we can't
+			# access that file, we'll use 'striker_default'. Optionally, the user can request the latest
+			# master with '--master', in which case we will download the 'striker_master' URL. In all
+			# cases, the downloaded file will be saved as 'striker_zip_file'.
+			striker_default	=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-rc8.zip",
+			striker_latest	=>	"https://www.alteeve.com/an-repo/striker_latest.txt",
+			striker_master	=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
+			support		=>	"https://alteeve.com/w/Support",
+			ping_targets	=>	"8.8.8.8,google.com,redhat.com,alteeve.com",
+		},
+		switches	=>	{
+			offline		=>	0,
+			'gather-only'	=>	0,
+		},
+		sys		=>	{
+			debug		=>	2,
+			install_master	=>	0,
+			install_version	=>	"",
+			update		=>	1,
+			offline		=>	0,
+			ping_attempts	=>	3,
+			striker_zip_file =>	"striker.zip",
 		},
 	},
-	url		=>	{
-		# By default, we will read the latest release from 'striker_latest'. If, however, we can't
-		# access that file, we'll use 'striker_default'. Optionally, the user can request the latest
-		# master with '--master', in which case we will download the 'striker_master' URL. In all
-		# cases, the downloaded file will be saved as 'striker_zip_file'.
-		striker_default	=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-rc8.zip",
-		striker_latest	=>	"https://www.alteeve.com/an-repo/striker_latest.txt",
-		striker_master	=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
-		striker_zip_file =>	"striker.zip",
-		support		=>	"https://alteeve.com/w/Support",
-		ping_targets	=>	"8.8.8.8,google.com,redhat.com,alteeve.com",
-	},
-	switches	=>	{
-		offline		=>	0,
-		'gather-only'	=>	0,
-	},
-	sys		=>	{
-		debug		=>	2,
-		update		=>	1,
-		offline		=>	0,
-		ping_attempts	=>	3,
-	},
-};
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+$an->Log->db_transactions(1) if $an->data->{$THIS_FILE}{log_db_transactions};
+$an->Readable->base2(1);
+
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or 
+    ($an->data->{switches}{help}))
+{
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
 
 print "-=] Anvil! system (Striker and ScanCore) update started.\n\n";
 
-get_switches($conf);
-$conf->{sys}{debug} = 1 if $conf->{switches}{debug};
-if (($conf->{switches}{h})    or 
-    ($conf->{switches}{'?'})  or 
-    ($conf->{switches}{help}))
-{
-	print_usage($conf);
-	exit(0);
-}
-
 # Enable debugging if the user requested it.
-$conf->{sys}{debug} = 1 if $conf->{switches}{v};
-$conf->{sys}{debug} = 2 if $conf->{switches}{vv};
-$conf->{sys}{debug} = 3 if $conf->{switches}{vvv};
+$an->data->{sys}{debug} = 1 if $an->data->{switches}{v};
+$an->data->{sys}{debug} = 2 if $an->data->{switches}{vv};
+$an->data->{sys}{debug} = 3 if $an->data->{switches}{vvv};
 
 # Is this a striker dashboard?
-if (not -e $conf->{path}{striker})
+if (not -e $an->data->{path}{striker})
 {
 	print "[ Error ] - This must be run on a Striker dashboard.\n";
 	exit(1);
@@ -102,49 +135,68 @@ if (($< != 0) && ($> != 0))
 }
 
 # Am I to go offline?
-if ($conf->{switches}{offline})
+if ($an->data->{switches}{offline})
 {
 	print "[ Note ] - Offline update requested. Cached data will be used.\n\n";
-	$conf->{sys}{offline} = 1;
+	$an->data->{sys}{offline} = 1;
 }
 
 # Am I to download updates only?
-if ($conf->{switches}{'gather-only'})
+if ($an->data->{switches}{'gather-only'})
 {
 	print "[ Note ] - Updates will be downloaded and stored in cache only.\n\n";
-	$conf->{sys}{offline} = 1;
 }
 
 # First, setup the local cache directories, if they don't already exists
-setup_cache($conf);
+setup_cache($an);
 
 # Make sure we're actually online, unless we were told to work offline
-if (not $conf->{sys}{offline})
+if (not $an->data->{sys}{offline})
 {
-	check_internet_access($conf);
+	check_internet_access($an);
 }
 
 # If we're online (still), download the striker source
-if (not $conf->{sys}{offline})
+if (not $an->data->{sys}{offline})
 {
+	### WARNING: Re-enable this and the download/extract later... We pissed off github downloading them 
+	###          too often in dev.
+	# Clear out any old temp files.
+	#clear_temp($an);
+	
 	# Download the latest source
 	print "Downloading latest Striker...\n";
-	if ($conf->{switches}{master})
+	print "- Determining version to download...\n";
+	get_latest_version($an);
+	if ($an->data->{switches}{master})
 	{
-		print "[ Warning ] - Master branch requested. This should be used by developers and\n";
+		print "- Downloading: [".$an->data->{url}{striker_master}."]\n";
+		print "\n[ Warning ] - Master branch requested. This should be used by developers and\n";
 		print "              testers only. Please don't use this in production!\n\n";
+		$an->data->{sys}{install_master} = 1;
 		sleep 3;
+		#download_and_extract_source($an, $an->data->{url}{striker_master});
 	}
+	else
+	{
+		print "- Downloading version: [".$an->data->{sys}{install_version}."] from: [".$an->data->{url}{striker_default}."]\n";
+		#download_and_extract_source($an, $an->data->{url}{striker_default});
+	}
+	print "- Done\n\n";
+	
+	# Download any updates to the OS.
+	print "Downloading OS updates.\n";
+	download_os_updates($an);
 }
 
 # What am I doing?
-if (($conf->{switches}{'node-name'}) or ($conf->{switches}{'node-name'}))
+if (($an->data->{switches}{'node-name'}) or ($an->data->{switches}{'node-name'}))
 {
-	update_node($conf);
+	update_node($an);
 }
 else
 {
-	update_local($conf);
+	update_local($an);
 }
 
 
@@ -158,58 +210,323 @@ exit(0);
 # Functions                                                                                                 #
 #############################################################################################################
 
-# This tries to ping a few targets to see if we have internet access.
-sub check_internet_access
+sub download_os_updates
 {
-	my ($conf) = @_;
+	my ($an) = @_;
 	
-	print "Checking for Internet access...\n";
-	my $pinged = 0;
-	my $count  = $conf->{sys}{ping_attempts};
-	foreach my $target (split/,/, $conf->{url}{ping_targets})
+	# If I am gathering only, do nothing, but otherwise I want to disable ScanCore.
+	if (not $an->data->{switches}{'gather-only'})
 	{
-		print "- Trying to ping: [$target]...\n" if $conf->{sys}{debug} >= 1;
-		
-		my $shell_call = $conf->{executable}{ping}." -W 1 -c $count $target";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 3;
+		manage_scancore($an, "disable");
+	}
+	
+	my $shell_call = $an->data->{path}{yum}." -y update";
+	if ($an->data->{switches}{'gather-only'})
+	{
+		$shell_call = $an->data->{path}{yum}." -y update --downloadonly";
+	}
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+	print "/-----[ Command output ]------------------------------------------------------\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "| $line\n"
+	}
+	close $file_handle;
+	print "\\-----------------------------------------------------------------------------\n";
+	
+	
+	
+	return(0);
+}
+
+# This disabled or enables ScanCore. When disabling, it waits until it exits before returning.
+sub manage_scancore
+{
+	my ($an, $task) = @_;
+	
+	if ($task eq "disable")
+	{
+		print "- Disabling ScanCore...\n";
+		my $waiting    = 1;
+		my $shell_call = $an->data->{path}{ScanCore}." --disable";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
-			
-			if ($line =~ /^\d+ bytes from $target: icmp_seq=\d+ ttl=\d+ time=\d+/)
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		}
+		close $file_handle;
+		
+		# Now wait for it to exit
+		print "- Disabled. Waiting now for it to exit: ";
+		while($waiting)
+		{
+			my $pid_seen   = 0;
+			my $shell_call = $an->data->{path}{ScanCore}." --status";
+			print "\n".$THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
 			{
-				# Success!
-				$pinged = 1;
-				last;
-			}
-			if ($line =~ /(\d+) packets transmitted, (\d+) received/)
-			{
-				# This isn't really needed, but might help folks watching the logs.
-				my $pings_sent     = $1;
-				my $pings_received = $2;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - pings_sent: [$pings_sent], pings_received: [$pings_received]\n" if $conf->{sys}{debug} >= 3;
-				if ($pings_received)
+				chomp;
+				my $line = $_;
+				# NOTE: Don't parse the string text, it could be in whatever language.
+				print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+				if ($line =~ /-.*?\[(\d+)\]$/)
 				{
-					# Contact!
-					$pinged = 1;
-					last;
+					$pid_seen = 1;
+				}
+			}
+			close $file_handle;
+			
+			if ($pid_seen)
+			{
+				if ($an->data->{sys}{debug} >= 3)
+				{
+					print "- Still running, will check again momentarily.\n";
 				}
 				else
 				{
-					# Not yet... Sleep to give time for transient network problems to 
-					# pass.
-					sleep 1;
+					print ".";
 				}
+				sleep 5;
+			}
+			else
+			{
+				if ($an->data->{sys}{debug} >= 3)
+				{
+					print "- It has exited.\n";
+				}
+				else
+				{
+					print " Done.\n";
+				}
+				$waiting = 0;
 			}
 		}
+	}
+	else
+	{
+		# Enable it
+		print "- Enabling ScanCore...\n";
+		my $waiting    = 1;
+		my $shell_call = $an->data->{path}{ScanCore}." --disable";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 2;
+		}
 		close $file_handle;
+		print "- Done.\n";
+	}
+	
+	return(0);
+}
+
+# This downloads and extracts the Striker source
+sub download_and_extract_source
+{
+	my ($an, $url) = @_;
+	
+	# Download the URL to path::temp_cache.
+	my $out_file = $an->data->{path}{temp_cache}."/".$an->data->{sys}{striker_zip_file};
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - url: [$url], out_file: [$out_file]\n" if $an->data->{sys}{debug} >= 3;
+	
+	# Extract the source
+	   $out_file     = download_file($an, $url, $out_file, 0644);
+	my $extract_root = extract_file($an, $out_file);
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - extract_root: [$extract_root]\n" if $an->data->{sys}{debug} >= 3;
+	if (not $extract_root)
+	{
+		# Failed to download
+		return(0);
+	}
+	
+	# Move the source from temp.
+	rsync_data($an, $extract_root."/*", $an->data->{path}{striker_cache});
+	
+	# Clear the temp cache now that we're done.
+	clear_temp($an);
+	
+	return(0);
+}
+
+# This uses rsync to copy data
+sub rsync_data
+{
+	my ($an, $source, $destination) = @_;
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - source: [$source], destination: [$destination]\n" if $an->data->{sys}{debug} >= 2;
+	
+	#rsync -av striker-update/temp/striker-2.0.0b-rc8/* striker-update/source
+	my $copy_count = 0;
+	my $shell_call = $an->data->{path}{rsync}." -av $source $destination";
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+	if ($an->data->{sys}{debug} < 3)
+	{
+		print "- Progress: [";
+	}
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$copy_count++;
+		if ($an->data->{sys}{debug} >= 3)
+		{
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n"
+		}
+		elsif (not $copy_count % 10)
+		{
+			print ".";
+		}
+	}
+	# The last four lines are a summary.
+	$copy_count -= 4; 
+	close $file_handle;
+	if ($an->data->{sys}{debug} < 3)
+	{
+		print "]\n";
+	}
+	if ($copy_count > 1)
+	{
+		print "- Copied: [$copy_count] files and directories to: [$destination].\n\n";
+	}
+	else
+	{
+		print "- The directory: [$destination] was already up to date.\n\n";
+	}
+	die;
+	
+	return(0);
+}
+
+# This extracts a (compressed) tar file.
+sub extract_file
+{
+	my ($an, $extract) = @_;
+	
+	print "- Extracting: [$extract]\n";
+	my $shell_call = $an->data->{path}{tar}." -C ".$an->data->{path}{temp_cache}." -xvf $extract";
+	if ($extract =~ /\.zip$/)
+	{
+		$shell_call = $an->data->{path}{unzip}." -d ".$an->data->{path}{temp_cache}." $extract";
+	}
+	my $extract_root  = "";
+	my $start_time    = time;
+	my $extract_count = 0;
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	if ($an->data->{sys}{debug} < 3)
+	{
+		print "- Progress: [";
+	}
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($an->data->{sys}{debug} >= 3)
+		{
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n"
+		}
+		if (($line =~ / creating:/i) or ($line =~ / inflating:/) or ($line =~ / extracting:/))
+		{
+			$extract_count++;
+			if (($an->data->{sys}{debug} < 3) && (not $extract_count % 10))
+			{
+				print ".";
+			}
+		}
+		my $temp = $an->data->{path}{temp_cache};
+		if ((not $extract_root) && ($line =~ /$temp\/(.*?)\//))
+		{
+			$extract_root = $an->data->{path}{temp_cache}."/".$1;
+		}
+	}
+	close $file_handle;
+	if ($an->data->{sys}{debug} < 3)
+	{
+		print "]\n";
+	}
+	my $duration = time - $start_time;
+	if ($duration > 1)
+	{
+		print "- Extracted: [$extract_count] files and directories to: [$extract_root] in: [$duration] seconds.\n";
+	}
+	else
+	{
+		print "- Extracted: [$extract_count] files and directories to: [$extract_root].\n";
+	}
+	
+	return($extract_root);
+}
+
+# This deletes whatever might be in the temp directory.
+sub clear_temp
+{
+	my ($an) = @_;
+	
+	if ($an->data->{path}{temp_cache} !~ /\/temp$/)
+	{
+		# What?
+		print "[ Error ] - There appears to be a programming error. We were about to clear out\n";
+		print "[ Error ]   the temporary directory: [".$an->data->{path}{temp_cache}."]\n";
+		print "[ Error ]   which should has ended in '*/temp'. Exiting to avoid accidental\n";
+		print "[ Error ]   data deletion.\n";
+		exit(3);
+	}
+	
+	print "Clearing out the old temporary directory contents (if any)...\n";
+	my $shell_call = $an->data->{path}{rm}." -rf ".$an->data->{path}{temp_cache}."/*";
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+	}
+	close $file_handle;
+	print "- Done.\n\n";
+	
+	return(0);
+}
+
+# This tries to ping a few targets to see if we have internet access.
+sub check_internet_access
+{
+	my ($an) = @_;
+	
+	print "Checking for Internet access...\n";
+	my $pinged = 0;
+	my $count  = $an->data->{sys}{ping_attempts};
+	foreach my $target (split/,/, $an->data->{url}{ping_targets})
+	{
+		print "- Trying to ping: [$target]...\n" if $an->data->{sys}{debug} >= 1;
+		my $ping = $an->Check->ping({ping => $target});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ping", value1 => $ping,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($ping)
+		{
+			$pinged = 1;
+			last;
+		}
 		if ($pinged)
 		{
-			print "- Success!\n" if $conf->{sys}{debug} >= 1;
+			print "- Success!\n" if $an->data->{sys}{debug} >= 1;
 			last;
+		}
+		else
+		{
+			# No luck...
+			print "- Failed.\n";
 		}
 	}
 	
@@ -220,7 +537,7 @@ sub check_internet_access
 	else
 	{
 		print "- We appear to be offline. Update will proceed with cached data, if any.\n\n";
-		$conf->{sys}{offline} = 1;
+		$an->data->{sys}{offline} = 1;
 	}
 	
 	return(0);
@@ -229,65 +546,65 @@ sub check_internet_access
 # This creates the cache directories, if they don't already exist.
 sub setup_cache
 {
-	my ($conf) = @_;
+	my ($an) = @_;
 	
 	print "Checking cache directories...\n";
-	my $rpm_cache     = $conf->{path}{current_dir}."/".$conf->{path}{updates}{rpms};
-	my $striker_cache = $conf->{path}{current_dir}."/".$conf->{path}{updates}{striker};
-	my $temp_cache    = $conf->{path}{current_dir}."/".$conf->{path}{updates}{temp};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::current_dir: [".$conf->{path}{current_dir}."], rpm_cache: [$rpm_cache], striker_cache: [$striker_cache], temp_cache: [$temp_cache]\n" if $conf->{sys}{debug} >= 3;
+	$an->data->{path}{rpm_cache}     = $an->data->{path}{current_dir}."/".$an->data->{path}{updates}{rpms};
+	$an->data->{path}{striker_cache} = $an->data->{path}{current_dir}."/".$an->data->{path}{updates}{striker};
+	$an->data->{path}{temp_cache}    = $an->data->{path}{current_dir}."/".$an->data->{path}{updates}{temp};
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - path::current_dir: [".$an->data->{path}{current_dir}."], path::rpm_cache: [".$an->data->{path}{rpm_cache}."], path::striker_cache: [".$an->data->{path}{striker_cache}."], path::temp_cache: [".$an->data->{path}{temp_cache}."]\n" if $an->data->{sys}{debug} >= 3;
 	
-	if (-e $rpm_cache)
+	if (-e $an->data->{path}{rpm_cache})
 	{
-		print "- RPM cache: [$rpm_cache] already exists.\n";
+		print "- RPM cache: [".$an->data->{path}{rpm_cache}."] already exists.\n";
 	}
 	else
 	{
-		print "- Creating RPM cache: [$rpm_cache]\n";
-		my $shell_call = $conf->{executable}{'mkdir'}." -p ".$rpm_cache;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 3;
+		print "- Creating RPM cache: [".$an->data->{path}{rpm_cache}."]\n";
+		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{rpm_cache};
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
 		}
 		close $file_handle;
 	}
-	if (-e $striker_cache)
+	if (-e $an->data->{path}{striker_cache})
 	{
-		print "- Striker cache: [$striker_cache] already exists.\n";
+		print "- Striker cache: [".$an->data->{path}{striker_cache}."] already exists.\n";
 	}
 	else
 	{
-		print "- Creating Striker cache: [$striker_cache]\n";
-		my $shell_call = $conf->{executable}{'mkdir'}." -p ".$striker_cache;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 3;
+		print "- Creating Striker cache: [".$an->data->{path}{striker_cache}."]\n";
+		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{striker_cache};
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
 		}
 		close $file_handle;
 	}
-	if (-e $temp_cache)
+	if (-e $an->data->{path}{temp_cache})
 	{
-		print "- Working cache: [$temp_cache] already exists.\n";
+		print "- Working cache: [".$an->data->{path}{temp_cache}."] already exists.\n";
 	}
 	else
 	{
-		print "- Creating working cache: [$temp_cache]\n";
-		my $shell_call = $conf->{executable}{'mkdir'}." -p ".$temp_cache;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 3;
+		print "- Creating working cache: [".$an->data->{path}{temp_cache}."]\n";
+		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{temp_cache};
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
 		}
 		close $file_handle;
 	}
@@ -299,7 +616,7 @@ sub setup_cache
 # This updates the local machine.
 sub update_local
 {
-	my ($conf) = @_;
+	my ($an) = @_;
 	
 	# First, are we online?
 	
@@ -310,90 +627,244 @@ sub update_local
 # This updates a node.
 sub update_node
 {
-	my ($conf) = @_;
+	my ($an) = @_;
 	
 	
 	
 	return(0);
 }
 
-# This collects the command line switches
-sub get_switches
+# This tries to determine the latest release by checking the alteeve website.
+sub get_latest_version
 {
-	my ($conf) = @_;
+	my ($an) = @_;
 	
-	my $last_argument = "";
-	foreach my $argument (@ARGV)
+	my $set        = 0;
+	my $shell_call = $an->data->{path}{curl}." 2>/dev/null ".$an->data->{url}{striker_latest};
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
-		if ($last_argument eq "raw")
+		chomp;
+		my $line = $_;
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		
+		if ($line =~ /^striker:(http.*)$/)
 		{
-			# Don't process anything.
-			$conf->{switches}{raw} .= " $argument";
+			$an->data->{url}{striker_default} = $1;
+			$set                          = 1;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - url::striker_default: [".$an->data->{url}{striker_default}."]\n" if $an->data->{sys}{debug} >= 3;
 		}
-		elsif ($argument =~ /^-/)
+		if ($line =~ /^master:(http.*)$/)
 		{
-			# If the argument is just '--', appeand everything after it to 'raw'.
-			$conf->{sys}{switch_count}++;
-			if ($argument eq "--")
+			$an->data->{url}{striker_master} = $1;
+			$set                          = 1;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - url::striker_master: [".$an->data->{url}{striker_master}."]\n" if $an->data->{sys}{debug} >= 3;
+		}
+	}
+	close $file_handle;
+	
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - set: [$set]\n" if $an->data->{sys}{debug} >= 3;
+	if ($set)
+	{
+		if ($an->data->{url}{striker_default} =~ /.*\/(.*)\.zip$/)
+		{
+			$an->data->{sys}{install_version} = $1;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::install_version: [".$an->data->{sys}{install_version}."]\n" if $an->data->{sys}{debug} >= 3;
+		}
+		elsif ($an->data->{url}{striker_default} =~ /.*\/(.*)\.tar.gz$/)
+		{
+			$an->data->{sys}{install_version} = $1;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::install_version: [".$an->data->{sys}{install_version}."]\n" if $an->data->{sys}{debug} >= 3;
+		}
+		elsif ($an->data->{url}{striker_default} =~ /.*\/(.*)\.tar.bz2$/)
+		{
+			$an->data->{sys}{install_version} = $1;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::install_version: [".$an->data->{sys}{install_version}."]\n" if $an->data->{sys}{debug} >= 3;
+		}
+		$an->data->{path}{tarball_dir} = "striker-".$an->data->{sys}{install_version};
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - path::tarball_dir: [".$an->data->{path}{tarball_dir}."]\n" if $an->data->{sys}{debug} >= 3;
+	}
+	
+	return(0);
+}
+
+# This downloads the give file, if it is not already downloaded, and verifies that it is not a curl failure
+# message.
+sub download_file
+{
+	my ($an, $source, $target, $mode) = @_;
+	$mode = "" if not defined $mode;
+	
+	# Get the file size so that we can warn the user
+	my $out_file   = $target;
+	my $size       = "";
+	my $shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" 2>/dev/null --head $source";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+			$line =~ s/\r//;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		if ($line =~ /Content-Length: (\d+)$/)
+		{
+			$size = $1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - size: [$size]\n" if $an->data->{sys}{debug} >= 3;
+		}
+	}
+	close $file_handle;
+	
+	# If I got a size, make it (crudely) human readable.
+	my $say_size = "";
+	if ($size =~ /^\d+$/)
+	{
+		$say_size = $an->Readable->bytes_to_hr({'bytes' => $size});
+	}
+	
+	my $start_time = time;
+	if ($say_size)
+	{
+		print "- Downloading: [$source] to: [$target], which is: [$say_size]... ";
+	}
+	else
+	{
+		print "- Downloading: [$source] to: [$target]... ";
+	}
+	print "\n" if $an->data->{sys}{debug} >= 1;
+	
+	### NOTE: Do NOT use 2>&1 as this pushes the download progress into the download file. If 
+	###       debug is enabled, we'll dump the progress to the screen.
+	$shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" $source 2>/dev/null > $target";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	open ($file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+	}
+	close $file_handle;
+	
+	my $file_ok = 0;
+	if (-e $target)
+	{
+		# If the file is less than 1024 bytes, read it in to make sure it is not a 
+		# failure message.
+		my $size = (stat($target))[7];
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is: [$size] bytes.\n" if $an->data->{sys}{debug} >= 3;
+		if ($size < 1024)
+		{
+			# Is it binary or text? If it is text, make sure it is not a failure message.
+			if (not $size)
 			{
-				$last_argument         = "raw";
-				$conf->{switches}{raw} = "";
+				# File is empty.
+				print "\n" if not $an->data->{sys}{debug};
+				print "[ Error ] - Failed to download: [$target].\n";
+				print "[ Error ]   The downloaded file was 0-bytes.\n";
+				print "[ Error ]   Is the source: [$source] accessible?\n";
+			}
+			elsif (-B $target)
+			{
+				# Yay!
+				$file_ok = 1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is binary, good.\n" if $an->data->{sys}{debug} >= 3;
 			}
 			else
 			{
-				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
-				if ($last_argument =~ /=/)
+				# Read it in.
+				my $shell_call = $target;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+				open (my $file_handle, "<$shell_call") or die __LINE__."; \n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
+				while(<$file_handle>)
 				{
-					# Break up the variable/value.
-					($last_argument, my $value) = (split /=/, $last_argument, 2);
-					$conf->{switches}{$last_argument} = $value;
+					chomp;
+					my $line = $_;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+					if ($line =~ /Could not resolve host/i)
+					{
+						# Bad URL
+						print "\n" if not $an->data->{sys}{debug};
+						print "[ Error ] - Failed to download: [$target].\n";
+						print "[ Error ]   It appears that the domain name is invalid.\n";
+					}
+					if ($line =~ /<title>404 Not Found<\/title>/i)
+					{
+						# File not found.
+						print "\n" if not $an->data->{sys}{debug};
+						print "[ Error ] - Failed to download: [$target].\n";
+						print "[ Error ]   It appears that the file was not found on the server.\n";
+					}
+					if ($line =~ /<a href="(.*?)">redirected<\/a>/)
+					{
+						# Redirect
+						my $new_source = $1;
+						
+						# Cleanup
+						close $file_handle;
+						unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it is a failed download message, not the file). The error was: $!\n";
+						
+						# Download the new source
+						print "- Redirected to: [$new_source].\n";
+						print "$THIS_FILE ".__LINE__."; [ Debug ] - Redirected source: [$source]: to: [$new_source].\n" if $an->data->{sys}{debug} >= 3;
+						$out_file = download_file($an, $new_source, $target, $mode);
+						return($out_file);
+					}
 				}
-				else
-				{
-					$conf->{switches}{$last_argument} = "#!SET!#";
-				}
+				close $file_handle;
 			}
 		}
 		else
 		{
-			if ($last_argument)
-			{
-				$conf->{switches}{$last_argument} = $argument;
-				$last_argument                    = "";
-			}
-			elsif (($argument eq "start") or ($argument eq "stop") or ($argument eq "status"))
-			{
-				$conf->{switches}{$argument} = 1;
-			}
-			else
-			{
-				# Got a value without an argument.
-				$conf->{switches}{error} = 1;
-			}
+			# Too big to be a failure, so we're probably good.
+			$file_ok = 1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is large enough that analysis is not required.\n" if $an->data->{sys}{debug} >= 3;
 		}
 	}
-	# Clean up the initial space added to 'raw'.
-	if ($conf->{switches}{raw})
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - target: [$target], file_ok: [$file_ok]\n" if $an->data->{sys}{debug} >= 3;
+	if ($file_ok)
 	{
-		$conf->{switches}{raw} =~ s/^ //;
-	}
-	
-	# Debug
-	if ($conf->{sys}{debug} >= 2)
-	{
-		foreach my $variable (sort {$a cmp $b} keys %{$conf->{switches}})
+		my $duration = time - $start_time;
+		if ($duration > 1)
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - switches::$variable: [$conf->{switches}{$variable}]\n" if $conf->{sys}{debug} >= 3;
+			my $speed     = int($size / $duration);
+			my $say_speed = $an->Readable->bytes_to_hr({'bytes' => $speed});
+			print "- Finished! Took: [$duration] seconds to download: [$say_size] (~$say_speed/sec).\n";
+		}
+		else
+		{
+			# One second or less.
+			print "- Finished! Downloaded: [$say_size].\n";
 		}
 	}
+	else
+	{
+		# Sadness.
+		print "\n" if not $an->data->{sys}{debug};
+		print "[ Error ] - There was a problem downloading: [$source] to: [$target]\n";
+		if (-e $target)
+		{
+			# Remove the sadness
+			print "[ Note ] - Failed download target: [$target] will now be removed.\n";
+			unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it is a failed download message, not the file). The error was: $!\n";
+		}
+		### NOTE: We don't die here because we *might* have usable cache. Maybe.
+	}
 	
-	return(0);
+	# Set the mode, if needed
+	if ($mode)
+	{
+		chmod $mode, $target;
+	}
+	
+	return($out_file);
 }
 
 # Print the usage information.
 sub print_usage
 {
-	my ($conf) = @_;
+	my ($an) = @_;
 	
 	my $help = "
  -=] Striker Update
@@ -404,6 +875,13 @@ This program will update the local OS, the Striker/ScanCore data and Update the
 ScanCore database. Packages updated when the OS is updated will be integrated
 into the loca repository. Optionally, updated RPMs on a target node can also be
 integrated into the local repository.
+
+
+NOTE
+
+To avoid compatibility problems, the AN::Tools module is used as little as 
+possible by this tool. As such, some features like translation are not 
+supported, nor is logging.
 
 
 NOTE
@@ -465,7 +943,7 @@ SWITCHES
 
 SUPPORT
 
-".$conf->{url}{support}."
+".$an->data->{url}{support}."
 
                                                           Alteeve's Niche! Inc.
 ";
@@ -476,45 +954,4 @@ SUPPORT
 	system("/usr/bin/less /tmp/${THIS_FILE}.help");
 
 	return(0);
-}
-
-### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
-# This is a helper to the below '_make_hash_reference' function. It is called
-# each time a new string is to be created as a new hash key in the passed hash
-# reference.
-sub _add_hash_reference
-{
-	my ($href1, $href2) = @_;
-
-	for my $key (keys %$href2)
-	{
-		if (ref $href1->{$key} eq 'HASH')
-		{
-			_add_hash_reference($href1->{$key}, $href2->{$key});
-		}
-		else
-		{
-			$href1->{$key} = $href2->{$key};
-		}
-	}
-}
-
-### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
-# This takes a string with double-colon seperators and divides on those
-# double-colons to create a hash reference where each element is a hash key.
-sub _make_hash_reference
-{
-	my ($href, $key_string, $value) = @_;
-
-	my @keys            = split /::/, $key_string;
-	my $last_key        = pop @keys;
-	my $_href           = {};
-	$_href->{$last_key} = $value;
-	while (my $key = pop @keys)
-	{
-		my $elem      = {};
-		$elem->{$key} = $_href;
-		$_href        = $elem;
-	}
-	_add_hash_reference($href, $_href);
 }
