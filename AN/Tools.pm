@@ -1110,6 +1110,7 @@ sub _set_paths
 	$an->data->{path}{clustat}                = "/usr/sbin/clustat";
 	$an->data->{path}{clusvcadm}              = "/usr/sbin/clusvcadm";
 	$an->data->{path}{cp}                     = "/bin/cp";
+	$an->data->{path}{createrepo}             = "/usr/bin/createrepo";
 	$an->data->{path}{curl}                   = "/usr/bin/curl";
 	$an->data->{path}{df}                     = "/bin/df";
 	$an->data->{path}{dmesg}                  = "/bin/dmesage";
@@ -1193,6 +1194,7 @@ sub _set_paths
 	$an->data->{path}{timeout}                = "/usr/bin/timeout";
 	$an->data->{path}{tput}                   = "/usr/bin/tput";
 	$an->data->{path}{unzip}                  = "/usr/bin/unzip";
+	$an->data->{path}{umount}                 = "/bin/umount";
 	$an->data->{path}{uuidgen}                = "/usr/bin/uuidgen";
 	$an->data->{path}{touch}                  = "/bin/touch";
 	$an->data->{path}{'virt-manager'}         = "/usr/bin/virt-manager";

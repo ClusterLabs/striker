@@ -18,6 +18,10 @@
 # 5  = Failed to look up the Anvil! UUID for the given name.
 # 6  = Failed to look up the Anvil! name for the given uuid.
 # 7  = Neither node was online or reachable.
+# 8  = Failed to find the source ISO needed to populate the img/ directory.
+# 9  = Failed to find the XML file used by 'createrepo' on the source ISO.
+# 10 = Failed generating the RPM repository metadata.
+# 11 = Failed to rsync a file from a remote machine.
 # 
 
 use strict;
@@ -50,14 +54,21 @@ my $time = time;
 my $an = AN::Tools->new({
 	data		=> {
 		path		=>	{
-			# This wasn't defined in older versions of Tools.pm
+			# Some of the paths to executables weren't defined in older versions of Tools.pm.
+			createrepo	=>	"/usr/bin/createrepo",
 			curl		=>	"/usr/bin/curl",
 			current_dir	=>	$ENV{PWD},
+			etc_fstab	=>	"/etc/fstab",
 			# This file is checked to verify that we're on a Striker dashboard.
 			find		=>	"/bin/find",
+			img_directory	=>	"/var/www/html/#!os_type!#/x86_64/img",
+			iso_directory	=>	"/var/www/html/#!os_type!#/x86_64/iso",
+			mount		=>	"/bin/mount",
+			os_release	=>	"/etc/redhat-release",
 			striker		=>	"/var/www/cgi-bin/striker",
 			tarball_dir	=>	"",
 			unzip		=>	"/usr/bin/unzip",
+			umount		=>	"/bin/umount",
 			# These are appended to 'path::current_dir'
 			updates		=>	{
 				# If this directory exists and has RPMs in it, we'll use what is in it to 
@@ -284,7 +295,7 @@ sub gather_updated_rpms_from_anvil
 	}
 	
 	# If I am still alive, we've got a good Anvil!.
-	print "- Picking a node in the Anvil!: [$anvil_name ($anvil_uuid)]\n";
+	print "- Picking a node in the Anvil!: [$anvil_name] (UUID: [$anvil_uuid])\n";
 	$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
 	
 	my $use_node = "";
@@ -292,7 +303,7 @@ sub gather_updated_rpms_from_anvil
 	{
 		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
 		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
-		print "- Doing a quick scan of: [$node_name ($node_uuid)]\n";
+		print "- Doing a quick scan of: [$node_name] (UUID: [$node_uuid])]\n";
 		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
 		if ($an->data->{sys}{anvil}{$node_key}{online})
 		{
@@ -304,13 +315,470 @@ sub gather_updated_rpms_from_anvil
 			print "- The node appears to be offline or unreachable.\n";
 		}
 	}
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - use_node: [$use_node]\n" if $an->data->{sys}{debug} >= 3;
 	if (not $use_node)
 	{
 		print "[ Error ] - Neither node is online or reachable. Unable to proceed.\n";
 		exit(7);
 	}
 	
+	# Update our local repo
+	update_local_repo($an);
+	
+	# I'm not installing updates, so it doesn't matter which node I use.
+	my $target     = $an->data->{sys}{anvil}{$use_node}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$use_node}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$use_node}{password};
+	my $shell_call = $an->data->{path}{yum}." clean expire-cache";
+	print "- Clearing old RPM cache on: [$target]\n";
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
+	});
+	print "/-----[ Command output ]------------------------------------------------------\n";
+	foreach my $line (@{$return})
+	{
+		print "| $line\n";
+	}
+	print "\\-----------------------------------------------------------------------------\n";
+	undef $return;
+	
+	# Download updates now
+	print "- Downloading, NOT installing, updated RPMs on: [$target]...\n";
+	$shell_call = $an->data->{path}{yum}." -y update --downloadonly";
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
+	});
+	print "\n###############################################################################\n";
+	print "# There will be no output here until the remote call completes. If you think\n";
+	print "# there is a problem, run 'ps aux | grep yum' on: [$target].\n";
+	print "# If you see '... /usr/bin/python /usr/bin/yum -y update --downloadonly', \n";
+	print "# please keep waiting.\n";
+	print "###############################################################################\n";
+	print "/-----[ Command output ]------------------------------------------------------\n";
+	foreach my $line (@{$return})
+	{
+		print "| $line\n";
+	}
+	print "\\-----------------------------------------------------------------------------\n";
+	undef $return;
+	
+	# Now build a list of RPMs to rsync over to our cache. 
+	my $rpm_files  = [];
+	   $shell_call = $an->data->{path}{find}." ".$an->data->{path}{yum_cache};
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		if ($line =~ /^(\/.*?\.rpm)$/)
+		{
+			my $rpm = $1;
+			push @{$rpm_files}, $rpm;
+		}
+	}
+	
+	print "- Copying over any RPMs from the node that aren't in our cache.\n";
+	my $remote_copy_count = 0;
+	foreach my $rpm_file (sort {$a cmp $b} @{$rpm_files})
+	{
+		my $file_name   = ($rpm_file =~ /^.*\/(.*)$/)[0];
+		my $target_file = $an->data->{path}{rpm_cache}."/".$file_name;
+		next if -e $target_file;
+		$remote_copy_count++;
+		
+		# 0 = OK, 1 = Failed
+		print "- Caching: [$target:$rpm_file]\n";
+		my $return_code = $an->Storage->rsync({
+			target      => $target,
+			port        => $port, 
+			password    => $password,
+			source      => "root\@$target:$rpm_file",
+			destination => $an->data->{path}{rpm_cache},
+			switches    => "-a",
+		});
+		if ($return_code)
+		{
+			print "[ Error ] - Failed. Details of the failure may be in: [".$an->data->{path}{log_file}."]\n";
+			exit(11);
+		}
+	}
+	if ($remote_copy_count)
+	{
+		print "- Done.\n";
+	}
+	else
+	{
+		print "- No files needed to be copied. Done.\n";
+	}
+	
+	# Update our local repo
+	update_local_repo($an);
+	
 	return(0);
+}
+
+# This copies any RPMs from the local rpm cache to the repo directory and then rebuilds the repodata.
+sub update_local_repo
+{
+	my ($an) = @_;
+	
+	my $os_type = get_os_type($an);
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - os_type: [$os_type], path::img_directory: [".$an->data->{path}{img_directory}."], path::iso_directory: [".$an->data->{path}{iso_directory}."]\n" if $an->data->{sys}{debug} >= 3;
+	$an->data->{path}{img_directory} =~ s/#!os_type!#/${os_type}6/;
+	$an->data->{path}{iso_directory} =~ s/#!os_type!#/${os_type}6/;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::img_directory: [".$an->data->{path}{img_directory}."], path::iso_directory: [".$an->data->{path}{iso_directory}."]\n" if $an->data->{sys}{debug} >= 3;
+
+	# Now, if this is a repo using a mounted ISO, we will need to convert it to standard files.
+	convert_iso_to_files($an);
+	
+	# Copy cached RPMs to the RPM repo
+	print "- Copying new RPMs to the RPM repository.\n";
+	my $packages_dir = $an->data->{path}{img_directory}."/Packages";
+	rsync_data($an, $an->data->{path}{rpm_cache}."/*", $packages_dir);
+	
+	# Copy over any of our RPMs from cache to the repo source.
+	my ($xml_file1, $xml_file2) = get_repodata_xml_file_name($an);
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file1: [$xml_file1], xml_file2: [$xml_file2]\n" if $an->data->{sys}{debug} >= 3;
+	
+	# Rebuild the repo.
+	update_repo_metadata($an, $xml_file1, $xml_file2);
+	
+	return(0);
+}
+
+# This updates the RPM repo metadata
+sub update_repo_metadata
+{
+	my ($an, $xml_file1, $xml_file2) = @_;
+	
+	print "- Regenerating the RPM repository meta-data.\n";
+	print "- [ NOTE ] - Please be patient, this might take a minute.\n";
+	my $shell_call = $an->data->{path}{createrepo}." -g ".$xml_file1." ".$an->data->{path}{img_directory};
+	if ($xml_file2)
+	{
+		$shell_call = $an->data->{path}{createrepo}." -g ".$xml_file1." -g ".$xml_file2." ".$an->data->{path}{img_directory};
+	}
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	print "/-----[ Command output ]------------------------------------------------------\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "| $line\n";
+		
+		if ($line =~ /Error opening Package/)
+		{
+			print "
+[ Error ] - There was an error when generating the 'Packages' repository data.
+[ Error ]   It is possible some downloaded or copied 'RPM' package files are 
+[ Error ]   corrupt. Check that your Internet connection is working. If the 
+[ Error ]   error is not obvious, re-run this with '-vv' or '-vvv' for 
+[ Error ]   debugging output.
+";
+			exit(10);
+		}
+	}
+	close $file_handle;
+	print "\\-----------------------------------------------------------------------------\n";
+	
+	return(0);
+}
+
+# This returns the XML files containing install groups.
+sub get_repodata_xml_file_name
+{
+	my ($an) = @_;
+	
+	my $xml_file1 = "";
+	my $xml_file2 = "";
+	my $source   = $an->data->{path}{img_directory}."/repodata";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $an->data->{sys}{debug} >= 3;
+	if (-e $source)
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $an->data->{sys}{debug} >= 3;
+		local(*DIR);
+		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
+		while (my $file = readdir(DIR))
+		{
+			next if (($file eq ".") or ($file eq ".."));
+			my $full_path = $source."/".$file;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $an->data->{sys}{debug} >= 3;
+			
+			#rm -f repodata/*.gz repodata/*.*.bz2 repodata/*.repomd.xml
+			if ($file =~ /Server\.x86_64\.xml$/)
+			{
+				$xml_file2 = $full_path;
+			}
+			elsif ($file =~ /c6-x86_64-comps\.xml$/)
+			{
+				$xml_file2 = $full_path;
+			}
+			elsif (($file =~ /\.gz$/) or ($file =~ /\.bz2$/) or ($file =~ /\.repomd\.xml$/))
+			{
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $an->data->{sys}{debug} >= 3;
+				unlink $full_path or die __LINE__."; [ Error ] - Failed to delete old 'repodata' file: [$full_path]. The error was: $!\n";
+			}
+			elsif ($file =~ /comps\.xml$/)
+			{
+				$xml_file1 = $full_path;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file1]\n" if $an->data->{sys}{debug} >= 3;
+			}
+			elsif ($file =~ /repomd\.xml$/)
+			{
+				$xml_file1 = $full_path;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file1]\n" if $an->data->{sys}{debug} >= 3;
+			}
+			else
+			{
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Ignoring: [$full_path]\n" if $an->data->{sys}{debug} >= 3;
+			}
+		}
+		closedir(DIR);
+	}
+	
+	if (not $xml_file1)
+	{
+		print "[ Error ] - Failed to find the XML file used by 'createrepo' on the source ISO.\n";
+		exit(9);
+	}
+	
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file1: [$xml_file1], xml_file2: [$xml_file2]\n" if $an->data->{sys}{debug} >= 3;
+	return($xml_file1, $xml_file2);
+}
+
+# This looks to see if the local repo is using an ISO and, if so, converts it to plain files before 
+# rebuilding the local repo
+sub convert_iso_to_files
+{
+	my ($an) = @_;
+	
+	# See if there is an ISO definied in fstab.
+	my $img_directory = $an->data->{path}{img_directory};
+	my $iso_directory = $an->data->{path}{iso_directory};
+	my $update_fstab  = "";
+	my $fstab_data_ok = 0;
+	my $new_fstab     = "";
+	my $shell_call    = $an->data->{path}{etc_fstab};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	open (my $file_handle, "<$shell_call") or die __LINE__."; [ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		if ($line =~ /^(\/var\/www\/.*?)\s+$img_directory\s/i)
+		{
+			my $source_iso   = $1;
+			   $update_fstab = 1;
+			print "- This system used the ISO: [$source_iso] for the local repo.\n";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - update_fstab: [$update_fstab]\n" if $an->data->{sys}{debug} >= 3;
+		}
+		else
+		{
+			$new_fstab .= $line."\n";
+			if ($line =~ /UUID=.*?\s+\/\s/)
+			{
+				# Good fstab data.
+				$fstab_data_ok = 1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - fstab_data_ok: [$fstab_data_ok]\n" if $an->data->{sys}{debug} >= 3;
+			}
+		}
+	}
+	close $file_handle;
+	
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - new_fstab: [$new_fstab]\n" if $an->data->{sys}{debug} >= 3;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - fstab_data_ok: [$fstab_data_ok], update_fstab: [$update_fstab]\n" if $an->data->{sys}{debug} >= 3;
+	if (($new_fstab) && ($fstab_data_ok) && ($update_fstab))
+	{
+		# Make a backup.
+		my $backup_file = $an->data->{path}{etc_fstab}.".$THIS_FILE";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - backup_file: [$backup_file]\n" if $an->data->{sys}{debug} >= 3;
+		if (not -e $backup_file)
+		{
+			print "- Backing up original fstab file to: [$backup_file]\n";
+			my $shell_call = $an->data->{path}{rsync}." -a ".$an->data->{path}{etc_fstab}." $backup_file";
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			}
+			close $file_handle;
+		}
+		else
+		{
+			print "- Backup of fstab already exists: [$backup_file]\n";
+		}
+		
+		# Write out the new fstab
+		print "- Writing out new 'fstab' file.\n";
+		my $shell_call = $an->data->{path}{etc_fstab};
+		open (my $file_handle, ">$shell_call") or die "Failed to write to: [$shell_call], error was: $!\n";
+		print $file_handle $new_fstab;
+		close $file_handle;
+	}
+	
+	# Now, is the ISO mounted? If it is, unmount it. We'll remount it later, if needed.
+	my $unmount    = 0;
+	   $shell_call = $an->data->{path}{df}." -hP";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	open ($file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		if ($line =~ /\s$img_directory$/i)
+		{
+			$unmount = 1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - unmount: [$unmount]\n" if $an->data->{sys}{debug} >= 3;
+		}
+	}
+	close $file_handle;
+	
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - unmount: [$unmount]\n" if $an->data->{sys}{debug} >= 3;
+	if ($unmount)
+	{
+		# Unmount it.
+		my $shell_call = $an->data->{path}{umount}." $img_directory";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		}
+		close $file_handle;
+		print "- Unmounted: [$img_directory]\n";
+	}
+	
+	# Now, do I have data in the img directory?
+	my $packages_directory = $img_directory."/Packages";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - packages_directory: [$packages_directory]\n" if $an->data->{sys}{debug} >= 3;
+	if (-e $packages_directory)
+	{
+		print "- The RPM repo source appears to be ready to receive updates.\n";
+	}
+	else
+	{
+		# The packages directory doesn't exist, so we need to mount the old ISO and copy the 
+		# contents.
+		print "- The packages directory: [$packages_directory] doesn't exist.\n";
+		my $temporary_mount = "/tmp/".time;
+		
+		mkdir $temporary_mount or die "[ Error ] - Failed to create the directory: [$temporary_mount]. Error was: $!\n";
+		
+		# What's the ISO file and path?
+		my $iso_file   = "";
+		my $shell_call = $an->data->{path}{ls}." $iso_directory";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			if ($line =~ /\.iso$/i)
+			{
+				# Found the ISO
+				$iso_file = $iso_directory."/".$line;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - iso_file: [$iso_file]\n" if $an->data->{sys}{debug} >= 3;
+				last;
+			}
+		}
+		close $file_handle;
+		
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - iso_file: [$iso_file]\n" if $an->data->{sys}{debug} >= 3;
+		if (not $iso_file)
+		{
+			print "[ Error ] - Failed to find the original Anvil! ISO, and the img directory: [$img_directory] is empty, so we can't rebuild the RPM repo.\n";
+			exit(8);
+		}
+		else
+		{
+			print "- Temporarily mounting the original ISO: [$iso_file] at: [$temporary_mount]\n";
+			my $shell_call = $an->data->{path}{mount}." -o loop $iso_file $temporary_mount";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			}
+			close $file_handle;
+			
+			my $source_check = $temporary_mount."/Packages";
+			if (-e $source_check)
+			{
+				print "- Mounted successfully. Copying source to: [$img_directory]";
+				rsync_data($an, $temporary_mount."/*", $img_directory);
+			}
+			
+			print "- Done, unmounting ISO.\n";
+			$shell_call = $an->data->{path}{umount}." $temporary_mount";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			open ($file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			}
+			close $file_handle;
+			
+			rmdir $temporary_mount or die "[ Error ] - Failed to remove the directory: [$temporary_mount]. Error was: $!\n";
+		}
+	}
+	
+	return(0);
+}
+
+# This returns either 'rhel' or 'centos', depending on the contents of 'path::os_release'.
+sub get_os_type
+{
+	my ($an) = @_;
+	
+	my $os_type    = "";
+	my $shell_call = $an->data->{path}{'os_release'};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	open (my $file_handle, "<$shell_call") or die __LINE__."; [ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		if ($line =~ /Red Hat Enterprise Linux Server/i)
+		{
+			$os_type = "rhel";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - os_type: [$os_type]\n" if $an->data->{sys}{debug} >= 3;
+		}
+		if ($line =~ /CentOS/i)
+		{
+			$os_type = "centos";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - os_type: [$os_type]\n" if $an->data->{sys}{debug} >= 3;
+		}
+	}
+	close $file_handle;
+	
+	return($os_type);
 }
 
 # This walks through the yum cache and copies any found RPMs to 'path::rpm_cache'.
@@ -322,7 +790,7 @@ sub cache_updated_rpms
 	my $rpm_files  = [];
 	my $shell_call = $an->data->{path}{find}." ".$an->data->{path}{yum_cache};
 	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
-	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -344,7 +812,7 @@ sub cache_updated_rpms
 		print "- Caching: [$rpm_file]\n";
 		my $shell_call = $an->data->{path}{rsync}." -a $rpm_file ".$an->data->{path}{rpm_cache}."/";
 		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
-		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -376,7 +844,7 @@ sub download_os_updates
 	}
 	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
 	print "/-----[ Command output ]------------------------------------------------------\n";
-	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -412,7 +880,7 @@ sub manage_scancore
 		my $waiting    = 1;
 		my $shell_call = $an->data->{path}{ScanCore}." --disable";
 		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
-		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -428,7 +896,7 @@ sub manage_scancore
 			my $pid_seen   = 0;
 			my $shell_call = $an->data->{path}{ScanCore}." --status";
 			print "\n".$THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
-			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -475,7 +943,7 @@ sub manage_scancore
 		my $waiting    = 1;
 		my $shell_call = $an->data->{path}{ScanCore}." --disable";
 		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -521,12 +989,12 @@ sub download_and_extract_source
 sub rsync_data
 {
 	my ($an, $source, $destination) = @_;
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - source: [$source], destination: [$destination]\n" if $an->data->{sys}{debug} >= 2;
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - source: [$source], destination: [$destination]\n" if $an->data->{sys}{debug} >= 3;
 	
 	#rsync -av striker-update/temp/striker-2.0.0b-rc8/* striker-update/source
 	my $copy_count = 0;
 	my $shell_call = $an->data->{path}{rsync}." -av $source $destination";
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
 	if ($an->data->{sys}{debug} < 3)
 	{
 		print "- Progress: [";
@@ -555,13 +1023,12 @@ sub rsync_data
 	}
 	if ($copy_count > 1)
 	{
-		print "- Copied: [$copy_count] files and directories to: [$destination].\n\n";
+		print "- Copied: [$copy_count] files and directories to: [$destination].\n";
 	}
 	else
 	{
-		print "- The directory: [$destination] was already up to date.\n\n";
+		print "- The directory: [$destination] was already up to date.\n";
 	}
-	die;
 	
 	return(0);
 }
@@ -722,7 +1189,7 @@ sub setup_cache
 		print "- Creating RPM cache: [".$an->data->{path}{rpm_cache}."]\n";
 		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{rpm_cache};
 		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
-		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -740,7 +1207,7 @@ sub setup_cache
 		print "- Creating Striker cache: [".$an->data->{path}{striker_cache}."]\n";
 		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{striker_cache};
 		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
-		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -758,7 +1225,7 @@ sub setup_cache
 		print "- Creating working cache: [".$an->data->{path}{temp_cache}."]\n";
 		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{temp_cache};
 		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
-		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -860,7 +1327,7 @@ sub download_file
 	my $size       = "";
 	my $shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" 2>/dev/null --head $source";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
-	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -897,7 +1364,7 @@ sub download_file
 	###       debug is enabled, we'll dump the progress to the screen.
 	$shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" $source 2>/dev/null > $target";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
-	open ($file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	open ($file_handle, "$shell_call |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -935,7 +1402,7 @@ sub download_file
 				# Read it in.
 				my $shell_call = $target;
 				print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
-				open (my $file_handle, "<$shell_call") or die __LINE__."; \n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
+				open (my $file_handle, "<$shell_call") or die __LINE__."; [ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
 				while(<$file_handle>)
 				{
 					chomp;

@@ -978,7 +978,7 @@ sub rsync
 	$an->Alert->_set_error;
 	
 	# Check my parameters.
-	my $node        = $parameter->{node}        ? $parameter->{node}        : "";
+	my $node        = $parameter->{node}        ? $parameter->{node}        : "";	# TODO: What was this for? Can I remove it?
 	my $target      = $parameter->{target}      ? $parameter->{target}      : "";
 	my $port        = $parameter->{port}        ? $parameter->{port}        : "";
 	my $password    = $parameter->{password}    ? $parameter->{password}    : "";
