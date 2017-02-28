@@ -22,6 +22,11 @@
 # 9  = Failed to find the XML file used by 'createrepo' on the source ISO.
 # 10 = Failed generating the RPM repository metadata.
 # 11 = Failed to rsync a file from a remote machine.
+# 12 = Unable to access one or more peer dashboards.
+# 13 = Failed to find an active Anvil! system.
+# 14 = One or more Anvil! nodes are offline.
+# 15 = A node's DRBD disk state was not UpToDate.
+# 16 = One node is in the cluster and the other isn't.
 # 
 
 use strict;
@@ -164,6 +169,15 @@ if ($an->data->{switches}{'gather-only'})
 	print "[ Note ] - Updates will be downloaded and stored in cache only.\n\n";
 }
 
+# Connect to the database(s).
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+print $THIS_FILE." ".__LINE__."; [ Debug ] - connections: [$connections]\n" if $an->data->{sys}{debug} >= 3;
+if (not $connections)
+{
+	print "[ Error ] - Failed to connect to the ScanCore database. Is postgres running?\n";
+	exit(4);
+}
+
 # First, setup the local cache directories, if they don't already exists
 setup_cache($an);
 
@@ -215,19 +229,27 @@ if (not $an->data->{sys}{offline})
 	}
 }
 
-# What am I doing?
-if (($an->data->{switches}{'node-name'}) or ($an->data->{switches}{'node-name'}))
+# Now, update my local RPM repo (be it from 'gather-only' or using cache)
+update_local_repo($an);
+
+# If I was doing a gather-only, we're done.
+if ($an->data->{switches}{'gather-only'})
 {
-	update_node($an);
+	print "- Gathered all updates. Exiting on '--gather-only'.\n\n";
+	exit(0);
+}
+
+# If I am still alive, what am I doing?
+if (($an->data->{switches}{'anvil-name'}) or ($an->data->{switches}{'anvil-uuid'}))
+{
+	# I'm updating everything
+	update_all($an);
 }
 else
 {
+	# I'm updating the local dashboard only.
 	update_local($an);
 }
-
-
-	
-die $THIS_FILE." ".__LINE__."; testing...\n";
 
 exit(0);
 
@@ -236,24 +258,502 @@ exit(0);
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This updates the local machine.
+sub update_local
+{
+	my ($an) = @_;
+	
+	# First, are we online?
+	
+	
+	return(0);
+}
+
+# This updates a node.
+sub update_all
+{
+	my ($an) = @_;
+	
+	# Copy myself and my cache to my peer dashboard(s) and run '--gather-only --offline' before starting.
+	# This will not add any download bandwidth because the files will be in place already, but it will
+	# handle converting ISO-based repos to file-based ones.
+	print "Verifying access before starting the update process...\n";
+	my $error = 0;
+	
+	# Check access to Striker peers.
+	my $dashboards = {};
+	my $peers      = $an->Get->striker_peers();
+	foreach my $hash_ref (@{$peers})
+	{
+		# NOTE: At this time, we don't support peers using non-standard ports.
+		my $peer_name     = $hash_ref->{name};
+		my $peer_password = $hash_ref->{password};
+		my $peer_port     = 22;
+		print "- Checking access to the peer Striker: [$peer_name]\n";
+		
+		my $access = $an->Check->access({
+			target   => $peer_name,
+			port     => $peer_port, 
+			password => $peer_password, 
+		});
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - access: [$access]\n" if $an->data->{sys}{debug} >= 3;
+		
+		# If I can't access my peer, exit.
+		if ($access)
+		{
+			print "- Online, good.\n";
+			$dashboards->{$peer_name} = $peer_password;
+		}
+		else
+		{
+			print "[ Error ] - Offline!\n";
+			$error = 1;
+		}
+	}
+	if ($error)
+	{
+		print "[ Error ] - To insure compatibility, all dashboards must be updated at the same time.\n";
+		exit(12);
+	}
+	
+	# Check access to Anvil! nodes.
+	my $anvils = {};
+	if ($an->data->{switches}{'anvil-name'} eq "all")
+	{
+		my $query = "SELECT anvil_name, anvil_uuid FROM anvils WHERE anvil_note IS DISTINCT FROM 'DELETED' ORDER BY anvil_name ASC LIMIT 1;";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 2;
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $anvil_name = $row->[0];
+			my $anvil_uuid = $row->[1];
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name], anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 2;
+			
+			print "- Testing access to the nodes in the Anvil! system: [$anvil_name] (UUID: [$anvil_uuid])\n";
+			$anvils->{$anvil_name} = $anvil_uuid;
+			$error = check_anvil($an, $anvil_uuid, $error);
+		}
+	}
+	elsif ($an->data->{switches}{'anvil-name'})
+	{
+		my $anvil_name = $an->data->{switches}{'anvil-name'};
+		my $anvil_uuid = "";
+		my $query      = "SELECT anvil_uuid FROM anvils WHERE anvil_name = ".$an->data->{sys}{use_db_fh}->quote($anvil_name).";";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 2;
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$anvil_uuid = $row->[0];
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 3;
+		}
+		
+		if (not $anvil_uuid)
+		{
+			print "[ Error ] - Failed to find an Anvil! UUID for the name: [$anvil_name]\n";
+			exit(5);
+		}
+		$anvils->{$anvil_name} = $anvil_uuid;
+		$error = check_anvil($an, $anvil_uuid, $error);
+	}
+	else
+	{
+		my $anvil_name = "";
+		my $anvil_uuid = $an->data->{switches}{'anvil-uuid'};
+		my $query      = "SELECT anvil_name FROM anvils WHERE anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid).";";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 2;
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$anvil_name = $row->[0];
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name]\n" if $an->data->{sys}{debug} >= 2;
+		}
+		
+		if (not $anvil_name)
+		{
+			print "[ Error ] - Failed to find an Anvil! name for the UUID: [$anvil_uuid]\n";
+			exit(6);
+		}
+		$anvils->{$anvil_name} = $anvil_uuid;
+		check_anvil($an, $anvil_uuid);
+		$error = check_anvil($an, $anvil_uuid, $error);
+	}
+	if ($error)
+	{
+		print "[ Error ] - All nodes must be updated at the same time for the update to proceed.\n";
+		exit(14);
+	}
+	
+	print "- Ready to start the update process!\n\n";
+	die;
+	
+	# Disable ScanCore on all dashboards and nodes, then go into a loop until all of them have exited.
+	print "###############################################################################\n";
+	print "# NOTE: ScanCore will be disabled on all dashboards and nodes. If anything\n";
+	print "#       causes the upgrade process to abort unexpectedly, you may need to\n";
+	print "#       manually re-enable ScanCore by running:\n";
+	print "#       ".$an->data->{path}{ScanCore}." --enable\n";
+	print "#       ScanCore will be re-enabled when the upgrade finishes.\n";
+	print "###############################################################################\n\n";
+	
+	# We'll call '--disable' on the peer dashboards, then all nodes, then on ourself. The local disable 
+	# will wait until ScanCore exits, then we'll go into a loop while we wait for any stragglers to exit.
+	print "Upgrade will now begin.\n";
+	my $shell_call = $an->data->{path}{ScanCore}." --disable";
+	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
+	{
+		my $password = $dashboards->{$dashboard};
+
+		print "- Disabling ScanCore on Striker dashboard: [$dashboard]\n";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - dashboard: [$dashboard], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target     => $dashboard,
+			port       => 22, 
+			password   => $password,
+			shell_call => $shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		}
+	}
+	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
+	{
+		my $anvil_uuid = $anvils->{$anvil_name};
+		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+		
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name], anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 3;
+		foreach my $node_key ("node1", "node2")
+		{
+			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+			my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - node_name: [$node_name], node_uuid: [$node_uuid]\n" if $an->data->{sys}{debug} >= 3;
+			
+			# I reload and rescan each loop in case I am updating two or more Anvil! systems
+			print "- Disabling ScanCore on Anvil!: [$anvil_name]'s node: [$node_name]...\n";
+			$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
+			
+			my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+			my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+			my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target     => $target,
+				port       => $port, 
+				password   => $password,
+				shell_call => $shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			}
+		}
+	}
+	print "- Disabling the local ScanCore and waiting for it to exit...\n";
+	manage_scancore($an, "disable");
+	
+	# Now wait for ScanCore to exit on everything.
+	print "- Waiting now until ScanCore exits on all systems...\n";
+	my $waiting = 1;
+	while($waiting)
+	{
+		# This will be flipped back to '1' if any machine's ScanCore is still running.
+		$waiting = 0;
+		
+		print "- Checking if ScanCore is running on any system...\n";
+		my $shell_call = $an->data->{path}{ScanCore}." --status";
+		foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
+		{
+			my $password = $dashboards->{$dashboard};
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - dashboard: [$dashboard], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target     => $dashboard,
+				port       => 22, 
+				password   => $password,
+				shell_call => $shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+				if ($line =~ /-.*?\[(\d+)\]$/)
+				{
+					$waiting = 1;
+					print "- ScanCore is still running on the Striker dashboard: [$dashboard]\n";
+				}
+			}
+		}
+		foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
+		{
+			my $anvil_uuid = $anvils->{$anvil_name};
+			$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+			
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name], anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 3;
+			foreach my $node_key ("node1", "node2")
+			{
+				my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+				my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+				print $THIS_FILE." ".__LINE__."; [ Debug ] - node_name: [$node_name], node_uuid: [$node_uuid]\n" if $an->data->{sys}{debug} >= 3;
+				
+				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
+				my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+				my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+				my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+				print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target     => $target,
+					port       => $port, 
+					password   => $password,
+					shell_call => $shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+					if ($line =~ /-.*?\[(\d+)\]$/)
+					{
+						$waiting = 1;
+						print "- ScanCore is still running on Anvil!: [$anvil_name], node: [$node_name]\n";
+					}
+				}
+			}
+		}
+		
+		if ($waiting)
+		{
+			sleep 5;
+		}
+	}
+	print "- ScanCore is stopped now on all systems. Ready to proceed.\n";
+	
+	### Do Work Here...
+	
+	
+	# Re-enable ScanCore now.
+	print "ScanCore will now be restarted on all machines..\n";
+	$shell_call = $an->data->{path}{ScanCore}." --enable";
+	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
+	{
+		my $password = $dashboards->{$dashboard};
+
+		print "- Enabling ScanCore on Striker dashboard: [$dashboard]\n";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - dashboard: [$dashboard], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target     => $dashboard,
+			port       => 22, 
+			password   => $password,
+			shell_call => $shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 2;
+		}
+	}
+	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
+	{
+		my $anvil_uuid = $anvils->{$anvil_name};
+		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+		
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name], anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 3;
+		foreach my $node_key ("node1", "node2")
+		{
+			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+			my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - node_name: [$node_name], node_uuid: [$node_uuid]\n" if $an->data->{sys}{debug} >= 3;
+			
+			# I reload and rescan each loop in case I am updating two or more Anvil! systems
+			print "- Enabling ScanCore on Anvil!: [$anvil_name]'s node: [$node_name]...\n";
+			$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
+			
+			my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+			my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+			my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target     => $target,
+				port       => $port, 
+				password   => $password,
+				shell_call => $shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 2;
+			}
+		}
+	}
+	print "- Enabling the local ScanCore and waiting for it to exit...\n";
+	manage_scancore($an, "enable");
+	
+	print "- Done!\n\n";
+	
+	return(0);
+}
+
+# This checks access to the nodes in the Anvil! and that they're ready to be updated.
+sub check_anvil
+{
+	my ($an, $anvil_uuid, $error) = @_;
+	
+	# Get the node info
+	$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+	
+	my $use_node = "";
+	foreach my $node_key ("node1", "node2")
+	{
+		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+		print "- Doing a quick scan of: [$node_name] (UUID: [$node_uuid])]\n";
+		
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
+		if ($an->data->{sys}{anvil}{$node_key}{online})
+		{
+			print "- Online, good.\n";
+		}
+		else
+		{
+			print "[ Error ] - Offline!\n";
+			$error = 1;
+		}
+		check_cluster_and_storage($an, $node_key);
+	}
+	validate_cluster_and_storage($an);
+	
+	return($error);
+}
+
+# This will throw an error if only one node is in the cluster or if a DRBD disk state is not UpToDate.
+sub validate_cluster_and_storage
+{
+	my ($an) = @_;
+	
+	# If both are running rgmanager, make sure we're UpToDate.
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::node1::in_cluster: [".$an->data->{sys}{anvil}{node1}{in_cluster}."], sys::anvil::node2::in_cluster: [".$an->data->{sys}{anvil}{node2}{in_cluster}."]\n" if $an->data->{sys}{debug} >= 2;
+	if (($an->data->{sys}{anvil}{node1}{in_cluster}) && ($an->data->{sys}{anvil}{node2}{in_cluster}))
+	{
+		# Both nodes are online. Did we see any resources that we're UpToDate?
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::node1::all_uptodate: [".$an->data->{sys}{anvil}{node1}{all_uptodate}."], sys::anvil::node2::all_uptodate: [".$an->data->{sys}{anvil}{node2}{all_uptodate}."]\n" if $an->data->{sys}{debug} >= 2;
+		if ((not $an->data->{sys}{anvil}{node1}{all_uptodate}) or (not $an->data->{sys}{anvil}{node2}{all_uptodate}))
+		{
+			print "[ Error ] - The upgrade process requires taking each node out of the cluster,\n";
+			print "[ Error ]   one at a time. To do this, both nodes have to have up to date \n";
+			print "[ Error ]   storage. Please watch the Striker web interface for the replicated\n";
+			print "[ Error ]   Storage's 'Disk State' to be 'UpToDate/UpToDate' on both nodes, \n";
+			print "[ Error ]   then try again.\n";
+			exit(15);
+		}
+	}
+	elsif ((($an->data->{sys}{anvil}{node1}{in_cluster}) && (not $an->data->{sys}{anvil}{node2}{in_cluster})) or 
+		((not $an->data->{sys}{anvil}{node1}{in_cluster}) && ($an->data->{sys}{anvil}{node2}{in_cluster})))
+	{
+		# One node is in the cluster and the other isn't.
+		print "[ Error ] - Only one node is in the cluster. Either both nodes must be in the cluster\n";
+		print "[ Error ]   neither can be. If one node is up, we'll need to be able to move any\n";
+		print "[ Error ]   servers it is hosting to withdraw and update it.\n";
+		exit(16);
+	}
+	
+	return(0);
+}
+
+# This checks to see if rgmanager is running and, if so, if DRBD is UpToDate.
+sub check_cluster_and_storage
+{
+	my ($an, $node_key) = @_;
+	
+	# To update, either both nodes have to be in the Anvil!, or neither can be. If both are, DRBD must be
+	# UpToDate/UpToDate.
+	$an->data->{sys}{anvil}{$node_key}{in_cluster}   = 0;
+	$an->data->{sys}{anvil}{$node_key}{all_uptodate} = 1;
+	
+	# Check rgmanager
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $shell_call = $an->data->{path}{clustat}." -x";
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		# We're looking at rgmanager, specifically
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		if (($line =~ /<node /) && ($line =~ /local="1"/) && ($line =~ /rgmanager="(\d+)"/))
+		{
+			$an->data->{sys}{anvil}{$node_key}{in_cluster} = $1;
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::${node_key}::in_cluster: [".$an->data->{sys}{anvil}{$node_key}{in_cluster}."]\n" if $an->data->{sys}{debug} >= 2;
+		}
+	}
+	
+	# Check drbd
+	if ($an->data->{sys}{anvil}{$node_key}{in_cluster})
+	{
+		my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target     => $target,
+			port       => $port, 
+			password   => $password,
+			shell_call => $shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			# We're looking at rgmanager, specifically
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 2;
+			if ($line =~ / ds:(.*?)\/(.*?) /)
+			{
+				my $local_disk_state = $1;
+				my $peer_disk_state  = $2;
+				print $THIS_FILE." ".__LINE__."; [ Debug ] - local_disk_state: [$local_disk_state], peer_disk_state: [$peer_disk_state]\n" if $an->data->{sys}{debug} >= 2;
+				if (($local_disk_state ne "UpToDate") or ($peer_disk_state ne "UpToDate"))
+				{
+					$an->data->{sys}{anvil}{$node_key}{all_uptodate} = 0;
+					print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::${node_key}::all_uptodate: [".$an->data->{sys}{anvil}{$node_key}{all_uptodate}."]\n" if $an->data->{sys}{debug} >= 2;
+				}
+			}
+		}
+	}
+	
+	return(0);
+}
+
 # This calls 'yum -y update --downloadonly' on one of the Anvil! nodes
 sub gather_updated_rpms_from_anvil
 {
 	my ($an) = @_;
 	
 	print "Downloading updated RPMs for Anvil! nodes...\n";
-	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - connections: [$connections]\n" if $an->data->{sys}{debug} >= 3;
-	if (not $connections)
-	{
-		print "[ Error ] - Failed to connect to the ScanCore database. Is postgres running?\n";
-		exit(4);
-	}
 	
 	# If I have a UUID, look up the name. If I have a name, look up the UUID.
 	my $anvil_uuid = "";
 	my $anvil_name = "";
-	if ($an->data->{switches}{'anvil-name'})
+	if ($an->data->{switches}{'anvil-name'} eq "all")
+	{
+		my $query = "SELECT anvil_name, anvil_uuid FROM anvils WHERE anvil_note IS DISTINCT FROM 'DELETED' ORDER BY anvil_name ASC LIMIT 1;";
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 3;
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$anvil_name = $row->[0];
+			$anvil_uuid = $row->[1];
+			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name], anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 2;
+		}
+		
+		if (not $anvil_name)
+		{
+			print "[ Error ] - Failed to find an available Anvil! to work on.\n";
+			exit(13);
+		}
+	}
+	elsif ($an->data->{switches}{'anvil-name'})
 	{
 		   $anvil_name = $an->data->{switches}{'anvil-name'};
 		my $query      = "SELECT anvil_uuid FROM anvils WHERE anvil_name = ".$an->data->{sys}{use_db_fh}->quote($anvil_name).";";
@@ -423,9 +923,6 @@ sub gather_updated_rpms_from_anvil
 	{
 		print "- No files needed to be copied. Done.\n";
 	}
-	
-	# Update our local repo
-	update_local_repo($an);
 	
 	return(0);
 }
@@ -826,22 +1323,12 @@ sub cache_updated_rpms
 	return(0);
 }
 
-# This downloads, and if '--gather-only' is not specified, installs OS update on the local machine.
+# This downloads updated RPMs for the local OS. It does NOT install them.
 sub download_os_updates
 {
 	my ($an) = @_;
 	
-	# If I am gathering only, do nothing, but otherwise I want to disable ScanCore.
-	if (not $an->data->{switches}{'gather-only'})
-	{
-		manage_scancore($an, "disable");
-	}
-	
-	my $shell_call = $an->data->{path}{yum}." -y update";
-	if ($an->data->{switches}{'gather-only'})
-	{
-		$shell_call = $an->data->{path}{yum}." -y update --downloadonly";
-	}
+	my $shell_call = $an->data->{path}{yum}." -y update --downloadonly";
 	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
 	print "/-----[ Command output ]------------------------------------------------------\n";
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
@@ -860,11 +1347,6 @@ sub download_os_updates
 	}
 	close $file_handle;
 	print "\\-----------------------------------------------------------------------------\n";
-	
-	if (not $an->data->{switches}{'gather-only'})
-	{
-		manage_scancore($an, "enable");
-	}
 	
 	return(0);
 }
@@ -941,7 +1423,7 @@ sub manage_scancore
 		# Enable it
 		print "- Enabling ScanCore...\n";
 		my $waiting    = 1;
-		my $shell_call = $an->data->{path}{ScanCore}." --disable";
+		my $shell_call = $an->data->{path}{ScanCore}." --enable";
 		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
@@ -1239,27 +1721,6 @@ sub setup_cache
 	return(0);
 }
 
-# This updates the local machine.
-sub update_local
-{
-	my ($an) = @_;
-	
-	# First, are we online?
-	
-	
-	return(0);
-}
-
-# This updates a node.
-sub update_node
-{
-	my ($an) = @_;
-	
-	
-	
-	return(0);
-}
-
 # This tries to determine the latest release by checking the alteeve website.
 sub get_latest_version
 {
@@ -1527,11 +1988,28 @@ You only need to pre-populate on Striker dashboards. This program will use the
 local data to update nodes.
 
 
+NOTE
+
+Always do an initial run with '--gather-only'. If the local dashboard is using
+a mounted ISO for the RPM repository, The gather process will convert the 
+ISO-mounted repo to a normal file (and remove the ISO from /etc/fstab).
+
+
 SWITCHES
 
  --gather-only
 
-	When called without a node being defined, 
+	When called without an Anvil!, it will download and cache the latest 
+	operating system updates, but NOT install them. It will also download
+	the latest release of Striker (or git HEAD if '--master' is used) and
+	cache that as well. 
+	
+	When called with an Anvil!, it will do all of the above, but then also
+	download operating system updates on a node, but NOT install them, and
+	copy over any updated RPMs that aren't already in the local RPM cache.
+	
+	In either case, the local RPM repository will be updated so that the 
+	new RPMs become available to other dashboards and nodes.
 
  -h, -?, --help
 
@@ -1545,26 +2023,29 @@ SWITCHES
 	### WARNING: This is only recommended for developers or testers. Do not
 	###          upgrade to master on production systems!
 
- --node-name <node>
- --node-uuid <uuid>
+ --anvil-name {all,<anvil_name>}
+ --anvil-uuid <anvil_uuid>
 
-	This is the node name or UUID connect to. The node must be a member of
-	an Anvil! we know of. 
+	This is the Anvil! name or UUID to update. When '--gather-only' is 
+	specified, one of the nodes in this Anvil! will be used to download 
+	updated operating system updates. The updates will NOT be installed
+	when '--gather-only' is used.
 	
-	By default, we will check to see if the node is withdrawn and, if it 
-	is, we will update its OS and ScanCore tools prior to pulling updates
-	over to integrate. 
-	
-	If '--gather-only' is used, or if the node is still a member of the 
-	Anvil!, no update will be performed. 
+	NOTE: Using '--anvil-name all' tells the system to update all known
+	      Anvil! systems. If used with '--gather-only', an Anvil! will be
+	      chosen at random to download updated RPMs from.
 
  --offline
-
+	
 	Don't try to update anything from the Internet. This will use files 
 	already in:
 	
 	RPMS: .. #!data!path::updates::rpms!#
 	Striker: #!data!path::updates::striker!#
+	
+	NOTE: Without this switch, a check for internet connectivity will be
+	      performed. If not link is detected, the install will 
+	      automatically run in offline mode.
 
 
 SUPPORT

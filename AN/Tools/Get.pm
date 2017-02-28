@@ -4452,6 +4452,7 @@ WHERE
 	return($return);
 }
 
+### TODO: Deprecate this in favour of ScanCore->get_striker_peers().
 # This returns an array of hash references, each hash reference storing a peer node name and the scancore 
 # password.
 sub striker_peers
@@ -4459,7 +4460,7 @@ sub striker_peers
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "striker_peers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "striker_peers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This array will store the hashes for the peer host names and their passwords.
 	my $peers = [];
@@ -4468,7 +4469,7 @@ sub striker_peers
 	my $i_am_short = $an->short_hostname();
 	my $local_id   = "";
 	my $db_count   = 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "i_am_long",  value1 => $i_am_long, 
 		name2 => "i_am_short", value2 => $i_am_short, 
 		name3 => "local_id",   value3 => $local_id, 
@@ -4478,7 +4479,7 @@ sub striker_peers
 	{
 		   $db_count++;
 		my $this_host = $an->data->{scancore}{db}{$id}{host};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "this_host", value1 => $this_host, 
 			name2 => "db_count",  value2 => $db_count, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4486,7 +4487,7 @@ sub striker_peers
 		if (($this_host eq $i_am_long) or ($this_host eq $i_am_short))
 		{
 			$local_id = $id;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "local_id", value1 => $local_id, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -4499,7 +4500,7 @@ sub striker_peers
 		{
 			my $peer_name     = $an->data->{scancore}{db}{$id}{host};
 			my $peer_password = $an->data->{scancore}{db}{$id}{password};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "peer_name",     value1 => $peer_name, 
 				name2 => "peer_password", value2 => $peer_password, 
 			}, file => $THIS_FILE, line => __LINE__});
