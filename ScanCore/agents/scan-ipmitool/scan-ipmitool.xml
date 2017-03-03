@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-This strings file is for the APC UPS Scan Agent. Please be careful not to use
+This strings file is for the IPMI Scan Agent. Please be careful not to use
 names used by the main Striker strings file. Do this by prefixing all strings
 with 'scan_ipmitool_'.
 -->

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This strings file is for the APC UPS Scan Agent. Please be careful not to use
+names used by the main Striker strings file. Do this by prefixing all strings
+with 'scan_remote_access_'.
+-->
+<strings>
+	<!-- Canadian English -->
+	<name>scan-apc-ups.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA</langs>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the ipmitool Scan Agent.</key>
+		
+		<!-- Strings that can change by rebranding -->
+		<key name="scan_remote_access_brand_0001">SSH Access Scan Agent using 'ping 1' to verify access (through firewalls).</key>
+		
+		<!-- Log strings -->
+		<key name="scan_remote_access_log_0001">Testing access to remote machine: [#!variable!target!#]</key>
+		
+		<!-- Errors -->
+		<key name="scan_remote_access_error_0001">The query: [#!variable!query!#] against DB: [#!variable!id!#] returned: [#!variable!count!#] rows. Only '1' should have been returned!</key>
+		
+		<!-- Notices -->
+		<key name="scan_remote_access_note_0001"></key>
+		
+		<!-- IPMI Agent-specific messages -->
+		<key name="scan_remote_access_message_0001">Starting #!string!scan_remote_access_brand_0001!#</key>
+		<key name="scan_remote_access_message_0002"><![CDATA[
+ -=] IPMI Scan Agent
+
+DESCRIPTION
+
+This program is a "scan agent" for the ScanCore decision engine tool for the
+Anvil! high-availabiltiy platform.
+
+It checks to see if a target machine can be accessed over SSH. The target can 
+be any machine that supports SSH access; Dashboards, nodes, hosted servers or
+any machine outside the Anvil! system. 
+
+It works by ssh'ing into the target and calling 'echo 1'. If '1' is returned,
+we know access was successful. Unlike pings, this method is more reliable as
+pings alone could be responded to by a firewall or router. Alternatively, some
+machines ignore ICMP ping packets, even when online.
+
+This agent will only run if one or more targets are specifically configured in
+striker.conf. 
+
+Configuration is to add the following to striker.conf;
+
+====
+scan-remote-access::target::<id>::host     = <user>@<name_or_ip>:<port>
+scan-remote-access::target::<id>::password = <secret>
+====
+
+The <id> can be any alpha-numeric string or number that is unique from other 
+entries. Any number of entries can be added, but the checks will be performed
+sequentially. So in a case where multiple targets are slow to respond, this 
+agent could run for some time.
+
+The 'host' can be an IP address or a resolvable host name. Optionally, you can
+specify ':xx' to specify a non-standard port to use for SSH. When no suffix is
+used, port 22 is used.
+
+The 'host' can, optionally, have a user to connect as. When not specified, the
+'root' user is used.
+
+SWITCHES
+
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+ --prep-db
+
+	If passed, the schema will be loaded into the database (if not 
+	already), even if no bonds are found. Note: This won't work if the 
+	agent has been manually disabled via 'scan-ipmitool::disable'.
+
+                  
+SUPPORT
+
+https://alteeve.ca/w/Support
+
+							      Alteeve's Niche!
+		]]></key>
+		<key name="scan_remote_access_message_0003">The target machine: [#!variable!target!#] is now accessible.</key>
+		<key name="scan_remote_access_message_0004">Lost access to the target machine: [#!variable!target!#]!</key>
+		<key name="scan_remote_access_message_0005">A new target is now being accessed: [#!variable!target!#] and it is online</key>
+		<key name="scan_remote_access_message_0006">A new target: [#!variable!target!#], which is currently inaccessible, will be monitored for access.</key>
+		
+		<!-- Sensor message titles -->
+		<key name="scan_remote_access_title_0001"></key>
+	</lang>
+</strings>

@@ -69,10 +69,12 @@ sub access
 	
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : 22;
+	my $user     = $parameter->{user}     ? $parameter->{user}     : "root";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "target", value1 => $target, 
 		name2 => "port",   value2 => $port, 
+		name3 => "user",   value3 => $user, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
@@ -101,8 +103,9 @@ sub access
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$target,
+		target		=>	$target, 
 		port		=>	$port, 
+		user		=>	$user, 
 		password	=>	$password,
 		shell_call	=>	$shell_call,
 	});

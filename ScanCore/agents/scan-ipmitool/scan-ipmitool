@@ -2608,6 +2608,10 @@ INSERT INTO
 sub get_ipmitool_value_id
 {
 	my ($an, $ipmitool_value_ipmitool_uuid, $id) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_ipmitool_value_id" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "ipmitool_value_ipmitool_uuid", value1 => $ipmitool_value_ipmitool_uuid, 
+		name2 => "id",                           value2 => $id, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 
