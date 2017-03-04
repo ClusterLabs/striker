@@ -158,7 +158,7 @@ sub access_all_upses
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Can I ping the UPSes?
-		my $ping = $an->Check->ping({ping => $ip});
+		my ($ping) = $an->Check->ping({ping => $ip});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ping", value1 => $ping,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4206,11 +4206,11 @@ sub _cold_stop_anvil
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($an->Validate->is_ipv4({ip => $an->data->{sys}{anvil}{node1}{bcn_ip}}))
 				{
-					$ping_node1 = $an->Check->ping({ping => $an->data->{sys}{anvil}{node1}{bcn_ip}});
+					($ping_node1) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node1}{bcn_ip}});
 				}
 				if ($an->Validate->is_ipv4({ip => $an->data->{sys}{anvil}{node1}{bcn_ip}}))
 				{
-					$ping_node2 = $an->Check->ping({ping => $an->data->{sys}{anvil}{node2}{bcn_ip}});
+					($ping_node2) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node2}{bcn_ip}});
 				}
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "ping_node1", value1 => $ping_node1,
@@ -4281,8 +4281,8 @@ sub _cold_stop_anvil
 			else
 			{
 				# Try pinging both nodes.
-				my $ping_node1 = $an->Check->ping({ping => $an->data->{sys}{anvil}{node1}{use_ip}});
-				my $ping_node2 = $an->Check->ping({ping => $an->data->{sys}{anvil}{node2}{use_ip}});
+				my ($ping_node1) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node1}{use_ip}});
+				my ($ping_node2) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node2}{use_ip}});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "ping_node1", value1 => $ping_node1,
 					name2 => "ping_node2", value2 => $ping_node2,

@@ -3230,7 +3230,7 @@ sub find_ipmi_targets
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($target)
 		{
-			$access = $an->Check->ping({ping => $target});
+			($access) = $an->Check->ping({ping => $target});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "access", value1 => $access,
 			}, file => $THIS_FILE, line => __LINE__});

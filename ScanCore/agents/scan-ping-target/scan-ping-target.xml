@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This strings file is for the Ping Target Scan Agent. Please be careful not to use names used by the main 
+Striker strings file. Do this by prefixing all strings with 'scan_remote_access_'.
+-->
+<strings>
+	<!-- Canadian English -->
+	<name>scan-apc-ups.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA</langs>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the ipmitool Scan Agent.</key>
+		
+		<!-- Strings that can change by rebranding -->
+		<key name="scan_ping_target_brand_0001">Ping Scan Agent that monitors target machines using simple pings.</key>
+		
+		<!-- Log strings -->
+		<key name="scan_ping_target_log_0001">Pinging the target: [#!variable!target!#]</key>
+		
+		<!-- IPMI Agent-specific messages -->
+		<key name="scan_ping_target_message_0001">Starting #!string!scan_ping_target_brand_0001!#</key>
+		<key name="scan_ping_target_message_0002"><![CDATA[
+ -=] IPMI Scan Agent
+
+DESCRIPTION
+
+This program is a "scan agent" for the ScanCore decision engine tool for the
+Anvil! high-availabiltiy platform.
+
+It checks to see if a target machine can be pinged. The target can be any 
+machine; Dashboards, nodes, hosted servers or any machine outside the Anvil! 
+system. 
+
+This agent will only run if one or more targets are specifically configured in
+striker.conf. 
+
+Configuration is to add the following to striker.conf;
+
+====
+scan-ping-target::target::<id>::host     = <name_or_ip>
+scan-ping-target::target::<id>::count    = #
+====
+
+The <id> can be any alpha-numeric string or number that is unique from other 
+entries. Any number of entries can be added, but the checks will be performed
+sequentially. So in a case where multiple targets are slow to respond, this 
+agent could run for some time.
+
+The 'host' can be an IP address or a resolvable host name. Optionally, you can
+specify how many pings are sent in a given check. The default is to ping 3 
+times (with a 1 second pause between pings). Pings timeout after 1 second, so
+targets with very high latency may be reported as 'offline' when they aren't.
+
+
+NOTE:
+
+Pinging a target to check access has limited use. When possible to use, using
+'scan-remote-access' is a better to verify if a target is online. Pings are 
+less reliable because some machines ignore ICMP ping packets and will always
+appear offline, or a target is behind a firewall which replies to pings, 
+regardless of the availability of the target behind it. It is also possible 
+that a machine can be "alive enough" to respond to pings while not actually
+be working.
+
+If you use this agent, please consider these limitations before hand.
+
+
+SWITCHES
+
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+ --prep-db
+
+	If passed, the schema will be loaded into the database (if not 
+	already), even if no bonds are found. Note: This won't work if the 
+	agent has been manually disabled via 'scan-ipmitool::disable'.
+
+                  
+SUPPORT
+
+https://alteeve.ca/w/Support
+
+							      Alteeve's Niche!
+		]]></key>
+		<key name="scan_ping_target_message_0003">The target machine: [#!variable!target!#] is now responding to pings.</key>
+		<key name="scan_ping_target_message_0004">Pinging the target machine: [#!variable!target!#] timed out!</key>
+		<key name="scan_ping_target_message_0005">A new target is now being pinged: [#!variable!target!#] and it is responding.</key>
+		<key name="scan_ping_target_message_0006">A new target: [#!variable!target!#], which is not responding, will be monitored using pings.</key>
+		<key name="scan_ping_target_message_0007">The time to ping: [#!variable!target!#], has changed; [#!variable!old_ping_time!# ms] -> [#!variable!new_ping_time!# ms].</key>	<!-- ms == milliseconds -->
+		
+		<!-- Sensor message titles -->
+		<key name="scan_ping_target_title_0001"></key>
+	</lang>
+</strings>

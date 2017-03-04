@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-This strings file is for the APC UPS Scan Agent. Please be careful not to use
-names used by the main Striker strings file. Do this by prefixing all strings
-with 'scan_remote_access_'.
+This strings file is for the Remote Access Scan Agent. Please be careful not to use names used by the main 
+Striker strings file. Do this by prefixing all strings with 'scan_remote_access_'.
 -->
 <strings>
 	<!-- Canadian English -->
@@ -19,13 +18,7 @@ with 'scan_remote_access_'.
 		<!-- Log strings -->
 		<key name="scan_remote_access_log_0001">Testing access to remote machine: [#!variable!target!#]</key>
 		
-		<!-- Errors -->
-		<key name="scan_remote_access_error_0001">The query: [#!variable!query!#] against DB: [#!variable!id!#] returned: [#!variable!count!#] rows. Only '1' should have been returned!</key>
-		
-		<!-- Notices -->
-		<key name="scan_remote_access_note_0001"></key>
-		
-		<!-- IPMI Agent-specific messages -->
+		<!-- SSH Access-specific messages -->
 		<key name="scan_remote_access_message_0001">Starting #!string!scan_remote_access_brand_0001!#</key>
 		<key name="scan_remote_access_message_0002"><![CDATA[
  -=] IPMI Scan Agent

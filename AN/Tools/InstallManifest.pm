@@ -6677,7 +6677,7 @@ sub connect_to_node
 	my $return_code = 2;
 	
 	# 1 == pinged, 0 == failed.
-	my $ping = $an->Check->ping({ping => $target, count => 3});
+	my ($ping) = $an->Check->ping({ping => $target, count => 3});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ping", value1 => $ping, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -8321,7 +8321,7 @@ sub do_node_reboot
 		while (not $has_shutdown)
 		{
 			# 1 == pinged, 0 == failed.
-			my $ping = $an->Check->ping({ping => $target, count => 3});
+			my ($ping) = $an->Check->ping({ping => $target, count => 3});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "target", value1 => $target,
 				name2 => "ping",   value2 => $ping,
@@ -17973,7 +17973,7 @@ sub test_internet_connection
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
-	my $ping = $an->Check->ping({
+	my ($ping) = $an->Check->ping({
 		ping		=>	"8.8.8.8", 
 		count		=>	3,
 		target		=>	$target,

@@ -4797,7 +4797,8 @@ sub gather_ups_data
 		
 		### TODO: Set 'apc_ups_health' to '99' when comms are lost.
 		# This returns '1' if it was pingable, '0' if not.
-		if (not $an->Check->ping({ping => $ups_ip}))
+		my ($pinged) = $an->Check->ping({ping => $ups_ip});
+		if (not $pinged)
 		{
 			# Nope :(
 			$an->data->{ups}{$ups_name}{model} = "#!no_connection!#";

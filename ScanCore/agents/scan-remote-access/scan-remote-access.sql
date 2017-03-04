@@ -1,4 +1,4 @@
--- This is the database schema for the 'remote_access Scan Agent'.
+-- This is the database schema for the 'remote-access Scan Agent'.
 
 CREATE TABLE remote_access (
 	remote_access_uuid			uuid				primary key,

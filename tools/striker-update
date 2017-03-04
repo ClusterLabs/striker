@@ -1617,7 +1617,7 @@ sub check_internet_access
 	foreach my $target (split/,/, $an->data->{url}{ping_targets})
 	{
 		print "- Trying to ping: [$target]...\n" if $an->data->{sys}{debug} >= 1;
-		my $ping = $an->Check->ping({ping => $target});
+		my ($ping) = $an->Check->ping({ping => $target});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ping", value1 => $ping,
 		}, file => $THIS_FILE, line => __LINE__});

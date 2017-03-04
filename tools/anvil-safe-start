@@ -2429,9 +2429,9 @@ sub wait_for_access
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Test access now. RC == 1; pinged. 0 == no response.
-		my $bcn_return_code = $an->Check->ping({ping => $peer_bcn});
-		my $sn_return_code  = $an->Check->ping({ping => $peer_sn});
-		my $ifn_return_code = $an->Check->ping({ping => $peer_ifn});
+		my ($bcn_return_code) = $an->Check->ping({ping => $peer_bcn});
+		my ($sn_return_code)  = $an->Check->ping({ping => $peer_sn});
+		my ($ifn_return_code) = $an->Check->ping({ping => $peer_ifn});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "bcn_return_code", value1 => $bcn_return_code, 
 			name2 => "sn_return_code",  value2 => $sn_return_code, 
