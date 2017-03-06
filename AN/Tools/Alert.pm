@@ -182,7 +182,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "query", value1 => $query, 
 			name2 => "set",   value2 => $set, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -204,7 +204,7 @@ AND
 AND 
     alert_name           = ".$an->data->{sys}{use_db_fh}->quote($alert_name)."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "query", value1 => $query, 
 			name2 => "set",   value2 => $set, 
 		}, file => $THIS_FILE, line => __LINE__});

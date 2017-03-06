@@ -526,6 +526,7 @@ sub archive_if_needed
 	$an->data->{archive}{table} = {
 		remote_access	=>	{
 			archive_date	=>	"",
+			host_column	=>	"remote_access_host_uuid",
 			offset		=>	0,
 		},
 	};
@@ -542,7 +543,7 @@ SELECT
 FROM 
     history.$table 
 WHERE 
-    remote_access_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    ".$an->data->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 

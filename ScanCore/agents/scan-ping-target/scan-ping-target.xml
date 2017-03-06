@@ -21,7 +21,7 @@ Striker strings file. Do this by prefixing all strings with 'scan_remote_access_
 		<!-- IPMI Agent-specific messages -->
 		<key name="scan_ping_target_message_0001">Starting #!string!scan_ping_target_brand_0001!#</key>
 		<key name="scan_ping_target_message_0002"><![CDATA[
- -=] IPMI Scan Agent
+ -=] Ping Target Scan Agent
 
 DESCRIPTION
 

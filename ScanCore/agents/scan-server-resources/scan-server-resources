@@ -3,29 +3,41 @@
 # This software was created by Alteeve's Niche! Inc. and has been released under the terms of the GNU GPL 
 # version 2.
 #
+# ScanCore Scan Agent that tests ssh access to a target by simply logging in and sending 'echo 1'. This is
+# preferable to ping access when testing access to machines behind a firewall, or machines that ignore ICMP
+# ping packets.
+# 
+# Configuration is to add the following to striker.conf;
+# 
+# ====
+# scan-server-resources::target::<id>::host     = <user>@<name_or_ip>:<port>
+# scan-server-resources::target::<id>::password = <secret>
+# ====
+#
+# The <id> can be any alpha-numeric string or number that is unique from other entries. Any number of entries
+# can be added, but the checks will be performed sequentially. So in a case where multiple targets are slow
+# to respond, this  agent could run for some time.
+# 
+# The 'host' can be an IP address or a resolvable host name. Optionally, you can specify ':xx' to specify a
+# non-standard port to use for SSH. When no suffix is used, port 22 is used.
+# 
+# The 'host' can, optionally, have a user to connect as. When not specified, the 'root' user is used.
+#
 # https://alteeve.ca
 # 
 # Exit Codes:
 # 0   - Success
+# 1   - 
 # 
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
-# 
-# NOTE:
-# - This agent monitors the resources on servers that we've been told about. It monitors CPU, RAM and disk
-#   resource utilization.
-# - 
-# 
-# TODO: 
-#  - 
-# 
-
-# Disable this for now.
-exit(0);
 
 # Use my modules.
 use strict;
 use warnings;
 use AN::Tools;
+use Data::Dumper;
+use IO::Socket::INET;
+no warnings 'recursion';
 
 # Disable buffering.
 $| = 1;
@@ -39,48 +51,69 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 }
 my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0];
 
+### TODO: Rework this whole agent...
 # Get the handle to the AN::Tools and preset some variables I will use.
 my $an = AN::Tools->new({data => 
 	{
 		path			=>	{
 			core_strings		=>	"$scancore_directory/ScanCore.xml",
 			sql			=>	"$running_directory/$THIS_FILE.sql",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			strings			=>	"$running_directory/$THIS_FILE.xml",
 		},
-		# This is used so that the user can set the language in on striker.conf variable.
+		sys			=>	{
+			# When a lock is requested, this is set to the time the lock was set. 
+			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
+			# scancore::locking::reap_age, it will renew the lock.
+			local_lock_active	=>	0,
+			sql			=>	[],
+		},
+		scancore		=>	{
+			archive			=>	{
+				directory		=>	"/var/ScanCore/archives/",
+				division		=>	60000,
+				trigger			=>	100000,
+				count			=>	50000,
+				dump_file_header	=>	"
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET search_path = history, pg_catalog;
+",
+			},
+		},
+		# These are values the user might set in striker.conf
 		'scan-server-resources'	=>	{
+			'an-ssrw-port'		=>	26845,
+			disable			=>	0,
 			language		=>	"en_CA",
+			log_file		=>	"/var/log/ScanCore.log",
 			log_level		=>	1,
 			log_language		=>	"en_CA",
-			log_file		=>	"/var/log/ScanCore.log",
 			log_db_transactions	=>	0,
+			count			=>	3,
 		},
-		server		=>	{},
-		sys		=>	{
-			# This will get set by AN::Tools::DB->connect_to_databases()
-			sql			=>	[],
-			# This is the source name of anything added to 'shared' by this agent.
-			shared_source_name	=>	'scan-server-resources', 
-			# This is the shared record used in 'shared' to store the XML definition data, 
-			# current host and current state.
-			shared_definition_name	=>	'definition',
-			shared_host_name	=>	'host',
-			shared_state_name	=>	'state',
-		},
-	}
+		targets			=>	{},
+	},
 });
 
 # Read the config file
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 
 # Set some defaults
-$an->default_language    ($an->data->{'scan-server-resources'}{language});
-$an->default_log_language($an->data->{'scan-server-resources'}{log_language});
-$an->default_log_file    ($an->data->{'scan-server-resources'}{log_file});
+$an->default_language    ($an->data->{$THIS_FILE}{language});
+$an->default_log_language($an->data->{$THIS_FILE}{log_language});
+$an->default_log_file    ($an->data->{$THIS_FILE}{log_file});
 
 # Set the log level.
-$an->Log->level($an->data->{'scan-server-resources'}{log_level});
-$an->Log->db_transactions(1) if $an->data->{'scan-server-resources'}{log_db_transactions};
+$an->Log->level($an->data->{$THIS_FILE}{log_level});
+$an->Log->db_transactions(1) if $an->data->{$THIS_FILE}{log_db_transactions};
 
 # Read in the language strings.
 $an->Storage->read_words({file => $an->data->{path}{strings}});
@@ -91,9 +124,27 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 $an->Log->adjust_log_level({key => $THIS_FILE});
 
+# Help?
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or
+    ($an->data->{switches}{help}))
+{
+	# Help!
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+
+# Exit if we're disabled.
+if ($an->data->{$THIS_FILE}{disable})
+{
+	$an->nice_exit({exit_code => 1});
+}
+
+print $an->String->get({key => "scan_server_resources_message_0001"})."\n";
+
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
 
 # Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
 # running ScanCore, it won't be.
@@ -103,10 +154,67 @@ if (not $an->DB->verify_host_uuid())
 	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
 }
 
-print $an->String->get({key => "scan_server_resources_message_0001"})."\n";
+# Before proceeding, do we have any targets to scan?
+my $target_count = 0;
+if (exists $an->data->{'scan-server-resources'}{target})
+{
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{'scan-server-resources'}{target}})
+	{
+		$target_count++;
+		my $host         = $an->data->{'scan-server-resources'}{target}{$id}{host};
+		my $port         = $an->data->{'scan-server-resources'}{'an-ssrw-port'};
+		my $reboot_timer = $an->data->{'scan-server-resources'}{target}{$id}{reboot_timer} ? $an->data->{'scan-server-resources'}{target}{$id}{reboot_timer} : 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "host",         value1 => $host, 
+			name2 => "port",         value2 => $port, 
+			name3 => "reboot_timer", value3 => $reboot_timer, 
+			name4 => "target_count", value4 => $target_count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{'scan-server-resources'}{target}{$id}{access} = 0;
+		my $access = gather_details($an, $host, $port, $reboot_timer);
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "access", value1 => $access, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($access)
+		{
+			$an->data->{'scan-server-resources'}{target}{$id}{access} = $access;
+		}
+	}
+}
 
+$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	name1 => "target_count", value1 => $target_count, 
+}, file => $THIS_FILE, line => __LINE__});
+if (not $target_count)
+{
+	# Nothing to do, exit.
+	if ($an->data->{switches}{'prep-db'})
+	{
+		if ($connections)
+		{
+			prep_databases($an);
+		}
+		else
+		{
+			# Failed
+			$an->Log->entry({log_level => 1, message_key => "scancore_warning_0031", file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "scancore_warning_0031"})."\n";
+		}
+	}
+	$an->nice_exit({exit_code => 0});
+}
 
+### Still alive? Time for work!
+# Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
+prep_databases($an);
 
+# Archive, if needed.
+archive_if_needed($an);
+
+# Look for changes.
+find_changes($an);
 
 # Update the database
 $an->DB->update_time({file => $THIS_FILE});
@@ -114,35 +222,662 @@ $an->DB->update_time({file => $THIS_FILE});
 # Clean up and go away.
 $an->nice_exit({exit_code => 0});
 
+
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
 
-# This looks for servers locally and on the peer and reads in their data.
-sub scan_server_resources
+# This calls the target and reads in the resources XML.
+sub gather_details
 {
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_server_resources", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# This will get set to '1' if we find any 'scan_server_resources' database entries.
-	my $proceed = 0;
-	
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "proceed", value1 => $proceed, 
+	my ($an, $host, $port, $reboot_timer) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_access" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "host", value1 => $host, 
+		name2 => "port", value2 => $port, 
+		name3 => "port", value3 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
-	return($proceed);
+	
+	my $protocol  = "tcp";
+	my $variables = { target => $host, port => $port };
+	$an->Log->entry({log_level => 2, message_key => "scan_server_resources_log_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+	print $an->String->get({key => "scan_server_resources_log_0001", variables => $variables})."\n";
+	
+	my $socket = IO::Socket::INET->new(PeerAddr => $host, PeerPort => $port, Proto => $protocol) or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0239", message_variables => { target => $host, port => $port, protocol => $protocol, error => $! }, code => 239, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "socket", value1 => $socket, 
+	}, file => $THIS_FILE, line => __LINE__});
+
+	my $access = 0;
+	my $output = "";
+	print $socket "GET\n";
+	while(<$socket>)
+	{
+		chomp;
+		my $line = $_;
+		
+		# There are a few XML syntax bugs in the client. This fixes them until we can fix the daemon.
+		$line =~ s/<ram (.*)">/<ram $1"\/>/;
+		$line =~ s/<swap (.*)">/<swap $1"\/>/;
+		$line =~ s/<cores count=(\d+)>/<cores count="$1"\/>/;
+		
+		if ($line =~ /<\/server>/)
+		{
+			$access = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "access", value1 => $access, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		$output .= $line."\n";
+	}
+	$socket->close();
+	chomp $output;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "output", value1 => $output, 
+		name2 => "access", value1 => $access, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($access)
+	{
+		my $xml  = XML::Simple->new();
+		my $data = $xml->XMLin($output, KeyAttr => {node => 'name'}, ForceArray => 1);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "data", value1 => $data,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $server_uuid = $data->{uuid};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "host_uuid", value1 => $server_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{'server-resources'}{server}{$server_uuid}{boot_time}  = $data->{boot_time};
+		$an->data->{'server-resources'}{server}{$server_uuid}{host_name}  = $data->{host_name};
+		$an->data->{'server-resources'}{server}{$server_uuid}{host_os}    = $data->{os};
+		$an->data->{'server-resources'}{server}{$server_uuid}{ram_used}   = $data->{memory}->[0]->{ram}->[0]->{used};
+		$an->data->{'server-resources'}{server}{$server_uuid}{ram_total}  = $data->{memory}->[0]->{ram}->[0]->{total};
+		$an->data->{'server-resources'}{server}{$server_uuid}{swap_used}  = $data->{memory}->[0]->{swap}->[0]->{used};
+		$an->data->{'server-resources'}{server}{$server_uuid}{swap_total} = $data->{memory}->[0]->{swap}->[0]->{total};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			name1 => "server-resources::server::${server_uuid}::boot_time",  value1 => $an->data->{'server-resources'}{server}{$server_uuid}{boot_time},
+			name2 => "server-resources::server::${server_uuid}::host_name",  value2 => $an->data->{'server-resources'}{server}{$server_uuid}{host_name},
+			name3 => "server-resources::server::${server_uuid}::host_os",    value3 => $an->data->{'server-resources'}{server}{$server_uuid}{host_os},
+			name4 => "server-resources::server::${server_uuid}::ram_total",  value4 => $an->data->{'server-resources'}{server}{$server_uuid}{ram_total}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'server-resources'}{server}{$server_uuid}{ram_total} }).")",
+			name5 => "server-resources::server::${server_uuid}::ram_used",   value5 => $an->data->{'server-resources'}{server}{$server_uuid}{ram_used}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'server-resources'}{server}{$server_uuid}{ram_used} }).")",
+			name6 => "server-resources::server::${server_uuid}::swap_total", value6 => $an->data->{'server-resources'}{server}{$server_uuid}{swap_total}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'server-resources'}{server}{$server_uuid}{swap_total} }).")",
+			name7 => "server-resources::server::${server_uuid}::swap_used",  value7 => $an->data->{'server-resources'}{server}{$server_uuid}{swap_used}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'server-resources'}{server}{$server_uuid}{swap_used} }).")",
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Get the disks
+		foreach my $array_ref (@{$data->{disks}->[0]->{drive}})
+		{
+			# I strip off the colon and slash from windows drive letters.
+			my $disk_name =  $array_ref->{name};
+			   $disk_name =~ s/:\\$//;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "disk_name", value1 => $disk_name,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We ignore optical drives
+			next if $array_ref->{options} =~ /cdrom/;
+			
+			$an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{filesystem} = defined $array_ref->{filesystem} ? $array_ref->{filesystem} : "";
+			$an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{options}    = defined $array_ref->{options}    ? $array_ref->{options}    : "";
+			$an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{used}       = defined $array_ref->{used}       ? $array_ref->{used}       : 0;
+			$an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{total}      = defined $array_ref->{size}       ? $array_ref->{size}       : 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "server-resources::server::${server_uuid}::disk::${disk_name}::filesystem", value1 => $an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{filesystem},
+				name2 => "server-resources::server::${server_uuid}::disk::${disk_name}::options",    value2 => $an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{options},
+				name3 => "server-resources::server::${server_uuid}::disk::${disk_name}::total",      value3 => $an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{total}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{total} }).")",
+				name4 => "server-resources::server::${server_uuid}::disk::${disk_name}::used",       value4 => $an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{used}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{used} }).")",
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Get the CPU(s)
+		foreach my $array_ref (@{$data->{cpu}->[0]->{cpu}})
+		{
+			my $cpu_number =  $array_ref->{number};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "cpu_number", value1 => $cpu_number,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->data->{'server-resources'}{server}{$server_uuid}{cpu}{$cpu_number}{load} = defined $array_ref->{load} ? $array_ref->{load} : "--";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server-resources::server::${server_uuid}::cpu::${cpu_number}::load", value1 => $an->data->{'server-resources'}{server}{$server_uuid}{cpu}{$cpu_number}{load},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	elsif ($reboot_timer)
+	{
+		### TODO: Kill the server if we lost contact more than reboot_timer seconds ago AND the 
+		###       server is hosted on this machine.
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "access", value1 => $access, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($access);
 }
 
+# This reads in the last scan's data.
+sub read_last_scan
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### NOTE: This might be useful later
+	# Make sure I don't have any stray data for this machine.
+	#delete $an->data->{sql}{$machine};
+	
+	# Read in existing data, if any.
+	my $query = "
+SELECT 
+    server_resource_uuid,
+    server_resource_target_access, 
+    server_resource_host_name, 
+    server_resource_os, 
+    server_resource_boot_time, 
+    server_resources_ram_size, 
+    server_resources_ram_used, 
+    server_resources_swap_size, 
+    server_resources_swap_used 
+FROM 
+    server_resources 
+WHERE 
+    server_resource_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	# One or more records were found.
+	foreach my $row (@{$results})
+	{
+		my $server_resource_uuid          = $row->[0];
+		my $server_resource_target_access = $row->[1];
+		my $server_resource_host_name     = $row->[2];
+		my $server_resource_os            = $row->[3];
+		my $server_resource_boot_time     = $row->[4];
+		my $server_resources_ram_size     = $row->[5];
+		my $server_resources_ram_used     = $row->[6];
+		my $server_resources_swap_size    = $row->[7];
+		my $server_resources_swap_used    = $row->[8];
+		
+		$an->data->{sql}{server}{$server_resource_uuid}{server_resource_target_access} = $server_resource_target_access
+		$an->data->{sql}{server}{$server_resource_uuid}{server_resource_host_name}     = $server_resource_host_name;
+		$an->data->{sql}{server}{$server_resource_uuid}{server_resource_os}            = $server_resource_os;
+		$an->data->{sql}{server}{$server_resource_uuid}{server_resource_boot_time}     = $server_resource_boot_time;
+		$an->data->{sql}{server}{$server_resource_uuid}{server_resources_ram_size}     = $server_resources_ram_size;
+		$an->data->{sql}{server}{$server_resource_uuid}{server_resources_ram_used}     = $server_resources_ram_used;
+		$an->data->{sql}{server}{$server_resource_uuid}{server_resources_swap_size}    = $server_resources_swap_size;
+		$an->data->{sql}{server}{$server_resource_uuid}{server_resources_swap_used}    = $server_resources_swap_used;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "sql::server::${server_resource_uuid}::server_resource_target_access", value1 => $an->data->{sql}{server}{$server_resource_uuid}{server_resource_target_access}, 
+			name2 => "sql::server::${server_resource_uuid}::server_resource_host_name",     value2 => $an->data->{sql}{server}{$server_resource_uuid}{server_resource_host_name}, 
+			name3 => "sql::server::${server_resource_uuid}::server_resource_os",            value3 => $an->data->{sql}{server}{$server_resource_uuid}{server_resource_os}, 
+			name4 => "sql::server::${server_resource_uuid}::server_resource_boot_time",     value4 => $an->data->{sql}{server}{$server_resource_uuid}{server_resource_boot_time}, 
+			name5 => "sql::server::${server_resource_uuid}::server_resources_ram_size",     value5 => $an->data->{sql}{server}{$server_resource_uuid}{server_resources_ram_size}, 
+			name6 => "sql::server::${server_resource_uuid}::server_resources_ram_used",     value6 => $an->data->{sql}{server}{$server_resource_uuid}{server_resources_ram_used}, 
+			name7 => "sql::server::${server_resource_uuid}::server_resources_swap_size",    value7 => $an->data->{sql}{server}{$server_resource_uuid}{server_resources_swap_size}, 
+			name8 => "sql::server::${server_resource_uuid}::server_resources_swap_used",    value8 => $an->data->{sql}{server}{$server_resource_uuid}{server_resources_swap_used}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Get the Disks for this server
+		
+		# Get the CPU cores for this server
+	}
+	
+	return($count);
+}
 
+# This reads in the last scan data from one of the databases and compares it against the just-read data. If 
+# anything changed, register an alert.
+sub find_changes
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read the last state of any targets we already know about
+	read_last_scan($an);
+die;
+
+	# As we loop through each target, we'll see if we already we know about this system and, if so, if it
+	# just came back or left.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{'scan-server-resources'}{target}})
+	{
+		my $server_resource_uuid              = "";
+		my $server_resource_target_name       = $an->data->{'scan-server-resources'}{target}{$id}{host};
+		my $new_server_resource_target_pinged = $an->data->{'scan-server-resources'}{target}{$id}{pinged};
+		my $new_server_resource_ping_time     = $an->data->{'scan-server-resources'}{target}{$id}{'time'};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "id",                              value1 => $id, 
+			name2 => "server_resource_target_name",       value2 => $server_resource_target_name, 
+			name3 => "new_server_resource_target_pinged", value3 => $new_server_resource_target_pinged, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (exists $an->data->{sql}{$server_resource_target_name}{server_resource_uuid})
+		{
+			# Exists. Changed?
+			   $server_resource_uuid              = $an->data->{sql}{$server_resource_target_name}{server_resource_uuid};
+			my $old_server_resource_target_pinged = $an->data->{sql}{$server_resource_target_name}{server_resource_target_pinged};
+			my $old_server_resource_ping_time     = $an->data->{sql}{$server_resource_target_name}{server_resource_ping_time};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "server_resource_uuid",              value1 => $server_resource_uuid, 
+				name2 => "old_server_resource_target_pinged", value2 => $old_server_resource_target_pinged, 
+				name3 => "old_server_resource_ping_time",     value3 => $old_server_resource_ping_time, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($new_server_resource_target_pinged ne $old_server_resource_target_pinged) or 
+			    ($old_server_resource_ping_time     ne $new_server_resource_ping_time))
+			{
+				# It has changed, update it.
+				my $query = "
+UPDATE 
+    server_resources 
+SET
+    server_resource_target_pinged = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_target_pinged).", 
+    server_resource_ping_time     = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_ping_time).", 
+    modified_date             = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_resource_uuid          = ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid)."
+;
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+				
+				# Being able to ping or not is a warning level alert. Changing in ping time is info.
+				if ($new_server_resource_target_pinged ne $old_server_resource_target_pinged)
+				{
+					# Lost or restored ping contact
+					my $title_key   = "an_alert_title_0004";
+					my $message_key = "scan_server_resource_message_0004";
+					if ($new_server_resource_target_pinged)
+					{
+						# We've got access now.
+						$title_key   = "an_alert_title_0006";
+						$message_key = "scan_server_resource_message_0003";
+					}
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	$message_key,
+						alert_message_variables	=>	{
+							target			=>	$server_resource_target_name,
+						},
+					});
+				}
+				if ($old_server_resource_ping_time ne $new_server_resource_ping_time)
+				{
+					$an->Alert->register_alert({
+						alert_level		=>	"info", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0002",
+						alert_message_key	=>	"scan_server_resource_message_0007",
+						alert_message_variables	=>	{
+							target			=>	$server_resource_target_name,
+							old_ping_time		=>	$old_server_resource_ping_time,
+							new_ping_time		=>	$new_server_resource_ping_time,
+						},
+					});
+				}
+			}
+		}
+		else
+		{
+			# New record, INSERT it.
+			my $server_resource_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});;
+			my $query              = "
+INSERT INTO 
+    server_resources 
+(
+    server_resource_uuid, 
+    server_resource_host_uuid, 
+    server_resource_target_name, 
+    server_resource_target_pinged, 
+    server_resource_ping_time, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_target_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_target_pinged).",  
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_ping_time).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			$query =~ s/'NULL'/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+			
+			my $message_key = "scan_server_resource_message_0006";
+			if ($new_server_resource_target_pinged)
+			{
+				# We've got access.
+				$message_key = "scan_server_resource_message_0005";
+			}
+			$an->Alert->register_alert({
+				alert_level		=>	"warning", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_title_key		=>	"an_alert_title_0004",
+				alert_message_key	=>	$message_key,
+				alert_message_variables	=>	{
+					target			=>	$server_resource_target_name,
+				},
+			});
+		}
+	}
+	
+	# Now commit the changes.
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+# This will archive stuff in the 'history' schema, if needed.
+sub archive_if_needed
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If the 'trigger' is '0', archiving is disabled.
+	if (not $an->data->{scancore}{archive}{trigger})
+	{
+		return(1);
+	}
+	
+	### NOTE: If a ScanCore db server was offline when an archive ran, when it returns, it's records will
+	###       sync back, triggering a sooner-than-expected subsequent archive. This shouldn't happen 
+	###       often, and the complexity of tracking archive dates is such that we'll not try to account
+	###       for these cases. 
+	### TODO: What we can do later is, when we write the restore stuff, build in a dedupe function.
+	
+	### Process:
+	# 1. Count the records in history for each table, restricting the results to those from this host 
+	#    (save for special tables like 'server') and if the number of records is greater than 
+	#    'scancore::archive::trigger', start an archive.
+	# 2. Set/update the 'archive_date' state.
+	# 3. Lock the database.
+	# 4. Select 'modified_date' from history.foo, offset by 
+	#    ('scancore::archive::trigger' - 'scancore::archive::count').
+	# 5. Make sure the 'scancore::archive::directory' exists, creating it if needed.
+	# 6. Select all records older that the 'modified_date', write them to a file and then DELETE those
+	#    records from the database.
+	
+	# Update the archive path, if set by a user. Also verify that there are sane archive values.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
+		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
+		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
+		name4 => "scancore::archive::count",     value4 => $an->data->{scancore}{archive}{count}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
+	{
+		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{trigger} = 100000;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{count} = 50000;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	if (not -e $an->data->{path}{scancore_archive})
+	{
+		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# Did it work?
+		if (not -e $an->data->{path}{scancore_archive})
+		{
+			# Nope. :(
+			$an->Alert->warning({message_key => "scancore_warning_0030", message_variables => { directory => $an->data->{path}{scancore_archive} }, quiet => 1, file => $THIS_FILE, line => __LINE__});
+			return(1);
+		}
+	}
+	
+	# This is pretty simple... Just one table
+	$an->data->{archive}{table} = {
+		server_resources	=>	{
+			archive_date		=>	"",
+			host_column		=>	"server_resource_host_uuid",
+			offset			=>	0,
+		},
+		server_resources_disks	=>	{
+			archive_date		=>	"",
+			host_column		=>	"server_resources_disk_host_uuid",
+			offset			=>	0,
+		},
+		server_resources_cpus	=>	{
+			archive_date		=>	"",
+			host_column		=>	"server_resources_cpu_host_uuid",
+			offset			=>	0,
+		},
+	};
+	my $archive_needed = 0;
+	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "table", value1 => $table, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    history.$table 
+WHERE 
+    ".$an->data->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		   $records = 0 if not defined $records;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "records", value1 => $records, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($records > $an->data->{scancore}{archive}{trigger})
+		{
+			   $archive_needed                             = 1;
+			my $records_to_save                            = ($an->data->{scancore}{archive}{trigger} - $an->data->{scancore}{archive}{count});
+			my $offset                                     = $records - $records_to_save;
+			   $an->data->{archive}{table}{$table}{offset} = $offset;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "archive_needed",                   value1 => $archive_needed, 
+				name2 => "records_to_save",                  value2 => $records_to_save, 
+				name3 => "archive::table::${table}::offset", value3 => $an->data->{archive}{table}{$table}{offset}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I have something to archive, do so now.
+	if ($archive_needed)
+	{
+		# This will store the files to compress after we release the locks.
+		my $compress = [];
+		
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
+		# Now loop through the table(s) that need to be archived.
+		foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
+		{
+			next if not $an->data->{archive}{table}{$table}{offset};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "table", value1 => $table, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Now to do the archive.
+			if ($table eq "server_resources")
+			{
+				$an->DB->archive_table({
+					table        => "server_resources", 
+					offset       => $an->data->{archive}{table}{server_resources}{offset}, 
+					conditionals => { server_resource_host_uuid => $an->data->{sys}{host_uuid} },
+					columns      => ["server_resource_uuid", "server_resource_host_uuid", "server_resource_target_access", "server_resource_host_name", "server_resource_os", "server_resource_boot_time", "server_resources_ram_size", "server_resources_ram_used", "server_resources_swap_size", "server_resources_swap_used"],
+				});
+			}
+			elsif ($table eq "server_resources_disks")
+			{
+				$an->DB->archive_table({
+					table        => "server_resources_disks", 
+					offset       => $an->data->{archive}{table}{server_resources_disks}{offset}, 
+					conditionals => { server_resources_disk_host_uuid => $an->data->{sys}{host_uuid} },
+					columns      => ["server_resources_disk_uuid", "server_resources_disk_server_resource_uuid", "server_resources_disk_host_uuid", "server_resources_disk_mount_point", "server_resources_disk_filesystem", "server_resources_disk_options", "server_resources_disk_size", "server_resources_disk_used"],
+				});
+			}
+			elsif ($table eq "server_resources_cpus")
+			{
+				$an->DB->archive_table({
+					table        => "server_resources_cpus", 
+					offset       => $an->data->{archive}{table}{server_resources_cpus}{offset}, 
+					conditionals => { server_resources_cpu_host_uuid => $an->data->{sys}{host_uuid} },
+					columns      => ["server_resources_cpu_uuid", "server_resources_cpu_server_resource_uuid", "server_resources_cpu_host_uuid", "server_resources_cpu_number", "server_resources_cpu_load"],
+				});
+			}
+		}
+		
+		### TODO: Make this less of a hackish mc-hackington...
+		# VACUUM FULL, if the database is on this machine. I need to do this from the command line 
+		# because the user we connect as isn't allowed to do it. We'll also only vacuum our DB.
+		my $db_name = "";
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "id",                        value1 => $id, 
+				name2 => "scancore::db::${id}::host", value2 => $an->data->{scancore}{db}{$id}{host}, 
+				name3 => "hostname",                  value3 => $an->hostname, 
+				name4 => "short_hostname",            value4 => $an->short_hostname, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($an->data->{scancore}{db}{$id}{host} eq $an->hostname) or ($an->data->{scancore}{db}{$id}{host} eq $an->short_hostname))
+			{
+				$db_name = $an->data->{scancore}{db}{$id}{name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "db_name",                   value1 => $db_name, 
+					name2 => "scancore::db::${id}::name", value2 => $an->data->{scancore}{db}{$id}{name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+		if ($db_name)
+		{
+			my $start      = time;
+			my $shell_call = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." $db_name -c 'VACUUM FULL;'\"";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "start",      value1 => $start, 
+				name2 => "shell_call", value2 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			my $finished = time - $start;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "finished", value1 => $finished, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
+	}
+	
+	return(0);
+}
+
+# This checks to see if this agent's databases tables exist and, if not, load the schema. If the schema gets
+# loaded, we'll check other databases for older information and load it.
+sub prep_databases
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='server_resources' AND schemaname='public';";
+		#                     The actual query -----------------.        .------- Row 0
+		#                        Query this DB --.              |        |    .-- Columns 0
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($count < 1)
+		{
+			# Need to load the database schema.
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
+			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
+			
+			# Send an alert telling the user that we've initialized this database.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"notice_message_0002",
+				alert_message_variables	=>	{
+					name			=>	$an->data->{scancore}{db}{$id}{name},
+					host			=>	$an->data->{scancore}{db}{$id}{host},
+					agent			=>	$THIS_FILE,
+				},
+			});
+		}
+		else
+		{
+			# Table exists, schema load is not needed.
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
 
 # Print the usage information.
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	print $an->String->get({key => "${THIS_FILE}_message_0002"})."\n";
+	print $an->String->get({key => "scan_server_resource_message_0002"})."\n";
 
 	return(0);
 }

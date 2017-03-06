@@ -989,6 +989,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0236"><![CDATA[The 'AN::Tools::DB' module's 'archive_table()' method was called without a table name given.]]></key>
 		<key name="error_message_0237"><![CDATA[The 'AN::Tools::DB' module's 'archive_table()' method was called for the table: [#!variable!table!#] without number of records to archive (no offset).]]></key>
 		<key name="error_message_0238"><![CDATA[The 'AN::Tools::DB' module's 'archive_table()' method was called for the table: [#!variable!table!#] without any columns being passed in (expected an array reference with one or more columns).]]></key>
+		<key name="error_message_0239"><![CDATA[Failed to open a: [#!variable!protocol!#] socket to: [#!variable!target!#] on port: [#!variable!port!#]. The error was: [#!variable!error!#].]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
