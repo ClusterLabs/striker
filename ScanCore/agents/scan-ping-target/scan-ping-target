@@ -311,7 +311,7 @@ sub find_changes
 			   $ping_target_uuid              = $an->data->{sql}{$ping_target_target_name}{ping_target_uuid};
 			my $old_ping_target_target_pinged = $an->data->{sql}{$ping_target_target_name}{ping_target_target_pinged};
 			my $old_ping_target_ping_time     = $an->data->{sql}{$ping_target_target_name}{ping_target_ping_time};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "ping_target_uuid",              value1 => $ping_target_uuid, 
 				name2 => "old_ping_target_target_pinged", value2 => $old_ping_target_target_pinged, 
 				name3 => "old_ping_target_ping_time",     value3 => $old_ping_target_ping_time, 

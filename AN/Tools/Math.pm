@@ -53,32 +53,13 @@ sub parent
 # integer). This does financial-type rounding.
 sub round
 {
-	my $self  = shift;
-	my $param = shift;
-	
-	# This just makes the code more consistent.
-	my $an    = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
 	
 	# Setup my numbers.
-	my $num    = 0;
-	my $places = 0;
-	
-	# Now see if the user passed the values in a hash reference or directly.
-	if (ref($param) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$num    = $param->{number} ? $param->{number} : 0;
-		$places = $param->{places} ? $param->{places} : 0;
-	}
-	else
-	{
-		# Values passed directly.
-		$num    = $param;
-		$places = defined $_[0] ? shift : 0;
-	}
+	my $num    = $parameter->{number} ? $parameter->{number} : 0;
+	my $places = $parameter->{places} ? $parameter->{places} : 0;
 	
 	# Return if the user passed a double-dash.
 	return('--') if $num eq "--";

@@ -4352,6 +4352,7 @@ sub shared_files
 	return($files, $partition);
 }
 
+### NOTE: This is basically a duplicate of 'ScanCore->get_smtp()', depricate this.
 # This returns data about the given SMTP server (taking either the server name or its UUID)
 sub smtp_data
 {
@@ -4379,7 +4380,9 @@ sub smtp_data
 SELECT 
     smtp_uuid, 
     smtp_server, 
+    smtp_alt_server, 
     smtp_port, 
+    smtp_alt_port, 
     smtp_username, 
     smtp_password, 
     smtp_security, 
@@ -4415,30 +4418,36 @@ WHERE
 	{
 		my $smtp_uuid           = $row->[0];
 		my $smtp_server         = $row->[1];
-		my $smtp_port           = $row->[2];
-		my $smtp_username       = $row->[3] ? $row->[3] : "NULL";
-		my $smtp_password       = $row->[4] ? $row->[4] : "NULL";
-		my $smtp_security       = $row->[5];
-		my $smtp_authentication = $row->[6];
-		my $smtp_helo_domain    = $row->[7] ? $row->[7] : "NULL";
-		my $smtp_note           = $row->[8] ? $row->[8] : "NULL";
-		my $modified_date       = $row->[9];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+		my $smtp_alt_server     = $row->[2]  ? $row->[2]  : "NULL";
+		my $smtp_port           = $row->[3];
+		my $smtp_alt_port       = $row->[4]  ? $row->[4]  : "NULL";
+		my $smtp_username       = $row->[5]  ? $row->[5]  : "NULL";
+		my $smtp_password       = $row->[6]  ? $row->[6]  : "NULL";
+		my $smtp_security       = $row->[7];
+		my $smtp_authentication = $row->[8];
+		my $smtp_helo_domain    = $row->[9]  ? $row->[9]  : "NULL";
+		my $smtp_note           = $row->[10] ? $row->[10] : "NULL";
+		my $modified_date       = $row->[10];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 			name1  => "smtp_uuid",           value1  => $smtp_uuid, 
 			name2  => "smtp_server",         value2  => $smtp_server, 
-			name3  => "smtp_port",           value3  => $smtp_port, 
-			name4  => "smtp_username",       value4  => $smtp_username, 
-			name5  => "smtp_password",       value5  => $smtp_password, 
-			name6  => "smtp_security",       value6  => $smtp_security, 
-			name7  => "smtp_authentication", value7  => $smtp_authentication, 
-			name8  => "smtp_helo_domain",    value8  => $smtp_helo_domain, 
-			name9  => "smtp_note",           value9  => $smtp_note, 
-			name10 => "modified_date",       value10 => $modified_date, 
+			name3  => "smtp_alt_server",     value3  => $smtp_alt_server, 
+			name4  => "smtp_port",           value4  => $smtp_port, 
+			name5  => "smtp_alt_port",       value5  => $smtp_alt_port, 
+			name6  => "smtp_username",       value6  => $smtp_username, 
+			name7  => "smtp_password",       value7  => $smtp_password, 
+			name8  => "smtp_security",       value8  => $smtp_security, 
+			name9  => "smtp_authentication", value9  => $smtp_authentication, 
+			name10 => "smtp_helo_domain",    value10 => $smtp_helo_domain, 
+			name11 => "smtp_note",           value11 => $smtp_note, 
+			name12 => "modified_date",       value12 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$return = {
 			smtp_uuid		=>	$smtp_uuid,
 			smtp_server		=>	$smtp_server, 
+			smtp_alt_server		=>	$smtp_alt_server, 
 			smtp_port		=>	$smtp_port, 
+			smtp_alt_port		=>	$smtp_alt_port, 
 			smtp_username		=>	$smtp_username, 
 			smtp_password		=>	$smtp_password, 
 			smtp_security		=>	$smtp_security, 

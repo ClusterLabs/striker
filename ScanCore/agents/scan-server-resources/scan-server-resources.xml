@@ -86,6 +86,35 @@ https://alteeve.ca/w/Support
 
 							      Alteeve's Niche!
 		]]></key>
+		<key name="scan_server_resources_message_0003">The server's hostname has changed: [#!variable!old_host_name!#] -> [#!variable!new_host_name!#]</key>
+		<key name="scan_server_resources_message_0004">The server's operating system has changed: [#!variable!old_host_os!#] -> [#!variable!new_host_os!#]</key>
+		<key name="scan_server_resources_message_0005">It would appear that the server rebooted. The boot time has changed: [#!variable!old_boot_time!#] -> [#!variable!new_boot_time!#]</key>
+		<key name="scan_server_resources_message_0006">The amount of RAM available on the server has changed: [#!variable!old_ram_size!#] -> [#!variable!new_ram_size!#]</key>
+		<key name="scan_server_resources_message_0007">The amount of RAM in use on the server has changed: [#!variable!old_ram_used!#] -> [#!variable!new_ram_used!#]</key>
+		<key name="scan_server_resources_message_0008">The amount of swap available on the server has changed: [#!variable!old_swap_size!#] -> [#!variable!new_swap_size!#]</key>
+		<key name="scan_server_resources_message_0009">The amount of swap in use on the server has changed: [#!variable!old_swap_used!#] -> [#!variable!new_swap_used!#]</key>
+		<key name="scan_server_resources_message_0010">
+The amount of free RAM on: [#!variable!server_host_name!#] is below: [#!variable!low_warning_percent!# %]! Only [#!variable!free_percent!# %] left free. 
+You may want to add more RAM to this server, if this is not caused by a memory leak.
+		</key>
+		<key name="scan_server_resources_message_0011">The amount of free RAM on: [#!variable!server_host_name!#] is back above: [#!variable!low_warning_clear!# %]. Now there is [#!variable!free_percent!# %] free.</key>
+		<key name="scan_server_resources_message_0012">
+The amount of free swap memory on: [#!variable!server_host_name!#] is below: [#!variable!low_warning_percent!# %]! Only [#!variable!free_percent!# %] left free. 
+Swap is used when the system runs out of RAM and generally causes considerable performance loss.
+You will want to add more RAM to this server, if this is not caused by a memory leak.
+		</key>
+		<key name="scan_server_resources_message_0013">The amount of free swap memory on: [#!variable!server_host_name!#] is back above: [#!variable!low_warning_clear!# %]. Now there is [#!variable!free_percent!# %] free.</key>
+		<key name="scan_server_resources_message_0014">
+We're now monitoring the resources of a new server:
+- Host Name: ........... [#!variable!server_resource_host_name!#]
+- Unique ID: ........... [#!variable!server_resource_uuid!#] 
+- Operating System ID: . [#!variable!server_resource_os!#]
+- Approximate Boot time: [#!variable!server_resource_boot_time!#]
+- RAM, Total: .......... [#!variable!server_resources_ram_size!#]
+- RAM, Used: ........... [#!variable!server_resources_ram_used!#]
+- Swap, Total: ......... [#!variable!server_resources_swap_size!#]
+- Swap, Used: .......... [#!variable!server_resources_swap_used!#]
+		</key>
 		
 	</lang>
 </strings>

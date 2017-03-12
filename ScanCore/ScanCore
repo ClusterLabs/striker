@@ -131,6 +131,12 @@ SET search_path = history, pg_catalog;
 			sleep_time		=>	60,
 			update_age_limit	=>	1200,
 		},
+		striker				=>	{
+			email				=>	{
+				use_server			=>	"",
+				notify				=>	"",
+			},
+		},
 		strings_read			=>	{},
 		sys		=>	{
 			load_shed		=>	{
@@ -3707,18 +3713,21 @@ ORDER BY
 		# Loop through recipients. Any that match this Anvil! will be compared against the recipients
 		# requested alert level. If they want this level alert, we'll pull their data from 
 		# notifications and email/log.
+		my $dashboard_recipients = {};
 		foreach my $hash_ref (@{$recipients})
 		{
 			my $recipient_anvil_uuid   = $hash_ref->{recipient_anvil_uuid};
 			my $recipient_notify_uuid  = $hash_ref->{recipient_notify_uuid};
 			my $recipient_notify_level = $hash_ref->{recipient_notify_level};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "sys::anvil_uuid",        value1 => $an->data->{sys}{anvil_uuid},
 				name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid,
 				name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid,
 				name4 => "recipient_notify_level", value4 => $recipient_notify_level,
 			}, file => $THIS_FILE, line => __LINE__});
-			next if $hash_ref->{recipient_anvil_uuid} ne $an->data->{sys}{anvil_uuid};
+			
+			# If this is a node and this recipient isn't listeing to this Anvil!, skip it.
+			next if (($an->Get->what_am_i eq "node") && ($hash_ref->{recipient_anvil_uuid} ne $an->data->{sys}{anvil_uuid}));
 			
 			# Get the information for this notification target
 			if ($an->data->{notifications}{$recipient_notify_uuid}{notify_name})
@@ -3729,7 +3738,7 @@ ORDER BY
 				my $notify_language = $an->data->{notifications}{$recipient_notify_uuid}{notify_language};
 				my $notify_level    = $an->data->{notifications}{$recipient_notify_uuid}{notify_level};
 				my $notify_units    = $an->data->{notifications}{$recipient_notify_uuid}{notify_units};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 					name1 => "notify_name",            value1 => $notify_name,
 					name2 => "notify_target",          value2 => $notify_target,
 					name3 => "notify_language",        value3 => $notify_language,
@@ -3737,6 +3746,28 @@ ORDER BY
 					name5 => "notify_units",           value5 => $notify_units,
 					name6 => "recipient_notify_level", value6 => $recipient_notify_level,
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If I am a dashboard, make sure I want to send to this notification target.
+				if ($an->Get->what_am_i eq "dashboard")
+				{
+					my ($proceed, $level) = check_dashboard_target($an, $notify_target);
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "proceed", value1 => $proceed,
+						name2 => "level",   value2 => $level,
+					}, file => $THIS_FILE, line => __LINE__});
+					next if not $proceed;
+					
+					# In case we see the same recipient twice, skip them.
+					next if $dashboard_recipients->{$notify_target};
+					
+					# Now note that we're processing this target and update the level to
+					# the one set in striker.conf.
+					$dashboard_recipients->{$notify_target} = 1;
+					$recipient_notify_level                 = $level;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "recipient_notify_level", value1 => $recipient_notify_level,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 				
 				# See if this notification target has a custom level for this Anvil!.
 				if ($recipient_notify_level)
@@ -3783,11 +3814,67 @@ ORDER BY
 	return(0);
 }
 
+# This takes an email address and returns '1' if it's a manually selected notification target for this 
+# striker dashbaord.
+sub check_dashboard_target
+{
+	my ($an, $notify_target) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_dashboard_target" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "notify_target", value1 => $notify_target, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $proceed = 0;
+	my $level   = "warning";
+	if (($an->data->{striker}{email}{use_server}) && ($an->data->{striker}{email}{notify}))
+	{
+		# Yup! Is this recipient in the list?
+		foreach my $target (split/,/, $an->data->{striker}{email}{notify})
+		{
+			$target =~ s/\s+//;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $recipient = $target;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "recipient", value1 => $recipient, 
+				name2 => "level",     value2 => $level, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($target =~ /^(.*?):(.*)$/)
+			{
+				$recipient = $1;
+				$level     = $2;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "recipient", value1 => $recipient, 
+					name2 => "level",     value2 => $level, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "recipient",     value1 => $recipient, 
+				name2 => "notify_target", value2 => $notify_target, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($recipient eq $notify_target)
+			{
+				$proceed = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "proceed", value1 => $proceed, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "proceed", value1 => $proceed, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($proceed, $level);
+}
+
 # This sends any pending alerts to a give recipient, if applicable.
 sub send_email
 {
 	my ($an, $email, $name, $level, $language, $units) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "send_email" }, message_key => "an_variables_0005", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "send_email" }, message_key => "an_variables_0005", message_variables => { 
 		name1 => "email",    value1 => $email, 
 		name2 => "name",     value2 => $name, 
 		name3 => "level",    value3 => $level, 
@@ -3795,10 +3882,22 @@ sub send_email
 		name5 => "units",    value5 => $units, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### NOTE: At this time, dashboards can't send email.
-	if (not -e $an->data->{path}{cman_config})
+	# If I am a dashboard, see if 'striker::email::use_server' exists and is set.
+	if ($an->Get->what_am_i eq "dashboard")
 	{
-		return(0);
+		# I am a dashboard. Check to see if we should send an email. If so, we might override the 
+		# alert level.
+		(my $proceed, $level) = check_dashboard_target($an, $email);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "proceed", value1 => $proceed,
+			name2 => "level",   value2 => $level,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (not $proceed)
+		{
+			# Nope, return.
+			return(0);
+		}
 	}
 	
 	# The 'subject' will hold the highest alert seen and be used to generate a proper email subject prior
@@ -4150,10 +4249,46 @@ sub check_email_configuration
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_email_configuration" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### NOTE: At this time, dashboards can't send email. This will be changed for v2.1
-	if (not -e $an->data->{path}{cman_config})
+	if ($an->Get->what_am_i eq "dashboard")
 	{
-		return(0);
+		# I am a dashboard. Is 'use_server' set?
+		my $proceed = 0;
+		if ($an->data->{striker}{email}{use_server})
+		{
+			# We'll look up the server name to use
+			my $smtp_data = $an->ScanCore->get_smtp();
+			foreach my $hash_ref (@{$smtp_data})
+			{
+				if ($hash_ref->{smtp_server} eq $an->data->{striker}{email}{use_server})
+				{
+					$proceed                                      = 1;
+					$an->data->{sys}{anvil}{smtp}{server}         = $hash_ref->{smtp_server};
+					$an->data->{sys}{anvil}{smtp}{port}           = $hash_ref->{smtp_port};
+					$an->data->{sys}{anvil}{smtp}{alt_server}     = $hash_ref->{smtp_alt_server};
+					$an->data->{sys}{anvil}{smtp}{alt_port}       = $hash_ref->{smtp_alt_port};
+					$an->data->{sys}{anvil}{smtp}{username}       = $hash_ref->{smtp_username};
+					$an->data->{sys}{anvil}{smtp}{password}       = $hash_ref->{smtp_password};
+					$an->data->{sys}{anvil}{smtp}{security}       = $hash_ref->{smtp_security};
+					$an->data->{sys}{anvil}{smtp}{authentication} = $hash_ref->{smtp_authentication};
+					$an->data->{sys}{anvil}{smtp}{helo_domain}    = $hash_ref->{smtp_helo_domain};
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+						name1 => "proceed",                          value1 => $proceed, 
+						name2 => "sys::anvil::smtp::server",         value2 => $an->data->{sys}{anvil}{smtp}{server}, 
+						name3 => "sys::anvil::smtp::port",           value3 => $an->data->{sys}{anvil}{smtp}{port}, 
+						name4 => "sys::anvil::smtp::alt_server",     value4 => $an->data->{sys}{anvil}{smtp}{smtp_alt_server}, 
+						name5 => "sys::anvil::smtp::alt_port",       value5 => $an->data->{sys}{anvil}{smtp}{alt_port}, 
+						name6 => "sys::anvil::smtp::username",       value6 => $an->data->{sys}{anvil}{smtp}{username}, 
+						name7 => "sys::anvil::smtp::security",       value7 => $an->data->{sys}{anvil}{smtp}{security}, 
+						name8 => "sys::anvil::smtp::authentication", value8 => $an->data->{sys}{anvil}{smtp}{authentication}, 
+						name9 => "sys::anvil::smtp::helo_domain",    value9 => $an->data->{sys}{anvil}{smtp}{helo_domain}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+						name1 => "sys::anvil::smtp::password", value1 => $an->data->{sys}{anvil}{smtp}{password}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+		}
 	}
 	
 	# These will be set to '1' if either the relay file or main.cf need to be updated.
@@ -4205,7 +4340,7 @@ sub check_email_configuration
 				    ($password ne $an->data->{sys}{anvil}{smtp}{password}))
 				{
 					# Changes made
-					$an->Log->entry({log_level => 2, message_key => "scancore_log_0036", file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 3, message_key => "scancore_log_0036", file => $THIS_FILE, line => __LINE__});
 					$reconfigure = 1;
 				}
 				else
@@ -4219,7 +4354,7 @@ sub check_email_configuration
 			if ($line eq "[]: :")
 			{
 				$reconfigure = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "reconfigure", value1 => $reconfigure, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -4230,7 +4365,7 @@ sub check_email_configuration
 	{
 		# Relay file doesn't exist at all, so this might be an upgrade. As such, check that the 
 		# programs we need are installed.
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0037", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0037", file => $THIS_FILE, line => __LINE__});
 		$reconfigure = 1;
 	}
 	
@@ -4298,7 +4433,7 @@ sub check_email_configuration
 	    ($smtp_alt_port   ne $an->data->{sys}{anvil}{smtp}{alt_port}))
 	{
 		$reconfigure = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "reconfigure", value1 => $reconfigure, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -4313,7 +4448,7 @@ sub check_email_configuration
 		$an->Log->entry({log_level => 1, message_key => "scancore_log_0034", message_variables => { postfix_relay_file => $an->data->{path}{postfix_relay_file} }, file => $THIS_FILE, line => __LINE__});
 		
 		my $shell_call = $an->data->{path}{postfix_relay_file};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -4330,7 +4465,7 @@ sub check_email_configuration
 		$an->Log->entry({log_level => 1, message_key => "scancore_log_0039", file => $THIS_FILE, line => __LINE__});
 		
 		$shell_call = $an->data->{path}{postmap}." ".$an->data->{path}{postfix_relay_file};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, $shell_call." 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -4348,14 +4483,14 @@ sub check_email_configuration
 		# If I am writing the file, there is a chance that postfix hasn't been configured yet. So 
 		# check it and, if needed, fix it.
 		my $backup_file = $an->data->{path}{postfix_main}.".anvil";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "backup_file", value1 => $backup_file, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if (not -e $backup_file)
 		{
 			# Backup the original.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0034", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0034", message_variables => {
 				source      => $an->data->{path}{postfix_main},
 				destination =>  $backup_file,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -4378,13 +4513,13 @@ sub check_email_configuration
 		else
 		{
 			# Already backed up
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0040", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0040", file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Now update the postfix main.cf file by reading it in and replacing the variables we want to
 		# update, then writing it all back out.
 		my $postfix_main = "";
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0041", message_variables => { postfix_main => $an->data->{path}{postfix_main} }, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0041", message_variables => { postfix_main => $an->data->{path}{postfix_main} }, file => $THIS_FILE, line => __LINE__});
 		
 		$shell_call = $an->data->{path}{postfix_main};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -4435,7 +4570,7 @@ sub check_email_configuration
 		close $file_handle;
 		
 		# Write out the new version.
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0043", message_variables => { postfix_main => $an->data->{path}{postfix_main} }, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0043", message_variables => { postfix_main => $an->data->{path}{postfix_main} }, file => $THIS_FILE, line => __LINE__});
 		
 		# Record the config in the main log
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -4461,7 +4596,7 @@ sub check_email_configuration
 			my $line = $_;
 			$line =~ s/\n//g;
 			$line =~ s/\r//g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -4489,7 +4624,7 @@ sub check_email_configuration
 		
 		# Set the mode
 		my $directory_mode = 0775;
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0046", message_variables => { directory_mode => sprintf("%04o", $directory_mode) }, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0046", message_variables => { directory_mode => sprintf("%04o", $directory_mode) }, file => $THIS_FILE, line => __LINE__});
 		chmod $directory_mode, $an->data->{path}{alert_emails};
 	}
 	
@@ -5367,7 +5502,7 @@ sub update_db
 sub update_db_nodes_cache
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_nodes_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_nodes_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'nodes_cache' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -5391,7 +5526,7 @@ FROM
 WHERE
     node_cache_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -5505,7 +5640,7 @@ AND
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -5537,7 +5672,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -5574,7 +5709,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
