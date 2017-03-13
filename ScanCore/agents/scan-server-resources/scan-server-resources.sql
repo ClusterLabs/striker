@@ -11,6 +11,7 @@ CREATE TABLE server_resources (
 	server_resources_ram_used		numeric				not null,	-- In bytes
 	server_resources_swap_size		numeric				not null,	-- In bytes
 	server_resources_swap_used		numeric				not null,	-- In bytes
+	server_resources_note			text,
 	modified_date				timestamp with time zone	not null,
 	
 	FOREIGN KEY(server_resource_host_uuid) REFERENCES hosts(host_uuid)
@@ -29,6 +30,7 @@ CREATE TABLE history.server_resources (
 	server_resources_ram_used		numeric, 
 	server_resources_swap_size		numeric, 
 	server_resources_swap_used		numeric, 
+	server_resources_note			text,
 	modified_date				timestamp with time zone	not null
 );
 ALTER TABLE history.server_resources OWNER TO #!variable!user!#;
@@ -50,6 +52,7 @@ BEGIN
 		 server_resources_ram_used, 
 		 server_resources_swap_size, 
 		 server_resources_swap_used, 
+		 server_resources_note, 
 		 modified_date)
 	VALUES
 		(history_server_resources.server_resource_uuid,
@@ -62,6 +65,7 @@ BEGIN
 		 history_server_resources.server_resources_ram_used, 
 		 history_server_resources.server_resources_swap_size, 
 		 history_server_resources.server_resources_swap_used, 
+		 history_server_resources.server_resources_note, 
 		 history_server_resources.modified_date);
 	RETURN NULL;
 END;

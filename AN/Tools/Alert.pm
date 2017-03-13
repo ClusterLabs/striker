@@ -443,14 +443,14 @@ sub register_alert
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "register_alert" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $alert_agent_name        = $parameter->{alert_agent_name}        ? $parameter->{alert_agent_name}        : die "$THIS_FILE ".__LINE__." 'alert_agent_name' parameter not passed to AN::Tools::Alert->register_alert()\n";
-	my $alert_level             = $parameter->{alert_level}             ? $parameter->{alert_level}             : "warning";	# Not being set by the agent should be treated as a bug.
-	my $alert_title_key         = $parameter->{alert_title_key}         ? $parameter->{alert_title_key}         : "an_alert_title_0003";
-	my $alert_title_variables   = $parameter->{alert_title_variables}   ? $parameter->{alert_title_variables}   : "";
-	my $alert_message_key       = $parameter->{alert_message_key}       ? $parameter->{alert_message_key}       : die "$THIS_FILE ".__LINE__." 'alert_message_key' parameter not passed to AN::Tools::Alert->register_alert()\n";
-	my $alert_message_variables = $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : "";
-	my $alert_sort              = $parameter->{alert_sort}              ? $parameter->{alert_sort}              : 9999;
-	my $alert_header            = $parameter->{alert_header}            ? $parameter->{alert_header}            : 'TRUE';
+	my $alert_agent_name        = defined $parameter->{alert_agent_name}        ? $parameter->{alert_agent_name}        : die "$THIS_FILE ".__LINE__." 'alert_agent_name' parameter not passed to AN::Tools::Alert->register_alert()\n";
+	my $alert_level             = defined $parameter->{alert_level}             ? $parameter->{alert_level}             : "warning";	# Not being set by the agent should be treated as a bug.
+	my $alert_title_key         = defined $parameter->{alert_title_key}         ? $parameter->{alert_title_key}         : "an_alert_title_0003";
+	my $alert_title_variables   = defined $parameter->{alert_title_variables}   ? $parameter->{alert_title_variables}   : "";
+	my $alert_message_key       = defined $parameter->{alert_message_key}       ? $parameter->{alert_message_key}       : die "$THIS_FILE ".__LINE__." 'alert_message_key' parameter not passed to AN::Tools::Alert->register_alert()\n";
+	my $alert_message_variables = defined $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : "";
+	my $alert_sort              = defined $parameter->{alert_sort}              ? $parameter->{alert_sort}              : 9999;
+	my $alert_header            = defined $parameter->{alert_header}            ? $parameter->{alert_header}            : 'TRUE';
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 		name1 => "alert_agent_name",        value1 => $alert_agent_name,
 		name2 => "alert_level",             value2 => $alert_level,

@@ -44,7 +44,7 @@ striker.conf.
 Configuration is to add the following to striker.conf;
 
 ====
-scan-server-resources::target::<id>::host		= <name_or_ip>
+scan-server-resources::target::<id>::host		= <name_or_ip>{:<port>}
 scan-server-resources::target::<id>::reboot_timer	= #
 ====
 
@@ -53,7 +53,9 @@ entries. Any number of entries can be added, but the checks will be performed
 sequentially. So in a case where multiple targets are slow to respond, this 
 agent could run for some time.
 
-The 'host' can be an IP address or a resolvable host name. 
+The 'host' can be an IP address or a resolvable host name. Optionally, a port
+can be specified with the suffix '<name_or_ip>:<port>'. The default port is
+#!data!scan-server-resources::an-ssrw-port!#.
 
 Optionally, you can set a reboot timer. If the target is hosted on the node
 trying to scan it, and if the target stops responding to calls for more than
@@ -107,6 +109,7 @@ You will want to add more RAM to this server, if this is not caused by a memory 
 		<key name="scan_server_resources_message_0014">
 We're now monitoring the resources of a new server:
 - Host Name: ........... [#!variable!server_resource_host_name!#]
+- Accessed at: ......... [#!variable!server_resource_target_access!#]
 - Unique ID: ........... [#!variable!server_resource_uuid!#] 
 - Operating System ID: . [#!variable!server_resource_os!#]
 - Approximate Boot time: [#!variable!server_resource_boot_time!#]
@@ -115,6 +118,26 @@ We're now monitoring the resources of a new server:
 - Swap, Total: ......... [#!variable!server_resources_swap_size!#]
 - Swap, Used: .......... [#!variable!server_resources_swap_used!#]
 		</key>
-		
+		<key name="scan_server_resources_message_0015">The server: [#!variable!host_name!#] is now at a different address: [#!variable!old_access!#] -> [#!variable!new_access!#]</key>
+		<key name="scan_server_resources_message_0016">The server: [#!variable!host_name!#] is accessible again at: [#!variable!access!#]</key>
+		<key name="scan_server_resources_message_0017">The server: [#!variable!host_name!#], accessed at: [#!variable!access!#], did not respond to the resource request. Either 'an-ssrw' has been stopped or the server is offline.</key>
+		<key name="scan_server_resources_message_0018">The server: [#!variable!host_name!#], accessed at: [#!variable!access!#], has been removed from the list of servers we're monitoring.</key>
+		<key name="scan_server_resources_message_0019">The server: [#!variable!host_name!#], accesses at: [#!variable!access!#], is being monitored again.</key>
+		<key name="scan_server_resources_message_0020">
+A new server accessed at: [#!variable!host!#] on TCP port: [#!variable!port!#] was added to the list of servers to monitor, however, it can't be accessed.
+- Is there a typo in the configuration? (Check 'scan-server-resources::target::#!variable!id!#::host = X')
+- Is 'an-ssrw' running on the target server? 
+- Is the server's firewall allowing TCP connections on: [#!variable!port!#]? 
+- Is the server online?
+		</key>
+		<key name="scan_server_resources_message_0021">
+Found a new disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#];
+- Filesystem: .. [#!variable!filesystem!#]
+- Mount Options: [#!variable!options!#]
+- Total Size: .. [#!variable!size!#]
+- Free Space: .. [#!variable!used!#] (#!variable!percent_free!# %)
+		</key>
+		<key name="scan_server_resources_message_0022">Found a new CPU: [#!variable!number!#] on the server: [#!variable!host_name!#] with a current load of: [#!variable!load!#]</key>
+		<key name="scan_server_resources_message_0023">The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has low disk space: [#!variable!free_space!#] (#!variable!free_space_percent!#)!</key>
 	</lang>
 </strings>
