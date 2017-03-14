@@ -317,7 +317,7 @@ sub gather_details
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "output", value1 => $output, 
-		name2 => "access", value1 => $access, 
+		name2 => "access", value2 => $access, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($access)
 	{
@@ -653,7 +653,7 @@ sub find_changes
 					alert_message_key	=>	"scan_server_resources_message_0016",
 					alert_message_variables	=>	{
 						host_name		=>	$new_server_resource_host_name,
-						access			=>	$new_server_resource_target_access, 
+						target			=>	$new_server_resource_target_access, 
 					},
 				});
 			
@@ -749,8 +749,9 @@ sub find_changes
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			
 			# Has the server's boot time changed?
-			if ($new_server_resource_os ne $old_server_resource_os)
+			if ($new_server_resource_boot_time ne $old_server_resource_boot_time)
 			{
 				# It has. Lets see if it was less than 60 seconds change.
 				my $report     = 0;
@@ -821,7 +822,9 @@ sub find_changes
 					alert_message_key	=>	"scan_server_resources_message_0006",
 					alert_message_variables	=>	{
 						old_ram_size		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resources_ram_size }),
+						old_ram_size_bytes	=>	$an->Readable->comma($old_server_resources_ram_size),
 						new_ram_size		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resources_ram_size }),
+						new_ram_size_bytes	=>	$an->Readable->comma($new_server_resources_ram_size),
 					},
 				});
 				
@@ -843,7 +846,9 @@ sub find_changes
 					alert_message_key	=>	"scan_server_resources_message_0007",
 					alert_message_variables	=>	{
 						old_ram_used		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resources_ram_used }),
+						old_ram_used_bytes	=>	$an->Readable->comma($old_server_resources_ram_used),
 						new_ram_used		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resources_ram_used }),
+						new_ram_used_bytes	=>	$an->Readable->comma($new_server_resources_ram_used),
 					},
 				});
 				
@@ -864,8 +869,10 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"scan_server_resources_message_0008",
 					alert_message_variables	=>	{
-						old_swap_size		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resources_swap_size }),
-						new_swap_size		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resources_swap_size }),
+						old_swap_size		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resources_swap_size}),
+						old_swap_size_bytes	=>	$an->Readable->comma($old_server_resources_swap_size),
+						new_swap_size		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resources_swap_size}),
+						new_swap_size_bytes	=>	$an->Readable->comma($new_server_resources_swap_size),
 					},
 				});
 				
@@ -887,7 +894,9 @@ sub find_changes
 					alert_message_key	=>	"scan_server_resources_message_0009",
 					alert_message_variables	=>	{
 						old_swap_used		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resources_swap_used }),
+						old_swap_used_bytes	=>	$an->Readable->comma($old_server_resources_swap_size),
 						new_swap_used		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resources_swap_used }),
+						new_swap_used_bytes	=>	$an->Readable->comma($new_server_resources_swap_size),
 					},
 				});
 				
@@ -1220,7 +1229,7 @@ WHERE
 						{
 							# It shrunk
 							$title_key   = "an_alert_title_0008";
-							$message_key = "scan_server_resources_message_0027";
+							$message_key = "scan_server_resources_message_0028";
 						}
 						$an->Alert->register_alert({
 							alert_level		=>	"warning", 
@@ -1232,9 +1241,9 @@ WHERE
 								host_name		=>	$new_server_resource_host_name, 
 								mount_point		=>	$server_resources_disk_mount_point,
 								target			=>	$say_target,
-								old_size		=>	$old_server_resources_disk_size,
+								old_size		=>	$an->Readable->comma($old_server_resources_disk_size),
 								old_size_hr		=>	$old_say_size,
-								new_size		=>	$new_server_resources_disk_size,
+								new_size		=>	$an->Readable->comma($new_server_resources_disk_size),
 								new_size_hr		=>	$new_say_size,
 							},
 						});
@@ -1309,9 +1318,9 @@ WHERE
 								host_name		=>	$new_server_resource_host_name, 
 								mount_point		=>	$server_resources_disk_mount_point,
 								target			=>	$say_target,
-								old_used		=>	$old_server_resources_disk_used,
+								old_used		=>	$an->Readable->comma($old_server_resources_disk_used),
 								old_used_hr		=>	$old_say_used,
-								new_used		=>	$new_server_resources_disk_used,
+								new_used		=>	$an->Readable->comma($new_server_resources_disk_used),
 								new_used_hr		=>	$new_say_used,
 							},
 						});

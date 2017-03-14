@@ -91,10 +91,10 @@ https://alteeve.ca/w/Support
 		<key name="scan_server_resources_message_0003">The server's hostname has changed: [#!variable!old_host_name!#] -> [#!variable!new_host_name!#]</key>
 		<key name="scan_server_resources_message_0004">The server's operating system has changed: [#!variable!old_host_os!#] -> [#!variable!new_host_os!#]</key>
 		<key name="scan_server_resources_message_0005">It would appear that the server rebooted. The boot time has changed: [#!variable!old_boot_time!#] -> [#!variable!new_boot_time!#]</key>
-		<key name="scan_server_resources_message_0006">The amount of RAM available on the server has changed: [#!variable!old_ram_size!#] -> [#!variable!new_ram_size!#]</key>
-		<key name="scan_server_resources_message_0007">The amount of RAM in use on the server has changed: [#!variable!old_ram_used!#] -> [#!variable!new_ram_used!#]</key>
-		<key name="scan_server_resources_message_0008">The amount of swap available on the server has changed: [#!variable!old_swap_size!#] -> [#!variable!new_swap_size!#]</key>
-		<key name="scan_server_resources_message_0009">The amount of swap in use on the server has changed: [#!variable!old_swap_used!#] -> [#!variable!new_swap_used!#]</key>
+		<key name="scan_server_resources_message_0006">The amount of RAM available on the server has changed: [#!variable!old_ram_size!#] (#!variable!old_ram_size_bytes!# bytes) -> [#!variable!new_ram_size!#] (#!variable!new_ram_size_bytes!# bytes)</key>
+		<key name="scan_server_resources_message_0007">The amount of RAM in use on the server has changed: [#!variable!old_ram_used!#] (#!variable!old_ram_used_bytes!# bytes) -> [#!variable!new_ram_used!#] (#!variable!new_ram_used_bytes!# bytes)</key>
+		<key name="scan_server_resources_message_0008">The amount of swap available on the server has changed: [#!variable!old_swap_size!#] (#!variable!old_swap_size_bytes!# bytes) -> [#!variable!new_swap_size!#] (#!variable!new_swap_size_bytes!# bytes)</key>
+		<key name="scan_server_resources_message_0009">The amount of swap in use on the server has changed: [#!variable!old_swap_used!#] (#!variable!old_swap_used_bytes!# bytes) -> [#!variable!new_swap_used!#] (#!variable!new_swap_used_bytes!# bytes)</key>
 		<key name="scan_server_resources_message_0010">
 The amount of free RAM on: [#!variable!server_host_name!#] is below: [#!variable!low_warning_percent!# %]! Only [#!variable!free_percent!# %] left free. 
 You may want to add more RAM to this server, if this is not caused by a memory leak.
@@ -119,7 +119,7 @@ We're now monitoring the resources of a new server:
 - Swap, Used: .......... [#!variable!server_resources_swap_used!#]
 		</key>
 		<key name="scan_server_resources_message_0015">The server: [#!variable!host_name!#] is now at a different address: [#!variable!old_access!#] -> [#!variable!new_access!#]</key>
-		<key name="scan_server_resources_message_0016">The server: [#!variable!host_name!#] is accessible again at: [#!variable!access!#]</key>
+		<key name="scan_server_resources_message_0016">The server: [#!variable!host_name!#] is accessible again at: [#!variable!target!#]</key>
 		<key name="scan_server_resources_message_0017">The server: [#!variable!host_name!#], accessed at: [#!variable!access!#], did not respond to the resource request. Either 'an-ssrw' has been stopped or the server is offline.</key>
 		<key name="scan_server_resources_message_0018">The server: [#!variable!host_name!#], accessed at: [#!variable!access!#], has been removed from the list of servers we're monitoring.</key>
 		<key name="scan_server_resources_message_0019">The server: [#!variable!host_name!#], accesses at: [#!variable!access!#], is being monitored again.</key>
@@ -131,7 +131,7 @@ A new server accessed at: [#!variable!host!#] on TCP port: [#!variable!port!#] w
 - Is the server online?
 		</key>
 		<key name="scan_server_resources_message_0021">
-Found a new disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!access!#];
+Found a new disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#];
 - Filesystem: .. [#!variable!filesystem!#]
 - Mount Options: [#!variable!options!#]
 - Total Size: .. [#!variable!size!#]
@@ -152,28 +152,28 @@ The file system mount options on disk: [#!variable!mount_point!#] on the server:
 		</key>
 		<key name="scan_server_resources_message_0026">
 The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has changed size;
-- [#!variable!old_size_hr!#] -> [#!variable!new_size_hr!#] ([#!variable!old_size!# bytes] -> [#!variable!new_size!# bytes])
+- [#!variable!old_size_hr!#] (#!variable!old_size!# bytes) -> [#!variable!new_size_hr!#] (#!variable!new_size!# bytes)
 		</key>
 		<key name="scan_server_resources_message_0027">
 The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has grown;
-- [#!variable!old_size_hr!#] -> [#!variable!new_size_hr!#] ([#!variable!old_size!# bytes] -> [#!variable!new_size!# bytes])
+- [#!variable!old_size_hr!#] (#!variable!old_size!# bytes) -> [#!variable!new_size_hr!#] (#!variable!new_size!# bytes)
 		</key>
 		<key name="scan_server_resources_message_0028">
 The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has shrunk;
-- [#!variable!old_size_hr!#] -> [#!variable!new_size_hr!#] ([#!variable!old_size!# bytes] -> [#!variable!new_size!# bytes])
+- [#!variable!old_size_hr!#] (#!variable!old_size!# bytes) -> [#!variable!new_size_hr!#] (#!variable!new_size!# bytes)
 		</key>
 		<key name="scan_server_resources_message_0029">
 The amount of space used on the disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has changed;
-- [#!variable!old_used_hr!#] -> [#!variable!new_used_hr!#] ([#!variable!old_used!# bytes] -> [#!variable!new_used!# bytes])
+- [#!variable!old_used_hr!#] (#!variable!old_used!# bytes) -> [#!variable!new_used_hr!#] (#!variable!new_used!# bytes)
 		</key>
 		<key name="scan_server_resources_message_0030">
 The amount of space used on the disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] is low!;
-- [#!variable!old_used_hr!#] -> [#!variable!new_used_hr!#] ([#!variable!old_used!# bytes] -> [#!variable!new_used!# bytes])
+- [#!variable!old_used_hr!#] (#!variable!old_used!# bytes) -> [#!variable!new_used_hr!#] (#!variable!new_used!# bytes)
   Please either free up some disk space or grow the disk.
 		</key>
 		<key name="scan_server_resources_message_0031">
 The amount of space used on the disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] is back to a safe level;
-- [#!variable!old_used_hr!#] -> [#!variable!new_used_hr!#] ([#!variable!old_used!# bytes] -> [#!variable!new_used!# bytes])
+- [#!variable!old_used_hr!#] (#!variable!old_used!# bytes) -> [#!variable!new_used_hr!#] (#!variable!new_used!# bytes)
 		</key>
 		<key name="scan_server_resources_message_0032">The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has returned.</key>
 		<key name="scan_server_resources_message_0033">The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has disappeared!</key>
