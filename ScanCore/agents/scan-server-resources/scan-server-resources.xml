@@ -34,9 +34,7 @@ not to use names used by the main Striker strings file. Do this by prefixing all
 
 DESCRIPTION
 
-This agent tries to read the resources on a server. Optionally, it can be 
-configured to reboot a server if it stops reporting resource data for a set
-period of time.
+This agent tries to read the resources on a server.
 
 This agent will only run if one or more targets are specifically configured in
 striker.conf. 
@@ -45,7 +43,6 @@ Configuration is to add the following to striker.conf;
 
 ====
 scan-server-resources::target::<id>::host		= <name_or_ip>{:<port>}
-scan-server-resources::target::<id>::reboot_timer	= #
 ====
 
 The <id> can be any alpha-numeric string or number that is unique from other 
@@ -56,16 +53,6 @@ agent could run for some time.
 The 'host' can be an IP address or a resolvable host name. Optionally, a port
 can be specified with the suffix '<name_or_ip>:<port>'. The default port is
 #!data!scan-server-resources::an-ssrw-port!#.
-
-Optionally, you can set a reboot timer. If the target is hosted on the node
-trying to scan it, and if the target stops responding to calls for more than
-'reboot_timer' seconds, the server will be rebooted. When this is set to '0',
-the default, the server will never be reset.
-
-WARNING:
-
-We can't tell the difference between a crashed server and a crashed daemon.
-Please only enable the 'reboot_timer' feature after careful consideration.
 
 
 SWITCHES

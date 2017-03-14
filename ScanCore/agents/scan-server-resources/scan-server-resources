@@ -3,8 +3,7 @@
 # This software was created by Alteeve's Niche! Inc. and has been released under the terms of the GNU GPL 
 # version 2.
 #
-# This agent tries to read the resources on a server. Optionally, it can be configured to reboot a server if
-# it stops reporting resource data for a set period of time.
+# This agent tries to read the resources on a server. 
 # 
 # This agent will only run if one or more targets are specifically configured in striker.conf. 
 # 
@@ -12,7 +11,6 @@
 # 
 # ====
 # scan-server-resources::target::<id>::host		= <name_or_ip>{:<port>}
-# scan-server-resources::target::<id>::reboot_timer	= #
 # ====
 # 
 # The <id> can be any alpha-numeric string or number that is unique from other entries. Any number of entries
@@ -22,10 +20,6 @@
 # The 'host' can be an IP address or a resolvable host name. Optionally, a port can be specified with the 
 # suffix '<name_or_ip>:<port>'. The default port is 26845.
 # 
-# Optionally, you can set a reboot timer. If the target is hosted on the node trying to scan it, and if the 
-# target stops responding to calls for more than 'reboot_timer' seconds, the server will be rebooted. When
-# this is set to '0', the default, the server will never be reset.
-#
 # https://alteeve.ca
 # 
 # Exit Codes:
@@ -183,14 +177,12 @@ if (exists $an->data->{'scan-server-resources'}{target})
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{'scan-server-resources'}{target}})
 	{
 		$target_count++;
-		my $host         = $an->data->{'scan-server-resources'}{target}{$id}{host};
-		my $port         = $an->data->{'scan-server-resources'}{'an-ssrw-port'};
-		my $reboot_timer = $an->data->{'scan-server-resources'}{target}{$id}{reboot_timer} ? $an->data->{'scan-server-resources'}{target}{$id}{reboot_timer} : 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		my $host = $an->data->{'scan-server-resources'}{target}{$id}{host};
+		my $port = $an->data->{'scan-server-resources'}{'an-ssrw-port'};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "host",         value1 => $host, 
 			name2 => "port",         value2 => $port, 
-			name3 => "reboot_timer", value3 => $reboot_timer, 
-			name4 => "target_count", value4 => $target_count, 
+			name3 => "target_count", value3 => $target_count, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If the host has a port suffix, break it off.
@@ -206,7 +198,7 @@ if (exists $an->data->{'scan-server-resources'}{target})
 		
 		# Mark that we saw it in the config file so that if we fail to connect, we'll know the 
 		# difference between removed from config and just not reachable.
-		gather_details($an, $host, $port, $reboot_timer, $id);
+		gather_details($an, $host, $port, $id);
 	}
 }
 
@@ -256,12 +248,11 @@ $an->nice_exit({exit_code => 0});
 # This calls the target and reads in the resources XML.
 sub gather_details
 {
-	my ($an, $host, $port, $reboot_timer, $id) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_access" }, message_key => "an_variables_0004", message_variables => { 
-		name1 => "host",         value1 => $host, 
-		name2 => "port",         value2 => $port, 
-		name3 => "reboot_timer", value3 => $reboot_timer, 
-		name4 => "id",           value4 => $id, 
+	my ($an, $host, $port, $id) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_access" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "host", value1 => $host, 
+		name2 => "port", value2 => $port, 
+		name3 => "id",   value3 => $id, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $protocol  = "tcp";
@@ -282,11 +273,6 @@ sub gather_details
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server-resources::offline::$target_access", value1 => $an->data->{'server-resources'}{offline}{$target_access}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($reboot_timer)
-		{
-			### TODO: Kill the server if we lost contact more than reboot_timer seconds ago AND the 
-			###       server is hosted on this machine.
-		}
 		return(0);
 	}
 
