@@ -151,7 +151,7 @@ CREATE TABLE server_resources_cpus (
 	server_resources_cpu_server_resource_uuid	uuid				not null,
 	server_resources_cpu_host_uuid			uuid				not null,
 	server_resources_cpu_number			text				not null,
-	server_resources_cpu_load			numeric				not null,
+	server_resources_cpu_load			text				not null,
 	modified_date					timestamp with time zone	not null,
 	
 	FOREIGN KEY(server_resources_cpu_server_resource_uuid) REFERENCES server_resources(server_resource_uuid)
@@ -164,7 +164,7 @@ CREATE TABLE history.server_resources_cpus (
 	server_resources_cpu_server_resource_uuid	uuid,
 	server_resources_cpu_host_uuid			uuid,
 	server_resources_cpu_number			text,
-	server_resources_cpu_load			numeric,
+	server_resources_cpu_load			text,
 	modified_date					timestamp with time zone
 );
 ALTER TABLE history.server_resources_cpus OWNER TO #!variable!user!#;

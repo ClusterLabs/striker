@@ -102,8 +102,8 @@ You may want to add more RAM to this server, if this is not caused by a memory l
 		<key name="scan_server_resources_message_0011">The amount of free RAM on: [#!variable!server_host_name!#] is back above: [#!variable!low_warning_clear!# %]. Now there is [#!variable!free_percent!# %] free.</key>
 		<key name="scan_server_resources_message_0012">
 The amount of free swap memory on: [#!variable!server_host_name!#] is below: [#!variable!low_warning_percent!# %]! Only [#!variable!free_percent!# %] left free. 
-Swap is used when the system runs out of RAM and generally causes considerable performance loss.
-You will want to add more RAM to this server, if this is not caused by a memory leak.
+Swap is used when the system runs out of RAM. Some systems use swap even though RAM is available.
+When the system does run out of RAM, there can be considerable performance loss.
 		</key>
 		<key name="scan_server_resources_message_0013">The amount of free swap memory on: [#!variable!server_host_name!#] is back above: [#!variable!low_warning_clear!# %]. Now there is [#!variable!free_percent!# %] free.</key>
 		<key name="scan_server_resources_message_0014">
@@ -131,13 +131,57 @@ A new server accessed at: [#!variable!host!#] on TCP port: [#!variable!port!#] w
 - Is the server online?
 		</key>
 		<key name="scan_server_resources_message_0021">
-Found a new disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#];
+Found a new disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!access!#];
 - Filesystem: .. [#!variable!filesystem!#]
 - Mount Options: [#!variable!options!#]
 - Total Size: .. [#!variable!size!#]
 - Free Space: .. [#!variable!used!#] (#!variable!percent_free!# %)
 		</key>
-		<key name="scan_server_resources_message_0022">Found a new CPU: [#!variable!number!#] on the server: [#!variable!host_name!#] with a current load of: [#!variable!load!#]</key>
+		<key name="scan_server_resources_message_0022">Found a new CPU: [#!variable!number!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] with a current load of: [#!variable!load!#]</key>
 		<key name="scan_server_resources_message_0023">The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has low disk space: [#!variable!free_space!#] (#!variable!free_space_percent!#)!</key>
+		<key name="scan_server_resources_message_0024">
+The file system on disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has changed;
+- [#!variable!old_filesystem!#] -> [#!variable!new_filesystem!#]
+		</key>
+		<key name="scan_server_resources_message_0025">
+The file system mount options on disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has changed;
+- [#!variable!old_options!#] -> [#!variable!new_options!#]
+  If this was unexpected, it could be harmless or it could be a sign of file system problems. 
+  Please verify that you can still write to the disk. 
+  Running a file system check might be required. Please consult your operating system's documentation.
+		</key>
+		<key name="scan_server_resources_message_0026">
+The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has changed size;
+- [#!variable!old_size_hr!#] -> [#!variable!new_size_hr!#] ([#!variable!old_size!# bytes] -> [#!variable!new_size!# bytes])
+		</key>
+		<key name="scan_server_resources_message_0027">
+The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has grown;
+- [#!variable!old_size_hr!#] -> [#!variable!new_size_hr!#] ([#!variable!old_size!# bytes] -> [#!variable!new_size!# bytes])
+		</key>
+		<key name="scan_server_resources_message_0028">
+The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has shrunk;
+- [#!variable!old_size_hr!#] -> [#!variable!new_size_hr!#] ([#!variable!old_size!# bytes] -> [#!variable!new_size!# bytes])
+		</key>
+		<key name="scan_server_resources_message_0029">
+The amount of space used on the disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has changed;
+- [#!variable!old_used_hr!#] -> [#!variable!new_used_hr!#] ([#!variable!old_used!# bytes] -> [#!variable!new_used!# bytes])
+		</key>
+		<key name="scan_server_resources_message_0030">
+The amount of space used on the disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] is low!;
+- [#!variable!old_used_hr!#] -> [#!variable!new_used_hr!#] ([#!variable!old_used!# bytes] -> [#!variable!new_used!# bytes])
+  Please either free up some disk space or grow the disk.
+		</key>
+		<key name="scan_server_resources_message_0031">
+The amount of space used on the disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] is back to a safe level;
+- [#!variable!old_used_hr!#] -> [#!variable!new_used_hr!#] ([#!variable!old_used!# bytes] -> [#!variable!new_used!# bytes])
+		</key>
+		<key name="scan_server_resources_message_0032">The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has returned.</key>
+		<key name="scan_server_resources_message_0033">The disk: [#!variable!mount_point!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has disappeared!</key>
+		<key name="scan_server_resources_message_0034">
+The load on the CPU number: [#!variable!number!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has changed;
+- [#!variable!old_load!#] -> [#!variable!new_load!#]
+		</key>
+		<key name="scan_server_resources_message_0035">The CPU number: [#!variable!cpu_number!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has returned.</key>
+		<key name="scan_server_resources_message_0036">The CPU number: [#!variable!cpu_number!#] on the server: [#!variable!host_name!#] accessed at: [#!variable!target!#] has disappeared!</key>
 	</lang>
 </strings>
