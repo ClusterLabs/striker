@@ -84,6 +84,7 @@ my $an = AN::Tools->new({
 			iso_directory	=>	"/var/www/html/#!os_type!#/x86_64/iso",
 			mount		=>	"/bin/mount",
 			os_release	=>	"/etc/redhat-release",
+			reboot		=>	"/sbin/reboot",
 			striker		=>	"/var/www/cgi-bin/striker",
 			tar		=>	"/bin/tar",
 			tarball_dir	=>	"",
@@ -127,6 +128,7 @@ my $an = AN::Tools->new({
 			offline		=>	0,
 			ping_attempts	=>	3,
 			reboot_needed	=>	0,
+			reboot_timeout	=>	600,
 			striker_zip_file =>	"striker.zip",
 		},
 	},
@@ -570,11 +572,11 @@ sub update_all
 	print "- ScanCore is stopped now on all systems. Ready to proceed.\n";
 	
 	### Do Work Here...
-	update_target($an, ["all", "dashboard"], "local");
+	update_target($an, "dashboard", "local");
 	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
 	{
 		my $password = $dashboards->{$dashboard};
-		update_target($an, ["all", "dashboard"], $dashboard, 22, $password);
+		update_target($an, "dashboard", $dashboard, 22, $password);
 	}
 	die;
 	
@@ -643,13 +645,13 @@ sub update_all
 # This updates a dashboard, either local or remote.
 sub update_target
 {
-	my ($an, $types, $target, $port, $password) = @_;
-	# 'types' is an array reference
+	my ($an, $type, $target, $port, $password) = @_;
 	$port     = 22 if not defined $port;
 	$password = "" if not defined $password;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_target" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "target", value1 => $target, 
-		name2 => "port",   value2 => $port, 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_target" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "type",   value1 => $type, 
+		name2 => "target", value2 => $target, 
+		name3 => "port",   value3 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
@@ -657,24 +659,33 @@ sub update_target
 	
 	# Update the OS first.
 	my $reboot_needed = 0;
-	my $shell_call    = $an->data->{path}{yum}." update";
+	my $shell_call    = $an->data->{path}{yum}." -y update --downloadonly";
 	if ($target eq "local")
 	{
 		# Local call. If an update is needed, we'll set 'sys::reboot_needed' and tell the user to 
 		# reboot when we exit.
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		print "Updating the operating system on the local machine now. Please be patient.\n";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
 		print "/-----[ Command output ]------------------------------------------------------\n";
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 			print "| $line\n";
 			
 			if ($line =~ / kernel\s+x86_64 /)
 			{
 				# Update required.
 				$an->data->{sys}{reboot_needed} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "sys::reboot_needed", value1 => $an->data->{sys}{reboot_needed}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /Total size: /i)
 			{
@@ -688,10 +699,28 @@ sub update_target
 		}
 		close $file_handle;
 		print "\\-----------------------------------------------------------------------------\n";
+		if ($an->data->{sys}{reboot_needed})
+		{
+			print "- The operating system's kernel was updated.\n";
+			print "- You will need to reboot this machine when the update process completes.\n";
+		}
 	}
 	else
 	{
 		# Update a remote machine. We'll reboot immediately if they need it.
+		print "Updating the operating system on: [$target]. Please be patient.\n";
+		print "###############################################################################\n";
+		print "# NOTE: There will be no output here until the update completes. The updates\n";
+		print "# should download from local repos fairly quickly. Once done, they will need\n";
+		print "# a little bit of time to install. Please be patient! If you want to check if\n";
+		print "# the update is still running, on: [$target], run:\n";
+		print "# 'ps aux | grep yum'.\n";
+		print "###############################################################################\n";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $shell_call, 
+			name2 => "shell_call", value2 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		print "/-----[ Command output ]------------------------------------------------------\n";
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target     => $target,
 			port       => $port, 
@@ -700,33 +729,46 @@ sub update_target
 		});
 		foreach my $line (@{$return})
 		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			print "| $line\n";
 			if ($line =~ / kernel\s+x86_64 /)
 			{
 				# Update required.
 				$reboot_needed = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "reboot_needed", value1 => $reboot_needed, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
-			if ($line =~ /Total size: /i)
-			{
-				print "| #############################################################################\n";
-				print "| Please be patient! Packages are downloading in the background. They should\n";
-				print "| download from local repos fairly quickly. Once done, they will begin\n";
-				print "| installing. At times, this may seem to stall. Please be patient.\n";
-				print "| You can verify the download is running with 'ps aux | grep yum'.\n";
-				print "| #############################################################################\n";
-			}
+		}
+		print "\\-----------------------------------------------------------------------------\n";
+		if ($reboot_needed)
+		{
+			print "- The operating system's kernel was updated. A reboot will be performed shortly.\n";
 		}
 	}
 	print "- Done.\n\n";
 	
 	# Copy all the files into place.
 	print "Updating Striker and ScanCore files on: [$target] if needed.\n";
+	
+	# Build the array of packages to rsync.
+	my $types = $type eq "node" ? ["all"] : ["all", "dashboard"];
 	foreach my $type (@{$types})
 	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "type", value1 => $type, 
+		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $source (sort {$a cmp $b} keys %{$an->data->{copy}{$type}})
 		{
-			my $destination = $an->data->{copy}{$type}{$source};
 			my $source_path = $an->data->{path}{striker_cache}."/".$source;
-			my $shell_call  = $an->data->{path}{rsync}." -aAX ".$source_path." ".$destination;
+			my $destination = $an->data->{copy}{$type}{$source};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "source",      value1 => $source, 
+				name2 => "source_path", value2 => $source_path, 
+				name3 => "destination", value3 => $destination, 
+			}, file => $THIS_FILE, line => __LINE__});
 			print "- Updating: [$destination]...\n";
 			
 			if ($target eq "local")
@@ -738,6 +780,11 @@ sub update_target
 			{
 				# Remote call
 				print "  (Progress not available when updating remote targets)\n";
+				my $shell_call  = $an->data->{path}{rsync}." -aAX ".$source_path." ".$destination;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $shell_call, 
+					name2 => "shell_call", value2 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
 				my $return_code = $an->Storage->rsync({
 					target      => $target,
 					port        => $port, 
@@ -746,23 +793,182 @@ sub update_target
 					destination => "root\@$target:$destination",
 					switches    => "-aAX",
 				});
-				print $THIS_FILE." ".__LINE__."; [ Debug ] - return_code: [$return_code]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
 	print "- Done.\n\n\n";
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "reboot_needed", value1 => $reboot_needed, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($reboot_needed)
 	{
 		# Send the reboot command
-		
-		# Wait for the target to come back online (call 'uptime' and wait until it is less than 300 seconds
+		my ($rebooted) = reboot_target($an, $target, $port, $password);
 		
 		# If we're a node, wait for the node to rejoin the Anvil!.
 	}
 	
 	
 	return(0);
+}
+
+# This reboots a target and waits for it to come back up.
+sub reboot_target
+{
+	my ($an, $target, $port, $password) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "reboot_target" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $rebooted   = 1;
+	my $shell_call = $an->data->{path}{reboot};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		'close'    => 1,
+		shell_call => $shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# We need to give the system time to shut down.
+	my $has_shutdown  = 0;
+	my $wait_for_boot = 1;
+	my $time_limit    = 60;
+	my $uptime_max    = $time_limit + 60;
+	my $timeout       = time + $time_limit;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "time",       value1 => time,
+		name2 => "timeout",    value2 => $timeout,
+		name3 => "uptime_max", value3 => $uptime_max,
+	}, file => $THIS_FILE, line => __LINE__});
+	while (not $has_shutdown)
+	{
+		# 1 == pinged, 0 == failed.
+		my ($ping) = $an->Check->ping({ping => $target, count => 3});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target", value1 => $target,
+			name2 => "ping",   value2 => $ping,
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $ping)
+		{
+			# We can't ping it. Mark it as now being shut off.
+			$has_shutdown = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "has_shutdown", value1 => $has_shutdown,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# We can ping it. Log in and see if the uptime is short. Failure to log in will cause
+			# the uptime to return '0'.
+			my $uptime = $an->System->get_uptime({
+					target   => $target,
+					port     => $port, 
+					password => $password,
+				});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "uptime",     value1 => $uptime, 
+				name2 => "uptime_max", value2 => $uptime_max, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($uptime) && ($uptime < $uptime_max))
+			{
+				# We rebooted and missed it.
+				$has_shutdown  = 1;
+				$wait_for_boot = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "has_shutdown",  value1 => $has_shutdown, 
+					name2 => "wait_for_boot", value2 => $wait_for_boot, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# If we've waited passed the timeout and the system hasn't shut down, give up.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "time",    value1 => time,
+			name2 => "timeout", value2 => $timeout,
+		}, file => $THIS_FILE, line => __LINE__});
+		if (time > $timeout)
+		{
+			$rebooted      = 0;
+			$wait_for_boot = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "rebooted",      value1 => $rebooted,
+				name2 => "wait_for_boot", value2 => $wait_for_boot, 
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+		sleep 3;
+	}
+	
+	# Now loop for 'sys::reboot_timeout' seconds waiting to see if the node recovers.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "wait_for_boot", value1 => $wait_for_boot,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($wait_for_boot)
+	{
+		my $give_up_time = time + $an->data->{sys}{reboot_timeout};
+		my $wait         = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "time",      value1 => time,
+			name2 => "give_up_time", value2 => $give_up_time,
+		}, file => $THIS_FILE, line => __LINE__});
+		while ($wait)
+		{
+			my $time      = time;
+			my $will_wait = ($give_up_time - $time);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "will_wait", value1 => $will_wait,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($time > $give_up_time)
+			{
+				# Failed to come back up.
+				$rebooted = 0;
+				last;
+			}
+			
+			# Try to access
+			my ($access) = $an->Check->access({
+					target   => $target, 
+					port     => $port,
+					password => $password,
+				});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "access", value1 => $access, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($access)
+			{
+				# We're in!
+				$wait = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "wait", value1 => $wait, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+			sleep 3;
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "rebooted", value1 => $rebooted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($rebooted);
 }
 
 # This checks access to the nodes in the Anvil! and that they're ready to be updated.
