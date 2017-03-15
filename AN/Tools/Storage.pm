@@ -1166,10 +1166,13 @@ sub _create_rsync_wrapper
 	# Check my parameters.
 	my $target   = $parameter->{target};
 	my $password = $parameter->{password};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "target",   value1 => $target, 
-		name2 => "password", value2 => $password, 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	if ((not $target) or (not $password))
 	{
 		# Can't do much without a target or password.
@@ -1184,7 +1187,7 @@ sub _create_rsync_wrapper
 ".$an->data->{path}{echo}." 'expect \"password:\" \{ send \"$password\\n\" \}' >> $wrapper
 ".$an->data->{path}{echo}." 'expect eof' >> $wrapper
 ".$an->data->{path}{'chmod'}." 755 $wrapper;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";

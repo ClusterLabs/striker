@@ -8,6 +8,8 @@
 #
 ### NOTE: This program doesn't use translated strings because it is too likely that the old version won't 
 #         have all the strings we need, which would cause String->get() to error out.
+#         
+### TODO: Make sure this throws useful errors if peer dashboards or nodes are offline.
 # 
 # Return Codes:
 # 0  = OK
@@ -58,6 +60,18 @@ my $time = time;
 
 my $an = AN::Tools->new({
 	data		=> {
+		copy		=>	{
+			all		=>	{
+				'tools/*'	=>	'/sbin/striker/',
+				'ScanCore'	=>	'/sbin/striker/',
+				'cgi-bin/Data' =>	'/sbin/striker/',
+				'AN'		=>	'/usr/share/perl5/',
+			},
+			dashboard	=>	{
+				'cgi-bin'	=>	'/var/www/',
+				'html'		=>	'/var/www/',
+			},
+		},
 		path		=>	{
 			# Some of the paths to executables weren't defined in older versions of Tools.pm.
 			createrepo	=>	"/usr/bin/createrepo",
@@ -71,6 +85,7 @@ my $an = AN::Tools->new({
 			mount		=>	"/bin/mount",
 			os_release	=>	"/etc/redhat-release",
 			striker		=>	"/var/www/cgi-bin/striker",
+			tar		=>	"/bin/tar",
 			tarball_dir	=>	"",
 			unzip		=>	"/usr/bin/unzip",
 			umount		=>	"/bin/umount",
@@ -111,6 +126,7 @@ my $an = AN::Tools->new({
 			update		=>	1,
 			offline		=>	0,
 			ping_attempts	=>	3,
+			reboot_needed	=>	0,
 			striker_zip_file =>	"striker.zip",
 		},
 	},
@@ -199,19 +215,36 @@ if (not $an->data->{sys}{offline})
 	print "Downloading latest Striker...\n";
 	print "- Determining version to download...\n";
 	get_latest_version($an);
+	
+	my $striker_source_test = $an->data->{path}{striker_cache}."/cgi-bin/striker";
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - striker_source_test: [$striker_source_test]\n" if $an->data->{sys}{debug} >= 2;
 	if ($an->data->{switches}{master})
 	{
 		print "- Downloading: [".$an->data->{url}{striker_master}."]\n";
-		print "\n[ Warning ] - Master branch requested. This should be used by developers and\n";
-		print "              testers only. Please don't use this in production!\n\n";
-		$an->data->{sys}{install_master} = 1;
-		sleep 3;
-		#download_and_extract_source($an, $an->data->{url}{striker_master});
+		if ((-e $striker_source_test) && ($an->data->{switches}{'no-refresh'}))
+		{
+			print "- Skipping download, source appears to already exist and '--no-refresh' used.\n";
+		}
+		else
+		{
+			print "\n[ Warning ] - Master branch requested. This should be used by developers and\n";
+			print "              testers only. Please don't use this in production!\n\n";
+			$an->data->{sys}{install_master} = 1;
+			sleep 3;
+			download_and_extract_source($an, $an->data->{url}{striker_master});
+		}
 	}
 	else
 	{
 		print "- Downloading version: [".$an->data->{sys}{install_version}."] from: [".$an->data->{url}{striker_default}."]\n";
-		#download_and_extract_source($an, $an->data->{url}{striker_default});
+		if ((-e $striker_source_test) && ($an->data->{switches}{'no-refresh'}))
+		{
+			print "- Skipping download, source appears to already exist and '--no-refresh' used.\n";
+		}
+		else
+		{
+			download_and_extract_source($an, $an->data->{url}{striker_default});
+		}
 	}
 	print "- Done\n\n";
 	
@@ -251,6 +284,12 @@ else
 	update_local($an);
 }
 
+# Warn the user if a reboot is required.
+if ($an->data->{sys}{reboot_needed})
+{
+	print "\n[ Note ] - The kernel was updated. Please reboot this machine.\n\n";
+}
+
 exit(0);
 
 
@@ -262,6 +301,7 @@ exit(0);
 sub update_local
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_local" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, are we online?
 	
@@ -273,6 +313,7 @@ sub update_local
 sub update_all
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_all" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Copy myself and my cache to my peer dashboard(s) and run '--gather-only --offline' before starting.
 	# This will not add any download bandwidth because the files will be in place already, but it will
@@ -390,7 +431,6 @@ sub update_all
 	}
 	
 	print "- Ready to start the update process!\n\n";
-	die;
 	
 	# Disable ScanCore on all dashboards and nodes, then go into a loop until all of them have exited.
 	print "###############################################################################\n";
@@ -530,7 +570,15 @@ sub update_all
 	print "- ScanCore is stopped now on all systems. Ready to proceed.\n";
 	
 	### Do Work Here...
+	update_target($an, ["all", "dashboard"], "local");
+	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
+	{
+		my $password = $dashboards->{$dashboard};
+		update_target($an, ["all", "dashboard"], $dashboard, 22, $password);
+	}
+	die;
 	
+	update_nodes($an);
 	
 	# Re-enable ScanCore now.
 	print "ScanCore will now be restarted on all machines..\n";
@@ -592,10 +640,139 @@ sub update_all
 	return(0);
 }
 
+# This updates a dashboard, either local or remote.
+sub update_target
+{
+	my ($an, $types, $target, $port, $password) = @_;
+	# 'types' is an array reference
+	$port     = 22 if not defined $port;
+	$password = "" if not defined $password;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_target" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Update the OS first.
+	my $reboot_needed = 0;
+	my $shell_call    = $an->data->{path}{yum}." update";
+	if ($target eq "local")
+	{
+		# Local call. If an update is needed, we'll set 'sys::reboot_needed' and tell the user to 
+		# reboot when we exit.
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		print "/-----[ Command output ]------------------------------------------------------\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "| $line\n";
+			
+			if ($line =~ / kernel\s+x86_64 /)
+			{
+				# Update required.
+				$an->data->{sys}{reboot_needed} = 1;
+			}
+			if ($line =~ /Total size: /i)
+			{
+				print "| #############################################################################\n";
+				print "| Please be patient! Packages are downloading in the background. They should\n";
+				print "| download from local repos fairly quickly. Once done, they will begin\n";
+				print "| installing. At times, this may seem to stall. Please be patient.\n";
+				print "| You can verify the download is running with 'ps aux | grep yum'.\n";
+				print "| #############################################################################\n";
+			}
+		}
+		close $file_handle;
+		print "\\-----------------------------------------------------------------------------\n";
+	}
+	else
+	{
+		# Update a remote machine. We'll reboot immediately if they need it.
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target     => $target,
+			port       => $port, 
+			password   => $password,
+			shell_call => $shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			if ($line =~ / kernel\s+x86_64 /)
+			{
+				# Update required.
+				$reboot_needed = 1;
+			}
+			if ($line =~ /Total size: /i)
+			{
+				print "| #############################################################################\n";
+				print "| Please be patient! Packages are downloading in the background. They should\n";
+				print "| download from local repos fairly quickly. Once done, they will begin\n";
+				print "| installing. At times, this may seem to stall. Please be patient.\n";
+				print "| You can verify the download is running with 'ps aux | grep yum'.\n";
+				print "| #############################################################################\n";
+			}
+		}
+	}
+	print "- Done.\n\n";
+	
+	# Copy all the files into place.
+	print "Updating Striker and ScanCore files on: [$target] if needed.\n";
+	foreach my $type (@{$types})
+	{
+		foreach my $source (sort {$a cmp $b} keys %{$an->data->{copy}{$type}})
+		{
+			my $destination = $an->data->{copy}{$type}{$source};
+			my $source_path = $an->data->{path}{striker_cache}."/".$source;
+			my $shell_call  = $an->data->{path}{rsync}." -aAX ".$source_path." ".$destination;
+			print "- Updating: [$destination]...\n";
+			
+			if ($target eq "local")
+			{
+				# Local call
+				rsync_data($an, $source_path, $destination);
+			}
+			else
+			{
+				# Remote call
+				print "  (Progress not available when updating remote targets)\n";
+				my $return_code = $an->Storage->rsync({
+					target      => $target,
+					port        => $port, 
+					password    => $password,
+					source      => $source_path,
+					destination => "root\@$target:$destination",
+					switches    => "-aAX",
+				});
+				print $THIS_FILE." ".__LINE__."; [ Debug ] - return_code: [$return_code]\n" if $an->data->{sys}{debug} >= 3;
+			}
+		}
+	}
+	print "- Done.\n\n\n";
+	
+	if ($reboot_needed)
+	{
+		# Send the reboot command
+		
+		# Wait for the target to come back online (call 'uptime' and wait until it is less than 300 seconds
+		
+		# If we're a node, wait for the node to rejoin the Anvil!.
+	}
+	
+	
+	return(0);
+}
+
 # This checks access to the nodes in the Anvil! and that they're ready to be updated.
 sub check_anvil
 {
 	my ($an, $anvil_uuid, $error) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_anvil" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "anvil_uuid", value1 => $anvil_uuid, 
+		name2 => "error",      value2 => $error, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the node info
 	$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
@@ -611,13 +788,13 @@ sub check_anvil
 		if ($an->data->{sys}{anvil}{$node_key}{online})
 		{
 			print "- Online, good.\n";
+			check_cluster_and_storage($an, $node_key);
 		}
 		else
 		{
 			print "[ Error ] - Offline!\n";
 			$error = 1;
 		}
-		check_cluster_and_storage($an, $node_key);
 	}
 	validate_cluster_and_storage($an);
 	
@@ -628,6 +805,7 @@ sub check_anvil
 sub validate_cluster_and_storage
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "validate_cluster_and_storage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If both are running rgmanager, make sure we're UpToDate.
 	print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::node1::in_cluster: [".$an->data->{sys}{anvil}{node1}{in_cluster}."], sys::anvil::node2::in_cluster: [".$an->data->{sys}{anvil}{node2}{in_cluster}."]\n" if $an->data->{sys}{debug} >= 2;
@@ -662,6 +840,9 @@ sub validate_cluster_and_storage
 sub check_cluster_and_storage
 {
 	my ($an, $node_key) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_cluster_and_storage" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node_key", value1 => $node_key, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# To update, either both nodes have to be in the Anvil!, or neither can be. If both are, DRBD must be
 	# UpToDate/UpToDate.
@@ -692,6 +873,7 @@ sub check_cluster_and_storage
 	}
 	
 	# Check drbd
+		print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::${node_key}::in_cluster: [".$an->data->{sys}{anvil}{$node_key}{in_cluster}."]\n" if $an->data->{sys}{debug} >= 2;
 	if ($an->data->{sys}{anvil}{$node_key}{in_cluster})
 	{
 		my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
@@ -727,6 +909,7 @@ sub check_cluster_and_storage
 sub gather_updated_rpms_from_anvil
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_updated_rpms_from_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print "Downloading updated RPMs for Anvil! nodes...\n";
 	
@@ -931,6 +1114,7 @@ sub gather_updated_rpms_from_anvil
 sub update_local_repo
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_local_repo" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $os_type = get_os_type($an);
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - os_type: [$os_type], path::img_directory: [".$an->data->{path}{img_directory}."], path::iso_directory: [".$an->data->{path}{iso_directory}."]\n" if $an->data->{sys}{debug} >= 3;
@@ -960,6 +1144,10 @@ sub update_local_repo
 sub update_repo_metadata
 {
 	my ($an, $xml_file1, $xml_file2) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_repo_metadata" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "xml_file1", value1 => $xml_file1, 
+		name2 => "xml_file2", value2 => $xml_file2, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	print "- Regenerating the RPM repository meta-data.\n";
 	print "- [ NOTE ] - Please be patient, this might take a minute.\n";
@@ -999,6 +1187,7 @@ sub update_repo_metadata
 sub get_repodata_xml_file_name
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_repodata_xml_file_name" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $xml_file1 = "";
 	my $xml_file2 = "";
@@ -1062,6 +1251,7 @@ sub get_repodata_xml_file_name
 sub convert_iso_to_files
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "convert_iso_to_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# See if there is an ISO definied in fstab.
 	my $img_directory = $an->data->{path}{img_directory};
@@ -1107,7 +1297,7 @@ sub convert_iso_to_files
 		if (not -e $backup_file)
 		{
 			print "- Backing up original fstab file to: [$backup_file]\n";
-			my $shell_call = $an->data->{path}{rsync}." -a ".$an->data->{path}{etc_fstab}." $backup_file";
+			my $shell_call = $an->data->{path}{rsync}." -aAX ".$an->data->{path}{etc_fstab}." $backup_file";
 			print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
@@ -1252,6 +1442,7 @@ sub convert_iso_to_files
 sub get_os_type
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_os_type" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $os_type    = "";
 	my $shell_call = $an->data->{path}{'os_release'};
@@ -1282,6 +1473,7 @@ sub get_os_type
 sub cache_updated_rpms
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "cache_updated_rpms" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print "- Caching updated RPMs...\n";
 	my $rpm_files  = [];
@@ -1327,6 +1519,7 @@ sub cache_updated_rpms
 sub download_os_updates
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "download_os_updates" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $an->data->{path}{yum}." -y update --downloadonly";
 	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
@@ -1355,6 +1548,9 @@ sub download_os_updates
 sub manage_scancore
 {
 	my ($an, $task) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "manage_scancore" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "task", value1 => $task, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if ($task eq "disable")
 	{
@@ -1443,6 +1639,9 @@ sub manage_scancore
 sub download_and_extract_source
 {
 	my ($an, $url) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "download_and_extract_source" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "url", value1 => $url, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Download the URL to path::temp_cache.
 	my $out_file = $an->data->{path}{temp_cache}."/".$an->data->{sys}{striker_zip_file};
@@ -1471,11 +1670,14 @@ sub download_and_extract_source
 sub rsync_data
 {
 	my ($an, $source, $destination) = @_;
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - source: [$source], destination: [$destination]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "rsync_data" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "source",      value1 => $source, 
+		name2 => "destination", value2 => $destination, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	#rsync -av striker-update/temp/striker-2.0.0b-rc8/* striker-update/source
 	my $copy_count = 0;
-	my $shell_call = $an->data->{path}{rsync}." -av $source $destination";
+	my $shell_call = $an->data->{path}{rsync}." -avAX $source $destination";
 	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
 	if ($an->data->{sys}{debug} < 3)
 	{
@@ -1519,17 +1721,21 @@ sub rsync_data
 sub extract_file
 {
 	my ($an, $extract) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "extract_file" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "extract", value1 => $extract, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	print "- Extracting: [$extract]\n";
 	my $shell_call = $an->data->{path}{tar}." -C ".$an->data->{path}{temp_cache}." -xvf $extract";
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
 	if ($extract =~ /\.zip$/)
 	{
-		$shell_call = $an->data->{path}{unzip}." -d ".$an->data->{path}{temp_cache}." $extract";
+		$shell_call = $an->data->{path}{unzip}." -o -d ".$an->data->{path}{temp_cache}." $extract";
 	}
 	my $extract_root  = "";
 	my $start_time    = time;
 	my $extract_count = 0;
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
 	if ($an->data->{sys}{debug} < 3)
 	{
 		print "- Progress: [";
@@ -1579,6 +1785,7 @@ sub extract_file
 sub clear_temp
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_temp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if ($an->data->{path}{temp_cache} !~ /\/temp$/)
 	{
@@ -1610,6 +1817,7 @@ sub clear_temp
 sub check_internet_access
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_internet_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print "Checking for Internet access...\n";
 	my $pinged = 0;
@@ -1655,6 +1863,7 @@ sub check_internet_access
 sub setup_cache
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "setup_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print "Checking cache directories...\n";
 	$an->data->{path}{rpm_cache}     = $an->data->{path}{current_dir}."/".$an->data->{path}{updates}{rpms};
@@ -1725,6 +1934,7 @@ sub setup_cache
 sub get_latest_version
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_latest_version" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $set        = 0;
 	my $shell_call = $an->data->{path}{curl}." 2>/dev/null ".$an->data->{url}{striker_latest};
@@ -1782,10 +1992,15 @@ sub download_file
 {
 	my ($an, $source, $target, $mode) = @_;
 	$mode = "" if not defined $mode;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "download_file" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "source", value1 => $source, 
+		name2 => "target", value2 => $target, 
+		name3 => "mode",   value3 => $mode, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the file size so that we can warn the user
 	my $out_file   = $target;
-	my $size       = "";
+	my $size       = 0;
 	my $shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" 2>/dev/null --head $source";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
@@ -1793,18 +2008,18 @@ sub download_file
 	{
 		chomp;
 		my $line = $_;
-			$line =~ s/\r//;
+		   $line =~ s/\r//;
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
 		if ($line =~ /Content-Length: (\d+)$/)
 		{
 			$size = $1;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - size: [$size]\n" if $an->data->{sys}{debug} >= 3;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - size: [$size]\n" if $an->data->{sys}{debug} >= 2;
 		}
 	}
 	close $file_handle;
 	
 	# If I got a size, make it (crudely) human readable.
-	my $say_size = "";
+	my $say_size = 0;
 	if ($size =~ /^\d+$/)
 	{
 		$say_size = $an->Readable->bytes_to_hr({'bytes' => $size});
@@ -1840,7 +2055,7 @@ sub download_file
 		# If the file is less than 1024 bytes, read it in to make sure it is not a 
 		# failure message.
 		my $size = (stat($target))[7];
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is: [$size] bytes.\n" if $an->data->{sys}{debug} >= 3;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is: [$size] bytes.\n" if $an->data->{sys}{debug} >= 2;
 		if ($size < 1024)
 		{
 			# Is it binary or text? If it is text, make sure it is not a failure message.
@@ -1909,7 +2124,7 @@ sub download_file
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is large enough that analysis is not required.\n" if $an->data->{sys}{debug} >= 3;
 		}
 	}
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - target: [$target], file_ok: [$file_ok]\n" if $an->data->{sys}{debug} >= 3;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - target: [$target], file_ok: [$file_ok]\n" if $an->data->{sys}{debug} >= 2;
 	if ($file_ok)
 	{
 		my $duration = time - $start_time;
@@ -1952,6 +2167,7 @@ sub download_file
 sub print_usage
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $help = "
  -=] Striker Update
@@ -1975,8 +2191,8 @@ NOTE
 
 If your system has no internet connection, you can manually copy files to:
 
-#!data!path::update_cache!#/rpms/
-#!data!path::update_cache!#/source/
+".$an->data->{path}{update_cache}."/rpms/
+".$an->data->{path}{update_cache}."/source/
 
 Any RPMs found in the 'rpms' directory will be loaded into the local repository
 prior to running the OS update. If 'striker*.zip' (striker.zip, 
@@ -1996,6 +2212,18 @@ ISO-mounted repo to a normal file (and remove the ISO from /etc/fstab).
 
 
 SWITCHES
+
+ --anvil-name {all,<anvil_name>}
+ --anvil-uuid <anvil_uuid>
+
+	This is the Anvil! name or UUID to update. When '--gather-only' is 
+	specified, one of the nodes in this Anvil! will be used to download 
+	updated operating system updates. The updates will NOT be installed
+	when '--gather-only' is used.
+	
+	NOTE: Using '--anvil-name all' tells the system to update all known
+	      Anvil! systems. If used with '--gather-only', an Anvil! will be
+	      chosen at random to download updated RPMs from.
 
  --gather-only
 
@@ -2023,25 +2251,20 @@ SWITCHES
 	### WARNING: This is only recommended for developers or testers. Do not
 	###          upgrade to master on production systems!
 
- --anvil-name {all,<anvil_name>}
- --anvil-uuid <anvil_uuid>
+ --no-refresh
 
-	This is the Anvil! name or UUID to update. When '--gather-only' is 
-	specified, one of the nodes in this Anvil! will be used to download 
-	updated operating system updates. The updates will NOT be installed
-	when '--gather-only' is used.
-	
-	NOTE: Using '--anvil-name all' tells the system to update all known
-	      Anvil! systems. If used with '--gather-only', an Anvil! will be
-	      chosen at random to download updated RPMs from.
+	If this is passed, AND if the source already appears to be downloaded,
+	the source code will not be downloaded again. This can be useful if you
+	plan to run the download many times and worry about being throttled by
+	github.
 
  --offline
 	
 	Don't try to update anything from the Internet. This will use files 
 	already in:
 	
-	RPMS: .. #!data!path::updates::rpms!#
-	Striker: #!data!path::updates::striker!#
+	RPMS: .. ".$an->data->{path}{updates}{rpms}."
+	Striker: ".$an->data->{path}{updates}{striker}."
 	
 	NOTE: Without this switch, a check for internet connectivity will be
 	      performed. If not link is detected, the install will 
