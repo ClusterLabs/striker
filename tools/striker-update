@@ -83,6 +83,10 @@ my $an = AN::Tools->new({
 			img_directory	=>	"/var/www/html/#!os_type!#/x86_64/img",
 			iso_directory	=>	"/var/www/html/#!os_type!#/x86_64/iso",
 			mount		=>	"/bin/mount",
+			# This is needed for some legacy support
+			nodes		=>	{
+				'anvil-safe-start' =>	"/sbin/striker/anvil-safe-start",
+			},
 			os_release	=>	"/etc/redhat-release",
 			reboot		=>	"/sbin/reboot",
 			striker		=>	"/var/www/cgi-bin/striker",
@@ -189,7 +193,9 @@ if ($an->data->{switches}{'gather-only'})
 
 # Connect to the database(s).
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-print $THIS_FILE." ".__LINE__."; [ Debug ] - connections: [$connections]\n" if $an->data->{sys}{debug} >= 3;
+$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	name1 => "connections", value1 => $connections,
+}, file => $THIS_FILE, line => __LINE__});
 if (not $connections)
 {
 	print "[ Error ] - Failed to connect to the ScanCore database. Is postgres running?\n";
@@ -219,7 +225,9 @@ if (not $an->data->{sys}{offline})
 	get_latest_version($an);
 	
 	my $striker_source_test = $an->data->{path}{striker_cache}."/cgi-bin/striker";
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - striker_source_test: [$striker_source_test]\n" if $an->data->{sys}{debug} >= 2;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "striker_source_test", value1 => $striker_source_test,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{switches}{master})
 	{
 		print "- Downloading: [".$an->data->{url}{striker_master}."]\n";
@@ -339,7 +347,9 @@ sub update_all
 			port     => $peer_port, 
 			password => $peer_password, 
 		});
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - access: [$access]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "access", value1 => $access,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If I can't access my peer, exit.
 		if ($access)
@@ -364,7 +374,9 @@ sub update_all
 	if ($an->data->{switches}{'anvil-name'} eq "all")
 	{
 		my $query = "SELECT anvil_name, anvil_uuid FROM anvils WHERE anvil_note IS DISTINCT FROM 'DELETED' ORDER BY anvil_name ASC LIMIT 1;";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -372,11 +384,14 @@ sub update_all
 		{
 			my $anvil_name = $row->[0];
 			my $anvil_uuid = $row->[1];
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name], anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "anvil_name", value1 => $anvil_name,
+				name2 => "anvil_uuid", value2 => $anvil_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			print "- Testing access to the nodes in the Anvil! system: [$anvil_name] (UUID: [$anvil_uuid])\n";
 			$anvils->{$anvil_name} = $anvil_uuid;
-			$error = check_anvil($an, $anvil_uuid, $error);
+			$error = check_anvil($an, $anvil_uuid, $error, 1);
 		}
 	}
 	elsif ($an->data->{switches}{'anvil-name'})
@@ -384,14 +399,18 @@ sub update_all
 		my $anvil_name = $an->data->{switches}{'anvil-name'};
 		my $anvil_uuid = "";
 		my $query      = "SELECT anvil_uuid FROM anvils WHERE anvil_name = ".$an->data->{sys}{use_db_fh}->quote($anvil_name).";";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
 			$anvil_uuid = $row->[0];
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_uuid", value1 => $anvil_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		if (not $anvil_uuid)
@@ -400,21 +419,25 @@ sub update_all
 			exit(5);
 		}
 		$anvils->{$anvil_name} = $anvil_uuid;
-		$error = check_anvil($an, $anvil_uuid, $error);
+		$error = check_anvil($an, $anvil_uuid, $error, 1);
 	}
 	else
 	{
 		my $anvil_name = "";
 		my $anvil_uuid = $an->data->{switches}{'anvil-uuid'};
 		my $query      = "SELECT anvil_name FROM anvils WHERE anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid).";";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
 			$anvil_name = $row->[0];
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name]\n" if $an->data->{sys}{debug} >= 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_name", value1 => $anvil_name,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		if (not $anvil_name)
@@ -423,8 +446,7 @@ sub update_all
 			exit(6);
 		}
 		$anvils->{$anvil_name} = $anvil_uuid;
-		check_anvil($an, $anvil_uuid);
-		$error = check_anvil($an, $anvil_uuid, $error);
+		$error = check_anvil($an, $anvil_uuid, $error, 1);
 	}
 	if ($error)
 	{
@@ -452,7 +474,13 @@ sub update_all
 		my $password = $dashboards->{$dashboard};
 
 		print "- Disabling ScanCore on Striker dashboard: [$dashboard]\n";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - dashboard: [$dashboard], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "dashboard",  value1 => $dashboard,
+			name3 => "shell_call", value3 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target     => $dashboard,
 			port       => 22, 
@@ -461,7 +489,9 @@ sub update_all
 		});
 		foreach my $line (@{$return})
 		{
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
@@ -469,12 +499,18 @@ sub update_all
 		my $anvil_uuid = $anvils->{$anvil_name};
 		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
 		
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name], anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "anvil_name", value1 => $anvil_name,
+			name2 => "anvil_uuid", value2 => $anvil_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $node_key ("node1", "node2")
 		{
 			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
 			my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - node_name: [$node_name], node_uuid: [$node_uuid]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node_name", value1 => $node_name,
+				name2 => "node_uuid", value2 => $node_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# I reload and rescan each loop in case I am updating two or more Anvil! systems
 			print "- Disabling ScanCore on Anvil!: [$anvil_name]'s node: [$node_name]...\n";
@@ -483,7 +519,14 @@ sub update_all
 			my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 			my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 			my $password   = $an->data->{sys}{anvil}{$node_key}{password};
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "port",       value2 => $port,
+				name3 => "shell_call", value3 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target     => $target,
 				port       => $port, 
@@ -492,7 +535,9 @@ sub update_all
 			});
 			foreach my $line (@{$return})
 			{
-				print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -512,7 +557,13 @@ sub update_all
 		foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
 		{
 			my $password = $dashboards->{$dashboard};
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - dashboard: [$dashboard], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "dashboard",  value1 => $dashboard,
+				name3 => "shell_call", value3 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target     => $dashboard,
 				port       => 22, 
@@ -521,7 +572,9 @@ sub update_all
 			});
 			foreach my $line (@{$return})
 			{
-				print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ /-.*?\[(\d+)\]$/)
 				{
 					$waiting = 1;
@@ -534,18 +587,31 @@ sub update_all
 			my $anvil_uuid = $anvils->{$anvil_name};
 			$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
 			
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name], anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "anvil_name", value1 => $anvil_name,
+				name2 => "anvil_uuid", value2 => $anvil_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $node_key ("node1", "node2")
 			{
 				my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
 				my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
-				print $THIS_FILE." ".__LINE__."; [ Debug ] - node_name: [$node_name], node_uuid: [$node_uuid]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node_name", value1 => $node_name,
+					name2 => "node_uuid", value2 => $node_uuid,
+				}, file => $THIS_FILE, line => __LINE__});
 				
 				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
 				my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 				my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 				my $password   = $an->data->{sys}{anvil}{$node_key}{password};
-				print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "target",     value1 => $target,
+					name2 => "port",       value2 => $port,
+					name3 => "shell_call", value3 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+					name1 => "password", value1 => $password,
+				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target     => $target,
 					port       => $port, 
@@ -554,7 +620,9 @@ sub update_all
 				});
 				foreach my $line (@{$return})
 				{
-					print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
 					if ($line =~ /-.*?\[(\d+)\]$/)
 					{
 						$waiting = 1;
@@ -569,18 +637,22 @@ sub update_all
 			sleep 5;
 		}
 	}
-	print "- ScanCore is stopped now on all systems. Ready to proceed.\n";
+	print "- ScanCore is stopped now on all systems. Ready to proceed.\n\n";
 	
 	### Do Work Here...
-	update_target($an, "dashboard", "local");
-	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
+# 	update_target($an, "dashboard", "local");
+# 	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
+# 	{
+# 		my $password = $dashboards->{$dashboard};
+# 		update_target($an, "dashboard", $dashboard, 22, $password);
+# 	}
+	
+	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
 	{
-		my $password = $dashboards->{$dashboard};
-		update_target($an, "dashboard", $dashboard, 22, $password);
+		my $anvil_uuid = $anvils->{$anvil_name};
+		update_nodes($an, $anvil_uuid);
 	}
 	die;
-	
-	update_nodes($an);
 	
 	# Re-enable ScanCore now.
 	print "ScanCore will now be restarted on all machines..\n";
@@ -590,7 +662,13 @@ sub update_all
 		my $password = $dashboards->{$dashboard};
 
 		print "- Enabling ScanCore on Striker dashboard: [$dashboard]\n";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - dashboard: [$dashboard], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "dashboard",  value1 => $dashboard,
+			name3 => "shell_call", value3 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target     => $dashboard,
 			port       => 22, 
@@ -599,7 +677,9 @@ sub update_all
 		});
 		foreach my $line (@{$return})
 		{
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
@@ -607,12 +687,18 @@ sub update_all
 		my $anvil_uuid = $anvils->{$anvil_name};
 		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
 		
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name], anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "anvil_name", value1 => $anvil_name,
+			name2 => "anvil_uuid", value2 => $anvil_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $node_key ("node1", "node2")
 		{
 			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
 			my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - node_name: [$node_name], node_uuid: [$node_uuid]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node_name", value1 => $node_name,
+				name2 => "node_uuid", value2 => $node_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# I reload and rescan each loop in case I am updating two or more Anvil! systems
 			print "- Enabling ScanCore on Anvil!: [$anvil_name]'s node: [$node_name]...\n";
@@ -621,7 +707,14 @@ sub update_all
 			my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 			my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 			my $password   = $an->data->{sys}{anvil}{$node_key}{password};
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "port",       value2 => $port,
+				name3 => "shell_call", value3 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target     => $target,
 				port       => $port, 
@@ -630,7 +723,9 @@ sub update_all
 			});
 			foreach my $line (@{$return})
 			{
-				print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -638,6 +733,250 @@ sub update_all
 	manage_scancore($an, "enable");
 	
 	print "- Done!\n\n";
+	
+	return(0);
+}
+
+# This handles updating the nodes of each target Anvil!, determining the order of updates, migrating servers
+# and waiting on DRBD resync.
+sub update_nodes
+{
+	my ($an, $anvil_uuid) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_nodes" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "anvil_uuid", value1 => $anvil_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Load the details about this Anvil!
+	$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
+	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name, 
+		name2 => "node1_name", value2 => $node1_name, 
+		name3 => "node2_name", value3 => $node2_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	print "Updating Anvil!: [$anvil_name]\n";
+	
+	# Do a full scan of node 1 and 2.
+	print "- Scanning both nodes, one moment please.\n";
+	my $waiting = 1;
+	while ($waiting)
+	{
+		my $error = check_anvil($an, $anvil_uuid, 0, 0);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "error", value1 => $error, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (not $error)
+		{
+			$waiting = 0;
+		}
+		else
+		{
+			sleep 10;
+		}
+	}
+	die;
+	
+	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}});
+	print "- Node 1: [$node1_name] scanned.\n";
+	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}});
+	print "- Node 2: [$node2_name] scanned.\n";
+	
+	# Make sure all DRBD resources on both nodes are fully UpToDate. We'll check using node 1.
+	print "- Making sure replicated storage is fully synchronized.\n";
+	wait_for_resync($an);
+
+=cut
+	# Pick the first node to update. We're going to be simple about this; If both nodes have servers, 
+	# we'll migrate all to node 1 and upgrade node 2. If no nodes have servers, we'll upgrade node 2.
+	# If node 2 has all servers, we'll update node 1.
+	print "- Picking which node to update first.\n";
+	my $first_target = "node2";
+	
+	
+	
+	
+	
+	
+	
+	foreach my $node_key ("node1", "node2")
+	{
+		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node_name", value1 => $node_name,
+			name2 => "node_uuid", value2 => $node_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# I reload and rescan each loop in case I am updating two or more Anvil! systems
+		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
+		
+		my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+		my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "port",       value2 => $port,
+			name3 => "shell_call", value3 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target     => $target,
+			port       => $port, 
+			password   => $password,
+			shell_call => $shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+=cut;
+	
+	
+	return(0);
+}
+
+# This will loop until DRBD has resync'ed fully.
+sub wait_for_resync
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "wait_for_resync" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# We always use node 1.
+	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
+	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
+	my $target     = $an->data->{sys}{anvil}{node1}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{node1}{use_port};
+	my $password   = $an->data->{sys}{anvil}{node1}{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "node1_name", value1 => $node1_name, 
+		name2 => "node2_name", value2 => $node2_name, 
+		name3 => "target",     value3 => $target, 
+		name4 => "port",       value4 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure both nodes are online.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online}, 
+		name2 => "sys::anvil::node2::online", value2 => $an->data->{sys}{anvil}{node2}{online}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $an->data->{sys}{anvil}{node1}{online}) or (not $an->data->{sys}{anvil}{node2}{online}))
+	{
+		print "- Waiting for both nodes to come online...\n";
+		my $waiting = 1;
+		while ($waiting)
+		{
+			sleep 10;
+			print "- Checking if both nodes are up at: [".$an->Get->date_and_time({split_date_time => 0})."]\n";
+			$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
+			$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online}, 
+				name2 => "sys::anvil::node2::online", value2 => $an->data->{sys}{anvil}{node2}{online}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $an->data->{sys}{anvil}{node1}{online})
+			{
+				print "- Node 1: [".$an->data->{sys}{anvil}{node1}{name}."] is not yet online.\n";
+			}
+			elsif (not $an->data->{sys}{anvil}{node1}{online})
+			{
+				print "- Node 2: [".$an->data->{sys}{anvil}{node2}{name}."] is not yet online.\n";
+			}
+			else
+			{
+				print "- Both nodes are now online. Doing a full scan and then proceeding.\n";
+				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}});
+				print "- Node 1: [$node1_name] scanned.\n";
+				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}});
+				print "- Node 2: [$node2_name] scanned.\n";
+				$waiting = 0;
+			}
+		}
+	}
+	else
+	{
+		print "- Both nodes are online.\n";
+	}
+	
+	# Both nodes are online now, so now we're going to wait for both storage services to be in the
+	# 'started' state.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node1_name}::me::rgmanager", value1 => $an->data->{node}{$node1_name}{me}{rgmanager}, 
+		name2 => "node::${node2_name}::me::rgmanager", value2 => $an->data->{node}{$node2_name}{me}{rgmanager}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $an->data->{node}{$node1_name}{me}{rgmanager}) or (not $an->data->{node}{$node2_name}{me}{rgmanager}))
+	{
+		print "- Waiting for both nodes to join the Anvil! system.\n";
+		my $waiting = 1;
+		while ($waiting)
+		{
+			sleep 10;
+			### NOTE: We'll do a full scan of node 1 and check it's view on things to save some 
+			###       time.
+			print "- Checking if both nodes cluster members at: [".$an->Get->date_and_time({split_date_time => 0})."]\n";
+			$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}});
+			
+			# NOTE: There was a bug for a while where '$an->data->{node}{peer}{rgmanager}' was 
+			#       being set instead of '$an->data->{node}{node1}{peer}{rgmanager}'. This 
+			#       handles that case.
+			if ((exists $an->data->{node}{peer}{rgmanager}) && (not defined $an->data->{node}{$node1_name}{peer}{rgmanager}))
+			{
+				$an->data->{node}{$node1_name}{peer}{rgmanager} = $an->data->{node}{peer}{rgmanager};
+			}
+			
+			# Not check that both nodes show rgmanager as being online.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node::${node1_name}::me::rgmanager",   value1 => $an->data->{node}{$node1_name}{me}{rgmanager}, 
+				name2 => "node::${node1_name}::peer::rgmanager", value2 => $an->data->{node}{$node1_name}{peer}{rgmanager}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $an->data->{node}{$node1_name}{me}{rgmanager})
+			{
+				print "- Node 1: [".$an->data->{sys}{anvil}{node1}{name}."] is not yet a member of the Anvil!.\n";
+			}
+			elsif (not $an->data->{node}{$node1_name}{peer}{rgmanager})
+			{
+				
+				print "- Node 1: [".$an->data->{sys}{anvil}{node1}{name}."] is not yet a member of the Anvil!.\n";
+			}
+			else
+			{
+				print "- Both nodes are now members of the Anvil!. Doing a full scan and then proceeding.\n";
+				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}});
+				print "- Node 1: [$node1_name] scanned.\n";
+				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}});
+				print "- Node 2: [$node2_name] scanned.\n";
+				$waiting = 0;
+			}
+		}
+	}
+	
+	# Now wait for all DRBD resource to be UpToDate on both nodes.
+	print "- Checking that all replicated storage resources are synchronized.\n";
+	my $all_uptodate = 0;
+	# The resource list is set by the config, so we don't need to worry about missing any when DRBD is
+	# stopped.
+	foreach my $resource (sort {$a cmp $b} keys %{$an->data->{node}{$node1_name}{drbd}{resource}})
+	{
+		# Make sure I have a disk state from both nodes.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "drbd::${resource}::node::${node1_name}::disk_state", value1 => $an->data->{drbd}{$resource}{node}{$node1_name}{disk_state}, 
+			name2 => "drbd::${resource}::node::${node2_name}::disk_state", value2 => $an->data->{drbd}{$resource}{node}{$node2_name}{disk_state}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+	}
+	#$an->data->{node}{$node_name}{drbd}{resource}{$resource}{eta_to_sync}
+	
 	
 	return(0);
 }
@@ -659,7 +998,7 @@ sub update_target
 	
 	# Update the OS first.
 	my $reboot_needed = 0;
-	my $shell_call    = $an->data->{path}{yum}." -y update --downloadonly";
+	my $shell_call    = $an->data->{path}{yum}." -y update";
 	if ($target eq "local")
 	{
 		# Local call. If an update is needed, we'll set 'sys::reboot_needed' and tell the user to 
@@ -677,7 +1016,7 @@ sub update_target
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
-			print "| $line\n";
+			print "| $line\n"; 
 			
 			if ($line =~ / kernel\s+x86_64 /)
 			{
@@ -716,9 +1055,13 @@ sub update_target
 		print "# the update is still running, on: [$target], run:\n";
 		print "# 'ps aux | grep yum'.\n";
 		print "###############################################################################\n";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value1 => $shell_call, 
-			name2 => "shell_call", value2 => $shell_call, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "port",       value2 => $port,
+			name3 => "shell_call", value3 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
 		}, file => $THIS_FILE, line => __LINE__});
 		print "/-----[ Command output ]------------------------------------------------------\n";
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
@@ -801,19 +1144,23 @@ sub update_target
 	}
 	print "- Done.\n\n\n";
 	
+	my $rebooted = 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "reboot_needed", value1 => $reboot_needed, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($reboot_needed)
 	{
 		# Send the reboot command
-		my ($rebooted) = reboot_target($an, $target, $port, $password);
-		
-		# If we're a node, wait for the node to rejoin the Anvil!.
+		($rebooted) = reboot_target($an, $target, $port, $password);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "rebooted", value1 => $rebooted, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	
-	return(0);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "rebooted", value1 => $rebooted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($rebooted);
 }
 
 # This reboots a target and waits for it to come back up.
@@ -830,8 +1177,13 @@ sub reboot_target
 	
 	my $rebooted   = 1;
 	my $shell_call = $an->data->{path}{reboot};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1  => "shell_call", value1 => $shell_call, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "port",       value2 => $port,
+		name3 => "shell_call", value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target     => $target,
@@ -974,10 +1326,13 @@ sub reboot_target
 # This checks access to the nodes in the Anvil! and that they're ready to be updated.
 sub check_anvil
 {
-	my ($an, $anvil_uuid, $error) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_anvil" }, message_key => "an_variables_0002", message_variables => { 
+	my ($an, $anvil_uuid, $error, $fatal) = @_;
+	$error = 0 if not defined $error;
+	$fatal = 1 if not defined $fatal;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_anvil" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "anvil_uuid", value1 => $anvil_uuid, 
 		name2 => "error",      value2 => $error, 
+		name3 => "fatal",      value3 => $fatal, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the node info
@@ -1002,7 +1357,10 @@ sub check_anvil
 			$error = 1;
 		}
 	}
-	validate_cluster_and_storage($an);
+	if (not $error)
+	{
+		$error = validate_cluster_and_storage($an, 0);
+	}
 	
 	return($error);
 }
@@ -1010,36 +1368,69 @@ sub check_anvil
 # This will throw an error if only one node is in the cluster or if a DRBD disk state is not UpToDate.
 sub validate_cluster_and_storage
 {
-	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "validate_cluster_and_storage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	my ($an, $fatal) = @_;
+	$fatal = 1 if not defined $fatal;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "validate_cluster_and_storage" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "fatal", value1 => $fatal, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If both are running rgmanager, make sure we're UpToDate.
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::node1::in_cluster: [".$an->data->{sys}{anvil}{node1}{in_cluster}."], sys::anvil::node2::in_cluster: [".$an->data->{sys}{anvil}{node2}{in_cluster}."]\n" if $an->data->{sys}{debug} >= 2;
+	my $error = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::anvil::node1::in_cluster", value1 => $an->data->{sys}{anvil}{node1}{in_cluster},
+		name2 => "sys::anvil::node2::in_cluster", value2 => $an->data->{sys}{anvil}{node2}{in_cluster},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{sys}{anvil}{node1}{in_cluster}) && ($an->data->{sys}{anvil}{node2}{in_cluster}))
 	{
 		# Both nodes are online. Did we see any resources that we're UpToDate?
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::node1::all_uptodate: [".$an->data->{sys}{anvil}{node1}{all_uptodate}."], sys::anvil::node2::all_uptodate: [".$an->data->{sys}{anvil}{node2}{all_uptodate}."]\n" if $an->data->{sys}{debug} >= 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::anvil::node1::all_uptodate", value1 => $an->data->{sys}{anvil}{node1}{all_uptodate},
+			name2 => "sys::anvil::node2::all_uptodate", value2 => $an->data->{sys}{anvil}{node2}{all_uptodate},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $an->data->{sys}{anvil}{node1}{all_uptodate}) or (not $an->data->{sys}{anvil}{node2}{all_uptodate}))
 		{
-			print "[ Error ] - The upgrade process requires taking each node out of the cluster,\n";
-			print "[ Error ]   one at a time. To do this, both nodes have to have up to date \n";
-			print "[ Error ]   storage. Please watch the Striker web interface for the replicated\n";
-			print "[ Error ]   Storage's 'Disk State' to be 'UpToDate/UpToDate' on both nodes, \n";
-			print "[ Error ]   then try again.\n";
-			exit(15);
+			if ($fatal)
+			{
+				print "[ Error ] - The upgrade process requires taking each node out of the cluster,\n";
+				print "[ Error ]   one at a time. To do this, both nodes have to have up to date \n";
+				print "[ Error ]   storage. Please watch the Striker web interface for the replicated\n";
+				print "[ Error ]   Storage's 'Disk State' to be 'UpToDate/UpToDate' on both nodes, \n";
+				print "[ Error ]   then try again.\n";
+				exit(15);
+			}
+			else
+			{
+				$error = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "error", value1 => $error,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	elsif ((($an->data->{sys}{anvil}{node1}{in_cluster}) && (not $an->data->{sys}{anvil}{node2}{in_cluster})) or 
-		((not $an->data->{sys}{anvil}{node1}{in_cluster}) && ($an->data->{sys}{anvil}{node2}{in_cluster})))
+	       ((not $an->data->{sys}{anvil}{node1}{in_cluster}) && ($an->data->{sys}{anvil}{node2}{in_cluster})))
 	{
 		# One node is in the cluster and the other isn't.
-		print "[ Error ] - Only one node is in the cluster. Either both nodes must be in the cluster\n";
-		print "[ Error ]   neither can be. If one node is up, we'll need to be able to move any\n";
-		print "[ Error ]   servers it is hosting to withdraw and update it.\n";
-		exit(16);
+		if ($fatal)
+		{
+			print "[ Error ] - Only one node is in the cluster. Either both nodes must be in the cluster\n";
+			print "[ Error ]   neither can be. If one node is up, we'll need to be able to move any\n";
+			print "[ Error ]   servers it is hosting to withdraw and update it.\n";
+			exit(16);
+		}
+		else
+		{
+			$error = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "error", value1 => $error,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
-	return(0);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "error", value1 => $error,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($error);
 }
 
 # This checks to see if rgmanager is running and, if so, if DRBD is UpToDate.
@@ -1060,7 +1451,14 @@ sub check_cluster_and_storage
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
 	my $shell_call = $an->data->{path}{clustat}." -x";
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "port",       value2 => $port,
+		name3 => "shell_call", value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target     => $target,
 		port       => $port, 
@@ -1070,20 +1468,33 @@ sub check_cluster_and_storage
 	foreach my $line (@{$return})
 	{
 		# We're looking at rgmanager, specifically
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($line =~ /<node /) && ($line =~ /local="1"/) && ($line =~ /rgmanager="(\d+)"/))
 		{
 			$an->data->{sys}{anvil}{$node_key}{in_cluster} = $1;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::${node_key}::in_cluster: [".$an->data->{sys}{anvil}{$node_key}{in_cluster}."]\n" if $an->data->{sys}{debug} >= 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::anvil::${node_key}::in_cluster", value1 => $an->data->{sys}{anvil}{$node_key}{in_cluster},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# Check drbd
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::${node_key}::in_cluster: [".$an->data->{sys}{anvil}{$node_key}{in_cluster}."]\n" if $an->data->{sys}{debug} >= 2;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::anvil::${node_key}::in_cluster", value1 => $an->data->{sys}{anvil}{$node_key}{in_cluster},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{anvil}{$node_key}{in_cluster})
 	{
 		my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], password: [$password], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "port",       value2 => $port,
+			name3 => "shell_call", value3 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target     => $target,
 			port       => $port, 
@@ -1093,16 +1504,23 @@ sub check_cluster_and_storage
 		foreach my $line (@{$return})
 		{
 			# We're looking at rgmanager, specifically
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ / ds:(.*?)\/(.*?) /)
 			{
 				my $local_disk_state = $1;
 				my $peer_disk_state  = $2;
-				print $THIS_FILE." ".__LINE__."; [ Debug ] - local_disk_state: [$local_disk_state], peer_disk_state: [$peer_disk_state]\n" if $an->data->{sys}{debug} >= 2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "local_disk_state", value1 => $local_disk_state,
+					name2 => "peer_disk_state",  value2 => $peer_disk_state,
+				}, file => $THIS_FILE, line => __LINE__});
 				if (($local_disk_state ne "UpToDate") or ($peer_disk_state ne "UpToDate"))
 				{
 					$an->data->{sys}{anvil}{$node_key}{all_uptodate} = 0;
-					print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::anvil::${node_key}::all_uptodate: [".$an->data->{sys}{anvil}{$node_key}{all_uptodate}."]\n" if $an->data->{sys}{debug} >= 2;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "sys::anvil::${node_key}::all_uptodate", value1 => $an->data->{sys}{anvil}{$node_key}{all_uptodate},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -1125,7 +1543,9 @@ sub gather_updated_rpms_from_anvil
 	if ($an->data->{switches}{'anvil-name'} eq "all")
 	{
 		my $query = "SELECT anvil_name, anvil_uuid FROM anvils WHERE anvil_note IS DISTINCT FROM 'DELETED' ORDER BY anvil_name ASC LIMIT 1;";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -1133,7 +1553,10 @@ sub gather_updated_rpms_from_anvil
 		{
 			$anvil_name = $row->[0];
 			$anvil_uuid = $row->[1];
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name], anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "anvil_name", value1 => $anvil_name,
+				name2 => "anvil_uuid", value2 => $anvil_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		if (not $anvil_name)
@@ -1146,14 +1569,18 @@ sub gather_updated_rpms_from_anvil
 	{
 		   $anvil_name = $an->data->{switches}{'anvil-name'};
 		my $query      = "SELECT anvil_uuid FROM anvils WHERE anvil_name = ".$an->data->{sys}{use_db_fh}->quote($anvil_name).";";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
 			$anvil_uuid = $row->[0];
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_uuid: [$anvil_uuid]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_uuid", value1 => $anvil_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		if (not $anvil_uuid)
@@ -1166,14 +1593,18 @@ sub gather_updated_rpms_from_anvil
 	{
 		   $anvil_uuid = $an->data->{switches}{'anvil-uuid'};
 		my $query      = "SELECT anvil_name FROM anvils WHERE anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid).";";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - query: [$query]\n" if $an->data->{sys}{debug} >= 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
 			$anvil_name = $row->[0];
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - anvil_name: [$anvil_name]\n" if $an->data->{sys}{debug} >= 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_name", value1 => $anvil_name,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		if (not $anvil_name)
@@ -1204,7 +1635,9 @@ sub gather_updated_rpms_from_anvil
 			print "- The node appears to be offline or unreachable.\n";
 		}
 	}
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - use_node: [$use_node]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "use_node", value1 => $use_node,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $use_node)
 	{
 		print "[ Error ] - Neither node is online or reachable. Unable to proceed.\n";
@@ -1219,8 +1652,16 @@ sub gather_updated_rpms_from_anvil
 	my $port       = $an->data->{sys}{anvil}{$use_node}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$use_node}{password};
 	my $shell_call = $an->data->{path}{yum}." clean expire-cache";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "port",       value2 => $port,
+		name3 => "shell_call", value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	print "- Clearing old RPM cache on: [$target]\n";
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target     => $target,
 		port       => $port, 
@@ -1238,7 +1679,14 @@ sub gather_updated_rpms_from_anvil
 	# Download updates now
 	print "- Downloading, NOT installing, updated RPMs on: [$target]...\n";
 	$shell_call = $an->data->{path}{yum}." -y update --downloadonly";
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "port",       value2 => $port,
+		name3 => "shell_call", value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target     => $target,
 		port       => $port, 
@@ -1262,7 +1710,14 @@ sub gather_updated_rpms_from_anvil
 	# Now build a list of RPMs to rsync over to our cache. 
 	my $rpm_files  = [];
 	   $shell_call = $an->data->{path}{find}." ".$an->data->{path}{yum_cache};
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - target: [$target], port: [$port], shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "port",       value2 => $port,
+		name3 => "shell_call", value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target     => $target,
 		port       => $port, 
@@ -1271,7 +1726,9 @@ sub gather_updated_rpms_from_anvil
 	});
 	foreach my $line (@{$return})
 	{
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^(\/.*?\.rpm)$/)
 		{
 			my $rpm = $1;
@@ -1323,10 +1780,18 @@ sub update_local_repo
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_local_repo" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $os_type = get_os_type($an);
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - os_type: [$os_type], path::img_directory: [".$an->data->{path}{img_directory}."], path::iso_directory: [".$an->data->{path}{iso_directory}."]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "os_type",             value1 => $os_type,
+		name2 => "path::img_directory", value2 => $an->data->{path}{img_directory},
+		name3 => "path::iso_directory", value3 => $an->data->{path}{iso_directory},
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	$an->data->{path}{img_directory} =~ s/#!os_type!#/${os_type}6/;
 	$an->data->{path}{iso_directory} =~ s/#!os_type!#/${os_type}6/;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::img_directory: [".$an->data->{path}{img_directory}."], path::iso_directory: [".$an->data->{path}{iso_directory}."]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "path::img_directory", value1 => $an->data->{path}{img_directory},
+		name2 => "path::iso_directory", value2 => $an->data->{path}{iso_directory},
+	}, file => $THIS_FILE, line => __LINE__});
 
 	# Now, if this is a repo using a mounted ISO, we will need to convert it to standard files.
 	convert_iso_to_files($an);
@@ -1338,7 +1803,10 @@ sub update_local_repo
 	
 	# Copy over any of our RPMs from cache to the repo source.
 	my ($xml_file1, $xml_file2) = get_repodata_xml_file_name($an);
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file1: [$xml_file1], xml_file2: [$xml_file2]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "xml_file1", value1 => $xml_file1,
+		name2 => "xml_file2", value2 => $xml_file2,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Rebuild the repo.
 	update_repo_metadata($an, $xml_file1, $xml_file2);
@@ -1362,13 +1830,18 @@ sub update_repo_metadata
 	{
 		$shell_call = $an->data->{path}{createrepo}." -g ".$xml_file1." -g ".$xml_file2." ".$an->data->{path}{img_directory};
 	}
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	print "/-----[ Command output ]------------------------------------------------------\n";
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		print "| $line\n";
 		
 		if ($line =~ /Error opening Package/)
@@ -1398,45 +1871,67 @@ sub get_repodata_xml_file_name
 	my $xml_file1 = "";
 	my $xml_file2 = "";
 	my $source   = $an->data->{path}{img_directory}."/repodata";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "source", value1 => $source,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $source)
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "source", value1 => $source,
+		}, file => $THIS_FILE, line => __LINE__});
 		local(*DIR);
 		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
 		while (my $file = readdir(DIR))
 		{
 			next if (($file eq ".") or ($file eq ".."));
 			my $full_path = $source."/".$file;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "full_path", value1 => $full_path,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			#rm -f repodata/*.gz repodata/*.*.bz2 repodata/*.repomd.xml
 			if ($file =~ /Server\.x86_64\.xml$/)
 			{
 				$xml_file2 = $full_path;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "xml_file2", value1 => $xml_file2,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($file =~ /c6-x86_64-comps\.xml$/)
 			{
 				$xml_file2 = $full_path;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "xml_file2", value1 => $xml_file2,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif (($file =~ /\.gz$/) or ($file =~ /\.bz2$/) or ($file =~ /\.repomd\.xml$/))
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $an->data->{sys}{debug} >= 3;
+				# Delete
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "full_path", value1 => $full_path,
+				}, file => $THIS_FILE, line => __LINE__});
 				unlink $full_path or die __LINE__."; [ Error ] - Failed to delete old 'repodata' file: [$full_path]. The error was: $!\n";
 			}
 			elsif ($file =~ /comps\.xml$/)
 			{
 				$xml_file1 = $full_path;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file1]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "xml_file1", value1 => $xml_file1,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($file =~ /repomd\.xml$/)
 			{
 				$xml_file1 = $full_path;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file1]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "xml_file1", value1 => $xml_file1,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Ignoring: [$full_path]\n" if $an->data->{sys}{debug} >= 3;
+				# Ignore
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "full_path", value1 => $full_path,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		closedir(DIR);
@@ -1448,7 +1943,10 @@ sub get_repodata_xml_file_name
 		exit(9);
 	}
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file1: [$xml_file1], xml_file2: [$xml_file2]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "xml_file1", value1 => $xml_file1,
+		name2 => "xml_file2", value2 => $xml_file2,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($xml_file1, $xml_file2);
 }
 
@@ -1466,19 +1964,25 @@ sub convert_iso_to_files
 	my $fstab_data_ok = 0;
 	my $new_fstab     = "";
 	my $shell_call    = $an->data->{path}{etc_fstab};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or die __LINE__."; [ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^(\/var\/www\/.*?)\s+$img_directory\s/i)
 		{
 			my $source_iso   = $1;
 			   $update_fstab = 1;
 			print "- This system used the ISO: [$source_iso] for the local repo.\n";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - update_fstab: [$update_fstab]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "update_fstab", value1 => $update_fstab,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -1487,30 +1991,41 @@ sub convert_iso_to_files
 			{
 				# Good fstab data.
 				$fstab_data_ok = 1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - fstab_data_ok: [$fstab_data_ok]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "fstab_data_ok", value1 => $fstab_data_ok,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
 	close $file_handle;
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - new_fstab: [$new_fstab]\n" if $an->data->{sys}{debug} >= 3;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - fstab_data_ok: [$fstab_data_ok], update_fstab: [$update_fstab]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "new_fstab",     value1 => $new_fstab,
+		name2 => "fstab_data_ok", value2 => $fstab_data_ok,
+		name3 => "update_fstab",  value3 => $update_fstab,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($new_fstab) && ($fstab_data_ok) && ($update_fstab))
 	{
 		# Make a backup.
 		my $backup_file = $an->data->{path}{etc_fstab}.".$THIS_FILE";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - backup_file: [$backup_file]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "backup_file", value1 => $backup_file,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not -e $backup_file)
 		{
 			print "- Backing up original fstab file to: [$backup_file]\n";
 			my $shell_call = $an->data->{path}{rsync}." -aAX ".$an->data->{path}{etc_fstab}." $backup_file";
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			close $file_handle;
 		}
@@ -1530,33 +2045,45 @@ sub convert_iso_to_files
 	# Now, is the ISO mounted? If it is, unmount it. We'll remount it later, if needed.
 	my $unmount    = 0;
 	   $shell_call = $an->data->{path}{df}." -hP";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open ($file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /\s$img_directory$/i)
 		{
 			$unmount = 1;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - unmount: [$unmount]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "unmount", value1 => $unmount,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	close $file_handle;
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - unmount: [$unmount]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "unmount", value1 => $unmount,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($unmount)
 	{
 		# Unmount it.
 		my $shell_call = $an->data->{path}{umount}." $img_directory";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		close $file_handle;
 		print "- Unmounted: [$img_directory]\n";
@@ -1564,7 +2091,9 @@ sub convert_iso_to_files
 	
 	# Now, do I have data in the img directory?
 	my $packages_directory = $img_directory."/Packages";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - packages_directory: [$packages_directory]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "packages_directory", value1 => $packages_directory,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $packages_directory)
 	{
 		print "- The RPM repo source appears to be ready to receive updates.\n";
@@ -1581,24 +2110,32 @@ sub convert_iso_to_files
 		# What's the ISO file and path?
 		my $iso_file   = "";
 		my $shell_call = $an->data->{path}{ls}." $iso_directory";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /\.iso$/i)
 			{
 				# Found the ISO
 				$iso_file = $iso_directory."/".$line;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - iso_file: [$iso_file]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "iso_file", value1 => $iso_file,
+				}, file => $THIS_FILE, line => __LINE__});
 				last;
 			}
 		}
 		close $file_handle;
 		
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - iso_file: [$iso_file]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "iso_file", value1 => $iso_file,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not $iso_file)
 		{
 			print "[ Error ] - Failed to find the original Anvil! ISO, and the img directory: [$img_directory] is empty, so we can't rebuild the RPM repo.\n";
@@ -1608,17 +2145,24 @@ sub convert_iso_to_files
 		{
 			print "- Temporarily mounting the original ISO: [$iso_file] at: [$temporary_mount]\n";
 			my $shell_call = $an->data->{path}{mount}." -o loop $iso_file $temporary_mount";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			close $file_handle;
 			
 			my $source_check = $temporary_mount."/Packages";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "source_check", value1 => $source_check,
+			}, file => $THIS_FILE, line => __LINE__});
 			if (-e $source_check)
 			{
 				print "- Mounted successfully. Copying source to: [$img_directory]";
@@ -1627,13 +2171,17 @@ sub convert_iso_to_files
 			
 			print "- Done, unmounting ISO.\n";
 			$shell_call = $an->data->{path}{umount}." $temporary_mount";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
 			open ($file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			close $file_handle;
 			
@@ -1652,22 +2200,30 @@ sub get_os_type
 	
 	my $os_type    = "";
 	my $shell_call = $an->data->{path}{'os_release'};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or die __LINE__."; [ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /Red Hat Enterprise Linux Server/i)
 		{
 			$os_type = "rhel";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - os_type: [$os_type]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "os_type", value1 => $os_type,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /CentOS/i)
 		{
 			$os_type = "centos";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - os_type: [$os_type]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "os_type", value1 => $os_type,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	close $file_handle;
@@ -1684,13 +2240,17 @@ sub cache_updated_rpms
 	print "- Caching updated RPMs...\n";
 	my $rpm_files  = [];
 	my $shell_call = $an->data->{path}{find}." ".$an->data->{path}{yum_cache};
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^(\/.*?\.rpm)$/)
 		{
 			my $rpm = $1;
@@ -1706,17 +2266,21 @@ sub cache_updated_rpms
 		next if -e $target_file;
 		print "- Caching: [$rpm_file]\n";
 		my $shell_call = $an->data->{path}{rsync}." -a $rpm_file ".$an->data->{path}{rpm_cache}."/";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		close $file_handle;
 	}
-	print "- Done. RPMs are now stored in: [".$an->data->{path}{rpm_cache}."/]\n\n";
+	print "- Done. RPMs are now stored in: [".$an->data->{path}{rpm_cache}."/]\n";
 	
 	return(0);
 }
@@ -1728,7 +2292,9 @@ sub download_os_updates
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "download_os_updates" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $an->data->{path}{yum}." -y update --downloadonly";
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	print "/-----[ Command output ]------------------------------------------------------\n";
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
@@ -1763,13 +2329,17 @@ sub manage_scancore
 		print "- Disabling ScanCore...\n";
 		my $waiting    = 1;
 		my $shell_call = $an->data->{path}{ScanCore}." --disable";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		close $file_handle;
 		
@@ -1779,14 +2349,18 @@ sub manage_scancore
 		{
 			my $pid_seen   = 0;
 			my $shell_call = $an->data->{path}{ScanCore}." --status";
-			print "\n".$THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
 				my $line = $_;
 				# NOTE: Don't parse the string text, it could be in whatever language.
-				print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ /-.*?\[(\d+)\]$/)
 				{
 					$pid_seen = 1;
@@ -1826,13 +2400,17 @@ sub manage_scancore
 		print "- Enabling ScanCore...\n";
 		my $waiting    = 1;
 		my $shell_call = $an->data->{path}{ScanCore}." --enable";
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		close $file_handle;
 		print "- Done.\n";
@@ -1851,12 +2429,17 @@ sub download_and_extract_source
 	
 	# Download the URL to path::temp_cache.
 	my $out_file = $an->data->{path}{temp_cache}."/".$an->data->{sys}{striker_zip_file};
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - url: [$url], out_file: [$out_file]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "url",      value1 => $url,
+		name2 => "out_file", value2 => $out_file,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Extract the source
 	   $out_file     = download_file($an, $url, $out_file, 0644);
 	my $extract_root = extract_file($an, $out_file);
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - extract_root: [$extract_root]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "extract_root", value1 => $extract_root,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $extract_root)
 	{
 		# Failed to download
@@ -1884,7 +2467,9 @@ sub rsync_data
 	#rsync -av striker-update/temp/striker-2.0.0b-rc8/* striker-update/source
 	my $copy_count = 0;
 	my $shell_call = $an->data->{path}{rsync}." -avAX $source $destination";
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{debug} < 3)
 	{
 		print "- Progress: [";
@@ -1897,7 +2482,9 @@ sub rsync_data
 		$copy_count++;
 		if ($an->data->{sys}{debug} >= 3)
 		{
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n"
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (not $copy_count % 10)
 		{
@@ -1933,7 +2520,9 @@ sub extract_file
 	
 	print "- Extracting: [$extract]\n";
 	my $shell_call = $an->data->{path}{tar}." -C ".$an->data->{path}{temp_cache}." -xvf $extract";
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($extract =~ /\.zip$/)
 	{
 		$shell_call = $an->data->{path}{unzip}." -o -d ".$an->data->{path}{temp_cache}." $extract";
@@ -1941,7 +2530,9 @@ sub extract_file
 	my $extract_root  = "";
 	my $start_time    = time;
 	my $extract_count = 0;
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 2;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{debug} < 3)
 	{
 		print "- Progress: [";
@@ -1953,7 +2544,9 @@ sub extract_file
 		my $line = $_;
 		if ($an->data->{sys}{debug} >= 3)
 		{
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n"
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if (($line =~ / creating:/i) or ($line =~ / inflating:/) or ($line =~ / extracting:/))
 		{
@@ -2005,13 +2598,17 @@ sub clear_temp
 	
 	print "Clearing out the old temporary directory contents (if any)...\n";
 	my $shell_call = $an->data->{path}{rm}." -rf ".$an->data->{path}{temp_cache}."/*";
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
 	print "- Done.\n\n";
@@ -2075,7 +2672,12 @@ sub setup_cache
 	$an->data->{path}{rpm_cache}     = $an->data->{path}{current_dir}."/".$an->data->{path}{updates}{rpms};
 	$an->data->{path}{striker_cache} = $an->data->{path}{current_dir}."/".$an->data->{path}{updates}{striker};
 	$an->data->{path}{temp_cache}    = $an->data->{path}{current_dir}."/".$an->data->{path}{updates}{temp};
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - path::current_dir: [".$an->data->{path}{current_dir}."], path::rpm_cache: [".$an->data->{path}{rpm_cache}."], path::striker_cache: [".$an->data->{path}{striker_cache}."], path::temp_cache: [".$an->data->{path}{temp_cache}."]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "path::current_dir",   value1 => $an->data->{path}{current_dir},
+		name2 => "path::rpm_cache",     value2 => $an->data->{path}{rpm_cache},
+		name3 => "path::striker_cache", value3 => $an->data->{path}{striker_cache},
+		name4 => "path::temp_cache",    value4 => $an->data->{path}{temp_cache},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if (-e $an->data->{path}{rpm_cache})
 	{
@@ -2085,13 +2687,17 @@ sub setup_cache
 	{
 		print "- Creating RPM cache: [".$an->data->{path}{rpm_cache}."]\n";
 		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{rpm_cache};
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		close $file_handle;
 	}
@@ -2103,13 +2709,17 @@ sub setup_cache
 	{
 		print "- Creating Striker cache: [".$an->data->{path}{striker_cache}."]\n";
 		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{striker_cache};
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		close $file_handle;
 	}
@@ -2121,13 +2731,17 @@ sub setup_cache
 	{
 		print "- Creating working cache: [".$an->data->{path}{temp_cache}."]\n";
 		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{temp_cache};
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		close $file_handle;
 	}
@@ -2144,49 +2758,67 @@ sub get_latest_version
 	
 	my $set        = 0;
 	my $shell_call = $an->data->{path}{curl}." 2>/dev/null ".$an->data->{url}{striker_latest};
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^striker:(http.*)$/)
 		{
 			$an->data->{url}{striker_default} = $1;
 			$set                          = 1;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - url::striker_default: [".$an->data->{url}{striker_default}."]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "url::striker_default", value1 => $an->data->{url}{striker_default},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /^master:(http.*)$/)
 		{
 			$an->data->{url}{striker_master} = $1;
 			$set                          = 1;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - url::striker_master: [".$an->data->{url}{striker_master}."]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "url::striker_master", value1 => $an->data->{url}{striker_master},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	close $file_handle;
 	
-	print $THIS_FILE." ".__LINE__."; [ Debug ] - set: [$set]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "set", value1 => $set,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($set)
 	{
 		if ($an->data->{url}{striker_default} =~ /.*\/(.*)\.zip$/)
 		{
 			$an->data->{sys}{install_version} = $1;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::install_version: [".$an->data->{sys}{install_version}."]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::install_version", value1 => $an->data->{sys}{install_version},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($an->data->{url}{striker_default} =~ /.*\/(.*)\.tar.gz$/)
 		{
 			$an->data->{sys}{install_version} = $1;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::install_version: [".$an->data->{sys}{install_version}."]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::install_version", value1 => $an->data->{sys}{install_version},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($an->data->{url}{striker_default} =~ /.*\/(.*)\.tar.bz2$/)
 		{
 			$an->data->{sys}{install_version} = $1;
-			print $THIS_FILE." ".__LINE__."; [ Debug ] - sys::install_version: [".$an->data->{sys}{install_version}."]\n" if $an->data->{sys}{debug} >= 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::install_version", value1 => $an->data->{sys}{install_version},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		$an->data->{path}{tarball_dir} = "striker-".$an->data->{sys}{install_version};
-		print $THIS_FILE." ".__LINE__."; [ Debug ] - path::tarball_dir: [".$an->data->{path}{tarball_dir}."]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::tarball_dir", value1 => $an->data->{path}{tarball_dir},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -2208,18 +2840,24 @@ sub download_file
 	my $out_file   = $target;
 	my $size       = 0;
 	my $shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" 2>/dev/null --head $source";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
 		   $line =~ s/\r//;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /Content-Length: (\d+)$/)
 		{
 			$size = $1;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - size: [$size]\n" if $an->data->{sys}{debug} >= 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "size", value1 => $size,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	close $file_handle;
@@ -2245,13 +2883,17 @@ sub download_file
 	### NOTE: Do NOT use 2>&1 as this pushes the download progress into the download file. If 
 	###       debug is enabled, we'll dump the progress to the screen.
 	$shell_call = $an->data->{path}{curl}." --user-agent \"striker-update/2.0\" $source 2>/dev/null > $target";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open ($file_handle, "$shell_call |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
 	
@@ -2261,7 +2903,7 @@ sub download_file
 		# If the file is less than 1024 bytes, read it in to make sure it is not a 
 		# failure message.
 		my $size = (stat($target))[7];
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is: [$size] bytes.\n" if $an->data->{sys}{debug} >= 2;
+		print "- Downloaded file: [$target] is: [$size] bytes.\n";
 		if ($size < 1024)
 		{
 			# Is it binary or text? If it is text, make sure it is not a failure message.
@@ -2277,19 +2919,23 @@ sub download_file
 			{
 				# Yay!
 				$file_ok = 1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is binary, good.\n" if $an->data->{sys}{debug} >= 3;
+				print "- Downloaded file: [$target] is binary, good.\n";
 			}
 			else
 			{
 				# Read it in.
 				my $shell_call = $target;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $an->data->{sys}{debug} >= 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "<$shell_call") or die __LINE__."; [ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
 				while(<$file_handle>)
 				{
 					chomp;
 					my $line = $_;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $an->data->{sys}{debug} >= 3;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
 					if ($line =~ /Could not resolve host/i)
 					{
 						# Bad URL
@@ -2314,8 +2960,7 @@ sub download_file
 						unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it is a failed download message, not the file). The error was: $!\n";
 						
 						# Download the new source
-						print "- Redirected to: [$new_source].\n";
-						print "$THIS_FILE ".__LINE__."; [ Debug ] - Redirected source: [$source]: to: [$new_source].\n" if $an->data->{sys}{debug} >= 3;
+						print "- Redirected source: [$source]: to: [$new_source].\n";
 						$out_file = download_file($an, $new_source, $target, $mode);
 						return($out_file);
 					}
@@ -2327,10 +2972,13 @@ sub download_file
 		{
 			# Too big to be a failure, so we're probably good.
 			$file_ok = 1;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - Downloaded file: [$target] is large enough that analysis is not required.\n" if $an->data->{sys}{debug} >= 3;
+			print "- Downloaded file: [$target] is large enough that analysis is not required.\n";
 		}
 	}
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - target: [$target], file_ok: [$file_ok]\n" if $an->data->{sys}{debug} >= 2;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",  value1 => $target,
+		name2 => "file_ok", value2 => $file_ok,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($file_ok)
 	{
 		my $duration = time - $start_time;

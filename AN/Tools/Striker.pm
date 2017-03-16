@@ -10617,13 +10617,13 @@ sub _parse_clustat_xml
 			else
 			{
 				# C'est le peer.
-				$an->data->{node}{$node_name}{peer}{name} = $this_node;
-				$an->data->{node}{peer}{cman}             = $cman_up;
-				$an->data->{node}{peer}{rgmanager}        = $rgmanager_up;
+				$an->data->{node}{$node_name}{peer}{name}      = $this_node;
+				$an->data->{node}{$node_name}{peer}{cman}      = $cman_up;
+				$an->data->{node}{$node_name}{peer}{rgmanager} = $rgmanager_up;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "node::${node_name}::peer::name", value1 => $an->data->{node}{$node_name}{peer}{name}, 
-					name2 => "node::peer::cman",               value2 => $an->data->{node}{peer}{cman}, 
-					name3 => "node::peer::rgmanager",          value3 => $an->data->{node}{peer}{rgmanager}, 
+					name1 => "node::${node_name}::peer::name",      value1 => $an->data->{node}{$node_name}{peer}{name}, 
+					name2 => "node::${node_name}::peer::cman",      value2 => $an->data->{node}{peer}{cman}, 
+					name3 => "node::${node_name}::peer::rgmanager", value3 => $an->data->{node}{peer}{rgmanager}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
