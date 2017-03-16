@@ -60,81 +60,83 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 my $time = time;
 
 my $an = AN::Tools->new({
-	data		=> {
-		copy		=>	{
-			all		=>	{
-				'tools/*'	=>	'/sbin/striker/',
-				'ScanCore'	=>	'/sbin/striker/',
-				'cgi-bin/Data' =>	'/sbin/striker/',
-				'AN'		=>	'/usr/share/perl5/',
+	data			=> {
+		copy			=>	{
+			all			=>	{
+				'tools/*'		=>	'/sbin/striker/',
+				'ScanCore'		=>	'/sbin/striker/',
+				'cgi-bin/Data'		=>	'/sbin/striker/',
+				'AN'			=>	'/usr/share/perl5/',
 			},
-			dashboard	=>	{
-				'cgi-bin'	=>	'/var/www/',
-				'html'		=>	'/var/www/',
+			dashboard		=>	{
+				'cgi-bin'		=>	'/var/www/',
+				'html'			=>	'/var/www/',
 			},
 		},
-		path		=>	{
+		path			=>	{
 			# Some of the paths to executables weren't defined in older versions of Tools.pm.
-			createrepo	=>	"/usr/bin/createrepo",
-			curl		=>	"/usr/bin/curl",
-			current_dir	=>	$ENV{PWD},
-			etc_fstab	=>	"/etc/fstab",
+			'anvil-migrate-server'	=>	"/sbin/striker/anvil-migrate-server",
+			'anvil-safe-start'	=>	"/sbin/striker/anvil-safe-start",
+			createrepo		=>	"/usr/bin/createrepo",
+			curl			=>	"/usr/bin/curl",
+			current_dir		=>	$ENV{PWD},
+			etc_fstab		=>	"/etc/fstab",
 			# This file is checked to verify that we're on a Striker dashboard.
-			find		=>	"/bin/find",
-			img_directory	=>	"/var/www/html/#!os_type!#/x86_64/img",
-			iso_directory	=>	"/var/www/html/#!os_type!#/x86_64/iso",
-			mount		=>	"/bin/mount",
+			find			=>	"/bin/find",
+			img_directory		=>	"/var/www/html/#!os_type!#/x86_64/img",
+			iso_directory		=>	"/var/www/html/#!os_type!#/x86_64/iso",
+			mount			=>	"/bin/mount",
 			# This is needed for some legacy support
-			nodes		=>	{
-				'anvil-safe-start' =>	"/sbin/striker/anvil-safe-start",
+			nodes			=>	{
+				'anvil-safe-start'	=>	"/sbin/striker/anvil-safe-start",
 			},
-			os_release	=>	"/etc/redhat-release",
-			reboot		=>	"/sbin/reboot",
-			striker		=>	"/var/www/cgi-bin/striker",
-			tar		=>	"/bin/tar",
-			tarball_dir	=>	"",
-			unzip		=>	"/usr/bin/unzip",
-			umount		=>	"/bin/umount",
+			os_release		=>	"/etc/redhat-release",
+			reboot			=>	"/sbin/reboot",
+			striker			=>	"/var/www/cgi-bin/striker",
+			tar			=>	"/bin/tar",
+			tarball_dir		=>	"",
+			unzip			=>	"/usr/bin/unzip",
+			umount			=>	"/bin/umount",
 			# These are appended to 'path::current_dir'
-			updates		=>	{
+			updates			=>	{
 				# If this directory exists and has RPMs in it, we'll use what is in it to 
 				# update the local repository before doing the OS update. Once the update is
 				# done, all downloaded RPMs will be copied into this directory
-				rpms		=>	$THIS_FILE."/rpms",
+				rpms			=>	$THIS_FILE."/rpms",
 				# The striker source files will be saved in this directory. If there is no
 				# internet access to download the latest version, files found in here will be
 				# used instead.
-				striker		=>	$THIS_FILE."/source",
+				striker			=>	$THIS_FILE."/source",
 				# This is used to store temporary files
-				temp		=>	$THIS_FILE."/temp",
+				temp			=>	$THIS_FILE."/temp",
 			},
-			yum_cache	=>	"/var/cache/yum",
+			yum_cache		=>	"/var/cache/yum",
 		},
-		url		=>	{
+		url			=>	{
 			# By default, we will read the latest release from 'striker_latest'. If, however, we can't
 			# access that file, we'll use 'striker_default'. Optionally, the user can request the latest
 			# master with '--master', in which case we will download the 'striker_master' URL. In all
 			# cases, the downloaded file will be saved as 'striker_zip_file'.
-			striker_default	=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-rc8.zip",
-			striker_latest	=>	"https://www.alteeve.com/an-repo/striker_latest.txt",
-			striker_master	=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
-			support		=>	"https://alteeve.com/w/Support",
-			ping_targets	=>	"8.8.8.8,google.com,redhat.com,alteeve.com",
+			striker_default		=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-rc8.zip",
+			striker_latest		=>	"https://www.alteeve.com/an-repo/striker_latest.txt",
+			striker_master		=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
+			support			=>	"https://alteeve.com/w/Support",
+			ping_targets		=>	"8.8.8.8,google.com,redhat.com,alteeve.com",
 		},
-		switches	=>	{
-			offline		=>	0,
-			'gather-only'	=>	0,
+		switches		=>	{
+			offline			=>	0,
+			'gather-only'		=>	0,
 		},
-		sys		=>	{
-			debug		=>	2,
-			install_master	=>	0,
-			install_version	=>	"",
-			update		=>	1,
-			offline		=>	0,
-			ping_attempts	=>	3,
-			reboot_needed	=>	0,
-			reboot_timeout	=>	600,
-			striker_zip_file =>	"striker.zip",
+		sys			=>	{
+			debug			=>	2,
+			install_master		=>	0,
+			install_version		=>	"",
+			update			=>	1,
+			offline			=>	0,
+			ping_attempts		=>	3,
+			reboot_needed		=>	0,
+			reboot_timeout		=>	600,
+			striker_zip_file	=>	"striker.zip",
 		},
 	},
 });
@@ -390,7 +392,7 @@ sub update_all
 				name2 => "anvil_uuid", value2 => $anvil_uuid,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			print "- Testing access to the nodes in the Anvil! system: [$anvil_name] (UUID: [$anvil_uuid])\n";
+			print "- Testing access to the nodes in the Anvil! system: [$anvil_name]\n";
 			$anvils->{$anvil_name} = $anvil_uuid;
 			$error = check_anvil($an, $anvil_uuid, $error, 1);
 		}
@@ -640,20 +642,20 @@ sub update_all
 	}
 	print "- ScanCore is stopped now on all systems. Ready to proceed.\n\n";
 	
-	### Do Work Here...
-# 	update_target($an, "dashboard", "local");
-# 	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
-# 	{
-# 		my $password = $dashboards->{$dashboard};
-# 		update_target($an, "dashboard", $dashboard, 22, $password);
-# 	}
+	# Update the dashboards.
+	update_target($an, "dashboard", "local");
+	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
+	{
+		my $password = $dashboards->{$dashboard};
+		update_target($an, "dashboard", $dashboard, 22, $password);
+	}
 	
+	# Update the Anvil! systems.
 	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
 	{
 		my $anvil_uuid = $anvils->{$anvil_name};
 		update_nodes($an, $anvil_uuid);
 	}
-	die;
 	
 	# Re-enable ScanCore now.
 	print "ScanCore will now be restarted on all machines..\n";
@@ -733,7 +735,7 @@ sub update_all
 	print "- Enabling the local ScanCore and waiting for it to exit...\n";
 	manage_scancore($an, "enable");
 	
-	print "- Done!\n\n";
+	print "The update process has completed.\n\n";
 	
 	return(0);
 }
@@ -780,6 +782,20 @@ sub update_nodes
 		}
 		else
 		{
+			if (($an->data->{sys}{anvil}{node1}{in_cluster}) && ($an->data->{sys}{anvil}{node2}{in_cluster}))
+			{
+				foreach my $resource (sort {$a cmp $b} keys %{$an->data->{drbd}{resource}})
+				{
+					if ($an->data->{drbd}{resource}{$resource}{eta_to_sync})
+					{
+						print "- Estimated resync time for resource: [$resource] is: [".$an->data->{drbd}{resource}{$resource}{eta_to_sync}."] seconds.\n";
+					}
+					else
+					{
+						print "- Replicated storage resource: [$resource] is up to date.\n";
+					}
+				}
+			}
 			sleep 10;
 		}
 	}
@@ -840,9 +856,10 @@ sub update_nodes
 		}
 	}
 	
-	my $first_target = "node2";
-	my $node1_count  = @{$node1_servers};
-	my $node2_count  = @{$node2_servers};
+	my $first_target  = "node2";
+	my $second_target = "node1";
+	my $node1_count   = @{$node1_servers};
+	my $node2_count   = @{$node2_servers};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_count", value1 => $node1_count,
 		name2 => "node2_count", value2 => $node2_count,
@@ -867,31 +884,38 @@ sub update_nodes
 	{
 		print "- There are servers on both nodes. We will move them to node 1 and update node 2 first.\n";
 	}
-	die;
-=cut
 	
-	
-	
-	
-	
-	
-	wait_for_resync($an);
-	
-	foreach my $node_key ("node1", "node2")
+	# If needed, migrate server off.
+	my $server_array = $node2_servers;
+	my $peer_array   = $node1_servers;
+	my $node_key     = "node2";
+	my $peer_key     = "node1";
+	my $say_node     = $an->data->{sys}{anvil}{node1}{name};
+	my $say_peer     = $an->data->{sys}{anvil}{node2}{name};
+	if ($first_target eq "node1")
 	{
-		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
-		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node_name", value1 => $node_name,
-			name2 => "node_uuid", value2 => $node_uuid,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# I reload and rescan each loop in case I am updating two or more Anvil! systems
-		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
-		
-		my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
-		my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
-		my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+		$server_array = $node1_servers;
+		$peer_array   = $node2_servers;
+		$node_key     = "node1";
+		$peer_key     = "node2";
+		$say_node     = $an->data->{sys}{anvil}{node2}{name};
+		$say_peer     = $an->data->{sys}{anvil}{node1}{name};
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "node_key", value1 => $node_key,
+		name2 => "peer_key", value2 => $peer_key,
+		name3 => "say_node", value3 => $say_node,
+		name4 => "say_peer", value4 => $say_peer,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password = $an->data->{sys}{anvil}{$node_key}{password};
+	foreach my $server (sort {$a cmp $b} @{$server_array})
+	{
+		print "- Migrating: [$server] to: [$say_peer]\n";
+		print "/-----[ Command output ]------------------------------------------------------\n";
+		my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server ".$server;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "port",       value2 => $port,
@@ -900,6 +924,7 @@ sub update_nodes
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "password", value1 => $password,
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target     => $target,
 			port       => $port, 
@@ -911,149 +936,219 @@ sub update_nodes
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
+			print "| $line\n";
 		}
+		
+		push @{$peer_array}, $server;
+		print "\\-----------------------------------------------------------------------------\n";
 	}
-=cut;
+	sleep 2;
+	### TODO: Verify all servers are off.
 	
-	
-	return(0);
-}
-
-# This will loop until DRBD has resync'ed fully.
-sub wait_for_resync
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "wait_for_resync" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-=cut	# I don't need this anymore.
-
-	# We always use node 1.
-	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
-	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
-	my $target     = $an->data->{sys}{anvil}{node1}{use_ip};
-	my $port       = $an->data->{sys}{anvil}{node1}{use_port};
-	my $password   = $an->data->{sys}{anvil}{node1}{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "node1_name", value1 => $node1_name, 
-		name2 => "node2_name", value2 => $node2_name, 
-		name3 => "target",     value3 => $target, 
-		name4 => "port",       value4 => $port, 
+	### NOTE: We don't use 'anvil-safe-stop' because some old versions didn't support '--no-reboot'.
+	# Withdraw the node from the Anvil!
+	print "- Withdrawing: [$say_node] from the Anvil!.\n";
+	print "/-----[ Command output ]------------------------------------------------------\n";
+	my $shell_call = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "port",       value2 => $port,
+		name3 => "shell_call", value3 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-		name1 => "password", value1 => $password, 
+		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Make sure both nodes are online.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online}, 
-		name2 => "sys::anvil::node2::online", value2 => $an->data->{sys}{anvil}{node2}{online}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $an->data->{sys}{anvil}{node1}{online}) or (not $an->data->{sys}{anvil}{node2}{online}))
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
+	});
+	foreach my $line (@{$return})
 	{
-		print "- Waiting for both nodes to come online...\n";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		print "| $line\n";
+	}
+	print "\\-----------------------------------------------------------------------------\n";
+	undef $return;
+	### TODO: Verify nodes are withdrawn.
+	
+	# All servers migrated. Update the node. If the node reboots, this won't return until it is 
+	# accessible again.
+	my ($rebooted) = update_target($an, "node", $target, $port, $password);
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "rebooted", value1 => $rebooted,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($rebooted)
+	{
+		# We need to wait for the storage to be fully up to date.
+		print "- The node was rebooted. We will now wait for the node to rejoin the Anvil!\n";
+		print "  system and for its storage to be fully synchronized before updating the \n";
+		print "  other node. Please be patient!\n";
+		
 		my $waiting = 1;
 		while ($waiting)
 		{
-			sleep 10;
-			print "- Checking if both nodes are up at: [".$an->Get->date_and_time({split_date_time => 0})."]\n";
-			$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}, short_scan => 1});
-			$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}, short_scan => 1});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online}, 
-				name2 => "sys::anvil::node2::online", value2 => $an->data->{sys}{anvil}{node2}{online}, 
+			print "- Checking membership and replicated storage at: [".$an->Get->date_and_time({split_date_time => 0})."]\n";
+			my $error = check_anvil($an, $anvil_uuid, 0, 0);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "error", value1 => $error, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if (not $an->data->{sys}{anvil}{node1}{online})
+			
+			if (not $error)
 			{
-				print "- Node 1: [".$an->data->{sys}{anvil}{node1}{name}."] is not yet online.\n";
-			}
-			elsif (not $an->data->{sys}{anvil}{node1}{online})
-			{
-				print "- Node 2: [".$an->data->{sys}{anvil}{node2}{name}."] is not yet online.\n";
+				print "- Ready!\n";
+				$waiting = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "waiting", value1 => $waiting, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				print "- Both nodes are now online. Doing a full scan and then proceeding.\n";
-				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}});
-				print "- Node 1: [$node1_name] scanned.\n";
-				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}});
-				print "- Node 2: [$node2_name] scanned.\n";
-				$waiting = 0;
-			}
-		}
-	}
-	else
-	{
-		print "- Both nodes are online.\n";
-	}
-	
-	# Both nodes are online now, so now we're going to wait for both storage services to be in the
-	# 'started' state.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node::${node1_name}::me::rgmanager", value1 => $an->data->{node}{$node1_name}{me}{rgmanager}, 
-		name2 => "node::${node2_name}::me::rgmanager", value2 => $an->data->{node}{$node2_name}{me}{rgmanager}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $an->data->{node}{$node1_name}{me}{rgmanager}) or (not $an->data->{node}{$node2_name}{me}{rgmanager}))
-	{
-		print "- Waiting for both nodes to join the Anvil! system.\n";
-		my $waiting = 1;
-		while ($waiting)
-		{
-			sleep 10;
-			### NOTE: We'll do a full scan of node 1 and check it's view on things to save some 
-			###       time.
-			print "- Checking if both nodes cluster members at: [".$an->Get->date_and_time({split_date_time => 0})."]\n";
-			$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}});
-			
-			# NOTE: There was a bug for a while where '$an->data->{node}{peer}{rgmanager}' was 
-			#       being set instead of '$an->data->{node}{node1}{peer}{rgmanager}'. This 
-			#       handles that case.
-			if ((exists $an->data->{node}{peer}{rgmanager}) && (not defined $an->data->{node}{$node1_name}{peer}{rgmanager}))
-			{
-				$an->data->{node}{$node1_name}{peer}{rgmanager} = $an->data->{node}{peer}{rgmanager};
-			}
-			
-			# Not check that both nodes show rgmanager as being online.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "node::${node1_name}::me::rgmanager",   value1 => $an->data->{node}{$node1_name}{me}{rgmanager}, 
-				name2 => "node::${node1_name}::peer::rgmanager", value2 => $an->data->{node}{$node1_name}{peer}{rgmanager}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if (not $an->data->{node}{$node1_name}{me}{rgmanager})
-			{
-				print "- Node 1: [".$an->data->{sys}{anvil}{node1}{name}."] is not yet a member of the Anvil!.\n";
-			}
-			elsif (not $an->data->{node}{$node1_name}{peer}{rgmanager})
-			{
-				
-				print "- Node 1: [".$an->data->{sys}{anvil}{node1}{name}."] is not yet a member of the Anvil!.\n";
-			}
-			else
-			{
-				print "- Both nodes are now members of the Anvil!. Doing a full scan and then proceeding.\n";
-				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}});
-				print "- Node 1: [$node1_name] scanned.\n";
-				$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}});
-				print "- Node 2: [$node2_name] scanned.\n";
-				$waiting = 0;
+				if (($an->data->{sys}{anvil}{node1}{in_cluster}) && ($an->data->{sys}{anvil}{node2}{in_cluster}))
+				{
+					foreach my $resource (sort {$a cmp $b} keys %{$an->data->{drbd}{resource}})
+					{
+						if ($an->data->{drbd}{resource}{$resource}{eta_to_sync})
+						{
+							print "- Estimated resync time for resource: [$resource] is: [".$an->data->{drbd}{resource}{$resource}{eta_to_sync}."] seconds.\n";
+						}
+						else
+						{
+							print "- Replicated storage resource: [$resource] is up to date.\n";
+						}
+					}
+				}
+				sleep 10;
 			}
 		}
 	}
 	
-	# Now wait for all DRBD resource to be UpToDate on both nodes.
-	print "- Checking that all replicated storage resources are synchronized.\n";
-	my $all_uptodate = 0;
-	# The resource list is set by the config, so we don't need to worry about missing any when DRBD is
-	# stopped.
-	foreach my $resource (sort {$a cmp $b} keys %{$an->data->{node}{$node1_name}{drbd}{resource}})
+	print "- Ready to update the second node!\n";
+	$target   = $an->data->{sys}{anvil}{$peer_key}{use_ip};
+	$port     = $an->data->{sys}{anvil}{$peer_key}{use_port};
+	$password = $an->data->{sys}{anvil}{$peer_key}{password};
+	# Migrate the servers over to the now-upgraded node.
+	foreach my $server (sort {$a cmp $b} @{$peer_array})
 	{
-		# Make sure I have a disk state from both nodes.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "drbd::${resource}::node::${node1_name}::disk_state", value1 => $an->data->{drbd}{$resource}{node}{$node1_name}{disk_state}, 
-			name2 => "drbd::${resource}::node::${node2_name}::disk_state", value2 => $an->data->{drbd}{$resource}{node}{$node2_name}{disk_state}, 
+		print "- Migrating: [$server]...\n";
+		print "/-----[ Command output ]------------------------------------------------------\n";
+		my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server ".$server;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "port",       value2 => $port,
+			name3 => "shell_call", value3 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target     => $target,
+			port       => $port, 
+			password   => $password,
+			shell_call => $shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			print "| $line\n";
+		}
+		print "\\-----------------------------------------------------------------------------\n";
 	}
-	#$an->data->{node}{$node_name}{drbd}{resource}{$resource}{eta_to_sync}
-=cut
+	sleep 2;
+	### TODO: Verify all servers are off.
+	
+	### NOTE: We don't use 'anvil-safe-stop' because some old versions didn't support '--no-reboot'.
+	# Withdraw the node from the Anvil!
+	print "- Withdrawing: [$say_peer] from the Anvil!.\n";
+	print "/-----[ Command output ]------------------------------------------------------\n";
+	$shell_call = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "port",       value2 => $port,
+		name3 => "shell_call", value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		print "| $line\n";
+	}
+	print "\\-----------------------------------------------------------------------------\n";
+	undef $return;
+	### TODO: Verify nodes are withdrawn.
+	
+	# All servers migrated. Update the node. If the node reboots, this won't return until it is 
+	# accessible again.
+	($rebooted) = update_target($an, "node", $target, $port, $password);
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "rebooted", value1 => $rebooted,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($rebooted)
+	{
+		# We need to wait for the storage to be fully up to date.
+		print "- The node was rebooted. We will now wait for the node to rejoin the Anvil!\n";
+		print "  system and for its storage to be fully synchronized before updating the \n";
+		print "  other node. Please be patient!\n";
+		
+		my $waiting = 1;
+		while ($waiting)
+		{
+			print "- Checking membership and replicated storage at: [".$an->Get->date_and_time({split_date_time => 0})."]\n";
+			my $error = check_anvil($an, $anvil_uuid, 0, 0);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "error", value1 => $error, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (not $error)
+			{
+				print "- Ready!\n";
+				$waiting = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "waiting", value1 => $waiting, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				if (($an->data->{sys}{anvil}{node1}{in_cluster}) && ($an->data->{sys}{anvil}{node2}{in_cluster}))
+				{
+					foreach my $resource (sort {$a cmp $b} keys %{$an->data->{drbd}{resource}})
+					{
+						if ($an->data->{drbd}{resource}{$resource}{eta_to_sync})
+						{
+							print "- Estimated resync time for resource: [$resource] is: [".$an->data->{drbd}{resource}{$resource}{eta_to_sync}."] seconds.\n";
+						}
+						else
+						{
+							print "- Replicated storage resource: [$resource] is up to date.\n";
+						}
+					}
+				}
+				sleep 10;
+			}
+		}
+	}
+	print "- Second node has been upgraded.\n";
+	print "- Anvil!: [$anvil_name] has been upgraded!\n\n";
 	
 	return(0);
 }
@@ -1221,6 +1316,62 @@ sub update_target
 	}
 	print "- Done.\n\n\n";
 	
+	if ($type eq "node")
+	{
+		# Enable 'anvil-safe-start'.
+		print "Enabling 'anvil-safe-start'.\n";
+		$shell_call = $an->data->{path}{'anvil-safe-start'}." --enable";
+		print "/-----[ Command output ]------------------------------------------------------\n";
+		if ($target eq "local")
+		{
+			# Local call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+				print "| $line\n";
+			}
+			close $file_handle;
+		}
+		else
+		{
+			# Remote call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "port",       value2 => $port,
+				name3 => "shell_call", value3 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target     => $target,
+				port       => $port, 
+				password   => $password,
+				'close'    => 1,
+				shell_call => $shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1  => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				print "| $line\n";
+			}
+		}
+		print "\\-----------------------------------------------------------------------------\n";
+		print "- Done.\n\n";
+	}
+	
+	### TODO: If this is a dashboard, make sure we setuid the Striker wrappers.
+	
 	my $rebooted = 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "reboot_needed", value1 => $reboot_needed, 
@@ -1228,10 +1379,12 @@ sub update_target
 	if ($reboot_needed)
 	{
 		# Send the reboot command
+		print "Rebooting: [$target]... Please be patient.\n";
 		($rebooted) = reboot_target($an, $target, $port, $password);
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "rebooted", value1 => $rebooted, 
 		}, file => $THIS_FILE, line => __LINE__});
+		print "- Done!\n\n";
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1420,7 +1573,7 @@ sub check_anvil
 	{
 		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
 		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
-		print "- Doing a quick scan of: [$node_name] (UUID: [$node_uuid])]\n";
+		print "- Doing a quick scan of: [$node_name]\n";
 		
 		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
 		if ($an->data->{sys}{anvil}{$node_key}{online})
@@ -1436,7 +1589,7 @@ sub check_anvil
 	}
 	if (not $error)
 	{
-		$error = validate_cluster_and_storage($an, 0);
+		$error = validate_cluster_and_storage($an, $fatal);
 	}
 	
 	return($error);
@@ -1477,6 +1630,7 @@ sub validate_cluster_and_storage
 			}
 			else
 			{
+				print "- Replicated storage is still coming online.\n";
 				$error = 1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "error", value1 => $error,
@@ -1497,6 +1651,14 @@ sub validate_cluster_and_storage
 		}
 		else
 		{
+			if (not $an->data->{sys}{anvil}{node1}{in_cluster})
+			{
+				print "- Node 1 hasn't joined the Anvil! yet.\n";
+			}
+			else
+			{
+				print "- Node 2 hasn't joined the Anvil! yet.\n";
+			}
 			$error = 1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "error", value1 => $error,
@@ -1563,7 +1725,8 @@ sub check_cluster_and_storage
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{anvil}{$node_key}{in_cluster})
 	{
-		my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
+		my $this_resource = "";
+		my $shell_call    = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "port",       value2 => $port,
@@ -1584,6 +1747,15 @@ sub check_cluster_and_storage
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /(\d+): cs/)
+			{
+				$this_resource                                           = "r".$1;
+				$an->data->{drbd}{resource}{$this_resource}{eta_to_sync} = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "drbd::resource::${this_resource}::eta_to_sync", value1 => $an->data->{drbd}{resource}{$this_resource}{eta_to_sync}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
 			if ($line =~ / ds:(.*?)\/(.*?) /)
 			{
 				my $local_disk_state = $1;
@@ -1599,6 +1771,21 @@ sub check_cluster_and_storage
 						name1 => "sys::anvil::${node_key}::all_uptodate", value1 => $an->data->{sys}{anvil}{$node_key}{all_uptodate},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
+			}
+			
+			if ($line =~ /finish: (\d+):(\d+):(\d+)/)
+			{
+				my $hours   = $1;
+				my $minutes = $2;
+				my $seconds = $3;
+				$an->data->{drbd}{resource}{$this_resource}{eta_to_sync} = ($hours * 3600) + ($minutes * 60) + $seconds;
+				
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "hours",                                         value1 => $hours, 
+					name2 => "minutes",                                       value2 => $minutes, 
+					name3 => "seconds",                                       value3 => $seconds,
+					name4 => "drbd::resource::${this_resource}::eta_to_sync", value4 => $an->data->{drbd}{resource}{$this_resource}{eta_to_sync}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -1692,7 +1879,7 @@ sub gather_updated_rpms_from_anvil
 	}
 	
 	# If I am still alive, we've got a good Anvil!.
-	print "- Picking a node in the Anvil!: [$anvil_name] (UUID: [$anvil_uuid])\n";
+	print "- Picking a node in the Anvil!: [$anvil_name]\n";
 	$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
 	
 	my $use_node = "";
@@ -1700,7 +1887,7 @@ sub gather_updated_rpms_from_anvil
 	{
 		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
 		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
-		print "- Doing a quick scan of: [$node_name] (UUID: [$node_uuid])]\n";
+		print "- Doing a quick scan of: [$node_name]\n";
 		$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{$node_key}{uuid}, short_scan => 1});
 		if ($an->data->{sys}{anvil}{$node_key}{online})
 		{
