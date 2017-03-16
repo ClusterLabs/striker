@@ -168,7 +168,7 @@ $an->nice_exit({exit_code => 0});
 sub check_for_removed_files
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_for_removed_files", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_for_removed_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This should only ever run on a node in an Anvil!.
 	$an->data->{scancore}{i_am_a} = $an->Get->what_am_i();
@@ -428,7 +428,7 @@ sub check_for_removed_files
 sub check_libvirtd
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_libvirtd", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_libvirtd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $state = $an->System->daemon_boot_config({daemon => "libvirtd"});
 	my $rc3   = $state->{3};
@@ -460,11 +460,83 @@ sub check_libvirtd
 	return(0);
 }
 
+# This tries to resume a 'paused' server, which can happen sometimes when rgmanager tries to start a server.
+sub resume_server
+{
+	my ($an, $server_name) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "resume_server" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "server_name", value1 => "$server_name" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $server_state = "";
+	my $shell_call   = $an->data->{path}{virsh}." resume $server_name";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+	}
+	close $file_handle;
+	
+	sleep 2;
+	
+	$shell_call = $an->data->{path}{virsh}." --list all";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /^\d+ $server_name (.*)$/)
+		{
+			$server_state = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "server_name",  value1 => $server_name, 
+				name2 => "server_state", value2 => $server_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($server_state ne "paused")
+			{
+				# Send an alert
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0004",
+					alert_message_key	=>	"scan_server_message_0018",
+					alert_message_variables	=>	{
+						server_name		=>	$server_name, 
+						server_state		=>	$server_state,
+					},
+				});
+			}
+			
+			last;
+		}
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "server_state", value1 => $server_state, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($server_state);
+}
+
 # This looks for servers locally and on the peer and reads in their data.
 sub scan_servers
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_servers", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will get set to '1' if we find any server info locally or on the peer (if we can find our 
 	# peer).
@@ -524,6 +596,21 @@ sub scan_servers
 			{
 				my $server_name  = $1;
 				my $server_state = $2;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "server_name",  value1 => $server_name, 
+					name2 => "server_state", value2 => $server_state, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If the 'state' is 'paused', try and resume it.
+				if ($server_state eq "paused")
+				{
+					$server_state = resume_server($an, $server_name);
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "server_name",  value1 => $server_name, 
+						name2 => "server_state", value2 => $server_state, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
 				$an->data->{server_name}{$server_name} = {
 					host	=>	$an->data->{sys}{local_node},
 					'state'	=>	$server_state,
@@ -805,7 +892,7 @@ sub scan_servers
 sub find_changes
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Loop through each server
 	foreach my $server_uuid (sort {$a cmp $b} keys %{$an->data->{server_uuid}})
@@ -1114,7 +1201,7 @@ INSERT INTO
 sub read_last_scan
 {
 	my ($an, $server_uuid) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "server_uuid", value1 => "$server_uuid" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1211,7 +1298,7 @@ WHERE
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print $an->String->get({key => "${THIS_FILE}_message_0002"})."\n";
 

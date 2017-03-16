@@ -108,6 +108,7 @@ Old: [#!variable!old!#]
 		<key name="scan_server_message_0015">The server: [#!variable!server_name!#] with UUID: [#!variable!server_uuid!#] wasn't found in this scan, ignoring it.</key>
 		<key name="scan_server_message_0016">The server: [#!variable!server_name!#]'s definition file: [#!variable!definition_file!#] wasn't found. Skipping missing ISO file check.</key>
 		<key name="scan_server_message_0017">The server: [#!variable!server_name!#]'s definition file: [#!variable!definition_file!#] exisits, but it appears the XML data inside it is missing or incomplete. Skipping missing ISO file check.</key>
+		<key name="scan_server_message_0018">The server: [#!variable!server_name!#] was in a paused state, which should never happen. A 'resume' was attempted and the new state is: [#!variable!server_state!#].</key>
 		
 		<!-- These are state strings added to other strings. -->
 		<key name="scan_server_state_0001">Live</key>

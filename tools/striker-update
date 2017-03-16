@@ -9,7 +9,7 @@
 ### NOTE: This program doesn't use translated strings because it is too likely that the old version won't 
 #         have all the strings we need, which would cause String->get() to error out.
 #         
-### TODO: Make sure this throws useful errors if peer dashboards or nodes are offline.
+### TODO: Test the database schema and if the old schema doesn't match, either update it or abort.
 # 
 # Return Codes:
 # 0  = OK
@@ -1027,6 +1027,37 @@ sub update_nodes
 			}
 		}
 	}
+	else
+	{
+		# Join the Anvil! back. Now we can use 'anvil-safe-start'.
+		print "- Joining the node back to the Anvil! using 'anvil-safe-start'...\n";
+		$shell_call = $an->data->{path}{'anvil-safe-start'}." --force";
+		print "/-----[ Command output ]------------------------------------------------------\n";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "port",       value2 => $port,
+			name3 => "shell_call", value3 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target     => $target,
+			port       => $port, 
+			password   => $password,
+			'close'    => 1,
+			shell_call => $shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			print "| $line\n";
+		}
+		print "\\-----------------------------------------------------------------------------\n";
+		print "- Done.\n\n";
+	}
 	
 	print "- Ready to update the second node!\n";
 	$target   = $an->data->{sys}{anvil}{$peer_key}{use_ip};
@@ -1147,7 +1178,37 @@ sub update_nodes
 			}
 		}
 	}
-	print "- Second node has been upgraded.\n";
+	else
+	{
+		# Join the Anvil! back. Now we can use 'anvil-safe-start'.
+		print "- Joining the node back to the Anvil! using 'anvil-safe-start'...\n";
+		$shell_call = $an->data->{path}{'anvil-safe-start'}." --force";
+		print "/-----[ Command output ]------------------------------------------------------\n";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "port",       value2 => $port,
+			name3 => "shell_call", value3 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target     => $target,
+			port       => $port, 
+			password   => $password,
+			'close'    => 1,
+			shell_call => $shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			print "| $line\n";
+		}
+		print "\\-----------------------------------------------------------------------------\n";
+		print "- Done.\n\n";
+	}
 	print "- Anvil!: [$anvil_name] has been upgraded!\n\n";
 	
 	return(0);
