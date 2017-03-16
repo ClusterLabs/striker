@@ -29,6 +29,7 @@
 # 14 = One or more Anvil! nodes are offline.
 # 15 = A node's DRBD disk state was not UpToDate.
 # 16 = One node is in the cluster and the other isn't.
+# 17 = Failed to match a server to a host.
 # 
 
 use strict;
@@ -760,10 +761,10 @@ sub update_nodes
 	print "Updating Anvil!: [$anvil_name]\n";
 	
 	# Do a full scan of node 1 and 2.
-	print "- Scanning both nodes, one moment please.\n";
 	my $waiting = 1;
 	while ($waiting)
 	{
+		print "- Checking if both nodes are ready to be updated at: [".$an->Get->date_and_time({split_date_time => 0})."]\n";
 		my $error = check_anvil($an, $anvil_uuid, 0, 0);
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "error", value1 => $error, 
@@ -771,36 +772,110 @@ sub update_nodes
 		
 		if (not $error)
 		{
+			print "- Ready!\n";
 			$waiting = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "waiting", value1 => $waiting, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			sleep 10;
 		}
 	}
-	die;
 	
+	print "- Scanning both nodes, one moment please.\n";
 	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}});
 	print "- Node 1: [$node1_name] scanned.\n";
 	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}});
 	print "- Node 2: [$node2_name] scanned.\n";
 	
-	# Make sure all DRBD resources on both nodes are fully UpToDate. We'll check using node 1.
-	print "- Making sure replicated storage is fully synchronized.\n";
-	wait_for_resync($an);
-
-=cut
 	# Pick the first node to update. We're going to be simple about this; If both nodes have servers, 
 	# we'll migrate all to node 1 and upgrade node 2. If no nodes have servers, we'll upgrade node 2.
 	# If node 2 has all servers, we'll update node 1.
 	print "- Picking which node to update first.\n";
+	my $node1_servers    = [];
+	my $node2_servers    = [];
+	my $node1_short_name = $an->data->{sys}{anvil}{node1}{short_name};
+	my $node2_short_name = $an->data->{sys}{anvil}{node2}{short_name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1_short_name", value1 => $node1_short_name,
+		name2 => "node2_short_name", value2 => $node2_short_name,
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
+	{
+		# Shorten the host names because older versions would truncate long domains.
+		my $this_host       =  $an->data->{server}{$server}{host};
+		my $short_host_name =  $an->data->{server}{$server}{host};
+		   $short_host_name =~ s/\..*$//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_host",       value1 => $this_host,
+			name2 => "short_host_name", value2 => $short_host_name,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($short_host_name eq $node1_short_name)
+		{
+			push @{$node1_servers}, $server;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "server",           value1 => $server,
+				name2 => "node1_short_name", value2 => $node1_short_name,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($short_host_name eq $node2_short_name)
+		{
+			push @{$node2_servers}, $server;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "server",           value1 => $server,
+				name2 => "node2_short_name", value2 => $node2_short_name,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# What?
+			print "[ Error ] - The server: [$server] is on the node: [$short_host_name] ($this_host)\n";
+			print "[ Error ]   This doesn't match either node name's short name:\n";
+			print "[ Error ]   Node 1: [$node1_name] ($node1_short_name)\n";
+			print "[ Error ]   Node 2: [$node2_name] ($node2_short_name)\n";
+			print "[ Error ] - This is likely a program error. Exiting.\n";
+			exit(17);
+		}
+	}
+	
 	my $first_target = "node2";
+	my $node1_count  = @{$node1_servers};
+	my $node2_count  = @{$node2_servers};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1_count", value1 => $node1_count,
+		name2 => "node2_count", value2 => $node2_count,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $node1_count) && ($node1_count))
+	{
+		print "- There are no servers running on either node. Updating node 2 first.\n";
+	}
+	elsif (not $node2_count)
+	{
+		print "- There are no servers on node 2, so it will be updated first.\n";
+	}
+	elsif (not $node1_count)
+	{
+		print "- There are no servers on node 1, so it will be updated first.\n";
+		$first_target = "node1";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "first_target", value1 => $first_target,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		print "- There are servers on both nodes. We will move them to node 1 and update node 2 first.\n";
+	}
+	die;
+=cut
 	
 	
 	
 	
 	
 	
+	wait_for_resync($an);
 	
 	foreach my $node_key ("node1", "node2")
 	{
@@ -850,6 +925,8 @@ sub wait_for_resync
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "wait_for_resync" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+=cut	# I don't need this anymore.
+
 	# We always use node 1.
 	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
 	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
@@ -976,7 +1053,7 @@ sub wait_for_resync
 		
 	}
 	#$an->data->{node}{$node_name}{drbd}{resource}{$resource}{eta_to_sync}
-	
+=cut
 	
 	return(0);
 }
