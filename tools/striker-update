@@ -30,6 +30,8 @@
 # 15 = A node's DRBD disk state was not UpToDate.
 # 16 = One node is in the cluster and the other isn't.
 # 17 = Failed to match a server to a host.
+# 18 = One or more servers found still running after trying to migrate all servers off a node.
+# 19 = Node didn't withdraw from the Anvil! properly.
 # 
 
 use strict;
@@ -83,6 +85,7 @@ my $an = AN::Tools->new({
 			etc_fstab		=>	"/etc/fstab",
 			# This file is checked to verify that we're on a Striker dashboard.
 			find			=>	"/bin/find",
+			gcc			=>	"/usr/bin/gcc",
 			img_directory		=>	"/var/www/html/#!os_type!#/x86_64/img",
 			iso_directory		=>	"/var/www/html/#!os_type!#/x86_64/iso",
 			mount			=>	"/bin/mount",
@@ -93,6 +96,7 @@ my $an = AN::Tools->new({
 			os_release		=>	"/etc/redhat-release",
 			reboot			=>	"/sbin/reboot",
 			striker			=>	"/var/www/cgi-bin/striker",
+			striker_dir		=>	"/sbin/striker/",
 			tar			=>	"/bin/tar",
 			tarball_dir		=>	"",
 			unzip			=>	"/usr/bin/unzip",
@@ -205,14 +209,140 @@ if (not $connections)
 	exit(4);
 }
 
-# First, setup the local cache directories, if they don't already exists
-setup_cache($an);
-
 # Make sure we're actually online, unless we were told to work offline
 if (not $an->data->{sys}{offline})
 {
 	check_internet_access($an);
 }
+
+if (($an->data->{sys}{offline}) && ($an->data->{switches}{'gather-only'}))
+{
+	print "There appears to be no internet connection and we've been asked to gather-only.\n";
+	print "There is no reason to proceed, exiting.\n";
+	exit(0);
+}
+
+# Ask the user to confirm. What exactly we say will depend on a few switches. First, a general warning.
+print "\n-=] Striker Updater [=-\n\n";
+print "This update tool is designed to update an Anvil! without causing a service\n";
+print "interruption. However, no software is perfect.\n\n";
+
+my $show_striker_warning = 1;
+my $show_anvil_warning   = 1;
+if ($an->data->{sys}{offline})
+{
+	print "[ Note ] - We are offline. Updates will be limited to local data in cache.\n";
+	print "Updates will use files under:\n";
+	print "- RPMs: .. [".$an->data->{path}{current_dir}."/".$an->data->{path}{updates}{rpms}."]\n";
+	print "- Striker: [".$an->data->{path}{current_dir}."/".$an->data->{path}{updates}{striker}."]\n\n";
+}
+elsif ($an->data->{switches}{'gather-only'})
+{
+	$show_anvil_warning   = 0;
+	$show_striker_warning = 0;
+	if (($an->data->{switches}{'anvil-uuid'}) or ($an->data->{switches}{'anvil-name'}))
+	{
+		print "We will NOT update anything, but we will download and collect operating system.\n";
+		print "packages locally and from one of the nodes. The local RPM repository will be\n";
+		print "refreshed and, if this system uses an ISO mount, that will be converted to a\n";
+		print "standard directory under 'img/'.\n";
+	}
+	else
+	{
+		print "We will NOT update anything, but we will download and collect operating system.\n";
+		print "packages available for this system. The local RPM repository will be refreshed\n";
+		print "and, if this system uses an ISO mount, that will be converted to a standard\n";
+		print "directory under 'img/'.\n";
+	}
+}
+elsif ($an->data->{switches}{'anvil-name'} eq "all")
+{
+	print "This Striker machine, peer dashboards configured in striker.conf, and all\n";
+	print "Anvil! systems we know about will be updated.\n\n";
+}
+elsif (($an->data->{switches}{'anvil-name'}) or ($an->data->{switches}{'anvil-uuid'}))
+{
+	print "This Striker machine, peer dashboards configured in striker.conf, and the\n";
+	print "Anvil! system will be updated.\n\n";
+}
+else
+{
+	# Not updating an Anvil!.
+	$show_anvil_warning = 0;
+}
+
+if ($an->data->{switches}{'no-refresh'})
+{
+	print "We will NOT refresh our local copy of the Striker source code. If it exists,\n";
+	print "we will use what is already cached in:\n";
+	print "- Striker: [".$an->data->{path}{current_dir}."/".$an->data->{path}{updates}{striker}."]\n\n";
+}
+elsif ($an->data->{switches}{master})
+{
+	print "We will download the latest source code from GitHub's master branch.\n";
+	print "- NOTE: This should only be done on test and development platforms!\n\n";
+}
+else
+{
+	print "We will download the latest Striker release from GitHub.\n\n";
+}
+
+if ($show_striker_warning)
+{
+	print "ScanCore will be stopped during the Striker update. This may cause alerts to be\n";
+	print "missed during the update process.\n\n";
+}
+
+if ($show_anvil_warning)
+{
+	print "ScanCore will be stopped during the update of Anvil! nodes. This can cause\n";
+	print "alerts to be missed and some self-healing features to be unavailable until the\n";
+	print "update completes.\n\n";
+	if (not $an->data->{switches}{'no-os-update'})
+	{
+		print "##] Warning [##################################################################\n";
+		print "# The nodes will be withdrawn from the Anvil! during their updates. This will\n";
+		print "# result in the loss of redundancy for a period of time. If the kernel is\n";
+		print "# updated, the nodes will be rebooted as well.\n";
+		print "#\n";
+		print "# Servers running on a node will be migrated to their peer node prior to\n";
+		print "# withdrawl. If a server's migration type is 'cold' (NOT the default), this\n";
+		print "# will cause the server to be rebooted.\n";
+		print "###############################################################################\n\n";
+	}
+}
+
+print "##] NOTE [#####################################################################\n";
+print "# Please make sure no one else uses the Striker web interface until this update\n";
+print "# is complete! Please also warn anyone receiving alerts to expect notifications\n";
+print "# during the update process.\n";
+print "###############################################################################\n\n";
+
+print "Shall I proceed? [y/N] ";
+if (($an->data->{switches}{y}) or ($an->data->{switches}{yes}))
+{
+	print "\n- 'Yes' assumed via '-y' switch, proceeding.\n";
+}
+else
+{
+	my $answer = <STDIN>;
+	chomp($answer);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "answer", value1 => $answer,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($answer) && (lc($answer) =~ /^y/))
+	{
+		print "- Proceeding.\n\n";
+	}
+	else
+	{
+		print "- Aborting!\n\n";
+		exit(0);
+	}
+}
+
+# First, setup the local cache directories, if they don't already exists
+setup_cache($an);
 
 # If we're online (still), download the striker source
 if (not $an->data->{sys}{offline})
@@ -316,8 +446,21 @@ sub update_local
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_local" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# First, are we online?
+	# Disable ScanCore.
+	print "###############################################################################\n";
+	print "# NOTE: ScanCore will be disabled. If anything causes the upgrade process to\n";
+	print "#       abort unexpectedly, you may need to manually re-enable it by running:\n";
+	print "#       ".$an->data->{path}{ScanCore}." --enable\n";
+	print "###############################################################################\n\n";
 	
+	manage_scancore($an, "disable");
+	
+	update_target($an, "dashboard", "local");
+	
+	print "Enabling ScanCore...\n";
+	manage_scancore($an, "enable");
+	
+	print "The update process has completed.\n\n";
 	
 	return(0);
 }
@@ -465,7 +608,6 @@ sub update_all
 	print "#       causes the upgrade process to abort unexpectedly, you may need to\n";
 	print "#       manually re-enable ScanCore by running:\n";
 	print "#       ".$an->data->{path}{ScanCore}." --enable\n";
-	print "#       ScanCore will be re-enabled when the upgrade finishes.\n";
 	print "###############################################################################\n\n";
 	
 	# We'll call '--disable' on the peer dashboards, then all nodes, then on ourself. The local disable 
@@ -654,7 +796,37 @@ sub update_all
 	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
 	{
 		my $anvil_uuid = $anvils->{$anvil_name};
-		update_nodes($an, $anvil_uuid);
+		
+		# Load this Anvil! system's details.
+		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+		
+		# If the user has disabled OS updates, we won't touch the cluster or servers.
+		if ($an->data->{switches}{'no-os-update'})
+		{
+			print "- Servers will not be migrated nor will nodes be withdrawn or rebooted.\n\n";
+			
+			# Loop through the nodes and update their Striker/ScanCore files.
+			foreach my $node_key ("node1", "node2")
+			{
+				my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+				my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+				my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
+				my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "node_name", value1 => $node_name,
+					name2 => "target",    value2 => $target,
+					name3 => "port",      value3 => $port,
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+					name1 => "password", value1 => $password,
+				}, file => $THIS_FILE, line => __LINE__});
+				update_target($an, "node", $target, $port, $password);
+			}
+		}
+		else
+		{
+			update_nodes($an, $anvil_uuid);
+		}
 	}
 	
 	# Re-enable ScanCore now.
@@ -750,7 +922,6 @@ sub update_nodes
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Load the details about this Anvil!
-	$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
 	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
@@ -828,7 +999,11 @@ sub update_nodes
 			name1 => "this_host",       value1 => $this_host,
 			name2 => "short_host_name", value2 => $short_host_name,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($short_host_name eq $node1_short_name)
+		if (($this_host eq "none") or ($this_host =~ /^\(.*?\)$/))
+		{
+			# Server is off, we can ignore it.
+		}
+		elsif ($short_host_name eq $node1_short_name)
 		{
 			push @{$node1_servers}, $server;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -943,11 +1118,10 @@ sub update_nodes
 		print "\\-----------------------------------------------------------------------------\n";
 	}
 	sleep 2;
-	### TODO: Verify all servers are off.
 	
-	print "- Verifying all servers are off of: [$say_first_node].\n";
+	print "- Verifying all servers are off of: [$say_first_node]...\n";
 	my $abort = 0;
-	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server ".$server;
+	my $shell_call = $an->data->{path}{virsh}." list --all";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "port",       value2 => $port,
@@ -968,12 +1142,35 @@ sub update_nodes
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
-		print "| $line\n";
+		if ($line =~ /(\d+)\s+(.*?)\s+(.*)/)
+		{
+			my $id     = $1;
+			my $server = $2;
+			my $state  = $3;
+			if ($state =~ /run/)
+			{
+				print "[ Error ] - The server: [$server] is: [$state].\n";
+				$abort = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "abort", value1 => $abort,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
 	undef $return;
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "abort", value1 => $abort,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($abort)
 	{
+		print "[ Error ] - All servers should have been migrated off of: [$say_first_node]\n";
+		print "[ Error ]   but that is not the case. Aborting.\n";
+		exit(18);
+	}
+	else
+	{
+		print "- All servers are off this node, good.\n";
 	}
 	
 	### NOTE: We don't use 'anvil-safe-stop' because some old versions didn't support '--no-reboot'.
@@ -1005,7 +1202,53 @@ sub update_nodes
 	}
 	print "\\-----------------------------------------------------------------------------\n";
 	undef $return;
-	### TODO: Verify nodes are withdrawn.
+	
+	print "- Verifying that the node: [$say_first_node] has withdrawn successfully.\n";
+	$shell_call = "if [ -e /var/lock/subsys/cman ]; then echo online; else echo offline; fi";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "port",       value2 => $port,
+		name3 => "shell_call", value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /online/)
+		{
+			$abort = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "abort", value1 => $abort,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	undef $return;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "abort", value1 => $abort,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($abort)
+	{
+		print "[ Error ] - The node: [$say_first_node] appears to still be a member of the\n";
+		print "[ Error ]   Anvil! system. If you can't withdraw the node manually, try:\n";
+		print "[ Error ]   'killall rgmanager' and see if that fixes the problem\n";
+		exit(19);
+	}
+	else
+	{
+		print "- The node has withdrawn, good.\n";
+	}
 	
 	# All servers migrated. Update the node. If the node reboots, this won't return until it is 
 	# accessible again.
@@ -1062,7 +1305,7 @@ sub update_nodes
 	{
 		# Join the Anvil! back. Now we can use 'anvil-safe-start'.
 		print "- Joining the node back to the Anvil! using 'anvil-safe-start'...\n";
-		$shell_call = $an->data->{path}{'anvil-safe-start'}." --force";
+		my $shell_call = $an->data->{path}{'anvil-safe-start'}." --force";
 		print "/-----[ Command output ]------------------------------------------------------\n";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "target",     value1 => $target,
@@ -1097,7 +1340,7 @@ sub update_nodes
 	# Migrate the servers over to the now-upgraded node.
 	foreach my $server (sort {$a cmp $b} @{$second_array})
 	{
-		print "- Migrating: [$server]...\n";
+		print "- Migrating: [$server] to: [$say_first_node]...\n";
 		print "/-----[ Command output ]------------------------------------------------------\n";
 		my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server ".$server;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -1125,9 +1368,51 @@ sub update_nodes
 		print "\\-----------------------------------------------------------------------------\n";
 	}
 	sleep 2;
-	### TODO: Verify all servers are off.
 	
-	print "- Verifying that all servers are "
+	print "- Verifying that all servers are off of: [$say_second_node]...";
+	$shell_call = $an->data->{path}{virsh}." list --all";
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /(\d+)\s+(.*?)\s+(.*)/)
+		{
+			my $id     = $1;
+			my $server = $2;
+			my $state  = $3;
+			if ($state =~ /run/)
+			{
+				print "[ Error ] - The server: [$server] is: [$state].\n";
+				$abort = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "abort", value1 => $abort,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	undef $return;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "abort", value1 => $abort,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($abort)
+	{
+		print "[ Error ] - All servers should have been migrated off of: [$say_second_node]\n";
+		print "[ Error ]   but that is not the case. Aborting.\n";
+		exit(18);
+	}
+	else
+	{
+		print "- All servers are off this node, good.\n";
+	}
+	
 	
 	### NOTE: We don't use 'anvil-safe-stop' because some old versions didn't support '--no-reboot'.
 	# Withdraw the node from the Anvil!
@@ -1158,7 +1443,53 @@ sub update_nodes
 	}
 	print "\\-----------------------------------------------------------------------------\n";
 	undef $return;
-	### TODO: Verify nodes are withdrawn.
+	
+	print "- Verifying that the node: [$say_second_node] has withdrawn successfully.\n";
+	$shell_call = "if [ -e /var/lock/subsys/cman ]; then echo online; else echo offline; fi";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "port",       value2 => $port,
+		name3 => "shell_call", value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /online/)
+		{
+			$abort = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "abort", value1 => $abort,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	undef $return;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "abort", value1 => $abort,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($abort)
+	{
+		print "[ Error ] - The node: [$say_second_node] appears to still be a member of the\n";
+		print "[ Error ]   Anvil! system. If you can't withdraw the node manually, try:\n";
+		print "[ Error ]   'killall rgmanager' and see if that fixes the problem\n";
+		exit(19);
+	}
+	else
+	{
+		print "- The node has withdrawn, good.\n";
+	}
 	
 	# All servers migrated. Update the node. If the node reboots, this won't return until it is 
 	# accessible again.
@@ -1262,102 +1593,109 @@ sub update_target
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Update the OS first.
+	# Update the OS first, if not disabled.
 	my $reboot_needed = 0;
-	my $shell_call    = $an->data->{path}{yum}." -y update";
-	if ($target eq "local")
+	if ($an->data->{switches}{'no-os-update'})
 	{
-		# Local call. If an update is needed, we'll set 'sys::reboot_needed' and tell the user to 
-		# reboot when we exit.
-		print "Updating the operating system on the local machine now. Please be patient.\n";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		print "/-----[ Command output ]------------------------------------------------------\n";
-		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			print "| $line\n"; 
-			
-			if ($line =~ / kernel\s+x86_64 /)
-			{
-				# Update required.
-				$an->data->{sys}{reboot_needed} = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "sys::reboot_needed", value1 => $an->data->{sys}{reboot_needed}, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			if ($line =~ /Total size: /i)
-			{
-				print "| #############################################################################\n";
-				print "| Please be patient! Packages are downloading in the background. They should\n";
-				print "| download from local repos fairly quickly. Once done, they will begin\n";
-				print "| installing. At times, this may seem to stall. Please be patient.\n";
-				print "| You can verify the download is running with 'ps aux | grep yum'.\n";
-				print "| #############################################################################\n";
-			}
-		}
-		close $file_handle;
-		print "\\-----------------------------------------------------------------------------\n";
-		if ($an->data->{sys}{reboot_needed})
-		{
-			print "- The operating system's kernel was updated.\n";
-			print "- You will need to reboot this machine when the update process completes.\n";
-		}
+		print "Operating system updates have been disabled via '--no-os-update'. Skipping them.\n";
 	}
 	else
 	{
-		# Update a remote machine. We'll reboot immediately if they need it.
-		print "Updating the operating system on: [$target]. Please be patient.\n";
-		print "###############################################################################\n";
-		print "# NOTE: There will be no output here until the update completes. The updates\n";
-		print "# should download from local repos fairly quickly. Once done, they will need\n";
-		print "# a little bit of time to install. Please be patient! If you want to check if\n";
-		print "# the update is still running, on: [$target], run:\n";
-		print "# 'ps aux | grep yum'.\n";
-		print "###############################################################################\n";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "port",       value2 => $port,
-			name3 => "shell_call", value3 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-			name1 => "password", value1 => $password,
-		}, file => $THIS_FILE, line => __LINE__});
-		print "/-----[ Command output ]------------------------------------------------------\n";
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target     => $target,
-			port       => $port, 
-			password   => $password,
-			shell_call => $shell_call,
-		});
-		foreach my $line (@{$return})
+		my $shell_call = $an->data->{path}{yum}." -y update";
+		if ($target eq "local")
 		{
+			# Local call. If an update is needed, we'll set 'sys::reboot_needed' and tell the user to 
+			# reboot when we exit.
+			print "Updating the operating system on the local machine now. Please be patient.\n";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
+				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			print "| $line\n";
-			if ($line =~ / kernel\s+x86_64 /)
+			print "/-----[ Command output ]------------------------------------------------------\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
 			{
-				# Update required.
-				$reboot_needed = 1;
+				chomp;
+				my $line = $_;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "reboot_needed", value1 => $reboot_needed, 
+					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
+				print "| $line\n"; 
+				
+				if ($line =~ / kernel\s+x86_64 /)
+				{
+					# Update required.
+					$an->data->{sys}{reboot_needed} = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "sys::reboot_needed", value1 => $an->data->{sys}{reboot_needed}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($line =~ /Total size: /i)
+				{
+					print "| #############################################################################\n";
+					print "| Please be patient! Packages are downloading in the background. They should\n";
+					print "| download from local repos fairly quickly. Once done, they will begin\n";
+					print "| installing. At times, this may seem to stall. Please be patient.\n";
+					print "| You can verify the download is running with 'ps aux | grep yum'.\n";
+					print "| #############################################################################\n";
+				}
+			}
+			close $file_handle;
+			print "\\-----------------------------------------------------------------------------\n";
+			if ($an->data->{sys}{reboot_needed})
+			{
+				print "- The operating system's kernel was updated.\n";
+				print "- You will need to reboot this machine when the update process completes.\n";
 			}
 		}
-		print "\\-----------------------------------------------------------------------------\n";
-		if ($reboot_needed)
+		else
 		{
-			print "- The operating system's kernel was updated. A reboot will be performed shortly.\n";
+			# Update a remote machine. We'll reboot immediately if they need it.
+			print "Updating the operating system on: [$target]. Please be patient.\n";
+			print "###############################################################################\n";
+			print "# NOTE: There will be no output here until the update completes. The updates\n";
+			print "# should download from local repos fairly quickly. Once done, they will need\n";
+			print "# a little bit of time to install. Please be patient! If you want to check if\n";
+			print "# the update is still running, on: [$target], run:\n";
+			print "# 'ps aux | grep yum'.\n";
+			print "###############################################################################\n";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "port",       value2 => $port,
+				name3 => "shell_call", value3 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
+			print "/-----[ Command output ]------------------------------------------------------\n";
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target     => $target,
+				port       => $port, 
+				password   => $password,
+				shell_call => $shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				print "| $line\n";
+				if ($line =~ / kernel\s+x86_64 /)
+				{
+					# Update required.
+					$reboot_needed = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "reboot_needed", value1 => $reboot_needed, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			print "\\-----------------------------------------------------------------------------\n";
+			if ($reboot_needed)
+			{
+				print "- The operating system's kernel was updated. A reboot will be performed shortly.\n";
+			}
 		}
+		print "- Done.\n\n";
 	}
-	print "- Done.\n\n";
 	
 	# Copy all the files into place.
 	print "Updating Striker and ScanCore files on: [$target] if needed.\n";
@@ -1408,13 +1746,13 @@ sub update_target
 			}
 		}
 	}
-	print "- Done.\n\n\n";
+	print "- Done.\n\n";
 	
 	if ($type eq "node")
 	{
 		# Enable 'anvil-safe-start'.
 		print "Enabling 'anvil-safe-start'.\n";
-		$shell_call = $an->data->{path}{'anvil-safe-start'}." --enable";
+		my $shell_call = $an->data->{path}{'anvil-safe-start'}." --enable";
 		print "/-----[ Command output ]------------------------------------------------------\n";
 		if ($target eq "local")
 		{
@@ -1464,7 +1802,72 @@ sub update_target
 		print "- Done.\n\n";
 	}
 	
-	### TODO: If this is a dashboard, make sure we setuid the Striker wrappers.
+	# Compile and setuid-root C-wrappers.
+	print "Searching for setuid C-wrappers to recompile.\n";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::striker_dir", value1 => $an->data->{path}{striker_dir}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $an->data->{path}{striker_dir});
+	while(my $file = readdir(DIRECTORY))
+	{
+		next if $file eq ".";
+		next if $file eq "..";
+		next if $file !~ /\.c$/;
+		my $source_file = $an->data->{path}{striker_dir}."/$file";
+		   $source_file =~ s/\/\//\//g;
+		my $out_file    = ($source_file =~ /^(.*?)\.c$/)[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "source_file", value1 => $source_file, 
+			name2 => "out_file",    value2 => $out_file, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		print "- Recompiling: [$source_file]\n";
+		my $shell_call = $an->data->{path}{gcc}." -o ".$out_file." ".$source_file." && chmod 6755 ".$out_file;
+		if ($target eq "local")
+		{
+			# Local call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+		}
+		else
+		{
+			# Remote call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "port",       value2 => $port,
+				name3 => "shell_call", value3 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target     => $target,
+				port       => $port, 
+				password   => $password,
+				'close'    => 1,
+				shell_call => $shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1  => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	print "- Done.\n\n";
 	
 	my $rebooted = 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -3463,6 +3866,18 @@ SWITCHES
 	### WARNING: This is only recommended for developers or testers. Do not
 	###          upgrade to master on production systems!
 
+ --no-os-update
+
+	By default, the operating system will be updated on all target 
+	machines. When new kernels are installed, the targets will be rebooted
+	sequentially. 
+	
+	This increases the risks of a problem during updates.
+	
+	This switch disables the OS update process. When this switch is used,
+	local RPM repositories will still be updated, but no new RPMs will be
+	installed. Only Striker/ScanCore code will be updated.
+
  --no-refresh
 
 	If this is passed, AND if the source already appears to be downloaded,
@@ -3481,6 +3896,10 @@ SWITCHES
 	NOTE: Without this switch, a check for internet connectivity will be
 	      performed. If not link is detected, the install will 
 	      automatically run in offline mode.
+
+ -y, --yes
+
+	Auto-accepts the request to proceed.
 
 
 SUPPORT

@@ -1125,6 +1125,7 @@ sub _set_paths
 	$an->data->{path}{fence_tool}             = "/usr/sbin/fence_tool";
 	$an->data->{path}{find}                   = "/bin/find";
 	$an->data->{path}{free}                   = "/usr/bin/free";
+	$an->data->{path}{gcc}                    = "/usr/bin/gcc";
 	$an->data->{path}{'grep'}                 = "/bin/grep";
 	$an->data->{path}{gethostip}              = "/usr/bin/gethostip";
 	$an->data->{path}{gfs2_tool}              = "/usr/sbin/gfs2_tool";
