@@ -886,34 +886,34 @@ sub update_nodes
 	}
 	
 	# If needed, migrate server off.
-	my $server_array = $node2_servers;
-	my $peer_array   = $node1_servers;
-	my $node_key     = "node2";
-	my $peer_key     = "node1";
-	my $say_node     = $an->data->{sys}{anvil}{node1}{name};
-	my $say_peer     = $an->data->{sys}{anvil}{node2}{name};
+	my $first_array     = $node2_servers;
+	my $second_array    = $node1_servers;
+	my $first_node_key  = "node2";
+	my $second_node_key = "node1";
+	my $say_first_node  = $an->data->{sys}{anvil}{node1}{name};
+	my $say_second_node = $an->data->{sys}{anvil}{node2}{name};
 	if ($first_target eq "node1")
 	{
-		$server_array = $node1_servers;
-		$peer_array   = $node2_servers;
-		$node_key     = "node1";
-		$peer_key     = "node2";
-		$say_node     = $an->data->{sys}{anvil}{node2}{name};
-		$say_peer     = $an->data->{sys}{anvil}{node1}{name};
+		$first_array     = $node1_servers;
+		$second_array    = $node2_servers;
+		$first_node_key  = "node1";
+		$second_node_key = "node2";
+		$say_first_node  = $an->data->{sys}{anvil}{node2}{name};
+		$say_second_node = $an->data->{sys}{anvil}{node1}{name};
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "node_key", value1 => $node_key,
-		name2 => "peer_key", value2 => $peer_key,
-		name3 => "say_node", value3 => $say_node,
-		name4 => "say_peer", value4 => $say_peer,
+		name1 => "first_node_key",  value1 => $first_node_key,
+		name2 => "say_first_node",  value2 => $say_first_node,
+		name3 => "second_node_key", value3 => $second_node_key,
+		name4 => "say_second_node", value4 => $say_second_node,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password = $an->data->{sys}{anvil}{$node_key}{password};
-	foreach my $server (sort {$a cmp $b} @{$server_array})
+	my $target   = $an->data->{sys}{anvil}{$first_node_key}{use_ip};
+	my $port     = $an->data->{sys}{anvil}{$first_node_key}{use_port};
+	my $password = $an->data->{sys}{anvil}{$first_node_key}{password};
+	foreach my $server (sort {$a cmp $b} @{$first_array})
 	{
-		print "- Migrating: [$server] to: [$say_peer]\n";
+		print "- Migrating: [$server] to: [$say_second_node]\n";
 		print "/-----[ Command output ]------------------------------------------------------\n";
 		my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server ".$server;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -939,17 +939,15 @@ sub update_nodes
 			print "| $line\n";
 		}
 		
-		push @{$peer_array}, $server;
+		push @{$second_array}, $server;
 		print "\\-----------------------------------------------------------------------------\n";
 	}
 	sleep 2;
 	### TODO: Verify all servers are off.
 	
-	### NOTE: We don't use 'anvil-safe-stop' because some old versions didn't support '--no-reboot'.
-	# Withdraw the node from the Anvil!
-	print "- Withdrawing: [$say_node] from the Anvil!.\n";
-	print "/-----[ Command output ]------------------------------------------------------\n";
-	my $shell_call = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop";
+	print "- Verifying all servers are off of: [$say_first_node].\n";
+	my $abort = 0;
+	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server ".$server;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "port",       value2 => $port,
@@ -960,6 +958,39 @@ sub update_nodes
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target     => $target,
+		port       => $port, 
+		password   => $password,
+		shell_call => $shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		print "| $line\n";
+	}
+	undef $return;
+	
+	if ($abort)
+	{
+	}
+	
+	### NOTE: We don't use 'anvil-safe-stop' because some old versions didn't support '--no-reboot'.
+	# Withdraw the node from the Anvil!
+	print "- Withdrawing: [$say_first_node] from the Anvil!.\n";
+	print "/-----[ Command output ]------------------------------------------------------\n";
+	$shell_call = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "port",       value2 => $port,
+		name3 => "shell_call", value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target     => $target,
 		port       => $port, 
 		password   => $password,
@@ -1060,11 +1091,11 @@ sub update_nodes
 	}
 	
 	print "- Ready to update the second node!\n";
-	$target   = $an->data->{sys}{anvil}{$peer_key}{use_ip};
-	$port     = $an->data->{sys}{anvil}{$peer_key}{use_port};
-	$password = $an->data->{sys}{anvil}{$peer_key}{password};
+	$target   = $an->data->{sys}{anvil}{$second_node_key}{use_ip};
+	$port     = $an->data->{sys}{anvil}{$second_node_key}{use_port};
+	$password = $an->data->{sys}{anvil}{$second_node_key}{password};
 	# Migrate the servers over to the now-upgraded node.
-	foreach my $server (sort {$a cmp $b} @{$peer_array})
+	foreach my $server (sort {$a cmp $b} @{$second_array})
 	{
 		print "- Migrating: [$server]...\n";
 		print "/-----[ Command output ]------------------------------------------------------\n";
@@ -1096,9 +1127,11 @@ sub update_nodes
 	sleep 2;
 	### TODO: Verify all servers are off.
 	
+	print "- Verifying that all servers are "
+	
 	### NOTE: We don't use 'anvil-safe-stop' because some old versions didn't support '--no-reboot'.
 	# Withdraw the node from the Anvil!
-	print "- Withdrawing: [$say_peer] from the Anvil!.\n";
+	print "- Withdrawing: [$say_second_node] from the Anvil!.\n";
 	print "/-----[ Command output ]------------------------------------------------------\n";
 	$shell_call = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {

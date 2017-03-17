@@ -108,7 +108,17 @@ Old: [#!variable!old!#]
 		<key name="scan_server_message_0015">The server: [#!variable!server_name!#] with UUID: [#!variable!server_uuid!#] wasn't found in this scan, ignoring it.</key>
 		<key name="scan_server_message_0016">The server: [#!variable!server_name!#]'s definition file: [#!variable!definition_file!#] wasn't found. Skipping missing ISO file check.</key>
 		<key name="scan_server_message_0017">The server: [#!variable!server_name!#]'s definition file: [#!variable!definition_file!#] exisits, but it appears the XML data inside it is missing or incomplete. Skipping missing ISO file check.</key>
-		<key name="scan_server_message_0018">The server: [#!variable!server_name!#] was in a paused state, which should never happen. A 'resume' was attempted and the new state is: [#!variable!server_state!#].</key>
+		<key name="scan_server_message_0018">
+The server: [#!variable!server_name!#] was in a paused state, which isn't supposed to happen. 
+A 'resume' was performed and the new state is: [#!variable!server_state!#].
+		</key>
+		<key name="scan_server_message_0019">
+The server: [#!variable!server_name!#] was stuck in a paused state, which should never happen.
+If this happened immediately after the server booted, then there should be no problems.
+If the server had been operating, you may need to check the consistency of the filesystems, databases or similar.
+A force-off was performed after a 'resume' failed.
+The server should be restarted by the Anvil! momentarily.
+		</key>
 		
 		<!-- These are state strings added to other strings. -->
 		<key name="scan_server_state_0001">Live</key>

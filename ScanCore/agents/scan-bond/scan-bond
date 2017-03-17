@@ -2691,7 +2691,7 @@ sub print_usage
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	print $an->String->get({key => "${THIS_FILE}_message_0002"})."\n";
+	print $an->String->get({key => "scan_bond_message_0002"})."\n";
 
 	return(0);
 }

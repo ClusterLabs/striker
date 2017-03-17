@@ -107,6 +107,16 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 $an->Log->adjust_log_level({key => $THIS_FILE});
 
+# Help?
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or
+    ($an->data->{switches}{help}))
+{
+	# Help!
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+
 # Exit if we're disabled.
 if ($an->data->{'scan-server'}{disable})
 {
@@ -469,6 +479,7 @@ sub resume_server
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $server_state = "";
+	my $force_reset  = 0;
 	my $shell_call   = $an->data->{path}{virsh}." resume $server_name";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
@@ -478,55 +489,103 @@ sub resume_server
 	{
 		chomp;
 		my $line =  $_;
-	}
-	close $file_handle;
-	
-	sleep 2;
-	
-	$shell_call = $an->data->{path}{virsh}." --list all";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line =  $_;
-		   $line =~ s/^\s+//;
-		   $line =~ s/\s+$//;
-		   $line =~ s/\s+/ /g;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /^\d+ $server_name (.*)$/)
+		
+		if ($line =~ /Resetting the Virtual Machine is required/)
 		{
-			$server_state = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "server_name",  value1 => $server_name, 
-				name2 => "server_state", value2 => $server_state, 
+			$force_reset = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "force_reset", value1 => $force_reset, 
 			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($server_state ne "paused")
-			{
-				# Send an alert
-				$an->Alert->register_alert({
-					alert_level		=>	"warning", 
-					alert_agent_name	=>	$THIS_FILE,
-					alert_title_key		=>	"an_alert_title_0004",
-					alert_message_key	=>	"scan_server_message_0018",
-					alert_message_variables	=>	{
-						server_name		=>	$server_name, 
-						server_state		=>	$server_state,
-					},
-				});
-			}
-			
-			last;
 		}
 	}
 	close $file_handle;
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "force_reset", value1 => $force_reset, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($force_reset)
+	{
+		my $shell_call   = $an->data->{path}{virsh}." destroy $server_name";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# Send an alert.
+		$an->Alert->register_alert({
+			alert_level		=>	"critical", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0005",
+			alert_message_key	=>	"scan_server_message_0019",
+			alert_message_variables	=>	{
+				server_name		=>	$server_name, 
+			},
+		});
+	}
+	
+	# If I didn't reset it, look at it's current state.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "force_reset", value1 => $force_reset, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $force_reset)
+	{
+		# Sleep for a moment to make sure virsh has caught up.
+		sleep 2;
+		
+		my $shell_call = $an->data->{path}{virsh}." list --all";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $an->String->clean_spaces({string => $_});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /^\d+ $server_name (.*)$/)
+			{
+				$server_state = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "server_name",  value1 => $server_name, 
+					name2 => "server_state", value2 => $server_state, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($server_state ne "paused")
+				{
+					# Send an alert
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_server_message_0018",
+						alert_message_variables	=>	{
+							server_name		=>	$server_name, 
+							server_state		=>	$server_state,
+						},
+					});
+				}
+				
+				last;
+			}
+		}
+		close $file_handle;
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_state", value1 => $server_state, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($server_state);
@@ -1300,7 +1359,7 @@ sub print_usage
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	print $an->String->get({key => "${THIS_FILE}_message_0002"})."\n";
+	print $an->String->get({key => "scan_server_message_0002"})."\n";
 
 	return(0);
 }
