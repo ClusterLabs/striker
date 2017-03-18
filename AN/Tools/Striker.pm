@@ -11947,18 +11947,20 @@ sub _parse_lvm_scan
 				name6 => "bytes",     value6 => $bytes,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if (lc($state) eq "inactive")
-			{
-				# The variables here pass onto 'message_0045'.
-				my $message = $an->String->get({key => "message_0045", variables => { 
-					lv	=>	$lv,
-					node	=>	$node_name,
-				}});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "message", value1 => $message,
-				}, file => $THIS_FILE, line => __LINE__});
-				print $an->Web->template({file => "main-page.html", template => "lv-inactive-error", replace => { message => $message }});
-			}
+			# Disabled for now as this is often shown during anvil-safe-start run and needlessly
+			# scares the user.
+# 			if (lc($state) eq "inactive")
+# 			{
+# 				# The variables here pass onto 'message_0045'.
+# 				my $message = $an->String->get({key => "message_0045", variables => { 
+# 					lv	=>	$lv,
+# 					node	=>	$node_name,
+# 				}});
+# 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+# 					name1 => "message", value1 => $message,
+# 				}, file => $THIS_FILE, line => __LINE__});
+# 				print $an->Web->template({file => "main-page.html", template => "lv-inactive-error", replace => { message => $message }});
+# 			}
 			
 			if (exists $an->data->{resources}{lv}{$lv})
 			{
