@@ -264,9 +264,11 @@ fi";
 				}
 				close $file_handle;
 				
-				# Send the alert.
+				# Send the alert. It should be top of the email, except behind a stuck-paused
+				# server.
 				$an->Alert->register_alert({
 					alert_level		=>	"warning", 
+					alert_sort		=>	2,
 					alert_agent_name	=>	$THIS_FILE,
 					alert_title_key		=>	"an_alert_title_0004",
 					alert_message_key	=>	"scan_server_message_0023",
