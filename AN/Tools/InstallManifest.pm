@@ -18371,20 +18371,26 @@ sub update_target_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Skip if the user has decided not to run OS updates.
+	my $return = 1;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::update_os", value1 => $an->data->{sys}{update_os}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	return(1) if not $an->data->{sys}{update_os};
-	
-	# We now do two update calls... First with priority on the striker dashboards, then again without.
-	# This ensures any locally available updates are downloaded and installed before burning data 
-	# updating from external repos.
-	$an->InstallManifest->_do_os_update({
-			node     => $node, 
-			target   => $target, 
-			port     => $port, 
-			password => $password,
-		});
+	if ($an->data->{sys}{update_os})
+	{
+		# We now do two update calls... First with priority on the striker dashboards, then again 
+		# without. This ensures any locally available updates are downloaded and installed before
+		# burning data updating from external repos.
+		$an->InstallManifest->_do_os_update({
+				node     => $node, 
+				target   => $target, 
+				port     => $port, 
+				password => $password,
+			});
+		$return = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "return", value1 => $return, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# Remove the priority= from the nodes. We don't care about the output.
 	$an->InstallManifest->remove_priority_from_node({
@@ -18394,15 +18400,21 @@ sub update_target_node
 			password => $password,
 		});
 	
-	# Call the update again. This time, external updates will be installed.
-	$an->InstallManifest->_do_os_update({
-			node     => $node, 
-			target   => $target, 
-			port     => $port, 
-			password => $password,
-		});
+	if ($an->data->{sys}{update_os})
+	{
+		# Call the update again. This time, external updates will be installed.
+		$an->InstallManifest->_do_os_update({
+				node     => $node, 
+				target   => $target, 
+				port     => $port, 
+				password => $password,
+			});
+	}
 	
-	return(0);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return", value1 => $return, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($return);
 }
 
 # This calls yum update against both nodes.

@@ -22,6 +22,7 @@
 #    we will not touch it. Otherwise, if it is found to be running on a node but not in clustat, use 
 #    clusvcadm to add it to the cluster control.
 #  - If a server becomes 'defined', undefine it. (virsh dominfo <server> | grep Persistent) -> yes|no
+#  - If a server's state is 'shut off' and it is known to rgmanager, undefine it.
 # 
 
 # Use my modules.
@@ -523,9 +524,10 @@ sub resume_server
 		}
 		close $file_handle;
 		
-		# Send an alert.
+		# Send an alert, and make sure it's top of the email.
 		$an->Alert->register_alert({
 			alert_level		=>	"critical", 
+			alert_sort		=>	1,
 			alert_agent_name	=>	$THIS_FILE,
 			alert_title_key		=>	"an_alert_title_0005",
 			alert_message_key	=>	"scan_server_message_0019",
@@ -1067,11 +1069,22 @@ WHERE
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# New host, this is a worthy alert so it is note level
+					my $message_key = "scan_server_message_0008";
+					if (not $new_server_host)
+					{
+						# It shut down
+						$message_key = "scan_server_message_0019";
+					}
+					elsif (not $old_server_host)
+					{
+						# It has booted.
+						$message_key = "scan_server_message_0020";
+					}
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
 						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
-						alert_message_key	=>	"scan_server_message_0008",
+						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
 							server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
 							new			=>	$new_server_host,
@@ -1088,11 +1101,22 @@ WHERE
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# State changes are a little more important.
+					my $message_key = "scan_server_message_0010";
+					if (not $new_server_state)
+					{
+						# It has shut down.
+						$message_key = "scan_server_message_0021";
+					}
+					elsif (not $old_server_state)
+					{
+						# It has started.
+						$message_key = "scan_server_message_0022";
+					}
 					$an->Alert->register_alert({
 						alert_level		=>	"notice", 
 						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
-						alert_message_key	=>	"scan_server_message_0010",
+						alert_message_key	=>	,
 						alert_message_variables	=>	{
 							server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
 							new			=>	$new_server_state,

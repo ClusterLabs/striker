@@ -86,23 +86,11 @@ New:
 #!variable!new!#
 ====
 		</key>
-		<key name="scan_server_message_0008">The server: [#!variable!server!#]'s host has changed:
-
-New: [#!variable!new!#]
-Old: [#!variable!old!#]
-		</key>
+		<key name="scan_server_message_0008">The server: [#!variable!server!#]'s host has changed: [#!variable!old!#] -> [#!variable!new!#]</key>
 		<key name="scan_server_message_0009">The server: [#!variable!server!#]'s host has been recorded as: [#!variable!new!#].</key>
-		<key name="scan_server_message_0010">The server: [#!variable!server!#]'s state has changed:
-
-New: [#!variable!new!#]
-Old: [#!variable!old!#]
-		</key>
+		<key name="scan_server_message_0010">The server: [#!variable!server!#]'s state has changed:[#!variable!old!#] -> [#!variable!new!#]</key>
 		<key name="scan_server_message_0011">The server: [#!variable!server!#]'s state has been recorded as: [#!variable!new!#].</key>
-		<key name="scan_server_message_0012">The server with UUID: [#!variable!uuid!#]'s name has changed:
-
-New: [#!variable!new!#]
-Old: [#!variable!old!#]
-		</key>
+		<key name="scan_server_message_0012">The server with UUID: [#!variable!uuid!#]'s name has changed: [#!variable!old!#] -> [#!variable!new!#]</key>
 		<key name="scan_server_message_0013">The server: [#!variable!server!#]'s has moved to a new Anvil! system: [#!variable!anvil_name!#]:</key>
 		<key name="scan_server_message_0014">The server: [#!variable!server!#] had the disc image: [#!variable!file!#] mounted, which no longer exists. The disc has been ejected.</key>
 		<key name="scan_server_message_0015">The server: [#!variable!server_name!#] with UUID: [#!variable!server_uuid!#] wasn't found in this scan, ignoring it.</key>
@@ -119,6 +107,10 @@ If the server had been operating, you may need to check the consistency of the f
 A force-off was performed after a 'resume' failed.
 The server should be restarted by the Anvil! momentarily.
 		</key>
+		<key name="scan_server_message_0019">The server: [#!variable!server!#]'s was running on: [#!variable!old!#] but has now shut down.</key>
+		<key name="scan_server_message_0020">The server: [#!variable!server!#]'s has been started on: [#!variable!new!#].</key>
+		<key name="scan_server_message_0021">The server: [#!variable!server!#]'s is stopped.</key>
+		<key name="scan_server_message_0022">The server: [#!variable!server!#]'s has started.</key>
 		
 		<!-- These are state strings added to other strings. -->
 		<key name="scan_server_state_0001">Live</key>

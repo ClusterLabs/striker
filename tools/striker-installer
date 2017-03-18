@@ -805,6 +805,9 @@ if (not $conf->{sys}{switch_count})
 	exit(10);
 }
 
+# Catch typos.
+if $conf->{switches}{'no-os-updates'} = 1 if if $conf->{switches}{'no-os-update'};
+
 system('clear');
 # Credit to Martin Allchin for this ASCII art!
 logger($conf, $THIS_FILE, __LINE__, " ##############################################################################", 1);

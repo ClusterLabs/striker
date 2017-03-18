@@ -321,7 +321,7 @@ print "#########################################################################
 print "Shall I proceed? [y/N] ";
 if (($an->data->{switches}{y}) or ($an->data->{switches}{yes}))
 {
-	print "\n- 'Yes' assumed via '-y' switch, proceeding.\n";
+	print "\n- 'Yes' assumed via '-y' switch, proceeding.\n\n";
 }
 else
 {
@@ -426,6 +426,10 @@ else
 	# I'm updating the local dashboard only.
 	update_local($an);
 }
+
+print "[ Note ] - No changes were made to 'striker.conf'.\n";
+print "[ Note ]   If you wish to check for new options, please see:\n";
+print "[ Note ]   ".$an->data->{path}{current_dir}."/".$an->data->{path}{updates}{striker}."/striker.conf\n\n";
 
 # Warn the user if a reboot is required.
 if ($an->data->{sys}{reboot_needed})
@@ -808,18 +812,44 @@ sub update_all
 			# Loop through the nodes and update their Striker/ScanCore files.
 			foreach my $node_key ("node1", "node2")
 			{
+				my $shell_call = "
+for repo in \$(".$an->data->{path}{ls}." ".$an->data->{path}{yum_repos}."/);
+do 
+    ".$an->data->{path}{sed}." -i '/priority=/d' ".$an->data->{path}{yum_repos}."/\${repo};
+done
+";
 				my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
 				my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
 				my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
 				my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "node_name", value1 => $node_name,
-					name2 => "target",    value2 => $target,
-					name3 => "port",      value3 => $port,
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "node_name",  value1 => $node_name,
+					name2 => "target",     value2 => $target,
+					name3 => "port",       value3 => $port,
+					name4 => "shell_call", value4 => $shell_call,
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 					name1 => "password", value1 => $password,
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Make sure the priority has been removed from the striker repos.
+				print "- Making sure that the striker dashboard repo priority has been removed.\n";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $target,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
 				update_target($an, "node", $target, $port, $password);
 			}
 		}
@@ -1601,7 +1631,7 @@ sub update_target
 	}
 	else
 	{
-		my $shell_call = $an->data->{path}{yum}." -y update";
+		my $shell_call = $an->data->{path}{yum}." clean expire-cache && ".$an->data->{path}{yum}." -y update";
 		if ($target eq "local")
 		{
 			# Local call. If an update is needed, we'll set 'sys::reboot_needed' and tell the user to 
