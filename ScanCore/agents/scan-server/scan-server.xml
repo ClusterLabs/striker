@@ -111,6 +111,18 @@ The server should be restarted by the Anvil! momentarily.
 		<key name="scan_server_message_0020">The server: [#!variable!server!#]'s has been started on: [#!variable!new!#].</key>
 		<key name="scan_server_message_0021">The server: [#!variable!server!#]'s is stopped.</key>
 		<key name="scan_server_message_0022">The server: [#!variable!server!#]'s has started.</key>
+		<key name="scan_server_message_0023">
+The server: [#!variable!server!#] was shut off, but still defined. This shouldn't happen.
+A backup of the definition was saved to:
+- [#!variable!backup!#]
+If, for some reason, you need to redefine the server you should disabled scan-server by setting:
+- [scan-server::disable = 1]
+In this node's: [#!data!path::striker_config!#] configuration file. Once disabled, you can 
+redefine the server with the following command;
+- [virsh define #!variable!backup!#]
+Once you have added the server to the Anvil!, you can re-enable this scan agent by undoing the
+change you made to striker.conf.
+		</key>
 		
 		<!-- These are state strings added to other strings. -->
 		<key name="scan_server_state_0001">Live</key>

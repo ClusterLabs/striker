@@ -21,8 +21,6 @@
 #  - Add a 'maintenance mode' where the VM is no longer monitored by the cluster. When in maintenance mode,
 #    we will not touch it. Otherwise, if it is found to be running on a node but not in clustat, use 
 #    clusvcadm to add it to the cluster control.
-#  - If a server becomes 'defined', undefine it. (virsh dominfo <server> | grep Persistent) -> yes|no
-#  - If a server's state is 'shut off' and it is known to rgmanager, undefine it.
 # 
 
 # Use my modules.
@@ -66,6 +64,7 @@ my $an = AN::Tools->new({data =>
 			log_db_transactions	=>	0,
 		},
 		server		=>	{},
+		shut_off	=>	{},
 		sys		=>	{
 			'default'	=>	{
 				migration_type	=>	"live",
@@ -163,6 +162,9 @@ check_libvirtd($an);
 # still and removed/ejects them, if not.
 check_for_removed_files($an);
 
+# This looks for defined servers that are powered off.
+check_for_defined_servers($an);
+
 # Update the database
 $an->DB->update_time({file => $THIS_FILE});
 
@@ -173,6 +175,112 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This looks for any servers in the 'shut off' state and, if they're defined in /shared/definitions, they are
+# undefined.
+sub check_for_defined_servers
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_for_defined_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	foreach my $server_name (sort {$a cmp $b} keys %{$an->data->{shut_off}})
+	{
+		my $server_definition = $an->data->{path}{shared_definitions}."/".$server_name.".xml";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "server_definition", value1 => $server_definition, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (-e $server_definition)
+		{
+			# Dump the definition to a backup file.
+			my $backup_file =  $an->data->{path}{shared_archive}."/".$server_name.".pre-undefine.".$an->Get->date_and_time({split_date_time => 0, no_spaces => 1}).".xml";
+			   $backup_file =~ s/:/-/g;
+			my $shell_call  =  $an->data->{path}{virsh}." dumpxml $server_name > $backup_file";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			# Make sure the backup is good.
+			my $proceed = 0;
+			if (-e $backup_file)
+			{
+				my $shell_call = "
+if \$(".$an->data->{path}{'grep'}." -q '</domain>' $backup_file)
+then
+    echo ok
+else
+    echo 'bad dump'
+fi";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line =  $_;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if ($line eq "ok")
+					{
+						$proceed = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "proceed", value1 => $proceed, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				close $file_handle;
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "proceed", value1 => $proceed, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($proceed)
+			{
+				my $shell_call  = $an->data->{path}{virsh}." undefine $server_name";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line =  $_;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				close $file_handle;
+				
+				# Send the alert.
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0004",
+					alert_message_key	=>	"scan_server_message_0023",
+					alert_message_variables	=>	{
+						server			=>	$server_name, 
+						backup			=>	$backup_file,
+					},
+				});
+			}
+		}
+	}
+	
+	return(0);
+}
 
 # This makes sure that the pre/post migration scripts and inserted ISO disk images exist in /shared/files/ 
 # still and removed/ejects them, if not.
@@ -684,6 +792,20 @@ sub scan_servers
 					name3 => "server_name::${server_name}::state", value3 => $an->data->{server_name}{$server_name}{'state'}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			
+			if ($line =~ /- (.*?) shut off/)
+			{
+				# The server is shut off.
+				my $server_name  = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_name", value1 => $server_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->data->{shut_off}{$server_name} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shut_off::$server_name", value1 => $an->data->{shut_off}{$server_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 		close $file_handle;
 		
@@ -695,7 +817,7 @@ sub scan_servers
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$an->data->{sys}{peer_node},
-			port		=>	"", 
+			port		=>	22, 
 			password	=>	$an->data->{sys}{anvil_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -980,7 +1102,7 @@ sub find_changes
 			my $old_server_definition = $an->data->{sql}{$server_uuid}{server_definition};
 			
 			# Diff?
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "old_server_anvil_uuid", value1  => $old_server_anvil_uuid, 
 				name2  => "sys::anvil_uuid",       value2  => $an->data->{sys}{anvil_uuid}, 
 				name3  => "old_server_name",       value3  => $old_server_name, 
