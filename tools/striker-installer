@@ -806,7 +806,7 @@ if (not $conf->{sys}{switch_count})
 }
 
 # Catch typos.
-if $conf->{switches}{'no-os-updates'} = 1 if if $conf->{switches}{'no-os-update'};
+$conf->{switches}{'no-os-updates'} = 1 if $conf->{switches}{'no-os-update'};
 
 system('clear');
 # Credit to Martin Allchin for this ASCII art!

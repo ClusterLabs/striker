@@ -930,7 +930,7 @@ sub _set_defaults
 		"win2k3#!#Microsoft Windows Server 2003",
 		"win2k8#!#Microsoft Windows Server 2008 (R2)",
 		"win2k8#!#Microsoft Windows Server 2012 (R2)",
-		"win2k8#!#Microsoft Windows Server 2016",
+		"win2016#!#Microsoft Windows Server 2016",
 		"openbsd4#!#OpenBSD 4.x",
 		"freebsd8#!#FreeBSD 8.x",
 		"freebsd7#!#FreeBSD 7.x",
