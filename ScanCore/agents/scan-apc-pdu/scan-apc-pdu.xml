@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This strings file is for the APC PDU Scan Agent. Please be careful not to use names used by the main Striker
+strings file. Do this by prefixing all strings with 'scan_apc_pdu_'.
+-->
+<strings>
+	<!-- Canadian English -->
+	<name>scan-apc-pdu.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA</langs>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the APC UPS Scan Agent.</key>
+		
+		<!-- Strings that can change by rebranding -->
+		<key name="scan_apc_pdu_brand_0001">APC/Schneider Electronics UPS Scan Agent</key>
+		
+		<!-- APC UPS Agent-specific messages -->
+		<key name="scan_apc_pdu_message_0001">Starting #!string!scan_apc_pdu_brand_0001!#:</key>
+		<key name="scan_apc_pdu_message_0002"><![CDATA[
+ -=] APC UPS Scan Agent
+
+DESCRIPTION
+
+This program is a "scan agent" for the ScanCore decision engine, part of the
+Anvil! Intelligent-availabiltiy™ system.
+
+It monitors APC/Schneider brand network-connected switched PDUs.
+
+
+SWITCHES
+
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+ --prep-db
+
+	If passed, the schema will be loaded into the database (if not 
+	already), even if no APC brand UPSes are found. Note: This won't work
+	if the agent has been manually disabled via 'scan-apc-pdu::disable'.
+
+ --pdus <pdu1>[,<pdu2>,...,<pduN>]
+
+	Specify the PDU(s) to query. If host names are used, they must be 
+	convertable to IP addresses. Two or more PDUs can be defined using
+	commas and *no* spaces to separate them.
+	
+	This is optional. By default, the scan agent will read /etc/hosts and
+	any entries with a host name containing 'pdu' will be checked. If you
+	are not using /etc/hosts, then be sure to set:
+	
+	scancore::agent::scan-apc-pdu::switches::pdu = <pdu1>[,<pdu2>,...,<pduN>]
+	
+	This will tell ScanCore to call this agent using this switch.
+
+                  
+SUPPORT
+
+https://alteeve.ca/w/Support
+
+							      Alteeve's Niche!
+		]]></key>
+		<key name="scan_apc_pdu_message_0003">No APC/Schneider brand UPSes found, exiting.</key>
+		
+	</lang>
+</strings>

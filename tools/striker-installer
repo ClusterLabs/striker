@@ -8659,6 +8659,7 @@ SWITCHES
 	can do so using this switch. This will only make sense if you are 
 	rebuilding or replacing an old UUID. To record a machine's existing
 	host UUID, back up:
+
 |;
 	$help .= "	$conf->{path}{host_uuid}\n";
 $help .= q|

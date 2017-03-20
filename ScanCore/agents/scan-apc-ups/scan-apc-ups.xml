@@ -379,8 +379,8 @@ Connection to the UPS: [#!variable!ups_name!#] has been restored.
 
 DESCRIPTION
 
-This program is a "scan agent" for the ScanCore alert, monitoring and recovery
-tool for the Anvil! high-availabiltiy platform.
+This program is a "scan agent" for the ScanCore decision engine, part of the
+Anvil! Intelligent-availabiltiy™ system.
 
 It monitors APC/Schneider brand UPSes. When run on Anvil! nodes, it will
 gracefully shut down all servers, withdraw the nodes from the cluster stack and

@@ -1,0 +1,497 @@
+#!/usr/bin/perl
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released under the terms of the GNU GPL 
+# version 2.
+#
+# ScanCore Scan Agent for APC/Schneider network connected switched PDUs (AP7900* type).
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0   - Success
+# 1   - Passed in host name was not found in the database.
+# 
+# 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
+# 
+
+# Use my modules.
+use strict;
+use warnings;
+use AN::Tools;
+use Data::Dumper;
+use Socket;
+no warnings 'recursion';
+
+=cut
+
+OIDs of interest;
+
+Information (may not be set by the user)
+.1.3.6.1.2.1.1.5.0       = Identification name (Administration > General > Name)     - Default: RackPDU
+.1.3.6.1.2.1.1.6.0       = Location            (Administration > General > Location) - Default: Unknown
+.1.3.6.1.2.1.1.4.0       = Contact Person      (Administration > General > Contact)  - Default: Unknown
+
+State data
+.1.3.6.1.4.1.318.1.1.4.1.3.0         = Date of manufacture (mm/dd/yyyy, if 'yy' year 2000 = '00')
+.1.3.6.1.4.1.318.1.1.4.1.4.0         = Model Number
+.1.3.6.1.4.1.318.1.1.4.1.5.0         = Serial Number							<- Global ID
+.1.3.6.1.4.1.318.1.1.4.1.2.0         = Firmware version
+.1.3.6.1.4.1.318.1.1.4.1.1.0         = Hardware version (never changes)
+.1.3.6.1.2.1.1.3.0                   = Uptime (in timeticks, 900 = 9 seconds)
+
+.1.3.6.1.4.1.318.1.1.12.2.1.1.0      = Max Amperage out per phase
+.1.3.6.1.4.1.318.1.1.12.2.1.2.0      = Number of phases on the PDU
+.1.3.6.1.4.1.318.1.1.12.2.2.1.1.2.1  = Low amp threshold. (0 = Disabled; No alarm on low power. Any digit is the minimum amperage under which we throw an alert)  (NOTE: last digit is phase number, so .1 == phase 1) 
+.1.3.6.1.4.1.318.1.1.12.2.2.1.1.3.1  = High amperage warning threshold. If the power draw exceeds this, throw a warning alert, warn on equal or greater
+.1.3.6.1.4.1.318.1.1.12.2.2.1.1.4.1  = High amperage critical threshold. If the power draw exceeds this, throw a critical alert (breaker is about to pop), warn on equal or greater	(NOTE: Default == max amp per phase, we should set it lower, Max - 2?)
+.1.3.6.1.4.1.318.1.1.12.2.3.1.1.2.1  = Current Amperage on the phase, in 1/10 Amp (x10 to get Amp)
+
+Port information
+.1.3.6.1.4.1.318.1.1.4.4.1           = Number of outlets (ie: 8)
+.1.3.6.1.4.1.318.1.1.4.4.2.1.2.n     = Pending action on state? (1 = command pending, 2 = no command pending, 3 = unknown. If all ports are '3', power cycle is required. If the all devices on the peer report Power is OK, do so immediately)
+.1.3.6.1.4.1.318.1.1.4.4.2.1.3.n     = Current state (read: 1 = on, 2 = off, 4 = unknown --- write: 1 = turn on, 2 = turn off, 3 = cycle (~5s), 5 = on after 'sPDUOutletPowerOnTime' delay, 6 = off after sPDUOutletPowerOffTime delay, 7 = off after sPDUOutletPowerOffTime delay, wait sPDUOutletRebootDuration time, then back on.)
+.1.3.6.1.4.1.318.1.1.4.5.2.1.3.n     = Outlet name (default is 'Outlet N'), Can be read or set, max 20 chars.		<- Set this when we map the Anvil! 
+.1.3.6.1.4.1.318.1.1.4.5.2.1.2.n     = Power on delay (in seconds), default is '0' seconds.  (-1 = stay off, 0 = on with PDU,  X = number of seconds to wait before powering on)
+.1.3.6.1.4.1.318.1.1.4.5.2.1.4.n     = Power off delay (in seconds)                          (-1 = stay on,  0 = off with PDU, X = number of seconds to wait before powering off)
+.1.3.6.1.4.1.318.1.1.4.5.2.1.5.n     = Reboot delay (sleep time), default is '5' seconds.
+
+Network data  (NOTE: .1 is the loopback interface, .2 is the physical interface)
+.1.3.6.1.2.1.2.2.1.4.2 = MTU size
+.1.3.6.1.2.1.2.2.1.5.2 = Link speed (in bps)
+.1.3.6.1.2.1.2.2.1.6.2 = MAC address
+.1.3.6.1.2.1.2.2.1.6.2 = Link state (1 = up, 2 = down, 3 = testing)					<- Probably no use to us... no response = down
+
+=cut
+
+# Disable buffering.
+$| = 1;
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0];
+
+# Get the handle to the AN::Tools and preset some variables I will use.
+my $an = AN::Tools->new({data => 
+	{
+		path			=>	{
+			core_strings		=>	"$scancore_directory/ScanCore.xml",
+			# This stores this node's UUID. It is used to track all our sensor data in the 
+			# database. If you change this here, change it ScanCore, too.
+			host_uuid		=>	"/etc/striker/host.uuid",
+			snmpget			=>	"/usr/bin/snmpget",
+			snmpset			=>	"/usr/bin/snmpset",
+			strings			=>	"$running_directory/$THIS_FILE.xml",
+			sql			=>	"$running_directory/$THIS_FILE.sql",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+		},
+		sys			=>	{
+			# This will get set by AN::Tools::DB->connect_to_databases()
+			host_uuid_query		=>	"",
+			# When a lock is requested, this is set to the time the lock was set. 
+			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
+			# scancore::locking::reap_age, it will renew the lock.
+			local_lock_active	=>	0,
+			sql			=>	[],
+		},
+		scancore		=>	{
+			archive			=>	{
+				directory		=>	"/var/ScanCore/archives/",
+				division		=>	60000,
+				trigger			=>	100000,
+				count			=>	50000,
+				dump_file_header	=>	"
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET search_path = history, pg_catalog;
+",
+			},
+		},
+		# These are values the user might set in striker.conf
+		'scan-apc-pdu'		=>	{
+			disable			=>	0,
+			language		=>	"en_CA",
+			log_file		=>	"/var/log/ScanCore.log",
+			log_level		=>	1,
+			log_language		=>	"en_CA",
+			log_db_transactions	=>	0,
+			# CSV of UPSes to scan. If set, /etc/hosts will not be processed. If not set, hosts
+			# will be searched for any entry with 'pdu' in its name and added to this.
+			pdus			=>	"",
+			# Once parsed, the UPSes will be scanned using this hash where the key is the UPS 
+			# name and the value is the IP address.
+			pdu			=>	{},
+			# By default, a temperature sensor will go into warning state this number of °C below
+			# critical temperature.
+			temperature_warning_delta	=>	3,
+			# It will be marked as 'clear' when the temperature drops this many °C below the 
+			# critical temperature.
+			temperature_clear_delta		=>	5,
+			temperature_shutdown_delta	=>	5,
+			# If the battery charge drops below this level, a warning level alert will be 
+			# triggered.
+			low_charge_percentage_warning	=>	20,
+			# If the battery charge rate climbs above this level, the user will be informed that 
+			# the UPS is back to an acceptible charge
+			low_charge_percentage_ok	=>	25,
+			# This is the number of volts above the low voltage trasfer lever or below the high 
+			# voltage transfer level needed to clear the alert.
+			transfer_voltage_clear_delta	=>	2,
+		},
+		'default'		=>	{
+			pdu			=>	{
+				# Time in tickss after AC restore before UPS powers on (ie: 1000 = 10 seconds)
+				ac_restore_delay	=>	".1.3.6.1.4.1.318.1.1.1.5.2.9.0",
+				# Delay time from when the shutdown command is sent until when the UPS
+				# actually powers off (measured in ticks)
+				shutdown_delay		=>	".1.3.6.1.4.1.318.1.1.1.5.2.10.0",
+				firmware_version	=>	".1.3.6.1.4.1.318.1.1.1.1.2.1.0",
+				# The modes are documented as 'scan_apc_pdu_health_00{01..20}' with
+				# the integer value correlating to the returned health integer value.
+				health			=>	".1.3.6.1.4.1.318.1.1.1.4.1.1.0",
+				# Voltage at which TRIM ONLINE kicks in (127 == 127 vAC)
+				high_transfer_voltage	=>	".1.3.6.1.4.1.318.1.1.1.5.2.2.0",
+				# 1 => noTransfer, 	2 => highLineVoltage,	3 => brownout,
+				# 4 => blackout,	5 => smallMomentarySag,	6 => deepMomentarySag,
+				# 7 => smallMomentarySpike,	8 => largeMomentarySpike,
+				# 9 => selfTest,	10 => rateOfVoltageChange
+				last_transfer_reason	=>	".1.3.6.1.4.1.318.1.1.1.3.2.5.0",
+				# Voltage at which BOOST ONLINE kicks in (106 == 106vAC)
+				low_transfer_voltage	=>	".1.3.6.1.4.1.318.1.1.1.5.2.3.0",
+				# Manufactured date (in 'mm/dd/yy' or 'mm/dd/yyyy' format.)
+				manufactured_date	=>	".1.3.6.1.4.1.318.1.1.1.1.2.2.0",
+				model			=>	".1.3.6.1.4.1.318.1.1.1.1.2.5.0",
+				# Temperature units (1 = *C, 2 = *F)
+				temperature_units	=>	".1.3.6.1.4.1.318.1.1.10.1.2.2.1.5.1",
+				serial_number		=>	".1.3.6.1.4.1.318.1.1.1.1.2.3.0",
+				# This is used to power off the UPS. Set:
+				# 2 = turnUpsOff (no delay), 
+				# 3 = turnUpsOffGracefully (use delay)
+				power_off		=>	".1.3.6.1.4.1.318.1.1.1.6.2.1.0",
+			},
+		},
+		snmp			=>	{
+			community	=>	{
+				'read'		=>	"public",
+				'write'		=>	"private",
+			},
+		},
+	},
+});
+
+# Read the config file
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+
+# Set some defaults
+$an->default_language    ($an->data->{'scan-apc-pdu'}{language});
+$an->default_log_language($an->data->{'scan-apc-pdu'}{log_language});
+$an->default_log_file    ($an->data->{'scan-apc-pdu'}{log_file});
+
+# Set the log level.
+$an->Log->level($an->data->{'scan-apc-pdu'}{log_level});
+$an->Log->db_transactions(1) if $an->data->{'scan-apc-pdu'}{log_db_transactions};
+
+# Read in the language strings.
+$an->Storage->read_words({file => $an->data->{path}{strings}});
+$an->Storage->read_words({file => $an->data->{path}{core_strings}});
+$an->Storage->read_words({file => $an->data->{path}{striker_strings}});
+
+# Get the switches before printing anything in case the user is asking for help.
+$an->Get->switches();
+$an->Log->adjust_log_level({key => $THIS_FILE});
+
+# Help?
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or
+    ($an->data->{switches}{help}))
+{
+	# Help!
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+
+# Exit if we're disabled.
+if ($an->data->{'scan-apc-pdu'}{disable})
+{
+	$an->nice_exit({exit_code => 1});
+}
+
+print $an->String->get({key => "scan_apc_pdu_message_0001"})."\n";
+
+# I'll need to loop through the DBs and ensure our schema is loaded for each one.
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({ log_level => 2, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
+
+# Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
+# running ScanCore, it won't be.
+if (not $an->DB->verify_host_uuid())
+{
+	# ScanCore hasn't run, this host isn't in the 'hosts' table.
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
+}
+
+# If we were called with '--prep-db', we'll prep the database schema regardless of whether any pdus are
+# found.
+if ($an->data->{switches}{'prep-db'})
+{
+	if ($connections)
+	{
+		prep_databases($an);
+	}
+	else
+	{
+		# Failed
+		$an->Log->entry({log_level => 1, message_key => "scancore_warning_0031", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "scancore_warning_0031"})."\n";
+	}
+}
+
+# Find the UPSes.
+find_pdus($an);
+
+# Gather details on UPSes. Returns '1' if no UPSes were found.
+if (gather_pdu_data($an))
+{
+	# No UPSes found.
+	$an->Log->entry({log_level => 2, message_key => "scan_apc_pdu_message_0003", file => $THIS_FILE, line => __LINE__});
+	$an->nice_exit({exit_code => 1});
+}
+
+# Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
+prep_databases($an);
+
+# Archive, if needed.
+archive_if_needed($an);
+
+# Look to see if any databases need to be updated.
+update_db($an);
+
+# Look for changes.
+find_changes($an);
+
+# Process temperatures!
+process_temperatures($an);
+
+# Update the database
+$an->DB->update_time({file => $THIS_FILE});
+
+# Clean up and go away.
+$an->nice_exit({exit_code => 0});
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+
+# This looks for APC UPSes.
+sub find_pdus
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_pdus", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->data->{'scan-apc-pdu'}{pdus} = $an->data->{switches}{pdus} if $an->data->{switches}{pdus};
+	if ($an->data->{'scan-apc-pdu'}{pdus})
+	{
+		# User has specified the UPSes to query. We'll resolve them to IPs.
+		foreach my $pdu_name (split/,/, $an->data->{'scan-apc-pdu'}{pdu})
+		{
+			next if not $pdu_name;
+			
+			my $ip        = "";
+			my $packed_ip = gethostbyname($pdu_name);
+			if ($packed_ip)
+			{
+				$ip = inet_ntoa($packed_ip);
+				$an->data->{'scan-apc-pdu'}{pdu}{$pdu_name} = $ip;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scan-apc-pdu::pdu::$pdu_name", value1 => $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Failed to get IP
+				die "$THIS_FILE ".__LINE__."; No IP found for UPS name: [$pdu_name].\n";
+			}
+		}
+	}
+	else
+	{
+		# Read in /etc/hosts and look for anything with 'pdu' in the name.
+		my $shell_call = "<".$an->data->{path}{etc_hosts};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, $shell_call) or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Clear out comments, knock out white spaces and then skip anything without 'pdu' in
+			# the name.
+			$line =~ s/#.*$//;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			next if not $line;
+			next if $line !~ /pdu/;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# This should be a UPS entry.
+			my ($ip, $names) = ($line =~ /^(\d+\.\d+\.\d+\.\d+) (.*)/);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ip",    value1 => $ip, 
+				name2 => "names", value2 => $names,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# It is crude, but we'll use the longest host name.
+			my $pdu_name = "";
+			foreach my $name (split/ /, $names)
+			{
+				if (length($name) > length($pdu_name))
+				{
+					$pdu_name = $name;
+				}
+			}
+			if (($pdu_name) && ($ip))
+			{
+				$an->data->{'scan-apc-pdu'}{pdu}{$pdu_name} = $ip;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scan-apc-pdu::pdu::$pdu_name", value1 => $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Bad name or IP.
+				die "$THIS_FILE ".__LINE__."; Bad name: [$pdu_name] or IP: [$ip]\n";
+			}
+		}
+		close $file_handle;
+		
+		# If I am a dashboard, read in the cache files for the UPSes that nodes know about and see if
+		# we can ping them. If we can, we'll scan them. This will be important for dashboards to 
+		# determine if/when it is safe to boot a node.
+		my $host_type = $an->Get->what_am_i();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "host_type", value1 => $host_type, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($host_type eq "dashboard")
+		{
+			# Loop through all Anvil! systems.
+			my $all_pdus  = {};
+			my $anvil_data = $an->ScanCore->get_anvils();
+			foreach my $hash_ref (@{$anvil_data})
+			{
+				my $anvil_uuid = $hash_ref->{anvil_uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "anvil_uuid", value1 => $anvil_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my ($pdus) = $an->Get->node_pdus({
+						anvil_uuid => $anvil_uuid,
+						node_name  => "both",
+					});
+				
+				# Record 
+				foreach my $ip (sort {$a cmp $b} keys %{$pdus})
+				{
+					my $pdu_name = $pdus->{$ip}{name};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "pdu_name", value1 => $pdu_name, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if (not exists $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name})
+					{
+						$an->data->{'scan-apc-pdu'}{pdu}{$pdu_name} = $ip;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "scan-apc-pdu::pdu::$pdu_name", value1 => $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+		}
+	}
+	
+	# Here is what I found;
+	foreach my $pdu_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-pdu'}{pdu}})
+	{
+		my $ip = $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "pdu_name", value1 => $pdu_name, 
+			name2 => "ip",       value2 => $ip, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+}
+
+# This checks to see if this agent's databases tables exist and, if not, load the schema. If the schema gets
+# loaded, we'll check other databases for older information and load it.
+sub prep_databases
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='apc_pdu' AND schemaname='public';";
+		#                     The actual query -----------------.        .------- Row 0
+		#                        Query this DB --.              |        |    .-- Columns 0
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($count < 1)
+		{
+			# Need to load the database schema.
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
+			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
+			
+			# Send an alert telling the user that we've initialized this database.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"notice_message_0002",
+				alert_message_variables	=>	{
+					name			=>	$an->data->{scancore}{db}{$id}{name},
+					host			=>	$an->data->{scancore}{db}{$id}{host},
+					agent			=>	$THIS_FILE,
+				},
+			});
+		}
+		else
+		{
+			# Table exists, schema load is not needed.
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	print $an->String->get({key => "scan_apc_pdu_message_0002"})."\n";
+
+	return(0);
+}
