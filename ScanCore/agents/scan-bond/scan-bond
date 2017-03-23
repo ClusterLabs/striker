@@ -23,6 +23,7 @@
 # TODO:
 # - If the 'ifn_bond1' interface goes to MII state 'down', try to ping the peer
 #   on the BCN and, if successful, start migrating the VMs off.
+# - Rewrite entirely... Also, add archiving
 
 # Use my modules.
 use strict;

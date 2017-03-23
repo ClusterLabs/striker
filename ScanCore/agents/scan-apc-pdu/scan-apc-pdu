@@ -9,7 +9,8 @@
 # 
 # Exit Codes:
 # 0   - Success
-# 1   - Passed in host name was not found in the database.
+# 1   - Failed to read the number of phases on the PDU.
+# 2   - Failed to read the number of outlets on the PDU.
 # 
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
@@ -26,19 +27,18 @@ no warnings 'recursion';
 
 OIDs of interest;
 
-Information (may not be set by the user)
-.1.3.6.1.2.1.1.5.0       = Identification name (Administration > General > Name)     - Default: RackPDU
-.1.3.6.1.2.1.1.6.0       = Location            (Administration > General > Location) - Default: Unknown
-.1.3.6.1.2.1.1.4.0       = Contact Person      (Administration > General > Contact)  - Default: Unknown
-
 State data
-.1.3.6.1.4.1.318.1.1.4.1.3.0         = Date of manufacture (mm/dd/yyyy, if 'yy' year 2000 = '00')
-.1.3.6.1.4.1.318.1.1.4.1.4.0         = Model Number
 .1.3.6.1.4.1.318.1.1.4.1.5.0         = Serial Number							<- Global ID
+.1.3.6.1.4.1.318.1.1.4.1.4.0         = Model Number
+.1.3.6.1.4.1.318.1.1.4.1.3.0         = Date of manufacture (mm/dd/yyyy, if 'yy' year 2000 = '00')
 .1.3.6.1.4.1.318.1.1.4.1.2.0         = Firmware version
 .1.3.6.1.4.1.318.1.1.4.1.1.0         = Hardware version (never changes)
-.1.3.6.1.2.1.1.3.0                   = Uptime (in timeticks, 900 = 9 seconds)
 
+Variables
+.1.3.6.1.2.1.1.3.0                   = Uptime (in timeticks, 900 = 9 seconds)
+.1.3.6.1.4.1.318.1.1.12.1.16.0       = Wattage draw (seems to be for the full device, not per phase)
+
+# Phase info
 .1.3.6.1.4.1.318.1.1.12.2.1.1.0      = Max Amperage out per phase
 .1.3.6.1.4.1.318.1.1.12.2.1.2.0      = Number of phases on the PDU
 .1.3.6.1.4.1.318.1.1.12.2.2.1.1.2.1  = Low amp threshold. (0 = Disabled; No alarm on low power. Any digit is the minimum amperage under which we throw an alert)  (NOTE: last digit is phase number, so .1 == phase 1) 
@@ -54,12 +54,12 @@ Port information
 .1.3.6.1.4.1.318.1.1.4.5.2.1.2.n     = Power on delay (in seconds), default is '0' seconds.  (-1 = stay off, 0 = on with PDU,  X = number of seconds to wait before powering on)
 .1.3.6.1.4.1.318.1.1.4.5.2.1.4.n     = Power off delay (in seconds)                          (-1 = stay on,  0 = off with PDU, X = number of seconds to wait before powering off)
 .1.3.6.1.4.1.318.1.1.4.5.2.1.5.n     = Reboot delay (sleep time), default is '5' seconds.
+.1.3.6.1.4.1.318.1.1.12.3.5.1.1.3.n  = Phase that this outlet is in
 
 Network data  (NOTE: .1 is the loopback interface, .2 is the physical interface)
 .1.3.6.1.2.1.2.2.1.4.2 = MTU size
 .1.3.6.1.2.1.2.2.1.5.2 = Link speed (in bps)
 .1.3.6.1.2.1.2.2.1.6.2 = MAC address
-.1.3.6.1.2.1.2.2.1.6.2 = Link state (1 = up, 2 = down, 3 = testing)					<- Probably no use to us... no response = down
 
 =cut
 
@@ -126,65 +126,64 @@ SET search_path = history, pg_catalog;
 			log_level		=>	1,
 			log_language		=>	"en_CA",
 			log_db_transactions	=>	0,
-			# CSV of UPSes to scan. If set, /etc/hosts will not be processed. If not set, hosts
+			# CSV of PDUs to scan. If set, /etc/hosts will not be processed. If not set, hosts
 			# will be searched for any entry with 'pdu' in its name and added to this.
 			pdus			=>	"",
-			# Once parsed, the UPSes will be scanned using this hash where the key is the UPS 
+			# Once parsed, the PDUs will be scanned using this hash where the key is the UPS 
 			# name and the value is the IP address.
 			pdu			=>	{},
-			# By default, a temperature sensor will go into warning state this number of °C below
-			# critical temperature.
-			temperature_warning_delta	=>	3,
-			# It will be marked as 'clear' when the temperature drops this many °C below the 
-			# critical temperature.
-			temperature_clear_delta		=>	5,
-			temperature_shutdown_delta	=>	5,
-			# If the battery charge drops below this level, a warning level alert will be 
-			# triggered.
-			low_charge_percentage_warning	=>	20,
-			# If the battery charge rate climbs above this level, the user will be informed that 
-			# the UPS is back to an acceptible charge
-			low_charge_percentage_ok	=>	25,
-			# This is the number of volts above the low voltage trasfer lever or below the high 
-			# voltage transfer level needed to clear the alert.
-			transfer_voltage_clear_delta	=>	2,
+			# Ticks are generally in 10ms increments
+			ticks_per_second	=>	100,
+			# By default, the critical amperage is the same as the max amperage. If that is the
+			# case here, we will subtract this number of amps from the max and use that as our
+			# critical warning threshold. So if the max threshold is 12, and the critical 
+			# threshold is also 11 or 12, we will drop it to 10. If the critical is set below 10,
+			# we won't adjust it at all.
+			critical_amps_below_max	=>	2,	
 		},
-		'default'		=>	{
-			pdu			=>	{
-				# Time in tickss after AC restore before UPS powers on (ie: 1000 = 10 seconds)
-				ac_restore_delay	=>	".1.3.6.1.4.1.318.1.1.1.5.2.9.0",
-				# Delay time from when the shutdown command is sent until when the UPS
-				# actually powers off (measured in ticks)
-				shutdown_delay		=>	".1.3.6.1.4.1.318.1.1.1.5.2.10.0",
-				firmware_version	=>	".1.3.6.1.4.1.318.1.1.1.1.2.1.0",
-				# The modes are documented as 'scan_apc_pdu_health_00{01..20}' with
-				# the integer value correlating to the returned health integer value.
-				health			=>	".1.3.6.1.4.1.318.1.1.1.4.1.1.0",
-				# Voltage at which TRIM ONLINE kicks in (127 == 127 vAC)
-				high_transfer_voltage	=>	".1.3.6.1.4.1.318.1.1.1.5.2.2.0",
-				# 1 => noTransfer, 	2 => highLineVoltage,	3 => brownout,
-				# 4 => blackout,	5 => smallMomentarySag,	6 => deepMomentarySag,
-				# 7 => smallMomentarySpike,	8 => largeMomentarySpike,
-				# 9 => selfTest,	10 => rateOfVoltageChange
-				last_transfer_reason	=>	".1.3.6.1.4.1.318.1.1.1.3.2.5.0",
-				# Voltage at which BOOST ONLINE kicks in (106 == 106vAC)
-				low_transfer_voltage	=>	".1.3.6.1.4.1.318.1.1.1.5.2.3.0",
-				# Manufactured date (in 'mm/dd/yy' or 'mm/dd/yyyy' format.)
-				manufactured_date	=>	".1.3.6.1.4.1.318.1.1.1.1.2.2.0",
-				model			=>	".1.3.6.1.4.1.318.1.1.1.1.2.5.0",
-				# Temperature units (1 = *C, 2 = *F)
-				temperature_units	=>	".1.3.6.1.4.1.318.1.1.10.1.2.2.1.5.1",
-				serial_number		=>	".1.3.6.1.4.1.318.1.1.1.1.2.3.0",
-				# This is used to power off the UPS. Set:
-				# 2 = turnUpsOff (no delay), 
-				# 3 = turnUpsOffGracefully (use delay)
-				power_off		=>	".1.3.6.1.4.1.318.1.1.1.6.2.1.0",
+		'oids'		=>	{
+			apc_pdu			=>	{
+				apc_pdu_serial_number		=>	".1.3.6.1.4.1.318.1.1.4.1.5.0", 
+				apc_pdu_model_number		=>	".1.3.6.1.4.1.318.1.1.4.1.4.0", 
+				apc_pdu_manufacture_date	=>	".1.3.6.1.4.1.318.1.1.4.1.3.0", 
+				apc_pdu_firmware_version	=>	".1.3.6.1.4.1.318.1.1.4.1.2.0", 
+				apc_pdu_hardware_version	=>	".1.3.6.1.4.1.318.1.1.4.1.1.0", 
+				apc_pdu_mac_address		=>	".1.3.6.1.2.1.2.2.1.6.2", 
+				apc_pdu_mtu_size		=>	".1.3.6.1.2.1.2.2.1.4.2", 
+				apc_pdu_link_speed		=>	".1.3.6.1.2.1.2.2.1.5.2", 
+				apc_pdu_phase_count		=>	".1.3.6.1.4.1.318.1.1.12.2.1.2.0", 
+				apc_pdu_outlet_count		=>	".1.3.6.1.4.1.318.1.1.4.4.1", 
+			},
+			apc_pdu_phases		=>	{
+				# The phase number will be appended to the OID
+				apc_pdu_phase_current_amperage	=>	".1.3.6.1.4.1.318.1.1.12.2.3.1.1.2.", 
+				apc_pdu_phase_max_amperage	=>	".1.3.6.1.4.1.318.1.1.12.2.1.1.0",
+				### NOTE: These aren't recorded, but they are used for alert triggers.
+				phase_low_amp_warning		=>	".1.3.6.1.4.1.318.1.1.12.2.2.1.1.2.1",
+				# We'll drop these to be at least 2 Amps below max.
+				phase_high_amp_warning		=>	".1.3.6.1.4.1.318.1.1.12.2.2.1.1.3.1",
+				# If this is less than 'scan-apc-pdu::critical_amps_below_max' below max, it 
+				# will be automatically dropped.
+				phase_high_amp_critical		=>	".1.3.6.1.4.1.318.1.1.12.2.2.1.1.4.1",
+			},
+			apc_pdu_outlets		=>	{
+				### The outlet number will be appended to all of these OIDs.
+				apc_pdu_outlet_name		=>	".1.3.6.1.4.1.318.1.1.4.5.2.1.3.", 
+				apc_pdu_outlet_on_phase		=>	".1.3.6.1.4.1.318.1.1.12.3.5.1.1.3.", 
+				# read:  1 = on, 2 = off, 4 = unknown
+				# write: 1 = on, 2 = off, 3 = cycle
+				apc_pdu_outlet_state		=>	".1.3.6.1.4.1.318.1.1.4.4.2.1.3.", 
+			},
+			apc_pdu_variables	=>	{
+				# This is in ticks, so divide the value by 'scan-apc-pdu::ticks_per_second'
+				uptime				=>	".1.3.6.1.2.1.1.3.0",
+				total_wattage_draw		=>	".1.3.6.1.4.1.318.1.1.12.1.16.0",
 			},
 		},
 		snmp			=>	{
-			community	=>	{
-				'read'		=>	"public",
-				'write'		=>	"private",
+			community		=>	{
+				'read'			=>	"public",
+				'write'			=>	"private",
 			},
 		},
 	},
@@ -257,13 +256,13 @@ if ($an->data->{switches}{'prep-db'})
 	}
 }
 
-# Find the UPSes.
+# Find the PDUs.
 find_pdus($an);
 
-# Gather details on UPSes. Returns '1' if no UPSes were found.
+# Gather details on PDUs. Returns '1' if no PDUs were found.
 if (gather_pdu_data($an))
 {
-	# No UPSes found.
+	# No PDUs found.
 	$an->Log->entry({log_level => 2, message_key => "scan_apc_pdu_message_0003", file => $THIS_FILE, line => __LINE__});
 	$an->nice_exit({exit_code => 1});
 }
@@ -294,7 +293,497 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 
 
-# This looks for APC UPSes.
+# This calls each UPS, first to get the model number and update the OIDs to use if needed, then gathers the 
+# information from the UPS.
+sub gather_pdu_data
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_pdu_data", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: If the network with the UPS is congested, it is possible that, despite connecting to the 
+	###       UPS, some OID reads may fail with '#!no_connection!#'. Try to read them a second time in
+	###       these cases. Regardless, be sure to check all returned OID values for 'no connection' and
+	###       handle such cases more gracefully.
+	
+	my $no_pdu_found = 1;
+	foreach my $pdu_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-pdu'}{pdu}})
+	{
+		my $pdu_ip = $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "pdu_name", value1 => $pdu_name,
+			name2 => "pdu_ip",   value2 => $pdu_ip,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# This is a visual break in the logs. Useful when printing all the OID queries.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "----------------------------------------",      value1 => "----------------------------------------", 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Can I ping it?
+		$an->data->{pdu}{$pdu_name}{ip} = $pdu_ip;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "pdu::${pdu_name}::ip", value1 => $an->data->{pdu}{$pdu_name}{ip}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $serial_number = "";
+		
+		### TODO: Set 'apc_pdu_health' to '99' when comms are lost.
+		# This returns '1' if it was pingable, '0' if not.
+		my ($pinged) = $an->Check->ping({ping => $pdu_ip});
+		if (not $pinged)
+		{
+			# Nope :(
+			$an->data->{pdu}{$pdu_name}{access} = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdu::${pdu_name}::access", value1 => $an->data->{pdu}{$pdu_name}{access}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Alert the user, if this is the first time it was lost.
+			my $set = $an->Alert->check_alert_sent({
+				type			=>	"warning",
+				alert_sent_by		=>	$THIS_FILE,
+				alert_record_locator	=>	$pdu_name,
+				alert_name		=>	"apc_pdu_communication_lost",
+				modified_date		=>	$an->data->{sys}{db_timestamp},
+			});
+			if ($set)
+			{
+				# This is a new loss of comms.
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0004",
+					alert_message_key	=>	"scan_apc_pdu_message_0004",
+					alert_message_variables	=>	{
+						pdu_name		=>	$pdu_name,
+					},
+				});
+			}
+		}
+		else
+		{
+			# Yup!
+			$serial_number = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_serial_number});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "serial_number", value1 => $serial_number, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record the SN, mark that we accessed it and create a look-up for SN to name
+			$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_serial_number} = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{$serial_number});
+			$an->data->{pdu}{$pdu_name}{access}                         = 1;
+			$an->data->{serial_to_name}{$serial_number}                 = $pdu_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdu::${pdu_name}::apc_pdu::apc_pdu_serial_number", value1 => $an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_serial_number}, 
+			}, file => $THIS_FILE, line => __LINE__});
+
+			
+			# If I had previously lost this UPS, clear the alert and let the user know we're 
+			# back.
+			my $cleared = $an->Alert->check_alert_sent({
+				type			=>	"clear",
+				alert_sent_by		=>	$THIS_FILE,
+				alert_record_locator	=>	$pdu_name,
+				alert_name		=>	"apc_pdu_communication_lost",
+				modified_date		=>	$an->data->{sys}{db_timestamp},
+			});
+			if ($cleared)
+			{
+				# There was an alert and it has now been cleared.
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0006",
+					alert_message_key	=>	"scan_apc_pdu_message_0005",
+					alert_message_variables	=>	{
+						pdu_name		=>	$pdu_name,
+					},
+				});
+			}
+		}
+		
+		# If I got the serial number, I found the PDU.
+		next if not $an->data->{pdu}{$pdu_name}{access};
+		
+		# If I am still alive, I've found at least one PDU.
+		$no_pdu_found = 0;
+		
+		# Now that I can trust my OIDs, lets start gathering data! Keep track of how long it took to
+		# query the OIDs.
+		my $read_start_time = time;
+		$an->Log->entry({log_level => 2, message_key => "scan_apc_ups_log_0001", message_variables => { pdu => $pdu_name }, file => $THIS_FILE, line => __LINE__});
+		
+		#############################################################################################
+		# Base PDU info                                                                             #
+		#############################################################################################
+		
+		# Get the base PDU info.
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_model_number}     = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_model_number});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_firmware_version} = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_firmware_version});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_hardware_version} = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_hardware_version});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_mac_address}      = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_mac_address});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_mtu_size}         = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_mtu_size});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_link_speed}       = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_link_speed});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_phase_count}      = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_phase_count});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_outlet_count}     = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_outlet_count});
+		
+		# These change often and will go into the 'variables' table
+		$an->data->{pdu}{$pdu_name}{apc_pdu_variables}{uptime}             = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu_variables}{uptime});
+		$an->data->{pdu}{$pdu_name}{apc_pdu_variables}{total_wattage_draw} = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu_variables}{total_wattage_draw});
+		
+		# These are used later for checking the state of the phases. They are not stored in the database.
+		$an->data->{pdu}{$pdu_name}{amperage}{maximum}       = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu_phases}{apc_pdu_phase_max_amperage});
+		$an->data->{pdu}{$pdu_name}{amperage}{low_warning}   = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu_phases}{phase_low_amp_warning});
+		$an->data->{pdu}{$pdu_name}{amperage}{high_warning}  = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu_phases}{phase_high_amp_warning});
+		$an->data->{pdu}{$pdu_name}{amperage}{high_critical} = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu_phases}{phase_high_amp_critical});
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+			name1  => "pdu::${pdu_name}::apc_pdu::apc_pdu_model_number",         value1  => $an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_model_number}, 
+			name2  => "pdu::${pdu_name}::apc_pdu::apc_pdu_firmware_version",     value2  => $an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_firmware_version}, 
+			name3  => "pdu::${pdu_name}::apc_pdu::apc_pdu_hardware_version",     value3  => $an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_hardware_version}, 
+			name4  => "pdu::${pdu_name}::apc_pdu::apc_pdu_mac_address",          value4  => $an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_mac_address}, 
+			name5  => "pdu::${pdu_name}::apc_pdu::apc_pdu_mtu_size",             value5  => $an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_mtu_size}, 
+			name6  => "pdu::${pdu_name}::apc_pdu::apc_pdu_link_speed",           value6  => $an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_link_speed}, 
+			name7  => "pdu::${pdu_name}::apc_pdu::apc_pdu_phase_count",          value7  => $an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_phase_count}, 
+			name8  => "pdu::${pdu_name}::apc_pdu::apc_pdu_outlet_count",         value8  => $an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_outlet_count}, 
+			name9  => "pdu::${pdu_name}::apc_pdu_variables::uptime",             value9  => $an->data->{pdu}{$pdu_name}{apc_pdu_variables}{uptime}, 
+			name10 => "pdu::${pdu_name}::apc_pdu_variables::total_wattage_draw", value10 => $an->data->{pdu}{$pdu_name}{apc_pdu_variables}{total_wattage_draw}, 
+			name11 => "pdu::${pdu_name}::amperage::maximum",                     value11 => $an->data->{pdu}{$pdu_name}{amperage}{maximum}, 
+			name12 => "pdu::${pdu_name}::amperage::low_warning",                 value12 => $an->data->{pdu}{$pdu_name}{amperage}{low_warning}, 
+			name13 => "pdu::${pdu_name}::amperage::high_warning",                value13 => $an->data->{pdu}{$pdu_name}{amperage}{high_warning}, 
+			name14 => "pdu::${pdu_name}::amperage::high_critical",               value14 => $an->data->{pdu}{$pdu_name}{amperage}{high_critical}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		### TODO: We should probably sanity check the various values. Error or set?
+		
+		# If the (high critical amperage + 'scan-apc-pdu::critical_amps_below_max') > maximum 
+		# amperage, we'll set the critical warning level to be 
+		# (maximum - 'scan-apc-pdu::critical_amps_below_max')
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "scan-apc-pdu::critical_amps_below_max", value1  => $an->data->{'scan-apc-pdu'}{critical_amps_below_max}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($an->data->{pdu}{$pdu_name}{amperage}{high_critical} + $an->data->{'scan-apc-pdu'}{critical_amps_below_max}) > $an->data->{pdu}{$pdu_name}{amperage}{maximum})
+		{
+			$an->data->{pdu}{$pdu_name}{amperage}{high_critical} = $an->data->{pdu}{$pdu_name}{amperage}{maximum} - $an->data->{'scan-apc-pdu'}{critical_amps_below_max};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "pdu::${pdu_name}::amperage::high_critical", value1  => $an->data->{pdu}{$pdu_name}{amperage}{high_critical}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Read the phase data
+		if ($an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_phase_count} !~ /^\d+$/)
+		{
+			### TODO: Should this be an error?
+			print "Failed to read the number of phases for the PDU: [$pdu_name]\n";
+			exit(1);
+		}
+		foreach my $phase (1..$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_phase_count})
+		{
+			# Stick the phase onto the end of the OID.
+			my $oid = $an->data->{oids}{apc_pdu_phases}{apc_pdu_phase_current_amperage}.$phase;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "phase", value1 => $phase, 
+				name2 => "oid",   value2 => $oid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Read the OID
+			$an->data->{pdu}{$pdu_name}{apc_pdu_phases}{apc_pdu_phase_current_amperage} = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $oid);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "pdu::${pdu_name}::apc_pdu_phases::apc_pdu_phase_current_amperage", value1  => $an->data->{pdu}{$pdu_name}{apc_pdu_phases}{apc_pdu_phase_current_amperage}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Read the outlet data
+		if ($an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_outlet_count} !~ /^\d+$/)
+		{
+			### TODO: Should this be an error?
+			print "Failed to read the number of outlets for the PDU: [$pdu_name]\n";
+			exit(2);
+		}
+		foreach my $outlet (1..$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_outlet_count})
+		{
+			# Stick the outlet onto the end of the OIDs.
+			my $outlet_name_oid  = $an->data->{oids}{apc_pdu_phases}{apc_pdu_outlet_name}.$outlet;
+			my $outlet_phase_oid = $an->data->{oids}{apc_pdu_phases}{apc_pdu_outlet_on_phase}.$outlet;
+			my $outlet_state_oid = $an->data->{oids}{apc_pdu_phases}{apc_pdu_outlet_state}.$outlet;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "outlet_name_oid",  value1 => $outlet_name_oid, 
+				name2 => "outlet_phase_oid", value2 => $outlet_phase_oid, 
+				name3 => "outlet_state_oid", value3 => $outlet_state_oid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Read the OID
+			$an->data->{pdu}{$pdu_name}{apc_pdu_outlets}{apc_pdu_outlet_name}     = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $outlet_name_oid);
+			$an->data->{pdu}{$pdu_name}{apc_pdu_outlets}{apc_pdu_outlet_on_phase} = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $outlet_phase_oid);
+			$an->data->{pdu}{$pdu_name}{apc_pdu_outlets}{apc_pdu_outlet_state}    = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $outlet_state_oid);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "pdu::${pdu_name}::apc_pdu_outlets::apc_pdu_outlet_name",     value1 => $an->data->{pdu}{$pdu_name}{apc_pdu_outlets}{apc_pdu_outlet_name}, 
+				name2 => "pdu::${pdu_name}::apc_pdu_outlets::apc_pdu_outlet_on_phase", value2 => $an->data->{pdu}{$pdu_name}{apc_pdu_outlets}{apc_pdu_outlet_on_phase}, 
+				name3 => "pdu::${pdu_name}::apc_pdu_outlets::apc_pdu_outlet_state",    value3 => $an->data->{pdu}{$pdu_name}{apc_pdu_outlets}{apc_pdu_outlet_state}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	die;
+	
+	return($no_pdu_found);
+}
+
+# This will archive stuff in the 'history' schema, if needed.
+sub archive_if_needed
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If the 'trigger' is '0', archiving is disabled.
+	if (not $an->data->{scancore}{archive}{trigger})
+	{
+		return(1);
+	}
+	
+	### NOTE: If a ScanCore db server was offline when an archive ran, when it returns, it's records will
+	###       sync back, triggering a sooner-than-expected subsequent archive. This shouldn't happen 
+	###       often, and the complexity of tracking archive dates is such that we'll not try to account
+	###       for these cases. 
+	### TODO: What we can do later is, when we write the restore stuff, build in a dedupe function.
+	
+	### Process:
+	# 1. Count the records in history for each table, restricting the results to those from this host 
+	#    (save for special tables like 'server') and if the number of records is greater than 
+	#    'scancore::archive::trigger', start an archive.
+	# 2. Set/update the 'archive_date' state.
+	# 3. Lock the database.
+	# 4. Select 'modified_date' from history.foo, offset by 
+	#    ('scancore::archive::trigger' - 'scancore::archive::count').
+	# 5. Make sure the 'scancore::archive::directory' exists, creating it if needed.
+	# 6. Select all records older that the 'modified_date', write them to a file and then DELETE those
+	#    records from the database.
+	
+	# Update the archive path, if set by a user. Also verify that there are sane archive values.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
+		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
+		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
+		name4 => "scancore::archive::count",     value4 => $an->data->{scancore}{archive}{count}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
+	{
+		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{trigger} = 100000;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{count} = 50000;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	if (not -e $an->data->{path}{scancore_archive})
+	{
+		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# Did it work?
+		if (not -e $an->data->{path}{scancore_archive})
+		{
+			# Nope. :(
+			$an->Alert->warning({message_key => "scancore_warning_0030", message_variables => { directory => $an->data->{path}{scancore_archive} }, quiet => 1, file => $THIS_FILE, line => __LINE__});
+			return(1);
+		}
+	}
+	
+	$an->data->{archive}{table} = {
+		apc_pdus		=>	{
+			archive_date		=>	"",
+			host_column		=>	"apc_pdu_host_uuid",
+			offset			=>	0,
+		},
+		apc_pdu_phases		=>	{
+			archive_date		=>	"",
+			host_column		=>	"apc_pdu_phase_host_uuid",
+			offset			=>	0,
+		},
+		apc_pdu_outlets		=>	{
+			archive_date		=>	"",
+			host_column		=>	"apc_pdu_outlet_host_uuid",
+			offset			=>	0,
+		},
+		apc_pdu_variables	=>	{
+			archive_date		=>	"",
+			host_column		=>	"apc_pdu_variable_host_uuid",
+			offset			=>	0,
+		},
+	};
+	my $archive_needed = 0;
+	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "table", value1 => $table, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    history.$table 
+WHERE 
+    ".$an->data->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		   $records = 0 if not defined $records;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "records", value1 => $records, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($records > $an->data->{scancore}{archive}{trigger})
+		{
+			   $archive_needed                             = 1;
+			my $records_to_save                            = ($an->data->{scancore}{archive}{trigger} - $an->data->{scancore}{archive}{count});
+			my $offset                                     = $records - $records_to_save;
+			   $an->data->{archive}{table}{$table}{offset} = $offset;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "archive_needed",                   value1 => $archive_needed, 
+				name2 => "records_to_save",                  value2 => $records_to_save, 
+				name3 => "archive::table::${table}::offset", value3 => $an->data->{archive}{table}{$table}{offset}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I have something to archive, do so now.
+	if ($archive_needed)
+	{
+		# This will store the files to compress after we release the locks.
+		my $compress = [];
+		
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
+		# Now loop through the table(s) that need to be archived.
+		foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
+		{
+			next if not $an->data->{archive}{table}{$table}{offset};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "table", value1 => $table, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Now to do the archive.
+			if ($table eq "apc_pdus")
+			{
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["apc_pdu_uuid", "apc_pdu_host_uuid", "apc_pdu_serial_number", "apc_pdu_model_number", "apc_pdu_manufacture_date", "apc_pdu_firmware_version", "apc_pdu_hardware_version", "apc_pdu_ipv4_address", "apc_pdu_mac_address", "apc_pdu_mtu_size", "apc_pdu_link_speed", "apc_pdu_phase_count", "apc_pdu_outlet_count", "apc_pdus_note"],
+				});
+			}
+			elsif ($table eq "apc_pdu_phases")
+			{
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["apc_pdu_phase_uuid", "apc_pdu_phase_apc_pdu_uuid", "apc_pdu_phase_host_uuid", "apc_pdu_phase_number", "apc_pdu_phase_current_amperage", "apc_pdu_phase_max_amperage", "apc_pdu_phase_note"],
+				});
+			}
+			elsif ($table eq "apc_pdu_outlets")
+			{
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["apc_pdu_outlet_uuid", "apc_pdu_outlet_apc_pdu_uuid", "apc_pdu_outlet_host_uuid", "apc_pdu_outlet_number", "apc_pdu_outlet_name", "apc_pdu_outlet_on_phase", "apc_pdu_outlet_state", "apc_pdu_outlet_note"],
+				});
+			}
+			elsif ($table eq "apc_pdu_variables")
+			{
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["apc_pdu_variable_uuid", "apc_pdu_variable_host_uuid", "apc_pdu_variable_source_table", "apc_pdu_variable_source_uuid", "apc_pdu_variable_is_temperature", "apc_pdu_variable_name", "apc_pdu_variable_value"],
+				});
+			}
+		}
+		
+		### TODO: Make this less of a hackish mc-hackington...
+		# VACUUM FULL, if the database is on this machine. I need to do this from the command line 
+		# because the user we connect as isn't allowed to do it. We'll also only vacuum our DB.
+		my $db_name = "";
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "id",                        value1 => $id, 
+				name2 => "scancore::db::${id}::host", value2 => $an->data->{scancore}{db}{$id}{host}, 
+				name3 => "hostname",                  value3 => $an->hostname, 
+				name4 => "short_hostname",            value4 => $an->short_hostname, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($an->data->{scancore}{db}{$id}{host} eq $an->hostname) or ($an->data->{scancore}{db}{$id}{host} eq $an->short_hostname))
+			{
+				$db_name = $an->data->{scancore}{db}{$id}{name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "db_name",                   value1 => $db_name, 
+					name2 => "scancore::db::${id}::name", value2 => $an->data->{scancore}{db}{$id}{name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+		if ($db_name)
+		{
+			my $start      = time;
+			my $shell_call = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." $db_name -c 'VACUUM FULL;'\"";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "start",      value1 => $start, 
+				name2 => "shell_call", value2 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			my $finished = time - $start;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "finished", value1 => $finished, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
+	}
+	
+	return(0);
+}
+
+# This looks for APC PDUs.
 sub find_pdus
 {
 	my ($an) = @_;
@@ -303,7 +792,7 @@ sub find_pdus
 	$an->data->{'scan-apc-pdu'}{pdus} = $an->data->{switches}{pdus} if $an->data->{switches}{pdus};
 	if ($an->data->{'scan-apc-pdu'}{pdus})
 	{
-		# User has specified the UPSes to query. We'll resolve them to IPs.
+		# User has specified the PDUs to query. We'll resolve them to IPs.
 		foreach my $pdu_name (split/,/, $an->data->{'scan-apc-pdu'}{pdu})
 		{
 			next if not $pdu_name;
@@ -384,7 +873,7 @@ sub find_pdus
 		}
 		close $file_handle;
 		
-		# If I am a dashboard, read in the cache files for the UPSes that nodes know about and see if
+		# If I am a dashboard, read in the cache files for the PDUs that nodes know about and see if
 		# we can ping them. If we can, we'll scan them. This will be important for dashboards to 
 		# determine if/when it is safe to boot a node.
 		my $host_type = $an->Get->what_am_i();

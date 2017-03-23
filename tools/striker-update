@@ -10,6 +10,9 @@
 #         have all the strings we need, which would cause String->get() to error out.
 #         
 ### TODO: Test the database schema and if the old schema doesn't match, either update it or abort.
+### 
+### TODO: Look for path::updates::striker/.dontupdate and, if found, don't download the source. This will 
+###       allow an update to the OS without updating Striker/ScanCore.
 # 
 # Return Codes:
 # 0  = OK
@@ -32,6 +35,8 @@
 # 17 = Failed to match a server to a host.
 # 18 = One or more servers found still running after trying to migrate all servers off a node.
 # 19 = Node didn't withdraw from the Anvil! properly.
+# 20 = Failed to download a file.
+# 21 = Failed to connect to a given database while checking if the DB schema needed to be updated.
 # 
 
 use strict;
@@ -88,6 +93,7 @@ my $an = AN::Tools->new({
 			gcc			=>	"/usr/bin/gcc",
 			img_directory		=>	"/var/www/html/#!os_type!#/x86_64/img",
 			iso_directory		=>	"/var/www/html/#!os_type!#/x86_64/iso",
+			log_file		=>	"/var/log/striker.log",
 			mount			=>	"/bin/mount",
 			# This is needed for some legacy support
 			nodes			=>	{
@@ -106,13 +112,13 @@ my $an = AN::Tools->new({
 				# If this directory exists and has RPMs in it, we'll use what is in it to 
 				# update the local repository before doing the OS update. Once the update is
 				# done, all downloaded RPMs will be copied into this directory
-				rpms			=>	$THIS_FILE."/rpms",
+				rpms			=>	$running_directory."/".$THIS_FILE."_cache/rpms",
 				# The striker source files will be saved in this directory. If there is no
 				# internet access to download the latest version, files found in here will be
 				# used instead.
-				striker			=>	$THIS_FILE."/source",
+				striker			=>	$running_directory."/".$THIS_FILE."_cache/source",
 				# This is used to store temporary files
-				temp			=>	$THIS_FILE."/temp",
+				temp			=>	$running_directory."/".$THIS_FILE."_cache/temp",
 			},
 			yum_cache		=>	"/var/cache/yum",
 		},
@@ -121,7 +127,7 @@ my $an = AN::Tools->new({
 			# access that file, we'll use 'striker_default'. Optionally, the user can request the latest
 			# master with '--master', in which case we will download the 'striker_master' URL. In all
 			# cases, the downloaded file will be saved as 'striker_zip_file'.
-			striker_default		=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-rc8.zip",
+			striker_default		=>	"https://github.com/ClusterLabs/striker/archive/2.0.0b-rc10.zip",
 			striker_latest		=>	"https://www.alteeve.com/an-repo/striker_latest.txt",
 			striker_master		=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
 			support			=>	"https://alteeve.com/w/Support",
@@ -130,17 +136,22 @@ my $an = AN::Tools->new({
 		switches		=>	{
 			offline			=>	0,
 			'gather-only'		=>	0,
+			'anvil-name'		=>	"",
+			'anvil-uuid'		=>	"",
 		},
 		sys			=>	{
 			debug			=>	2,
 			install_master		=>	0,
 			install_version		=>	"",
-			update			=>	1,
+			log_level		=>	2,
+			log_language		=>	"en_CA",
+			log_db_transactions	=>	0,
 			offline			=>	0,
 			ping_attempts		=>	3,
 			reboot_needed		=>	0,
 			reboot_timeout		=>	600,
 			striker_zip_file	=>	"striker.zip",
+			update			=>	1,
 		},
 	},
 });
@@ -233,8 +244,8 @@ if ($an->data->{sys}{offline})
 {
 	print "[ Note ] - We are offline. Updates will be limited to local data in cache.\n";
 	print "Updates will use files under:\n";
-	print "- RPMs: .. [".$an->data->{path}{current_dir}."/".$an->data->{path}{updates}{rpms}."]\n";
-	print "- Striker: [".$an->data->{path}{current_dir}."/".$an->data->{path}{updates}{striker}."]\n\n";
+	print "- RPMs: .. [".$an->data->{path}{updates}{rpms}."]\n";
+	print "- Striker: [".$an->data->{path}{updates}{striker}."]\n\n";
 }
 elsif ($an->data->{switches}{'gather-only'})
 {
@@ -275,9 +286,9 @@ if ($an->data->{switches}{'no-refresh'})
 {
 	print "We will NOT refresh our local copy of the Striker source code. If it exists,\n";
 	print "we will use what is already cached in:\n";
-	print "- Striker: [".$an->data->{path}{current_dir}."/".$an->data->{path}{updates}{striker}."]\n\n";
+	print "- Striker: [".$an->data->{path}{updates}{striker}."]\n\n";
 }
-elsif ($an->data->{switches}{master})
+elsif (($an->data->{switches}{master}) && (not $an->data->{sys}{offline}))
 {
 	print "We will download the latest source code from GitHub's master branch.\n";
 	print "- NOTE: This should only be done on test and development platforms!\n\n";
@@ -357,39 +368,51 @@ if (not $an->data->{sys}{offline})
 	print "- Determining version to download...\n";
 	get_latest_version($an);
 	
-	my $striker_source_test = $an->data->{path}{striker_cache}."/cgi-bin/striker";
+	# First, does the '.dontupdate' file exist?
+	my $striker_dontupdate = $an->data->{path}{updates}{striker}."/.dontupdate";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "striker_source_test", value1 => $striker_source_test,
+		name1 => "striker_dontupdate", value1 => $striker_dontupdate,
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{switches}{master})
+	if (-e $striker_dontupdate)
 	{
-		print "- Downloading: [".$an->data->{url}{striker_master}."]\n";
-		if ((-e $striker_source_test) && ($an->data->{switches}{'no-refresh'}))
-		{
-			print "- Skipping download, source appears to already exist and '--no-refresh' used.\n";
-		}
-		else
-		{
-			print "\n[ Warning ] - Master branch requested. This should be used by developers and\n";
-			print "              testers only. Please don't use this in production!\n\n";
-			$an->data->{sys}{install_master} = 1;
-			sleep 3;
-			download_and_extract_source($an, $an->data->{url}{striker_master});
-		}
+		print "- The \"don't update\" file: [$striker_dontupdate] was found, skipping source code update.\n";
 	}
 	else
 	{
-		print "- Downloading version: [".$an->data->{sys}{install_version}."] from: [".$an->data->{url}{striker_default}."]\n";
-		if ((-e $striker_source_test) && ($an->data->{switches}{'no-refresh'}))
+		my $striker_source_test = $an->data->{path}{striker_cache}."/cgi-bin/striker";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "striker_source_test", value1 => $striker_source_test,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{switches}{master})
 		{
-			print "- Skipping download, source appears to already exist and '--no-refresh' used.\n";
+			print "- Downloading: [".$an->data->{url}{striker_master}."]\n";
+			if ((-e $striker_source_test) && ($an->data->{switches}{'no-refresh'}))
+			{
+				print "- Skipping download, source appears to already exist and '--no-refresh' used.\n";
+			}
+			else
+			{
+				print "\n[ Warning ] - Master branch requested. This should be used by developers and\n";
+				print "              testers only. Please don't use this in production!\n\n";
+				$an->data->{sys}{install_master} = 1;
+				sleep 3;
+				download_and_extract_source($an, $an->data->{url}{striker_master});
+			}
 		}
 		else
 		{
-			download_and_extract_source($an, $an->data->{url}{striker_default});
+			print "- Downloading version: [".$an->data->{sys}{install_version}."] from: [".$an->data->{url}{striker_default}."]\n";
+			if ((-e $striker_source_test) && ($an->data->{switches}{'no-refresh'}))
+			{
+				print "- Skipping download, source appears to already exist and '--no-refresh' used.\n";
+			}
+			else
+			{
+				download_and_extract_source($an, $an->data->{url}{striker_default});
+			}
 		}
+		print "- Done\n\n";
 	}
-	print "- Done\n\n";
 	
 	# Download any updates to the OS.
 	print "Downloading OS updates.\n";
@@ -429,9 +452,13 @@ else
 
 print "[ Note ] - No changes were made to 'striker.conf'.\n";
 print "[ Note ]   If you wish to check for new options, please see:\n";
-print "[ Note ]   ".$an->data->{path}{current_dir}."/".$an->data->{path}{updates}{striker}."/striker.conf\n\n";
+print "[ Note ]   ".$an->data->{path}{updates}{striker}."/striker.conf\n\n";
 
 # Warn the user if a reboot is required.
+foreach my $dashboard (sort {$a cmp $b} keys %{$an->data->{reboot_dashboard}})
+{
+	print "\n[ Note ] - The kernel was updated on: [$dashboard]. Please reboot that machine.\n\n";
+}
 if ($an->data->{sys}{reboot_needed})
 {
 	print "\n[ Note ] - The kernel was updated. Please reboot this machine.\n\n";
@@ -443,6 +470,248 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This checks to see if each database needs to have its schema updated.
+sub update_scancore_databases
+{
+	my ($an) = @_;
+	
+	print "Checking if any databases schemas need to be updated.\n";
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		my $db_host = $an->data->{scancore}{db}{$id}{host};
+		my $db_name = $an->data->{scancore}{db}{$id}{name};
+		my $queue   = [];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "db_host", value1 => $db_host, 
+			name2 => "db_name", value2 => $db_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		print "- Checking to see if the database: [$db_name] on: [$db_host ($id)] needs to be updated.\n";
+		
+		# Do I have a connection?
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "dbh::$id", value1 => $an->data->{dbh}{$id}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{dbh}{$id} !~ /^DBI::db=HASH/)
+		{
+			print "[ Error ] - I need access to all configured databases in order to update the schema.\n";
+			print "[ Error ]   This database is not accessible.\n";
+			exit(21);
+		}
+		
+		# Get the name of the database owner.
+		my $query = "SELECT pg_catalog.pg_get_userbyid(a.datdba) AS owner FROM pg_catalog.pg_database a WHERE a.datname = ".$an->data->{sys}{use_db_fh}->quote($db_name)." LIMIT 1;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $db_owner = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "db_owner", value1 => $db_owner, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# There are three things to check;
+		# 1. Does the locations table exist? If not, add it.
+		# 2. Does the hosts table have the 'location_uuid' column? Add it and redo the procedure and trigger, if not.
+		# 3. Does the states table have a history table? If so, remove it and its procedure/trigger.
+		
+		# First, do we need to add the 'locations' table?
+		$query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='locations' AND schemaname='public';";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (not $count)
+		{
+			# Add it.
+			print "- The 'locations' table needs to be added.\n";
+			my $query = '
+CREATE TABLE locations (
+       location_uuid                   uuid                            not null        primary key,
+       location_name                   text                            not null,
+       location_note                   text,
+       modified_date                   timestamp with time zone        not null 
+);
+ALTER TABLE locations OWNER TO '.$db_owner.';
+
+CREATE TABLE history.locations (
+       history_id                      bigserial, 
+       location_uuid                   uuid, 
+       location_name                   text, 
+       location_note                   text, 
+       modified_date                   timestamp with time zone        not null 
+);
+ALTER TABLE history.locations OWNER TO '.$db_owner.';
+
+CREATE FUNCTION history_locations() RETURNS trigger
+AS $$
+DECLARE
+       history_locations RECORD;
+BEGIN
+       SELECT INTO history_locations * FROM locations WHERE location_uuid = new.location_uuid;
+       INSERT INTO history.locations
+               (location_uuid, 
+                location_name, 
+                location_note, 
+                modified_date)
+       VALUES
+               (history_locations.location_uuid,
+                history_locations.location_name, 
+                history_locations.location_note, 
+                history_locations.modified_date);
+       RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_locations() OWNER TO '.$db_owner.';
+
+CREATE TRIGGER trigger_locations
+       AFTER INSERT OR UPDATE ON locations
+       FOR EACH ROW EXECUTE PROCEDURE history_locations();
+';
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$queue}, $query;
+		}
+		
+		# Second, do we need to add the host_location_uuid column to hosts?
+		$query = "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'hosts' AND table_schema = 'public' AND column_name = 'host_location_uuid';";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (not $count)
+		{
+			# Drop the function and trigger
+			print "- The 'hosts' table needs the 'host_location_uuid' column added.\n";
+			my $query = "DROP FUNCTION history_hosts() CASCADE;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$queue}, $query;
+			
+			# Add the columns to both schemas;
+			$query = "ALTER TABLE public.hosts ADD COLUMN host_location_uuid uuid;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$queue}, $query;
+			
+			$query = "ALTER TABLE history.hosts ADD COLUMN host_location_uuid uuid;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$queue}, $query;
+			
+			# Add the foreign key
+			$query = "ALTER TABLE public.hosts ADD CONSTRAINT hosts_host_location_uuid_fkey FOREIGN KEY(host_location_uuid) REFERENCES locations(location_uuid);";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$queue}, $query;
+			
+			# Recreate the function and trigger.
+			$query = '
+CREATE FUNCTION history_hosts() RETURNS trigger
+AS $$
+DECLARE
+        history_hosts RECORD;
+BEGIN
+        SELECT INTO history_hosts * FROM hosts WHERE host_uuid = new.host_uuid;
+        INSERT INTO history.hosts
+                (host_uuid,
+                 host_location_uuid, 
+                 host_name,
+                 host_type,
+                 host_emergency_stop,
+                 host_stop_reason, 
+                 host_health, 
+                 modified_date)
+        VALUES
+                (history_hosts.host_uuid,
+                 history_hosts.host_location_uuid, 
+                 history_hosts.host_name,
+                 history_hosts.host_type,
+                 history_hosts.host_emergency_stop,
+                 history_hosts.host_stop_reason, 
+                 history_hosts.host_health, 
+                 history_hosts.modified_date);
+        RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_hosts() OWNER TO '.$db_owner.';
+
+CREATE TRIGGER trigger_hosts
+        AFTER INSERT OR UPDATE ON hosts
+        FOR EACH ROW EXECUTE PROCEDURE history_hosts();
+';
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$queue}, $query;
+		}
+		
+		# Third and last; Does the states table have a history table? If so, remove it and its procedure/trigger.
+		$query = "SELECT * FROM pg_catalog.pg_tables WHERE tablename = 'states' AND schemaname = 'history';";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($count)
+		{
+			# Remove it.
+			print "- The 'states' table needs to be removed from the history schema.\n";
+			my $query = "DROP FUNCTION history_states() CASCADE;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$queue}, $query;
+			
+			$query = "DROP TABLE history.states;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$queue}, $query;
+		}
+		
+		# Do I have pending queries?
+		my $queue_length = @{$queue};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "queue_length", value1 => $queue_length, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($queue_length)
+		{
+			print "- Database updates needed, applying now.\n";
+			$an->DB->do_db_write({id => $id, query => $queue, source => $THIS_FILE, line => __LINE__});
+			print "[ NOTE ] - 'drop cascades' warnings are safe to ignore.\n";
+		}
+		else
+		{
+			print "- No updates on this database are needed.\n";
+		}
+	}
+	print "- Done!\n\n";
+	
+	return(0);
+}
+
 
 # This updates the local machine.
 sub update_local
@@ -596,7 +865,7 @@ sub update_all
 			exit(6);
 		}
 		$anvils->{$anvil_name} = $anvil_uuid;
-		$error = check_anvil($an, $anvil_uuid, $error, 1);
+		$error                 = check_anvil($an, $anvil_uuid, $error, 1);
 	}
 	if ($error)
 	{
@@ -625,7 +894,7 @@ sub update_all
 		print "- Disabling ScanCore on Striker dashboard: [$dashboard]\n";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "dashboard",  value1 => $dashboard,
-			name3 => "shell_call", value3 => $shell_call,
+			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "password", value1 => $password,
@@ -708,7 +977,7 @@ sub update_all
 			my $password = $dashboards->{$dashboard};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "dashboard",  value1 => $dashboard,
-				name3 => "shell_call", value3 => $shell_call,
+				name2 => "shell_call", value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "password", value1 => $password,
@@ -788,12 +1057,78 @@ sub update_all
 	}
 	print "- ScanCore is stopped now on all systems. Ready to proceed.\n\n";
 	
+	# Update the databases, if needed
+	update_scancore_databases($an);
+	
 	# Update the dashboards.
 	update_target($an, "dashboard", "local");
 	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
 	{
-		my $password = $dashboards->{$dashboard};
-		update_target($an, "dashboard", $dashboard, 22, $password);
+		# Copy our cache directories and this update script to the peer dashboard and then call this
+		# script without --anvil-X. This way the peer's ISO to flat file conversion and the RPM repo
+		# will be updated properly.
+		print "- Copying our cache over to the dashboard: [$dashboard]\n";
+		my $password   = $dashboards->{$dashboard};
+		my $cache_root = ($an->data->{path}{updates}{rpms} =~ /^(.*?)\/rpms/)[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cache_root", value1 => $cache_root,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $source_path ($0, $cache_root)
+		{
+			print "- Copying over: [$source_path].\n";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "dashboard",   value1 => $dashboard,
+				name2 => "source_path", value2 => $source_path,
+			}, file => $THIS_FILE, line => __LINE__});
+			my $return_code = $an->Storage->rsync({
+				target      => $dashboard,
+				port        => 22, 
+				password    => $password,
+				source      => $source_path,
+				destination => "root\@$dashboard:/root/",
+				switches    => "-avAX",
+			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		print "- Cache has been copied.\n";
+		
+		print "- Running this update on the dashboard: [$dashboard]\n";
+		print "###############################################################################\n";
+		print "# Please be patient! The update process will take some time and there will be\n";
+		print "# no output here until the update finishes. If you want to see if the update\n";
+		print "# is still running, log into: [$dashboard] and run:\n";
+		print "# ps aux | grep $THIS_FILE\n";
+		print "###############################################################################\n";
+		my $shell_call = "/root/".$THIS_FILE." -y -vvv";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "dashboard",  value1 => $dashboard,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		print "/-----[ Command output ]------------------------------------------------------\n";
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target     => $dashboard,
+			port       => 22, 
+			password   => $password,
+			shell_call => $shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /reboot this machine/)
+			{
+				$an->data->{reboot_dashboard}{$dashboard} = 1;
+			}
+			print "| $line\n";
+		}
+		print "- Finished updating: [$dashboard]\n";
+		print "\\-----------------------------------------------------------------------------\n";
 	}
 	
 	# Update the Anvil! systems.
@@ -843,7 +1178,7 @@ sub update_all
 		print "- Enabling ScanCore on Striker dashboard: [$dashboard]\n";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "dashboard",  value1 => $dashboard,
-			name3 => "shell_call", value3 => $shell_call,
+			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "password", value1 => $password,
@@ -1753,7 +2088,7 @@ done
 					password    => $password,
 					source      => $source_path,
 					destination => "root\@$target:$destination",
-					switches    => "-aAX",
+					switches    => "-avAX",
 				});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "return_code", value1 => $return_code, 
@@ -2529,7 +2864,7 @@ sub gather_updated_rpms_from_anvil
 			password    => $password,
 			source      => "root\@$target:$rpm_file",
 			destination => $an->data->{path}{rpm_cache},
-			switches    => "-a",
+			switches    => "-avAX",
 		});
 		if ($return_code)
 		{
@@ -3226,6 +3561,7 @@ sub download_and_extract_source
 	rsync_data($an, $extract_root."/*", $an->data->{path}{striker_cache});
 	
 	# Clear the temp cache now that we're done.
+	print "- Clearing out the old temporary directory contents (if any)...\n";
 	clear_temp($an);
 	
 	return(0);
@@ -3372,7 +3708,6 @@ sub clear_temp
 		exit(3);
 	}
 	
-	print "Clearing out the old temporary directory contents (if any)...\n";
 	my $shell_call = $an->data->{path}{rm}." -rf ".$an->data->{path}{temp_cache}."/*";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -3387,7 +3722,6 @@ sub clear_temp
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
-	print "- Done.\n\n";
 	
 	return(0);
 }
@@ -3445,9 +3779,9 @@ sub setup_cache
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "setup_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print "Checking cache directories...\n";
-	$an->data->{path}{rpm_cache}     = $an->data->{path}{current_dir}."/".$an->data->{path}{updates}{rpms};
-	$an->data->{path}{striker_cache} = $an->data->{path}{current_dir}."/".$an->data->{path}{updates}{striker};
-	$an->data->{path}{temp_cache}    = $an->data->{path}{current_dir}."/".$an->data->{path}{updates}{temp};
+	$an->data->{path}{rpm_cache}     = $an->data->{path}{updates}{rpms};
+	$an->data->{path}{striker_cache} = $an->data->{path}{updates}{striker};
+	$an->data->{path}{temp_cache}    = $an->data->{path}{updates}{temp};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "path::current_dir",   value1 => $an->data->{path}{current_dir},
 		name2 => "path::rpm_cache",     value2 => $an->data->{path}{rpm_cache},
@@ -3595,6 +3929,10 @@ sub get_latest_version
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "path::tarball_dir", value1 => $an->data->{path}{tarball_dir},
 		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		$an->data->{sys}{install_version} = "--";
 	}
 	
 	return(0);
@@ -3775,6 +4113,7 @@ sub download_file
 		# Sadness.
 		print "\n" if not $an->data->{sys}{debug};
 		print "[ Error ] - There was a problem downloading: [$source] to: [$target]\n";
+		exit(20);
 		if (-e $target)
 		{
 			# Remove the sadness
@@ -3810,6 +4149,15 @@ into the loca repository. Optionally, updated RPMs on a target node can also be
 integrated into the local repository.
 
 
+IMPORTANT
+
+Depending on how old your install is, this update tool might fail as it relies
+on its own modules for some tasks. If that happens, run this program WITHOUT
+--anvil-name or --anvil-uuid. That will cause only the local machine to be 
+updated, including local modules. Once that completes, try the full upgrade
+again.
+
+
 NOTE
 
 To avoid compatibility problems, the AN::Tools module is used as little as 
@@ -3821,8 +4169,8 @@ NOTE
 
 If your system has no internet connection, you can manually copy files to:
 
-".$an->data->{path}{update_cache}."/rpms/
-".$an->data->{path}{update_cache}."/source/
+".$an->data->{path}{updates}{rpms}."
+".$an->data->{path}{updates}{striker}."
 
 Any RPMs found in the 'rpms' directory will be loaded into the local repository
 prior to running the OS update. If 'striker*.zip' (striker.zip, 

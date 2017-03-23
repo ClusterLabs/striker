@@ -506,9 +506,9 @@ WHERE
 			{
 				### NOTE: Not tested yet
 				$an->DB->archive_table({
-					table        => "storcli_controllers", 
-					offset       => $an->data->{archive}{table}{storcli_controllers}{offset}, 
-					conditionals => { storcli_controller_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["storcli_controller_uuid", "storcli_controller_host_uuid", "storcli_controller_serial_number", "storcli_controller_model", "storcli_controller_alarm_state", "storcli_controller_cache_size"],
 				});
 			}
@@ -516,9 +516,9 @@ WHERE
 			{
 				### NOTE: Not tested yet
 				$an->DB->archive_table({
-					table        => "storcli_bbus", 
-					offset       => $an->data->{archive}{table}{storcli_bbus}{offset}, 
-					conditionals => { storcli_bbu_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["storcli_bbu_uuid", "storcli_bbu_host_uuid", "storcli_bbu_controller_uuid", "storcli_bbu_serial_number", "storcli_bbu_type", "storcli_bbu_model", "storcli_bbu_state", "storcli_bbu_manufacture_date", "storcli_bbu_design_capacity", "storcli_bbu_replacement_needed"],
 				});
 			}
@@ -526,36 +526,36 @@ WHERE
 			{
 				### NOTE: Not tested yet
 				$an->DB->archive_table({
-					table        => "storcli_cachevaults", 
-					offset       => $an->data->{archive}{table}{storcli_cachevaults}{offset}, 
-					conditionals => { storcli_cachevault_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["storcli_cachevault_uuid", "storcli_cachevault_host_uuid", "storcli_cachevault_controller_uuid", "storcli_cachevault_serial_number", "storcli_cachevault_state", "storcli_cachevault_design_capacity", "storcli_cachevault_replacement_needed", "storcli_cachevault_type", "storcli_cachevault_model", "storcli_cachevault_manufacture_date"],
 				});
 			}
 			elsif ($table eq "storcli_drive_groups")
 			{
 				$an->DB->archive_table({
-					table        => "storcli_drive_groups", 
-					offset       => $an->data->{archive}{table}{storcli_drive_groups}{offset}, 
-					conditionals => { storcli_drive_group_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["storcli_drive_group_uuid", "storcli_drive_group_host_uuid", "storcli_drive_group_virtual_drive_uuid", "storcli_drive_group_id_string", "storcli_drive_group_access", "storcli_drive_group_array_size", "storcli_drive_group_array_state", "storcli_drive_group_cache", "storcli_drive_group_cachecade", "storcli_drive_group_consistent", "storcli_drive_group_disk_cache", "storcli_drive_group_raid_type", "storcli_drive_group_read_cache", "storcli_drive_group_scheduled_cc", "storcli_drive_group_write_cache"],
 				});
 			}
 			elsif ($table eq "storcli_physical_drives")
 			{
 				$an->DB->archive_table({
-					table        => "storcli_physical_drives", 
-					offset       => $an->data->{archive}{table}{storcli_physical_drives}{offset}, 
-					conditionals => { storcli_physical_drive_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["storcli_physical_drive_uuid", "storcli_physical_drive_host_uuid", "storcli_physical_drive_controller_uuid", "storcli_physical_drive_virtual_drive", "storcli_physical_drive_drive_group", "storcli_physical_drive_enclosure_id", "storcli_physical_drive_slot_number", "storcli_physical_drive_serial_number", "storcli_physical_drive_size", "storcli_physical_drive_sector_size", "storcli_physical_drive_vendor", "storcli_physical_drive_model", "storcli_physical_drive_self_encrypting_drive"],
 				});
 			}
 			elsif ($table eq "storcli_variables")
 			{
 				$an->DB->archive_table({
-					table        => "storcli_variables", 
-					offset       => $an->data->{archive}{table}{storcli_variables}{offset}, 
-					conditionals => { storcli_variable_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["storcli_variable_uuid", "storcli_variable_host_uuid", "storcli_variable_source_table", "storcli_variable_source_uuid", "storcli_variable_is_temperature", "storcli_variable_name", "storcli_variable_value"],
 				});
 			}
@@ -563,9 +563,9 @@ WHERE
 			{
 				### NOTE: Not tested yet
 				$an->DB->archive_table({
-					table        => "storcli_virtual_drives", 
-					offset       => $an->data->{archive}{table}{storcli_virtual_drives}{offset}, 
-					conditionals => { storcli_virtual_drive_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["storcli_virtual_drive_uuid", "storcli_virtual_drive_host_uuid", "storcli_virtual_drive_controller_uuid", "storcli_virtual_drive_id_string", "storcli_virtual_drive_creation_date", "storcli_virtual_drive_data_protection", "storcli_virtual_drive_disk_cache_policy", "storcli_virtual_drive_emulation_type", "storcli_virtual_drive_encryption", "storcli_virtual_drive_blocks", "storcli_virtual_drive_strip_size", "storcli_virtual_drive_drives_per_span", "storcli_virtual_drive_span_depth", "storcli_virtual_drive_scsi_naa_id"],
 				});
 			}

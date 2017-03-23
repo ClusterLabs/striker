@@ -581,9 +581,9 @@ WHERE
 			if ($table eq "ping_targets")
 			{
 				$an->DB->archive_table({
-					table        => "ping_targets", 
-					offset       => $an->data->{archive}{table}{ping_targets}{offset}, 
-					conditionals => { ping_target_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["ping_target_uuid", "ping_target_host_uuid", "ping_target_target_name", "ping_target_target_pinged", "ping_target_ping_time"],
 				});
 			}

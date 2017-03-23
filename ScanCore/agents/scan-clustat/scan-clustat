@@ -22,6 +22,7 @@
 #    Cman->update_cluster_conf() method (still needs testing for the delay shift)
 #  - Have it check 'virsh list' if any VM is listed as off in clustat and if the server is found, start it on
 #    the proper node. Editing <vm ... /> causes the server to be listed as off.
+#  - Add archiving
 # 
 
 # Use my modules.

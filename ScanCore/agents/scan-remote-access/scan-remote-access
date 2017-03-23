@@ -590,9 +590,9 @@ WHERE
 			if ($table eq "remote_access")
 			{
 				$an->DB->archive_table({
-					table        => "remote_access", 
-					offset       => $an->data->{archive}{table}{remote_access}{offset}, 
-					conditionals => { remote_access_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["remote_access_uuid", "remote_access_host_uuid", "remote_access_target_name", "remote_access_target_access"],
 				});
 			}

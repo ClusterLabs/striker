@@ -490,8 +490,8 @@ AND
 			if ($table eq "apc_ups")
 			{
 				$an->DB->archive_table({
-					table        => "apc_ups", 
-					offset       => $an->data->{archive}{table}{apc_ups}{offset}, 
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { apc_ups_host_uuid => $an->data->{sys}{host_uuid} },
 					columns      => ["apc_ups_uuid", "apc_ups_host_uuid", "apc_ups_serial_number", "apc_ups_name", "apc_ups_ip", "apc_ups_ac_restore_delay", "apc_ups_shutdown_delay", "apc_ups_firmware_version", "apc_ups_health", "apc_ups_high_transfer_voltage", "apc_ups_low_transfer_voltage", "apc_ups_last_transfer_reason", "apc_ups_manufactured_date", "apc_ups_model", "apc_ups_temperature_units", "apc_ups_nmc_firmware_version", "apc_ups_nmc_serial_number",  "apc_ups_nmc_mac_address"],
 				});
@@ -501,8 +501,8 @@ AND
 				### NOTE: The 'table' will use prefix '1.' and the 'join_table' will use 
 				###       prefix 'b.', set the conditionals accordingly.
 				$an->DB->archive_table({
-					table        => "apc_ups_battery", 
-					offset       => $an->data->{archive}{table}{apc_ups_battery}{offset}, 
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { 'a.apc_ups_battery_apc_ups_uuid' => 'b.apc_ups_uuid', 'b.apc_ups_host_uuid' => $an->data->{sys}{host_uuid} },
 					join_table   => "apc_ups", 
 					columns      => [ "apc_ups_battery_id", "apc_ups_battery_apc_ups_uuid", "apc_ups_battery_replacement_date", "apc_ups_battery_health", "apc_ups_battery_model", "apc_ups_battery_percentage_charge", "apc_ups_battery_last_replacement_date", "apc_ups_battery_state", "apc_ups_battery_temperature", "apc_ups_battery_alarm_temperature", "apc_ups_battery_voltage" ],
@@ -513,8 +513,8 @@ AND
 				### NOTE: The 'table' will use prefix '1.' and the 'join_table' will use 
 				###       prefix 'b.', set the conditionals accordingly.
 				$an->DB->archive_table({
-					table        => "apc_ups_input", 
-					offset       => $an->data->{archive}{table}{apc_ups_input}{offset}, 
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { 'a.apc_ups_input_apc_ups_uuid' => 'b.apc_ups_uuid', 'b.apc_ups_host_uuid' => $an->data->{sys}{host_uuid} },
 					join_table   => "apc_ups", 
 					columns      => [ "apc_ups_input_id", "apc_ups_input_apc_ups_uuid", "apc_ups_input_frequency", "apc_ups_input_sensitivity", "apc_ups_input_voltage", "apc_ups_input_1m_maximum_input_voltage", "apc_ups_input_1m_minimum_input_voltage" ],
@@ -525,8 +525,8 @@ AND
 				### NOTE: The 'table' will use prefix '1.' and the 'join_table' will use 
 				###       prefix 'b.', set the conditionals accordingly.
 				$an->DB->archive_table({
-					table        => "apc_ups_output", 
-					offset       => $an->data->{archive}{table}{apc_ups_output}{offset}, 
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { 'a.apc_ups_output_apc_ups_uuid' => 'b.apc_ups_uuid', 'b.apc_ups_host_uuid' => $an->data->{sys}{host_uuid} },
 					join_table   => "apc_ups", 
 					columns      => [ "apc_ups_output_id", "apc_ups_output_apc_ups_uuid", "apc_ups_output_load_percentage", "apc_ups_output_time_on_batteries", "apc_ups_output_estimated_runtime", "apc_ups_output_frequency", "apc_ups_output_voltage", "apc_ups_output_total_output" ],

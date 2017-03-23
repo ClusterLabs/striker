@@ -15,6 +15,9 @@ strings file. Do this by prefixing all strings with 'scan_apc_pdu_'.
 		<!-- Strings that can change by rebranding -->
 		<key name="scan_apc_pdu_brand_0001">APC/Schneider Electronics UPS Scan Agent</key>
 		
+		<!-- Logs -->
+		<key name="scan_apc_ups_log_0001">Starting to read the SNMP OIDs for the PDU: [#!variable!pdu!#].</key>
+		
 		<!-- APC UPS Agent-specific messages -->
 		<key name="scan_apc_pdu_message_0001">Starting #!string!scan_apc_pdu_brand_0001!#:</key>
 		<key name="scan_apc_pdu_message_0002"><![CDATA[
@@ -63,6 +66,8 @@ https://alteeve.ca/w/Support
 							      Alteeve's Niche!
 		]]></key>
 		<key name="scan_apc_pdu_message_0003">No APC/Schneider brand UPSes found, exiting.</key>
+		<key name="scan_apc_pdu_message_0004">Connection to the PDU: [#!variable!pdu_name!#] has been lost!</key>
+		<key name="scan_apc_pdu_message_0005">Connection to the PDU: [#!variable!pdu_name!#] has been restored.</key>
 		
 	</lang>
 </strings>

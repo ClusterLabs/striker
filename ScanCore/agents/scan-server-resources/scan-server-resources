@@ -2170,27 +2170,27 @@ WHERE
 			if ($table eq "server_resources")
 			{
 				$an->DB->archive_table({
-					table        => "server_resources", 
-					offset       => $an->data->{archive}{table}{server_resources}{offset}, 
-					conditionals => { server_resource_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["server_resource_uuid", "server_resource_host_uuid", "server_resource_target_access", "server_resource_host_name", "server_resource_os", "server_resource_boot_time", "server_resources_ram_size", "server_resources_ram_used", "server_resources_swap_size", "server_resources_swap_used"],
 				});
 			}
 			elsif ($table eq "server_resources_disks")
 			{
 				$an->DB->archive_table({
-					table        => "server_resources_disks", 
-					offset       => $an->data->{archive}{table}{server_resources_disks}{offset}, 
-					conditionals => { server_resources_disk_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["server_resources_disk_uuid", "server_resources_disk_server_resource_uuid", "server_resources_disk_host_uuid", "server_resources_disk_mount_point", "server_resources_disk_filesystem", "server_resources_disk_options", "server_resources_disk_size", "server_resources_disk_used"],
 				});
 			}
 			elsif ($table eq "server_resources_cpus")
 			{
 				$an->DB->archive_table({
-					table        => "server_resources_cpus", 
-					offset       => $an->data->{archive}{table}{server_resources_cpus}{offset}, 
-					conditionals => { server_resources_cpu_host_uuid => $an->data->{sys}{host_uuid} },
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
 					columns      => ["server_resources_cpu_uuid", "server_resources_cpu_server_resource_uuid", "server_resources_cpu_host_uuid", "server_resources_cpu_number", "server_resources_cpu_load"],
 				});
 			}

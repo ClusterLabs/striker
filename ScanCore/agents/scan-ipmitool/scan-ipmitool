@@ -480,8 +480,8 @@ AND
 			if ($table eq "ipmitool")
 			{
 				$an->DB->archive_table({
-					table        => "ipmitool", 
-					offset       => $an->data->{archive}{table}{ipmitool}{offset}, 
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { ipmitool_host_uuid => $an->data->{sys}{host_uuid} },
 					columns      => ["ipmitool_uuid", "ipmitool_host_uuid", "ipmitool_sensor_host", "ipmitool_sensor_name", "ipmitool_sensor_units", "ipmitool_sensor_status", "ipmitool_sensor_high_critical", "ipmitool_sensor_high_warning", "ipmitool_sensor_low_critical", "ipmitool_sensor_low_warning"],
 				});
@@ -491,8 +491,8 @@ AND
 				### NOTE: The 'table' will use prefix '1.' and the 'join_table' will use 
 				###       prefix 'b.', set the conditionals accordingly.
 				$an->DB->archive_table({
-					table        => "ipmitool_value", 
-					offset       => $an->data->{archive}{table}{ipmitool_value}{offset}, 
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { 'a.ipmitool_value_ipmitool_uuid' => 'b.ipmitool_uuid', 'b.ipmitool_host_uuid' => $an->data->{sys}{host_uuid} },
 					join_table   => "ipmitool", 
 					columns      => [ "ipmitool_value_id", "ipmitool_value_ipmitool_uuid", "ipmitool_value_sensor_value" ],

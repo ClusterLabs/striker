@@ -132,6 +132,7 @@ my $conf = {
 		md5sum		=>	{
 			'a2bc9de743bfb0bfe1f14676a46a624b'	=>	"RHEL 6.7, Disk 1",
 			'ef0f3bbfbb846491a07e4a02b5d5640a'	=>	"RHEL 6.8, Disk 1",
+			'57e29b68d92e1fc2f294e85baa29c5af'	=>	"RHEL 6.9, Disk 1",
 			'51f90e8ddd2ea199780065eaf75130ad'	=>	"CentOS 6.7, Disk 1",
 			'efd54b939787519b350d986329e2c7a3'	=>	"CentOS 6.7, Disk 2",
 			'f73c2c4dd333c202ca85ea66120cacdf'	=>	"CentOS 6.8, Disk 1",
@@ -2033,6 +2034,13 @@ sub download_striker
 		$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{$os_type}."-".$conf->{sys}{name}{release}.".iso";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: [$download], sys::name::version: [$conf->{sys}{name}{version}], path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
 	}
+	elsif ($conf->{switches}{release})
+	{
+		# 
+		print "- Specific release requested: [".$conf->{switches}{release}."]\n";
+		$download = "https://github.com/ClusterLabs/striker/archive/".$conf->{switches}{release}.".zip";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: [$download]\n" if $conf->{sys}{debug} >= 2;
+	}
 	else
 	{
 		# Try to get the latest version from the striker_latest file on Alteeve.
@@ -2959,6 +2967,7 @@ sub build_source
 	###       name from what we plan to copy, and unlink it if so (so that updates don't leave their 
 	###       older copy in the ISO).
 	# Find where we will copy files from.
+	my $missing_packages = 0;
 	foreach my $package (sort {$a cmp $b} @{$distro_list})
 	{
 		my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
@@ -2991,12 +3000,18 @@ sub build_source
 		}
 		
 		# If I didn't finf a match, or if I found too many matches, die.
-		die __LINE__."; [ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch]) in the source!\n" if not $found;
+		if (not $found)
+		{
+			print __LINE__."; [ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch]) in the source!\n";
+			$missing_packages = 1;
+		}
+
 		if (($found > 1) && ($conf->{sys}{debug} >= 2))
 		{
 			print "[ Note ] - The package: [$package] had multiple matches, Using; source: [$conf->{copy}{$package}{source}], file: [$conf->{copy}{$package}{file}]!\n";
 		}
 	}
+	die if $missing_packages;
 	
 	# Copy!
 	print "- Ready to copy files!\n";
@@ -4609,13 +4624,13 @@ SWITCHES
 	third party agreements.
 	
 	Fujitsu:
-	- $conf->{sys}{third_party}{Fujitsu}{terms}
+	- ".$conf->{sys}{third_party}{Fujitsu}{terms}."
 	
 	ASIX:
-	- $conf->{sys}{third_party}{ASIX}{terms}
+	- ".$conf->{sys}{third_party}{ASIX}{terms}."
 	
 	Avago:
-	- $conf->{sys}{third_party}{Avago}{terms}
+	- ".$conf->{sys}{third_party}{Avago}{terms}."
 	
 	With this agreement, support for this hardware will be added to the
 	Anvil! ISO.
@@ -4636,6 +4651,10 @@ SWITCHES
 	be removed and re-downloaded to make sure it is the latest version. 
 	This switch tells the program NOT to download again, and just use the
 	existing version.
+
+--release <tag>
+
+	Downloads a specific Striker version based on a guthub release tag.
 
 --source
 
@@ -4728,45 +4747,3 @@ sub _make_hash_reference
 	}
 	_add_hash_reference($href, $_href);
 }
-
-# Notes for making the ISO configurable later.
-=pod
---admin-user <name>
-
-	By default, the username used to log into Striker's web interface is
-	'admin'. You can change the admin user with this switch.
-
---ifn-dns1 <aaa.bbb.ccc.ddd>
-
---ifn-dns2 <eee.fff.ggg.hhh>
-
-	This sets the default primary and/or secondary DNS servers to use by
-	default. If you want to disable DNS, set these to '0'.
-	
-	The defaults are;
-	
-	* ifn-dns1 is '8.8.8.8'
-	* ifn-dns2 is '8.8.4.4'
-
---ifn-gateway <aaa.bbb.ccc.ddd>
-
-	This allows you to set the internet-facing network default gateway to
-	use by default when installing a Striker dashboard or Anvil! node. This
-	value can always be overridden at install time.
-	
-	The default is '10.255.255.254'.
-
---ifn-netmask </x>
-
-	This allows you to set a subnet mask (using CIDR notation, ie: '/16' or
-	'/24'). 
-	
-	The default is '/16' (255.255.0.0).
-
-$conf->{sys}{ks}{admin_user}  = $conf->{switches}{'admin-user'}  if $conf->{switches}{'admin-user'};
-$conf->{sys}{ks}{ifn_dns1}    = $conf->{switches}{'ifn-dns1'}    if $conf->{switches}{'ifn-dns1'};
-$conf->{sys}{ks}{ifn_dns1}    = "" if not $conf->{sys}{ks}{ifn_dns1};
-$conf->{sys}{ks}{ifn_dns2}    = $conf->{switches}{'ifn-dns2'}    if $conf->{switches}{'ifn-dns2'};
-$conf->{sys}{ks}{ifn_dns2}    = "" if not $conf->{sys}{ks}{ifn_dns2};
-$conf->{sys}{ks}{ifn_netmask} = $conf->{switches}{'ifn-netmask'} if $conf->{switches}{'ifn-netmask'};
-=cut
