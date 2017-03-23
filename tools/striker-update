@@ -355,6 +355,9 @@ else
 # First, setup the local cache directories, if they don't already exists
 setup_cache($an);
 
+# Update the databases, if needed
+update_scancore_databases($an);
+
 # If we're online (still), download the striker source
 if (not $an->data->{sys}{offline})
 {
@@ -1056,9 +1059,6 @@ sub update_all
 		}
 	}
 	print "- ScanCore is stopped now on all systems. Ready to proceed.\n\n";
-	
-	# Update the databases, if needed
-	update_scancore_databases($an);
 	
 	# Update the dashboards.
 	update_target($an, "dashboard", "local");
