@@ -152,6 +152,8 @@ if (not $an->DB->verify_host_uuid())
 	}, code => 255, file => $THIS_FILE, line => __LINE__});
 }
 
+### NOTE: The servers table is sync'ed in ScanCore proper.
+
 # Look for changes.
 find_changes($an);
 

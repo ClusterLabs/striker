@@ -1168,7 +1168,19 @@ The 'AN::Tools::DB' module's 'archive_table()' method was called without an arra
 
 =head2 C<239>
 
+The 'AN::Tools::Get' module's 'node_pdus()' method was called without an Anvil! UUID being passed.
 
+=head2 C<240>
+
+The 'AN::Tools::Get' module's 'node_pdus()' method was called without an node name being passed.
+
+=head2 C<241>
+
+The 'AN::Tools::Get' module's 'node_upses()' method was called without an Anvil! UUID being passed.
+
+=head2 C<242>
+
+The 'AN::Tools::Get' module's 'node_upses()' method was called without an node name being passed.
 
 
 

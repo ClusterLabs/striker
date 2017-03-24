@@ -912,7 +912,7 @@ sub ping
 			if ($line =~ /min\/avg\/max\/mdev = .*?\/(.*?)\//)
 			{
 				$average_ping_time = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "average_ping_time", value1 => $average_ping_time, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -921,7 +921,7 @@ sub ping
 	
 	# 0 == Ping failed
 	# 1 == Ping success
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "pinged",            value1 => $pinged, 
 		name2 => "average_ping_time", value2 => $average_ping_time, 
 	}, file => $THIS_FILE, line => __LINE__});

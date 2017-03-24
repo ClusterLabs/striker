@@ -30,6 +30,7 @@ my $THIS_FILE = "Get.pm";
 # manifest_data
 # netmask_from_ip
 # node_info
+# node_pdus
 # node_upses
 # notify_data
 # owner_data
@@ -2378,6 +2379,132 @@ sub node_info
 	return($return);
 }
 
+# This returns the PDUs powering a given node. It determines this by examining the node's cached /etc/hosts
+# file and looking for host names with 'pdu' in them.
+sub node_pdus
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "node_pdus" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_uuid = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
+	my $node_name  = $parameter->{node_name}  ? $parameter->{node_name}  : "both";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid, 
+		name2 => "node_name",  value2 => $node_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Return if we don't have an Anvil! UUID or node name.
+	if (not $anvil_uuid)
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0239", code => 239, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	if (not $node_name)
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0240", code => 240, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# Make sure we can communicate with both/all the PDUs. Read the 'etc_hosts' cache for each 
+	# node and build a list of UPSes we'll call.
+	my $pdus = {};
+	my $query = "
+SELECT 
+    c.host_name, 
+    d.node_cache_data 
+FROM 
+    nodes a, 
+    anvils b, 
+    hosts c, 
+    nodes_cache d 
+WHERE 
+    a.node_anvil_uuid = b.anvil_uuid 
+AND 
+    a.node_host_uuid  = c.host_uuid 
+AND 
+    a.node_uuid       = d.node_cache_node_uuid
+AND 
+    d.node_cache_name = 'etc_hosts'
+AND 
+    b.anvil_uuid      = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)."
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $host_name       = $row->[0];
+		my $node_cache_data = $row->[1];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "host_name",       value1 => $host_name, 
+			name2 => "node_cache_data", value2 => $node_cache_data, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (($node_name ne "both") && ($node_name ne $host_name))
+		{
+			# Where not interested in this node's UPSes.
+			next;
+		}
+		
+		foreach my $line (split/\n/, $node_cache_data)
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /pdu/)
+			{
+				my ($ip, $names) = ($line =~ /(\d+\.\d+\.\d+\.\d+)\s+(.*)$/);
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "ip",    value1 => $ip, 
+					name2 => "names", value2 => $names, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# It is crude, but we'll use the longest host name.
+				my $pdu_name = "";
+				foreach my $name (split/ /, $names)
+				{
+					if (length($name) > length($pdu_name))
+					{
+						$pdu_name = $name;
+					}
+				}
+				
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "pdu_name", value1 => $pdu_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (not exists $pdus->{$ip})
+				{
+					$pdus->{$ip}{name} = $pdu_name;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "pdus->${ip}::name", value1 => $pdus->{$ip}{name}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+	}
+	
+	# Summarize for the logs.
+	foreach my $ip (sort {$a cmp $b} keys %{$pdus})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "pdus->${ip}::name", value1 => $pdus->{$ip}{name}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return($pdus);
+}
+
 # This returns the UPSes powering a given node. It determines this by examining the node's cached /etc/hosts
 # file and looking for host names with 'ups' in them.
 sub node_upses
@@ -2393,6 +2520,18 @@ sub node_upses
 		name1 => "anvil_uuid", value1 => $anvil_uuid, 
 		name2 => "node_name",  value2 => $node_name, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Return if we don't have an Anvil! UUID or node name.
+	if (not $anvil_uuid)
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0241", code => 241, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	if (not $node_name)
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0242", code => 242, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
 	
 	# Make sure we can communicate with both/all the UPSes. Read the 'etc_hosts' cache for each 
 	# node and build a list of UPSes we'll call.

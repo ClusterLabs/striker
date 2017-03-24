@@ -991,6 +991,10 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0236"><![CDATA[The 'AN::Tools::DB' module's 'archive_table()' method was called without a table name given.]]></key>
 		<key name="error_message_0237"><![CDATA[The 'AN::Tools::DB' module's 'archive_table()' method was called for the table: [#!variable!table!#] without number of records to archive (no offset).]]></key>
 		<key name="error_message_0238"><![CDATA[The 'AN::Tools::DB' module's 'archive_table()' method was called for the table: [#!variable!table!#] without any columns being passed in (expected an array reference with one or more columns).]]></key>
+		<key name="error_message_0239"><![CDATA[The 'AN::Tools::Get' module's 'node_pdus()' method was called without an Anvil! UUID being passed.]]></key>
+		<key name="error_message_0240"><![CDATA[The 'AN::Tools::Get' module's 'node_pdus()' method was called without a node name being passed.]]></key>
+		<key name="error_message_0241"><![CDATA[The 'AN::Tools::Get' module's 'node_upses()' method was called without an Anvil! UUID being passed.]]></key>
+		<key name="error_message_0242"><![CDATA[The 'AN::Tools::Get' module's 'node_upses()' method was called without a node name being passed.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

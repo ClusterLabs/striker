@@ -43,7 +43,7 @@ my $an = AN::Tools->new({
 		sys		=>	{
 			fast		=>	0,
 			hide_empty	=>	1,
-			log_level	=>	2,
+			log_level	=>	1,
 		},
 	},
 	gathered	=>	{

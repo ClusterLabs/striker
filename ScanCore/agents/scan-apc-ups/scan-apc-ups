@@ -819,7 +819,7 @@ WHERE
 sub find_changes
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: For now, we do it this way because we look for UPSes by their name/IPs, so we don't have
 	###       the serial number yet. This may get reworked later.
@@ -2935,7 +2935,7 @@ AND
 sub process_power
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_power", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# The main bits we need to know is, for each UPS, is there input power?
 	
@@ -3138,7 +3138,7 @@ INSERT INTO
 sub shutdown_ups
 {
 	my ($an, $ups) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "shutdown_ups", }, message_key => "tools_log_0003", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "shutdown_ups" }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "ups", value1 => "$ups" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -3159,7 +3159,7 @@ sub shutdown_ups
 sub set_oid_integer
 {
 	my ($an, $ups, $oid, $value) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_oid_integer", }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_oid_integer" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "ups",   value1 => "$ups", 
 		name2 => "oid",   value2 => "$oid", 
 		name3 => "value", value3 => "$value", 
@@ -3197,7 +3197,7 @@ sub set_oid_integer
 sub read_last_scan
 {
 	my ($an, $new_apc_ups_serial_number) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "tools_log_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "new_apc_ups_serial_number", value1 => "$new_apc_ups_serial_number" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -3441,7 +3441,7 @@ AND
 sub update_db
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
@@ -3476,7 +3476,7 @@ sub update_db
 sub update_db_apc_ups_battery
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_battery", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_battery" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_ups_battery' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -3791,7 +3791,7 @@ INSERT INTO
 sub update_db_apc_ups_output
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_output", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_output" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_ups_output' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -4073,7 +4073,7 @@ INSERT INTO
 sub update_db_apc_ups_input
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_output", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_output" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_ups_input' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -4341,7 +4341,7 @@ INSERT INTO
 sub update_db_apc_ups
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_ups' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -4495,7 +4495,7 @@ WHERE
 			my $apc_ups_nmc_firmware_version  = $an->data->{db_data}{unified}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}{$apc_ups_uuid}{apc_ups_nmc_firmware_version};
 			my $apc_ups_nmc_serial_number     = $an->data->{db_data}{unified}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}{$apc_ups_uuid}{apc_ups_nmc_serial_number};
 			my $apc_ups_nmc_mac_address       = $an->data->{db_data}{unified}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}{$apc_ups_uuid}{apc_ups_nmc_mac_address};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0017", message_variables => {
 				name1  => "apc_ups_uuid",                  value1  => $apc_ups_uuid, 
 				name2  => "apc_ups_name",                  value2  => $apc_ups_name, 
 				name3  => "apc_ups_serial_number",         value3  => $apc_ups_serial_number, 
@@ -4722,7 +4722,7 @@ INSERT INTO
 sub prep_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -4768,7 +4768,7 @@ sub prep_databases
 sub gather_ups_data
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_ups_data", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_ups_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: If the network with the UPS is congested, it is possible that, despite connecting to the 
 	###       UPS, some OID reads may fail with '#!no_connection!#'. Try to read them a second time in
@@ -5337,9 +5337,9 @@ sub gather_ups_data
 sub read_oid
 {
 	my ($an, $ups, $oid) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_oid_string", }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "ups", value1 => "$ups", 
-		name2 => "oid", value2 => "$oid", 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_oid" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "ups", value1 => $ups, 
+		name2 => "oid", value2 => $oid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $value      = "#!no_value!#";
@@ -5422,7 +5422,7 @@ sub read_oid
 sub find_upses
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_upses", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_upses" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->data->{'scan-apc-ups'}{upses} = $an->data->{switches}{upses} if $an->data->{switches}{upses};
 	if ($an->data->{'scan-apc-ups'}{upses})
@@ -5567,7 +5567,7 @@ sub find_upses
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print $an->String->get({key => "scan_apc_ups_message_0002"})."\n";
 

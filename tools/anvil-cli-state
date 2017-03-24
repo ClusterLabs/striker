@@ -222,7 +222,7 @@ my $an = AN::Tools->new({
 		},
 		sys		=>	{
 			current_time	=>	"",
-			log_level	=>	2,
+			log_level	=>	1,
 			interval	=>	0,
 		},
 	},

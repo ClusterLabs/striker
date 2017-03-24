@@ -1,0 +1,11 @@
+# This is needed by scan-apc-pdu to trick/force .1.3.6.1.2.1.2.2.1.6.2 to return Hex-STRING.
+PowerNet-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+ enterprises, IpAddress, Gauge, TimeTicks             FROM RFC1155-SMI
+ DisplayString                                        FROM RFC1213-MIB
+ OBJECT-TYPE                                          FROM RFC-1212
+ TRAP-TYPE                                            FROM RFC-1215;
+
+-- IMPORTS End
+

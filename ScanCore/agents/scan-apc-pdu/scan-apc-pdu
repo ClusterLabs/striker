@@ -47,7 +47,7 @@ Variables
 .1.3.6.1.4.1.318.1.1.12.2.3.1.1.2.1  = Current Amperage on the phase, in 1/10 Amp (x10 to get Amp)
 
 Port information
-.1.3.6.1.4.1.318.1.1.4.4.1           = Number of outlets (ie: 8)
+.1.3.6.1.4.1.318.1.1.4.4.1.0         = Number of outlets (ie: 8)
 .1.3.6.1.4.1.318.1.1.4.4.2.1.2.n     = Pending action on state? (1 = command pending, 2 = no command pending, 3 = unknown. If all ports are '3', power cycle is required. If the all devices on the peer report Power is OK, do so immediately)
 .1.3.6.1.4.1.318.1.1.4.4.2.1.3.n     = Current state (read: 1 = on, 2 = off, 4 = unknown --- write: 1 = turn on, 2 = turn off, 3 = cycle (~5s), 5 = on after 'sPDUOutletPowerOnTime' delay, 6 = off after sPDUOutletPowerOffTime delay, 7 = off after sPDUOutletPowerOffTime delay, wait sPDUOutletRebootDuration time, then back on.)
 .1.3.6.1.4.1.318.1.1.4.5.2.1.3.n     = Outlet name (default is 'Outlet N'), Can be read or set, max 20 chars.		<- Set this when we map the Anvil! 
@@ -59,7 +59,8 @@ Port information
 Network data  (NOTE: .1 is the loopback interface, .2 is the physical interface)
 .1.3.6.1.2.1.2.2.1.4.2 = MTU size
 .1.3.6.1.2.1.2.2.1.5.2 = Link speed (in bps)
-.1.3.6.1.2.1.2.2.1.6.2 = MAC address
+.1.3.6.1.2.1.2.2.1.6.2 = MAC address	- This is losing the first nibble... It returns type STRING instead of Hex-STRING, even if -Ox is used. If I point to the APC MIB, it returns OK. This is what we should be using.
+.1.3.6.1.6.3.10.2.1.1.0 = MAC address (with some prefix) in hex. Not sure if this is supported on other PDUs though...
 
 =cut
 
@@ -89,6 +90,7 @@ my $an = AN::Tools->new({data =>
 			sql			=>	"$running_directory/$THIS_FILE.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+			striker_mib		=>	"/sbin/striker/ScanCore/agents/$THIS_FILE/Striker-MIB.txt",
 		},
 		sys			=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
@@ -152,7 +154,7 @@ SET search_path = history, pg_catalog;
 				apc_pdu_mtu_size		=>	".1.3.6.1.2.1.2.2.1.4.2", 
 				apc_pdu_link_speed		=>	".1.3.6.1.2.1.2.2.1.5.2", 
 				apc_pdu_phase_count		=>	".1.3.6.1.4.1.318.1.1.12.2.1.2.0", 
-				apc_pdu_outlet_count		=>	".1.3.6.1.4.1.318.1.1.4.4.1", 
+				apc_pdu_outlet_count		=>	".1.3.6.1.4.1.318.1.1.4.4.1.0", 
 			},
 			apc_pdu_phases		=>	{
 				# The phase number will be appended to the OID
@@ -276,6 +278,8 @@ archive_if_needed($an);
 # Look to see if any databases need to be updated.
 update_db($an);
 
+die;
+
 # Look for changes.
 find_changes($an);
 
@@ -293,18 +297,412 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 
 
+# This looks at each DB's 'updated' table entry to see if any tables are behind. If any are, it will update
+# the tables based on the time the last entry was made for a given host.
+sub update_db
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{db_resync_needed})
+	{
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
+		# Make a note in the databases that we're starting an update and ask it to wait 10 seconds 
+		# before returning to give other instances time to finish their scans. (our scans end quickly
+		# enough).
+		#$an->DB->set_update_db_flag({set => time, 'wait' => 10});
+		
+		# Update apc_pdu and interfaces
+		update_db_apc_pdu($an);
+		update_db_apc_pdu_outlets($an);
+		update_db_apc_pdu_phases($an);
+		update_db_apc_pdu_variables($an);
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
+		
+		# Clear the update flag.
+		#$an->DB->set_update_db_flag({set => 0});
+	}
+	
+	return(0);
+}
+
+# Update the 'apc_pdu_variables' table.
+sub update_db_apc_pdu_variables
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	
+	return(0);
+}
+
+# Update the 'apc_pdu_phases' table.
+sub update_db_apc_pdu_phases
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_phases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	
+	return(0);
+}
+
+# Update the 'apc_pdu_outlets' table.
+sub update_db_apc_pdu_outlets
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_outlets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	
+	return(0);
+}
+
+# Update the 'apc_pdu' table.
+sub update_db_apc_pdu
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'apc_pdu' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    apc_pdu_uuid, 
+    apc_pdu_serial_number, 
+    apc_pdu_model_number, 
+    apc_pdu_manufacture_date, 
+    apc_pdu_firmware_version, 
+    apc_pdu_hardware_version, 
+    apc_pdu_ipv4_address, 
+    apc_pdu_mac_address, 
+    apc_pdu_mtu_size, 
+    apc_pdu_link_speed, 
+    apc_pdu_phase_count, 
+    apc_pdu_outlet_count, 
+    apc_pdus_note, 
+    modified_date 
+FROM 
+    history.apc_pdu 
+WHERE 
+    apc_pdu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $apc_pdu_uuid             =         $row->[0];
+			my $apc_pdu_serial_number    =         $row->[1];
+			my $apc_pdu_model_number     =         $row->[2];
+			my $apc_pdu_manufacture_date = defined $row->[3]  ? $row->[3]  : "NULL";
+			my $apc_pdu_firmware_version = defined $row->[4]  ? $row->[4]  : "NULL";
+			my $apc_pdu_hardware_version = defined $row->[5]  ? $row->[5]  : "NULL";
+			my $apc_pdu_ipv4_address     =         $row->[6];
+			my $apc_pdu_mac_address      =         $row->[7];
+			my $apc_pdu_mtu_size         =         $row->[8];
+			my $apc_pdu_link_speed       =         $row->[9];
+			my $apc_pdu_phase_count      =         $row->[10];
+			my $apc_pdu_outlet_count     =         $row->[11];
+			my $apc_pdus_note            = defined $row->[12] ? $row->[12] : "NULL";
+			my $modified_date            =         $row->[13];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+				name1  => "apc_pdu_uuid",             value1  => $apc_pdu_uuid, 
+				name2  => "apc_pdu_serial_number",    value2  => $apc_pdu_serial_number, 
+				name3  => "apc_pdu_model_number",     value3  => $apc_pdu_model_number, 
+				name4  => "apc_pdu_manufacture_date", value4  => $apc_pdu_manufacture_date, 
+				name5  => "apc_pdu_firmware_version", value5  => $apc_pdu_firmware_version, 
+				name6  => "apc_pdu_hardware_version", value6  => $apc_pdu_hardware_version, 
+				name7  => "apc_pdu_ipv4_address",     value7  => $apc_pdu_ipv4_address, 
+				name8  => "apc_pdu_mac_address",      value8  => $apc_pdu_mac_address, 
+				name9  => "apc_pdu_mtu_size",         value9  => $apc_pdu_mtu_size, 
+				name10 => "apc_pdu_link_speed",       value10 => $apc_pdu_link_speed, 
+				name11 => "apc_pdu_phase_count",      value11 => $apc_pdu_phase_count, 
+				name12 => "apc_pdu_outlet_count",     value12 => $apc_pdu_outlet_count, 
+				name13 => "apc_pdus_note",            value13 => $apc_pdus_note, 
+				name14 => "modified_date",            value14 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid} = {
+				apc_pdu_serial_number		=>	$apc_pdu_serial_number, 
+				apc_pdu_model_number		=>	$apc_pdu_model_number, 
+				apc_pdu_manufacture_date	=>	$apc_pdu_manufacture_date, 
+				apc_pdu_firmware_version	=>	$apc_pdu_firmware_version, 
+				apc_pdu_hardware_version	=>	$apc_pdu_hardware_version, 
+				apc_pdu_ipv4_address		=>	$apc_pdu_ipv4_address, 
+				apc_pdu_mac_address		=>	$apc_pdu_mac_address, 
+				apc_pdu_mtu_size		=>	$apc_pdu_mtu_size, 
+				apc_pdu_link_speed		=>	$apc_pdu_link_speed, 
+				apc_pdu_phase_count		=>	$apc_pdu_phase_count, 
+				apc_pdu_outlet_count		=>	$apc_pdu_outlet_count, 
+				apc_pdus_note			=>	$apc_pdus_note, 
+			};
+			$an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid} = {
+				apc_pdu_serial_number		=>	$apc_pdu_serial_number, 
+				apc_pdu_model_number		=>	$apc_pdu_model_number, 
+				apc_pdu_manufacture_date	=>	$apc_pdu_manufacture_date, 
+				apc_pdu_firmware_version	=>	$apc_pdu_firmware_version, 
+				apc_pdu_hardware_version	=>	$apc_pdu_hardware_version, 
+				apc_pdu_ipv4_address		=>	$apc_pdu_ipv4_address, 
+				apc_pdu_mac_address		=>	$apc_pdu_mac_address, 
+				apc_pdu_mtu_size		=>	$apc_pdu_mtu_size, 
+				apc_pdu_link_speed		=>	$apc_pdu_link_speed, 
+				apc_pdu_phase_count		=>	$apc_pdu_phase_count, 
+				apc_pdu_outlet_count		=>	$apc_pdu_outlet_count, 
+				apc_pdus_note			=>	$apc_pdus_note, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_pdu}{modified_date}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $apc_pdu_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}})
+		{
+			my $apc_pdu_serial_number    = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_serial_number};
+			my $apc_pdu_model_number     = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_model_number};
+			my $apc_pdu_manufacture_date = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_manufacture_date};
+			my $apc_pdu_firmware_version = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_firmware_version};
+			my $apc_pdu_hardware_version = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_hardware_version};
+			my $apc_pdu_ipv4_address     = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_ipv4_address};
+			my $apc_pdu_mac_address      = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_mac_address};
+			my $apc_pdu_mtu_size         = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_mtu_size};
+			my $apc_pdu_link_speed       = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_link_speed};
+			my $apc_pdu_phase_count      = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_phase_count};
+			my $apc_pdu_outlet_count     = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_outlet_count};
+			my $apc_pdus_note            = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdus_note};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+				name1  => "apc_pdu_uuid",             value1  => $apc_pdu_uuid, 
+				name2  => "apc_pdu_serial_number",    value2  => $apc_pdu_serial_number, 
+				name3  => "apc_pdu_model_number",     value3  => $apc_pdu_model_number, 
+				name4  => "apc_pdu_manufacture_date", value4  => $apc_pdu_manufacture_date, 
+				name5  => "apc_pdu_firmware_version", value5  => $apc_pdu_firmware_version, 
+				name6  => "apc_pdu_hardware_version", value6  => $apc_pdu_hardware_version, 
+				name7  => "apc_pdu_ipv4_address",     value7  => $apc_pdu_ipv4_address, 
+				name8  => "apc_pdu_mac_address",      value8  => $apc_pdu_mac_address, 
+				name9  => "apc_pdu_mtu_size",         value9  => $apc_pdu_mtu_size, 
+				name10 => "apc_pdu_link_speed",       value10 => $apc_pdu_link_speed, 
+				name11 => "apc_pdu_phase_count",      value11 => $apc_pdu_phase_count, 
+				name12 => "apc_pdu_outlet_count",     value12 => $apc_pdu_outlet_count, 
+				name13 => "apc_pdus_note",            value13 => $apc_pdus_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'apc_pdu_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::apc_pdu::apc_pdu_uuid::${apc_pdu_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::apc_pdu::apc_pdu_uuid::${apc_pdu_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::apc_pdu::modified_date::${modified_date}::apc_pdu_uuid::${apc_pdu_uuid}", value1 => $an->data->{db_data}{$id}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.apc_pdu
+SET
+    apc_pdu_serial_number    = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_serial_number).", 
+    apc_pdu_model_number     = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_model_number).", 
+    apc_pdu_manufacture_date = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_manufacture_date).", 
+    apc_pdu_firmware_version = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_firmware_version).", 
+    apc_pdu_hardware_version = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_hardware_version).", 
+    apc_pdu_ipv4_address     = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_ipv4_address).", 
+    apc_pdu_mac_address      = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_mac_address).", 
+    apc_pdu_mtu_size         = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_mtu_size).", 
+    apc_pdu_link_speed       = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_link_speed).", 
+    apc_pdu_phase_count      = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_count).", 
+    apc_pdu_outlet_count     = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_count).", 
+    apc_pdus_note            = ".$an->data->{sys}{use_db_fh}->quote($apc_pdus_note).", 
+    modified_date            = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    apc_pdu_host_uuid        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    apc_pdu_uuid             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.apc_pdu
+(
+    apc_pdu_host_uuid, 
+    apc_pdu_uuid, 
+    apc_pdu_serial_number, 
+    apc_pdu_model_number, 
+    apc_pdu_manufacture_date, 
+    apc_pdu_firmware_version, 
+    apc_pdu_hardware_version, 
+    apc_pdu_ipv4_address, 
+    apc_pdu_mac_address, 
+    apc_pdu_mtu_size, 
+    apc_pdu_link_speed, 
+    apc_pdu_phase_count, 
+    apc_pdu_outlet_count, 
+    apc_pdus_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_model_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_manufacture_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_firmware_version).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_hardware_version).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_ipv4_address).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_mac_address).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_mtu_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_link_speed).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_count).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_count).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdus_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'apc_pdu_uuid' before, so it is just a question of 
+					# whether the entry for the current timestamp exists in the history 
+					# schema.
+					if (not $an->data->{db_data}{$id}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.apc_pdu
+(
+    apc_pdu_host_uuid, 
+    apc_pdu_uuid, 
+    apc_pdu_serial_number, 
+    apc_pdu_model_number, 
+    apc_pdu_manufacture_date, 
+    apc_pdu_firmware_version, 
+    apc_pdu_hardware_version, 
+    apc_pdu_ipv4_address, 
+    apc_pdu_mac_address, 
+    apc_pdu_mtu_size, 
+    apc_pdu_link_speed, 
+    apc_pdu_phase_count, 
+    apc_pdu_outlet_count, 
+    apc_pdus_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_model_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_manufacture_date).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_firmware_version).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_hardware_version).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_ipv4_address).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_mac_address).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_mtu_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_link_speed).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_count).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_count).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdus_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen apc_pdu_uuid?
+			} # foreach my $id 
+		} # foreach my $apc_pdu_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
 # This calls each UPS, first to get the model number and update the OIDs to use if needed, then gathers the 
 # information from the UPS.
 sub gather_pdu_data
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_pdu_data", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_pdu_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: If the network with the UPS is congested, it is possible that, despite connecting to the 
-	###       UPS, some OID reads may fail with '#!no_connection!#'. Try to read them a second time in
-	###       these cases. Regardless, be sure to check all returned OID values for 'no connection' and
-	###       handle such cases more gracefully.
-	
+	# This will flip to 0 if any PDUs are reached.
 	my $no_pdu_found = 1;
 	foreach my $pdu_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-pdu'}{pdu}})
 	{
@@ -312,11 +710,6 @@ sub gather_pdu_data
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "pdu_name", value1 => $pdu_name,
 			name2 => "pdu_ip",   value2 => $pdu_ip,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# This is a visual break in the logs. Useful when printing all the OID queries.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "----------------------------------------",      value1 => "----------------------------------------", 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Can I ping it?
@@ -327,9 +720,11 @@ sub gather_pdu_data
 		
 		my $serial_number = "";
 		
-		### TODO: Set 'apc_pdu_health' to '99' when comms are lost.
 		# This returns '1' if it was pingable, '0' if not.
 		my ($pinged) = $an->Check->ping({ping => $pdu_ip});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "pinged", value1 => $pinged, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not $pinged)
 		{
 			# Nope :(
@@ -346,6 +741,9 @@ sub gather_pdu_data
 				alert_name		=>	"apc_pdu_communication_lost",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "set", value1 => $set, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($set)
 			{
 				# This is a new loss of comms.
@@ -369,7 +767,7 @@ sub gather_pdu_data
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record the SN, mark that we accessed it and create a look-up for SN to name
-			$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_serial_number} = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{$serial_number});
+			$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_serial_number} = $serial_number;
 			$an->data->{pdu}{$pdu_name}{access}                         = 1;
 			$an->data->{serial_to_name}{$serial_number}                 = $pdu_name;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -386,6 +784,9 @@ sub gather_pdu_data
 				alert_name		=>	"apc_pdu_communication_lost",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cleared", value1 => $cleared, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($cleared)
 			{
 				# There was an alert and it has now been cleared.
@@ -417,14 +818,15 @@ sub gather_pdu_data
 		#############################################################################################
 		
 		# Get the base PDU info.
-		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_model_number}     = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_model_number});
-		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_firmware_version} = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_firmware_version});
-		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_hardware_version} = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_hardware_version});
-		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_mac_address}      = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_mac_address});
-		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_mtu_size}         = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_mtu_size});
-		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_link_speed}       = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_link_speed});
-		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_phase_count}      = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_phase_count});
-		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_outlet_count}     = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_outlet_count});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_model_number}     =  read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_model_number});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_firmware_version} =  read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_firmware_version});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_hardware_version} =  read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_hardware_version});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_mac_address}      =  lc(read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_mac_address}, $an->data->{path}{striker_mib}));
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_mac_address}      =~ s/ /:/g;
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_mtu_size}         =  read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_mtu_size});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_link_speed}       =  read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_link_speed});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_phase_count}      =  read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_phase_count});
+		$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_outlet_count}     =  read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu}{apc_pdu_outlet_count});
 		
 		# These change often and will go into the 'variables' table
 		$an->data->{pdu}{$pdu_name}{apc_pdu_variables}{uptime}             = read_oid($an, $an->data->{pdu}{$pdu_name}{ip}, $an->data->{oids}{apc_pdu_variables}{uptime});
@@ -502,9 +904,9 @@ sub gather_pdu_data
 		foreach my $outlet (1..$an->data->{pdu}{$pdu_name}{apc_pdu}{apc_pdu_outlet_count})
 		{
 			# Stick the outlet onto the end of the OIDs.
-			my $outlet_name_oid  = $an->data->{oids}{apc_pdu_phases}{apc_pdu_outlet_name}.$outlet;
-			my $outlet_phase_oid = $an->data->{oids}{apc_pdu_phases}{apc_pdu_outlet_on_phase}.$outlet;
-			my $outlet_state_oid = $an->data->{oids}{apc_pdu_phases}{apc_pdu_outlet_state}.$outlet;
+			my $outlet_name_oid  = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_name}.$outlet;
+			my $outlet_phase_oid = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_on_phase}.$outlet;
+			my $outlet_state_oid = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_state}.$outlet;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "outlet_name_oid",  value1 => $outlet_name_oid, 
 				name2 => "outlet_phase_oid", value2 => $outlet_phase_oid, 
@@ -522,7 +924,6 @@ sub gather_pdu_data
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	die;
 	
 	return($no_pdu_found);
 }
@@ -787,15 +1188,21 @@ WHERE
 sub find_pdus
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_pdus", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_pdus" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->data->{'scan-apc-pdu'}{pdus} = $an->data->{switches}{pdus} if $an->data->{switches}{pdus};
 	if ($an->data->{'scan-apc-pdu'}{pdus})
 	{
 		# User has specified the PDUs to query. We'll resolve them to IPs.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "scan-apc-pdu::pdus", value1 => $an->data->{'scan-apc-pdu'}{pdus}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $pdu_name (split/,/, $an->data->{'scan-apc-pdu'}{pdu})
 		{
 			next if not $pdu_name;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdu_name", value1 => $pdu_name, 
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $ip        = "";
 			my $packed_ip = gethostbyname($pdu_name);
@@ -803,7 +1210,7 @@ sub find_pdus
 			{
 				$ip = inet_ntoa($packed_ip);
 				$an->data->{'scan-apc-pdu'}{pdu}{$pdu_name} = $ip;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "scan-apc-pdu::pdu::$pdu_name", value1 => $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -818,7 +1225,7 @@ sub find_pdus
 	{
 		# Read in /etc/hosts and look for anything with 'pdu' in the name.
 		my $shell_call = "<".$an->data->{path}{etc_hosts};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, $shell_call) or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -826,7 +1233,7 @@ sub find_pdus
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -838,13 +1245,13 @@ sub find_pdus
 			$line =~ s/\s+/ /g;
 			next if not $line;
 			next if $line !~ /pdu/;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# This should be a UPS entry.
 			my ($ip, $names) = ($line =~ /^(\d+\.\d+\.\d+\.\d+) (.*)/);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "ip",    value1 => $ip, 
 				name2 => "names", value2 => $names,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -861,7 +1268,7 @@ sub find_pdus
 			if (($pdu_name) && ($ip))
 			{
 				$an->data->{'scan-apc-pdu'}{pdu}{$pdu_name} = $ip;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "scan-apc-pdu::pdu::$pdu_name", value1 => $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -877,7 +1284,7 @@ sub find_pdus
 		# we can ping them. If we can, we'll scan them. This will be important for dashboards to 
 		# determine if/when it is safe to boot a node.
 		my $host_type = $an->Get->what_am_i();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "host_type", value1 => $host_type, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($host_type eq "dashboard")
@@ -888,7 +1295,7 @@ sub find_pdus
 			foreach my $hash_ref (@{$anvil_data})
 			{
 				my $anvil_uuid = $hash_ref->{anvil_uuid};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "anvil_uuid", value1 => $anvil_uuid, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -901,14 +1308,14 @@ sub find_pdus
 				foreach my $ip (sort {$a cmp $b} keys %{$pdus})
 				{
 					my $pdu_name = $pdus->{$ip}{name};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "pdu_name", value1 => $pdu_name, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					if (not exists $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name})
 					{
 						$an->data->{'scan-apc-pdu'}{pdu}{$pdu_name} = $ip;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "scan-apc-pdu::pdu::$pdu_name", value1 => $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -928,17 +1335,119 @@ sub find_pdus
 	}
 }
 
+# This reads an OID and returns the results.
+sub read_oid
+{
+	my ($an, $pdu, $oid, $mib) = @_;
+	$mib = "" if not defined $mib;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_oid" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "pdu", value1 => $pdu, 
+		name2 => "oid", value2 => $oid, 
+		name3 => "mib", value3 => $mib, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: Make these proper errors
+	die "No PDU passed!\n" if not $pdu;
+	die "No OID passed!\n" if not $oid;
+	
+	my $value      = "#!no_value!#";
+	my $shell_call = $an->data->{path}{snmpget}." -v 2c -c ".$an->data->{snmp}{community}{'read'}." $pdu $oid";
+	if ($mib)
+	{
+		$shell_call = $an->data->{path}{snmpget}." -v 2c -c ".$an->data->{snmp}{community}{'read'}." -m $mib $pdu $oid";
+	}
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => "$shell_call"
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => "$line"
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /No Response/i)
+		{
+			$value = "#!no_connection!#";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "value", value1 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /STRING: "(.*)"$/i)
+		{
+			$value = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "value", value1 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /STRING: (.*)$/i)
+		{
+			$value = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "value", value1 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /INTEGER: (\d+)$/i)
+		{
+			$value = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "value", value1 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Hex-STRING: (.*)$/i)
+		{
+			$value = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "value", value1 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Gauge32: (.*)$/i)
+		{
+			$value =  $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "value", value1 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Timeticks: \((\d+)\) /i)
+		{
+			$value =  $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "value", value1 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /No Such Instance/i)
+		{
+			$value = "--";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "value", value1 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# Strip leading and trailing white spaces
+	$value =~ s/^\s+//;
+	$value =~ s/\s+$//;
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "value", value1 => $value, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($value);
+}
+
 # This checks to see if this agent's databases tables exist and, if not, load the schema. If the schema gets
 # loaded, we'll check other databases for older information and load it.
 sub prep_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 2, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='apc_pdu' AND schemaname='public';";
+		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='apc_pdus' AND schemaname='public';";
 		#                     The actual query -----------------.        .------- Row 0
 		#                        Query this DB --.              |        |    .-- Columns 0
 		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
@@ -978,7 +1487,7 @@ sub prep_databases
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print $an->String->get({key => "scan_apc_pdu_message_0002"})."\n";
 
