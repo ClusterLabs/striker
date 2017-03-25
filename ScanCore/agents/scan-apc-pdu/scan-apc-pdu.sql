@@ -162,7 +162,7 @@ CREATE TABLE apc_pdu_outlets (
 	apc_pdu_outlet_number			text				not null,
 	apc_pdu_outlet_name			text,
 	apc_pdu_outlet_on_phase			text				not null,
-	apc_pdu_outlet_state			text,						-- on / off
+	apc_pdu_outlet_state			text				not null,	-- on / off / unknown
 	apc_pdu_outlet_note			text,						-- Set to 'DELETED' if it goes away
 	modified_date				timestamp with time zone	not null,
 	
@@ -224,29 +224,29 @@ CREATE TRIGGER trigger_apc_pdu_outlets
 -- This stores various variables found for a given controller but not explicitely checked for (or that 
 -- change frequently).
 CREATE TABLE apc_pdu_variables (
-	apc_pdu_variable_uuid		uuid				primary key,
-	apc_pdu_variable_host_uuid	uuid				not null,
-	apc_pdu_variable_source_table	text				not null,
-	apc_pdu_variable_source_uuid	uuid				not null,
-	apc_pdu_variable_is_temperature	boolean				not null	default FALSE,
-	apc_pdu_variable_name		text				not null,
-	apc_pdu_variable_value		text,
-	modified_date					timestamp with time zone	not null,
+	apc_pdu_variable_uuid			uuid				primary key,
+	apc_pdu_variable_host_uuid		uuid				not null,
+	apc_pdu_variable_source_table		text				not null,
+	apc_pdu_variable_source_uuid		uuid				not null,
+	apc_pdu_variable_is_temperature		boolean				not null	default FALSE,
+	apc_pdu_variable_name			text				not null,
+	apc_pdu_variable_value			text,
+	modified_date				timestamp with time zone	not null,
 	
 	FOREIGN KEY(apc_pdu_variable_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE apc_pdu_variables OWNER TO #!variable!user!#;
 
 CREATE TABLE history.apc_pdu_variables (
-	history_id			bigserial,
-	apc_pdu_variable_uuid		uuid,
-	apc_pdu_variable_host_uuid	uuid,
-	apc_pdu_variable_source_table	text,
-	apc_pdu_variable_source_uuid	uuid,
-	apc_pdu_variable_is_temperature	boolean,
-	apc_pdu_variable_name		text,
-	apc_pdu_variable_value		text,
-	modified_date					timestamp with time zone
+	history_id				bigserial,
+	apc_pdu_variable_uuid			uuid,
+	apc_pdu_variable_host_uuid		uuid,
+	apc_pdu_variable_source_table		text,
+	apc_pdu_variable_source_uuid		uuid,
+	apc_pdu_variable_is_temperature		boolean,
+	apc_pdu_variable_name			text,
+	apc_pdu_variable_value			text,
+	modified_date				timestamp with time zone
 );
 ALTER TABLE history.apc_pdu_variables OWNER TO #!variable!user!#;
 

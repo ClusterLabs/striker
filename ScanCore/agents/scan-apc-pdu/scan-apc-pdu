@@ -339,6 +339,244 @@ sub update_db_apc_pdu_variables
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Now read in all the 'apc_pdu' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    apc_pdu_variable_uuid, 
+    apc_pdu_variable_source_table,
+    apc_pdu_variable_source_uuid, 
+    apc_pdu_variable_is_temperature, 
+    apc_pdu_variable_name, 
+    apc_pdu_variable_value, 
+    modified_date 
+FROM 
+    history.apc_pdu_variables 
+WHERE 
+    apc_pdu_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $apc_pdu_variable_uuid           =         $row->[0];
+			my $apc_pdu_variable_source_table   =         $row->[1];
+			my $apc_pdu_variable_source_uuid    =         $row->[2];
+			my $apc_pdu_variable_is_temperature =         $row->[3];
+			my $apc_pdu_variable_name           =         $row->[4];
+			my $apc_pdu_variable_value          = defined $row->[5] ? $row->[5] : "NULL";
+			my $modified_date                   =         $row->[6];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "apc_pdu_variable_uuid",           value1 => $apc_pdu_variable_uuid, 
+				name2 => "apc_pdu_variable_source_table",   value2 => $apc_pdu_variable_source_table, 
+				name3 => "apc_pdu_variable_source_uuid",    value3 => $apc_pdu_variable_source_uuid, 
+				name4 => "apc_pdu_variable_is_temperature", value4 => $apc_pdu_variable_is_temperature, 
+				name5 => "apc_pdu_variable_name",           value5 => $apc_pdu_variable_name, 
+				name6 => "apc_pdu_variable_value",          value6 => $apc_pdu_variable_value, 
+				name7 => "modified_date",                   value7 => $modified_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid} = {
+				apc_pdu_variable_source_table	=>	$apc_pdu_variable_source_table, 
+				apc_pdu_variable_source_uuid	=>	$apc_pdu_variable_source_uuid, 
+				apc_pdu_variable_is_temperature	=>	$apc_pdu_variable_is_temperature, 
+				apc_pdu_variable_name		=>	$apc_pdu_variable_name, 
+				apc_pdu_variable_value		=>	$apc_pdu_variable_value, 
+			};
+			$an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid} = {
+				apc_pdu_variable_source_table	=>	$apc_pdu_variable_source_table, 
+				apc_pdu_variable_source_uuid	=>	$apc_pdu_variable_source_uuid, 
+				apc_pdu_variable_is_temperature	=>	$apc_pdu_variable_is_temperature, 
+				apc_pdu_variable_name		=>	$apc_pdu_variable_name, 
+				apc_pdu_variable_value		=>	$apc_pdu_variable_value, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $apc_pdu_variable_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}})
+		{
+			my $apc_pdu_variable_source_table   = $an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{apc_pdu_variable_source_table};
+			my $apc_pdu_variable_source_uuid    = $an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{apc_pdu_variable_source_uuid};
+			my $apc_pdu_variable_is_temperature = $an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{apc_pdu_variable_is_temperature};
+			my $apc_pdu_variable_name           = $an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{apc_pdu_variable_name};
+			my $apc_pdu_variable_value          = $an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{apc_pdu_variable_value};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "apc_pdu_variable_uuid",           value1 => $apc_pdu_variable_uuid, 
+				name2 => "apc_pdu_variable_source_table",   value2 => $apc_pdu_variable_source_table, 
+				name3 => "apc_pdu_variable_source_uuid",    value3 => $apc_pdu_variable_source_uuid, 
+				name4 => "apc_pdu_variable_is_temperature", value4 => $apc_pdu_variable_is_temperature, 
+				name5 => "apc_pdu_variable_name",           value5 => $apc_pdu_variable_name, 
+				name6 => "apc_pdu_variable_value",          value6 => $apc_pdu_variable_value, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'apc_pdu_variable_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::apc_pdu_variables::apc_pdu_variable_uuid::${apc_pdu_variable_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::apc_pdu_variables::apc_pdu_variable_uuid::${apc_pdu_variable_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::apc_pdu_variables::modified_date::${modified_date}::apc_pdu_variable_uuid::${apc_pdu_variable_uuid}", value1 => $an->data->{db_data}{$id}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.apc_pdu_variables 
+SET
+    apc_pdu_variable_source_table   = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_source_table).",
+    apc_pdu_variable_source_uuid    = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_source_uuid).", 
+    apc_pdu_variable_is_temperature = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_is_temperature).", 
+    apc_pdu_variable_name           = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_name).", 
+    apc_pdu_variable_value          = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_value).", 
+    modified_date                   = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    apc_pdu_variable_host_uuid      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    apc_pdu_variable_uuid           = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.apc_pdu_variables 
+(
+    apc_pdu_variable_host_uuid, 
+    apc_pdu_variable_uuid, 
+    apc_pdu_variable_source_table, 
+    apc_pdu_variable_source_uuid, 
+    apc_pdu_variable_is_temperature, 
+    apc_pdu_variable_name, 
+    apc_pdu_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_source_table).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_source_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_is_temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'apc_pdu_variable_uuid' before, so it is just a question of 
+					# whether the entry for the current timestamp exists in the history 
+					# schema.
+					if (not $an->data->{db_data}{$id}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.apc_pdu_variables 
+(
+    apc_pdu_variable_host_uuid, 
+    apc_pdu_variable_uuid, 
+    apc_pdu_variable_source_table, 
+    apc_pdu_variable_source_uuid, 
+    apc_pdu_variable_is_temperature, 
+    apc_pdu_variable_name, 
+    apc_pdu_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_source_table).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_source_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_is_temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen apc_pdu_variable_uuid?
+			} # foreach my $id 
+		} # foreach my $apc_pdu_variable_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
 	
 	return(0);
 }
@@ -349,6 +587,244 @@ sub update_db_apc_pdu_phases
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_phases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Now read in all the 'apc_pdu' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    apc_pdu_phase_uuid, 
+    apc_pdu_phase_apc_pdu_uuid,
+    apc_pdu_phase_number, 
+    apc_pdu_phase_current_amperage, 
+    apc_pdu_phase_max_amperage, 
+    apc_pdu_phase_note, 
+    modified_date 
+FROM 
+    history.apc_pdu_phases 
+WHERE 
+    apc_pdu_phase_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $apc_pdu_phase_uuid             =         $row->[0];
+			my $apc_pdu_phase_apc_pdu_uuid     =         $row->[1];
+			my $apc_pdu_phase_number           =         $row->[2];
+			my $apc_pdu_phase_current_amperage =         $row->[3];
+			my $apc_pdu_phase_max_amperage     = defined $row->[4] ? $row->[4] : "NULL";
+			my $apc_pdu_phase_note             = defined $row->[5] ? $row->[5] : "NULL";
+			my $modified_date                  =         $row->[6];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "apc_pdu_phase_uuid",             value1 => $apc_pdu_phase_uuid, 
+				name2 => "apc_pdu_phase_apc_pdu_uuid",     value2 => $apc_pdu_phase_apc_pdu_uuid, 
+				name3 => "apc_pdu_phase_number",           value3 => $apc_pdu_phase_number, 
+				name4 => "apc_pdu_phase_current_amperage", value4 => $apc_pdu_phase_current_amperage, 
+				name5 => "apc_pdu_phase_max_amperage",     value5 => $apc_pdu_phase_max_amperage, 
+				name6 => "apc_pdu_phase_note",             value6 => $apc_pdu_phase_note, 
+				name7 => "modified_date",                  value7 => $modified_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid} = {
+				apc_pdu_phase_apc_pdu_uuid	=>	$apc_pdu_phase_apc_pdu_uuid, 
+				apc_pdu_phase_number		=>	$apc_pdu_phase_number, 
+				apc_pdu_phase_current_amperage	=>	$apc_pdu_phase_current_amperage, 
+				apc_pdu_phase_max_amperage	=>	$apc_pdu_phase_max_amperage, 
+				apc_pdu_phase_note		=>	$apc_pdu_phase_note, 
+			};
+			$an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid} = {
+				apc_pdu_phase_apc_pdu_uuid	=>	$apc_pdu_phase_apc_pdu_uuid, 
+				apc_pdu_phase_number		=>	$apc_pdu_phase_number, 
+				apc_pdu_phase_current_amperage	=>	$apc_pdu_phase_current_amperage, 
+				apc_pdu_phase_max_amperage	=>	$apc_pdu_phase_max_amperage, 
+				apc_pdu_phase_note		=>	$apc_pdu_phase_note, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $apc_pdu_phase_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}})
+		{
+			my $apc_pdu_phase_apc_pdu_uuid     = $an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{apc_pdu_phase_apc_pdu_uuid};
+			my $apc_pdu_phase_number           = $an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{apc_pdu_phase_number};
+			my $apc_pdu_phase_current_amperage = $an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{apc_pdu_phase_current_amperage};
+			my $apc_pdu_phase_max_amperage     = $an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{apc_pdu_phase_max_amperage};
+			my $apc_pdu_phase_note             = $an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{apc_pdu_phase_note};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "apc_pdu_phase_uuid",             value1 => $apc_pdu_phase_uuid, 
+				name2 => "apc_pdu_phase_apc_pdu_uuid",     value2 => $apc_pdu_phase_apc_pdu_uuid, 
+				name3 => "apc_pdu_phase_number",           value3 => $apc_pdu_phase_number, 
+				name4 => "apc_pdu_phase_current_amperage", value4 => $apc_pdu_phase_current_amperage, 
+				name5 => "apc_pdu_phase_max_amperage",     value5 => $apc_pdu_phase_max_amperage, 
+				name6 => "apc_pdu_phase_note",             value6 => $apc_pdu_phase_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'apc_pdu_phase_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::apc_pdu_phases::apc_pdu_phase_uuid::${apc_pdu_phase_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::apc_pdu_phases::apc_pdu_phase_uuid::${apc_pdu_phase_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::apc_pdu_phases::modified_date::${modified_date}::apc_pdu_phase_uuid::${apc_pdu_phase_uuid}", value1 => $an->data->{db_data}{$id}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.apc_pdu_phases 
+SET
+    apc_pdu_phase_apc_pdu_uuid     = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_apc_pdu_uuid).",
+    apc_pdu_phase_number           = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_number).", 
+    apc_pdu_phase_current_amperage = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_current_amperage).", 
+    apc_pdu_phase_max_amperage     = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_max_amperage).", 
+    apc_pdu_phase_note             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_note).", 
+    modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    apc_pdu_phase_host_uuid        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    apc_pdu_phase_uuid             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.apc_pdu_phases 
+(
+    apc_pdu_phase_host_uuid, 
+    apc_pdu_phase_uuid, 
+    apc_pdu_phase_apc_pdu_uuid, 
+    apc_pdu_phase_number, 
+    apc_pdu_phase_current_amperage, 
+    apc_pdu_phase_max_amperage, 
+    apc_pdu_phase_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_apc_pdu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_current_amperage).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_max_amperage).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'apc_pdu_phase_uuid' before, so it is just a question of 
+					# whether the entry for the current timestamp exists in the history 
+					# schema.
+					if (not $an->data->{db_data}{$id}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.apc_pdu_phases 
+(
+    apc_pdu_phase_host_uuid, 
+    apc_pdu_phase_uuid, 
+    apc_pdu_phase_apc_pdu_uuid, 
+    apc_pdu_phase_number, 
+    apc_pdu_phase_current_amperage, 
+    apc_pdu_phase_max_amperage, 
+    apc_pdu_phase_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_apc_pdu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_current_amperage).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_max_amperage).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen apc_pdu_phase_uuid?
+			} # foreach my $id 
+		} # foreach my $apc_pdu_phase_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
 	
 	return(0);
 }
@@ -359,6 +835,256 @@ sub update_db_apc_pdu_outlets
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_outlets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Now read in all the 'apc_pdu' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    apc_pdu_outlet_uuid, 
+    apc_pdu_outlet_apc_pdu_uuid,
+    apc_pdu_outlet_number, 
+    apc_pdu_outlet_name, 
+    apc_pdu_outlet_on_phase, 
+    apc_pdu_outlet_state, 
+    apc_pdu_outlet_note, 
+    modified_date 
+FROM 
+    history.apc_pdu_outlets 
+WHERE 
+    apc_pdu_outlet_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $apc_pdu_outlet_uuid         =         $row->[0];
+			my $apc_pdu_outlet_apc_pdu_uuid =         $row->[1];
+			my $apc_pdu_outlet_number       =         $row->[2];
+			my $apc_pdu_outlet_name         = defined $row->[3] ? $row->[3] : "NULL";
+			my $apc_pdu_outlet_on_phase     =         $row->[4];
+			my $apc_pdu_outlet_state        =         $row->[5];
+			my $apc_pdu_outlet_note         = defined $row->[6] ? $row->[6] : "NULL";
+			my $modified_date               =         $row->[7];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "apc_pdu_outlet_uuid",         value1 => $apc_pdu_outlet_uuid, 
+				name2 => "apc_pdu_outlet_apc_pdu_uuid", value2 => $apc_pdu_outlet_apc_pdu_uuid, 
+				name3 => "apc_pdu_outlet_number",       value3 => $apc_pdu_outlet_number, 
+				name4 => "apc_pdu_outlet_name",         value4 => $apc_pdu_outlet_name, 
+				name5 => "apc_pdu_outlet_on_phase",     value5 => $apc_pdu_outlet_on_phase, 
+				name6 => "apc_pdu_outlet_state",        value6 => $apc_pdu_outlet_state, 
+				name7 => "apc_pdu_outlet_note",         value7 => $apc_pdu_outlet_note, 
+				name8 => "modified_date",               value8 => $modified_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid} = {
+				apc_pdu_outlet_apc_pdu_uuid	=>	$apc_pdu_outlet_apc_pdu_uuid, 
+				apc_pdu_outlet_number		=>	$apc_pdu_outlet_number, 
+				apc_pdu_outlet_name		=>	$apc_pdu_outlet_name, 
+				apc_pdu_outlet_on_phase		=>	$apc_pdu_outlet_on_phase, 
+				apc_pdu_outlet_state		=>	$apc_pdu_outlet_state, 
+				apc_pdu_outlet_note		=>	$apc_pdu_outlet_note, 
+			};
+			$an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid} = {
+				apc_pdu_outlet_apc_pdu_uuid	=>	$apc_pdu_outlet_apc_pdu_uuid, 
+				apc_pdu_outlet_number		=>	$apc_pdu_outlet_number, 
+				apc_pdu_outlet_name		=>	$apc_pdu_outlet_name, 
+				apc_pdu_outlet_on_phase		=>	$apc_pdu_outlet_on_phase, 
+				apc_pdu_outlet_state		=>	$apc_pdu_outlet_state, 
+				apc_pdu_outlet_note		=>	$apc_pdu_outlet_note, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $apc_pdu_outlet_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}})
+		{
+			my $apc_pdu_outlet_apc_pdu_uuid = $an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{apc_pdu_outlet_apc_pdu_uuid};
+			my $apc_pdu_outlet_number       = $an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{apc_pdu_outlet_number};
+			my $apc_pdu_outlet_name         = $an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{apc_pdu_outlet_name};
+			my $apc_pdu_outlet_on_phase     = $an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{apc_pdu_outlet_on_phase};
+			my $apc_pdu_outlet_state        = $an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{apc_pdu_outlet_state};
+			my $apc_pdu_outlet_note         = $an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{apc_pdu_outlet_note};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "apc_pdu_outlet_uuid",         value1 => $apc_pdu_outlet_uuid, 
+				name2 => "apc_pdu_outlet_apc_pdu_uuid", value2 => $apc_pdu_outlet_apc_pdu_uuid, 
+				name3 => "apc_pdu_outlet_number",       value3 => $apc_pdu_outlet_number, 
+				name4 => "apc_pdu_outlet_name",         value4 => $apc_pdu_outlet_name, 
+				name5 => "apc_pdu_outlet_on_phase",     value5 => $apc_pdu_outlet_on_phase, 
+				name6 => "apc_pdu_outlet_state",        value6 => $apc_pdu_outlet_state, 
+				name7 => "apc_pdu_outlet_note",         value7 => $apc_pdu_outlet_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'apc_pdu_outlet_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::apc_pdu_outlets::apc_pdu_outlet_uuid::${apc_pdu_outlet_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::apc_pdu_outlets::apc_pdu_outlet_uuid::${apc_pdu_outlet_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::apc_pdu_outlets::modified_date::${modified_date}::apc_pdu_outlet_uuid::${apc_pdu_outlet_uuid}", value1 => $an->data->{db_data}{$id}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.apc_pdu_outlets 
+SET
+    apc_pdu_outlet_apc_pdu_uuid = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_apc_pdu_uuid).",
+    apc_pdu_outlet_number       = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_number).", 
+    apc_pdu_outlet_name         = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_name).", 
+    apc_pdu_outlet_on_phase     = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_on_phase).", 
+    apc_pdu_outlet_state        = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_state).", 
+    apc_pdu_outlet_note         = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_note).", 
+    modified_date               = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    apc_pdu_outlet_host_uuid    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    apc_pdu_outlet_uuid         = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.apc_pdu_outlets 
+(
+    apc_pdu_outlet_host_uuid, 
+    apc_pdu_outlet_uuid, 
+    apc_pdu_outlet_apc_pdu_uuid, 
+    apc_pdu_outlet_number, 
+    apc_pdu_outlet_name, 
+    apc_pdu_outlet_on_phase, 
+    apc_pdu_outlet_state, 
+    apc_pdu_outlet_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_apc_pdu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_on_phase).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'apc_pdu_outlet_uuid' before, so it is just a question of 
+					# whether the entry for the current timestamp exists in the history 
+					# schema.
+					if (not $an->data->{db_data}{$id}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.apc_pdu_outlets 
+(
+    apc_pdu_outlet_host_uuid, 
+    apc_pdu_outlet_uuid, 
+    apc_pdu_outlet_apc_pdu_uuid, 
+    apc_pdu_outlet_number, 
+    apc_pdu_outlet_name, 
+    apc_pdu_outlet_on_phase, 
+    apc_pdu_outlet_state, 
+    apc_pdu_outlet_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_apc_pdu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_on_phase).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen apc_pdu_outlet_uuid?
+			} # foreach my $id 
+		} # foreach my $apc_pdu_outlet_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
 	
 	return(0);
 }
@@ -392,21 +1118,21 @@ SELECT
     apc_pdu_link_speed, 
     apc_pdu_phase_count, 
     apc_pdu_outlet_count, 
-    apc_pdus_note, 
+    apc_pdu_note, 
     modified_date 
 FROM 
     history.apc_pdu 
 WHERE 
     apc_pdu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -423,7 +1149,7 @@ WHERE
 			my $apc_pdu_link_speed       =         $row->[9];
 			my $apc_pdu_phase_count      =         $row->[10];
 			my $apc_pdu_outlet_count     =         $row->[11];
-			my $apc_pdus_note            = defined $row->[12] ? $row->[12] : "NULL";
+			my $apc_pdu_note             = defined $row->[12] ? $row->[12] : "NULL";
 			my $modified_date            =         $row->[13];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
 				name1  => "apc_pdu_uuid",             value1  => $apc_pdu_uuid, 
@@ -438,7 +1164,7 @@ WHERE
 				name10 => "apc_pdu_link_speed",       value10 => $apc_pdu_link_speed, 
 				name11 => "apc_pdu_phase_count",      value11 => $apc_pdu_phase_count, 
 				name12 => "apc_pdu_outlet_count",     value12 => $apc_pdu_outlet_count, 
-				name13 => "apc_pdus_note",            value13 => $apc_pdus_note, 
+				name13 => "apc_pdu_note",             value13 => $apc_pdu_note, 
 				name14 => "modified_date",            value14 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -455,7 +1181,7 @@ WHERE
 				apc_pdu_link_speed		=>	$apc_pdu_link_speed, 
 				apc_pdu_phase_count		=>	$apc_pdu_phase_count, 
 				apc_pdu_outlet_count		=>	$apc_pdu_outlet_count, 
-				apc_pdus_note			=>	$apc_pdus_note, 
+				apc_pdu_note			=>	$apc_pdu_note, 
 			};
 			$an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{'exists'} = 1;
 			$an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen}     = 0;
@@ -471,7 +1197,7 @@ WHERE
 				apc_pdu_link_speed		=>	$apc_pdu_link_speed, 
 				apc_pdu_phase_count		=>	$apc_pdu_phase_count, 
 				apc_pdu_outlet_count		=>	$apc_pdu_outlet_count, 
-				apc_pdus_note			=>	$apc_pdus_note, 
+				apc_pdu_note			=>	$apc_pdu_note, 
 			};
 		}
 	}
@@ -480,7 +1206,7 @@ WHERE
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_pdu}{modified_date}})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $apc_pdu_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}})
@@ -496,8 +1222,8 @@ WHERE
 			my $apc_pdu_link_speed       = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_link_speed};
 			my $apc_pdu_phase_count      = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_phase_count};
 			my $apc_pdu_outlet_count     = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_outlet_count};
-			my $apc_pdus_note            = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdus_note};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+			my $apc_pdu_note             = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_note};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
 				name1  => "apc_pdu_uuid",             value1  => $apc_pdu_uuid, 
 				name2  => "apc_pdu_serial_number",    value2  => $apc_pdu_serial_number, 
 				name3  => "apc_pdu_model_number",     value3  => $apc_pdu_model_number, 
@@ -510,7 +1236,7 @@ WHERE
 				name10 => "apc_pdu_link_speed",       value10 => $apc_pdu_link_speed, 
 				name11 => "apc_pdu_phase_count",      value11 => $apc_pdu_phase_count, 
 				name12 => "apc_pdu_outlet_count",     value12 => $apc_pdu_outlet_count, 
-				name13 => "apc_pdus_note",            value13 => $apc_pdus_note, 
+				name13 => "apc_pdu_note",             value13 => $apc_pdu_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -523,7 +1249,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::apc_pdu::apc_pdu_uuid::${apc_pdu_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen})
@@ -532,13 +1258,13 @@ WHERE
 					$an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::apc_pdu::apc_pdu_uuid::${apc_pdu_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::apc_pdu::modified_date::${modified_date}::apc_pdu_uuid::${apc_pdu_uuid}", value1 => $an->data->{db_data}{$id}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid})
@@ -559,7 +1285,7 @@ SET
     apc_pdu_link_speed       = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_link_speed).", 
     apc_pdu_phase_count      = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_count).", 
     apc_pdu_outlet_count     = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_count).", 
-    apc_pdus_note            = ".$an->data->{sys}{use_db_fh}->quote($apc_pdus_note).", 
+    apc_pdu_note             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_note).", 
     modified_date            = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     apc_pdu_host_uuid        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
@@ -567,7 +1293,7 @@ AND
     apc_pdu_uuid             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -594,7 +1320,7 @@ INSERT INTO
     apc_pdu_link_speed, 
     apc_pdu_phase_count, 
     apc_pdu_outlet_count, 
-    apc_pdus_note, 
+    apc_pdu_note, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
@@ -610,11 +1336,11 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_link_speed).", 
     ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_count).", 
     ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_count).", 
-    ".$an->data->{sys}{use_db_fh}->quote($apc_pdus_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_note).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -646,7 +1372,7 @@ INSERT INTO
     apc_pdu_link_speed, 
     apc_pdu_phase_count, 
     apc_pdu_outlet_count, 
-    apc_pdus_note, 
+    apc_pdu_note, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
@@ -662,11 +1388,11 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_link_speed).", 
     ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_count).", 
     ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_count).", 
-    ".$an->data->{sys}{use_db_fh}->quote($apc_pdus_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_note).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -1098,7 +1824,7 @@ WHERE
 					table        => $table, 
 					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
-					columns      => ["apc_pdu_uuid", "apc_pdu_host_uuid", "apc_pdu_serial_number", "apc_pdu_model_number", "apc_pdu_manufacture_date", "apc_pdu_firmware_version", "apc_pdu_hardware_version", "apc_pdu_ipv4_address", "apc_pdu_mac_address", "apc_pdu_mtu_size", "apc_pdu_link_speed", "apc_pdu_phase_count", "apc_pdu_outlet_count", "apc_pdus_note"],
+					columns      => ["apc_pdu_uuid", "apc_pdu_host_uuid", "apc_pdu_serial_number", "apc_pdu_model_number", "apc_pdu_manufacture_date", "apc_pdu_firmware_version", "apc_pdu_hardware_version", "apc_pdu_ipv4_address", "apc_pdu_mac_address", "apc_pdu_mtu_size", "apc_pdu_link_speed", "apc_pdu_phase_count", "apc_pdu_outlet_count", "apc_pdu_note"],
 				});
 			}
 			elsif ($table eq "apc_pdu_phases")

@@ -382,7 +382,7 @@ if (not $an->data->{sys}{offline})
 	}
 	else
 	{
-		my $striker_source_test = $an->data->{path}{striker_cache}."/cgi-bin/striker";
+		my $striker_source_test = $an->data->{path}{updates}{striker}."/cgi-bin/striker";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "striker_source_test", value1 => $striker_source_test,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2059,7 +2059,7 @@ done
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $source (sort {$a cmp $b} keys %{$an->data->{copy}{$type}})
 		{
-			my $source_path = $an->data->{path}{striker_cache}."/".$source;
+			my $source_path = $an->data->{path}{updates}{striker}."/".$source;
 			my $destination = $an->data->{copy}{$type}{$source};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "source",      value1 => $source, 
@@ -2852,7 +2852,7 @@ sub gather_updated_rpms_from_anvil
 	foreach my $rpm_file (sort {$a cmp $b} @{$rpm_files})
 	{
 		my $file_name   = ($rpm_file =~ /^.*\/(.*)$/)[0];
-		my $target_file = $an->data->{path}{rpm_cache}."/".$file_name;
+		my $target_file = $an->data->{path}{updates}{rpms}."/".$file_name;
 		next if -e $target_file;
 		$remote_copy_count++;
 		
@@ -2863,7 +2863,7 @@ sub gather_updated_rpms_from_anvil
 			port        => $port, 
 			password    => $password,
 			source      => "root\@$target:$rpm_file",
-			destination => $an->data->{path}{rpm_cache},
+			destination => $an->data->{path}{updates}{rpms},
 			switches    => "-avAX",
 		});
 		if ($return_code)
@@ -2910,7 +2910,7 @@ sub update_local_repo
 	# Copy cached RPMs to the RPM repo
 	print "- Copying new RPMs to the RPM repository.\n";
 	my $packages_dir = $an->data->{path}{img_directory}."/Packages";
-	rsync_data($an, $an->data->{path}{rpm_cache}."/*", $packages_dir);
+	rsync_data($an, $an->data->{path}{updates}{rpms}."/*", $packages_dir);
 	
 	# Copy over any of our RPMs from cache to the repo source.
 	my ($xml_file1, $xml_file2) = get_repodata_xml_file_name($an);
@@ -3373,10 +3373,10 @@ sub cache_updated_rpms
 	foreach my $rpm_file (sort {$a cmp $b} @{$rpm_files})
 	{
 		my $file_name   = ($rpm_file =~ /^.*\/(.*)$/)[0];
-		my $target_file = $an->data->{path}{rpm_cache}."/".$file_name;
+		my $target_file = $an->data->{path}{updates}{rpms}."/".$file_name;
 		next if -e $target_file;
 		print "- Caching: [$rpm_file]\n";
-		my $shell_call = $an->data->{path}{rsync}." -a $rpm_file ".$an->data->{path}{rpm_cache}."/";
+		my $shell_call = $an->data->{path}{rsync}." -avAX $rpm_file ".$an->data->{path}{updates}{rpms}."/";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3391,7 +3391,7 @@ sub cache_updated_rpms
 		}
 		close $file_handle;
 	}
-	print "- Done. RPMs are now stored in: [".$an->data->{path}{rpm_cache}."/]\n";
+	print "- Done. RPMs are now stored in: [".$an->data->{path}{updates}{rpms}."/]\n";
 	
 	return(0);
 }
@@ -3539,7 +3539,7 @@ sub download_and_extract_source
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Download the URL to path::temp_cache.
-	my $out_file = $an->data->{path}{temp_cache}."/".$an->data->{sys}{striker_zip_file};
+	my $out_file = $an->data->{path}{updates}{temp}."/".$an->data->{sys}{striker_zip_file};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "url",      value1 => $url,
 		name2 => "out_file", value2 => $out_file,
@@ -3558,7 +3558,7 @@ sub download_and_extract_source
 	}
 	
 	# Move the source from temp.
-	rsync_data($an, $extract_root."/*", $an->data->{path}{striker_cache});
+	rsync_data($an, $extract_root."/*", $an->data->{path}{updates}{striker});
 	
 	# Clear the temp cache now that we're done.
 	print "- Clearing out the old temporary directory contents (if any)...\n";
@@ -3631,13 +3631,13 @@ sub extract_file
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	print "- Extracting: [$extract]\n";
-	my $shell_call = $an->data->{path}{tar}." -C ".$an->data->{path}{temp_cache}." -xvf $extract";
+	my $shell_call = $an->data->{path}{tar}." -C ".$an->data->{path}{updates}{temp}." -xvf $extract";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($extract =~ /\.zip$/)
 	{
-		$shell_call = $an->data->{path}{unzip}." -o -d ".$an->data->{path}{temp_cache}." $extract";
+		$shell_call = $an->data->{path}{unzip}." -o -d ".$an->data->{path}{updates}{temp}." $extract";
 	}
 	my $extract_root  = "";
 	my $start_time    = time;
@@ -3668,10 +3668,10 @@ sub extract_file
 				print ".";
 			}
 		}
-		my $temp = $an->data->{path}{temp_cache};
+		my $temp = $an->data->{path}{updates}{temp};
 		if ((not $extract_root) && ($line =~ /$temp\/(.*?)\//))
 		{
-			$extract_root = $an->data->{path}{temp_cache}."/".$1;
+			$extract_root = $an->data->{path}{updates}{temp}."/".$1;
 		}
 	}
 	close $file_handle;
@@ -3698,17 +3698,17 @@ sub clear_temp
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_temp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	if ($an->data->{path}{temp_cache} !~ /\/temp$/)
+	if ($an->data->{path}{updates}{temp} !~ /\/temp$/)
 	{
 		# What?
 		print "[ Error ] - There appears to be a programming error. We were about to clear out\n";
-		print "[ Error ]   the temporary directory: [".$an->data->{path}{temp_cache}."]\n";
+		print "[ Error ]   the temporary directory: [".$an->data->{path}{updates}{temp}."]\n";
 		print "[ Error ]   which should has ended in '*/temp'. Exiting to avoid accidental\n";
 		print "[ Error ]   data deletion.\n";
 		exit(3);
 	}
 	
-	my $shell_call = $an->data->{path}{rm}." -rf ".$an->data->{path}{temp_cache}."/*";
+	my $shell_call = $an->data->{path}{rm}." -rf ".$an->data->{path}{updates}{temp}."/*";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3779,24 +3779,19 @@ sub setup_cache
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "setup_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print "Checking cache directories...\n";
-	$an->data->{path}{rpm_cache}     = $an->data->{path}{updates}{rpms};
-	$an->data->{path}{striker_cache} = $an->data->{path}{updates}{striker};
-	$an->data->{path}{temp_cache}    = $an->data->{path}{updates}{temp};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "path::current_dir",   value1 => $an->data->{path}{current_dir},
-		name2 => "path::rpm_cache",     value2 => $an->data->{path}{rpm_cache},
-		name3 => "path::striker_cache", value3 => $an->data->{path}{striker_cache},
-		name4 => "path::temp_cache",    value4 => $an->data->{path}{temp_cache},
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "path::updates::rpms",    value1 => $an->data->{path}{updates}{rpms},
+		name2 => "path::updates::striker", value2 => $an->data->{path}{updates}{striker},
+		name3 => "path::updates::temp",    value3 => $an->data->{path}{updates}{temp},
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	if (-e $an->data->{path}{rpm_cache})
+	if (-e $an->data->{path}{updates}{rpms})
 	{
-		print "- RPM cache: [".$an->data->{path}{rpm_cache}."] already exists.\n";
+		print "- RPM cache: [".$an->data->{path}{updates}{rpms}."] already exists.\n";
 	}
 	else
 	{
-		print "- Creating RPM cache: [".$an->data->{path}{rpm_cache}."]\n";
-		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{rpm_cache};
+		print "- Creating RPM cache: [".$an->data->{path}{updates}{rpms}."]\n";
+		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{updates}{rpms};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3811,14 +3806,14 @@ sub setup_cache
 		}
 		close $file_handle;
 	}
-	if (-e $an->data->{path}{striker_cache})
+	if (-e $an->data->{path}{updates}{striker})
 	{
-		print "- Striker cache: [".$an->data->{path}{striker_cache}."] already exists.\n";
+		print "- Striker cache: [".$an->data->{path}{updates}{striker}."] already exists.\n";
 	}
 	else
 	{
-		print "- Creating Striker cache: [".$an->data->{path}{striker_cache}."]\n";
-		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{striker_cache};
+		print "- Creating Striker cache: [".$an->data->{path}{updates}{striker}."]\n";
+		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{updates}{striker};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3833,14 +3828,14 @@ sub setup_cache
 		}
 		close $file_handle;
 	}
-	if (-e $an->data->{path}{temp_cache})
+	if (-e $an->data->{path}{updates}{temp})
 	{
-		print "- Working cache: [".$an->data->{path}{temp_cache}."] already exists.\n";
+		print "- Working cache: [".$an->data->{path}{updates}{temp}."] already exists.\n";
 	}
 	else
 	{
-		print "- Creating working cache: [".$an->data->{path}{temp_cache}."]\n";
-		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{temp_cache};
+		print "- Creating working cache: [".$an->data->{path}{updates}{temp}."]\n";
+		my $shell_call = $an->data->{path}{'mkdir'}." -p ".$an->data->{path}{updates}{temp};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
