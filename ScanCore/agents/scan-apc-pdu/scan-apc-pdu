@@ -317,7 +317,7 @@ sub update_db
 		# enough).
 		#$an->DB->set_update_db_flag({set => time, 'wait' => 10});
 		
-		# Update apc_pdu and interfaces
+		# Update apc_pdu and outlet/phases/variables
 		update_db_apc_pdu($an);
 		update_db_apc_pdu_outlets($an);
 		update_db_apc_pdu_phases($an);
