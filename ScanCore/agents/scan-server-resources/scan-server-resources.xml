@@ -18,15 +18,6 @@ not to use names used by the main Striker strings file. Do this by prefixing all
 		<!-- Log messages -->
 		<key name="scan_server_resources_log_0001">Checking stats on: [#!variable!target!#:#!variable!port!#].</key>
 		
-		<!-- Notices -->
-		<key name="scan_server_resources_note_0001"></key>
-		
-		<!-- Warnings. -->
-		<key name="scan_server_resources_warning_0001"></key>
-		
-		<!-- Errors -->
-		<key name="scan_server_resources_error_0001"></key>
-		
 		<!-- server Agent-specific messages -->
 		<key name="scan_server_resources_message_0001">Starting #!string!scan_server_resources_brand_0001!#:</key>
 		<key name="scan_server_resources_message_0002"><![CDATA[

@@ -233,7 +233,7 @@ archive_if_needed($an);
 
 ### TODO: Add this...
 # Look to see if any databases need to be updated.
-#update_db($an);
+update_db($an);
 
 # Look for changes.
 find_changes($an);
@@ -248,6 +248,821 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This looks at each DB's 'updated' table entry to see if any tables are behind. If any are, it will update
+# the tables based on the time the last entry was made for a given host.
+sub update_db
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{db_resync_needed})
+	{
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
+		# Make a note in the databases that we're starting an update and ask it to wait 10 seconds 
+		# before returning to give other instances time to finish their scans. (our scans end quickly
+		# enough).
+		#$an->DB->set_update_db_flag({set => time, 'wait' => 10});
+		
+		# Update server_resources
+		update_db_server_resources($an);
+		update_db_server_resource_disks($an);
+		update_db_server_resource_cpus($an);
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
+		
+		# Clear the update flag.
+		#$an->DB->set_update_db_flag({set => 0});
+	}
+	
+	return(0);
+}
+
+# Update the 'update_db_server_resource_disks' table.
+sub update_db_server_resource_disks
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_server_resource_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'update_db_server_resource_disks' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    server_resource_disk_uuid, 
+    server_resource_disk_server_resource_uuid,
+    server_resource_disk_mount_point, 
+    server_resource_disk_filesystem, 
+    server_resource_disk_options, 
+    server_resource_disk_size, 
+    server_resource_disk_used, 
+    modified_date 
+FROM 
+    history.server_resource_disks 
+WHERE 
+    server_resource_disk_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $server_resource_disk_uuid                 =         $row->[0];
+			my $server_resource_disk_server_resource_uuid =         $row->[1];
+			my $server_resource_disk_mount_point          =         $row->[2];
+			my $server_resource_disk_filesystem           = defined $row->[3] ? $row->[3] : "NULL";
+			my $server_resource_disk_options              = defined $row->[4] ? $row->[4] : "NULL";
+			my $server_resource_disk_size                 =         $row->[5];
+			my $server_resource_disk_used                 =         $row->[6];
+			my $modified_date                             =         $row->[7];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "server_resource_disk_uuid",                 value1 => $server_resource_disk_uuid, 
+				name2 => "server_resource_disk_server_resource_uuid", value2 => $server_resource_disk_server_resource_uuid, 
+				name3 => "server_resource_disk_mount_point",          value3 => $server_resource_disk_mount_point, 
+				name4 => "server_resource_disk_filesystem",           value4 => $server_resource_disk_filesystem, 
+				name5 => "server_resource_disk_options",              value5 => $server_resource_disk_options, 
+				name6 => "server_resource_disk_size",                 value6 => $server_resource_disk_size, 
+				name7 => "server_resource_disk_used",                 value7 => $server_resource_disk_used, 
+				name8 => "modified_date",                             value8 => $modified_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid} = {
+				server_resource_disk_server_resource_uuid	=>	$server_resource_disk_server_resource_uuid, 
+				server_resource_disk_mount_point		=>	$server_resource_disk_mount_point, 
+				server_resource_disk_filesystem			=>	$server_resource_disk_filesystem, 
+				server_resource_disk_options			=>	$server_resource_disk_options, 
+				server_resource_disk_size			=>	$server_resource_disk_size, 
+				server_resource_disk_used			=>	$server_resource_disk_used, 
+			};
+			$an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid} = {
+				server_resource_disk_server_resource_uuid	=>	$server_resource_disk_server_resource_uuid, 
+				server_resource_disk_mount_point		=>	$server_resource_disk_mount_point, 
+				server_resource_disk_filesystem			=>	$server_resource_disk_filesystem, 
+				server_resource_disk_options			=>	$server_resource_disk_options, 
+				server_resource_disk_size			=>	$server_resource_disk_size, 
+				server_resource_disk_used			=>	$server_resource_disk_used, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{server_resource_disks}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $server_resource_disk_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}})
+		{
+			my $server_resource_disk_server_resource_uuid = $an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}{server_resource_disk_server_resource_uuid};
+			my $server_resource_disk_mount_point          = $an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}{server_resource_disk_mount_point};
+			my $server_resource_disk_filesystem           = $an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}{server_resource_disk_filesystem};
+			my $server_resource_disk_options              = $an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}{server_resource_disk_options};
+			my $server_resource_disk_size                 = $an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}{server_resource_disk_size};
+			my $server_resource_disk_used                 = $an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}{server_resource_disk_used};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "server_resource_disk_uuid",                 value1 => $server_resource_disk_uuid, 
+				name2 => "server_resource_disk_server_resource_uuid", value2 => $server_resource_disk_server_resource_uuid, 
+				name3 => "server_resource_disk_mount_point",          value3 => $server_resource_disk_mount_point, 
+				name4 => "server_resource_disk_filesystem",           value4 => $server_resource_disk_filesystem, 
+				name5 => "server_resource_disk_options",              value5 => $server_resource_disk_options, 
+				name6 => "server_resource_disk_size",                 value6 => $server_resource_disk_size, 
+				name7 => "server_resource_disk_used",                 value7 => $server_resource_disk_used, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'server_resource_disk_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::server_resource_disks::server_resource_disk_uuid::${server_resource_disk_uuid}::seen", value1 => $an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::server_resource_disks::server_resource_disk_uuid::${server_resource_disk_uuid}::exists", value1 => $an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::server_resource_disks::modified_date::${modified_date}::server_resource_disk_uuid::${server_resource_disk_uuid}", value1 => $an->data->{db_data}{$id}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.server_resource_disks 
+SET
+    server_resource_disk_server_resource_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_server_resource_uuid).",
+    server_resource_disk_mount_point          = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_mount_point).", 
+    server_resource_disk_filesystem           = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_filesystem).", 
+    server_resource_disk_options              = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_options).", 
+    server_resource_disk_size                 = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_size).", 
+    server_resource_disk_used                 = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_used).", 
+    modified_date                             = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    server_resource_disk_host_uuid            = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    server_resource_disk_uuid                 = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.server_resource_disks 
+(
+    server_resource_disk_host_uuid, 
+    server_resource_disk_uuid, 
+    server_resource_disk_server_resource_uuid, 
+    server_resource_disk_mount_point, 
+    server_resource_disk_filesystem, 
+    server_resource_disk_options, 
+    server_resource_disk_size, 
+    server_resource_disk_used, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_server_resource_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_mount_point).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_filesystem).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_options).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_used).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'server_resource_disk_uuid' before, so it is just a question of 
+					# whether the entry for the current timestamp exists in the history 
+					# schema.
+					if (not $an->data->{db_data}{$id}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.server_resource_disks 
+(
+    server_resource_disk_host_uuid, 
+    server_resource_disk_uuid, 
+    server_resource_disk_server_resource_uuid, 
+    server_resource_disk_mount_point, 
+    server_resource_disk_filesystem, 
+    server_resource_disk_options, 
+    server_resource_disk_size, 
+    server_resource_disk_used, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_server_resource_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_mount_point).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_filesystem).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_options).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_used).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen server_resource_disk_uuid?
+			} # foreach my $id 
+		} # foreach my $server_resource_disk_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'update_db_server_resource_cpus' table.
+sub update_db_server_resource_cpus
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_server_resource_cpus" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'update_db_server_resource_cpus' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    server_resource_cpu_uuid, 
+    server_resource_cpu_server_resource_uuid,
+    server_resource_cpu_number, 
+    server_resource_cpu_load, 
+    modified_date 
+FROM 
+    history.server_resource_cpus 
+WHERE 
+    server_resource_cpu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $server_resource_cpu_uuid                 = $row->[0];
+			my $server_resource_cpu_server_resource_uuid = $row->[1];
+			my $server_resource_cpu_number               = $row->[2];
+			my $server_resource_cpu_load                 = $row->[3];
+			my $modified_date                            = $row->[7];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "server_resource_cpu_uuid",                 value1 => $server_resource_cpu_uuid, 
+				name2 => "server_resource_cpu_server_resource_uuid", value2 => $server_resource_cpu_server_resource_uuid, 
+				name3 => "server_resource_cpu_number",               value3 => $server_resource_cpu_number, 
+				name4 => "server_resource_cpu_load",                 value4 => $server_resource_cpu_load, 
+				name5 => "modified_date",                            value5 => $modified_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid} = {
+				server_resource_cpu_server_resource_uuid	=>	$server_resource_cpu_server_resource_uuid, 
+				server_resource_cpu_number			=>	$server_resource_cpu_number, 
+				server_resource_cpu_load			=>	$server_resource_cpu_load, 
+			};
+			$an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid} = {
+				server_resource_cpu_server_resource_uuid	=>	$server_resource_cpu_server_resource_uuid, 
+				server_resource_cpu_number			=>	$server_resource_cpu_number, 
+				server_resource_cpu_load			=>	$server_resource_cpu_load, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{server_resource_cpus}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $server_resource_cpu_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}})
+		{
+			my $server_resource_cpu_server_resource_uuid = $an->data->{db_data}{unified}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{server_resource_cpu_server_resource_uuid};
+			my $server_resource_cpu_number               = $an->data->{db_data}{unified}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{server_resource_cpu_number};
+			my $server_resource_cpu_load                 = $an->data->{db_data}{unified}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{server_resource_cpu_load};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "server_resource_cpu_uuid",                 value1 => $server_resource_cpu_uuid, 
+				name2 => "server_resource_cpu_server_resource_uuid", value2 => $server_resource_cpu_server_resource_uuid, 
+				name3 => "server_resource_cpu_number",               value3 => $server_resource_cpu_number, 
+				name4 => "server_resource_cpu_load",                 value4 => $server_resource_cpu_load, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'server_resource_cpu_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::server_resource_cpus::server_resource_cpu_uuid::${server_resource_cpu_uuid}::seen", value1 => $an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::server_resource_cpus::server_resource_cpu_uuid::${server_resource_cpu_uuid}::exists", value1 => $an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::server_resource_cpus::modified_date::${modified_date}::server_resource_cpu_uuid::${server_resource_cpu_uuid}", value1 => $an->data->{db_data}{$id}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.server_resource_cpus 
+SET
+    server_resource_cpu_server_resource_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_server_resource_uuid).",
+    server_resource_cpu_number               = ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_number).", 
+    server_resource_cpu_load                 = ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_load).", 
+    modified_date                            = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    server_resource_cpu_host_uuid            = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    server_resource_cpu_uuid                 = ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.server_resource_cpus 
+(
+    server_resource_cpu_host_uuid, 
+    server_resource_cpu_uuid, 
+    server_resource_cpu_server_resource_uuid, 
+    server_resource_cpu_number, 
+    server_resource_cpu_load, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_server_resource_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_load).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'server_resource_cpu_uuid' before, so it is just a question of 
+					# whether the entry for the current timestamp exists in the history 
+					# schema.
+					if (not $an->data->{db_data}{$id}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.server_resource_cpus 
+(
+    server_resource_cpu_host_uuid, 
+    server_resource_cpu_uuid, 
+    server_resource_cpu_server_resource_uuid, 
+    server_resource_cpu_number, 
+    server_resource_cpu_load, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_server_resource_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_load).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen server_resource_cpu_uuid?
+			} # foreach my $id 
+		} # foreach my $server_resource_cpu_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'server_resources' table.
+sub update_db_server_resources
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_server_resources" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'server_resource' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    server_resource_uuid, 
+    server_resource_target_access, 
+    server_resource_host_name, 
+    server_resource_os, 
+    server_resource_boot_time, 
+    server_resource_ram_size, 
+    server_resource_ram_used, 
+    server_resource_swap_size, 
+    server_resource_swap_used, 
+    server_resource_note, 
+    modified_date 
+FROM 
+    history.server_resources 
+WHERE 
+    server_resource_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $server_resource_uuid          =         $row->[0];
+			my $server_resource_target_access =         $row->[1];
+			my $server_resource_host_name     =         $row->[2];
+			my $server_resource_os            =         $row->[3];
+			my $server_resource_boot_time     =         $row->[4];
+			my $server_resource_ram_size      =         $row->[5];
+			my $server_resource_ram_used      =         $row->[6];
+			my $server_resource_swap_size     =         $row->[7];
+			my $server_resource_swap_used     =         $row->[8];
+			my $server_resource_note          = defined $row->[9]  ? $row->[9]  : "NULL", 
+			my $modified_date                 =         $row->[10];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+				name1  => "server_resource_uuid",          value1  => $server_resource_uuid, 
+				name2  => "server_resource_target_access", value2  => $server_resource_target_access, 
+				name3  => "server_resource_host_name",     value3  => $server_resource_host_name, 
+				name4  => "server_resource_os",            value4  => $server_resource_os, 
+				name5  => "server_resource_boot_time",     value5  => $server_resource_boot_time, 
+				name6  => "server_resource_ram_size",      value6  => $server_resource_ram_size, 
+				name7  => "server_resource_ram_used",      value7  => $server_resource_ram_used, 
+				name8  => "server_resource_swap_size",     value8  => $server_resource_swap_size, 
+				name9  => "server_resource_swap_used",     value9  => $server_resource_swap_used, 
+				name10 => "server_resource_note",          value10 => $server_resource_note, 
+				name11 => "modified_date",                 value11 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid} = {
+				server_resource_target_access	=>	$server_resource_target_access, 
+				server_resource_host_name	=>	$server_resource_host_name, 
+				server_resource_os		=>	$server_resource_os, 
+				server_resource_boot_time	=>	$server_resource_boot_time, 
+				server_resource_ram_size	=>	$server_resource_ram_size, 
+				server_resource_ram_used	=>	$server_resource_ram_used, 
+				server_resource_swap_size	=>	$server_resource_swap_size, 
+				server_resource_swap_used	=>	$server_resource_swap_used, 
+				server_resource_note		=>	$server_resource_note, 
+			};
+			$an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid} = {
+				server_resource_target_access	=>	$server_resource_target_access, 
+				server_resource_host_name	=>	$server_resource_host_name, 
+				server_resource_os		=>	$server_resource_os, 
+				server_resource_boot_time	=>	$server_resource_boot_time, 
+				server_resource_ram_size	=>	$server_resource_ram_size, 
+				server_resource_ram_used	=>	$server_resource_ram_used, 
+				server_resource_swap_size	=>	$server_resource_swap_size, 
+				server_resource_swap_used	=>	$server_resource_swap_used, 
+				server_resource_note		=>	$server_resource_note, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{server_resources}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $server_resource_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}})
+		{
+			my $server_resource_target_access = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_target_access};
+			my $server_resource_host_name     = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_host_name};
+			my $server_resource_os            = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_os};
+			my $server_resource_boot_time     = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_boot_time};
+			my $server_resource_ram_size     = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_ram_size};
+			my $server_resource_ram_used     = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_ram_used};
+			my $server_resource_swap_size    = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_size};
+			my $server_resource_swap_used    = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_used};
+			my $server_resource_note         = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_note};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+				name1  => "server_resource_uuid",          value1  => $server_resource_uuid, 
+				name2  => "server_resource_target_access", value2  => $server_resource_target_access, 
+				name3  => "server_resource_host_name",     value3  => $server_resource_host_name, 
+				name4  => "server_resource_os",            value4  => $server_resource_os, 
+				name5  => "server_resource_boot_time",     value5  => $server_resource_boot_time, 
+				name6  => "server_resource_ram_size",      value6  => $server_resource_ram_size, 
+				name7  => "server_resource_ram_used",      value7  => $server_resource_ram_used, 
+				name8  => "server_resource_swap_size",     value8  => $server_resource_swap_size, 
+				name9  => "server_resource_swap_used",     value9  => $server_resource_swap_used, 
+				name10 => "server_resource_note",          value10 => $server_resource_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'server_resource_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::server_resources::server_resource_uuid::${server_resource_uuid}::seen", value1 => $an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::server_resources::server_resource_uuid::${server_resource_uuid}::exists", value1 => $an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::server_resources::modified_date::${modified_date}::server_resource_uuid::${server_resource_uuid}", value1 => $an->data->{db_data}{$id}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.server_resources 
+SET
+    server_resource_target_access = ".$an->data->{sys}{use_db_fh}->quote($server_resource_target_access).", 
+    server_resource_host_name     = ".$an->data->{sys}{use_db_fh}->quote($server_resource_host_name).", 
+    server_resource_os            = ".$an->data->{sys}{use_db_fh}->quote($server_resource_os).", 
+    server_resource_boot_time     = ".$an->data->{sys}{use_db_fh}->quote($server_resource_boot_time).", 
+    server_resource_ram_size      = ".$an->data->{sys}{use_db_fh}->quote($server_resource_ram_size).", 
+    server_resource_ram_used      = ".$an->data->{sys}{use_db_fh}->quote($server_resource_ram_used).", 
+    server_resource_swap_size     = ".$an->data->{sys}{use_db_fh}->quote($server_resource_swap_size).", 
+    server_resource_swap_used     = ".$an->data->{sys}{use_db_fh}->quote($server_resource_swap_used).", 
+    server_resource_note          = ".$an->data->{sys}{use_db_fh}->quote($server_resource_note).", 
+    modified_date                 = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    server_resource_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    server_resource_uuid          = ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.server_resources 
+(
+    server_resource_host_uuid, 
+    server_resource_uuid, 
+    server_resource_target_access, 
+    server_resource_host_name, 
+    server_resource_os, 
+    server_resource_boot_time, 
+    server_resource_ram_size, 
+    server_resource_ram_used, 
+    server_resource_swap_size, 
+    server_resource_swap_used, 
+    server_resource_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_target_access).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_host_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_os).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_boot_time).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_ram_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_ram_used).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_swap_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_swap_used).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'server_resource_uuid' before, so it is just a question of 
+					# whether the entry for the current timestamp exists in the history 
+					# schema.
+					if (not $an->data->{db_data}{$id}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.server_resources 
+(
+    server_resource_host_uuid, 
+    server_resource_uuid, 
+    server_resource_target_access, 
+    server_resource_host_name, 
+    server_resource_os, 
+    server_resource_boot_time, 
+    server_resource_ram_size, 
+    server_resource_ram_used, 
+    server_resource_swap_size, 
+    server_resource_swap_used, 
+    server_resource_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_target_access).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_host_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_os).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_boot_time).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_ram_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_ram_used).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_swap_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_swap_used).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen server_resource_uuid?
+			} # foreach my $id 
+		} # foreach my $server_resource_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
 
 # This calls the target and reads in the resources XML.
 sub gather_details
@@ -404,11 +1219,11 @@ SELECT
     server_resource_host_name, 
     server_resource_os, 
     server_resource_boot_time, 
-    server_resources_ram_size, 
-    server_resources_ram_used, 
-    server_resources_swap_size, 
-    server_resources_swap_used, 
-    server_resources_note 
+    server_resource_ram_size, 
+    server_resource_ram_used, 
+    server_resource_swap_size, 
+    server_resource_swap_used, 
+    server_resource_note 
 FROM 
     server_resources 
 WHERE 
@@ -431,33 +1246,33 @@ WHERE
 		my $server_resource_host_name     =         $row->[2];
 		my $server_resource_os            =         $row->[3];
 		my $server_resource_boot_time     =         $row->[4];
-		my $server_resources_ram_size     =         $row->[5];
-		my $server_resources_ram_used     =         $row->[6];
-		my $server_resources_swap_size    =         $row->[7];
-		my $server_resources_swap_used    =         $row->[8];
-		my $server_resources_note         = defined $row->[9] ? $row->[9] : "";
+		my $server_resource_ram_size      =         $row->[5];
+		my $server_resource_ram_used      =         $row->[6];
+		my $server_resource_swap_size     =         $row->[7];
+		my $server_resource_swap_used     =         $row->[8];
+		my $server_resource_note          = defined $row->[9] ? $row->[9] : "";
 		
 		$an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid} = {
 			server_resource_target_access => $server_resource_target_access,
 			server_resource_host_name     => $server_resource_host_name,
 			server_resource_os            => $server_resource_os,
 			server_resource_boot_time     => $server_resource_boot_time,
-			server_resources_ram_size     => $server_resources_ram_size,
-			server_resources_ram_used     => $server_resources_ram_used,
-			server_resources_swap_size    => $server_resources_swap_size,
-			server_resources_swap_used    => $server_resources_swap_used,
-			server_resources_note         => $server_resources_note,
+			server_resource_ram_size      => $server_resource_ram_size,
+			server_resource_ram_used      => $server_resource_ram_used,
+			server_resource_swap_size     => $server_resource_swap_size,
+			server_resource_swap_used     => $server_resource_swap_used,
+			server_resource_note          => $server_resource_note,
 		};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 			name1 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_target_access", value1 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_target_access}, 
 			name2 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_host_name",     value2 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_host_name}, 
 			name3 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_os",            value3 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_os}, 
 			name4 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_boot_time",     value4 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_boot_time}, 
-			name5 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resources_ram_size",     value5 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_ram_size}, 
-			name6 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resources_ram_used",     value6 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_ram_used}, 
-			name7 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resources_swap_size",    value7 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_swap_size}, 
-			name8 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resources_swap_used",    value8 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_swap_used}, 
-			name9 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resources_note",         value9 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_note}, 
+			name5 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_ram_size",      value5 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_ram_size}, 
+			name6 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_ram_used",      value6 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_ram_used}, 
+			name7 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_swap_size",     value7 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_size}, 
+			name8 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_swap_used",     value8 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_used}, 
+			name9 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_note",          value9 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_note}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
@@ -465,17 +1280,17 @@ WHERE
 	# Get the Disks for this server
 	$query = "
 SELECT 
-    server_resources_disk_uuid, 
-    server_resources_disk_server_resource_uuid,
-    server_resources_disk_mount_point,
-    server_resources_disk_filesystem,
-    server_resources_disk_options,
-    server_resources_disk_size,
-    server_resources_disk_used
+    server_resource_disk_uuid, 
+    server_resource_disk_server_resource_uuid,
+    server_resource_disk_mount_point,
+    server_resource_disk_filesystem,
+    server_resource_disk_options,
+    server_resource_disk_size,
+    server_resource_disk_used
 FROM 
-    server_resources_disks 
+    server_resource_disks 
 WHERE 
-    server_resources_disk_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    server_resource_disk_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -491,28 +1306,28 @@ WHERE
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
-		my $server_resources_disk_uuid                 = $row->[0];
-		my $server_resources_disk_server_resource_uuid = $row->[1];
-		my $server_resources_disk_mount_point          = $row->[2];
-		my $server_resources_disk_filesystem           = $row->[3];
-		my $server_resources_disk_options              = $row->[4];
-		my $server_resources_disk_size                 = $row->[5];
-		my $server_resources_disk_used                 = $row->[6];
+		my $server_resource_disk_uuid                 = $row->[0];
+		my $server_resource_disk_server_resource_uuid = $row->[1];
+		my $server_resource_disk_mount_point          = $row->[2];
+		my $server_resource_disk_filesystem           = $row->[3];
+		my $server_resource_disk_options              = $row->[4];
+		my $server_resource_disk_size                 = $row->[5];
+		my $server_resource_disk_used                 = $row->[6];
 		
-		$an->data->{sql}{server_resources}{server_resource_uuid}{$server_resources_disk_server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point} = {
-			server_resources_disk_uuid        => $server_resources_disk_uuid, 
-			server_resources_disk_mount_point => $server_resources_disk_mount_point,
-			server_resources_disk_filesystem  => $server_resources_disk_filesystem,
-			server_resources_disk_options     => $server_resources_disk_options,
-			server_resources_disk_size        => $server_resources_disk_size,
-			server_resources_disk_used        => $server_resources_disk_used,
+		$an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_disk_server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point} = {
+			server_resource_disk_uuid        => $server_resource_disk_uuid, 
+			server_resource_disk_mount_point => $server_resource_disk_mount_point,
+			server_resource_disk_filesystem  => $server_resource_disk_filesystem,
+			server_resource_disk_options     => $server_resource_disk_options,
+			server_resource_disk_size        => $server_resource_disk_size,
+			server_resource_disk_used        => $server_resource_disk_used,
 		};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-			name1 => "sql::server_resources::server_resource_uuid::${server_resources_disk_server_resource_uuid}::server_resources_disk_mount_point::${server_resources_disk_mount_point}::server_resources_disk_uuid",       value1 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resources_disk_server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_uuid}, 
-			name2 => "sql::server_resources::server_resource_uuid::${server_resources_disk_server_resource_uuid}::server_resources_disk_mount_point::${server_resources_disk_mount_point}::server_resources_disk_filesystem", value2 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resources_disk_server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_filesystem}, 
-			name3 => "sql::server_resources::server_resource_uuid::${server_resources_disk_server_resource_uuid}::server_resources_disk_mount_point::${server_resources_disk_mount_point}::server_resources_disk_options",    value3 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resources_disk_server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_options}, 
-			name4 => "sql::server_resources::server_resource_uuid::${server_resources_disk_server_resource_uuid}::server_resources_disk_mount_point::${server_resources_disk_mount_point}::server_resources_disk_size",       value4 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resources_disk_server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_size}, 
-			name5 => "sql::server_resources::server_resource_uuid::${server_resources_disk_server_resource_uuid}::server_resources_disk_mount_point::${server_resources_disk_mount_point}::server_resources_disk_used",       value5 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resources_disk_server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_used}, 
+			name1 => "sql::server_resources::server_resource_uuid::${server_resource_disk_server_resource_uuid}::server_resource_disk_mount_point::${server_resource_disk_mount_point}::server_resource_disk_uuid",       value1 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_disk_server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_uuid}, 
+			name2 => "sql::server_resources::server_resource_uuid::${server_resource_disk_server_resource_uuid}::server_resource_disk_mount_point::${server_resource_disk_mount_point}::server_resource_disk_filesystem", value2 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_disk_server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_filesystem}, 
+			name3 => "sql::server_resources::server_resource_uuid::${server_resource_disk_server_resource_uuid}::server_resource_disk_mount_point::${server_resource_disk_mount_point}::server_resource_disk_options",    value3 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_disk_server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_options}, 
+			name4 => "sql::server_resources::server_resource_uuid::${server_resource_disk_server_resource_uuid}::server_resource_disk_mount_point::${server_resource_disk_mount_point}::server_resource_disk_size",       value4 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_disk_server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_size}, 
+			name5 => "sql::server_resources::server_resource_uuid::${server_resource_disk_server_resource_uuid}::server_resource_disk_mount_point::${server_resource_disk_mount_point}::server_resource_disk_used",       value5 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_disk_server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_used}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
@@ -520,14 +1335,14 @@ WHERE
 	# Get the CPU cores for this server
 	$query = "
 SELECT 
-    server_resources_cpu_uuid, 
-    server_resources_cpu_server_resource_uuid,
-    server_resources_cpu_number, 
-    server_resources_cpu_load
+    server_resource_cpu_uuid, 
+    server_resource_cpu_server_resource_uuid,
+    server_resource_cpu_number, 
+    server_resource_cpu_load
 FROM 
-    server_resources_cpus 
+    server_resource_cpus 
 WHERE 
-    server_resources_cpu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    server_resource_cpu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -543,18 +1358,18 @@ WHERE
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
-		my $server_resources_cpu_uuid                 = $row->[0];
-		my $server_resources_cpu_server_resource_uuid = $row->[1];
-		my $server_resources_cpu_number               = $row->[2]; 
-		my $server_resources_cpu_load                 = $row->[3];
+		my $server_resource_cpu_uuid                 = $row->[0];
+		my $server_resource_cpu_server_resource_uuid = $row->[1];
+		my $server_resource_cpu_number               = $row->[2]; 
+		my $server_resource_cpu_load                 = $row->[3];
 		
-		$an->data->{sql}{server_resources}{server_resource_uuid}{$server_resources_cpu_server_resource_uuid}{server_resources_cpu_number}{$server_resources_cpu_number} = {
-			server_resources_cpu_uuid => $server_resources_cpu_uuid,
-			server_resources_cpu_load => $server_resources_cpu_load,
+		$an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_cpu_server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number} = {
+			server_resource_cpu_uuid => $server_resource_cpu_uuid,
+			server_resource_cpu_load => $server_resource_cpu_load,
 		};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "sql::server_resources::server_resource_uuid::${server_resources_cpu_server_resource_uuid}::server_resources_cpu_number::${server_resources_cpu_number}::server_resources_cpu_uuid", value1 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resources_cpu_server_resource_uuid}{server_resources_cpu_number}{$server_resources_cpu_number}{server_resources_cpu_uuid}, 
-			name2 => "sql::server_resources::server_resource_uuid::${server_resources_cpu_server_resource_uuid}::server_resources_cpu_number::${server_resources_cpu_number}::server_resources_cpu_load", value2 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resources_cpu_server_resource_uuid}{server_resources_cpu_number}{$server_resources_cpu_number}{server_resources_cpu_load}, 
+			name1 => "sql::server_resources::server_resource_uuid::${server_resource_cpu_server_resource_uuid}::server_resource_cpu_number::${server_resource_cpu_number}::server_resource_cpu_uuid", value1 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_cpu_server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number}{server_resource_cpu_uuid}, 
+			name2 => "sql::server_resources::server_resource_uuid::${server_resource_cpu_server_resource_uuid}::server_resource_cpu_number::${server_resource_cpu_number}::server_resource_cpu_load", value2 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_cpu_server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number}{server_resource_cpu_load}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
@@ -580,19 +1395,19 @@ sub find_changes
 		my $new_server_resource_host_name     = $an->data->{'server-resources'}{server}{$server_resource_uuid}{host_name}; 
 		my $new_server_resource_os            = $an->data->{'server-resources'}{server}{$server_resource_uuid}{host_os};
 		my $new_server_resource_boot_time     = $an->data->{'server-resources'}{server}{$server_resource_uuid}{boot_time};
-		my $new_server_resources_ram_size     = $an->data->{'server-resources'}{server}{$server_resource_uuid}{ram_total};
-		my $new_server_resources_ram_used     = $an->data->{'server-resources'}{server}{$server_resource_uuid}{ram_used};
-		my $new_server_resources_swap_size    = $an->data->{'server-resources'}{server}{$server_resource_uuid}{swap_total};
-		my $new_server_resources_swap_used    = $an->data->{'server-resources'}{server}{$server_resource_uuid}{swap_used};
+		my $new_server_resource_ram_size      = $an->data->{'server-resources'}{server}{$server_resource_uuid}{ram_total};
+		my $new_server_resource_ram_used      = $an->data->{'server-resources'}{server}{$server_resource_uuid}{ram_used};
+		my $new_server_resource_swap_size     = $an->data->{'server-resources'}{server}{$server_resource_uuid}{swap_total};
+		my $new_server_resource_swap_used     = $an->data->{'server-resources'}{server}{$server_resource_uuid}{swap_used};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "new_server_resource_target_access", value1 => $new_server_resource_target_access, 
 			name2 => "new_server_resource_host_name",     value2 => $new_server_resource_host_name, 
 			name3 => "new_server_resource_os",            value3 => $new_server_resource_os, 
 			name4 => "new_server_resource_boot_time",     value4 => $new_server_resource_boot_time, 
-			name5 => "new_server_resources_ram_size",     value5 => $new_server_resources_ram_size, 
-			name6 => "new_server_resources_ram_used",     value6 => $new_server_resources_ram_used, 
-			name7 => "new_server_resources_swap_size",    value7 => $new_server_resources_swap_size, 
-			name8 => "new_server_resources_swap_used",    value8 => $new_server_resources_swap_used, 
+			name5 => "new_server_resource_ram_size",      value5 => $new_server_resource_ram_size, 
+			name6 => "new_server_resource_ram_used",      value6 => $new_server_resource_ram_used, 
+			name7 => "new_server_resource_swap_size",     value7 => $new_server_resource_swap_size, 
+			name8 => "new_server_resource_swap_used",     value8 => $new_server_resource_swap_used, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# We'll reference the target in any alerts below
@@ -609,21 +1424,21 @@ sub find_changes
 			my $old_server_resource_host_name     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_host_name};
 			my $old_server_resource_os            = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_os};
 			my $old_server_resource_boot_time     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_boot_time};
-			my $old_server_resources_ram_size     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_ram_size};
-			my $old_server_resources_ram_used     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_ram_used};
-			my $old_server_resources_swap_size    = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_swap_size};
-			my $old_server_resources_swap_used    = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_swap_used};
-			my $old_server_resources_note         = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_note};
+			my $old_server_resource_ram_size      = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_ram_size};
+			my $old_server_resource_ram_used      = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_ram_used};
+			my $old_server_resource_swap_size     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_size};
+			my $old_server_resource_swap_used     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_used};
+			my $old_server_resource_note          = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_note};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 				name1 => "old_server_resource_target_access", value1 => $old_server_resource_target_access, 
 				name2 => "old_server_resource_host_name",     value2 => $old_server_resource_host_name, 
 				name3 => "old_server_resource_os",            value3 => $old_server_resource_os, 
 				name4 => "old_server_resource_boot_time",     value4 => $old_server_resource_boot_time, 
-				name5 => "old_server_resources_ram_size",     value5 => $old_server_resources_ram_size, 
-				name6 => "old_server_resources_ram_used",     value6 => $old_server_resources_ram_used, 
-				name7 => "old_server_resources_swap_size",    value7 => $old_server_resources_swap_size, 
-				name8 => "old_server_resources_swap_used",    value8 => $old_server_resources_swap_used, 
-				name9 => "old_server_resources_note",         value9 => $old_server_resources_note, 
+				name5 => "old_server_resource_ram_size",      value5 => $old_server_resource_ram_size, 
+				name6 => "old_server_resource_ram_used",      value6 => $old_server_resource_ram_used, 
+				name7 => "old_server_resource_swap_size",     value7 => $old_server_resource_swap_size, 
+				name8 => "old_server_resource_swap_used",     value8 => $old_server_resource_swap_used, 
+				name9 => "old_server_resource_note",          value9 => $old_server_resource_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# We'll set this to '1' if we need to update the DB.
@@ -631,7 +1446,7 @@ sub find_changes
 			
 			# If I am here, the server was accessible. So if the 'note' was 'OFFLINE', the server
 			# is back now. If it was 'DELETED', we're monitoring it again.
-			if ($old_server_resources_note eq "OFFLINE")
+			if ($old_server_resource_note eq "OFFLINE")
 			{
 				# Yup. This isn't major as it's almost certainly done by the user. We'll mark
 				# it as 'warning' though just so that people know we've seen the change.
@@ -652,7 +1467,7 @@ sub find_changes
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($old_server_resources_note eq "DELETED")
+			elsif ($old_server_resource_note eq "DELETED")
 			{
 				# Yup. This isn't major as it's almost certainly done by the user. We'll mark
 				# it as 'warning' though just so that people know we've seen the change.
@@ -801,7 +1616,7 @@ sub find_changes
 			}
 			
 			# Has the RAM size changed?
-			if ($new_server_resources_ram_size ne $old_server_resources_ram_size)
+			if ($new_server_resource_ram_size ne $old_server_resource_ram_size)
 			{
 				# This is almost always done by an admin, so we'll make it a notice.
 				$an->Alert->register_alert({
@@ -811,10 +1626,10 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"scan_server_resources_message_0006",
 					alert_message_variables	=>	{
-						old_ram_size		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resources_ram_size }),
-						old_ram_size_bytes	=>	$an->Readable->comma($old_server_resources_ram_size),
-						new_ram_size		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resources_ram_size }),
-						new_ram_size_bytes	=>	$an->Readable->comma($new_server_resources_ram_size),
+						old_ram_size		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resource_ram_size }),
+						old_ram_size_bytes	=>	$an->Readable->comma($old_server_resource_ram_size),
+						new_ram_size		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resource_ram_size }),
+						new_ram_size_bytes	=>	$an->Readable->comma($new_server_resource_ram_size),
 					},
 				});
 				
@@ -825,7 +1640,7 @@ sub find_changes
 			}
 			
 			# Has the amount of RAM used changed? This is almost the case.
-			if ($new_server_resources_ram_used ne $old_server_resources_ram_used)
+			if ($new_server_resource_ram_used ne $old_server_resource_ram_used)
 			{
 				# This is almost always done by an admin, so we'll make it info.
 				$an->Alert->register_alert({
@@ -835,10 +1650,10 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0002",
 					alert_message_key	=>	"scan_server_resources_message_0007",
 					alert_message_variables	=>	{
-						old_ram_used		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resources_ram_used }),
-						old_ram_used_bytes	=>	$an->Readable->comma($old_server_resources_ram_used),
-						new_ram_used		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resources_ram_used }),
-						new_ram_used_bytes	=>	$an->Readable->comma($new_server_resources_ram_used),
+						old_ram_used		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resource_ram_used }),
+						old_ram_used_bytes	=>	$an->Readable->comma($old_server_resource_ram_used),
+						new_ram_used		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resource_ram_used }),
+						new_ram_used_bytes	=>	$an->Readable->comma($new_server_resource_ram_used),
 					},
 				});
 				
@@ -849,7 +1664,7 @@ sub find_changes
 			}
 			
 			# Has the Swap size changed?
-			if ($new_server_resources_swap_size ne $old_server_resources_swap_size)
+			if ($new_server_resource_swap_size ne $old_server_resource_swap_size)
 			{
 				# This is almost always done by an admin, so we'll make it a notice.
 				$an->Alert->register_alert({
@@ -859,10 +1674,10 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"scan_server_resources_message_0008",
 					alert_message_variables	=>	{
-						old_swap_size		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resources_swap_size}),
-						old_swap_size_bytes	=>	$an->Readable->comma($old_server_resources_swap_size),
-						new_swap_size		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resources_swap_size}),
-						new_swap_size_bytes	=>	$an->Readable->comma($new_server_resources_swap_size),
+						old_swap_size		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resource_swap_size}),
+						old_swap_size_bytes	=>	$an->Readable->comma($old_server_resource_swap_size),
+						new_swap_size		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resource_swap_size}),
+						new_swap_size_bytes	=>	$an->Readable->comma($new_server_resource_swap_size),
 					},
 				});
 				
@@ -873,7 +1688,7 @@ sub find_changes
 			}
 			
 			# Has the amount of Swap used changed? This is almost the case.
-			if ($new_server_resources_swap_used ne $old_server_resources_swap_used)
+			if ($new_server_resource_swap_used ne $old_server_resource_swap_used)
 			{
 				# This is almost always done by an admin, so we'll make it info.
 				$an->Alert->register_alert({
@@ -883,10 +1698,10 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0002",
 					alert_message_key	=>	"scan_server_resources_message_0009",
 					alert_message_variables	=>	{
-						old_swap_used		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resources_swap_used }),
-						old_swap_used_bytes	=>	$an->Readable->comma($old_server_resources_swap_size),
-						new_swap_used		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resources_swap_used }),
-						new_swap_used_bytes	=>	$an->Readable->comma($new_server_resources_swap_size),
+						old_swap_used		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resource_swap_used }),
+						old_swap_used_bytes	=>	$an->Readable->comma($old_server_resource_swap_size),
+						new_swap_used		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resource_swap_used }),
+						new_swap_used_bytes	=>	$an->Readable->comma($new_server_resource_swap_size),
 					},
 				});
 				
@@ -900,8 +1715,8 @@ sub find_changes
 			# it in case it was lower before. For swap, we'll throw an alert if less than 90% is
 			# used because any swap use is a good sign that more RAM is needed. We don't throw at
 			# >0% because sometimes something will use a bit of swap for whatever reason.
-			my $free_ram_percent  = 100 - ($an->Math->round({number => (100 * ($new_server_resources_ram_used / $new_server_resources_ram_size))}));
-			my $free_swap_percent = 100 - ($an->Math->round({number => (100 * ($new_server_resources_swap_used / $new_server_resources_swap_size))}));
+			my $free_ram_percent  = 100 - ($an->Math->round({number => (100 * ($new_server_resource_ram_used / $new_server_resource_ram_size))}));
+			my $free_swap_percent = 100 - ($an->Math->round({number => (100 * ($new_server_resource_swap_used / $new_server_resource_swap_size))}));
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "free_ram_percent",                             value1 => $free_ram_percent, 
 				name2 => "scan-server-resources::free_ram_low_warning",  value2 => $an->data->{'scan-server-resources'}{free_ram_low_warning}, 
@@ -1059,11 +1874,11 @@ SET
     server_resource_host_name     = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_host_name).", 
     server_resource_os            = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_os).", 
     server_resource_boot_time     = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_boot_time).", 
-    server_resources_ram_size     = ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_ram_size).", 
-    server_resources_ram_used     = ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_ram_used).", 
-    server_resources_swap_size    = ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_swap_size).", 
-    server_resources_swap_used    = ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_swap_used).", 
-    server_resources_note         = 'ONLINE', 
+    server_resource_ram_size      = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_ram_size).", 
+    server_resource_ram_used      = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_ram_used).", 
+    server_resource_swap_size     = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_swap_size).", 
+    server_resource_swap_used     = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_swap_used).", 
+    server_resource_note          = 'ONLINE', 
     modified_date                 = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     server_resource_uuid          = ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid)."
@@ -1077,26 +1892,26 @@ WHERE
 			}
 			
 			# Now check to see if any disks changed or were added.
-			foreach my $server_resources_disk_mount_point (sort {$a cmp $b} keys %{$an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}})
+			foreach my $server_resource_disk_mount_point (sort {$a cmp $b} keys %{$an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}})
 			{
-				my $new_server_resources_disk_filesystem = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resources_disk_mount_point}{filesystem};
-				my $new_server_resources_disk_options    = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resources_disk_mount_point}{options};
-				my $new_server_resources_disk_size       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resources_disk_mount_point}{total};
-				my $new_server_resources_disk_used       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resources_disk_mount_point}{used};
+				my $new_server_resource_disk_filesystem = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{filesystem};
+				my $new_server_resource_disk_options    = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{options};
+				my $new_server_resource_disk_size       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{total};
+				my $new_server_resource_disk_used       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{used};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-					name1 => "server_resources_disk_mount_point",    value1 => $server_resources_disk_mount_point, 
-					name2 => "new_server_resources_disk_filesystem", value2 => $new_server_resources_disk_filesystem, 
-					name3 => "new_server_resources_disk_options",    value3 => $new_server_resources_disk_options, 
-					name4 => "new_server_resources_disk_size",       value4 => $new_server_resources_disk_size, 
-					name5 => "new_server_resources_disk_used",       value5 => $new_server_resources_disk_used, 
+					name1 => "server_resource_disk_mount_point",    value1 => $server_resource_disk_mount_point, 
+					name2 => "new_server_resource_disk_filesystem", value2 => $new_server_resource_disk_filesystem, 
+					name3 => "new_server_resource_disk_options",    value3 => $new_server_resource_disk_options, 
+					name4 => "new_server_resource_disk_size",       value4 => $new_server_resource_disk_size, 
+					name5 => "new_server_resource_disk_used",       value5 => $new_server_resource_disk_used, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				my $changes                = 0;
-				my $new_free_space         = $new_server_resources_disk_size - $new_server_resources_disk_used;
+				my $new_free_space         = $new_server_resource_disk_size - $new_server_resource_disk_used;
 				my $new_say_free           = $an->Readable->bytes_to_hr({'bytes' => $new_free_space});
-				my $new_say_size           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resources_disk_size});
-				my $new_say_used           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resources_disk_used});
-				my $new_free_space_percent = 100 - ($an->Math->round({number => (100 * ($new_server_resources_disk_used / $new_server_resources_disk_size))}));
+				my $new_say_size           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_disk_size});
+				my $new_say_used           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_disk_used});
+				my $new_free_space_percent = 100 - ($an->Math->round({number => (100 * ($new_server_resource_disk_used / $new_server_resource_disk_size))}));
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 					name1 => "new_free_space",         value1 => $new_free_space, 
 					name2 => "new_say_free",           value2 => $new_say_free, 
@@ -1105,24 +1920,24 @@ WHERE
 					name5 => "new_free_space_percent", value5 => $new_free_space_percent, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				if (exists $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_uuid})
+				if (exists $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_uuid})
 				{
 					# Check for updates
-					my $server_resources_disk_uuid           = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_uuid};
-					my $old_server_resources_disk_filesystem = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_filesystem};
-					my $old_server_resources_disk_options    = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_options};
-					my $old_server_resources_disk_size       = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_size};
-					my $old_server_resources_disk_used       = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_used};
+					my $server_resource_disk_uuid           = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_uuid};
+					my $old_server_resource_disk_filesystem = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_filesystem};
+					my $old_server_resource_disk_options    = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_options};
+					my $old_server_resource_disk_size       = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_size};
+					my $old_server_resource_disk_used       = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_used};
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-						name1 => "server_resources_disk_uuid",           value1 => $server_resources_disk_uuid, 
-						name2 => "old_server_resources_disk_filesystem", value2 => $old_server_resources_disk_filesystem, 
-						name3 => "old_server_resources_disk_options",    value3 => $old_server_resources_disk_options, 
-						name4 => "old_server_resources_disk_size",       value4 => $old_server_resources_disk_size, 
-						name5 => "old_server_resources_disk_used",       value5 => $old_server_resources_disk_used, 
+						name1 => "server_resource_disk_uuid",           value1 => $server_resource_disk_uuid, 
+						name2 => "old_server_resource_disk_filesystem", value2 => $old_server_resource_disk_filesystem, 
+						name3 => "old_server_resource_disk_options",    value3 => $old_server_resource_disk_options, 
+						name4 => "old_server_resource_disk_size",       value4 => $old_server_resource_disk_size, 
+						name5 => "old_server_resource_disk_used",       value5 => $old_server_resource_disk_used, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					my $old_say_size = $an->Readable->bytes_to_hr({'bytes' => $old_server_resources_disk_size});
-					my $old_say_used = $an->Readable->bytes_to_hr({'bytes' => $old_server_resources_disk_used});
+					my $old_say_size = $an->Readable->bytes_to_hr({'bytes' => $old_server_resource_disk_size});
+					my $old_say_used = $an->Readable->bytes_to_hr({'bytes' => $old_server_resource_disk_used});
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_say_size", value1 => $old_say_size, 
 						name2 => "old_say_used", value2 => $old_say_used, 
@@ -1130,7 +1945,7 @@ WHERE
 					
 					# Has the filesystem changed? This should rarely happen unless the 
 					# disk was reformatted, which a user would be aware of.
-					if ($new_server_resources_disk_filesystem ne $old_server_resources_disk_filesystem)
+					if ($new_server_resource_disk_filesystem ne $old_server_resource_disk_filesystem)
 					{
 						# It changed. Set a warning-level 'important' alert, just to 
 						# show them we saw the change.
@@ -1142,10 +1957,10 @@ WHERE
 							alert_message_key	=>	"scan_server_resources_message_0024",
 							alert_message_variables	=>	{
 								host_name		=>	$new_server_resource_host_name, 
-								mount_point		=>	$server_resources_disk_mount_point,
+								mount_point		=>	$server_resource_disk_mount_point,
 								target			=>	$say_target,
-								old_filesystem		=>	$old_server_resources_disk_filesystem,
-								new_filesystem		=>	$new_server_resources_disk_filesystem,
+								old_filesystem		=>	$old_server_resource_disk_filesystem,
+								new_filesystem		=>	$new_server_resource_disk_filesystem,
 							},
 						});
 						
@@ -1156,14 +1971,14 @@ WHERE
 					}
 					
 					# Check to see if the mount options have changed.
-					if ($new_server_resources_disk_options ne $old_server_resources_disk_options)
+					if ($new_server_resource_disk_options ne $old_server_resource_disk_options)
 					{
 						# This is a warning because if could be a sign of an FS 
 						# remounting read-only. If the old option was 'DELETED',
 						# then the disk just came back.
 						my $title_key   = "an_alert_title_0004";
 						my $message_key = "scan_server_resources_message_0025";
-						if ($old_server_resources_disk_options eq "DELETED")
+						if ($old_server_resource_disk_options eq "DELETED")
 						{
 							$title_key   = "an_alert_title_0006";
 							$message_key = "scan_server_resources_message_0033";
@@ -1172,7 +1987,7 @@ WHERE
 							my $clear = $an->Alert->check_alert_sent({
 								type			=>	"clear",
 								alert_sent_by		=>	$THIS_FILE,
-								alert_record_locator	=>	"$server_resources_disk_uuid:deleted_disk",
+								alert_record_locator	=>	"$server_resource_disk_uuid:deleted_disk",
 								alert_name		=>	"deleted_disk",
 								modified_date		=>	$an->data->{sys}{db_timestamp},
 							});
@@ -1188,10 +2003,10 @@ WHERE
 							alert_message_key	=>	$message_key,
 							alert_message_variables	=>	{
 								host_name		=>	$new_server_resource_host_name, 
-								mount_point		=>	$server_resources_disk_mount_point,
+								mount_point		=>	$server_resource_disk_mount_point,
 								target			=>	$say_target,
-								old_options		=>	$old_server_resources_disk_options,
-								new_options		=>	$new_server_resources_disk_options,
+								old_options		=>	$old_server_resource_disk_options,
+								new_options		=>	$new_server_resource_disk_options,
 							},
 						});
 						
@@ -1202,20 +2017,20 @@ WHERE
 					}
 					
 					# Has the overall disk size changed?
-					if ($new_server_resources_disk_size ne $old_server_resources_disk_size)
+					if ($new_server_resource_disk_size ne $old_server_resource_disk_size)
 					{
 						# Did it grow or shrink? The default message is a generic "it
 						# changed" alert. If we see a grow or shrink, we'll change 
 						# the title to 'Important' instead of 'Warning'.
 						my $title_key   = "an_alert_title_0004";
 						my $message_key = "scan_server_resources_message_0026";
-						if ($new_server_resources_disk_size > $old_server_resources_disk_size)
+						if ($new_server_resource_disk_size > $old_server_resource_disk_size)
 						{
 							# It grew
 							$title_key   = "an_alert_title_0008";
 							$message_key = "scan_server_resources_message_0027";
 						}
-						elsif ($new_server_resources_disk_size < $old_server_resources_disk_size)
+						elsif ($new_server_resource_disk_size < $old_server_resource_disk_size)
 						{
 							# It shrunk
 							$title_key   = "an_alert_title_0008";
@@ -1229,11 +2044,11 @@ WHERE
 							alert_message_key	=>	$message_key,
 							alert_message_variables	=>	{
 								host_name		=>	$new_server_resource_host_name, 
-								mount_point		=>	$server_resources_disk_mount_point,
+								mount_point		=>	$server_resource_disk_mount_point,
 								target			=>	$say_target,
-								old_size		=>	$an->Readable->comma($old_server_resources_disk_size),
+								old_size		=>	$an->Readable->comma($old_server_resource_disk_size),
 								old_size_hr		=>	$old_say_size,
-								new_size		=>	$an->Readable->comma($new_server_resources_disk_size),
+								new_size		=>	$an->Readable->comma($new_server_resource_disk_size),
 								new_size_hr		=>	$new_say_size,
 							},
 						});
@@ -1248,7 +2063,7 @@ WHERE
 					# info-level alert. However, we will check to see if the free space
 					# shrunk small enough to trigger an alert, or grew enough to clear an
 					# old low-disk alert.
-					if ($new_server_resources_disk_used ne $old_server_resources_disk_used)
+					if ($new_server_resource_disk_used ne $old_server_resource_disk_used)
 					{
 						# Changed. This will almost always be the case, so it's info level.
 						my $alert_level = "info";
@@ -1260,7 +2075,7 @@ WHERE
 							my $set = $an->Alert->check_alert_sent({
 								type			=>	"warning",
 								alert_sent_by		=>	$THIS_FILE,
-								alert_record_locator	=>	"$server_resources_disk_uuid:low_disk_space",
+								alert_record_locator	=>	"$server_resource_disk_uuid:low_disk_space",
 								alert_name		=>	"low_disk_space",
 								modified_date		=>	$an->data->{sys}{db_timestamp},
 							});
@@ -1282,7 +2097,7 @@ WHERE
 							my $clear = $an->Alert->check_alert_sent({
 								type			=>	"clear",
 								alert_sent_by		=>	$THIS_FILE,
-								alert_record_locator	=>	"$server_resources_disk_uuid:low_disk_space",
+								alert_record_locator	=>	"$server_resource_disk_uuid:low_disk_space",
 								alert_name		=>	"low_disk_space",
 								modified_date		=>	$an->data->{sys}{db_timestamp},
 							});
@@ -1306,11 +2121,11 @@ WHERE
 							alert_message_key	=>	$message_key,
 							alert_message_variables	=>	{
 								host_name		=>	$new_server_resource_host_name, 
-								mount_point		=>	$server_resources_disk_mount_point,
+								mount_point		=>	$server_resource_disk_mount_point,
 								target			=>	$say_target,
-								old_used		=>	$an->Readable->comma($old_server_resources_disk_used),
+								old_used		=>	$an->Readable->comma($old_server_resource_disk_used),
 								old_used_hr		=>	$old_say_used,
-								new_used		=>	$an->Readable->comma($new_server_resources_disk_used),
+								new_used		=>	$an->Readable->comma($new_server_resource_disk_used),
 								new_used_hr		=>	$new_say_used,
 							},
 						});
@@ -1327,18 +2142,18 @@ WHERE
 						# Yup.
 						my $query = "
 UPDATE 
-    server_resources_disks 
+    server_resource_disks 
 SET
-    server_resources_disk_server_resource_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid).", 
-    server_resources_disk_host_uuid            = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    server_resources_disk_mount_point          = ".$an->data->{sys}{use_db_fh}->quote($server_resources_disk_mount_point).", 
-    server_resources_disk_filesystem           = ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_disk_filesystem).", 
-    server_resources_disk_options              = ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_disk_options).", 
-    server_resources_disk_size                 = ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_disk_size).", 
-    server_resources_disk_used                 = ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_disk_used).", 
+    server_resource_disk_server_resource_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid).", 
+    server_resource_disk_host_uuid            = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    server_resource_disk_mount_point          = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_mount_point).", 
+    server_resource_disk_filesystem           = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_disk_filesystem).", 
+    server_resource_disk_options              = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_disk_options).", 
+    server_resource_disk_size                 = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_disk_size).", 
+    server_resource_disk_used                 = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_disk_used).", 
     modified_date                              = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
-    server_resources_disk_uuid                 = ".$an->data->{sys}{use_db_fh}->quote($server_resources_disk_uuid)."
+    server_resource_disk_uuid                 = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_uuid)."
 ;
 ";
 						$query =~ s/'NULL'/NULL/g;
@@ -1351,22 +2166,22 @@ WHERE
 				else
 				{
 					# New disk, save it.
-					save_new_disk($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resources_disk_mount_point);
+					save_new_disk($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resource_disk_mount_point);
 				}
 				
 				# Delete this disk from SQL hash.
-				delete $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point};
+				delete $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point};
 			}
 			
 			# Check to see if any disks were deleted.
-			foreach my $server_resources_disk_mount_point (sort {$a cmp $b} keys %{$an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_disk_mount_point}})
+			foreach my $server_resource_disk_mount_point (sort {$a cmp $b} keys %{$an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}})
 			{
 				# Deleted disk, update the filesystem 'options' to 'DELETED'.
-				my $server_resources_disk_uuid = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_disk_mount_point}{$server_resources_disk_mount_point}{server_resources_disk_uuid};
+				my $server_resource_disk_uuid = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_uuid};
 				my $set = $an->Alert->check_alert_sent({
 					type			=>	"warning",
 					alert_sent_by		=>	$THIS_FILE,
-					alert_record_locator	=>	"$server_resources_disk_uuid:deleted_disk",
+					alert_record_locator	=>	"$server_resource_disk_uuid:deleted_disk",
 					alert_name		=>	"deleted_disk",
 					modified_date		=>	$an->data->{sys}{db_timestamp},
 				});
@@ -1385,18 +2200,18 @@ WHERE
 						alert_message_key	=>	"scan_server_resources_message_0013",
 						alert_message_variables	=>	{
 							host_name		=>	$new_server_resource_host_name,
-							mount_point		=>	$server_resources_disk_mount_point,
+							mount_point		=>	$server_resource_disk_mount_point,
 						},
 					});
 					
 					my $query = "
 UPDATE 
-    server_resources_disks 
+    server_resource_disks 
 SET
-    server_resources_disk_options = 'DELETED', 
+    server_resource_disk_options = 'DELETED', 
     modified_date                 = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
-    server_resources_disk_uuid    = ".$an->data->{sys}{use_db_fh}->quote($server_resources_disk_uuid)."
+    server_resource_disk_uuid    = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_uuid)."
 ;
 ";
 					$query =~ s/'NULL'/NULL/g;
@@ -1408,36 +2223,36 @@ WHERE
 			}
 			
 			# Now check CPUs.
-			foreach my $server_resources_cpu_number (sort {$a cmp $b} keys %{$an->data->{'server-resources'}{server}{$server_resource_uuid}{cpu}})
+			foreach my $server_resource_cpu_number (sort {$a cmp $b} keys %{$an->data->{'server-resources'}{server}{$server_resource_uuid}{cpu}})
 			{
-				my $server_resources_cpu_uuid     = $an->Get->uuid();
-				my $new_server_resources_cpu_load = $an->data->{'server-resources'}{server}{$server_resource_uuid}{cpu}{$server_resources_cpu_number}{load};
+				my $server_resource_cpu_uuid     = $an->Get->uuid();
+				my $new_server_resource_cpu_load = $an->data->{'server-resources'}{server}{$server_resource_uuid}{cpu}{$server_resource_cpu_number}{load};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "server_resources_cpu_uuid",     value1 => $server_resources_cpu_uuid, 
-					name2 => "server_resources_cpu_number",   value2 => $server_resources_cpu_number, 
-					name3 => "new_server_resources_cpu_load", value3 => $new_server_resources_cpu_load, 
+					name1 => "server_resource_cpu_uuid",     value1 => $server_resource_cpu_uuid, 
+					name2 => "server_resource_cpu_number",   value2 => $server_resource_cpu_number, 
+					name3 => "new_server_resource_cpu_load", value3 => $new_server_resource_cpu_load, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				my $changes = 0;
 				
 				# Do we know about this CPU?
-				if (exists $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_cpu_number}{$server_resources_cpu_number}{server_resources_cpu_uuid})
+				if (exists $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number}{server_resource_cpu_uuid})
 				{
 					# Check for updates
-					my $server_resources_cpu_uuid     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_cpu_number}{$server_resources_cpu_number}{server_resources_cpu_uuid};
-					my $old_server_resources_cpu_load = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_cpu_number}{$server_resources_cpu_number}{server_resources_cpu_load};
+					my $server_resource_cpu_uuid     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number}{server_resource_cpu_uuid};
+					my $old_server_resource_cpu_load = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number}{server_resource_cpu_load};
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "server_resources_cpu_uuid",     value1 => $server_resources_cpu_uuid, 
-						name2 => "old_server_resources_cpu_load", value2 => $old_server_resources_cpu_load, 
+						name1 => "server_resource_cpu_uuid",     value1 => $server_resource_cpu_uuid, 
+						name2 => "old_server_resource_cpu_load", value2 => $old_server_resource_cpu_load, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Has the load on the CPU changed? This is usually "yes" and not a concern.
-					if ($new_server_resources_cpu_load ne $old_server_resources_cpu_load)
+					if ($new_server_resource_cpu_load ne $old_server_resource_cpu_load)
 					{
 						my $alert_level = "info";
 						my $title_key   = "an_alert_title_0002";
 						my $message_key = "scan_server_resources_message_0034";
-						if ($old_server_resources_cpu_load eq "DELETED")
+						if ($old_server_resource_cpu_load eq "DELETED")
 						{
 							$alert_level = "warning";
 							$title_key   = "an_alert_title_0006";
@@ -1447,7 +2262,7 @@ WHERE
 							my $clear = $an->Alert->check_alert_sent({
 								type			=>	"clear",
 								alert_sent_by		=>	$THIS_FILE,
-								alert_record_locator	=>	"$server_resources_cpu_uuid:deleted_cpu",
+								alert_record_locator	=>	"$server_resource_cpu_uuid:deleted_cpu",
 								alert_name		=>	"deleted_cpu",
 								modified_date		=>	$an->data->{sys}{db_timestamp},
 							});
@@ -1462,11 +2277,11 @@ WHERE
 							alert_title_key		=>	$title_key,
 							alert_message_key	=>	$message_key,
 							alert_message_variables	=>	{
-								number			=>	$server_resources_cpu_number, 
+								number			=>	$server_resource_cpu_number, 
 								target			=>	$say_target, 
 								host_name		=>	$new_server_resource_host_name, 
-								old_load		=>	$old_server_resources_cpu_load,
-								new_load		=>	$new_server_resources_cpu_load,
+								old_load		=>	$old_server_resource_cpu_load,
+								new_load		=>	$new_server_resource_cpu_load,
 							},
 						});
 						
@@ -1482,15 +2297,15 @@ WHERE
 						# Yup.
 						my $query = "
 UPDATE 
-    server_resources_cpus 
+    server_resource_cpus 
 SET
-    server_resources_cpu_server_resource_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid).", 
-    server_resources_cpu_host_uuid            = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    server_resources_cpu_number               = ".$an->data->{sys}{use_db_fh}->quote($server_resources_cpu_number).", 
-    server_resources_cpu_load                 = ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_cpu_load).", 
+    server_resource_cpu_server_resource_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid).", 
+    server_resource_cpu_host_uuid            = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    server_resource_cpu_number               = ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_number).", 
+    server_resource_cpu_load                 = ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_cpu_load).", 
     modified_date                             = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
-    server_resources_cpu_uuid                 = ".$an->data->{sys}{use_db_fh}->quote($server_resources_cpu_uuid)."
+    server_resource_cpu_uuid                 = ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_uuid)."
 ;
 ";
 						$query =~ s/'NULL'/NULL/g;
@@ -1503,22 +2318,22 @@ WHERE
 				else
 				{
 					# New cpu, save it.
-					save_new_cpu($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resources_cpu_number);
+					save_new_cpu($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resource_cpu_number);
 				}
 				
 				# Delete this cpu from SQL hash.
-				delete $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_cpu_number}{$server_resources_cpu_number};
+				delete $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number};
 			}
 			
 			# Check to see if any cpus were deleted.
-			foreach my $server_resources_cpu_number (sort {$a cmp $b} keys %{$an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_cpu_number}})
+			foreach my $server_resource_cpu_number (sort {$a cmp $b} keys %{$an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_cpu_number}})
 			{
 				# Deleted cpu, update the filesystem 'options' to 'DELETED'.
-				my $server_resources_cpu_uuid = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_cpu_number}{$server_resources_cpu_number}{server_resources_cpu_uuid};
+				my $server_resource_cpu_uuid = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number}{server_resource_cpu_uuid};
 				my $set = $an->Alert->check_alert_sent({
 					type			=>	"warning",
 					alert_sent_by		=>	$THIS_FILE,
-					alert_record_locator	=>	"$server_resources_cpu_uuid:deleted_cpu",
+					alert_record_locator	=>	"$server_resource_cpu_uuid:deleted_cpu",
 					alert_name		=>	"deleted_cpu",
 					modified_date		=>	$an->data->{sys}{db_timestamp},
 				});
@@ -1538,18 +2353,18 @@ WHERE
 						alert_message_variables	=>	{
 							host_name		=>	$new_server_resource_host_name,
 							target			=>	$say_target,
-							cpu_number		=>	$server_resources_cpu_number,
+							cpu_number		=>	$server_resource_cpu_number,
 						},
 					});
 					
 					my $query = "
 UPDATE 
-    server_resources_cpus 
+    server_resource_cpus 
 SET
-    server_resources_cpu_load = 'DELETED', 
+    server_resource_cpu_load = 'DELETED', 
     modified_date             = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
-    server_resources_cpu_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_resources_cpu_uuid)."
+    server_resource_cpu_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_uuid)."
 ;
 ";
 					$query =~ s/'NULL'/NULL/g;
@@ -1576,11 +2391,11 @@ INSERT INTO
     server_resource_host_name, 
     server_resource_os, 
     server_resource_boot_time, 
-    server_resources_ram_size, 
-    server_resources_ram_used, 
-    server_resources_swap_size, 
-    server_resources_swap_used, 
-    server_resources_note, 
+    server_resource_ram_size, 
+    server_resource_ram_used, 
+    server_resource_swap_size, 
+    server_resource_swap_used, 
+    server_resource_note, 
     modified_date
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid).", 
@@ -1589,10 +2404,10 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_host_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_os).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_boot_time).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_ram_size).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_ram_used).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_swap_size).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_swap_used).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_ram_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_ram_used).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_swap_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_swap_used).", 
     'ONLINE', 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
@@ -1604,10 +2419,10 @@ INSERT INTO
 			
 			# This isn't really a warning, but we register it as such to let people know the 
 			# server is now being monitored, as per the new config.
-			my $say_ram_size   = $an->Readable->bytes_to_hr({'bytes' => $new_server_resources_ram_size});
-			my $say_ram_used   = $an->Readable->bytes_to_hr({'bytes' => $new_server_resources_ram_used});
-			my $say_swap_size  = $an->Readable->bytes_to_hr({'bytes' => $new_server_resources_swap_size});
-			my $say_swap_used  = $an->Readable->bytes_to_hr({'bytes' => $new_server_resources_swap_used});
+			my $say_ram_size   = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_ram_size});
+			my $say_ram_used   = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_ram_used});
+			my $say_swap_size  = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_swap_size});
+			my $say_swap_used  = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_swap_used});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "say_ram_size",  value1 => $say_ram_size, 
 				name2 => "say_ram_used",  value2 => $say_ram_used, 
@@ -1626,10 +2441,10 @@ INSERT INTO
 					server_resource_uuid		=>	$server_resource_uuid, 
 					server_resource_os		=>	$new_server_resource_os, 
 					server_resource_boot_time	=>	$new_server_resource_boot_time,
-					server_resources_ram_size	=>	$say_ram_size, 
-					server_resources_ram_used	=>	$say_ram_used, 
-					server_resources_swap_size	=>	$say_swap_size, 
-					server_resources_swap_used	=>	$say_swap_used, 
+					server_resource_ram_size	=>	$say_ram_size, 
+					server_resource_ram_used	=>	$say_ram_used, 
+					server_resource_swap_size	=>	$say_swap_size, 
+					server_resource_swap_used	=>	$say_swap_used, 
 				},
 			});
 			
@@ -1646,15 +2461,15 @@ INSERT INTO
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Now record the disk(s).
-			foreach my $server_resources_disk_mount_point (sort {$a cmp $b} keys %{$an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}})
+			foreach my $server_resource_disk_mount_point (sort {$a cmp $b} keys %{$an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}})
 			{
-				save_new_disk($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resources_disk_mount_point);
+				save_new_disk($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resource_disk_mount_point);
 			}
 			
 			# And record the CPUs.
-			foreach my $server_resources_cpu_number (sort {$a cmp $b} keys %{$an->data->{'server-resources'}{server}{$server_resource_uuid}{cpu}})
+			foreach my $server_resource_cpu_number (sort {$a cmp $b} keys %{$an->data->{'server-resources'}{server}{$server_resource_uuid}{cpu}})
 			{
-				save_new_cpu($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resources_cpu_number);
+				save_new_cpu($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resource_cpu_number);
 			}
 			delete $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid};
 		}
@@ -1669,21 +2484,21 @@ INSERT INTO
 		my $old_server_resource_host_name     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_host_name};
 		my $old_server_resource_os            = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_os};
 		my $old_server_resource_boot_time     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_boot_time};
-		my $old_server_resources_ram_size     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_ram_size};
-		my $old_server_resources_ram_used     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_ram_used};
-		my $old_server_resources_swap_size    = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_swap_size};
-		my $old_server_resources_swap_used    = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_swap_used};
-		my $old_server_resources_note         = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resources_note};
+		my $old_server_resource_ram_size      = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_ram_size};
+		my $old_server_resource_ram_used      = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_ram_used};
+		my $old_server_resource_swap_size     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_size};
+		my $old_server_resource_swap_used     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_used};
+		my $old_server_resource_note          = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_note};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 			name1 => "old_server_resource_target_access", value1 => $old_server_resource_target_access, 
 			name2 => "old_server_resource_host_name",     value2 => $old_server_resource_host_name, 
 			name3 => "old_server_resource_os",            value3 => $old_server_resource_os, 
 			name4 => "old_server_resource_boot_time",     value4 => $old_server_resource_boot_time, 
-			name5 => "old_server_resources_ram_size",     value5 => $old_server_resources_ram_size, 
-			name6 => "old_server_resources_ram_used",     value6 => $old_server_resources_ram_used, 
-			name7 => "old_server_resources_swap_size",    value7 => $old_server_resources_swap_size, 
-			name8 => "old_server_resources_swap_used",    value8 => $old_server_resources_swap_used, 
-			name9 => "old_server_resources_note",         value9 => $old_server_resources_note, 
+			name5 => "old_server_resource_ram_size",      value5 => $old_server_resource_ram_size, 
+			name6 => "old_server_resource_ram_used",      value6 => $old_server_resource_ram_used, 
+			name7 => "old_server_resource_swap_size",     value7 => $old_server_resource_swap_size, 
+			name8 => "old_server_resource_swap_used",     value8 => $old_server_resource_swap_used, 
+			name9 => "old_server_resource_note",          value9 => $old_server_resource_note, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If I know this server, update it's note to OFFLINE. 
@@ -1692,9 +2507,9 @@ INSERT INTO
 			# The server is in our configuration, so it must have gone offline. Is this the first
 			# time we've seen it go offline?
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "old_server_resources_note", value1 => $old_server_resources_note, 
+				name1 => "old_server_resource_note", value1 => $old_server_resource_note, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($old_server_resources_note ne "OFFLINE")
+			if ($old_server_resource_note ne "OFFLINE")
 			{
 				# Yup.
 				$an->Alert->register_alert({
@@ -1713,7 +2528,7 @@ INSERT INTO
 UPDATE 
     server_resources 
 SET
-    server_resources_note = 'OFFLINE', 
+    server_resource_note = 'OFFLINE', 
     modified_date         = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     server_resource_uuid  = ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid)."
@@ -1733,9 +2548,9 @@ WHERE
 		{
 			# This server is no longer being monitored. Is this the first time that's happened?
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "old_server_resources_note", value1 => $old_server_resources_note, 
+				name1 => "old_server_resource_note", value1 => $old_server_resource_note, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($old_server_resources_note ne "DELETED")
+			if ($old_server_resource_note ne "DELETED")
 			{
 				# Yup.
 				$an->Alert->register_alert({
@@ -1754,7 +2569,7 @@ WHERE
 UPDATE 
     server_resources 
 SET
-    server_resources_note = 'DELETED', 
+    server_resource_note = 'DELETED', 
     modified_date         = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     server_resource_uuid  = ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid)."
@@ -1833,39 +2648,39 @@ WHERE
 # This saves a new CPU
 sub save_new_cpu
 {
-	my ($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resources_cpu_number) = @_;
+	my ($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resource_cpu_number) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_new_cpu" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "new_server_resource_host_name", value1 => $new_server_resource_host_name, 
 		name2 => "say_target",                    value2 => $say_target, 
 		name3 => "server_resource_uuid",          value3 => $server_resource_uuid, 
-		name4 => "server_resources_cpu_number",   value4 => $server_resources_cpu_number, 
+		name4 => "server_resource_cpu_number",   value4 => $server_resource_cpu_number, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $server_resources_cpu_uuid     = $an->Get->uuid();
-	my $new_server_resources_cpu_load = $an->data->{'server-resources'}{server}{$server_resource_uuid}{cpu}{$server_resources_cpu_number}{load};
+	my $server_resource_cpu_uuid     = $an->Get->uuid();
+	my $new_server_resource_cpu_load = $an->data->{'server-resources'}{server}{$server_resource_uuid}{cpu}{$server_resource_cpu_number}{load};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "server_resources_cpu_uuid",     value1 => $server_resources_cpu_uuid, 
-		name2 => "server_resources_cpu_number",   value2 => $server_resources_cpu_number, 
-		name3 => "new_server_resources_cpu_load", value3 => $new_server_resources_cpu_load, 
+		name1 => "server_resource_cpu_uuid",     value1 => $server_resource_cpu_uuid, 
+		name2 => "server_resource_cpu_number",   value2 => $server_resource_cpu_number, 
+		name3 => "new_server_resource_cpu_load", value3 => $new_server_resource_cpu_load, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Assemble the INSERT
 	my $query = "
 INSERT INTO 
-    server_resources_cpus 
+    server_resource_cpus 
 (
-    server_resources_cpu_uuid, 
-    server_resources_cpu_server_resource_uuid,
-    server_resources_cpu_host_uuid,
-    server_resources_cpu_number,
-    server_resources_cpu_load,
+    server_resource_cpu_uuid, 
+    server_resource_cpu_server_resource_uuid,
+    server_resource_cpu_host_uuid,
+    server_resource_cpu_number,
+    server_resource_cpu_load,
     modified_date
 ) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($server_resources_cpu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_resources_cpu_number).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_cpu_load).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_cpu_load).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 	$query =~ s/'NULL'/NULL/g;
@@ -1883,8 +2698,8 @@ INSERT INTO
 		alert_message_variables	=>	{
 			host_name		=>	$new_server_resource_host_name, 
 			target			=>	$say_target,
-			number			=>	$server_resources_cpu_number,
-			load			=>	$new_server_resources_cpu_load,
+			number			=>	$server_resource_cpu_number,
+			load			=>	$new_server_resource_cpu_load,
 		},
 	});
 	
@@ -1894,50 +2709,50 @@ INSERT INTO
 # This saves a new disk, sending an alert if the free space is already low.
 sub save_new_disk
 {
-	my ($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resources_disk_mount_point) = @_;
+	my ($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resource_disk_mount_point) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_new_disk" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "new_server_resource_host_name",     value1 => $new_server_resource_host_name, 
 		name2 => "say_target",                        value2 => $say_target, 
 		name3 => "server_resource_uuid",              value3 => $server_resource_uuid, 
-		name4 => "server_resources_disk_mount_point", value4 => $server_resources_disk_mount_point, 
+		name4 => "server_resource_disk_mount_point", value4 => $server_resource_disk_mount_point, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $server_resources_disk_uuid           = $an->Get->uuid();
-	my $new_server_resources_disk_filesystem = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resources_disk_mount_point}{filesystem};
-	my $new_server_resources_disk_options    = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resources_disk_mount_point}{options};
-	my $new_server_resources_disk_size       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resources_disk_mount_point}{total};
-	my $new_server_resources_disk_used       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resources_disk_mount_point}{used};
+	my $server_resource_disk_uuid           = $an->Get->uuid();
+	my $new_server_resource_disk_filesystem = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{filesystem};
+	my $new_server_resource_disk_options    = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{options};
+	my $new_server_resource_disk_size       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{total};
+	my $new_server_resource_disk_used       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{used};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-		name1 => "server_resources_disk_uuid",           value1 => $server_resources_disk_uuid, 
-		name2 => "new_server_resources_disk_filesystem", value2 => $new_server_resources_disk_filesystem, 
-		name3 => "new_server_resources_disk_options",    value3 => $new_server_resources_disk_options, 
-		name4 => "new_server_resources_disk_size",       value4 => $new_server_resources_disk_size, 
-		name5 => "new_server_resources_disk_used",       value5 => $new_server_resources_disk_used, 
+		name1 => "server_resource_disk_uuid",           value1 => $server_resource_disk_uuid, 
+		name2 => "new_server_resource_disk_filesystem", value2 => $new_server_resource_disk_filesystem, 
+		name3 => "new_server_resource_disk_options",    value3 => $new_server_resource_disk_options, 
+		name4 => "new_server_resource_disk_size",       value4 => $new_server_resource_disk_size, 
+		name5 => "new_server_resource_disk_used",       value5 => $new_server_resource_disk_used, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Assemble the INSERT
 	my $query = "
 INSERT INTO 
-    server_resources_disks 
+    server_resource_disks 
 (
-    server_resources_disk_uuid, 
-    server_resources_disk_server_resource_uuid,
-    server_resources_disk_host_uuid,
-    server_resources_disk_mount_point,
-    server_resources_disk_filesystem,
-    server_resources_disk_options,
-    server_resources_disk_size,
-    server_resources_disk_used,
+    server_resource_disk_uuid, 
+    server_resource_disk_server_resource_uuid,
+    server_resource_disk_host_uuid,
+    server_resource_disk_mount_point,
+    server_resource_disk_filesystem,
+    server_resource_disk_options,
+    server_resource_disk_size,
+    server_resource_disk_used,
     modified_date
 ) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($server_resources_disk_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_resources_disk_mount_point).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_disk_filesystem).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_disk_options).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_disk_size).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_server_resources_disk_used).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_mount_point).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_disk_filesystem).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_disk_options).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_disk_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_resource_disk_used).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 	$query =~ s/'NULL'/NULL/g;
@@ -1946,11 +2761,11 @@ INSERT INTO
 	}, file => $THIS_FILE, line => __LINE__});
 	push @{$an->data->{sys}{sql}}, $query;
 	
-	my $free_space         = $new_server_resources_disk_size - $new_server_resources_disk_used;
+	my $free_space         = $new_server_resource_disk_size - $new_server_resource_disk_used;
 	my $say_free           = $an->Readable->bytes_to_hr({'bytes' => $free_space});
-	my $say_size           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resources_disk_size});
-	my $say_used           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resources_disk_used});
-	my $free_space_percent = 100 - ($an->Math->round({number => (100 * ($new_server_resources_disk_used / $new_server_resources_disk_size))}));
+	my $say_size           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_disk_size});
+	my $say_used           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_disk_used});
+	my $free_space_percent = 100 - ($an->Math->round({number => (100 * ($new_server_resource_disk_used / $new_server_resource_disk_size))}));
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "free_space",         value1 => $free_space, 
 		name2 => "say_free",           value2 => $say_free, 
@@ -1967,9 +2782,9 @@ INSERT INTO
 		alert_message_variables	=>	{
 			host_name		=>	$new_server_resource_host_name, 
 			target			=>	$say_target,
-			mount_point		=>	$server_resources_disk_mount_point,
-			filesystem		=>	$new_server_resources_disk_filesystem,
-			options			=>	$new_server_resources_disk_options,
+			mount_point		=>	$server_resource_disk_mount_point,
+			filesystem		=>	$new_server_resource_disk_filesystem,
+			options			=>	$new_server_resource_disk_options,
 			size			=>	$say_size,
 			used			=>	$say_used,
 			percent_free		=>	$free_space_percent,
@@ -1984,7 +2799,7 @@ INSERT INTO
 		my $set = $an->Alert->check_alert_sent({
 			type			=>	"warning",
 			alert_sent_by		=>	$THIS_FILE,
-			alert_record_locator	=>	"$server_resources_disk_uuid:low_disk_space",
+			alert_record_locator	=>	"$server_resource_disk_uuid:low_disk_space",
 			alert_name		=>	"low_disk_space",
 			modified_date		=>	$an->data->{sys}{db_timestamp},
 		});
@@ -1999,7 +2814,7 @@ INSERT INTO
 			alert_title_key		=>	"an_alert_title_0004",
 			alert_message_key	=>	"scan_server_resources_message_0023",
 			alert_message_variables	=>	{
-				mount_point		=>	$server_resources_disk_mount_point,
+				mount_point		=>	$server_resource_disk_mount_point,
 				host_name		=>	$new_server_resource_host_name,
 				target			=>	$say_target,
 				free_space		=>	$say_free,
@@ -2103,14 +2918,14 @@ sub archive_if_needed
 			host_column		=>	"server_resource_host_uuid",
 			offset			=>	0,
 		},
-		server_resources_disks	=>	{
+		server_resource_disks	=>	{
 			archive_date		=>	"",
-			host_column		=>	"server_resources_disk_host_uuid",
+			host_column		=>	"server_resource_disk_host_uuid",
 			offset			=>	0,
 		},
-		server_resources_cpus	=>	{
+		server_resource_cpus	=>	{
 			archive_date		=>	"",
-			host_column		=>	"server_resources_cpu_host_uuid",
+			host_column		=>	"server_resource_cpu_host_uuid",
 			offset			=>	0,
 		},
 	};
@@ -2177,25 +2992,25 @@ WHERE
 					table        => $table, 
 					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
-					columns      => ["server_resource_uuid", "server_resource_host_uuid", "server_resource_target_access", "server_resource_host_name", "server_resource_os", "server_resource_boot_time", "server_resources_ram_size", "server_resources_ram_used", "server_resources_swap_size", "server_resources_swap_used"],
+					columns      => ["server_resource_uuid", "server_resource_host_uuid", "server_resource_target_access", "server_resource_host_name", "server_resource_os", "server_resource_boot_time", "server_resource_ram_size", "server_resource_ram_used", "server_resource_swap_size", "server_resource_swap_used"],
 				});
 			}
-			elsif ($table eq "server_resources_disks")
+			elsif ($table eq "server_resource_disks")
 			{
 				$an->DB->archive_table({
 					table        => $table, 
 					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
-					columns      => ["server_resources_disk_uuid", "server_resources_disk_server_resource_uuid", "server_resources_disk_host_uuid", "server_resources_disk_mount_point", "server_resources_disk_filesystem", "server_resources_disk_options", "server_resources_disk_size", "server_resources_disk_used"],
+					columns      => ["server_resource_disk_uuid", "server_resource_disk_server_resource_uuid", "server_resource_disk_host_uuid", "server_resource_disk_mount_point", "server_resource_disk_filesystem", "server_resource_disk_options", "server_resource_disk_size", "server_resource_disk_used"],
 				});
 			}
-			elsif ($table eq "server_resources_cpus")
+			elsif ($table eq "server_resource_cpus")
 			{
 				$an->DB->archive_table({
 					table        => $table, 
 					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
-					columns      => ["server_resources_cpu_uuid", "server_resources_cpu_server_resource_uuid", "server_resources_cpu_host_uuid", "server_resources_cpu_number", "server_resources_cpu_load"],
+					columns      => ["server_resource_cpu_uuid", "server_resource_cpu_server_resource_uuid", "server_resource_cpu_host_uuid", "server_resource_cpu_number", "server_resource_cpu_load"],
 				});
 			}
 		}
