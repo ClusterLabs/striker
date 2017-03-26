@@ -61,7 +61,7 @@ BEGIN
 		 apc_pdu_link_speed, 
 		 apc_pdu_phase_count, 
 		 apc_pdu_outlet_count, 
-		 apc_pdus_note, 
+		 apc_pdu_note, 
 		 modified_date)
 	VALUES
 		(history_apc_pdus.apc_pdu_uuid,
@@ -77,7 +77,7 @@ BEGIN
 		 history_apc_pdus.apc_pdu_link_speed, 
 		 history_apc_pdus.apc_pdu_phase_count, 
 		 history_apc_pdus.apc_pdu_outlet_count, 
-		 history_apc_pdus.apc_pdus_note, 
+		 history_apc_pdus.apc_pdu_note, 
 		 history_apc_pdus.modified_date);
 	RETURN NULL;
 END;
@@ -153,7 +153,6 @@ CREATE TRIGGER trigger_apc_pdu_phases
 	FOR EACH ROW EXECUTE PROCEDURE history_apc_pdu_phases();
 
 
-
 -- Phases on the PDU
 CREATE TABLE apc_pdu_outlets (
 	apc_pdu_outlet_uuid			uuid				primary key,
@@ -225,9 +224,8 @@ CREATE TRIGGER trigger_apc_pdu_outlets
 -- change frequently).
 CREATE TABLE apc_pdu_variables (
 	apc_pdu_variable_uuid			uuid				primary key,
+	apc_pdu_variable_apc_pdu_uuid		text				not null,
 	apc_pdu_variable_host_uuid		uuid				not null,
-	apc_pdu_variable_source_table		text				not null,
-	apc_pdu_variable_source_uuid		uuid				not null,
 	apc_pdu_variable_is_temperature		boolean				not null	default FALSE,
 	apc_pdu_variable_name			text				not null,
 	apc_pdu_variable_value			text,
@@ -240,9 +238,8 @@ ALTER TABLE apc_pdu_variables OWNER TO #!variable!user!#;
 CREATE TABLE history.apc_pdu_variables (
 	history_id				bigserial,
 	apc_pdu_variable_uuid			uuid,
+	apc_pdu_variable_apc_pdu_uuid		text,
 	apc_pdu_variable_host_uuid		uuid,
-	apc_pdu_variable_source_table		text,
-	apc_pdu_variable_source_uuid		uuid,
 	apc_pdu_variable_is_temperature		boolean,
 	apc_pdu_variable_name			text,
 	apc_pdu_variable_value			text,
@@ -258,18 +255,16 @@ BEGIN
 	SELECT INTO history_apc_pdu_variables * FROM apc_pdu_variables WHERE apc_pdu_variable_uuid=new.apc_pdu_variable_uuid;
 	INSERT INTO history.apc_pdu_variables
 		(apc_pdu_variable_uuid, 
+		 apc_pdu_variable_apc_pdu_uuid, 
 		 apc_pdu_variable_host_uuid, 
-		 apc_pdu_variable_source_table, 
-		 apc_pdu_variable_source_uuid, 
 		 apc_pdu_variable_is_temperature,
 		 apc_pdu_variable_name,
 		 apc_pdu_variable_value,
 		 modified_date)
 	VALUES
 		(history_apc_pdu_variables.apc_pdu_variable_uuid,
+		 history_apc_pdu_variables.apc_pdu_variable_apc_pdu_uuid, 
 		 history_apc_pdu_variables.apc_pdu_variable_host_uuid, 
-		 history_apc_pdu_variables.apc_pdu_variable_source_table, 
-		 history_apc_pdu_variables.apc_pdu_variable_source_uuid, 
 		 history_apc_pdu_variables.apc_pdu_variable_is_temperature,
 		 history_apc_pdu_variables.apc_pdu_variable_name,
 		 history_apc_pdu_variables.apc_pdu_variable_value,

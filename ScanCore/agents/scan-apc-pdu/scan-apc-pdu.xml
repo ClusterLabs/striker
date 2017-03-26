@@ -68,6 +68,26 @@ https://alteeve.ca/w/Support
 		<key name="scan_apc_pdu_message_0003">No APC/Schneider brand UPSes found, exiting.</key>
 		<key name="scan_apc_pdu_message_0004">Connection to the PDU: [#!variable!pdu_name!#] has been lost!</key>
 		<key name="scan_apc_pdu_message_0005">Connection to the PDU: [#!variable!pdu_name!#] has been restored.</key>
-		
+		<key name="scan_apc_pdu_message_0006">Down</key>
+		<key name="scan_apc_pdu_message_0007">
+A new PDU: [#!variable!name!# has been found
+- Serial Number: .............. [#!variable!serial_number!#]
+- Model Number: ............... [#!variable!model_number!#]
+- Manufacture Date: ........... [#!variable!manufacture_date!#]
+- Firmware version: ........... [#!variable!firmware_version!#]
+- Hardware version: ........... [#!variable!hardware_version!#]
+- IP Address: ................. [#!variable!ipv4_address!#]
+- MAC Address: ................ [#!variable!mac_address!#]
+- MTU Size: ................... [#!variable!mtu_size!#] Bytes
+- Link Speed: ................. [#!variable!link_speed_mbps!#] (#!variable!link_speed_hr!#)
+- Number of phases:............ [#!variable!phase_count!#]
+- Max amps per phase: ......... [#!variable!phase_max_amperage!#]
+- Low amp warning: ............ [#!variable!phase_low_amp_warning!#]
+- High amp warning: ........... [#!variable!phase_high_amp_warning!#]
+- High amp critical: .......... [#!variable!phase_high_amp_critical!#]
+- Number of outlets: .......... [#!variable!outlet_count!#]
+		</key>
+		<key name="scan_apc_pdu_message_0008">- Phase: [#!variable!phase!#] current amperage:[#!variable!amps!#]</key>
+		<key name="scan_apc_pdu_message_0009">- Outlet: [#!variable!outlet!#], on phase: [#!variable!on_phase!#] is: [#!variable!state!#] (name: [#!variable!name!#])</key>
 	</lang>
 </strings>

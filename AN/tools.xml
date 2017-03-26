@@ -49,10 +49,11 @@ This is the AN::Tools master 'words' file.
 		<key name="an_brand_0005">Raritan</key>
 		
 		<!-- States -->
-		<key name="an_state_0001">Unknown</key>
 		<key name="an_state_0002">Stopped</key>
 		<key name="an_state_0003">Running</key>
 		<key name="an_state_0004">Offline</key>
+		<key name="an_state_0005">On</key>
+		<key name="an_state_0006">Off</key>
 		
 		<!-- Titles -->
 		<key name="tools_title_0001">Debug</key>
@@ -145,6 +146,7 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_suffix_0079">Serial Attached SCSI (SAS)</key>
 		<key name="tools_suffix_0080">Serial ATA (SATA)</key>
 		<key name="tools_suffix_0081">Rebuild</key>
+		<key name="tools_suffix_0082">(yyyy/mm/dd)</key>
 		
 		<!-- Default values -->
 		<key name="tools_default_0001">Debug</key>
