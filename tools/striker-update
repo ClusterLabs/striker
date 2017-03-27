@@ -81,6 +81,7 @@ my $an = AN::Tools->new({
 			},
 		},
 		path			=>	{
+			an_repo			=>	"/etc/yum.repos.d/an-el6.repo",
 			# Some of the paths to executables weren't defined in older versions of Tools.pm.
 			'anvil-migrate-server'	=>	"/sbin/striker/anvil-migrate-server",
 			'anvil-safe-start'	=>	"/sbin/striker/anvil-safe-start",
@@ -101,6 +102,7 @@ my $an = AN::Tools->new({
 			},
 			os_release		=>	"/etc/redhat-release",
 			reboot			=>	"/sbin/reboot",
+			sed			=>	"/bin/sed",
 			striker			=>	"/var/www/cgi-bin/striker",
 			striker_dir		=>	"/sbin/striker/",
 			tar			=>	"/bin/tar",
@@ -358,6 +360,9 @@ setup_cache($an);
 # Update the databases, if needed
 update_scancore_databases($an);
 
+# Update the alteeve repo from .ca to .com
+update_an_repo($an);
+
 # If we're online (still), download the striker source
 if (not $an->data->{sys}{offline})
 {
@@ -473,6 +478,39 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This changes the an-el6-repo to point at alteeve.com
+sub update_an_repo
+{
+	my ($an) = @_;
+	
+	print "Updating the Alteeve repo to point to alteeve.com.\n";
+	if (-e $an->data->{path}{an_repo})
+	{
+		my $shell_call = $an->data->{path}{sed}." -i 's/alteeve.ca/alteeve.com/' ".$an->data->{path}{an_repo};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		print "- Updated: [".$an->data->{path}{an_repo}."]\n";
+	}
+	else
+	{
+		print "- Alteeve repo not found, skipping it.\n";
+	}
+	print "- Done.\n\n";
+	
+	return(0);
+}
 
 # This checks to see if each database needs to have its schema updated.
 sub update_scancore_databases

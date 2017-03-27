@@ -89,5 +89,24 @@ A new PDU: [#!variable!name!# has been found
 		</key>
 		<key name="scan_apc_pdu_message_0008">- Phase: [#!variable!phase!#] current amperage:[#!variable!amps!#]</key>
 		<key name="scan_apc_pdu_message_0009">- Outlet: [#!variable!outlet!#], on phase: [#!variable!on_phase!#] is: [#!variable!state!#] (name: [#!variable!name!#])</key>
+		<key name="scan_apc_pdu_message_0010">The model number of the PDU: [#!variable!name!#] has changed; [#!variable!old_model_number!#] -> [#!variable!new_model_number!#]</key>
+		<key name="scan_apc_pdu_message_0011">The manufacure date of the PDU: [#!variable!name!#] has changed; [#!variable!old_manufacture_date!#] -> [#!variable!new_manufacture_date!#]</key>
+		<key name="scan_apc_pdu_message_0012">The manufacure date of the PDU: [#!variable!name!#] has changed; [#!variable!old_manufacture_date!#] -> [#!variable!new_manufacture_date!#]</key>
+		<key name="scan_apc_pdu_message_0013">The uptime of the PDU: [#!variable!name!#] has increased; [#!variable!old_uptime!#] -> [#!variable!new_uptime!#]</key>
+		<key name="scan_apc_pdu_message_0014">The PDU: [#!variable!name!#] has rebooted! The uptime changed; [#!variable!old_uptime!#] -> [#!variable!new_uptime!#]</key>
+		<key name="scan_apc_pdu_message_0015">The wattage draw through the PDU: [#!variable!name!#] has changed; [#!variable!old_total_wattage_draw!#] -> [#!variable!new_total_wattage_draw!#]</key>
+		<key name="scan_apc_pdu_message_0016">The firmware on the PDU: [#!variable!name!#] has changed; [#!variable!old_firmware_version!#] -> [#!variable!new_firmware_version!#]</key>
+		<key name="scan_apc_pdu_message_0017">The hardware version on the PDU: [#!variable!name!#] has changed; [#!variable!old_hardware_version!#] -> [#!variable!new_hardware_version!#]</key>
+		<key name="scan_apc_pdu_message_0018">The IP address on the PDU: [#!variable!name!#] has changed; [#!variable!old_ipv4_address!#] -> [#!variable!new_ipv4_address!#]</key>
+		<key name="scan_apc_pdu_message_0019">The MAC address on the PDU: [#!variable!name!#] has changed; [#!variable!old_mac_address!#] -> [#!variable!new_mac_address!#]</key>
+		<key name="scan_apc_pdu_message_0020">The MTU size on the PDU: [#!variable!name!#] has changed; [#!variable!old_mtu_size!#] Bytes -> [#!variable!new_mtu_size!#] Bytes</key>
+		<key name="scan_apc_pdu_message_0021">We've regained access to the PDU: [#!variable!name!#]. The new link speed is: [#!variable!new_link_speed_mbps!#] (#!variable!new_link_speed_hr!#)</key>
+		<key name="scan_apc_pdu_message_0022">The link speed to the PDU: [#!variable!name!#] has changed; [#!variable!old_link_speed_mbps!#] (#!variable!old_link_speed_hr!#) -> [#!variable!new_link_speed_mbps!#] (#!variable!new_link_speed_hr!#)</key>
+		<key name="scan_apc_pdu_message_0023">The number of phases on the PDU: [#!variable!name!#] has changed; [#!variable!old_phase_count!#] -> [#!variable!new_phase_count!#]</key>
+		<key name="scan_apc_pdu_message_0024">The number of outlets on the PDU: [#!variable!name!#] has changed; [#!variable!old_outlet_count!#] -> [#!variable!new_outlet_count!#]</key>
+		<key name="scan_apc_pdu_message_0025">The maximum amperage on the phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] has changed; [#!variable!old_outlet_count!#] -> [#!variable!new_outlet_count!#]</key>
+		<key name="scan_apc_pdu_message_0026">The amperage draw on phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] has changed; [#!variable!old_phase_current_amperage!#] -> [#!variable!new_phase_current_amperage!#]</key>
+		<key name="scan_apc_pdu_message_0027">The phase number: [#!variable!phase!#] on the PDU: [#!variable!name!#] has returned.</key>
+		<key name="scan_apc_pdu_message_0028">The phase number: [#!variable!phase!#] on the PDU: [#!variable!name!#] has vanished!</key>
 	</lang>
 </strings>

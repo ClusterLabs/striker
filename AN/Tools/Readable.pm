@@ -654,7 +654,6 @@ sub time
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "time" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	return undef if not defined $parameter;
 	
-	# Now see if the user passed the values in a hash reference or directly.
 	my $time    = $parameter->{'time'}  ? $parameter->{'time'}  : 0;
 	my $suffix  = $parameter->{suffix}  ? $parameter->{suffix}  : "short";
 	my $process = $parameter->{process} ? $parameter->{process} : 0;

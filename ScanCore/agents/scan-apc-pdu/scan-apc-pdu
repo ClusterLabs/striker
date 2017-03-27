@@ -122,27 +122,32 @@ SET search_path = history, pg_catalog;
 			},
 		},
 		# These are values the user might set in striker.conf
-		'scan-apc-pdu'		=>	{
-			disable			=>	0,
-			language		=>	"en_CA",
-			log_file		=>	"/var/log/ScanCore.log",
-			log_level		=>	1,
-			log_language		=>	"en_CA",
-			log_db_transactions	=>	0,
+		'scan-apc-pdu'			=>	{
+			disable				=>	0,
+			language			=>	"en_CA",
+			log_file			=>	"/var/log/ScanCore.log",
+			log_level			=>	1,
+			log_language			=>	"en_CA",
+			log_db_transactions		=>	0,
 			# CSV of PDUs to scan. If set, /etc/hosts will not be processed. If not set, hosts
 			# will be searched for any entry with 'pdu' in its name and added to this.
-			pdus			=>	"",
+			pdus				=>	"",
 			# Once parsed, the PDUs will be scanned using this hash where the key is the PDU 
 			# name and the value is the IP address.
 			pdu			=>	{},
-			# Ticks are generally in 10ms increments
-			ticks_per_second	=>	100,
+			# Ticks are genera	lly in 10ms increments
+			ticks_per_second		=>	100,
 			# By default, the critical amperage is the same as the max amperage. If that is the
 			# case here, we will subtract this number of amps from the max and use that as our
 			# critical warning threshold. So if the max threshold is 12, and the critical 
 			# threshold is also 11 or 12, we will drop it to 10. If the critical is set below 10,
 			# we won't adjust it at all.
-			critical_amps_below_max	=>	2,	
+			critical_amps_below_max		=>	2,
+			# This drops the warning to be at least this number of amps below critical's level.
+			warning_amps_below_critical	=>	2,
+			# A warning or critical alert has to be this number of amps above/below the threshold
+			# for the alert to be cleared.
+			clear_alert_threshold		=>	2,
 		},
 		'oids'		=>	{
 			apc_pdu			=>	{
@@ -688,11 +693,534 @@ sub find_changes
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Has the phase data changed?
+			my $changes = 0;
+			if ($new_apc_pdu_model_number ne $old_apc_pdu_model_number)
+			{
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0008",
+					alert_message_key	=>	"scan_apc_pdu_message_0010",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						old_model_number	=>	$old_apc_pdu_model_number,
+						new_model_number	=>	$new_apc_pdu_model_number,
+					},
+				});
+			}
+			if ($new_apc_pdu_manufacture_date ne $old_apc_pdu_manufacture_date)
+			{
+				# Wat?
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0008",
+					alert_message_key	=>	"scan_apc_pdu_message_0011",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						old_manufacture_date	=>	$old_apc_pdu_manufacture_date,
+						new_manufacture_date	=>	$new_apc_pdu_manufacture_date,
+					},
+				});
+			}
+			if ($new_apc_pdu_firmware_version ne $old_apc_pdu_firmware_version)
+			{
+				# This is about the only thing that should ever change.
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0008",
+					alert_message_key	=>	"scan_apc_pdu_message_0016",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						old_firmware_version	=>	$old_apc_pdu_firmware_version,
+						new_firmware_version	=>	$new_apc_pdu_firmware_version,
+					},
+				});
+			}
+			if ($new_apc_pdu_hardware_version ne $old_apc_pdu_hardware_version)
+			{
+				# Wat?
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0008",
+					alert_message_key	=>	"scan_apc_pdu_message_0017",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						old_hardware_version	=>	$old_apc_pdu_hardware_version,
+						new_hardware_version	=>	$new_apc_pdu_hardware_version,
+					},
+				});
+			}
+			if ($new_apc_pdu_ipv4_address ne $old_apc_pdu_ipv4_address)
+			{
+				# This could change, sure.
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0008",
+					alert_message_key	=>	"scan_apc_pdu_message_0018",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						old_ipv4_address	=>	$old_apc_pdu_ipv4_address,
+						new_ipv4_address	=>	$new_apc_pdu_ipv4_address,
+					},
+				});
+			}
+			if ($new_apc_pdu_mac_address ne $old_apc_pdu_mac_address)
+			{
+				# How?!
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0008",
+					alert_message_key	=>	"scan_apc_pdu_message_0019",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						old_mac_address		=>	$old_apc_pdu_mac_address,
+						new_mac_address		=>	$new_apc_pdu_mac_address,
+					},
+				});
+			}
+			if ($new_apc_pdu_mtu_size ne $old_apc_pdu_mtu_size)
+			{
+				# OK, maybe...
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0008",
+					alert_message_key	=>	"scan_apc_pdu_message_0020",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						old_mtu_size		=>	$old_apc_pdu_mtu_size,
+						new_mtu_size		=>	$new_apc_pdu_mtu_size,
+					},
+				});
+			}
+			if ($new_apc_pdu_link_speed ne $old_apc_pdu_link_speed)
+			{
+				# This could happen, too.
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If we've lost access, we'll mark the link speed as '0' later
+				my $say_new_link_speed_hr   = $an->Readable->bytes_to_hr({ 'bytes' => ($new_apc_pdu_link_speed / 8) })."/s";
+				my $say_new_link_speed_mbps = ($new_apc_pdu_link_speed / 1000000)." Mbps";
+				my $say_old_link_speed_hr   = $an->Readable->bytes_to_hr({ 'bytes' => ($old_apc_pdu_link_speed / 8) })."/s";
+				my $say_old_link_speed_mbps = ($old_apc_pdu_link_speed / 1000000)." Mbps";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "say_new_link_speed_mbps", value1 => $say_new_link_speed_mbps, 
+					name2 => "say_new_link_speed_hr",   value2 => $say_new_link_speed_hr, 
+					name3 => "say_old_link_speed_mbps", value3 => $say_old_link_speed_mbps, 
+					name4 => "say_old_link_speed_hr",   value4 => $say_old_link_speed_hr, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (not $old_apc_pdu_link_speed)
+				{
+					# We've regained access
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_sort		=>	$an->data->{sys}{alert_sort}++,
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0006",
+						alert_message_key	=>	"scan_apc_pdu_message_0021",
+						alert_message_variables	=>	{
+							name			=>	$pdu_host_name,
+							new_link_speed_mbps	=>	$say_new_link_speed_mbps,
+							new_link_speed_hr	=>	$say_new_link_speed_hr,
+						},
+					});
+				}
+				else
+				{
+					# The speed has changed. Make this a proper warning
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_sort		=>	$an->data->{sys}{alert_sort}++,
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_apc_pdu_message_0022",
+						alert_message_variables	=>	{
+							name			=>	$pdu_host_name,
+							old_link_speed_mbps	=>	$say_old_link_speed_mbps,
+							old_link_speed_hr	=>	$say_old_link_speed_hr,
+							new_link_speed_mbps	=>	$say_new_link_speed_mbps,
+							new_link_speed_hr	=>	$say_new_link_speed_hr,
+						},
+					});
+				}
+			}
+			if ($new_apc_pdu_phase_count ne $old_apc_pdu_phase_count)
+			{
+				# How?!
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0008",
+					alert_message_key	=>	"scan_apc_pdu_message_0023",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						old_phase_count		=>	$old_apc_pdu_phase_count,
+						new_phase_count		=>	$new_apc_pdu_phase_count,
+					},
+				});
+			}
+			if ($new_apc_pdu_outlet_count ne $old_apc_pdu_outlet_count)
+			{
+				# I don't even...
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0008",
+					alert_message_key	=>	"scan_apc_pdu_message_0024",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						old_outlet_count	=>	$old_apc_pdu_outlet_count,
+						new_outlet_count	=>	$new_apc_pdu_outlet_count,
+					},
+				});
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "changes", value1 => $changes, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($changes)
+			{
+				# Save the changes.
+				my $query = "
+UPDATE 
+    public.apc_pdus 
+SET
+    apc_pdu_serial_number    = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_serial_number).", 
+    apc_pdu_model_number     = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_model_number).", 
+    apc_pdu_manufacture_date = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_manufacture_date).", 
+    apc_pdu_firmware_version = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_firmware_version).", 
+    apc_pdu_hardware_version = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_hardware_version).", 
+    apc_pdu_ipv4_address     = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_ipv4_address).", 
+    apc_pdu_mac_address      = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_mac_address).", 
+    apc_pdu_mtu_size         = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_mtu_size).", 
+    apc_pdu_link_speed       = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_link_speed).", 
+    apc_pdu_phase_count      = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_phase_count).", 
+    apc_pdu_outlet_count     = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_outlet_count).", 
+    modified_date            = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    apc_pdu_uuid             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid)." 
+;";
+			}
+			
+			### What about other variables?
+			# Do I have a previous uptime?
+			if ($an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime}{apc_pdu_variable_uuid})
+			{
+				# Exists, change?
+				my $apc_pdu_variable_uuid = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime}{apc_pdu_variable_uuid};
+				my $old_uptime            = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime}{apc_pdu_variable_value};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "apc_pdu_variable_uuid", value1 => $apc_pdu_variable_uuid, 
+					name2 => "old_uptime",            value2 => $old_uptime, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($new_uptime ne $old_uptime)
+				{
+					update_variables($an, $apc_pdu_uuid, $apc_pdu_variable_uuid, "uptime", $new_uptime);
+					
+					# We expect this to change. If the new uptime is less than the old 
+					# one, it rebooted.
+					if ($new_uptime > $old_uptime)
+					{
+						# Normal, info-level
+						$an->Alert->register_alert({
+							alert_level		=>	"info", 
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0002",
+							alert_message_key	=>	"scan_apc_pdu_message_0013",
+							alert_message_variables	=>	{
+								name			=>	$pdu_host_name,
+								old_uptime		=>	$an->Readable->time({ 'time' => $old_uptime }),
+								new_uptime		=>	$an->Readable->time({ 'time' => $new_uptime }), 
+							},
+						});
+					}
+					else
+					{
+						# It's rebooted. This is warning level
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0008",
+							alert_message_key	=>	"scan_apc_pdu_message_0014",
+							alert_message_variables	=>	{
+								name			=>	$pdu_host_name,
+								old_uptime		=>	$an->Readable->time({ 'time' => $old_uptime }),
+								new_uptime		=>	$an->Readable->time({ 'time' => $new_uptime }), 
+							},
+						});
+					}
+				}
+			}
+			else
+			{
+				# New, INSERT it (is_temperature is always false for now).
+				insert_variable($an, $apc_pdu_uuid, "uptime", $new_uptime);
+			}
+			
+			# Do I have a previous wattage?
+			if ($an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw}{apc_pdu_variable_uuid})
+			{
+				# Exists, change?
+				my $apc_pdu_variable_uuid  = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw}{apc_pdu_variable_uuid};
+				my $old_total_wattage_draw = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw}{apc_pdu_variable_value};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "apc_pdu_variable_uuid",  value1 => $apc_pdu_variable_uuid, 
+					name2 => "old_total_wattage_draw", value2 => $old_total_wattage_draw, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($new_total_wattage_draw ne $old_total_wattage_draw)
+				{
+					update_variables($an, $apc_pdu_uuid, $apc_pdu_variable_uuid, "total_wattage_draw", $new_total_wattage_draw);
+					
+					# We expect this to change. 
+					$an->Alert->register_alert({
+						alert_level		=>	"info", 
+						alert_sort		=>	$an->data->{sys}{alert_sort}++,
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0002",
+						alert_message_key	=>	"scan_apc_pdu_message_0015",
+						alert_message_variables	=>	{
+							name			=>	$pdu_host_name,
+							old_total_wattage_draw	=>	$old_total_wattage_draw,
+							new_total_wattage_draw	=>	$new_total_wattage_draw, 
+						},
+					});
+				}
+			}
+			else
+			{
+				# New, INSERT it (is_temperature is always false for now).
+				insert_variable($an, $apc_pdu_uuid, "total_wattage_draw", $new_total_wattage_draw);
+			}
 			
 			# Have any outlets changed?
+			foreach my $phase (sort {$a cmp $b} keys %{$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}})
+			{
+				my $new_apc_pdu_phase_current_amperage = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_current_amperage};
+				my $old_apc_pdu_phase_current_amperage = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_current_amperage};
+				
+				if ($an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_uuid})
+				{
+					# We've seen this phase before. Changes?
+					my $apc_pdu_phase_uuid                 = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_uuid};
+					my $old_apc_pdu_phase_apc_pdu_uuid     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_apc_pdu_uuid};
+					my $old_apc_pdu_phase_current_amperage = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_current_amperage};
+					my $old_apc_pdu_phase_max_amperage     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_max_amperage};
+					my $old_apc_pdu_phase_note             = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_note};
+					
+					# The max amps per phase is set across all phases. 
+					if ($new_apc_pdu_phase_max_amperage ne $old_apc_pdu_phase_max_amperage)
+					{
+						# This should never change, but OK, whatever
+						$changes = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "changes", value1 => $changes, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_message_key	=>	"scan_apc_pdu_message_0025",
+							alert_message_variables	=>	{
+								name			=>	$pdu_host_name,
+								phase			=>	sprintf("%02d", $phase),
+								old_phase_max_amperage	=>	$old_apc_pdu_phase_max_amperage,
+								new_phase_max_amperage	=>	$new_apc_pdu_phase_max_amperage,
+							},
+						});
+					}
+					if ($old_apc_pdu_phase_current_amperage ne $new_apc_pdu_phase_current_amperage)
+					{
+						# The phase amperage can change all the time.
+						$changes = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "changes", value1 => $changes, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Alert->register_alert({
+							alert_level		=>	"info", 
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0002",
+							alert_message_key	=>	"scan_apc_pdu_message_0026",
+							alert_message_variables	=>	{
+								name				=>	$pdu_host_name,
+								phase				=>	sprintf("%02d", $phase),
+								old_phase_current_amperage	=>	$old_apc_pdu_phase_current_amperage,
+								new_phase_current_amperage	=>	$new_apc_pdu_phase_current_amperage, 
+							},
+						});
+					}
+					
+					# If the note was 'DELETED', the phase has returned.
+					if ($old_apc_pdu_phase_note eq "DELETED")
+					{
+						# The phase amperage can change all the time.
+						$changes = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "changes", value1 => $changes, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0006",
+							alert_message_key	=>	"scan_apc_pdu_message_0027",
+							alert_message_variables	=>	{
+								name			=>	$pdu_host_name,
+								phase			=>	sprintf("%02d", $phase),
+							},
+						});
+					}
+					
+					# Cheack for alerts to clear
+					if ($new_apc_pdu_phase_current_amperage < $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{low_warning})
+					{
+						# Dropped too low, clear high warn and high crit
+# 						my $set = $an->Alert->check_alert_sent({
+# 							type			=>	"warning",
+# 							alert_sent_by		=>	$THIS_FILE,
+# 							alert_record_locator	=>	$pdu_host_name,
+# 							alert_name		=>	"apc_pdu_communication_lost",
+# 							modified_date		=>	$an->data->{sys}{db_timestamp},
+# 						});
+# 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+# 							name1 => "set", value1 => $set, 
+# 						}, file => $THIS_FILE, line => __LINE__});
+# 						if ($set)
+# 						{
+# 							# This is a new loss of comms.
+# 							$an->Alert->register_alert({
+# 								alert_level		=>	"warning", 
+# 								alert_agent_name	=>	$THIS_FILE,
+# 								alert_title_key		=>	"an_alert_title_0004",
+# 								alert_message_key	=>	"scan_apc_pdu_message_0004",
+# 								alert_message_variables	=>	{
+# 									pdu_name		=>	$pdu_host_name,
+# 								},
+# 							});
+# 						}
+					}
+					elsif ($new_apc_pdu_phase_current_amperage < $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_warning})
+					{
+						# Dropped low enough to clear high warn and high crit
+					}
+					elsif ($new_apc_pdu_phase_current_amperage < $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_critical})
+					{
+						# Dropped low enough to clear high crit.
+					}
+					# Check for alerts to set
+					if ($new_apc_pdu_phase_current_amperage > $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical})
+					{
+						# Set high crit, clear high warn and low warn
+					}
+					elsif ($new_apc_pdu_phase_current_amperage > $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning})
+					{
+						# Set high warn, clear low warning
+					}
+					elsif ($new_apc_pdu_phase_current_amperage > $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_low_warning})
+					{
+						# Clear the low warning
+					}
+				}
+				
+				delete $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase};
+			}
+			# Any phases that vanished?
+			foreach my $phase (sort {$a cmp $b} keys %{$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}})
+			{
+				# Did it just vanish?
+				my $apc_pdu_phase_uuid = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_uuid};
+				my $apc_pdu_phase_note = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_note};
+				if ($apc_pdu_phase_note ne "DELETED")
+				{
+					# Yup
+					my $query = "
+UPDATE 
+    apc_pdu_phases 
+SET 
+    apc_pdu_phase_value = 'DELETED', 
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+AND 
+    apc_pdu_phase_uuid  = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid)." 
+;";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_sort		=>	$an->data->{sys}{alert_sort}++,
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_apc_pdu_message_0028",
+						alert_message_variables	=>	{
+							name			=>	$pdu_host_name,
+							phase			=>	sprintf("%02d", $phase),
+						},
+					});
+				}
+			}
 			
-			# What about other variables?
-			
+			# Have any phases changed?
 			
 			# Delete this from the SQL history 
 			delete $an->data->{sql}{$apc_pdu_serial_number};
@@ -762,7 +1290,7 @@ INSERT INTO
 				alert_level		=>	"warning", 
 				alert_sort		=>	$an->data->{sys}{alert_sort}++,
 				alert_agent_name	=>	$THIS_FILE,
-				alert_title_key		=>	"tools_title_0006",
+				alert_title_key		=>	"an_alert_title_0008",
 				alert_message_key	=>	"scan_apc_pdu_message_0007",
 				alert_message_variables	=>	{
 					name			=>	$pdu_host_name,
@@ -790,38 +1318,13 @@ INSERT INTO
 			# Record the variables (uptime and wattage)
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}})
 			{
-				my $apc_pdu_variable_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
-				my $value                 = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "variable",              value1 => $variable, 
-					name2 => "value",                 value2 => $value, 
-					name3 => "apc_pdu_variable_uuid", value3 => $apc_pdu_variable_uuid,
+				my $value = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{$variable};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "value",    value2 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				my $query = "
-INSERT INTO 
-    public.apc_pdu_variables 
-(
-    apc_pdu_variable_host_uuid, 
-    apc_pdu_variable_uuid, 
-    apc_pdu_variable_apc_pdu_uuid, 
-    apc_pdu_variable_is_temperature, 
-    apc_pdu_variable_name, 
-    apc_pdu_variable_value, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid).", 
-    'FALSE', 
-    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
-    ".$an->data->{sys}{use_db_fh}->quote($value).", 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-);";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query
-				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{sys}{sql}}, $query;
+				insert_variable($an, $apc_pdu_uuid, $variable, $value);
 				
 				# NOTE: We don't send an alert here as we incorporated the two variables we care about above.
 			}
@@ -868,7 +1371,7 @@ INSERT INTO
 					alert_sort		=>	$an->data->{sys}{alert_sort}++,
 					alert_header		=>	"FALSE",
 					alert_agent_name	=>	$THIS_FILE,
-					alert_title_key		=>	"tools_title_0006",
+					alert_title_key		=>	"an_alert_title_0008",
 					alert_message_key	=>	"scan_apc_pdu_message_0008",
 					alert_message_variables	=>	{
 						phase			=>	sprintf("%02d", $phase),
@@ -941,7 +1444,7 @@ INSERT INTO
 					alert_sort		=>	$an->data->{sys}{alert_sort}++,
 					alert_header		=>	"FALSE",
 					alert_agent_name	=>	$THIS_FILE,
-					alert_title_key		=>	"tools_title_0006",
+					alert_title_key		=>	"an_alert_title_0008",
 					alert_message_key	=>	"scan_apc_pdu_message_0009",
 					alert_message_variables	=>	{
 						outlet			=>	sprintf("%02d", $outlet),
@@ -964,6 +1467,75 @@ INSERT INTO
 	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
+}
+
+# This UPDATEs a variable
+sub update_variables
+{
+	my ($an, $apc_pdu_uuid, $apc_pdu_variable_uuid, $variable, $value) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_variable" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
+		name2 => "variable",     value2 => $variable, 
+		name3 => "value",        value3 => $value, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $query = "
+UPDATE 
+    apc_pdu_variables 
+SET
+    apc_pdu_variable_apc_pdu_uuid   = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid).",
+    apc_pdu_variable_is_temperature = FALSE, 
+    apc_pdu_variable_name           = ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    apc_pdu_variable_value          = ".$an->data->{sys}{use_db_fh}->quote($value).", 
+    modified_date                   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+AND 
+    apc_pdu_variable_uuid           = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_uuid)." 
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	push @{$an->data->{sys}{sql}}, $query;
+	
+	return(0);
+}
+
+# This INSERTs a new variable
+sub insert_variable
+{
+	my ($an, $apc_pdu_uuid, $variable, $value) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_variable" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
+		name2 => "variable",     value2 => $variable, 
+		name3 => "value",        value3 => $value, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $apc_pdu_variable_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
+	my $query = "
+INSERT INTO 
+    apc_pdu_variables 
+(
+    apc_pdu_variable_host_uuid, 
+    apc_pdu_variable_uuid, 
+    apc_pdu_variable_apc_pdu_uuid, 
+    apc_pdu_variable_is_temperature, 
+    apc_pdu_variable_name, 
+    apc_pdu_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid).", 
+    FALSE, 
+    ".$an->data->{sys}{use_db_fh}->quote($variable).", 
+    ".$an->data->{sys}{use_db_fh}->quote($value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	push @{$an->data->{sys}{sql}}, $query;
+	
+	return($apc_pdu_variable_uuid);
 }
 
 # This looks at each DB's 'updated' table entry to see if any tables are behind. If any are, it will update
@@ -2149,7 +2721,7 @@ sub gather_pdu_data
 			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_ipv4_address}         = $pdu_ip;
 			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_mac_address}          = "";
 			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_mtu_size}             = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_link_speed}           = "";
+			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_link_speed}           = 0;
 			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_phase_count}          = "";
 			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_outlet_count}         = "";
 			$an->data->{pdu}{$serial_number}{apc_pdu_variables}{uptime}             = "";
@@ -2258,6 +2830,25 @@ sub gather_pdu_data
 				name1  => "pdu::${serial_number}::amperage::high_critical", value1  => $an->data->{pdu}{$serial_number}{amperage}{high_critical}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		
+		# Make sure that the warning is at least 'scan-apc-pdu::warning_amps_below_critical'
+		if (($an->data->{pdu}{$serial_number}{amperage}{high_warning} + $an->data->{'scan-apc-pdu'}{warning_amps_below_critical}) > $an->data->{pdu}{$serial_number}{amperage}{high_critical})
+		{
+			$an->data->{pdu}{$serial_number}{amperage}{high_warning} = $an->data->{pdu}{$serial_number}{amperage}{high_critical} - $an->data->{'scan-apc-pdu'}{warning_amps_below_critical};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1  => "pdu::${serial_number}::amperage::high_warning", value1  => $an->data->{pdu}{$serial_number}{amperage}{high_warning}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Set the alert clear levels
+		$an->data->{pdu}{$serial_number}{amperage}{clear_high_critical} = $an->data->{pdu}{$serial_number}{amperage}{high_critical} - $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
+		$an->data->{pdu}{$serial_number}{amperage}{clear_high_warning}  = $an->data->{pdu}{$serial_number}{amperage}{high_warning} - $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
+		$an->data->{pdu}{$serial_number}{amperage}{clear_low_warning}   = $an->data->{pdu}{$serial_number}{amperage}{low_warning} + $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "pdu::${serial_number}::amperage::clear_high_critical", value1 => $an->data->{pdu}{$serial_number}{amperage}{clear_high_critical}, 
+			name2 => "pdu::${serial_number}::amperage::clear_high_warning",  value2 => $an->data->{pdu}{$serial_number}{amperage}{clear_high_warning}, 
+			name3 => "pdu::${serial_number}::amperage::clear_low_warning",   value3 => $an->data->{pdu}{$serial_number}{amperage}{clear_low_warning}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Uptime is in ticks
 		$an->data->{pdu}{$serial_number}{apc_pdu_variables}{uptime} /= $an->data->{'scan-apc-pdu'}{ticks_per_second};
