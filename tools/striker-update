@@ -37,6 +37,7 @@
 # 19 = Node didn't withdraw from the Anvil! properly.
 # 20 = Failed to download a file.
 # 21 = Failed to connect to a given database while checking if the DB schema needed to be updated.
+# 22 = Failed to update the an-el6.repo file.
 # 
 
 use strict;
@@ -88,10 +89,12 @@ my $an = AN::Tools->new({
 			createrepo		=>	"/usr/bin/createrepo",
 			curl			=>	"/usr/bin/curl",
 			current_dir		=>	$ENV{PWD},
+			echo			=>	"/bin/echo",
 			etc_fstab		=>	"/etc/fstab",
 			# This file is checked to verify that we're on a Striker dashboard.
 			find			=>	"/bin/find",
 			gcc			=>	"/usr/bin/gcc",
+			'grep'			=>	"/bin/grep",
 			img_directory		=>	"/var/www/html/#!os_type!#/x86_64/img",
 			iso_directory		=>	"/var/www/html/#!os_type!#/x86_64/iso",
 			log_file		=>	"/var/log/striker.log",
@@ -360,9 +363,6 @@ setup_cache($an);
 # Update the databases, if needed
 update_scancore_databases($an);
 
-# Update the alteeve repo from .ca to .com
-update_an_repo($an);
-
 # If we're online (still), download the striker source
 if (not $an->data->{sys}{offline})
 {
@@ -482,12 +482,40 @@ exit(0);
 # This changes the an-el6-repo to point at alteeve.com
 sub update_an_repo
 {
-	my ($an) = @_;
+	my ($an, $target, $port, $password) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_an_repo" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	print "Updating the Alteeve repo to point to alteeve.com.\n";
-	if (-e $an->data->{path}{an_repo})
+	my $shell_call = "
+if [ -e '".$an->data->{path}{an_repo}."' ]
+then
+    if \$(".$an->data->{path}{'grep'}." -q alteeve.ca ".$an->data->{path}{an_repo}.");
+    then 
+        ".$an->data->{path}{echo}." update; 
+        ".$an->data->{path}{sed}." -i 's/alteeve.ca/alteeve.com/' ".$an->data->{path}{an_repo}."
+        if \$(".$an->data->{path}{'grep'}." -q alteeve.ca ".$an->data->{path}{an_repo}.");
+        then
+            ".$an->data->{path}{echo}." \"failed\"
+        else
+            ".$an->data->{path}{echo}." \"success\"
+        fi
+    else 
+        ".$an->data->{path}{echo}." \"not needed\";
+    fi  
+else
+    ".$an->data->{path}{echo}." \"no repo\"
+fi
+";
+
+	my $return = [];
+	if ($target eq "local")
 	{
-		my $shell_call = $an->data->{path}{sed}." -i 's/alteeve.ca/alteeve.com/' ".$an->data->{path}{an_repo};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -499,14 +527,58 @@ sub update_an_repo
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
+			push @{$return}, $line;
 		}
 		close $file_handle;
-		print "- Updated: [".$an->data->{path}{an_repo}."]\n";
 	}
 	else
 	{
-		print "- Alteeve repo not found, skipping it.\n";
+		# Remote call
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "port",       value2 => $port,
+			name3 => "shell_call", value3 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target     => $target,
+			port       => $port, 
+			password   => $password,
+			shell_call => $shell_call,
+		});
 	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line eq "update")
+		{
+			print "- Update needed.\n";
+		}
+		elsif ($line eq "failed")
+		{
+			print "[ Error ] - The RPM repo: [".$an->data->{path}{an_repo}."] on: [$target] needs to be updated, but the update failed.\n";
+			print "[ Error ]   The URL should change from 'alteeve.ca' to 'alteeve.com'.\n";
+			exit(22);
+		}
+		elsif ($line eq "success")
+		{
+			print "- The repo: [".$an->data->{path}{an_repo}."] on: [$target] was updated successfully.\n";
+		}
+		elsif ($line eq "not needed")
+		{
+			print "- The repo: [".$an->data->{path}{an_repo}."] on: [$target] doesn't need the update, skipping it.\n";
+		}
+		elsif ($line eq "no repo")
+		{
+			print "- The Alteeve EL6 repo is not installed on: [$target], skipping it.\n";
+		}
+	}
+	
 	print "- Done.\n\n";
 	
 	return(0);
@@ -516,6 +588,7 @@ sub update_an_repo
 sub update_scancore_databases
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_scancore_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print "Checking if any databases schemas need to be updated.\n";
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -849,6 +922,12 @@ sub update_all
 				name2 => "anvil_uuid", value2 => $anvil_uuid,
 			}, file => $THIS_FILE, line => __LINE__});
 			
+			# Some things expect this CGI variable to be set.
+			$an->data->{cgi}{anvil_uuid} = $anvil_uuid;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			print "- Testing access to the nodes in the Anvil! system: [$anvil_name]\n";
 			$anvils->{$anvil_name} = $anvil_uuid;
 			$error = check_anvil($an, $anvil_uuid, $error, 1);
@@ -870,6 +949,12 @@ sub update_all
 			$anvil_uuid = $row->[0];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "anvil_uuid", value1 => $anvil_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Some things expect this CGI variable to be set.
+			$an->data->{cgi}{anvil_uuid} = $anvil_uuid;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
@@ -897,6 +982,12 @@ sub update_all
 			$anvil_name = $row->[0];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "anvil_name", value1 => $anvil_name,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Some things expect this CGI variable to be set.
+			$an->data->{cgi}{anvil_uuid} = $anvil_uuid;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
@@ -956,12 +1047,18 @@ sub update_all
 	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
 	{
 		my $anvil_uuid = $anvils->{$anvil_name};
-		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
-		
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "anvil_name", value1 => $anvil_name,
 			name2 => "anvil_uuid", value2 => $anvil_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Some things expect this CGI variable to be set.
+		$an->data->{cgi}{anvil_uuid} = $anvil_uuid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
 		foreach my $node_key ("node1", "node2")
 		{
 			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
@@ -1044,12 +1141,18 @@ sub update_all
 		foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
 		{
 			my $anvil_uuid = $anvils->{$anvil_name};
-			$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
-			
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "anvil_name", value1 => $anvil_name,
 				name2 => "anvil_uuid", value2 => $anvil_uuid,
 			}, file => $THIS_FILE, line => __LINE__});
+		
+			# Some things expect this CGI variable to be set.
+			$an->data->{cgi}{anvil_uuid} = $anvil_uuid;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
 			foreach my $node_key ("node1", "node2")
 			{
 				my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
@@ -1173,6 +1276,16 @@ sub update_all
 	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
 	{
 		my $anvil_uuid = $anvils->{$anvil_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "anvil_name", value1 => $anvil_name,
+			name2 => "anvil_uuid", value2 => $anvil_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+	
+		# Some things expect this CGI variable to be set.
+		$an->data->{cgi}{anvil_uuid} = $anvil_uuid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Load this Anvil! system's details.
 		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
@@ -1237,12 +1350,18 @@ sub update_all
 	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
 	{
 		my $anvil_uuid = $anvils->{$anvil_name};
-		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
-		
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "anvil_name", value1 => $anvil_name,
 			name2 => "anvil_uuid", value2 => $anvil_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Some things expect this CGI variable to be set.
+		$an->data->{cgi}{anvil_uuid} = $anvil_uuid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
 		foreach my $node_key ("node1", "node2")
 		{
 			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
@@ -1969,6 +2088,9 @@ sub update_target
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Before we do anything, make sure the an-el6-repo is fixed.
+	update_an_repo($an, $target, $port, $password);
 	
 	# Update the OS first, if not disabled.
 	my $reboot_needed = 0;
@@ -2762,6 +2884,12 @@ sub gather_updated_rpms_from_anvil
 			exit(6);
 		}
 	}
+	
+	# Some things expect this CGI variable to be set.
+	$an->data->{cgi}{anvil_uuid} = $anvil_uuid;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I am still alive, we've got a good Anvil!.
 	print "- Picking a node in the Anvil!: [$anvil_name]\n";
