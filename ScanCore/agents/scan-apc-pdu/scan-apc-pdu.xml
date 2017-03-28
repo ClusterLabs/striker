@@ -108,5 +108,26 @@ A new PDU: [#!variable!name!# has been found
 		<key name="scan_apc_pdu_message_0026">The amperage draw on phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] has changed; [#!variable!old_phase_current_amperage!#] -> [#!variable!new_phase_current_amperage!#]</key>
 		<key name="scan_apc_pdu_message_0027">The phase number: [#!variable!phase!#] on the PDU: [#!variable!name!#] has returned.</key>
 		<key name="scan_apc_pdu_message_0028">The phase number: [#!variable!phase!#] on the PDU: [#!variable!name!#] has vanished!</key>
+		<key name="scan_apc_pdu_message_0029">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is below the low-warning threshold!</key>
+		<key name="scan_apc_pdu_message_0030">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is back below the high critical alert threshold.</key>
+		<key name="scan_apc_pdu_message_0031">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is back below the high warning alert threshold.</key>
+		<key name="scan_apc_pdu_message_0032">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is critically high! If the load increases much further, power output may be lost! Reduce load immediately!</key>
+		<key name="scan_apc_pdu_message_0033">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is back above the low-warning threshold.</key>
+		<key name="scan_apc_pdu_message_0034">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] has risen above the high warning alert threshold. Be careful about adding any further load on this PDU.</key>
+		<key name="scan_apc_pdu_message_0035">The outlet number: [#!variable!outlet!#] on the PDU: [#!variable!name!#] has vanished!</key>
+		<key name="scan_apc_pdu_message_0036">A new outlet: [#!variable!outlet!#] was found on the PDU: [#!variable!pdu_name!#], on phase: [#!variable!on_phase!#] and it is: [#!variable!state!#] (name: [#!variable!name!#])</key>
+		<key name="scan_apc_pdu_message_0037">The outlet number: [#!variable!outlet!#] on the PDU: [#!variable!name!#] has returned.</key>
+		<key name="scan_apc_pdu_message_0038">The name of the outlet: [#!variable!outlet!#] on the PDU: [#!variable!name!#] has changed; [#!variable!old_outlet_name!#] -> [#!variable!new_outlet_name!#]</key>
+		<key name="scan_apc_pdu_message_0039">The phase that the outlet: [#!variable!outlet!#], on the PDU: [#!variable!name!#] is on has changed; [#!variable!old_outlet_on_phase!#] -> [#!variable!new_outlet_on_phase!#]</key>
+		<key name="scan_apc_pdu_message_0040">
+The state of the outlet: [#!variable!outlet!#], on the PDU: [#!variable!name!#] has changed; [#!variable!old_outlet_state!#] -> [#!variable!new_outlet_state!#]
+- Was the down-stream node fenced?
+		</key>
+		<key name="scan_apc_pdu_message_0041">
+The PDU model: [#!variable!model!#] with the serial number: [#!variable!serial_numer!#] at the IP address: [#!variable!ip_address!#] has vanished! 
+- Did the network cable come unplugged?
+		</key>
+		<key name="scan_apc_pdu_message_0042">The PDU model: [#!variable!model!#] with the serial number: [#!variable!serial_numer!#] at the IP address: [#!variable!ip_address!#] has returned.</key>
+		
 	</lang>
 </strings>

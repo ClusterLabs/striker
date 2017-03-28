@@ -287,11 +287,6 @@ update_db($an);
 # Look for changes.
 find_changes($an);
 
-die;
-
-# Process temperatures!
-process_temperatures($an);
-
 # Update the database
 $an->DB->update_time({file => $THIS_FILE});
 
@@ -420,7 +415,7 @@ FROM
 WHERE 
     apc_pdu_phase_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -484,7 +479,7 @@ FROM
 WHERE 
     apc_pdu_outlet_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -543,14 +538,13 @@ SELECT
     apc_pdu_variable_apc_pdu_uuid,
     apc_pdu_variable_is_temperature, 
     apc_pdu_variable_name, 
-    apc_pdu_variable_value, 
-    modified_date 
+    apc_pdu_variable_value 
 FROM 
     apc_pdu_variables 
 WHERE 
     apc_pdu_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -564,9 +558,9 @@ WHERE
 	{
 		my $apc_pdu_variable_uuid           =         $row->[0];
 		my $apc_pdu_variable_apc_pdu_uuid   =         $row->[1];
-		my $apc_pdu_variable_is_temperature =         $row->[3];
-		my $apc_pdu_variable_name           =         $row->[4];
-		my $apc_pdu_variable_value          = defined $row->[5] ? $row->[5] : "NULL";
+		my $apc_pdu_variable_is_temperature =         $row->[2];
+		my $apc_pdu_variable_name           =         $row->[3];
+		my $apc_pdu_variable_value          = defined $row->[4] ? $row->[4] : "NULL";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 			name1 => "apc_pdu_variable_uuid",           value1 => $apc_pdu_variable_uuid, 
 			name2 => "apc_pdu_variable_apc_pdu_uuid",   value2 => $apc_pdu_variable_apc_pdu_uuid, 
@@ -694,10 +688,31 @@ sub find_changes
 			
 			# Has the phase data changed?
 			my $changes = 0;
+			if ($old_apc_pdu_note eq "DELETED")
+			{
+				# It's back.
+				$changes = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "changes", value1 => $changes, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0006",
+					alert_message_key	=>	"scan_apc_pdu_message_0042",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						model			=>	$new_apc_pdu_model_number,
+						serial_number		=>	$apc_pdu_serial_number,
+						ip_address		=>	$new_apc_pdu_ipv4_address, 
+					},
+				});
+			}
 			if ($new_apc_pdu_model_number ne $old_apc_pdu_model_number)
 			{
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -717,7 +732,7 @@ sub find_changes
 			{
 				# Wat?
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -737,7 +752,7 @@ sub find_changes
 			{
 				# This is about the only thing that should ever change.
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -757,7 +772,7 @@ sub find_changes
 			{
 				# Wat?
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -777,7 +792,7 @@ sub find_changes
 			{
 				# This could change, sure.
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -797,7 +812,7 @@ sub find_changes
 			{
 				# How?!
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -817,7 +832,7 @@ sub find_changes
 			{
 				# OK, maybe...
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -837,7 +852,7 @@ sub find_changes
 			{
 				# This could happen, too.
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -892,7 +907,7 @@ sub find_changes
 			{
 				# How?!
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -903,8 +918,8 @@ sub find_changes
 					alert_message_key	=>	"scan_apc_pdu_message_0023",
 					alert_message_variables	=>	{
 						name			=>	$pdu_host_name,
-						old_phase_count		=>	$old_apc_pdu_phase_count,
-						new_phase_count		=>	$new_apc_pdu_phase_count,
+						old_phase_count		=>	sprintf("%02d", $old_apc_pdu_phase_count),
+						new_phase_count		=>	sprintf("%02d", $new_apc_pdu_phase_count),
 					},
 				});
 			}
@@ -912,7 +927,7 @@ sub find_changes
 			{
 				# I don't even...
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -923,13 +938,13 @@ sub find_changes
 					alert_message_key	=>	"scan_apc_pdu_message_0024",
 					alert_message_variables	=>	{
 						name			=>	$pdu_host_name,
-						old_outlet_count	=>	$old_apc_pdu_outlet_count,
-						new_outlet_count	=>	$new_apc_pdu_outlet_count,
+						old_outlet_count	=>	sprintf("%02d", $old_apc_pdu_outlet_count),
+						new_outlet_count	=>	sprintf("%02d", $new_apc_pdu_outlet_count),
 					},
 				});
 			}
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "changes", value1 => $changes, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($changes)
@@ -1011,7 +1026,7 @@ WHERE
 			else
 			{
 				# New, INSERT it (is_temperature is always false for now).
-				insert_variable($an, $apc_pdu_uuid, "uptime", $new_uptime);
+				insert_variables($an, $apc_pdu_uuid, "uptime", $new_uptime);
 			}
 			
 			# Do I have a previous wattage?
@@ -1047,30 +1062,42 @@ WHERE
 			else
 			{
 				# New, INSERT it (is_temperature is always false for now).
-				insert_variable($an, $apc_pdu_uuid, "total_wattage_draw", $new_total_wattage_draw);
+				insert_variables($an, $apc_pdu_uuid, "total_wattage_draw", $new_total_wattage_draw);
 			}
 			
-			# Have any outlets changed?
-			foreach my $phase (sort {$a cmp $b} keys %{$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}})
+			# Have any phases changed?
+			foreach my $apc_pdu_phase_number (sort {$a cmp $b} keys %{$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}})
 			{
-				my $new_apc_pdu_phase_current_amperage = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_current_amperage};
-				my $old_apc_pdu_phase_current_amperage = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_current_amperage};
+				my $new_apc_pdu_phase_current_amperage = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage};
+				my $new_apc_pdu_phase_note             = "";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "apc_pdu_phase_number",               value1 => $apc_pdu_phase_number, 
+					name2 => "new_apc_pdu_phase_current_amperage", value2 => $new_apc_pdu_phase_current_amperage, 
+					name3 => "new_apc_pdu_phase_max_amperage",     value3 => $new_apc_pdu_phase_max_amperage, 
+				}, file => $THIS_FILE, line => __LINE__});
 				
-				if ($an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_uuid})
+				if ($an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_uuid})
 				{
 					# We've seen this phase before. Changes?
-					my $apc_pdu_phase_uuid                 = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_uuid};
-					my $old_apc_pdu_phase_apc_pdu_uuid     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_apc_pdu_uuid};
-					my $old_apc_pdu_phase_current_amperage = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_current_amperage};
-					my $old_apc_pdu_phase_max_amperage     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_max_amperage};
-					my $old_apc_pdu_phase_note             = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_note};
+					my $apc_pdu_phase_uuid                 = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_uuid};
+					my $old_apc_pdu_phase_apc_pdu_uuid     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_apc_pdu_uuid};
+					my $old_apc_pdu_phase_current_amperage = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage};
+					my $old_apc_pdu_phase_max_amperage     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_max_amperage};
+					my $old_apc_pdu_phase_note             = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_note};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+						name1 => "apc_pdu_phase_uuid",                 value1 => $apc_pdu_phase_uuid, 
+						name2 => "old_apc_pdu_phase_apc_pdu_uuid",     value2 => $old_apc_pdu_phase_apc_pdu_uuid, 
+						name3 => "old_apc_pdu_phase_current_amperage", value3 => $old_apc_pdu_phase_current_amperage, 
+						name4 => "old_apc_pdu_phase_max_amperage",     value4 => $old_apc_pdu_phase_max_amperage, 
+						name5 => "old_apc_pdu_phase_note",             value5 => $old_apc_pdu_phase_note, 
+					}, file => $THIS_FILE, line => __LINE__});
 					
 					# The max amps per phase is set across all phases. 
 					if ($new_apc_pdu_phase_max_amperage ne $old_apc_pdu_phase_max_amperage)
 					{
 						# This should never change, but OK, whatever
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Alert->register_alert({
@@ -1081,7 +1108,7 @@ WHERE
 							alert_message_key	=>	"scan_apc_pdu_message_0025",
 							alert_message_variables	=>	{
 								name			=>	$pdu_host_name,
-								phase			=>	sprintf("%02d", $phase),
+								phase			=>	sprintf("%02d", $apc_pdu_phase_number),
 								old_phase_max_amperage	=>	$old_apc_pdu_phase_max_amperage,
 								new_phase_max_amperage	=>	$new_apc_pdu_phase_max_amperage,
 							},
@@ -1091,7 +1118,7 @@ WHERE
 					{
 						# The phase amperage can change all the time.
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Alert->register_alert({
@@ -1102,7 +1129,7 @@ WHERE
 							alert_message_key	=>	"scan_apc_pdu_message_0026",
 							alert_message_variables	=>	{
 								name				=>	$pdu_host_name,
-								phase				=>	sprintf("%02d", $phase),
+								phase				=>	sprintf("%02d", $apc_pdu_phase_number),
 								old_phase_current_amperage	=>	$old_apc_pdu_phase_current_amperage,
 								new_phase_current_amperage	=>	$new_apc_pdu_phase_current_amperage, 
 							},
@@ -1114,7 +1141,7 @@ WHERE
 					{
 						# The phase amperage can change all the time.
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Alert->register_alert({
@@ -1125,70 +1152,86 @@ WHERE
 							alert_message_key	=>	"scan_apc_pdu_message_0027",
 							alert_message_variables	=>	{
 								name			=>	$pdu_host_name,
-								phase			=>	sprintf("%02d", $phase),
+								phase			=>	sprintf("%02d", $apc_pdu_phase_number),
 							},
 						});
 					}
 					
-					# Cheack for alerts to clear
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "changes", value1 => $changes, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($changes)
+					{
+						my $query = "
+UPDATE 
+    apc_pdu_phases 
+SET
+    apc_pdu_phase_apc_pdu_uuid     = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid).",
+    apc_pdu_phase_number           = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_number).", 
+    apc_pdu_phase_current_amperage = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_phase_current_amperage).", 
+    apc_pdu_phase_max_amperage     = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_phase_max_amperage).", 
+    apc_pdu_phase_note             = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_phase_note).", 
+    modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    apc_pdu_phase_uuid             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid)." 
+;";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{sys}{sql}}, $query;
+					}
+					
+					# Cheack for low alerts to set or high alerts to clear
 					if ($new_apc_pdu_phase_current_amperage < $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{low_warning})
 					{
 						# Dropped too low, clear high warn and high crit
-# 						my $set = $an->Alert->check_alert_sent({
-# 							type			=>	"warning",
-# 							alert_sent_by		=>	$THIS_FILE,
-# 							alert_record_locator	=>	$pdu_host_name,
-# 							alert_name		=>	"apc_pdu_communication_lost",
-# 							modified_date		=>	$an->data->{sys}{db_timestamp},
-# 						});
-# 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-# 							name1 => "set", value1 => $set, 
-# 						}, file => $THIS_FILE, line => __LINE__});
-# 						if ($set)
-# 						{
-# 							# This is a new loss of comms.
-# 							$an->Alert->register_alert({
-# 								alert_level		=>	"warning", 
-# 								alert_agent_name	=>	$THIS_FILE,
-# 								alert_title_key		=>	"an_alert_title_0004",
-# 								alert_message_key	=>	"scan_apc_pdu_message_0004",
-# 								alert_message_variables	=>	{
-# 									pdu_name		=>	$pdu_host_name,
-# 								},
-# 							});
-# 						}
+						set_phase_low_warning($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
+						
+						# Clear the high-warning and high-critical, if needed.
+						clear_phase_high_critical($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
+						clear_phase_high_warning($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
 					}
 					elsif ($new_apc_pdu_phase_current_amperage < $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_warning})
 					{
 						# Dropped low enough to clear high warn and high crit
+						clear_phase_high_critical($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
+						clear_phase_high_warning($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
 					}
 					elsif ($new_apc_pdu_phase_current_amperage < $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_critical})
 					{
 						# Dropped low enough to clear high crit.
+						clear_phase_high_critical($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
 					}
-					# Check for alerts to set
+					
+					# Cheack for low alerts to clear or high alerts to set
 					if ($new_apc_pdu_phase_current_amperage > $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical})
 					{
-						# Set high crit, clear high warn and low warn
+						# Set high crit, clear low warn
+						set_phase_high_critical($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
+						clear_phase_low_warning($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
 					}
 					elsif ($new_apc_pdu_phase_current_amperage > $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning})
 					{
-						# Set high warn, clear low warning
+						# Set high warn
+						set_phase_high_warning($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
+						clear_phase_low_warning($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
 					}
 					elsif ($new_apc_pdu_phase_current_amperage > $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_low_warning})
 					{
 						# Clear the low warning
+						clear_phase_low_warning($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number);
 					}
 				}
 				
-				delete $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase};
+				delete $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number};
 			}
+			
 			# Any phases that vanished?
-			foreach my $phase (sort {$a cmp $b} keys %{$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}})
+			foreach my $apc_pdu_phase_number (sort {$a cmp $b} keys %{$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}})
 			{
 				# Did it just vanish?
-				my $apc_pdu_phase_uuid = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_uuid};
-				my $apc_pdu_phase_note = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_note};
+				my $apc_pdu_phase_uuid = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_uuid};
+				my $apc_pdu_phase_note = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_note};
 				if ($apc_pdu_phase_note ne "DELETED")
 				{
 					# Yup
@@ -1196,10 +1239,10 @@ WHERE
 UPDATE 
     apc_pdu_phases 
 SET 
-    apc_pdu_phase_value = 'DELETED', 
-    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-AND 
-    apc_pdu_phase_uuid  = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid)." 
+    apc_pdu_phase_note = 'DELETED', 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    apc_pdu_phase_uuid = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid)." 
 ;";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
@@ -1214,13 +1257,216 @@ AND
 						alert_message_key	=>	"scan_apc_pdu_message_0028",
 						alert_message_variables	=>	{
 							name			=>	$pdu_host_name,
-							phase			=>	sprintf("%02d", $phase),
+							phase			=>	sprintf("%02d", $apc_pdu_phase_number),
 						},
 					});
 				}
 			}
 			
-			# Have any phases changed?
+			# Have any outlets changed?
+			foreach my $apc_pdu_outlet_number (sort {$a cmp $b} keys %{$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}})
+			{
+				my $new_apc_pdu_outlet_name     = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name};
+				my $new_apc_pdu_outlet_on_phase = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase};
+				my $new_apc_pdu_outlet_state    = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state};
+				my $new_apc_pdu_outlet_note     = "";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "new_apc_pdu_outlet_name",     value1 => $new_apc_pdu_outlet_name,
+					name2 => "new_apc_pdu_outlet_on_phase", value2 => $new_apc_pdu_outlet_on_phase,
+					name3 => "new_apc_pdu_outlet_state",    value3 => $new_apc_pdu_outlet_state,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Do I know about this outlet?
+				if ($an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_uuid})
+				{
+					# Yup!
+					my $apc_pdu_outlet_uuid         = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_uuid};
+					my $old_apc_pdu_outlet_note     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_note};
+					my $old_apc_pdu_outlet_name     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name};
+					my $old_apc_pdu_outlet_on_phase = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase};
+					my $old_apc_pdu_outlet_state    = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+						name1 => "apc_pdu_outlet_uuid",         value1 => $apc_pdu_outlet_uuid, 
+						name2 => "old_apc_pdu_outlet_name",     value2 => $old_apc_pdu_outlet_name,
+						name3 => "old_apc_pdu_outlet_on_phase", value3 => $old_apc_pdu_outlet_on_phase,
+						name4 => "old_apc_pdu_outlet_state",    value4 => $old_apc_pdu_outlet_state,
+						name5 => "old_apc_pdu_outlet_note",     value5 => $old_apc_pdu_outlet_note,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Did a vanished outlet come back?
+					my $changes = 0;
+					if ($old_apc_pdu_outlet_note eq "DELETED")
+					{
+						# It's back!
+						$changes = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "changes", value1 => $changes, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_message_key	=>	"scan_apc_pdu_message_0037",
+							alert_message_variables	=>	{
+								name			=>	$pdu_host_name,
+								outlet			=>	sprintf("%02d", $apc_pdu_outlet_number),
+							},
+						});
+					}
+					if ($new_apc_pdu_outlet_name ne $old_apc_pdu_outlet_name)
+					{
+						# Name changed.
+						$changes = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "changes", value1 => $changes, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_message_key	=>	"scan_apc_pdu_message_0038",
+							alert_message_variables	=>	{
+								name			=>	$pdu_host_name,
+								old_outlet_name		=>	$old_apc_pdu_outlet_name,
+								new_outlet_name		=>	$new_apc_pdu_outlet_name,
+							},
+						});
+					}
+					if ($new_apc_pdu_outlet_on_phase ne $old_apc_pdu_outlet_on_phase)
+					{
+						# Phase changed, but why tho?
+						$changes = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "changes", value1 => $changes, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_message_key	=>	"scan_apc_pdu_message_0039",
+							alert_message_variables	=>	{
+								name			=>	$pdu_host_name,
+								old_outlet_on_phase	=>	$old_apc_pdu_outlet_on_phase,
+								new_outlet_on_phase	=>	$new_apc_pdu_outlet_on_phase,
+							},
+						});
+					}
+					if ($new_apc_pdu_outlet_state ne $old_apc_pdu_outlet_state)
+					{
+						# This is likely from a fence action, so we make it critical
+						$changes = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "changes", value1 => $changes, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Alert->register_alert({
+							alert_level		=>	"critical", 
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0005",
+							alert_message_key	=>	"scan_apc_pdu_message_0040",
+							alert_message_variables	=>	{
+								name			=>	$pdu_host_name,
+								old_outlet_state	=>	$old_apc_pdu_outlet_state,
+								new_outlet_state	=>	$new_apc_pdu_outlet_state,
+							},
+						});
+					}
+					
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "changes", value1 => $changes, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($changes)
+					{
+						# Save.
+						update_outlets($an, $apc_pdu_uuid, $apc_pdu_outlet_uuid, $apc_pdu_outlet_number, $new_apc_pdu_outlet_name, $new_apc_pdu_outlet_on_phase, $new_apc_pdu_outlet_state, $new_apc_pdu_outlet_note);
+					}
+					
+					delete $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number};
+				}
+				else
+				{
+					# Nope, INSERT it.
+					insert_outlets($an, $apc_pdu_uuid, $apc_pdu_outlet_number, $new_apc_pdu_outlet_name, $new_apc_pdu_outlet_on_phase, $new_apc_pdu_outlet_state, "");
+					
+					my $say_state = "#!string!an_state_0001!#";
+					if ($new_apc_pdu_outlet_state eq "on")
+					{
+						
+						$say_state = "#!string!an_state_0005!#";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "new_apc_pdu_outlet_state", value1 => $new_apc_pdu_outlet_state, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					elsif ($new_apc_pdu_outlet_state eq "off")
+					{
+						$say_state = "#!string:an_state_0006!#";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "new_apc_pdu_outlet_state", value1 => $new_apc_pdu_outlet_state, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_sort		=>	$an->data->{sys}{alert_sort}++,
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0008",
+						alert_message_key	=>	"pdu_name",
+						alert_message_variables	=>	{
+							pdu_name		=>	$pdu_host_name, 
+							outlet			=>	sprintf("%02d", $apc_pdu_outlet_number),
+							'state'			=>	$say_state,
+							on_phase		=>	sprintf("%02d", $new_apc_pdu_outlet_on_phase),
+							name			=>	$new_apc_pdu_outlet_name,
+						},
+					});
+				}
+			}
+			
+			# Any outlets vanished?
+			foreach my $apc_pdu_outlet_number (sort {$a cmp $b} keys %{$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}})
+			{
+				# Lost, update the note.
+				my $apc_pdu_outlet_uuid     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_uuid};
+				my $old_apc_pdu_outlet_note = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_note};
+				my $old_apc_pdu_outlet_name = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "apc_pdu_outlet_uuid",     value1 => $apc_pdu_outlet_uuid, 
+					name2 => "old_apc_pdu_outlet_name", value2 => $old_apc_pdu_outlet_name,
+					name3 => "old_apc_pdu_outlet_note", value3 => $old_apc_pdu_outlet_note,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($old_apc_pdu_outlet_note ne "DELETED")
+				{
+					# Yup
+					my $query = "
+UPDATE 
+    apc_pdu_outlets 
+SET 
+    apc_pdu_outlet_value = 'DELETED', 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    apc_pdu_outlet_uuid  = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_uuid)." 
+;";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_sort		=>	$an->data->{sys}{alert_sort}++,
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_apc_pdu_message_0035",
+						alert_message_variables	=>	{
+							name			=>	$pdu_host_name,
+							outlet			=>	sprintf("%02d", $apc_pdu_outlet_number),
+						},
+					});
+				}
+			}
 			
 			# Delete this from the SQL history 
 			delete $an->data->{sql}{$apc_pdu_serial_number};
@@ -1229,7 +1475,7 @@ AND
 		{
 			# OK, now INSERT it.
 			my $apc_pdu_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -1324,16 +1570,16 @@ INSERT INTO
 					name2 => "value",    value2 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				insert_variable($an, $apc_pdu_uuid, $variable, $value);
+				insert_variables($an, $apc_pdu_uuid, $variable, $value);
 				
 				# NOTE: We don't send an alert here as we incorporated the two variables we care about above.
 			}
 			
 			# Insert the phase data
-			foreach my $phase (sort {$a cmp $b} keys %{$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}})
+			foreach my $apc_pdu_phase_number (sort {$a cmp $b} keys %{$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}})
 			{
 				my $apc_pdu_phase_uuid                 = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
-				my $new_apc_pdu_phase_current_amperage = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_current_amperage};
+				my $new_apc_pdu_phase_current_amperage = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "apc_pdu_phase_uuid",                 value1 => $apc_pdu_phase_uuid, 
 					name2 => "new_apc_pdu_phase_current_amperage", value2 => $new_apc_pdu_phase_current_amperage,
@@ -1355,7 +1601,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($phase).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_phase_current_amperage).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_phase_max_amperage).", 
     '', 
@@ -1374,19 +1620,19 @@ INSERT INTO
 					alert_title_key		=>	"an_alert_title_0008",
 					alert_message_key	=>	"scan_apc_pdu_message_0008",
 					alert_message_variables	=>	{
-						phase			=>	sprintf("%02d", $phase),
+						phase			=>	sprintf("%02d", $apc_pdu_phase_number),
 						amps			=>	$new_apc_pdu_phase_current_amperage,
 					},
 				});
 			}
 			
 			# Insert the outlet data
-			foreach my $outlet (sort {$a cmp $b} keys %{$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}})
+			foreach my $apc_pdu_outlet_number (sort {$a cmp $b} keys %{$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}})
 			{
 				my $apc_pdu_outlet_uuid         = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
-				my $new_apc_pdu_outlet_name     = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_name};
-				my $new_apc_pdu_outlet_on_phase = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_on_phase};
-				my $new_apc_pdu_outlet_state    = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state};
+				my $new_apc_pdu_outlet_name     = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name};
+				my $new_apc_pdu_outlet_on_phase = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase};
+				my $new_apc_pdu_outlet_state    = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 					name1 => "apc_pdu_outlet_uuid",         value1 => $apc_pdu_outlet_uuid, 
 					name2 => "new_apc_pdu_outlet_name",     value2 => $new_apc_pdu_outlet_name,
@@ -1394,34 +1640,7 @@ INSERT INTO
 					name4 => "new_apc_pdu_outlet_state",    value4 => $new_apc_pdu_outlet_state,
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				my $query = "
-INSERT INTO 
-    apc_pdu_outlets 
-(
-    apc_pdu_outlet_host_uuid, 
-    apc_pdu_outlet_uuid, 
-    apc_pdu_outlet_apc_pdu_uuid, 
-    apc_pdu_outlet_number, 
-    apc_pdu_outlet_name, 
-    apc_pdu_outlet_on_phase, 
-    apc_pdu_outlet_state, 
-    apc_pdu_outlet_note, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($outlet).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_outlet_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_outlet_on_phase).", 
-    ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_outlet_state).", 
-    '', 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-);";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query
-				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{sys}{sql}}, $query;
+				insert_outlets($an, $apc_pdu_uuid, $apc_pdu_outlet_number, $new_apc_pdu_outlet_name, $new_apc_pdu_outlet_on_phase, $new_apc_pdu_outlet_state, "");
 				
 				my $say_state = "#!string!an_state_0001!#";
 				if ($new_apc_pdu_outlet_state eq "on")
@@ -1447,7 +1666,7 @@ INSERT INTO
 					alert_title_key		=>	"an_alert_title_0008",
 					alert_message_key	=>	"scan_apc_pdu_message_0009",
 					alert_message_variables	=>	{
-						outlet			=>	sprintf("%02d", $outlet),
+						outlet			=>	sprintf("%02d", $apc_pdu_outlet_number),
 						'state'			=>	$say_state,
 						on_phase		=>	sprintf("%02d", $new_apc_pdu_outlet_on_phase),
 						name			=>	$new_apc_pdu_outlet_name,
@@ -1460,7 +1679,48 @@ INSERT INTO
 	# Look for PDUs that we saw before that are gone now.
 	foreach my $apc_pdu_serial_number (sort {$a cmp $b} keys %{$an->data->{sql}})
 	{
-		# Gone!
+		# Gone! Is this the first time it's disappeared?
+		my $apc_pdu_uuid         = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_uuid};
+		my $apc_pdu_note         = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_note};
+		my $apc_pdu_model_number = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_model_number};
+		my $apc_pdu_ipv4_address = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_ipv4_address};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
+			name2 => "apc_pdu_uuid",          value2 => $apc_pdu_uuid,
+			name3 => "apc_pdu_note",          value3 => $apc_pdu_note,
+			name4 => "apc_pdu_model_number",  value4 => $apc_pdu_model_number,
+			name5 => "apc_pdu_ipv4_address",  value5 => $apc_pdu_ipv4_address,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($apc_pdu_note ne "DELETED")
+		{
+			# Yup! send an alert.
+			my $query = "
+UPDATE 
+    apc_pdus 
+SET 
+    apc_pdu_note  = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    apc_pdu_uuid  = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid)." 
+;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+
+			$an->Alert->register_alert({
+				alert_level		=>	"warning", 
+				alert_sort		=>	$an->data->{sys}{alert_sort}++,
+				alert_agent_name	=>	$THIS_FILE,
+				alert_title_key		=>	"an_alert_title_0004",
+				alert_message_key	=>	"scan_apc_pdu_message_0041",
+				alert_message_variables	=>	{
+					model			=>	$apc_pdu_model_number,
+					serial_numer		=>	$apc_pdu_serial_number,
+					ip_address		=>	$apc_pdu_ipv4_address,
+				},
+			});
+		}
 	}
 	
 	# Commit the queries.
@@ -1469,11 +1729,320 @@ INSERT INTO
 	return(0);
 }
 
+# Set the phase-low alert, if not set before
+sub set_phase_low_warning
+{
+	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_phase_low_warning" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
+		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
+		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $set = $an->Alert->check_alert_sent({
+		type			=>	"warning",
+		alert_sent_by		=>	$THIS_FILE,
+		alert_record_locator	=>	$apc_pdu_serial_number,
+		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_low_warning",
+		modified_date		=>	$an->data->{sys}{db_timestamp},
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "set", value1 => $set, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($set)
+	{
+		# This is a new loss of comms.
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scan_apc_pdu_message_0029",
+			alert_message_variables	=>	{
+				pdu_name		=>	$pdu_host_name,
+				phase			=>	sprintf("%02d", $apc_pdu_phase_number),
+			},
+		});
+	}
+	
+	return(0);
+}
+
+# Set the phase-low alert, if not clear before
+sub clear_phase_low_warning
+{
+	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_phase_low_warning" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
+		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
+		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $clear = $an->Alert->check_alert_sent({
+		type			=>	"clear",
+		alert_sent_by		=>	$THIS_FILE,
+		alert_record_locator	=>	$apc_pdu_serial_number,
+		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_low_warning",
+		modified_date		=>	$an->data->{sys}{db_timestamp},
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "clear", value1 => $clear, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($clear)
+	{
+		# This is a new loss of comms.
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0006",
+			alert_message_key	=>	"scan_apc_pdu_message_0033",
+			alert_message_variables	=>	{
+				pdu_name		=>	$pdu_host_name,
+				phase			=>	sprintf("%02d", $apc_pdu_phase_number),
+			},
+		});
+	}
+	
+	return(0);
+}
+
+# This sets the phase amparage high warning alert, if set.
+sub set_phase_high_warning
+{
+	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_phase_high_warning" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
+		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
+		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $set = $an->Alert->check_alert_sent({
+		type			=>	"warning",
+		alert_sent_by		=>	$THIS_FILE,
+		alert_record_locator	=>	$apc_pdu_serial_number,
+		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_high_warning",
+		modified_date		=>	$an->data->{sys}{db_timestamp},
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "set", value1 => $set, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($set)
+	{
+		# This is a new loss of comms.
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scan_apc_pdu_message_0034",
+			alert_message_variables	=>	{
+				pdu_name		=>	$pdu_host_name,
+				phase			=>	sprintf("%02d", $apc_pdu_phase_number),
+			},
+		});
+	}
+	
+	return(0)
+}
+
+# This clears the phase amparage high warning alert, if set.
+sub clear_phase_high_warning
+{
+	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_phase_high_warning" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
+		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
+		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $clear = $an->Alert->check_alert_sent({
+		type			=>	"clear",
+		alert_sent_by		=>	$THIS_FILE,
+		alert_record_locator	=>	$apc_pdu_serial_number,
+		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_high_warning",
+		modified_date		=>	$an->data->{sys}{db_timestamp},
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "clear", value1 => $clear, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($clear)
+	{
+		# This is a new loss of comms.
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0006",
+			alert_message_key	=>	"scan_apc_pdu_message_0031",
+			alert_message_variables	=>	{
+				pdu_name		=>	$pdu_host_name,
+				phase			=>	sprintf("%02d", $apc_pdu_phase_number),
+			},
+		});
+	}
+	
+	return(0)
+}
+
+# This sets the phase high-critical alert, if not already.
+sub set_phase_high_critical
+{
+	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_phase_high_critical" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
+		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
+		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $set = $an->Alert->check_alert_sent({
+		type			=>	"warning",
+		alert_sent_by		=>	$THIS_FILE,
+		alert_record_locator	=>	$apc_pdu_serial_number,
+		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_high_critical",
+		modified_date		=>	$an->data->{sys}{db_timestamp},
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "set", value1 => $set, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($set)
+	{
+		$an->Alert->register_alert({
+			alert_level		=>	"critical", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0005",
+			alert_message_key	=>	"scan_apc_pdu_message_0032",
+			alert_message_variables	=>	{
+				pdu_name		=>	$pdu_host_name,
+				phase			=>	sprintf("%02d", $apc_pdu_phase_number),
+			},
+		});
+	}
+	
+	return(0);
+}
+
+# This clears the phase amparage high critical alert, if set.
+sub clear_phase_high_critical
+{
+	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_phase_high_critical" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
+		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
+		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $clear = $an->Alert->check_alert_sent({
+		type			=>	"clear",
+		alert_sent_by		=>	$THIS_FILE,
+		alert_record_locator	=>	$apc_pdu_serial_number,
+		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_high_critical",
+		modified_date		=>	$an->data->{sys}{db_timestamp},
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "clear", value1 => $clear, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($clear)
+	{
+		# This is a new loss of comms.
+		$an->Alert->register_alert({
+			alert_level		=>	"critical", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0007",
+			alert_message_key	=>	"scan_apc_pdu_message_0030",
+			alert_message_variables	=>	{
+				pdu_name		=>	$pdu_host_name,
+				phase			=>	sprintf("%02d", $apc_pdu_phase_number),
+			},
+		});
+	}
+	
+	return(0)
+}
+
+# This UPDATEs a outlet
+sub update_outlets
+{
+	my ($an, $apc_pdu_uuid, $apc_pdu_outlet_uuid, $apc_pdu_outlet_number, $apc_pdu_outlet_name, $apc_pdu_outlet_on_phase, $apc_pdu_outlet_state, $apc_pdu_outlet_note) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_outlets => { function => "update_outlets" }, message_key => "an_variables_0007", message_outlets => { 
+		name1 => "apc_pdu_uuid",            value1 => $apc_pdu_uuid, 
+		name2 => "apc_pdu_outlet_uuid",     value2 => $apc_pdu_outlet_uuid, 
+		name3 => "apc_pdu_outlet_number",   value3 => $apc_pdu_outlet_number, 
+		name4 => "apc_pdu_outlet_name",     value4 => $apc_pdu_outlet_name, 
+		name5 => "apc_pdu_outlet_on_phase", value5 => $apc_pdu_outlet_on_phase, 
+		name6 => "apc_pdu_outlet_state",    value6 => $apc_pdu_outlet_state, 
+		name7 => "apc_pdu_outlet_note",     value7 => $apc_pdu_outlet_note, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $query = "
+UPDATE 
+    apc_pdu_outlets 
+SET
+    apc_pdu_outlet_apc_pdu_uuid = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid).",
+    apc_pdu_outlet_number       = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_number).", 
+    apc_pdu_outlet_name         = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_name).", 
+    apc_pdu_outlet_on_phase     = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_on_phase).", 
+    apc_pdu_outlet_state        = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_state).", 
+    apc_pdu_outlet_note         = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_note).", 
+    modified_date               = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    apc_pdu_outlet_uuid         = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_uuid)." 
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_outlets => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	push @{$an->data->{sys}{sql}}, $query;
+	
+	return(0);
+}
+
+# This INSERTs a new outlet
+sub insert_outlets
+{
+	my ($an, $apc_pdu_uuid, $apc_pdu_outlet_number, $apc_pdu_outlet_name, $apc_pdu_outlet_on_phase, $apc_pdu_outlet_state, $apc_pdu_outlet_note) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_outlets => { function => "insert_outlets" }, message_key => "an_variables_0006", message_outlets => { 
+		name1 => "apc_pdu_uuid",            value1 => $apc_pdu_uuid, 
+		name2 => "apc_pdu_outlet_number",   value2 => $apc_pdu_outlet_number, 
+		name3 => "apc_pdu_outlet_name",     value3 => $apc_pdu_outlet_name, 
+		name4 => "apc_pdu_outlet_on_phase", value4 => $apc_pdu_outlet_on_phase, 
+		name5 => "apc_pdu_outlet_state",    value5 => $apc_pdu_outlet_state, 
+		name6 => "apc_pdu_outlet_note",     value6 => $apc_pdu_outlet_note, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $apc_pdu_outlet_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
+	my $query               = "
+INSERT INTO 
+    apc_pdu_outlets 
+(
+    apc_pdu_outlet_host_uuid, 
+    apc_pdu_outlet_uuid, 
+    apc_pdu_outlet_apc_pdu_uuid, 
+    apc_pdu_outlet_number, 
+    apc_pdu_outlet_name, 
+    apc_pdu_outlet_on_phase, 
+    apc_pdu_outlet_state, 
+    apc_pdu_outlet_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_on_phase).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	push @{$an->data->{sys}{sql}}, $query;
+	
+	return($apc_pdu_outlet_uuid);
+}
+
 # This UPDATEs a variable
 sub update_variables
 {
 	my ($an, $apc_pdu_uuid, $apc_pdu_variable_uuid, $variable, $value) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_variable" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_variables" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
 		name2 => "variable",     value2 => $variable, 
 		name3 => "value",        value3 => $value, 
@@ -1488,7 +2057,7 @@ SET
     apc_pdu_variable_name           = ".$an->data->{sys}{use_db_fh}->quote($variable).", 
     apc_pdu_variable_value          = ".$an->data->{sys}{use_db_fh}->quote($value).", 
     modified_date                   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-AND 
+WHERE 
     apc_pdu_variable_uuid           = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_uuid)." 
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1500,10 +2069,10 @@ AND
 }
 
 # This INSERTs a new variable
-sub insert_variable
+sub insert_variables
 {
 	my ($an, $apc_pdu_uuid, $variable, $value) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_variable" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_variables" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
 		name2 => "variable",     value2 => $variable, 
 		name3 => "value",        value3 => $value, 
@@ -2668,7 +3237,7 @@ sub gather_pdu_data
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# This will be set if we can query the PDU.
-		my $serial_number = "";
+		my $apc_pdu_serial_number = "";
 		
 		# Can I ping it? This returns '1' if it was pingable, '0' if not.
 		my ($pinged) = $an->Check->ping({ping => $pdu_ip});
@@ -2706,35 +3275,35 @@ sub gather_pdu_data
 		else
 		{
 			# Yup!
-			$serial_number = read_oid($an, $pdu_ip,, $an->data->{oids}{apc_pdu}{apc_pdu_serial_number});
+			$apc_pdu_serial_number = read_oid($an, $pdu_ip,, $an->data->{oids}{apc_pdu}{apc_pdu_serial_number});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "serial_number", value1 => $serial_number, 
+				name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# These are set to avoid 'undefined' variable warnings later if we fail to reach this PDU.
-			$an->data->{pdu}{$serial_number}{pdu_host_name}                         = $pdu_name;
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_serial_number}        = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_model_number}         = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_manufacture_date}     = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_firmware_version}     = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_hardware_version}     = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_ipv4_address}         = $pdu_ip;
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_mac_address}          = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_mtu_size}             = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_link_speed}           = 0;
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_phase_count}          = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_outlet_count}         = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu_variables}{uptime}             = "";
-			$an->data->{pdu}{$serial_number}{apc_pdu_variables}{total_wattage_draw} = "";
-			$an->data->{pdu}{$serial_number}{amperage}{maximum}                     = "";
-			$an->data->{pdu}{$serial_number}{amperage}{low_warning}                 = "";
-			$an->data->{pdu}{$serial_number}{amperage}{high_warning}                = "";
-			$an->data->{pdu}{$serial_number}{amperage}{high_critical}               = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{pdu_host_name}                         = $pdu_name;
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_serial_number}        = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_model_number}         = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date}     = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_firmware_version}     = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_hardware_version}     = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_ipv4_address}         = $pdu_ip;
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address}          = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mtu_size}             = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_link_speed}           = 0;
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_phase_count}          = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_outlet_count}         = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime}             = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw} = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{maximum}                     = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{low_warning}                 = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning}                = "";
+			$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical}               = "";
 			
 			# Record the SN, mark that we accessed it and create a look-up for SN to name
-			$an->data->{serial_to_name}{$serial_number} = $pdu_name;
+			$an->data->{serial_to_name}{$apc_pdu_serial_number} = $pdu_name;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "serial_to_name::$serial_number", value1 => $an->data->{serial_to_name}{$serial_number}, 
+				name1 => "serial_to_name::$apc_pdu_serial_number", value1 => $an->data->{serial_to_name}{$apc_pdu_serial_number}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# If I had previously lost this PDU, clear the alert and let the user know we're 
@@ -2765,7 +3334,7 @@ sub gather_pdu_data
 		}
 		
 		# If I got the serial number, I found the PDU.
-		next if not $serial_number;
+		next if not $apc_pdu_serial_number;
 		
 		# If I am still alive, I've found at least one PDU.
 		$no_pdu_found = 0;
@@ -2775,44 +3344,44 @@ sub gather_pdu_data
 		#############################################################################################
 		
 		# Get the base PDU info.
-		$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_model_number}     =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_model_number});
-		$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_manufacture_date} =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_manufacture_date});
-		$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_firmware_version} =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_firmware_version});
-		$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_hardware_version} =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_hardware_version});
-		$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_mac_address}      =  lc(read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_mac_address}, $an->data->{path}{striker_mib}));
-		$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_mac_address}      =~ s/ /:/g;
-		$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_mtu_size}         =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_mtu_size});
-		$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_link_speed}       =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_link_speed});
-		$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_phase_count}      =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_phase_count});
-		$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_outlet_count}     =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_outlet_count});
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_model_number}     =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_model_number});
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date} =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_manufacture_date});
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_firmware_version} =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_firmware_version});
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_hardware_version} =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_hardware_version});
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address}      =  lc(read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_mac_address}, $an->data->{path}{striker_mib}));
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address}      =~ s/ /:/g;
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mtu_size}         =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_mtu_size});
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_link_speed}       =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_link_speed});
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_phase_count}      =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_phase_count});
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_outlet_count}     =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_outlet_count});
 		
 		# These change often and will go into the 'variables' table
-		$an->data->{pdu}{$serial_number}{apc_pdu_variables}{uptime}             = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_variables}{uptime});
-		$an->data->{pdu}{$serial_number}{apc_pdu_variables}{total_wattage_draw} = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_variables}{total_wattage_draw});
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime}             = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_variables}{uptime});
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw} = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_variables}{total_wattage_draw});
 		
 		# These are used later for checking the state of the phases. They are not stored in the database.
-		$an->data->{pdu}{$serial_number}{amperage}{maximum}       = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{apc_pdu_phase_max_amperage});
-		$an->data->{pdu}{$serial_number}{amperage}{low_warning}   = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{phase_low_amp_warning});
-		$an->data->{pdu}{$serial_number}{amperage}{high_warning}  = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{phase_high_amp_warning});
-		$an->data->{pdu}{$serial_number}{amperage}{high_critical} = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{phase_high_amp_critical});
+		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{maximum}       = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{apc_pdu_phase_max_amperage});
+		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{low_warning}   = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{phase_low_amp_warning});
+		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning}  = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{phase_high_amp_warning});
+		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{phase_high_amp_critical});
 		
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
-			name1  => "pdu::${serial_number}::apc_pdu::apc_pdu_model_number",         value1  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_model_number}, 
-			name2  => "pdu::${serial_number}::apc_pdu::apc_pdu_manufacture_date",     value2  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_manufacture_date}, 
-			name3  => "pdu::${serial_number}::apc_pdu::apc_pdu_firmware_version",     value3  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_firmware_version}, 
-			name4  => "pdu::${serial_number}::apc_pdu::apc_pdu_hardware_version",     value4  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_hardware_version}, 
-			name5  => "pdu::${serial_number}::apc_pdu::apc_pdu_ipv4_address",         value5  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_ipv4_address}, 
-			name6  => "pdu::${serial_number}::apc_pdu::apc_pdu_mac_address",          value6  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_mac_address}, 
-			name7  => "pdu::${serial_number}::apc_pdu::apc_pdu_mtu_size",             value7  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_mtu_size}, 
-			name8  => "pdu::${serial_number}::apc_pdu::apc_pdu_link_speed",           value8  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_link_speed}, 
-			name9  => "pdu::${serial_number}::apc_pdu::apc_pdu_phase_count",          value9  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_phase_count}, 
-			name10 => "pdu::${serial_number}::apc_pdu::apc_pdu_outlet_count",         value10 => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_outlet_count}, 
-			name11 => "pdu::${serial_number}::apc_pdu_variables::uptime",             value11 => $an->data->{pdu}{$serial_number}{apc_pdu_variables}{uptime}, 
-			name12 => "pdu::${serial_number}::apc_pdu_variables::total_wattage_draw", value12 => $an->data->{pdu}{$serial_number}{apc_pdu_variables}{total_wattage_draw}, 
-			name13 => "pdu::${serial_number}::amperage::maximum",                     value13 => $an->data->{pdu}{$serial_number}{amperage}{maximum}, 
-			name14 => "pdu::${serial_number}::amperage::low_warning",                 value14 => $an->data->{pdu}{$serial_number}{amperage}{low_warning}, 
-			name15 => "pdu::${serial_number}::amperage::high_warning",                value15 => $an->data->{pdu}{$serial_number}{amperage}{high_warning}, 
-			name16 => "pdu::${serial_number}::amperage::high_critical",               value16 => $an->data->{pdu}{$serial_number}{amperage}{high_critical}, 
+			name1  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_model_number",         value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_model_number}, 
+			name2  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_manufacture_date",     value2  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date}, 
+			name3  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_firmware_version",     value3  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_firmware_version}, 
+			name4  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_hardware_version",     value4  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_hardware_version}, 
+			name5  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_ipv4_address",         value5  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_ipv4_address}, 
+			name6  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_mac_address",          value6  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address}, 
+			name7  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_mtu_size",             value7  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mtu_size}, 
+			name8  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_link_speed",           value8  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_link_speed}, 
+			name9  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_phase_count",          value9  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_phase_count}, 
+			name10 => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_outlet_count",         value10 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_outlet_count}, 
+			name11 => "pdu::${apc_pdu_serial_number}::apc_pdu_variables::uptime",             value11 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime}, 
+			name12 => "pdu::${apc_pdu_serial_number}::apc_pdu_variables::total_wattage_draw", value12 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw}, 
+			name13 => "pdu::${apc_pdu_serial_number}::amperage::maximum",                     value13 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{maximum}, 
+			name14 => "pdu::${apc_pdu_serial_number}::amperage::low_warning",                 value14 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{low_warning}, 
+			name15 => "pdu::${apc_pdu_serial_number}::amperage::high_warning",                value15 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning}, 
+			name16 => "pdu::${apc_pdu_serial_number}::amperage::high_critical",               value16 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		### TODO: We should probably sanity check the various values. Error or set?
@@ -2823,41 +3392,41 @@ sub gather_pdu_data
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1  => "scan-apc-pdu::critical_amps_below_max", value1  => $an->data->{'scan-apc-pdu'}{critical_amps_below_max}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($an->data->{pdu}{$serial_number}{amperage}{high_critical} + $an->data->{'scan-apc-pdu'}{critical_amps_below_max}) > $an->data->{pdu}{$serial_number}{amperage}{maximum})
+		if (($an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} + $an->data->{'scan-apc-pdu'}{critical_amps_below_max}) > $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{maximum})
 		{
-			$an->data->{pdu}{$serial_number}{amperage}{high_critical} = $an->data->{pdu}{$serial_number}{amperage}{maximum} - $an->data->{'scan-apc-pdu'}{critical_amps_below_max};
+			$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{maximum} - $an->data->{'scan-apc-pdu'}{critical_amps_below_max};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1  => "pdu::${serial_number}::amperage::high_critical", value1  => $an->data->{pdu}{$serial_number}{amperage}{high_critical}, 
+				name1  => "pdu::${apc_pdu_serial_number}::amperage::high_critical", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Make sure that the warning is at least 'scan-apc-pdu::warning_amps_below_critical'
-		if (($an->data->{pdu}{$serial_number}{amperage}{high_warning} + $an->data->{'scan-apc-pdu'}{warning_amps_below_critical}) > $an->data->{pdu}{$serial_number}{amperage}{high_critical})
+		if (($an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning} + $an->data->{'scan-apc-pdu'}{warning_amps_below_critical}) > $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical})
 		{
-			$an->data->{pdu}{$serial_number}{amperage}{high_warning} = $an->data->{pdu}{$serial_number}{amperage}{high_critical} - $an->data->{'scan-apc-pdu'}{warning_amps_below_critical};
+			$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning} = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} - $an->data->{'scan-apc-pdu'}{warning_amps_below_critical};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1  => "pdu::${serial_number}::amperage::high_warning", value1  => $an->data->{pdu}{$serial_number}{amperage}{high_warning}, 
+				name1  => "pdu::${apc_pdu_serial_number}::amperage::high_warning", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Set the alert clear levels
-		$an->data->{pdu}{$serial_number}{amperage}{clear_high_critical} = $an->data->{pdu}{$serial_number}{amperage}{high_critical} - $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
-		$an->data->{pdu}{$serial_number}{amperage}{clear_high_warning}  = $an->data->{pdu}{$serial_number}{amperage}{high_warning} - $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
-		$an->data->{pdu}{$serial_number}{amperage}{clear_low_warning}   = $an->data->{pdu}{$serial_number}{amperage}{low_warning} + $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
+		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_critical} = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} - $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
+		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_warning}  = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning} - $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
+		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_low_warning}   = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{low_warning} + $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "pdu::${serial_number}::amperage::clear_high_critical", value1 => $an->data->{pdu}{$serial_number}{amperage}{clear_high_critical}, 
-			name2 => "pdu::${serial_number}::amperage::clear_high_warning",  value2 => $an->data->{pdu}{$serial_number}{amperage}{clear_high_warning}, 
-			name3 => "pdu::${serial_number}::amperage::clear_low_warning",   value3 => $an->data->{pdu}{$serial_number}{amperage}{clear_low_warning}, 
+			name1 => "pdu::${apc_pdu_serial_number}::amperage::clear_high_critical", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_critical}, 
+			name2 => "pdu::${apc_pdu_serial_number}::amperage::clear_high_warning",  value2 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_warning}, 
+			name3 => "pdu::${apc_pdu_serial_number}::amperage::clear_low_warning",   value3 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_low_warning}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Uptime is in ticks
-		$an->data->{pdu}{$serial_number}{apc_pdu_variables}{uptime} /= $an->data->{'scan-apc-pdu'}{ticks_per_second};
+		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime} /= $an->data->{'scan-apc-pdu'}{ticks_per_second};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1  => "pdu:${serial_number}::apc_pdu_variables::uptime", value1  => $an->data->{pdu}{$serial_number}{apc_pdu_variables}{uptime}, 
+			name1  => "pdu:${apc_pdu_serial_number}::apc_pdu_variables::uptime", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# The dates are in 'mm/dd/yyyy' or 'mm/dd/yy' format, convert them to 'yyyy/mm/dd'
-		if ($an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_manufacture_date} =~ /(\d\d)\/(\d\d)\/(\d\d\d\d)$/)
+		if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date} =~ /(\d\d)\/(\d\d)\/(\d\d\d\d)$/)
 		{
 			my $year  = $3;
 			my $month = $1;
@@ -2868,12 +3437,12 @@ sub gather_pdu_data
 				name3 => "day",   value3 => $day, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_manufacture_date} = $year."/".$month."/".$day;
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date} = $year."/".$month."/".$day;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1  => "pdu::${serial_number}::apc_pdu::apc_pdu_manufacture_date", value1  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_manufacture_date}, 
+				name1  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_manufacture_date", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_manufacture_date} =~ /(\d\d)\/(\d\d)\/(\d\d)$/)
+		elsif ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date} =~ /(\d\d)\/(\d\d)\/(\d\d)$/)
 		{
 			my $year  = $3;
 			my $month = $1;
@@ -2898,48 +3467,57 @@ sub gather_pdu_data
 					name1 => "year", value1 => $year, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_manufacture_date} = $year."/".$month."/".$day;
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date} = $year."/".$month."/".$day;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1  => "pdu::${serial_number}::apc_pdu::apc_pdu_manufacture_date", value1  => $an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_manufacture_date}, 
+				name1  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_manufacture_date", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Read the phase data
-		if ($an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_phase_count} !~ /^\d+$/)
+		if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_phase_count} !~ /^\d+$/)
 		{
 			### TODO: Should this be an error?
-			print "Failed to read the number of phases for the PDU: [$serial_number]\n";
+			print "Failed to read the number of phases for the PDU: [$apc_pdu_serial_number]\n";
 			exit(1);
 		}
-		foreach my $phase (1..$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_phase_count})
+		foreach my $apc_pdu_phase_number (1..$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_phase_count})
 		{
 			# Stick the phase onto the end of the OID.
-			my $oid = $an->data->{oids}{apc_pdu_phases}{apc_pdu_phase_current_amperage}.$phase;
+			my $oid = $an->data->{oids}{apc_pdu_phases}{apc_pdu_phase_current_amperage}.$apc_pdu_phase_number;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "phase", value1 => $phase, 
-				name2 => "oid",   value2 => $oid, 
+				name1 => "apc_pdu_phase_number", value1 => $apc_pdu_phase_number, 
+				name2 => "oid",                  value2 => $oid, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Read the OID
-			$an->data->{pdu}{$serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_current_amperage} = read_oid($an, $pdu_ip, $oid);
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage} = read_oid($an, $pdu_ip, $oid);
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1  => "pdu::${serial_number}::apc_pdu_phases::${phase}::apc_pdu_phase_current_amperage", value1  => $an->data->{pdu}{$serial_number}{apc_pdu_phases}{$phase}{apc_pdu_phase_current_amperage}, 
+				name1  => "pdu::${apc_pdu_serial_number}::apc_pdu_phases::${apc_pdu_phase_number}::apc_pdu_phase_current_amperage", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage}, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			# The amperage is in 1/10 amps, so divide by 10.
+			if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage} =~ /^\d+$/)
+			{
+				$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage} /= 10;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1  => "pdu::${apc_pdu_serial_number}::apc_pdu_phases::${apc_pdu_phase_number}::apc_pdu_phase_current_amperage", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 		
 		# Read the outlet data
-		if ($an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_outlet_count} !~ /^\d+$/)
+		if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_outlet_count} !~ /^\d+$/)
 		{
 			### TODO: Should this be an error?
-			print "Failed to read the number of outlets for the PDU: [$serial_number]\n";
+			print "Failed to read the number of outlets for the PDU: [$apc_pdu_serial_number]\n";
 			exit(2);
 		}
-		foreach my $outlet (1..$an->data->{pdu}{$serial_number}{apc_pdu}{apc_pdu_outlet_count})
+		foreach my $apc_pdu_outlet_number (1..$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_outlet_count})
 		{
 			# Stick the outlet onto the end of the OIDs.
-			my $outlet_name_oid  = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_name}.$outlet;
-			my $outlet_phase_oid = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_on_phase}.$outlet;
-			my $outlet_state_oid = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_state}.$outlet;
+			my $outlet_name_oid  = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_name}.$apc_pdu_outlet_number;
+			my $outlet_phase_oid = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_on_phase}.$apc_pdu_outlet_number;
+			my $outlet_state_oid = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_state}.$apc_pdu_outlet_number;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "outlet_name_oid",  value1 => $outlet_name_oid, 
 				name2 => "outlet_phase_oid", value2 => $outlet_phase_oid, 
@@ -2947,35 +3525,35 @@ sub gather_pdu_data
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Read the OID
-			$an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_name}     = read_oid($an, $pdu_ip, $outlet_name_oid);
-			$an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_on_phase} = read_oid($an, $pdu_ip, $outlet_phase_oid);
-			$an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state}    = read_oid($an, $pdu_ip, $outlet_state_oid);
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name}     = read_oid($an, $pdu_ip, $outlet_name_oid);
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase} = read_oid($an, $pdu_ip, $outlet_phase_oid);
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}    = read_oid($an, $pdu_ip, $outlet_state_oid);
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "pdu::${serial_number}::apc_pdu_outlets::${outlet}::apc_pdu_outlet_name",     value1 => $an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_name}, 
-				name2 => "pdu::${serial_number}::apc_pdu_outlets::${outlet}::apc_pdu_outlet_on_phase", value2 => $an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_on_phase}, 
-				name3 => "pdu::${serial_number}::apc_pdu_outlets::${outlet}::apc_pdu_outlet_state",    value3 => $an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state}, 
+				name1 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_name",     value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name}, 
+				name2 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_on_phase", value2 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase}, 
+				name3 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_state",    value3 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# The state is; 1 = on, 2 = off, 4 = unknown
-			if ($an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state} eq "1")
+			if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} eq "1")
 			{
-				$an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state} = "on";
+				$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} = "on";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "pdu::${serial_number}::apc_pdu_outlets::${outlet}::apc_pdu_outlet_state", value1 => $an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state}, 
+					name1 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_state", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state} eq "2")
+			elsif ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} eq "2")
 			{
-				$an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state} = "off";
+				$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} = "off";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "pdu::${serial_number}::apc_pdu_outlets::${outlet}::apc_pdu_outlet_state", value1 => $an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state}, 
+					name1 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_state", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state} eq "3")
+			elsif ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} eq "3")
 			{
-				$an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state} = "unknown";
+				$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} = "unknown";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "pdu::${serial_number}::apc_pdu_outlets::${outlet}::apc_pdu_outlet_state", value1 => $an->data->{pdu}{$serial_number}{apc_pdu_outlets}{$outlet}{apc_pdu_outlet_state}, 
+					name1 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_state", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -3396,7 +3974,7 @@ sub read_oid
 {
 	my ($an, $pdu, $oid, $mib) = @_;
 	$mib = "" if not defined $mib;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_oid" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_oid" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "pdu", value1 => $pdu, 
 		name2 => "oid", value2 => $oid, 
 		name3 => "mib", value3 => $mib, 
