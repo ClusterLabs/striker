@@ -13633,7 +13633,19 @@ sub _provision_server
 	$provision .= "  --ram ".$an->data->{new_server}{ram}." \\\\\n";
 	$provision .= "  --arch x86_64 \\\\\n";
 	$provision .= "  --vcpus ".$an->data->{new_server}{cpu_cores}." \\\\\n";
-	$provision .= "  --cpu host \\\\\n";
+	if ($an->data->{cgi}{os_variant} eq "win2016")
+	{
+		# NOTE: We might need to set this to '--cpu Nehalem,+fsgsbase', see:
+		#       https://www.alteeve.com/w/Troubleshooting_Anvil!_m2_Problems
+		$provision .= "  --cpu host \\\\\n";
+		
+		# Switch the type to win2k8 as win2016 isn't recognized by virt-install yet.
+		$an->data->{cgi}{os_variant} = "win2k8";
+	}
+	else
+	{
+		$provision .= "  --cpu host \\\\\n";
+	}
 	$provision .= "  --cdrom '".$an->data->{path}{shared_files}."/".$an->data->{new_server}{install_iso}."' \\\\\n";
 	$provision .= "  --boot menu=on \\\\\n";
 	if ($an->data->{cgi}{driver_iso})
@@ -13672,17 +13684,9 @@ sub _provision_server
 	}
 	$provision .= "  --graphics spice \\\\\n";
 	
-	# TODO: (2016-06-08) There is a bug with provisioning Win7 and Win2008 servers with spice graphics.
-	#       So until it is resolved, we will drop them to use more basic video. See:
-	#       http://serverfault.com/questions/776406/windows-7-setup-hangs-at-starting-windows-using-proxmox-4-2
-	if (($an->data->{cgi}{os_variant} eq "win7") or (($an->data->{cgi}{os_variant} eq "win2k8") && ($an->data->{new_server}{install_iso} !~ /12/)))
-	{
-		$provision .= "  --video cirrus \\\\\n";
-	}
-	
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
 	# for why we're using '--noautoconsole --wait -1'.
-	$provision .= "  --noautoconsole --wait -1 > /var/log/an-install_".$an->data->{new_server}{name}.".log &\n";
+	$provision .= "  --noautoconsole --wait -1 > /var/log/anvil-server_".$an->data->{new_server}{name}.".log &\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "provision", value1 => $provision,
 	}, file => $THIS_FILE, line => __LINE__});

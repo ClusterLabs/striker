@@ -10,18 +10,18 @@ strings file. Do this by prefixing all strings with 'scan_apc_pdu_'.
 	<langs>en_CA</langs>
 	<!-- Canadian English -->
 	<lang name="en_CA" long_name="English (Canadian)">
-		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the APC UPS Scan Agent.</key>
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the APC PDU Scan Agent.</key>
 		
 		<!-- Strings that can change by rebranding -->
-		<key name="scan_apc_pdu_brand_0001">APC/Schneider Electronics UPS Scan Agent</key>
+		<key name="scan_apc_pdu_brand_0001">APC/Schneider Electronics PDU Scan Agent</key>
 		
 		<!-- Logs -->
 		<key name="scan_apc_ups_log_0001">Starting to read the SNMP OIDs for the PDU: [#!variable!pdu!#].</key>
 		
-		<!-- APC UPS Agent-specific messages -->
+		<!-- APC PDU Agent-specific messages -->
 		<key name="scan_apc_pdu_message_0001">Starting #!string!scan_apc_pdu_brand_0001!#:</key>
 		<key name="scan_apc_pdu_message_0002"><![CDATA[
- -=] APC UPS Scan Agent
+ -=] APC PDU Scan Agent
 
 DESCRIPTION
 
@@ -41,7 +41,7 @@ SWITCHES
  --prep-db
 
 	If passed, the schema will be loaded into the database (if not 
-	already), even if no APC brand UPSes are found. Note: This won't work
+	already), even if no APC brand PDUs are found. Note: This won't work
 	if the agent has been manually disabled via 'scan-apc-pdu::disable'.
 
  --pdus <pdu1>[,<pdu2>,...,<pduN>]
@@ -65,7 +65,7 @@ https://alteeve.ca/w/Support
 
 							      Alteeve's Niche!
 		]]></key>
-		<key name="scan_apc_pdu_message_0003">No APC/Schneider brand UPSes found, exiting.</key>
+		<key name="scan_apc_pdu_message_0003">No APC/Schneider brand PDUs found, exiting.</key>
 		<key name="scan_apc_pdu_message_0004">Connection to the PDU: [#!variable!pdu_name!#] has been lost!</key>
 		<key name="scan_apc_pdu_message_0005">Connection to the PDU: [#!variable!pdu_name!#] has been restored.</key>
 		<key name="scan_apc_pdu_message_0006">Down</key>

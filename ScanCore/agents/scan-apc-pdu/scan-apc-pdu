@@ -2919,7 +2919,7 @@ SELECT
     apc_pdu_note, 
     modified_date 
 FROM 
-    history.apc_pdu 
+    history.apc_pdus 
 WHERE 
     apc_pdu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";

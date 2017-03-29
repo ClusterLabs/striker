@@ -231,7 +231,6 @@ prep_databases($an);
 # Archive, if needed.
 archive_if_needed($an);
 
-### TODO: Add this...
 # Look to see if any databases need to be updated.
 update_db($an);
 
@@ -587,7 +586,7 @@ WHERE
 			my $server_resource_cpu_server_resource_uuid = $row->[1];
 			my $server_resource_cpu_number               = $row->[2];
 			my $server_resource_cpu_load                 = $row->[3];
-			my $modified_date                            = $row->[7];
+			my $modified_date                            = $row->[4];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 				name1 => "server_resource_cpu_uuid",                 value1 => $server_resource_cpu_uuid, 
 				name2 => "server_resource_cpu_server_resource_uuid", value2 => $server_resource_cpu_server_resource_uuid, 
