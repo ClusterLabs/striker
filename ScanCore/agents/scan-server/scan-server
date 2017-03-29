@@ -1244,7 +1244,7 @@ WHERE
 						alert_level		=>	"notice", 
 						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0003",
-						alert_message_key	=>	,
+						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
 							server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
 							new			=>	$new_server_state,

@@ -91,10 +91,10 @@ We're now monitoring the resources of a new server:
 - Unique ID: ........... [#!variable!server_resource_uuid!#] 
 - Operating System ID: . [#!variable!server_resource_os!#]
 - Approximate Boot time: [#!variable!server_resource_boot_time!#]
-- RAM, Total: .......... [#!variable!server_resources_ram_size!#]
-- RAM, Used: ........... [#!variable!server_resources_ram_used!#]
-- Swap, Total: ......... [#!variable!server_resources_swap_size!#]
-- Swap, Used: .......... [#!variable!server_resources_swap_used!#]
+- RAM, Total: .......... [#!variable!server_resource_ram_size!#]
+- RAM, Used: ........... [#!variable!server_resource_ram_used!#]
+- Swap, Total: ......... [#!variable!server_resource_swap_size!#]
+- Swap, Used: .......... [#!variable!server_resource_swap_used!#]
 		</key>
 		<key name="scan_server_resources_message_0015">The server: [#!variable!host_name!#] is now at a different address: [#!variable!old_access!#] -> [#!variable!new_access!#]</key>
 		<key name="scan_server_resources_message_0016">The server: [#!variable!host_name!#] is accessible again at: [#!variable!target!#]</key>

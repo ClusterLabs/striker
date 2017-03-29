@@ -164,6 +164,18 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0094">Failed to connect to any ScanCore databases. Unable to clear the resync flag.</key>
 		<key name="scancore_log_0095">The 'shorewall' daemon was set to start on boot in run-level 3 and/or 5 (3: [#!variable!3!#], 5: [#!variable!5!#]), turning it off again.</key>
 		<key name="scancore_log_0096">#!string!scancore_brand_0001!# appears to have been updated (old hash: [#!variable!old_sum!#], now: #!variable!new_sum!#]). Exiting now so that the new version can be loaded.</key>
+		<key name="scancore_log_0097">
+An alert was registered that was using a title or message key that wasn't found
+in one of the languages in use by notification targets. To prevent a potential
+error when trying to translate it, the alert will be skipped. The details were:
+- Agent Name: ...... [#!variable!alert_agent_name!#]
+- Alert Level: ..... [#!variable!alert_level!#]
+- Title Key: ....... [#!variable!alert_title_key!#]
+- Title Variables: . [#!variable!alert_title_variables!#]
+- Message Key: ..... [#!variable!alert_message_key!#]
+- Message Variables: [#!variable!alert_message_variables!#]
+- Sent Date: ....... [#!variable!modified_date!#]
+		</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

@@ -1482,14 +1482,14 @@ WHERE
 	}
 	$query .= "
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return  = [];
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1507,7 +1507,7 @@ WHERE
 		my $smtp_alt_port       = defined $row->[9]  ? $row->[9]  : ""; 
 		my $smtp_note           = defined $row->[10] ? $row->[10] : "";
 		my $modified_date       =         $row->[11];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 			name1  => "smtp_uuid",           value1  => $smtp_uuid, 
 			name2  => "smtp_server",         value2  => $smtp_server, 
 			name3  => "smtp_port",           value3  => $smtp_port, 

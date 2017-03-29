@@ -2,7 +2,6 @@
 
 CREATE TABLE server_resources (
 	server_resource_uuid			uuid				primary key,	-- This is set by the target, not by us!
-	server_resource_host_uuid		uuid				not null,
 	server_resource_target_access		text				not null,
 	server_resource_host_name		text				not null,
 	server_resource_os			text				not null,
@@ -12,16 +11,13 @@ CREATE TABLE server_resources (
 	server_resource_swap_size		numeric				not null,	-- In bytes
 	server_resource_swap_used		numeric				not null,	-- In bytes
 	server_resource_note			text,
-	modified_date				timestamp with time zone	not null,
-	
-	FOREIGN KEY(server_resource_host_uuid) REFERENCES hosts(host_uuid)
+	modified_date				timestamp with time zone	not null
 );
 ALTER TABLE server_resources OWNER TO #!variable!user!#;
 
 CREATE TABLE history.server_resources (
 	history_id				bigserial,
 	server_resource_uuid			uuid,
-	server_resource_host_uuid		uuid,
 	server_resource_target_access		text,
 	server_resource_host_name		text,
 	server_resource_os			text,
@@ -43,7 +39,6 @@ BEGIN
 	SELECT INTO history_server_resources * FROM server_resources WHERE server_resource_uuid=new.server_resource_uuid;
 	INSERT INTO history.server_resources
 		(server_resource_uuid,
-		 server_resource_host_uuid, 
 		 server_resource_target_access, 
 		 server_resource_host_name, 
 		 server_resource_os, 
@@ -56,7 +51,6 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_server_resources.server_resource_uuid,
-		 history_server_resources.server_resource_host_uuid, 
 		 history_server_resources.server_resource_target_access, 
 		 history_server_resources.server_resource_host_name, 
 		 history_server_resources.server_resource_os, 
@@ -82,7 +76,6 @@ CREATE TRIGGER trigger_server_resources
 CREATE TABLE server_resource_disks (
 	server_resource_disk_uuid			uuid				primary key,
 	server_resource_disk_server_resource_uuid	uuid				not null,
-	server_resource_disk_host_uuid			uuid				not null,
 	server_resource_disk_mount_point		text				not null,	-- Drive letter or path
 	server_resource_disk_filesystem			text,
 	server_resource_disk_options			text,
@@ -98,7 +91,6 @@ CREATE TABLE history.server_resource_disks (
 	history_id					bigserial,
 	server_resource_disk_uuid			uuid,
 	server_resource_disk_server_resource_uuid	uuid,
-	server_resource_disk_host_uuid			uuid,
 	server_resource_disk_mount_point		text,
 	server_resource_disk_filesystem			text,
 	server_resource_disk_options			text,
@@ -117,7 +109,6 @@ BEGIN
 	INSERT INTO history.server_resource_disks
 		(server_resource_disk_uuid, 
 		 server_resource_disk_server_resource_uuid,
-		 server_resource_disk_host_uuid,
 		 server_resource_disk_mount_point,
 		 server_resource_disk_filesystem,
 		 server_resource_disk_options,
@@ -127,7 +118,6 @@ BEGIN
 	VALUES
 		(history_server_resource_disks.server_resource_disk_uuid,
 		 history_server_resource_disks.server_resource_disk_server_resource_uuid,
-		 history_server_resource_disks.server_resource_disk_host_uuid,
 		 history_server_resource_disks.server_resource_disk_mount_point,
 		 history_server_resource_disks.server_resource_disk_filesystem,
 		 history_server_resource_disks.server_resource_disk_options,
@@ -149,7 +139,6 @@ CREATE TRIGGER trigger_server_resource_disks
 CREATE TABLE server_resource_cpus (
 	server_resource_cpu_uuid			uuid				primary key,
 	server_resource_cpu_server_resource_uuid	uuid				not null,
-	server_resource_cpu_host_uuid			uuid				not null,
 	server_resource_cpu_number			text				not null,
 	server_resource_cpu_load			text				not null,
 	modified_date					timestamp with time zone	not null,
@@ -162,7 +151,6 @@ CREATE TABLE history.server_resource_cpus (
 	history_id					bigserial,
 	server_resource_cpu_uuid			uuid,
 	server_resource_cpu_server_resource_uuid	uuid,
-	server_resource_cpu_host_uuid			uuid,
 	server_resource_cpu_number			text,
 	server_resource_cpu_load			text,
 	modified_date					timestamp with time zone
@@ -178,14 +166,12 @@ BEGIN
 	INSERT INTO history.server_resource_cpus
 		(server_resource_cpu_uuid, 
 		 server_resource_cpu_server_resource_uuid,
-		 server_resource_cpu_host_uuid,
 		 server_resource_cpu_number,
 		 server_resource_cpu_load,
 		 modified_date)
 	VALUES
 		(history_server_resource_cpus.server_resource_cpu_uuid,
 		 history_server_resource_cpus.server_resource_cpu_server_resource_uuid,
-		 history_server_resource_cpus.server_resource_cpu_host_uuid,
 		 history_server_resource_cpus.server_resource_cpu_number,
 		 history_server_resource_cpus.server_resource_cpu_load,
 		 history_server_resource_cpus.modified_date);

@@ -1442,6 +1442,13 @@ sub report_status
 	# Build the Bonds section.
 	$page .= build_bond_section($an, $node1_key, $node2_key);
 	
+	# If the user is running this with a short interval, warn them that it places a high load on the 
+	# system.
+	if ($an->data->{sys}{interval} < 10)
+	{
+		$page .= $an->String->get({key => "acs_report_0016"})."\n";
+	}
+	
 	# We're ready!
 	print $page;
 	

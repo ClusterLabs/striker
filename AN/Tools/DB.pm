@@ -662,6 +662,9 @@ sub connect_to_databases
 	# showing we failed to connect to the local DB).
 	$an->data->{sys}{local_db_id} = "";
 	
+	# This will be set to '1' if either DB needs to be initialized or if the last_updated differs on any node.
+	$an->data->{scancore}{db_resync_needed} = 0;
+	
 	# Now setup or however-many connections
 	my $seen_connections       = [];
 	my $connections            = 0;
@@ -1412,11 +1415,10 @@ AND
 	}
 	
 	# Find which DB is most up to date.
-	$an->data->{scancore}{db_to_update}     = {};
-	$an->data->{scancore}{db_resync_needed} = 0;
+	$an->data->{scancore}{db_to_update} = {};
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "scancore::sql::source_updated_time", value1 => $an->data->{scancore}{sql}{source_updated_time}, 
 			name2 => "scancore::db::${id}::last_updated",  value2 => $an->data->{scancore}{db}{$id}{last_updated}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1440,7 +1442,7 @@ AND
 			
 			# A database is behind, resync
 			$an->data->{scancore}{db_resync_needed} = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "scancore::db_to_update::${id}::behind", value1 => $an->data->{scancore}{db_to_update}{$id}{behind}, 
 				name2 => "scancore::db_resync_needed",            value2 => $an->data->{scancore}{db_resync_needed}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1825,7 +1827,7 @@ sub initialize_db
 	
 	# Create the read shell call.
 	my $shell_call = $an->data->{path}{scancore_sql};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
@@ -1848,13 +1850,22 @@ sub initialize_db
 	close $file_handle;
 	
 	# Now we should be ready.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "sql", value1 => $sql
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sql", value1 => $sql, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now that I am ready, disable autocommit, write and commit.
 	$an->DB->do_db_write({id => $id, query => $sql, source => $THIS_FILE, line => __LINE__});
 	$an->data->{sys}{db_initialized}{$id} = 1;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::db_initialized::$id", value1 => $an->data->{sys}{db_initialized}{$id}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Mark that we need to update the DB.
+	$an->data->{scancore}{db_resync_needed} = 1;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return($success);
 };
@@ -1978,6 +1989,12 @@ sub load_schema
 	
 	# Now that I am ready, write!
 	$an->DB->do_db_write({id => $id, query => $sql, source => $THIS_FILE, line => __LINE__});
+	
+	# Mark that we need to update the DB.
+	$an->data->{scancore}{db_resync_needed} = 1;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }

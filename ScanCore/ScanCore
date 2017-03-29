@@ -3593,8 +3593,33 @@ sub process_alerts
 		name1 => "first_run", value1 => $first_run
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Get notification target data so that we know what languages to search for keys in.
+	my $languages = [];
+	my $query     = "SELECT notify_language FROM notifications";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count,
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		# One or more records were found.
+		my $language = $row->[0]; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "language", value1 => $language, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$languages}, $language;
+	}
+	undef $results;
+	
 	# Read in all pending alerts
-	my $query = "
+	$query = "
 SELECT 
     alert_uuid, 
     alert_agent_name, 
@@ -3615,12 +3640,12 @@ ORDER BY
     modified_date ASC, 
     alert_sort ASC 
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results, 
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
@@ -3636,7 +3661,7 @@ ORDER BY
 		my $alert_header            =         $row->[7]; 
 		my $alert_sort              = defined $row->[8] ? $row->[8] : 9999; 
 		my $modified_date           =         $row->[9]; 
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 			name1  => "alert_uuid",              value1  => $alert_uuid, 
 			name2  => "alert_agent_name",        value2  => $alert_agent_name, 
 			name3  => "alert_level",             value3  => $alert_level, 
@@ -3648,6 +3673,66 @@ ORDER BY
 			name9  => "alert_sort",              value9  => $alert_sort, 
 			name10 => "modified_date",           value10 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Check to make sure we have both the $alert_title_key and $alert_message_key. If we're 
+		# missing either, we'll send a generic "oh crap" alert and then delete it so that Strings 
+		# doesn't error out and block alert emails.
+		my $problem = 0;
+		foreach my $language (sort {$a cmp $b} @{$languages})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "language", value1 => $language, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ((not $an->data->{strings}{lang}{$language}{key}{$alert_title_key}{content}) or (not $an->data->{strings}{lang}{$language}{key}{$alert_message_key}{content}))
+			{
+				# Well fuch. Move this over to 'scancore_log_0097'
+				$problem = 1;
+				
+				# Delete this right away so it can't come back if this somehow kills us in 
+				# the next couple of steps.
+				my $query = "DELETE FROM alerts WHERE alert_uuid = ".$an->data->{sys}{use_db_fh}->quote($alert_uuid).";";
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+				
+				# Substitute out the '!!x!y!!' and '!!x!!!' strings for '_!x!y!_' and 
+				# '_!x!!_' to prevent a possible fatal attempt to translate them.
+				my $i = 0;
+				while ($alert_title_variables =~ /(!!.*?!!)/)
+				{
+					$i++;
+					die "$THIS_FILE ".__LINE__."; Exiting on infinite loop parsing pairs out of: [$alert_title_variables]\n" if $i > 1000;
+					$alert_title_variables =~ s/!!(.*?)!!/_!$1!_/g;
+				}
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "alert_title_variables", value1 => $alert_title_variables, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$i = 0;
+				while ($alert_message_variables =~ /(!!.*?!!)/)
+				{
+					$i++;
+					die "$THIS_FILE ".__LINE__."; Exiting on infinite loop parsing pairs out of: [$alert_message_variables]\n" if $i > 1000;
+					$alert_message_variables =~ s/!!(.*?)!!/_!$1!_/g;
+				}
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "alert_message_variables", value1 => $alert_message_variables, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Sort this at the top.
+				$an->data->{db}{alerts}{agent_name}{$THIS_FILE}{alert_sort}{'1'}{alert_uuid}{$alert_uuid} = {
+					alert_level             => $alert_level, 
+					alert_title_key         => "scancore_title_0003", 
+					alert_title_variables   => "", 
+					alert_message_key       => "scancore_log_0097", 
+					alert_message_variables => "!!alert_agent_name!".$alert_agent_name."!!,!!alert_level!".$alert_level."!!,!!alert_title_key!".$alert_title_key."!!,!!alert_title_variables!".$alert_title_variables."!!,!!alert_message_key!".$alert_message_key."!!,!!alert_message_variables!".$alert_message_variables."!!,!!modified_date!".$modified_date."!!",
+					alert_header 		=> 1,
+					modified_date           => $modified_date
+				};
+			}
+		}
+		next if $problem;
 		
 		# Store the alert
 		$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_sort}{$alert_sort}{alert_uuid}{$alert_uuid} = {
@@ -4636,7 +4721,7 @@ sub check_email_configuration
 sub get_string_from_double_bang
 {
 	my ($an, $language, $key, $variables, $units) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0004", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "language",  value1 => $language, 
 		name2 => "key",       value2 => $key,  
 		name3 => "variables", value3 => $variables, 

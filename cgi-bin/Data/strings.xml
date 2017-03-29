@@ -3595,6 +3595,12 @@ SWITCHES
 	NOTE: It takes about 1 second to gather the details and prepare the 
 	      data for display. So a value of '1' here will mean the delay is
 	      actually about 2 seconds.
+	      
+	NOTE: Using an interval of less than 10 is not recommended for extended
+	      periods of time as it will place a high load on some nodes. When
+	      an interval less than 10 is used, a warning will be displayed to
+	      remind the user to not leave the monitor running longer than
+	      necessary.
                  
 SUPPORT
 
@@ -3708,6 +3714,7 @@ SUPPORT
 		</key>
 		<key name="acs_report_0014"><![CDATA[|       Bond        |   Active   |            Link 1            |            Link 2            |  Up Delay   |]]></key>
 		<key name="acs_report_0015"><![CDATA[| #!variable!bond_name!# - #!variable!bond_state!# | #!variable!active_iface!# | #!variable!link1_name!# - #!variable!link1_state!# - #!variable!link1_speed!# #!variable!link1_duplex!# | #!variable!link2_name!# - #!variable!link2_state!# - #!variable!link2_speed!# #!variable!link2_duplex!# | #!variable!iface_updelay!# |]]></key>
+		<key name="acs_report_0016"><![CDATA[[ Caution ] - This can place a high load on the node. Don't leave it running longer than necessary!]]></key>
 		
 		<!-- errors -->
 		<key name="acs_error_0001"><![CDATA[This tool was designed to run on Anvil! nodes, which this machine does not appear to be. Exiting.]]></key>
