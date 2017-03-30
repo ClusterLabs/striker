@@ -2178,9 +2178,13 @@ sub manifest_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "manifest_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "manifest_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $manifest_uuid = $parameter->{manifest_uuid} ? $parameter->{manifest_uuid} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "manifest_uuid", value1 => $manifest_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	if (not $manifest_uuid)
 	{
 		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0121", code => 121, file => $THIS_FILE, line => __LINE__});

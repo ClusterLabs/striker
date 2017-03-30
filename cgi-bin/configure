@@ -2050,7 +2050,7 @@ sub confirm_action
 	elsif ($action eq "delete_notify")
 	{
 		# Get the notification target's name.
-		my $notify_data     = $an->Get->notify_data({uuid => $an->data->{cgi}{notify_uuid}});
+		my $notify_data    = $an->Get->notify_data({uuid => $an->data->{cgi}{notify_uuid}});
 		my $confirm_button = $an->Web->template({file => "web.html", template => "bold-link-button", replace => { 
 			name	=>	"confirm",
 			id	=>	"confirm",
@@ -2073,7 +2073,12 @@ sub confirm_action
 	{
 		# Get the manifest target's name.
 		my $manifest_uuid = $an->data->{cgi}{manifest_uuid};
-		$an->Get->parse_install_manifest({uuid => $manifest_uuid});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "manifest_uuid", value1 => $manifest_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->ScanCore->parse_install_manifest({uuid => $manifest_uuid});
+		
 		my $prefix   = $an->data->{install_manifest}{$manifest_uuid}{common}{anvil}{prefix};
 		my $sequence = $an->data->{install_manifest}{$manifest_uuid}{common}{anvil}{sequence};
 		my $anvil    = $prefix."-anvil-".$sequence;
@@ -2348,7 +2353,8 @@ sub delete_manifest
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_owner" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Get the Anvil! name from the manifest before we delete it.
-	my $manifest_data = $an->Get->manifest_data({uuid => $an->data->{cgi}{manifest_uuid}});
+	my $manifest_data = $an->Get->manifest_data({manifest_uuid => $an->data->{cgi}{manifest_uuid}});
+
 	$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::anvil_prefix",   value1 => $an->data->{cgi}{anvil_prefix},
@@ -2436,6 +2442,11 @@ AND
 				message_class	=>	"",
 				message_body	=>	$an->String->get({key => "message_0490", variables => { anvil_name => $anvil_name }}),
 			}});
+		
+		# Clear some variables.
+		$an->data->{cgi}{'delete'}      = "";
+		$an->data->{cgi}{confirm}       = "";
+		$an->data->{cgi}{manifest_uuid} = "";
 	}
 	
 	return($notice_message);
@@ -2872,10 +2883,11 @@ sub manifests_menu
 	my $notice_message = "";
 	my $error_fields   = [];
 	my $refresh_link   = $an->data->{sys}{cgi_string};
+	my $show_form      = 1;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "refresh_link",       value1 => $refresh_link,
-		name2 => "cgi::delete",        value2 => $an->data->{cgi}{'delete'},
-		name3 => "cgi::manifest_uuid", value3 => $an->data->{cgi}{manifest_uuid},
+		name1 => "cgi::delete",        value1 => $an->data->{cgi}{'delete'},
+		name2 => "cgi::manifest_uuid", value2 => $an->data->{cgi}{manifest_uuid},
+		name3 => "refresh_link",       value3 => $refresh_link,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{manifest_uuid}))
 	{
@@ -2891,9 +2903,10 @@ sub manifests_menu
 		else
 		{
 			# Ask them to confirm
-			$notice_message = confirm_action($an, "delete_manifest");
+			print confirm_action($an, "delete_manifest");
 			$refresh_link =~ s/notify_uuid=.*?&/&/;
 			$refresh_link =~ s/notify_uuid=.*//;
+			$show_form    =  0;
 		}
 		
 		# Clear the commands from the refresh link.
@@ -2904,7 +2917,6 @@ sub manifests_menu
 		$refresh_link =~ s/&&+/&/;
 	}
 	
-	my $show_form = 1;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::do", value1 => $an->data->{cgi}{'do'},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2992,53 +3004,7 @@ sub manifests_menu
 	$an->data->{form}{'anvil_drbd_disk_c-max-rate_star'}    = "";
 	$an->data->{form}{'anvil_drbd_disk_c-min-rate_star'}    = "";
 	$an->data->{form}{'anvil_drbd_disk_c-fill-target_star'} = "";
-	
-	# Delete it, if requested
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::delete", value1 => $an->data->{cgi}{'delete'},
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{cgi}{'delete'})
-	{
-		my $return     = $an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
-		my $anvil_name = $an->data->{cgi}{anvil_name};
-		if ($an->data->{cgi}{confirm})
-		{
-			### TODO: Switch to configure->delete_manifest
-			# Make sure that the file exists and that it is in the manifests directory.
-			my $queries = [];
-			push @{$queries}, "
-UPDATE 
-    manifests 
-SET 
-    manifest_note = 'DELETED', 
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
-WHERE 
-    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
-;";
-			# Log the queries
-			foreach my $query (@{$queries})
-			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1  => "query", value1 => $query, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			
-			# Pass the array in.
-			$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
-			my $message = $an->String->get({key => "message_0462", variables => { anvil => $anvil_name }});
-			print $an->Web->template({file => "config.html", template => "delete-manifest-success", replace => { message => $message }});
-		}
-		else
-		{
-			$show_form = 0;
-			my $message = $an->String->get({key => "message_0463", variables => { anvil => $anvil_name }});
-			print $an->Web->template({file => "config.html", template => "manifest-confirm-delete", replace => { 
-				message	=>	$message,
-				confirm	=>	"?task=manifests&delete=true&manifest_uuid=".$an->data->{cgi}{manifest_uuid}."&confirm=true",
-			}});
-		}
-	}
-	
+
 	# If the 'raw' was passed, present a form with the XML definition shown raw.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::raw", value1 => $an->data->{cgi}{raw},
@@ -7838,7 +7804,6 @@ sub initialize
 	
 	# Set default configuration variable values
 	my $an = AN::Tools->new();
-	#my ($an) = _initialize_an();
 	
 	# First thing first, initialize the web session.
 	$an->Web->initialize_http() if $initialize_http;
@@ -7854,6 +7819,12 @@ sub initialize
 	$an->default_log_file    ($an->data->{'log'}{file});
 	$an->Log->level          ($an->data->{'log'}{level});
 	$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+	
+	if ((exists $an->data->{sys}{log_level}) && ($an->data->{sys}{log_level} =~ /^\d+$/))
+	{
+		$an->data->{'log'}{level} = $an->data->{sys}{log_level};
+		$an->Log->level($an->data->{sys}{log_level});
+	}
 
 	# Connect to the databases.
 	$an->data->{sys}{db_connections} = $an->DB->connect_to_databases({

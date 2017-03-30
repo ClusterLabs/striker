@@ -1343,7 +1343,7 @@ sub get_servers
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $include_deleted = $parameter->{include_deleted} ? $parameter->{include_deleted} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "include_deleted", value1 => $include_deleted, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1375,7 +1375,7 @@ WHERE
 	}
 	$query .= "
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1404,7 +1404,7 @@ WHERE
 		my $server_post_migration_script    = defined $row->[13] ? $row->[13] : "";
 		my $server_post_migration_arguments = defined $row->[14] ? $row->[14] : "";
 		my $modified_date                   =         $row->[15];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
 			name1  => "server_uuid",                     value1  => $server_uuid, 
 			name2  => "server_anvil_uuid",               value2  => $server_anvil_uuid, 
 			name3  => "server_name",                     value3  => $server_name, 

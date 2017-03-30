@@ -132,5 +132,11 @@ sub initialize
 	# Read in the configuration file. If the file doesn't exist, initial setup will be triggered.
 	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 	
+	if ((exists $an->data->{sys}{log_level}) && ($an->data->{sys}{log_level} =~ /^\d+$/))
+	{
+		$an->data->{'log'}{level} = $an->data->{sys}{log_level};
+		$an->Log->level($an->data->{sys}{log_level});
+	}
+	
 	return($an);
 }

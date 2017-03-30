@@ -560,6 +560,7 @@ sub _set_defaults
 	$an->data->{'log'}{file}      = "/var/log/striker.log";
 	$an->data->{'log'}{language}  = "en_CA";
 	$an->data->{'log'}{level}     = 1;
+	$an->data->{sys}{log_level}   = 1;
 	$an->data->{online_nodes}     = [];
 	
 	### TODO: Phase all this out...

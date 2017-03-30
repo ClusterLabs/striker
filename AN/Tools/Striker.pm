@@ -8005,7 +8005,7 @@ sub _get_striker_prefix_and_domain
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_get_striker_prefix_and_domain" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $hostname = $an->hostname();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "hostname", value1 => $hostname,
 	}, file => $THIS_FILE, line => __LINE__});
 	
