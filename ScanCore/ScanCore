@@ -3959,7 +3959,7 @@ sub check_dashboard_target
 sub send_email
 {
 	my ($an, $email, $name, $level, $language, $units) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "send_email" }, message_key => "an_variables_0005", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "send_email" }, message_key => "an_variables_0005", message_variables => { 
 		name1 => "email",    value1 => $email, 
 		name2 => "name",     value2 => $name, 
 		name3 => "level",    value3 => $level, 
@@ -4057,6 +4057,12 @@ sub send_email
 				# The conversion of C to F is handled in translate_sensor_{name,value}() functions.
 				my $title   = get_string_from_double_bang($an, $language, $alert_title_key, $alert_title_variables, $units);
 				my $message = get_string_from_double_bang($an, $language, $alert_message_key, $alert_message_variables, $units);
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "title",   value1 => $title, 
+					name2 => "message", value2 => $message, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If the level is high enough, add it to the message body.
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "level",       value1 => $level, 
 					name2 => "alert_level", value2 => $alert_level, 
@@ -4721,7 +4727,7 @@ sub check_email_configuration
 sub get_string_from_double_bang
 {
 	my ($an, $language, $key, $variables, $units) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0004", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_string_from_double_bang" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "language",  value1 => $language, 
 		name2 => "key",       value2 => $key,  
 		name3 => "variables", value3 => $variables, 
@@ -5378,23 +5384,23 @@ sub translate_units
 	}
 	elsif ($units eq "Bps")
 	{
-		$return = $value.$an->String->get({key => "tools_suffix_0021"});
+		$return = $value.$an->String->get({key => "tools_suffix_0022"});
 	}
 	elsif ($units eq "Kbps")
 	{
-		$return = $value.$an->String->get({key => "tools_suffix_0022"});
+		$return = $value.$an->String->get({key => "tools_suffix_0023"});
 	}
 	elsif ($units eq "Mbps")
 	{
-		$return = $value.$an->String->get({key => "tools_suffix_0023"});
+		$return = $value.$an->String->get({key => "tools_suffix_0024"});
 	}
 	elsif ($units eq "Gbps")
 	{
-		$return = $value.$an->String->get({key => "tools_suffix_0024"});
+		$return = $value.$an->String->get({key => "tools_suffix_0025"});
 	}
 	elsif ($units eq "Tbps")
 	{
-		$return = $value.$an->String->get({key => "tools_suffix_0025"});
+		$return = $value.$an->String->get({key => "tools_suffix_0026"});
 	}
 	elsif (($value =~ /^\d+$/) && ($units eq "Bytes"))
 	{

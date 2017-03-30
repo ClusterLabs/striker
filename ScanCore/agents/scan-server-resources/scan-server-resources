@@ -160,7 +160,7 @@ print $an->String->get({key => "scan_server_resources_message_0001"})."\n";
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 3, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
 
 # Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
 # running ScanCore, it won't be.
@@ -179,7 +179,7 @@ if (exists $an->data->{'scan-server-resources'}{target})
 		$target_count++;
 		my $host = $an->data->{'scan-server-resources'}{target}{$id}{host};
 		my $port = $an->data->{'scan-server-resources'}{'an-ssrw-port'};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "host",         value1 => $host, 
 			name2 => "port",         value2 => $port, 
 			name3 => "target_count", value3 => $target_count, 
@@ -190,7 +190,7 @@ if (exists $an->data->{'scan-server-resources'}{target})
 		{
 			$host = $1;
 			$port = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "host", value1 => $host, 
 				name2 => "port", value2 => $port, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -202,7 +202,7 @@ if (exists $an->data->{'scan-server-resources'}{target})
 	}
 }
 
-$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 	name1 => "target_count", value1 => $target_count, 
 }, file => $THIS_FILE, line => __LINE__});
 if (not $target_count)
@@ -253,9 +253,9 @@ $an->nice_exit({exit_code => 0});
 sub update_db
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
@@ -287,7 +287,7 @@ sub update_db
 sub update_db_server_resource_disks
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_server_resource_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_server_resource_disks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'update_db_server_resource_disks' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -311,14 +311,14 @@ SELECT
 FROM 
     history.server_resource_disks 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -331,7 +331,7 @@ FROM
 			my $server_resource_disk_size                 =         $row->[5];
 			my $server_resource_disk_used                 =         $row->[6];
 			my $modified_date                             =         $row->[7];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "server_resource_disk_uuid",                 value1 => $server_resource_disk_uuid, 
 				name2 => "server_resource_disk_server_resource_uuid", value2 => $server_resource_disk_server_resource_uuid, 
 				name3 => "server_resource_disk_mount_point",          value3 => $server_resource_disk_mount_point, 
@@ -368,7 +368,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{server_resource_disks}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $server_resource_disk_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}})
@@ -379,7 +379,7 @@ FROM
 			my $server_resource_disk_options              = $an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}{server_resource_disk_options};
 			my $server_resource_disk_size                 = $an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}{server_resource_disk_size};
 			my $server_resource_disk_used                 = $an->data->{db_data}{unified}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}{server_resource_disk_used};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "server_resource_disk_uuid",                 value1 => $server_resource_disk_uuid, 
 				name2 => "server_resource_disk_server_resource_uuid", value2 => $server_resource_disk_server_resource_uuid, 
 				name3 => "server_resource_disk_mount_point",          value3 => $server_resource_disk_mount_point, 
@@ -399,7 +399,7 @@ FROM
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::server_resource_disks::server_resource_disk_uuid::${server_resource_disk_uuid}::seen", value1 => $an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{seen})
@@ -408,13 +408,13 @@ FROM
 					$an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::server_resource_disks::server_resource_disk_uuid::${server_resource_disk_uuid}::exists", value1 => $an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{server_resource_disks}{server_resource_disk_uuid}{$server_resource_disk_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::server_resource_disks::modified_date::${modified_date}::server_resource_disk_uuid::${server_resource_disk_uuid}", value1 => $an->data->{db_data}{$id}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{server_resource_disks}{modified_date}{$modified_date}{server_resource_disk_uuid}{$server_resource_disk_uuid})
@@ -435,7 +435,7 @@ WHERE
     server_resource_disk_uuid                 = ".$an->data->{sys}{use_db_fh}->quote($server_resource_disk_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -468,7 +468,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -506,7 +506,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -539,7 +539,7 @@ INSERT INTO
 sub update_db_server_resource_cpus
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_server_resource_cpus" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_server_resource_cpus" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'update_db_server_resource_cpus' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -560,14 +560,14 @@ SELECT
 FROM 
     history.server_resource_cpus 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -577,7 +577,7 @@ FROM
 			my $server_resource_cpu_number               = $row->[2];
 			my $server_resource_cpu_load                 = $row->[3];
 			my $modified_date                            = $row->[4];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "server_resource_cpu_uuid",                 value1 => $server_resource_cpu_uuid, 
 				name2 => "server_resource_cpu_server_resource_uuid", value2 => $server_resource_cpu_server_resource_uuid, 
 				name3 => "server_resource_cpu_number",               value3 => $server_resource_cpu_number, 
@@ -605,7 +605,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{server_resource_cpus}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $server_resource_cpu_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}})
@@ -613,7 +613,7 @@ FROM
 			my $server_resource_cpu_server_resource_uuid = $an->data->{db_data}{unified}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{server_resource_cpu_server_resource_uuid};
 			my $server_resource_cpu_number               = $an->data->{db_data}{unified}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{server_resource_cpu_number};
 			my $server_resource_cpu_load                 = $an->data->{db_data}{unified}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{server_resource_cpu_load};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "server_resource_cpu_uuid",                 value1 => $server_resource_cpu_uuid, 
 				name2 => "server_resource_cpu_server_resource_uuid", value2 => $server_resource_cpu_server_resource_uuid, 
 				name3 => "server_resource_cpu_number",               value3 => $server_resource_cpu_number, 
@@ -630,7 +630,7 @@ FROM
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::server_resource_cpus::server_resource_cpu_uuid::${server_resource_cpu_uuid}::seen", value1 => $an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{seen})
@@ -639,13 +639,13 @@ FROM
 					$an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::server_resource_cpus::server_resource_cpu_uuid::${server_resource_cpu_uuid}::exists", value1 => $an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{server_resource_cpus}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::server_resource_cpus::modified_date::${modified_date}::server_resource_cpu_uuid::${server_resource_cpu_uuid}", value1 => $an->data->{db_data}{$id}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{server_resource_cpus}{modified_date}{$modified_date}{server_resource_cpu_uuid}{$server_resource_cpu_uuid})
@@ -663,7 +663,7 @@ WHERE
     server_resource_cpu_uuid                 = ".$an->data->{sys}{use_db_fh}->quote($server_resource_cpu_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -690,7 +690,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -722,7 +722,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -755,7 +755,7 @@ INSERT INTO
 sub update_db_server_resources
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_server_resources" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_server_resources" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'server_resource' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -782,14 +782,14 @@ SELECT
 FROM 
     history.server_resources 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -805,7 +805,7 @@ FROM
 			my $server_resource_swap_used     =         $row->[8];
 			my $server_resource_note          = defined $row->[9]  ? $row->[9]  : "NULL", 
 			my $modified_date                 =         $row->[10];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 				name1  => "server_resource_uuid",          value1  => $server_resource_uuid, 
 				name2  => "server_resource_target_access", value2  => $server_resource_target_access, 
 				name3  => "server_resource_host_name",     value3  => $server_resource_host_name, 
@@ -851,7 +851,7 @@ FROM
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{server_resources}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $server_resource_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}})
@@ -865,7 +865,7 @@ FROM
 			my $server_resource_swap_size     = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_size};
 			my $server_resource_swap_used     = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_used};
 			my $server_resource_note          = $an->data->{db_data}{unified}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}{server_resource_note};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "server_resource_uuid",          value1  => $server_resource_uuid, 
 				name2  => "server_resource_target_access", value2  => $server_resource_target_access, 
 				name3  => "server_resource_host_name",     value3  => $server_resource_host_name, 
@@ -888,7 +888,7 @@ FROM
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::server_resources::server_resource_uuid::${server_resource_uuid}::seen", value1 => $an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{seen})
@@ -897,13 +897,13 @@ FROM
 					$an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::server_resources::server_resource_uuid::${server_resource_uuid}::exists", value1 => $an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{server_resources}{server_resource_uuid}{$server_resource_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::server_resources::modified_date::${modified_date}::server_resource_uuid::${server_resource_uuid}", value1 => $an->data->{db_data}{$id}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{server_resources}{modified_date}{$modified_date}{server_resource_uuid}{$server_resource_uuid})
@@ -927,7 +927,7 @@ WHERE
     server_resource_uuid          = ".$an->data->{sys}{use_db_fh}->quote($server_resource_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -966,7 +966,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -1010,7 +1010,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -1043,7 +1043,7 @@ INSERT INTO
 sub gather_details
 {
 	my ($an, $host, $port, $id) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_access" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_access" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "host", value1 => $host, 
 		name2 => "port", value2 => $port, 
 		name3 => "id",   value3 => $id, 
@@ -1051,20 +1051,20 @@ sub gather_details
 	
 	my $protocol  = "tcp";
 	my $variables = { target => $host, port => $port };
-	$an->Log->entry({log_level => 2, message_key => "scan_server_resources_log_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scan_server_resources_log_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 	print $an->String->get({key => "scan_server_resources_log_0001", variables => $variables})."\n";
 	
 	# Don't make this fatal. We'll just mark is as "no access" and skip it if it fails
 	my $target_access = $host.":".$port;
 	my $socket        = IO::Socket::INET->new(PeerAddr => $host, PeerPort => $port, Proto => $protocol) or $an->Alert->warning({message_key => "warning_message_0018", message_variables => { target => $host, port => $port, protocol => $protocol, error => $! }, quiet => 0, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "socket", value1 => $socket, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $socket)
 	{
 		# Mark it as offline so that we can update it if needed.
 		$an->data->{'server-resources'}{offline}{$target_access} = "id:".$id;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "server-resources::offline::$target_access", value1 => $an->data->{'server-resources'}{offline}{$target_access}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		return(0);
@@ -1085,7 +1085,7 @@ sub gather_details
 		if ($line =~ /<\/server>/)
 		{
 			$access = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "access", value1 => $access, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1095,7 +1095,7 @@ sub gather_details
 	$socket->close();
 	chomp $output;
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "output", value1 => $output, 
 		name2 => "access", value2 => $access, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1108,7 +1108,7 @@ sub gather_details
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $server_uuid = $data->{uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_uuid", value1 => $server_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1123,7 +1123,7 @@ sub gather_details
 		$an->data->{'server-resources'}{server}{$server_uuid}{ram_total}  = $data->{memory}->[0]->{ram}->[0]->{total};
 		$an->data->{'server-resources'}{server}{$server_uuid}{swap_used}  = $data->{memory}->[0]->{swap}->[0]->{used};
 		$an->data->{'server-resources'}{server}{$server_uuid}{swap_total} = $data->{memory}->[0]->{swap}->[0]->{total};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "server-resources::server::${server_uuid}::access",     value1 => $an->data->{'server-resources'}{server}{$server_uuid}{access},
 			name2 => "server-resources::server::${server_uuid}::boot_time",  value2 => $an->data->{'server-resources'}{server}{$server_uuid}{boot_time},
 			name3 => "server-resources::server::${server_uuid}::host_name",  value3 => $an->data->{'server-resources'}{server}{$server_uuid}{host_name},
@@ -1151,7 +1151,7 @@ sub gather_details
 			$an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{options}    = defined $array_ref->{options}    ? $array_ref->{options}    : "";
 			$an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{used}       = defined $array_ref->{used}       ? $array_ref->{used}       : 0;
 			$an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{total}      = defined $array_ref->{size}       ? $array_ref->{size}       : 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "server-resources::server::${server_uuid}::disk::${disk_name}::filesystem", value1 => $an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{filesystem},
 				name2 => "server-resources::server::${server_uuid}::disk::${disk_name}::options",    value2 => $an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{options},
 				name3 => "server-resources::server::${server_uuid}::disk::${disk_name}::total",      value3 => $an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{total}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{'server-resources'}{server}{$server_uuid}{disk}{$disk_name}{total} }).")",
@@ -1168,13 +1168,13 @@ sub gather_details
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			$an->data->{'server-resources'}{server}{$server_uuid}{cpu}{$cpu_number}{load} = defined $array_ref->{load} ? $array_ref->{load} : "--";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "server-resources::server::${server_uuid}::cpu::${cpu_number}::load", value1 => $an->data->{'server-resources'}{server}{$server_uuid}{cpu}{$cpu_number}{load},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "access", value1 => $access, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($access);
@@ -1184,7 +1184,7 @@ sub gather_details
 sub read_last_scan
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in existing data, if any.
 	my $query = "
@@ -1202,12 +1202,12 @@ SELECT
 FROM 
     server_resources 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1236,7 +1236,7 @@ FROM
 			server_resource_swap_used     => $server_resource_swap_used,
 			server_resource_note          => $server_resource_note,
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 			name1 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_target_access", value1 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_target_access}, 
 			name2 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_host_name",     value2 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_host_name}, 
 			name3 => "sql::server_resources::server_resource_uuid::${server_resource_uuid}::server_resource_os",            value3 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_os}, 
@@ -1264,13 +1264,13 @@ FROM
     server_resource_disks 
 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1293,7 +1293,7 @@ FROM
 			server_resource_disk_size        => $server_resource_disk_size,
 			server_resource_disk_used        => $server_resource_disk_used,
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "sql::server_resources::server_resource_uuid::${server_resource_disk_server_resource_uuid}::server_resource_disk_mount_point::${server_resource_disk_mount_point}::server_resource_disk_uuid",       value1 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_disk_server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_uuid}, 
 			name2 => "sql::server_resources::server_resource_uuid::${server_resource_disk_server_resource_uuid}::server_resource_disk_mount_point::${server_resource_disk_mount_point}::server_resource_disk_filesystem", value2 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_disk_server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_filesystem}, 
 			name3 => "sql::server_resources::server_resource_uuid::${server_resource_disk_server_resource_uuid}::server_resource_disk_mount_point::${server_resource_disk_mount_point}::server_resource_disk_options",    value3 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_disk_server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_options}, 
@@ -1313,13 +1313,13 @@ SELECT
 FROM 
     server_resource_cpus 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1335,7 +1335,7 @@ FROM
 			server_resource_cpu_uuid => $server_resource_cpu_uuid,
 			server_resource_cpu_load => $server_resource_cpu_load,
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "sql::server_resources::server_resource_uuid::${server_resource_cpu_server_resource_uuid}::server_resource_cpu_number::${server_resource_cpu_number}::server_resource_cpu_uuid", value1 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_cpu_server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number}{server_resource_cpu_uuid}, 
 			name2 => "sql::server_resources::server_resource_uuid::${server_resource_cpu_server_resource_uuid}::server_resource_cpu_number::${server_resource_cpu_number}::server_resource_cpu_load", value2 => $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_cpu_server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number}{server_resource_cpu_load}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1350,7 +1350,7 @@ FROM
 sub find_changes
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read the last state of any targets we already know about
 	read_last_scan($an);
@@ -1367,7 +1367,7 @@ sub find_changes
 		my $new_server_resource_ram_used      = $an->data->{'server-resources'}{server}{$server_resource_uuid}{ram_used};
 		my $new_server_resource_swap_size     = $an->data->{'server-resources'}{server}{$server_resource_uuid}{swap_total};
 		my $new_server_resource_swap_used     = $an->data->{'server-resources'}{server}{$server_resource_uuid}{swap_used};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "new_server_resource_target_access", value1 => $new_server_resource_target_access, 
 			name2 => "new_server_resource_host_name",     value2 => $new_server_resource_host_name, 
 			name3 => "new_server_resource_os",            value3 => $new_server_resource_os, 
@@ -1381,7 +1381,7 @@ sub find_changes
 		# We'll reference the target in any alerts below
 		my $say_target =  $new_server_resource_target_access;
 		   $say_target =~ s/:(\d+)$//;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "say_target", value1 => $say_target, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1397,7 +1397,7 @@ sub find_changes
 			my $old_server_resource_swap_size     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_size};
 			my $old_server_resource_swap_used     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_used};
 			my $old_server_resource_note          = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_note};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "old_server_resource_target_access", value1 => $old_server_resource_target_access, 
 				name2 => "old_server_resource_host_name",     value2 => $old_server_resource_host_name, 
 				name3 => "old_server_resource_os",            value3 => $old_server_resource_os, 
@@ -1431,7 +1431,7 @@ sub find_changes
 				});
 			
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1452,7 +1452,7 @@ sub find_changes
 				});
 			
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1475,7 +1475,7 @@ sub find_changes
 				});
 			
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1491,13 +1491,14 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"scan_server_resources_message_0003",
 					alert_message_variables	=>	{
+						target			=>	$new_server_resource_target_access,
 						old_host_name		=>	$old_server_resource_host_name,
 						new_host_name		=>	$new_server_resource_host_name,
 					},
 				});
 			
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1512,13 +1513,15 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"scan_server_resources_message_0004",
 					alert_message_variables	=>	{
+						host_name		=>	$new_server_resource_host_name,
+						target			=>	$new_server_resource_target_access,
 						old_host_os		=>	$old_server_resource_os,
 						new_host_os		=>	$new_server_resource_os,
 					},
 				});
 				
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1532,14 +1535,14 @@ sub find_changes
 				if ($new_server_resource_boot_time > $old_server_resource_boot_time)
 				{
 					$difference = $new_server_resource_boot_time - $old_server_resource_boot_time;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "difference", value1 => $difference, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($old_server_resource_boot_time > $new_server_resource_boot_time)
 				{
 					$difference = $old_server_resource_boot_time - $new_server_resource_boot_time;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "difference", value1 => $difference, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1571,6 +1574,8 @@ sub find_changes
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	"scan_server_resources_message_0005",
 						alert_message_variables	=>	{
+							host_name		=>	$new_server_resource_host_name,
+							target			=>	$new_server_resource_target_access,
 							old_boot_time		=>	$old_server_resource_boot_time,
 							new_boot_time		=>	$new_server_resource_boot_time,
 						},
@@ -1578,7 +1583,7 @@ sub find_changes
 				}
 				
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1594,6 +1599,8 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"scan_server_resources_message_0006",
 					alert_message_variables	=>	{
+						host_name		=>	$new_server_resource_host_name,
+						target			=>	$new_server_resource_target_access,
 						old_ram_size		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resource_ram_size }),
 						old_ram_size_bytes	=>	$an->Readable->comma($old_server_resource_ram_size),
 						new_ram_size		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resource_ram_size }),
@@ -1602,7 +1609,7 @@ sub find_changes
 				});
 				
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1618,6 +1625,8 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0002",
 					alert_message_key	=>	"scan_server_resources_message_0007",
 					alert_message_variables	=>	{
+						host_name		=>	$new_server_resource_host_name,
+						target			=>	$new_server_resource_target_access,
 						old_ram_used		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resource_ram_used }),
 						old_ram_used_bytes	=>	$an->Readable->comma($old_server_resource_ram_used),
 						new_ram_used		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resource_ram_used }),
@@ -1626,7 +1635,7 @@ sub find_changes
 				});
 				
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1642,6 +1651,8 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"scan_server_resources_message_0008",
 					alert_message_variables	=>	{
+						host_name		=>	$new_server_resource_host_name,
+						target			=>	$new_server_resource_target_access,
 						old_swap_size		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resource_swap_size}),
 						old_swap_size_bytes	=>	$an->Readable->comma($old_server_resource_swap_size),
 						new_swap_size		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resource_swap_size}),
@@ -1650,7 +1661,7 @@ sub find_changes
 				});
 				
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1666,6 +1677,8 @@ sub find_changes
 					alert_title_key		=>	"an_alert_title_0002",
 					alert_message_key	=>	"scan_server_resources_message_0009",
 					alert_message_variables	=>	{
+						host_name		=>	$new_server_resource_host_name,
+						target			=>	$new_server_resource_target_access,
 						old_swap_used		=>	$an->Readable->bytes_to_hr({'bytes' => $old_server_resource_swap_used }),
 						old_swap_used_bytes	=>	$an->Readable->comma($old_server_resource_swap_size),
 						new_swap_used		=>	$an->Readable->bytes_to_hr({'bytes' => $new_server_resource_swap_used }),
@@ -1674,7 +1687,7 @@ sub find_changes
 				});
 				
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1685,7 +1698,7 @@ sub find_changes
 			# >0% because sometimes something will use a bit of swap for whatever reason.
 			my $free_ram_percent  = 100 - ($an->Math->round({number => (100 * ($new_server_resource_ram_used / $new_server_resource_ram_size))}));
 			my $free_swap_percent = 100 - ($an->Math->round({number => (100 * ($new_server_resource_swap_used / $new_server_resource_swap_size))}));
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "free_ram_percent",                             value1 => $free_ram_percent, 
 				name2 => "scan-server-resources::free_ram_low_warning",  value2 => $an->data->{'scan-server-resources'}{free_ram_low_warning}, 
 				name3 => "scan-server-resources::free_ram_low_clear",    value3 => $an->data->{'scan-server-resources'}{free_ram_low_clear}, 
@@ -1707,7 +1720,7 @@ sub find_changes
 				});
 				
 				# If set, alert the user.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "set", value1 => $set, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($set)
@@ -1721,6 +1734,7 @@ sub find_changes
 						alert_message_key	=>	"scan_server_resources_message_0010",
 						alert_message_variables	=>	{
 							server_host_name	=>	$new_server_resource_host_name,
+							target			=>	$new_server_resource_target_access,
 							low_warning_percent	=>	$an->data->{'scan-server-resources'}{free_ram_low_warning},
 							free_percent		=>	$free_ram_percent,
 						},
@@ -1739,7 +1753,7 @@ sub find_changes
 				});
 				
 				# If set, alert the user.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "clear", value1 => $clear, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($clear)
@@ -1754,6 +1768,7 @@ sub find_changes
 						alert_message_key	=>	"scan_server_resources_message_0011",
 						alert_message_variables	=>	{
 							server_host_name	=>	$new_server_resource_host_name,
+							target			=>	$new_server_resource_target_access,
 							low_warning_clear	=>	$an->data->{'scan-server-resources'}{free_ram_low_clear},
 							free_percent		=>	$free_ram_percent,
 						},
@@ -1774,7 +1789,7 @@ sub find_changes
 				});
 				
 				# If set, alert the user.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "set", value1 => $set, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($set)
@@ -1788,6 +1803,7 @@ sub find_changes
 						alert_message_key	=>	"scan_server_resources_message_0012",
 						alert_message_variables	=>	{
 							server_host_name	=>	$new_server_resource_host_name,
+							target			=>	$new_server_resource_target_access,
 							low_warning_percent	=>	$an->data->{'scan-server-resources'}{free_swap_low_warning},
 							free_percent		=>	$free_swap_percent,
 						},
@@ -1806,7 +1822,7 @@ sub find_changes
 				});
 				
 				# If set, alert the user.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "clear", value1 => $clear, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($clear)
@@ -1821,6 +1837,7 @@ sub find_changes
 						alert_message_key	=>	"scan_server_resources_message_0013",
 						alert_message_variables	=>	{
 							server_host_name	=>	$new_server_resource_host_name,
+							target			=>	$new_server_resource_target_access,
 							low_warning_clear	=>	$an->data->{'scan-server-resources'}{free_swap_low_clear},
 							free_percent		=>	$free_swap_percent,
 						},
@@ -1828,7 +1845,7 @@ sub find_changes
 				}
 			}
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "changes", value1 => $changes, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($changes)
@@ -1853,7 +1870,7 @@ WHERE
 ;
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -1866,7 +1883,7 @@ WHERE
 				my $new_server_resource_disk_options    = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{options};
 				my $new_server_resource_disk_size       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{total};
 				my $new_server_resource_disk_used       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{used};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "server_resource_disk_mount_point",    value1 => $server_resource_disk_mount_point, 
 					name2 => "new_server_resource_disk_filesystem", value2 => $new_server_resource_disk_filesystem, 
 					name3 => "new_server_resource_disk_options",    value3 => $new_server_resource_disk_options, 
@@ -1880,7 +1897,7 @@ WHERE
 				my $new_say_size           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_disk_size});
 				my $new_say_used           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_disk_used});
 				my $new_free_space_percent = 100 - ($an->Math->round({number => (100 * ($new_server_resource_disk_used / $new_server_resource_disk_size))}));
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "new_free_space",         value1 => $new_free_space, 
 					name2 => "new_say_free",           value2 => $new_say_free, 
 					name3 => "new_say_size",           value3 => $new_say_size, 
@@ -1896,7 +1913,7 @@ WHERE
 					my $old_server_resource_disk_options    = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_options};
 					my $old_server_resource_disk_size       = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_size};
 					my $old_server_resource_disk_used       = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_disk_mount_point}{$server_resource_disk_mount_point}{server_resource_disk_used};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 						name1 => "server_resource_disk_uuid",           value1 => $server_resource_disk_uuid, 
 						name2 => "old_server_resource_disk_filesystem", value2 => $old_server_resource_disk_filesystem, 
 						name3 => "old_server_resource_disk_options",    value3 => $old_server_resource_disk_options, 
@@ -1906,7 +1923,7 @@ WHERE
 					
 					my $old_say_size = $an->Readable->bytes_to_hr({'bytes' => $old_server_resource_disk_size});
 					my $old_say_used = $an->Readable->bytes_to_hr({'bytes' => $old_server_resource_disk_used});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_say_size", value1 => $old_say_size, 
 						name2 => "old_say_used", value2 => $old_say_used, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -1933,7 +1950,7 @@ WHERE
 						});
 						
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -1959,7 +1976,7 @@ WHERE
 								alert_name		=>	"deleted_disk",
 								modified_date		=>	$an->data->{sys}{db_timestamp},
 							});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "clear", value1 => $clear, 
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -1979,7 +1996,7 @@ WHERE
 						});
 						
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -2022,7 +2039,7 @@ WHERE
 						});
 						
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -2047,7 +2064,7 @@ WHERE
 								alert_name		=>	"low_disk_space",
 								modified_date		=>	$an->data->{sys}{db_timestamp},
 							});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "set", value1 => $set, 
 							}, file => $THIS_FILE, line => __LINE__});
 							
@@ -2069,7 +2086,7 @@ WHERE
 								alert_name		=>	"low_disk_space",
 								modified_date		=>	$an->data->{sys}{db_timestamp},
 							});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "clear", value1 => $clear, 
 							}, file => $THIS_FILE, line => __LINE__});
 							
@@ -2099,7 +2116,7 @@ WHERE
 						});
 						
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -2124,7 +2141,7 @@ WHERE
 ;
 ";
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query, 
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
@@ -2152,7 +2169,7 @@ WHERE
 					alert_name		=>	"deleted_disk",
 					modified_date		=>	$an->data->{sys}{db_timestamp},
 				});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "set", value1 => $set, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -2182,7 +2199,7 @@ WHERE
 ;
 ";
 					$query =~ s/'NULL'/NULL/g;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query, 
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -2194,7 +2211,7 @@ WHERE
 			{
 				my $server_resource_cpu_uuid     = $an->Get->uuid();
 				my $new_server_resource_cpu_load = $an->data->{'server-resources'}{server}{$server_resource_uuid}{cpu}{$server_resource_cpu_number}{load};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "server_resource_cpu_uuid",     value1 => $server_resource_cpu_uuid, 
 					name2 => "server_resource_cpu_number",   value2 => $server_resource_cpu_number, 
 					name3 => "new_server_resource_cpu_load", value3 => $new_server_resource_cpu_load, 
@@ -2208,7 +2225,7 @@ WHERE
 					# Check for updates
 					my $server_resource_cpu_uuid     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number}{server_resource_cpu_uuid};
 					my $old_server_resource_cpu_load = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_cpu_number}{$server_resource_cpu_number}{server_resource_cpu_load};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "server_resource_cpu_uuid",     value1 => $server_resource_cpu_uuid, 
 						name2 => "old_server_resource_cpu_load", value2 => $old_server_resource_cpu_load, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -2233,7 +2250,7 @@ WHERE
 								alert_name		=>	"deleted_cpu",
 								modified_date		=>	$an->data->{sys}{db_timestamp},
 							});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "clear", value1 => $clear, 
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -2253,7 +2270,7 @@ WHERE
 						});
 						
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -2275,7 +2292,7 @@ WHERE
 ;
 ";
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query, 
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
@@ -2303,7 +2320,7 @@ WHERE
 					alert_name		=>	"deleted_cpu",
 					modified_date		=>	$an->data->{sys}{db_timestamp},
 				});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "set", value1 => $set, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -2334,7 +2351,7 @@ WHERE
 ;
 ";
 					$query =~ s/'NULL'/NULL/g;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query, 
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -2376,7 +2393,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 			$query =~ s/'NULL'/NULL/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -2387,7 +2404,7 @@ INSERT INTO
 			my $say_ram_used   = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_ram_used});
 			my $say_swap_size  = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_swap_size});
 			my $say_swap_used  = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_swap_used});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "say_ram_size",  value1 => $say_ram_size, 
 				name2 => "say_ram_used",  value2 => $say_ram_used, 
 				name3 => "say_swap_size", value3 => $say_swap_size, 
@@ -2420,7 +2437,7 @@ INSERT INTO
 				alert_name		=>	"no_access",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "clear", value1 => $clear, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -2453,7 +2470,7 @@ INSERT INTO
 		my $old_server_resource_swap_size     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_size};
 		my $old_server_resource_swap_used     = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_swap_used};
 		my $old_server_resource_note          = $an->data->{sql}{server_resources}{server_resource_uuid}{$server_resource_uuid}{server_resource_note};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 			name1 => "old_server_resource_target_access", value1 => $old_server_resource_target_access, 
 			name2 => "old_server_resource_host_name",     value2 => $old_server_resource_host_name, 
 			name3 => "old_server_resource_os",            value3 => $old_server_resource_os, 
@@ -2470,7 +2487,7 @@ INSERT INTO
 		{
 			# The server is in our configuration, so it must have gone offline. Is this the first
 			# time we've seen it go offline?
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "old_server_resource_note", value1 => $old_server_resource_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($old_server_resource_note ne "OFFLINE")
@@ -2499,7 +2516,7 @@ WHERE
 ;
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -2511,7 +2528,7 @@ WHERE
 		else
 		{
 			# This server is no longer being monitored. Is this the first time that's happened?
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "old_server_resource_note", value1 => $old_server_resource_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($old_server_resource_note ne "DELETED")
@@ -2540,7 +2557,7 @@ WHERE
 ;
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -2553,7 +2570,7 @@ WHERE
 	foreach my $server_resource_target_access (keys %{$an->data->{'server-resources'}{offline}})
 	{
 		# Only send the alert once.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_resource_target_access", value1 => $server_resource_target_access, 
 		}, file => $THIS_FILE, line => __LINE__});
 		my $set = $an->Alert->check_alert_sent({
@@ -2565,7 +2582,7 @@ WHERE
 		});
 		
 		# If set, alert the user.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "set", value1 => $set, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($set)
@@ -2574,7 +2591,7 @@ WHERE
 			my $say_host = $server_resource_target_access;
 			my $say_port = $an->data->{'scan-server-resources'}{'an-ssrw-port'};
 			my $say_id   = ($an->data->{'server-resources'}{offline}{$server_resource_target_access} =~ /id:(.*)$/)[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "say_host", value1 => $say_host, 
 				name2 => "say_port", value2 => $say_port, 
 				name3 => "say_id",   value3 => $say_id, 
@@ -2583,7 +2600,7 @@ WHERE
 			{
 				$say_host = $1;
 				$say_port = $2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "say_host", value1 => $say_host, 
 					name2 => "say_port", value2 => $say_port, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2613,7 +2630,7 @@ WHERE
 sub save_new_cpu
 {
 	my ($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resource_cpu_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_new_cpu" }, message_key => "an_variables_0004", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "save_new_cpu" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "new_server_resource_host_name", value1 => $new_server_resource_host_name, 
 		name2 => "say_target",                    value2 => $say_target, 
 		name3 => "server_resource_uuid",          value3 => $server_resource_uuid, 
@@ -2622,7 +2639,7 @@ sub save_new_cpu
 	
 	my $server_resource_cpu_uuid     = $an->Get->uuid();
 	my $new_server_resource_cpu_load = $an->data->{'server-resources'}{server}{$server_resource_uuid}{cpu}{$server_resource_cpu_number}{load};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "server_resource_cpu_uuid",     value1 => $server_resource_cpu_uuid, 
 		name2 => "server_resource_cpu_number",   value2 => $server_resource_cpu_number, 
 		name3 => "new_server_resource_cpu_load", value3 => $new_server_resource_cpu_load, 
@@ -2646,7 +2663,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 	$query =~ s/'NULL'/NULL/g;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	push @{$an->data->{sys}{sql}}, $query;
@@ -2672,7 +2689,7 @@ INSERT INTO
 sub save_new_disk
 {
 	my ($an, $new_server_resource_host_name, $say_target, $server_resource_uuid, $server_resource_disk_mount_point) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_new_disk" }, message_key => "an_variables_0004", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "save_new_disk" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "new_server_resource_host_name",     value1 => $new_server_resource_host_name, 
 		name2 => "say_target",                        value2 => $say_target, 
 		name3 => "server_resource_uuid",              value3 => $server_resource_uuid, 
@@ -2684,7 +2701,7 @@ sub save_new_disk
 	my $new_server_resource_disk_options    = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{options};
 	my $new_server_resource_disk_size       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{total};
 	my $new_server_resource_disk_used       = $an->data->{'server-resources'}{server}{$server_resource_uuid}{disk}{$server_resource_disk_mount_point}{used};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "server_resource_disk_uuid",           value1 => $server_resource_disk_uuid, 
 		name2 => "new_server_resource_disk_filesystem", value2 => $new_server_resource_disk_filesystem, 
 		name3 => "new_server_resource_disk_options",    value3 => $new_server_resource_disk_options, 
@@ -2716,7 +2733,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 	$query =~ s/'NULL'/NULL/g;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	push @{$an->data->{sys}{sql}}, $query;
@@ -2726,7 +2743,7 @@ INSERT INTO
 	my $say_size           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_disk_size});
 	my $say_used           = $an->Readable->bytes_to_hr({'bytes' => $new_server_resource_disk_used});
 	my $free_space_percent = 100 - ($an->Math->round({number => (100 * ($new_server_resource_disk_used / $new_server_resource_disk_size))}));
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "free_space",         value1 => $free_space, 
 		name2 => "say_free",           value2 => $say_free, 
 		name3 => "say_size",           value3 => $say_size, 
@@ -2763,7 +2780,7 @@ INSERT INTO
 			alert_name		=>	"low_disk_space",
 			modified_date		=>	$an->data->{sys}{db_timestamp},
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "set", value1 => $set, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2790,7 +2807,7 @@ INSERT INTO
 sub archive_if_needed
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the 'trigger' is '0', archiving is disabled.
 	if (not $an->data->{scancore}{archive}{trigger})
@@ -2817,7 +2834,7 @@ sub archive_if_needed
 	#    records from the database.
 	
 	# Update the archive path, if set by a user. Also verify that there are sane archive values.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
 		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
 		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
@@ -2826,21 +2843,21 @@ sub archive_if_needed
 	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
 	{
 		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{trigger} = 100000;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{count} = 50000;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -2848,7 +2865,7 @@ sub archive_if_needed
 	if (not -e $an->data->{path}{scancore_archive})
 	{
 		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -2856,7 +2873,7 @@ sub archive_if_needed
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -2889,7 +2906,7 @@ sub archive_if_needed
 	my $archive_needed = 0;
 	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "table", value1 => $table, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2899,13 +2916,13 @@ SELECT
 FROM 
     history.$table 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $records = 0 if not defined $records;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "records", value1 => $records, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2915,7 +2932,7 @@ FROM
 			my $records_to_save                            = ($an->data->{scancore}{archive}{trigger} - $an->data->{scancore}{archive}{count});
 			my $offset                                     = $records - $records_to_save;
 			   $an->data->{archive}{table}{$table}{offset} = $offset;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "archive_needed",                   value1 => $archive_needed, 
 				name2 => "records_to_save",                  value2 => $records_to_save, 
 				name3 => "archive::table::${table}::offset", value3 => $an->data->{archive}{table}{$table}{offset}, 
@@ -2936,7 +2953,7 @@ FROM
 		foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 		{
 			next if not $an->data->{archive}{table}{$table}{offset};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "table", value1 => $table, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -2973,7 +2990,7 @@ FROM
 		my $db_name = "";
 		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "id",                        value1 => $id, 
 				name2 => "scancore::db::${id}::host", value2 => $an->data->{scancore}{db}{$id}{host}, 
 				name3 => "hostname",                  value3 => $an->hostname, 
@@ -2982,7 +2999,7 @@ FROM
 			if (($an->data->{scancore}{db}{$id}{host} eq $an->hostname) or ($an->data->{scancore}{db}{$id}{host} eq $an->short_hostname))
 			{
 				$db_name = $an->data->{scancore}{db}{$id}{name};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "db_name",                   value1 => $db_name, 
 					name2 => "scancore::db::${id}::name", value2 => $an->data->{scancore}{db}{$id}{name}, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2993,7 +3010,7 @@ FROM
 		{
 			my $start      = time;
 			my $shell_call = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." $db_name -c 'VACUUM FULL;'\"";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "start",      value1 => $start, 
 				name2 => "shell_call", value2 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3002,14 +3019,14 @@ FROM
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			close $file_handle;
 			
 			my $finished = time - $start;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "finished", value1 => $finished, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3035,13 +3052,13 @@ sub prep_databases
 		#                     The actual query -----------------.        .------- Row 0
 		#                        Query this DB --.              |        |    .-- Columns 0
 		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($count < 1)
 		{
 			# Need to load the database schema.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
 			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
 			
 			# Send an alert telling the user that we've initialized this database.
@@ -3061,7 +3078,7 @@ sub prep_databases
 		else
 		{
 			# Table exists, schema load is not needed.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	

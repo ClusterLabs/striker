@@ -1418,7 +1418,7 @@ AND
 	$an->data->{scancore}{db_to_update} = {};
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "scancore::sql::source_updated_time", value1 => $an->data->{scancore}{sql}{source_updated_time}, 
 			name2 => "scancore::db::${id}::last_updated",  value2 => $an->data->{scancore}{db}{$id}{last_updated}, 
 		}, file => $THIS_FILE, line => __LINE__});

@@ -124,10 +124,10 @@ The state of the outlet: [#!variable!outlet!#], on the PDU: [#!variable!name!#] 
 - Was the down-stream node fenced?
 		</key>
 		<key name="scan_apc_pdu_message_0041">
-The PDU model: [#!variable!model!#] with the serial number: [#!variable!serial_numer!#] at the IP address: [#!variable!ip_address!#] has vanished! 
+The PDU model: [#!variable!model!#] with the serial number: [#!variable!serial_number!#] at the IP address: [#!variable!ip_address!#] has vanished! 
 - Did the network cable come unplugged?
 		</key>
-		<key name="scan_apc_pdu_message_0042">The PDU model: [#!variable!model!#] with the serial number: [#!variable!serial_numer!#] at the IP address: [#!variable!ip_address!#] has returned.</key>
+		<key name="scan_apc_pdu_message_0042">The PDU model: [#!variable!model!#] with the serial number: [#!variable!serial_number!#] at the IP address: [#!variable!ip_address!#] has returned.</key>
 		
 	</lang>
 </strings>

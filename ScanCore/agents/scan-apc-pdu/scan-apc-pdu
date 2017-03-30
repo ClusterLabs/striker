@@ -238,7 +238,7 @@ print $an->String->get({key => "scan_apc_pdu_message_0001"})."\n";
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({ log_level => 2, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
 
 # Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
 # running ScanCore, it won't be.
@@ -271,7 +271,7 @@ find_pdus($an);
 if (gather_pdu_data($an))
 {
 	# No PDUs found.
-	$an->Log->entry({log_level => 2, message_key => "scan_apc_pdu_message_0003", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scan_apc_pdu_message_0003", file => $THIS_FILE, line => __LINE__});
 	$an->nice_exit({exit_code => 1});
 }
 
@@ -302,7 +302,7 @@ $an->nice_exit({exit_code => 0});
 sub read_last_scan
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in existing data, if any.
 	my $query = "
@@ -325,12 +325,12 @@ FROM
 WHERE 
     apc_pdu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -350,7 +350,7 @@ WHERE
 		my $apc_pdu_phase_count      =         $row->[10];
 		my $apc_pdu_outlet_count     =         $row->[11];
 		my $apc_pdu_note             = defined $row->[12] ? $row->[12] : "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 			name1  => "apc_pdu_uuid",             value1  => $apc_pdu_uuid, 
 			name2  => "apc_pdu_serial_number",    value2  => $apc_pdu_serial_number, 
 			name3  => "apc_pdu_model_number",     value3  => $apc_pdu_model_number, 
@@ -378,7 +378,7 @@ WHERE
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_phase_count}      = $apc_pdu_phase_count;
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_outlet_count}     = $apc_pdu_outlet_count;
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_note}             = $apc_pdu_note;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 			name1  => "sql::${apc_pdu_serial_number}::apc_pdus::apc_pdu_uuid",             value1  => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_uuid}, 
 			name2  => "sql::${apc_pdu_serial_number}::apc_pdus::apc_pdu_model_number",     value2  => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_model_number}, 
 			name3  => "sql::${apc_pdu_serial_number}::apc_pdus::apc_pdu_manufacture_date", value3  => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_manufacture_date}, 
@@ -395,7 +395,7 @@ WHERE
 		
 		# Create a map from UUID to SN
 		$an->data->{uuid_to_serial}{$apc_pdu_uuid} = $apc_pdu_serial_number;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "uuid_to_serial::$apc_pdu_uuid", value1 => $an->data->{uuid_to_serial}{$apc_pdu_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -415,14 +415,14 @@ FROM
 WHERE 
     apc_pdu_phase_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Do the query against the source DB and loop through the results.
 	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -434,7 +434,7 @@ WHERE
 		my $apc_pdu_phase_current_amperage =         $row->[3];
 		my $apc_pdu_phase_max_amperage     = defined $row->[4] ? $row->[4] : "";
 		my $apc_pdu_phase_note             = defined $row->[5] ? $row->[5] : "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "apc_pdu_phase_uuid",             value1 => $apc_pdu_phase_uuid, 
 			name2 => "apc_pdu_phase_apc_pdu_uuid",     value2 => $apc_pdu_phase_apc_pdu_uuid, 
 			name3 => "apc_pdu_phase_number",           value3 => $apc_pdu_phase_number, 
@@ -445,7 +445,7 @@ WHERE
 		
 		# Which serial number does this phase belong to?
 		my $apc_pdu_serial_number = $an->data->{uuid_to_serial}{$apc_pdu_phase_apc_pdu_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -454,7 +454,7 @@ WHERE
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage} = $apc_pdu_phase_current_amperage;
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_max_amperage}     = $apc_pdu_phase_max_amperage;
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_note}             = $apc_pdu_phase_note;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "sql::${apc_pdu_serial_number}::apc_pdu_phases::${apc_pdu_phase_number}::apc_pdu_phase_uuid",             value1 => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_uuid}, 
 			name2 => "sql::${apc_pdu_serial_number}::apc_pdu_phases::${apc_pdu_phase_number}::apc_pdu_phase_apc_pdu_uuid",     value2 => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_apc_pdu_uuid}, 
 			name3 => "sql::${apc_pdu_serial_number}::apc_pdu_phases::${apc_pdu_phase_number}::apc_pdu_phase_current_amperage", value3 => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage}, 
@@ -479,13 +479,13 @@ FROM
 WHERE 
     apc_pdu_outlet_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -498,7 +498,7 @@ WHERE
 		my $apc_pdu_outlet_on_phase     =         $row->[4];
 		my $apc_pdu_outlet_state        =         $row->[5];
 		my $apc_pdu_outlet_note         = defined $row->[6] ? $row->[6] : "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "apc_pdu_outlet_uuid",         value1 => $apc_pdu_outlet_uuid, 
 			name2 => "apc_pdu_outlet_apc_pdu_uuid", value2 => $apc_pdu_outlet_apc_pdu_uuid, 
 			name3 => "apc_pdu_outlet_number",       value3 => $apc_pdu_outlet_number, 
@@ -510,7 +510,7 @@ WHERE
 		
 		# Which serial number does this phase belong to?
 		my $apc_pdu_serial_number = $an->data->{uuid_to_serial}{$apc_pdu_outlet_apc_pdu_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -520,7 +520,7 @@ WHERE
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase}     = $apc_pdu_outlet_on_phase;
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}        = $apc_pdu_outlet_state;
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_note}         = $apc_pdu_outlet_note;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "sql::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_uuid",         value1 => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_uuid}, 
 			name2 => "sql::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_apc_pdu_uuid", value2 => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_apc_pdu_uuid}, 
 			name3 => "sql::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_name",         value3 => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name}, 
@@ -544,13 +544,13 @@ FROM
 WHERE 
     apc_pdu_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -561,7 +561,7 @@ WHERE
 		my $apc_pdu_variable_is_temperature =         $row->[2];
 		my $apc_pdu_variable_name           =         $row->[3];
 		my $apc_pdu_variable_value          = defined $row->[4] ? $row->[4] : "NULL";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "apc_pdu_variable_uuid",           value1 => $apc_pdu_variable_uuid, 
 			name2 => "apc_pdu_variable_apc_pdu_uuid",   value2 => $apc_pdu_variable_apc_pdu_uuid, 
 			name3 => "apc_pdu_variable_is_temperature", value3 => $apc_pdu_variable_is_temperature, 
@@ -571,7 +571,7 @@ WHERE
 		
 		# Which serial number does this phase belong to?
 		my $apc_pdu_serial_number = $an->data->{uuid_to_serial}{$apc_pdu_variable_apc_pdu_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -579,7 +579,7 @@ WHERE
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{$apc_pdu_variable_name}{apc_pdu_variable_apc_pdu_uuid}   = $apc_pdu_variable_apc_pdu_uuid;
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{$apc_pdu_variable_name}{apc_pdu_variable_is_temperature} = $apc_pdu_variable_is_temperature;
 		$an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{$apc_pdu_variable_name}{apc_pdu_variable_value}          = $apc_pdu_variable_value;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "sql::${apc_pdu_serial_number}::apc_pdu_variables::${apc_pdu_variable_name}::apc_pdu_variable_uuid",           value1 => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{$apc_pdu_variable_name}{apc_pdu_variable_uuid}, 
 			name2 => "sql::${apc_pdu_serial_number}::apc_pdu_variables::${apc_pdu_variable_name}::apc_pdu_variable_apc_pdu_uuid",   value2 => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{$apc_pdu_variable_name}{apc_pdu_variable_apc_pdu_uuid}, 
 			name3 => "sql::${apc_pdu_serial_number}::apc_pdu_variables::${apc_pdu_variable_name}::apc_pdu_variable_is_temperature", value3 => $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{$apc_pdu_variable_name}{apc_pdu_variable_is_temperature}, 
@@ -595,7 +595,7 @@ WHERE
 sub find_changes
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read the last state of any PDUs we already know about
 	read_last_scan($an);
@@ -605,7 +605,7 @@ sub find_changes
 	{
 		die "No serial number!\n" if not $apc_pdu_serial_number;
 		my $pdu_host_name = $an->data->{pdu}{$apc_pdu_serial_number}{pdu_host_name};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
 			name2 => "pdu_host_name",         value2 => $pdu_host_name, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -624,7 +624,7 @@ sub find_changes
 		my $new_uptime                   = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime};
 		my $new_total_wattage_draw       = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw};
 		my $new_apc_pdu_note             = "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
 			name1  => "apc_pdu_serial_number",        value1  => $apc_pdu_serial_number, 
 			name2  => "new_apc_pdu_model_number",     value2  => $new_apc_pdu_model_number, 
 			name3  => "new_apc_pdu_manufacture_date", value3  => $new_apc_pdu_manufacture_date, 
@@ -647,7 +647,7 @@ sub find_changes
 		my $new_phase_low_amp_warning      = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{low_warning};
 		my $new_phase_high_amp_warning     = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning};
 		my $new_phase_high_amp_critical    = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "new_apc_pdu_phase_max_amperage", value1 => $new_apc_pdu_phase_max_amperage, 
 			name2 => "new_phase_low_amp_warning",      value2 => $new_phase_low_amp_warning, 
 			name3 => "new_phase_high_amp_warning",     value3 => $new_phase_high_amp_warning, 
@@ -671,7 +671,7 @@ sub find_changes
 			my $old_apc_pdu_outlet_count     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_outlet_count};
 			my $old_apc_pdu_note             = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_note};
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 				name1  => "apc_pdu_uuid",                 value1  => $apc_pdu_uuid, 
 				name2  => "old_apc_pdu_model_number",     value2  => $old_apc_pdu_model_number, 
 				name3  => "old_apc_pdu_manufacture_date", value3  => $old_apc_pdu_manufacture_date, 
@@ -692,7 +692,7 @@ sub find_changes
 			{
 				# It's back.
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -712,7 +712,7 @@ sub find_changes
 			if ($new_apc_pdu_model_number ne $old_apc_pdu_model_number)
 			{
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -732,7 +732,7 @@ sub find_changes
 			{
 				# Wat?
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -752,7 +752,7 @@ sub find_changes
 			{
 				# This is about the only thing that should ever change.
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -772,7 +772,7 @@ sub find_changes
 			{
 				# Wat?
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -792,7 +792,7 @@ sub find_changes
 			{
 				# This could change, sure.
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -812,7 +812,7 @@ sub find_changes
 			{
 				# How?!
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -832,7 +832,7 @@ sub find_changes
 			{
 				# OK, maybe...
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -852,62 +852,42 @@ sub find_changes
 			{
 				# This could happen, too.
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				# If we've lost access, we'll mark the link speed as '0' later
 				my $say_new_link_speed_hr   = $an->Readable->bytes_to_hr({ 'bytes' => ($new_apc_pdu_link_speed / 8) })."/s";
-				my $say_new_link_speed_mbps = ($new_apc_pdu_link_speed / 1000000)." Mbps";
+				my $say_new_link_speed_mbps = ($new_apc_pdu_link_speed / 100000)." Mbps";
 				my $say_old_link_speed_hr   = $an->Readable->bytes_to_hr({ 'bytes' => ($old_apc_pdu_link_speed / 8) })."/s";
-				my $say_old_link_speed_mbps = ($old_apc_pdu_link_speed / 1000000)." Mbps";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				my $say_old_link_speed_mbps = ($old_apc_pdu_link_speed / 100000)." Mbps";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "say_new_link_speed_mbps", value1 => $say_new_link_speed_mbps, 
 					name2 => "say_new_link_speed_hr",   value2 => $say_new_link_speed_hr, 
 					name3 => "say_old_link_speed_mbps", value3 => $say_old_link_speed_mbps, 
 					name4 => "say_old_link_speed_hr",   value4 => $say_old_link_speed_hr, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				if (not $old_apc_pdu_link_speed)
-				{
-					# We've regained access
-					$an->Alert->register_alert({
-						alert_level		=>	"warning", 
-						alert_sort		=>	$an->data->{sys}{alert_sort}++,
-						alert_agent_name	=>	$THIS_FILE,
-						alert_title_key		=>	"an_alert_title_0006",
-						alert_message_key	=>	"scan_apc_pdu_message_0021",
-						alert_message_variables	=>	{
-							name			=>	$pdu_host_name,
-							new_link_speed_mbps	=>	$say_new_link_speed_mbps,
-							new_link_speed_hr	=>	$say_new_link_speed_hr,
-						},
-					});
-				}
-				else
-				{
-					# The speed has changed. Make this a proper warning
-					$an->Alert->register_alert({
-						alert_level		=>	"warning", 
-						alert_sort		=>	$an->data->{sys}{alert_sort}++,
-						alert_agent_name	=>	$THIS_FILE,
-						alert_title_key		=>	"an_alert_title_0004",
-						alert_message_key	=>	"scan_apc_pdu_message_0022",
-						alert_message_variables	=>	{
-							name			=>	$pdu_host_name,
-							old_link_speed_mbps	=>	$say_old_link_speed_mbps,
-							old_link_speed_hr	=>	$say_old_link_speed_hr,
-							new_link_speed_mbps	=>	$say_new_link_speed_mbps,
-							new_link_speed_hr	=>	$say_new_link_speed_hr,
-						},
-					});
-				}
+				# The speed has changed. Make this a proper warning
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0004",
+					alert_message_key	=>	"scan_apc_pdu_message_0022",
+					alert_message_variables	=>	{
+						name			=>	$pdu_host_name,
+						old_link_speed_mbps	=>	$say_old_link_speed_mbps,
+						old_link_speed_hr	=>	$say_old_link_speed_hr,
+						new_link_speed_mbps	=>	$say_new_link_speed_mbps,
+						new_link_speed_hr	=>	$say_new_link_speed_hr,
+					},
+				});
 			}
 			if ($new_apc_pdu_phase_count ne $old_apc_pdu_phase_count)
 			{
 				# How?!
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -927,7 +907,7 @@ sub find_changes
 			{
 				# I don't even...
 				$changes = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "changes", value1 => $changes, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Alert->register_alert({
@@ -944,7 +924,7 @@ sub find_changes
 				});
 			}
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "changes", value1 => $changes, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($changes)
@@ -965,10 +945,15 @@ SET
     apc_pdu_link_speed       = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_link_speed).", 
     apc_pdu_phase_count      = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_phase_count).", 
     apc_pdu_outlet_count     = ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_outlet_count).", 
+    apc_pdu_note             = '', 
     modified_date            = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
     apc_pdu_uuid             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid)." 
 ;";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
 			}
 			
 			### What about other variables?
@@ -978,7 +963,7 @@ WHERE
 				# Exists, change?
 				my $apc_pdu_variable_uuid = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime}{apc_pdu_variable_uuid};
 				my $old_uptime            = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime}{apc_pdu_variable_value};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "apc_pdu_variable_uuid", value1 => $apc_pdu_variable_uuid, 
 					name2 => "old_uptime",            value2 => $old_uptime, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1035,7 +1020,7 @@ WHERE
 				# Exists, change?
 				my $apc_pdu_variable_uuid  = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw}{apc_pdu_variable_uuid};
 				my $old_total_wattage_draw = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw}{apc_pdu_variable_value};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "apc_pdu_variable_uuid",  value1 => $apc_pdu_variable_uuid, 
 					name2 => "old_total_wattage_draw", value2 => $old_total_wattage_draw, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1070,7 +1055,7 @@ WHERE
 			{
 				my $new_apc_pdu_phase_current_amperage = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage};
 				my $new_apc_pdu_phase_note             = "";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "apc_pdu_phase_number",               value1 => $apc_pdu_phase_number, 
 					name2 => "new_apc_pdu_phase_current_amperage", value2 => $new_apc_pdu_phase_current_amperage, 
 					name3 => "new_apc_pdu_phase_max_amperage",     value3 => $new_apc_pdu_phase_max_amperage, 
@@ -1084,7 +1069,7 @@ WHERE
 					my $old_apc_pdu_phase_current_amperage = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage};
 					my $old_apc_pdu_phase_max_amperage     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_max_amperage};
 					my $old_apc_pdu_phase_note             = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_note};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 						name1 => "apc_pdu_phase_uuid",                 value1 => $apc_pdu_phase_uuid, 
 						name2 => "old_apc_pdu_phase_apc_pdu_uuid",     value2 => $old_apc_pdu_phase_apc_pdu_uuid, 
 						name3 => "old_apc_pdu_phase_current_amperage", value3 => $old_apc_pdu_phase_current_amperage, 
@@ -1097,7 +1082,7 @@ WHERE
 					{
 						# This should never change, but OK, whatever
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Alert->register_alert({
@@ -1118,7 +1103,7 @@ WHERE
 					{
 						# The phase amperage can change all the time.
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Alert->register_alert({
@@ -1141,7 +1126,7 @@ WHERE
 					{
 						# The phase amperage can change all the time.
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Alert->register_alert({
@@ -1157,7 +1142,7 @@ WHERE
 						});
 					}
 					
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "changes", value1 => $changes, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($changes)
@@ -1175,7 +1160,7 @@ SET
 WHERE 
     apc_pdu_phase_uuid             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid)." 
 ;";
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
@@ -1244,7 +1229,7 @@ SET
 WHERE 
     apc_pdu_phase_uuid = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid)." 
 ;";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -1270,7 +1255,7 @@ WHERE
 				my $new_apc_pdu_outlet_on_phase = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase};
 				my $new_apc_pdu_outlet_state    = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state};
 				my $new_apc_pdu_outlet_note     = "";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "new_apc_pdu_outlet_name",     value1 => $new_apc_pdu_outlet_name,
 					name2 => "new_apc_pdu_outlet_on_phase", value2 => $new_apc_pdu_outlet_on_phase,
 					name3 => "new_apc_pdu_outlet_state",    value3 => $new_apc_pdu_outlet_state,
@@ -1285,7 +1270,7 @@ WHERE
 					my $old_apc_pdu_outlet_name     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name};
 					my $old_apc_pdu_outlet_on_phase = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase};
 					my $old_apc_pdu_outlet_state    = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 						name1 => "apc_pdu_outlet_uuid",         value1 => $apc_pdu_outlet_uuid, 
 						name2 => "old_apc_pdu_outlet_name",     value2 => $old_apc_pdu_outlet_name,
 						name3 => "old_apc_pdu_outlet_on_phase", value3 => $old_apc_pdu_outlet_on_phase,
@@ -1299,7 +1284,7 @@ WHERE
 					{
 						# It's back!
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Alert->register_alert({
@@ -1318,7 +1303,7 @@ WHERE
 					{
 						# Name changed.
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Alert->register_alert({
@@ -1329,6 +1314,7 @@ WHERE
 							alert_message_key	=>	"scan_apc_pdu_message_0038",
 							alert_message_variables	=>	{
 								name			=>	$pdu_host_name,
+								outlet			=>	sprintf("%02d", $apc_pdu_outlet_number),
 								old_outlet_name		=>	$old_apc_pdu_outlet_name,
 								new_outlet_name		=>	$new_apc_pdu_outlet_name,
 							},
@@ -1338,7 +1324,7 @@ WHERE
 					{
 						# Phase changed, but why tho?
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Alert->register_alert({
@@ -1349,6 +1335,7 @@ WHERE
 							alert_message_key	=>	"scan_apc_pdu_message_0039",
 							alert_message_variables	=>	{
 								name			=>	$pdu_host_name,
+								outlet			=>	sprintf("%02d", $apc_pdu_outlet_number),
 								old_outlet_on_phase	=>	$old_apc_pdu_outlet_on_phase,
 								new_outlet_on_phase	=>	$new_apc_pdu_outlet_on_phase,
 							},
@@ -1358,7 +1345,7 @@ WHERE
 					{
 						# This is likely from a fence action, so we make it critical
 						$changes = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "changes", value1 => $changes, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->Alert->register_alert({
@@ -1369,13 +1356,14 @@ WHERE
 							alert_message_key	=>	"scan_apc_pdu_message_0040",
 							alert_message_variables	=>	{
 								name			=>	$pdu_host_name,
+								outlet			=>	sprintf("%02d", $apc_pdu_outlet_number),
 								old_outlet_state	=>	$old_apc_pdu_outlet_state,
 								new_outlet_state	=>	$new_apc_pdu_outlet_state,
 							},
 						});
 					}
 					
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "changes", value1 => $changes, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($changes)
@@ -1396,14 +1384,14 @@ WHERE
 					{
 						
 						$say_state = "#!string!an_state_0005!#";
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "new_apc_pdu_outlet_state", value1 => $new_apc_pdu_outlet_state, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					elsif ($new_apc_pdu_outlet_state eq "off")
 					{
 						$say_state = "#!string:an_state_0006!#";
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "new_apc_pdu_outlet_state", value1 => $new_apc_pdu_outlet_state, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -1431,7 +1419,7 @@ WHERE
 				my $apc_pdu_outlet_uuid     = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_uuid};
 				my $old_apc_pdu_outlet_note = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_note};
 				my $old_apc_pdu_outlet_name = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "apc_pdu_outlet_uuid",     value1 => $apc_pdu_outlet_uuid, 
 					name2 => "old_apc_pdu_outlet_name", value2 => $old_apc_pdu_outlet_name,
 					name3 => "old_apc_pdu_outlet_note", value3 => $old_apc_pdu_outlet_note,
@@ -1449,7 +1437,7 @@ SET
 WHERE 
     apc_pdu_outlet_uuid  = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_uuid)." 
 ;";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
@@ -1475,7 +1463,7 @@ WHERE
 		{
 			# OK, now INSERT it.
 			my $apc_pdu_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -1515,7 +1503,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_pdu_note).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -1527,7 +1515,7 @@ INSERT INTO
 			{
 				$say_link_speed_hr   = $an->Readable->bytes_to_hr({ 'bytes' => ($new_apc_pdu_link_speed / 8) })."/s";
 				$say_link_speed_mbps = ($new_apc_pdu_link_speed / 1000000)." Mbps";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "say_link_speed_hr",   value1 => $say_link_speed_hr, 
 					name2 => "say_link_speed_mbps", value2 => $say_link_speed_mbps, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1565,7 +1553,7 @@ INSERT INTO
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}})
 			{
 				my $value = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{$variable};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1580,7 +1568,7 @@ INSERT INTO
 			{
 				my $apc_pdu_phase_uuid                 = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
 				my $new_apc_pdu_phase_current_amperage = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "apc_pdu_phase_uuid",                 value1 => $apc_pdu_phase_uuid, 
 					name2 => "new_apc_pdu_phase_current_amperage", value2 => $new_apc_pdu_phase_current_amperage,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1607,7 +1595,7 @@ INSERT INTO
     '', 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -1633,7 +1621,7 @@ INSERT INTO
 				my $new_apc_pdu_outlet_name     = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name};
 				my $new_apc_pdu_outlet_on_phase = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase};
 				my $new_apc_pdu_outlet_state    = $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "apc_pdu_outlet_uuid",         value1 => $apc_pdu_outlet_uuid, 
 					name2 => "new_apc_pdu_outlet_name",     value2 => $new_apc_pdu_outlet_name,
 					name3 => "new_apc_pdu_outlet_on_phase", value3 => $new_apc_pdu_outlet_on_phase,
@@ -1647,14 +1635,14 @@ INSERT INTO
 				{
 					
 					$say_state = "#!string!an_state_0005!#";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_apc_pdu_outlet_state", value1 => $new_apc_pdu_outlet_state, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($new_apc_pdu_outlet_state eq "off")
 				{
 					$say_state = "#!string:an_state_0006!#";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_apc_pdu_outlet_state", value1 => $new_apc_pdu_outlet_state, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1684,7 +1672,7 @@ INSERT INTO
 		my $apc_pdu_note         = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_note};
 		my $apc_pdu_model_number = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_model_number};
 		my $apc_pdu_ipv4_address = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_ipv4_address};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
 			name2 => "apc_pdu_uuid",          value2 => $apc_pdu_uuid,
 			name3 => "apc_pdu_note",          value3 => $apc_pdu_note,
@@ -1703,7 +1691,7 @@ SET
 WHERE 
     apc_pdu_uuid  = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid)." 
 ;";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -1733,7 +1721,7 @@ WHERE
 sub set_phase_low_warning
 {
 	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_phase_low_warning" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_phase_low_warning" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
 		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
 		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
@@ -1746,7 +1734,7 @@ sub set_phase_low_warning
 		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_low_warning",
 		modified_date		=>	$an->data->{sys}{db_timestamp},
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "set", value1 => $set, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($set)
@@ -1771,7 +1759,7 @@ sub set_phase_low_warning
 sub clear_phase_low_warning
 {
 	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_phase_low_warning" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "clear_phase_low_warning" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
 		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
 		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
@@ -1784,7 +1772,7 @@ sub clear_phase_low_warning
 		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_low_warning",
 		modified_date		=>	$an->data->{sys}{db_timestamp},
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "clear", value1 => $clear, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($clear)
@@ -1809,7 +1797,7 @@ sub clear_phase_low_warning
 sub set_phase_high_warning
 {
 	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_phase_high_warning" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_phase_high_warning" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
 		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
 		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
@@ -1822,7 +1810,7 @@ sub set_phase_high_warning
 		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_high_warning",
 		modified_date		=>	$an->data->{sys}{db_timestamp},
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "set", value1 => $set, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($set)
@@ -1847,7 +1835,7 @@ sub set_phase_high_warning
 sub clear_phase_high_warning
 {
 	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_phase_high_warning" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "clear_phase_high_warning" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
 		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
 		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
@@ -1860,7 +1848,7 @@ sub clear_phase_high_warning
 		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_high_warning",
 		modified_date		=>	$an->data->{sys}{db_timestamp},
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "clear", value1 => $clear, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($clear)
@@ -1885,7 +1873,7 @@ sub clear_phase_high_warning
 sub set_phase_high_critical
 {
 	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_phase_high_critical" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "clear_phase_high_critical" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
 		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
 		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
@@ -1898,7 +1886,7 @@ sub set_phase_high_critical
 		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_high_critical",
 		modified_date		=>	$an->data->{sys}{db_timestamp},
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "set", value1 => $set, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($set)
@@ -1922,7 +1910,7 @@ sub set_phase_high_critical
 sub clear_phase_high_critical
 {
 	my ($an, $pdu_host_name, $apc_pdu_phase_number, $apc_pdu_serial_number) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_phase_high_critical" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "clear_phase_high_critical" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "pdu_host_name",         value1 => $pdu_host_name, 
 		name2 => "apc_pdu_phase_number",  value2 => $apc_pdu_phase_number, 
 		name3 => "apc_pdu_serial_number", value3 => $apc_pdu_serial_number, 
@@ -1935,7 +1923,7 @@ sub clear_phase_high_critical
 		alert_name		=>	"phase_".$apc_pdu_phase_number."_amp_high_critical",
 		modified_date		=>	$an->data->{sys}{db_timestamp},
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "clear", value1 => $clear, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($clear)
@@ -1960,7 +1948,7 @@ sub clear_phase_high_critical
 sub update_outlets
 {
 	my ($an, $apc_pdu_uuid, $apc_pdu_outlet_uuid, $apc_pdu_outlet_number, $apc_pdu_outlet_name, $apc_pdu_outlet_on_phase, $apc_pdu_outlet_state, $apc_pdu_outlet_note) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_outlets => { function => "update_outlets" }, message_key => "an_variables_0007", message_outlets => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_outlets => { function => "update_outlets" }, message_key => "an_variables_0007", message_outlets => { 
 		name1 => "apc_pdu_uuid",            value1 => $apc_pdu_uuid, 
 		name2 => "apc_pdu_outlet_uuid",     value2 => $apc_pdu_outlet_uuid, 
 		name3 => "apc_pdu_outlet_number",   value3 => $apc_pdu_outlet_number, 
@@ -1984,7 +1972,7 @@ SET
 WHERE 
     apc_pdu_outlet_uuid         = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_uuid)." 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_outlets => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_outlets => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	push @{$an->data->{sys}{sql}}, $query;
@@ -1996,7 +1984,7 @@ WHERE
 sub insert_outlets
 {
 	my ($an, $apc_pdu_uuid, $apc_pdu_outlet_number, $apc_pdu_outlet_name, $apc_pdu_outlet_on_phase, $apc_pdu_outlet_state, $apc_pdu_outlet_note) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_outlets => { function => "insert_outlets" }, message_key => "an_variables_0006", message_outlets => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_outlets => { function => "insert_outlets" }, message_key => "an_variables_0006", message_outlets => { 
 		name1 => "apc_pdu_uuid",            value1 => $apc_pdu_uuid, 
 		name2 => "apc_pdu_outlet_number",   value2 => $apc_pdu_outlet_number, 
 		name3 => "apc_pdu_outlet_name",     value3 => $apc_pdu_outlet_name, 
@@ -2030,7 +2018,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_note).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	push @{$an->data->{sys}{sql}}, $query;
@@ -2042,7 +2030,7 @@ INSERT INTO
 sub update_variables
 {
 	my ($an, $apc_pdu_uuid, $apc_pdu_variable_uuid, $variable, $value) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_variables" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_variables" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
 		name2 => "variable",     value2 => $variable, 
 		name3 => "value",        value3 => $value, 
@@ -2060,7 +2048,7 @@ SET
 WHERE 
     apc_pdu_variable_uuid           = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_uuid)." 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	push @{$an->data->{sys}{sql}}, $query;
@@ -2072,7 +2060,7 @@ WHERE
 sub insert_variables
 {
 	my ($an, $apc_pdu_uuid, $variable, $value) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_variables" }, message_key => "an_variables_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_variables" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
 		name2 => "variable",     value2 => $variable, 
 		name3 => "value",        value3 => $value, 
@@ -2099,7 +2087,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($value).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	push @{$an->data->{sys}{sql}}, $query;
@@ -2112,9 +2100,9 @@ INSERT INTO
 sub update_db
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
@@ -2147,7 +2135,7 @@ sub update_db
 sub update_db_apc_pdu_variables
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_pdu' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -2171,14 +2159,14 @@ FROM
 WHERE 
     apc_pdu_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -2189,7 +2177,7 @@ WHERE
 			my $apc_pdu_variable_name           =         $row->[3];
 			my $apc_pdu_variable_value          = defined $row->[4] ? $row->[4] : "NULL";
 			my $modified_date                   =         $row->[5];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "apc_pdu_variable_uuid",           value1 => $apc_pdu_variable_uuid, 
 				name2 => "apc_pdu_variable_apc_pdu_uuid",   value2 => $apc_pdu_variable_apc_pdu_uuid, 
 				name3 => "apc_pdu_variable_is_temperature", value3 => $apc_pdu_variable_is_temperature, 
@@ -2220,7 +2208,7 @@ WHERE
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $apc_pdu_variable_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}})
@@ -2229,7 +2217,7 @@ WHERE
 			my $apc_pdu_variable_is_temperature = $an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{apc_pdu_variable_is_temperature};
 			my $apc_pdu_variable_name           = $an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{apc_pdu_variable_name};
 			my $apc_pdu_variable_value          = $an->data->{db_data}{unified}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{apc_pdu_variable_value};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "apc_pdu_variable_uuid",           value1 => $apc_pdu_variable_uuid, 
 				name2 => "apc_pdu_variable_apc_pdu_uuid",   value2 => $apc_pdu_variable_apc_pdu_uuid, 
 				name3 => "apc_pdu_variable_is_temperature", value3 => $apc_pdu_variable_is_temperature, 
@@ -2247,7 +2235,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::apc_pdu_variables::apc_pdu_variable_uuid::${apc_pdu_variable_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{seen})
@@ -2256,13 +2244,13 @@ WHERE
 					$an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::apc_pdu_variables::apc_pdu_variable_uuid::${apc_pdu_variable_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{apc_pdu_variables}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::apc_pdu_variables::modified_date::${modified_date}::apc_pdu_variable_uuid::${apc_pdu_variable_uuid}", value1 => $an->data->{db_data}{$id}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{apc_pdu_variables}{modified_date}{$modified_date}{apc_pdu_variable_uuid}{$apc_pdu_variable_uuid})
@@ -2283,7 +2271,7 @@ AND
     apc_pdu_variable_uuid           = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_variable_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -2314,7 +2302,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2350,7 +2338,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2383,7 +2371,7 @@ INSERT INTO
 sub update_db_apc_pdu_phases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_phases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_phases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_pdu' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -2408,14 +2396,14 @@ FROM
 WHERE 
     apc_pdu_phase_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -2427,7 +2415,7 @@ WHERE
 			my $apc_pdu_phase_max_amperage     = defined $row->[4] ? $row->[4] : "NULL";
 			my $apc_pdu_phase_note             = defined $row->[5] ? $row->[5] : "NULL";
 			my $modified_date                  =         $row->[6];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "apc_pdu_phase_uuid",             value1 => $apc_pdu_phase_uuid, 
 				name2 => "apc_pdu_phase_apc_pdu_uuid",     value2 => $apc_pdu_phase_apc_pdu_uuid, 
 				name3 => "apc_pdu_phase_number",           value3 => $apc_pdu_phase_number, 
@@ -2461,7 +2449,7 @@ WHERE
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $apc_pdu_phase_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}})
@@ -2471,7 +2459,7 @@ WHERE
 			my $apc_pdu_phase_current_amperage = $an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{apc_pdu_phase_current_amperage};
 			my $apc_pdu_phase_max_amperage     = $an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{apc_pdu_phase_max_amperage};
 			my $apc_pdu_phase_note             = $an->data->{db_data}{unified}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{apc_pdu_phase_note};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "apc_pdu_phase_uuid",             value1 => $apc_pdu_phase_uuid, 
 				name2 => "apc_pdu_phase_apc_pdu_uuid",     value2 => $apc_pdu_phase_apc_pdu_uuid, 
 				name3 => "apc_pdu_phase_number",           value3 => $apc_pdu_phase_number, 
@@ -2490,7 +2478,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::apc_pdu_phases::apc_pdu_phase_uuid::${apc_pdu_phase_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{seen})
@@ -2499,13 +2487,13 @@ WHERE
 					$an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::apc_pdu_phases::apc_pdu_phase_uuid::${apc_pdu_phase_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{apc_pdu_phases}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::apc_pdu_phases::modified_date::${modified_date}::apc_pdu_phase_uuid::${apc_pdu_phase_uuid}", value1 => $an->data->{db_data}{$id}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{apc_pdu_phases}{modified_date}{$modified_date}{apc_pdu_phase_uuid}{$apc_pdu_phase_uuid})
@@ -2527,7 +2515,7 @@ AND
     apc_pdu_phase_uuid             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -2560,7 +2548,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2598,7 +2586,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2631,7 +2619,7 @@ INSERT INTO
 sub update_db_apc_pdu_outlets
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_outlets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu_outlets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_pdu' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -2657,14 +2645,14 @@ FROM
 WHERE 
     apc_pdu_outlet_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -2677,7 +2665,7 @@ WHERE
 			my $apc_pdu_outlet_state        =         $row->[5];
 			my $apc_pdu_outlet_note         = defined $row->[6] ? $row->[6] : "NULL";
 			my $modified_date               =         $row->[7];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "apc_pdu_outlet_uuid",         value1 => $apc_pdu_outlet_uuid, 
 				name2 => "apc_pdu_outlet_apc_pdu_uuid", value2 => $apc_pdu_outlet_apc_pdu_uuid, 
 				name3 => "apc_pdu_outlet_number",       value3 => $apc_pdu_outlet_number, 
@@ -2714,7 +2702,7 @@ WHERE
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $apc_pdu_outlet_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}})
@@ -2725,7 +2713,7 @@ WHERE
 			my $apc_pdu_outlet_on_phase     = $an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{apc_pdu_outlet_on_phase};
 			my $apc_pdu_outlet_state        = $an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{apc_pdu_outlet_state};
 			my $apc_pdu_outlet_note         = $an->data->{db_data}{unified}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{apc_pdu_outlet_note};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 				name1 => "apc_pdu_outlet_uuid",         value1 => $apc_pdu_outlet_uuid, 
 				name2 => "apc_pdu_outlet_apc_pdu_uuid", value2 => $apc_pdu_outlet_apc_pdu_uuid, 
 				name3 => "apc_pdu_outlet_number",       value3 => $apc_pdu_outlet_number, 
@@ -2745,7 +2733,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::apc_pdu_outlets::apc_pdu_outlet_uuid::${apc_pdu_outlet_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{seen})
@@ -2754,13 +2742,13 @@ WHERE
 					$an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::apc_pdu_outlets::apc_pdu_outlet_uuid::${apc_pdu_outlet_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{apc_pdu_outlets}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::apc_pdu_outlets::modified_date::${modified_date}::apc_pdu_outlet_uuid::${apc_pdu_outlet_uuid}", value1 => $an->data->{db_data}{$id}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{apc_pdu_outlets}{modified_date}{$modified_date}{apc_pdu_outlet_uuid}{$apc_pdu_outlet_uuid})
@@ -2783,7 +2771,7 @@ AND
     apc_pdu_outlet_uuid         = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_outlet_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -2818,7 +2806,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2858,7 +2846,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2891,7 +2879,7 @@ INSERT INTO
 sub update_db_apc_pdu
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_pdu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_pdu' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -2923,14 +2911,14 @@ FROM
 WHERE 
     apc_pdu_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -2949,7 +2937,7 @@ WHERE
 			my $apc_pdu_outlet_count     =         $row->[11];
 			my $apc_pdu_note             = defined $row->[12] ? $row->[12] : "NULL";
 			my $modified_date            =         $row->[13];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
 				name1  => "apc_pdu_uuid",             value1  => $apc_pdu_uuid, 
 				name2  => "apc_pdu_serial_number",    value2  => $apc_pdu_serial_number, 
 				name3  => "apc_pdu_model_number",     value3  => $apc_pdu_model_number, 
@@ -3004,7 +2992,7 @@ WHERE
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{apc_pdu}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $apc_pdu_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}})
@@ -3021,7 +3009,7 @@ WHERE
 			my $apc_pdu_phase_count      = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_phase_count};
 			my $apc_pdu_outlet_count     = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_outlet_count};
 			my $apc_pdu_note             = $an->data->{db_data}{unified}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}{apc_pdu_note};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 				name1  => "apc_pdu_uuid",             value1  => $apc_pdu_uuid, 
 				name2  => "apc_pdu_serial_number",    value2  => $apc_pdu_serial_number, 
 				name3  => "apc_pdu_model_number",     value3  => $apc_pdu_model_number, 
@@ -3047,7 +3035,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::apc_pdu::apc_pdu_uuid::${apc_pdu_uuid}::seen", value1 => $an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen})
@@ -3056,13 +3044,13 @@ WHERE
 					$an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::apc_pdu::apc_pdu_uuid::${apc_pdu_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{apc_pdu}{apc_pdu_uuid}{$apc_pdu_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::apc_pdu::modified_date::${modified_date}::apc_pdu_uuid::${apc_pdu_uuid}", value1 => $an->data->{db_data}{$id}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{apc_pdu}{modified_date}{$modified_date}{apc_pdu_uuid}{$apc_pdu_uuid})
@@ -3091,7 +3079,7 @@ AND
     apc_pdu_uuid             = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -3138,7 +3126,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -3190,7 +3178,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -3224,14 +3212,14 @@ INSERT INTO
 sub gather_pdu_data
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_pdu_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_pdu_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will flip to 0 if any PDUs are reached.
 	my $no_pdu_found = 1;
 	foreach my $pdu_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-pdu'}{pdu}})
 	{
 		my $pdu_ip = $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "pdu_name", value1 => $pdu_name,
 			name2 => "pdu_ip",   value2 => $pdu_ip,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3241,7 +3229,7 @@ sub gather_pdu_data
 		
 		# Can I ping it? This returns '1' if it was pingable, '0' if not.
 		my ($pinged) = $an->Check->ping({ping => $pdu_ip});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "pinged", value1 => $pinged, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $pinged)
@@ -3255,7 +3243,7 @@ sub gather_pdu_data
 				alert_name		=>	"apc_pdu_communication_lost",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "set", value1 => $set, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($set)
@@ -3270,13 +3258,51 @@ sub gather_pdu_data
 						pdu_name		=>	$pdu_name,
 					},
 				});
+
+				# If we've seen this PDU before, make it's note as DELETED
+				my $query = "
+SELECT 
+    apc_pdu_uuid 
+FROM 
+    apc_pdus 
+WHERE 
+    apc_pdu_ipv4_address = ".$an->data->{sys}{use_db_fh}->quote($pdu_ip)."
+AND 
+    apc_pdu_host_uuid    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $apc_pdu_uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+				   $apc_pdu_uuid = "" if not defined $apc_pdu_uuid;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($apc_pdu_uuid)
+				{
+					# Mark it as DELETED
+					my $query = "
+UPDATE 
+    apc_pdus 
+SET 
+    apc_pdu_note  = 'DELETED', 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    apc_pdu_uuid  = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid)."
+;";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+				}
 			}
 		}
 		else
 		{
 			# Yup!
 			$apc_pdu_serial_number = read_oid($an, $pdu_ip,, $an->data->{oids}{apc_pdu}{apc_pdu_serial_number});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3302,7 +3328,7 @@ sub gather_pdu_data
 			
 			# Record the SN, mark that we accessed it and create a look-up for SN to name
 			$an->data->{serial_to_name}{$apc_pdu_serial_number} = $pdu_name;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "serial_to_name::$apc_pdu_serial_number", value1 => $an->data->{serial_to_name}{$apc_pdu_serial_number}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3315,7 +3341,7 @@ sub gather_pdu_data
 				alert_name		=>	"apc_pdu_communication_lost",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cleared", value1 => $cleared, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($cleared)
@@ -3365,7 +3391,7 @@ sub gather_pdu_data
 		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning}  = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{phase_high_amp_warning});
 		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{phase_high_amp_critical});
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
 			name1  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_model_number",         value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_model_number}, 
 			name2  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_manufacture_date",     value2  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date}, 
 			name3  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_firmware_version",     value3  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_firmware_version}, 
@@ -3389,13 +3415,13 @@ sub gather_pdu_data
 		# If the (high critical amperage + 'scan-apc-pdu::critical_amps_below_max') > maximum 
 		# amperage, we'll set the critical warning level to be 
 		# (maximum - 'scan-apc-pdu::critical_amps_below_max')
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "scan-apc-pdu::critical_amps_below_max", value1  => $an->data->{'scan-apc-pdu'}{critical_amps_below_max}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (($an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} + $an->data->{'scan-apc-pdu'}{critical_amps_below_max}) > $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{maximum})
 		{
 			$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{maximum} - $an->data->{'scan-apc-pdu'}{critical_amps_below_max};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "pdu::${apc_pdu_serial_number}::amperage::high_critical", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3404,7 +3430,7 @@ sub gather_pdu_data
 		if (($an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning} + $an->data->{'scan-apc-pdu'}{warning_amps_below_critical}) > $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical})
 		{
 			$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning} = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} - $an->data->{'scan-apc-pdu'}{warning_amps_below_critical};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "pdu::${apc_pdu_serial_number}::amperage::high_warning", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3413,7 +3439,7 @@ sub gather_pdu_data
 		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_critical} = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} - $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
 		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_warning}  = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning} - $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
 		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_low_warning}   = $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{low_warning} + $an->data->{'scan-apc-pdu'}{clear_alert_threshold};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "pdu::${apc_pdu_serial_number}::amperage::clear_high_critical", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_critical}, 
 			name2 => "pdu::${apc_pdu_serial_number}::amperage::clear_high_warning",  value2 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_high_warning}, 
 			name3 => "pdu::${apc_pdu_serial_number}::amperage::clear_low_warning",   value3 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{clear_low_warning}, 
@@ -3421,7 +3447,7 @@ sub gather_pdu_data
 		
 		# Uptime is in ticks
 		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime} /= $an->data->{'scan-apc-pdu'}{ticks_per_second};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "pdu:${apc_pdu_serial_number}::apc_pdu_variables::uptime", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{uptime}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3431,14 +3457,14 @@ sub gather_pdu_data
 			my $year  = $3;
 			my $month = $1;
 			my $day   = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "year",  value1 => $year, 
 				name2 => "month", value2 => $month, 
 				name3 => "day",   value3 => $day, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date} = $year."/".$month."/".$day;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_manufacture_date", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3447,7 +3473,7 @@ sub gather_pdu_data
 			my $year  = $3;
 			my $month = $1;
 			my $day   = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "year",  value1 => $year, 
 				name2 => "month", value2 => $month, 
 				name3 => "day",   value3 => $day, 
@@ -3456,19 +3482,19 @@ sub gather_pdu_data
 			if ($year < 70)
 			{
 				$year += 2000;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "year", value1 => $year, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				$year += 1900;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "year", value1 => $year, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date} = $year."/".$month."/".$day;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_manufacture_date", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3484,14 +3510,14 @@ sub gather_pdu_data
 		{
 			# Stick the phase onto the end of the OID.
 			my $oid = $an->data->{oids}{apc_pdu_phases}{apc_pdu_phase_current_amperage}.$apc_pdu_phase_number;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "apc_pdu_phase_number", value1 => $apc_pdu_phase_number, 
 				name2 => "oid",                  value2 => $oid, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Read the OID
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage} = read_oid($an, $pdu_ip, $oid);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "pdu::${apc_pdu_serial_number}::apc_pdu_phases::${apc_pdu_phase_number}::apc_pdu_phase_current_amperage", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3499,7 +3525,7 @@ sub gather_pdu_data
 			if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage} =~ /^\d+$/)
 			{
 				$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage} /= 10;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1  => "pdu::${apc_pdu_serial_number}::apc_pdu_phases::${apc_pdu_phase_number}::apc_pdu_phase_current_amperage", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3518,7 +3544,7 @@ sub gather_pdu_data
 			my $outlet_name_oid  = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_name}.$apc_pdu_outlet_number;
 			my $outlet_phase_oid = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_on_phase}.$apc_pdu_outlet_number;
 			my $outlet_state_oid = $an->data->{oids}{apc_pdu_outlets}{apc_pdu_outlet_state}.$apc_pdu_outlet_number;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "outlet_name_oid",  value1 => $outlet_name_oid, 
 				name2 => "outlet_phase_oid", value2 => $outlet_phase_oid, 
 				name3 => "outlet_state_oid", value3 => $outlet_state_oid, 
@@ -3528,7 +3554,7 @@ sub gather_pdu_data
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name}     = read_oid($an, $pdu_ip, $outlet_name_oid);
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase} = read_oid($an, $pdu_ip, $outlet_phase_oid);
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}    = read_oid($an, $pdu_ip, $outlet_state_oid);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_name",     value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name}, 
 				name2 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_on_phase", value2 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase}, 
 				name3 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_state",    value3 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}, 
@@ -3538,21 +3564,21 @@ sub gather_pdu_data
 			if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} eq "1")
 			{
 				$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} = "on";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_state", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} eq "2")
 			{
 				$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} = "off";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_state", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} eq "3")
 			{
 				$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state} = "unknown";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_state", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3566,7 +3592,7 @@ sub gather_pdu_data
 sub archive_if_needed
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the 'trigger' is '0', archiving is disabled.
 	if (not $an->data->{scancore}{archive}{trigger})
@@ -3593,7 +3619,7 @@ sub archive_if_needed
 	#    records from the database.
 	
 	# Update the archive path, if set by a user. Also verify that there are sane archive values.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
 		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
 		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
@@ -3602,21 +3628,21 @@ sub archive_if_needed
 	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
 	{
 		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{trigger} = 100000;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{count} = 50000;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -3624,7 +3650,7 @@ sub archive_if_needed
 	if (not -e $an->data->{path}{scancore_archive})
 	{
 		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -3632,7 +3658,7 @@ sub archive_if_needed
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3672,7 +3698,7 @@ sub archive_if_needed
 	my $archive_needed = 0;
 	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "table", value1 => $table, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3684,13 +3710,13 @@ FROM
 WHERE 
     ".$an->data->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $records = 0 if not defined $records;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "records", value1 => $records, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3700,7 +3726,7 @@ WHERE
 			my $records_to_save                            = ($an->data->{scancore}{archive}{trigger} - $an->data->{scancore}{archive}{count});
 			my $offset                                     = $records - $records_to_save;
 			   $an->data->{archive}{table}{$table}{offset} = $offset;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "archive_needed",                   value1 => $archive_needed, 
 				name2 => "records_to_save",                  value2 => $records_to_save, 
 				name3 => "archive::table::${table}::offset", value3 => $an->data->{archive}{table}{$table}{offset}, 
@@ -3721,7 +3747,7 @@ WHERE
 		foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 		{
 			next if not $an->data->{archive}{table}{$table}{offset};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "table", value1 => $table, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3770,7 +3796,7 @@ WHERE
 		my $db_name = "";
 		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "id",                        value1 => $id, 
 				name2 => "scancore::db::${id}::host", value2 => $an->data->{scancore}{db}{$id}{host}, 
 				name3 => "hostname",                  value3 => $an->hostname, 
@@ -3779,7 +3805,7 @@ WHERE
 			if (($an->data->{scancore}{db}{$id}{host} eq $an->hostname) or ($an->data->{scancore}{db}{$id}{host} eq $an->short_hostname))
 			{
 				$db_name = $an->data->{scancore}{db}{$id}{name};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "db_name",                   value1 => $db_name, 
 					name2 => "scancore::db::${id}::name", value2 => $an->data->{scancore}{db}{$id}{name}, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -3790,7 +3816,7 @@ WHERE
 		{
 			my $start      = time;
 			my $shell_call = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." $db_name -c 'VACUUM FULL;'\"";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "start",      value1 => $start, 
 				name2 => "shell_call", value2 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3799,14 +3825,14 @@ WHERE
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			close $file_handle;
 			
 			my $finished = time - $start;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "finished", value1 => $finished, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3962,7 +3988,7 @@ sub find_pdus
 	foreach my $pdu_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-pdu'}{pdu}})
 	{
 		my $ip = $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "pdu_name", value1 => $pdu_name, 
 			name2 => "ip",       value2 => $ip, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4076,16 +4102,16 @@ sub read_oid
 sub prep_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='apc_pdus' AND schemaname='public';";
 		#                     The actual query -----------------.        .------- Row 0
 		#                        Query this DB --.              |        |    .-- Columns 0
 		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($count < 1)
@@ -4110,7 +4136,7 @@ sub prep_databases
 		else
 		{
 			# Table exists, schema load is not needed.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -4121,7 +4147,7 @@ sub prep_databases
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print $an->String->get({key => "scan_apc_pdu_message_0002"})."\n";
 

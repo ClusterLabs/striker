@@ -142,7 +142,7 @@ print $an->String->get({key => "scan_ping_target_message_0001"})."\n";
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 3, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
 
 # Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
 # running ScanCore, it won't be.
@@ -160,7 +160,7 @@ if (exists $an->data->{'scan-ping-target'}{target})
 	{
 		my $host  = $an->data->{'scan-ping-target'}{target}{$id}{host};
 		my $count = $an->data->{'scan-ping-target'}{target}{$id}{count} ? $an->data->{'scan-ping-target'}{target}{$id}{count} : $an->data->{'scan-ping-target'}{count};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "host",  value1 => $host, 
 			name2 => "count", value2 => $count, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -172,21 +172,21 @@ if (exists $an->data->{'scan-ping-target'}{target})
 				ping  => $host,
 				count => $count,
 			});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "pinged", value1 => $pinged, 
 			name2 => "time",   value2 => $time, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$an->data->{'scan-ping-target'}{target}{$id}{pinged} = $pinged;
 		$an->data->{'scan-ping-target'}{target}{$id}{'time'} = $time;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "scan-ping-target::target::${id}::pinged", value1 => $an->data->{'scan-ping-target'}{target}{$id}{pinged}, 
 			name2 => "scan-ping-target::target::${id}::time",   value2 => $an->data->{'scan-ping-target'}{target}{$id}{'time'}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 }
 
-$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 	name1 => "target_count", value1 => $target_count, 
 }, file => $THIS_FILE, line => __LINE__});
 if (not $target_count)
@@ -237,9 +237,9 @@ $an->nice_exit({exit_code => 0});
 sub update_db
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
@@ -269,7 +269,7 @@ sub update_db
 sub update_db_ping_targets
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_ping_targets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_ping_targets" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'ping_target' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -292,14 +292,14 @@ FROM
 WHERE 
     ping_target_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
@@ -309,7 +309,7 @@ WHERE
 			my $ping_target_target_pinged    =         $row->[2];
 			my $ping_target_ping_time        = defined $row->[3] ? $row->[3] : "NULL";
 			my $modified_date                =         $row->[4];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "ping_target_uuid",          value1 => $ping_target_uuid, 
 				name2 => "ping_target_target_name",   value2 => $ping_target_target_name, 
 				name3 => "ping_target_target_pinged", value3 => $ping_target_target_pinged, 
@@ -337,7 +337,7 @@ WHERE
 	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{ping_targets}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $ping_target_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{ping_targets}{modified_date}{$modified_date}{ping_target_uuid}})
@@ -345,7 +345,7 @@ WHERE
 			my $ping_target_target_name   = $an->data->{db_data}{unified}{ping_targets}{modified_date}{$modified_date}{ping_target_uuid}{$ping_target_uuid}{ping_target_target_name};
 			my $ping_target_target_pinged = $an->data->{db_data}{unified}{ping_targets}{modified_date}{$modified_date}{ping_target_uuid}{$ping_target_uuid}{ping_target_target_pinged};
 			my $ping_target_ping_time     = $an->data->{db_data}{unified}{ping_targets}{modified_date}{$modified_date}{ping_target_uuid}{$ping_target_uuid}{ping_target_ping_time};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "ping_target_uuid",          value1 => $ping_target_uuid, 
 				name2 => "ping_target_target_name",   value2 => $ping_target_target_name, 
 				name3 => "ping_target_target_pinged", value3 => $ping_target_target_pinged, 
@@ -362,7 +362,7 @@ WHERE
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::ping_targets::ping_target_uuid::${ping_target_uuid}::seen", value1 => $an->data->{db_data}{$id}{ping_targets}{ping_target_uuid}{$ping_target_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{ping_targets}{ping_target_uuid}{$ping_target_uuid}{seen})
@@ -371,13 +371,13 @@ WHERE
 					$an->data->{db_data}{$id}{ping_targets}{ping_target_uuid}{$ping_target_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::ping_targets::ping_target_uuid::${ping_target_uuid}::exists", value1 => $an->data->{db_data}{$id}{ping_targets}{ping_target_uuid}{$ping_target_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{ping_targets}{ping_target_uuid}{$ping_target_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::ping_targets::modified_date::${modified_date}::ping_target_uuid::${ping_target_uuid}", value1 => $an->data->{db_data}{$id}{ping_targets}{modified_date}{$modified_date}{ping_target_uuid}{$ping_target_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{ping_targets}{modified_date}{$modified_date}{ping_target_uuid}{$ping_target_uuid})
@@ -397,7 +397,7 @@ AND
     ping_target_uuid          = ".$an->data->{sys}{use_db_fh}->quote($ping_target_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -426,7 +426,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -460,7 +460,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -493,7 +493,7 @@ INSERT INTO
 sub read_last_scan
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: This might be useful later
 	# Make sure I don't have any stray data for this machine.
@@ -511,12 +511,12 @@ FROM
 WHERE 
     ping_target_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -527,11 +527,17 @@ WHERE
 		my $ping_target_target_name   = $row->[1]; 
 		my $ping_target_target_pinged = $row->[2];
 		my $ping_target_ping_time     = $row->[3];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "ping_target_uuid",          value1 => $ping_target_uuid, 
+			name2 => "ping_target_target_name",   value2 => $ping_target_target_name,
+			name3 => "ping_target_target_pinged", value3 => $ping_target_target_pinged,
+			name4 => "ping_target_ping_time",     value4 => $ping_target_ping_time,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		$an->data->{sql}{$ping_target_target_name}{ping_target_uuid}          = $ping_target_uuid;
-		$an->data->{sql}{$ping_target_target_name}{ping_target_target_pinged} = $ping_target_target_pinged ? $ping_target_target_pinged : "NULL";
-		$an->data->{sql}{$ping_target_target_name}{ping_target_ping_time}     = $ping_target_ping_time     ? $ping_target_ping_time     : "NULL";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->data->{sql}{$ping_target_target_name}{ping_target_target_pinged} = $ping_target_target_pinged;
+		$an->data->{sql}{$ping_target_target_name}{ping_target_ping_time}     = $ping_target_ping_time;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "sql::${ping_target_target_name}::ping_target_uuid",          value1 => $an->data->{sql}{$ping_target_target_name}{ping_target_uuid}, 
 			name2 => "sql::${ping_target_target_name}::ping_target_target_pinged", value2 => $an->data->{sql}{$ping_target_target_name}{ping_target_target_pinged}, 
 			name3 => "sql::${ping_target_target_name}::ping_target_ping_time",     value3 => $an->data->{sql}{$ping_target_target_name}{ping_target_ping_time}, 
@@ -546,7 +552,7 @@ WHERE
 sub find_changes
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read the last state of any targets we already know about
 	read_last_scan($an);
@@ -559,7 +565,7 @@ sub find_changes
 		my $ping_target_target_name       = $an->data->{'scan-ping-target'}{target}{$id}{host};
 		my $new_ping_target_target_pinged = $an->data->{'scan-ping-target'}{target}{$id}{pinged};
 		my $new_ping_target_ping_time     = $an->data->{'scan-ping-target'}{target}{$id}{'time'};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "id",                              value1 => $id, 
 			name2 => "ping_target_target_name",       value2 => $ping_target_target_name, 
 			name3 => "new_ping_target_target_pinged", value3 => $new_ping_target_target_pinged, 
@@ -571,7 +577,7 @@ sub find_changes
 			   $ping_target_uuid              = $an->data->{sql}{$ping_target_target_name}{ping_target_uuid};
 			my $old_ping_target_target_pinged = $an->data->{sql}{$ping_target_target_name}{ping_target_target_pinged};
 			my $old_ping_target_ping_time     = $an->data->{sql}{$ping_target_target_name}{ping_target_ping_time};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "ping_target_uuid",              value1 => $ping_target_uuid, 
 				name2 => "old_ping_target_target_pinged", value2 => $old_ping_target_target_pinged, 
 				name3 => "old_ping_target_ping_time",     value3 => $old_ping_target_ping_time, 
@@ -593,7 +599,7 @@ WHERE
 ;
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -659,7 +665,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 			$query =~ s/'NULL'/NULL/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -692,7 +698,7 @@ INSERT INTO
 sub archive_if_needed
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the 'trigger' is '0', archiving is disabled.
 	if (not $an->data->{scancore}{archive}{trigger})
@@ -719,7 +725,7 @@ sub archive_if_needed
 	#    records from the database.
 	
 	# Update the archive path, if set by a user. Also verify that there are sane archive values.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
 		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
 		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
@@ -728,21 +734,21 @@ sub archive_if_needed
 	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
 	{
 		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{trigger} = 100000;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{count} = 50000;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -750,7 +756,7 @@ sub archive_if_needed
 	if (not -e $an->data->{path}{scancore_archive})
 	{
 		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -758,7 +764,7 @@ sub archive_if_needed
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -784,7 +790,7 @@ sub archive_if_needed
 	my $archive_needed = 0;
 	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "table", value1 => $table, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -796,13 +802,13 @@ FROM
 WHERE 
     ".$an->data->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $records = 0 if not defined $records;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "records", value1 => $records, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -812,7 +818,7 @@ WHERE
 			my $records_to_save                            = ($an->data->{scancore}{archive}{trigger} - $an->data->{scancore}{archive}{count});
 			my $offset                                     = $records - $records_to_save;
 			   $an->data->{archive}{table}{$table}{offset} = $offset;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "archive_needed",                   value1 => $archive_needed, 
 				name2 => "records_to_save",                  value2 => $records_to_save, 
 				name3 => "archive::table::${table}::offset", value3 => $an->data->{archive}{table}{$table}{offset}, 
@@ -833,7 +839,7 @@ WHERE
 		foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 		{
 			next if not $an->data->{archive}{table}{$table}{offset};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "table", value1 => $table, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -855,7 +861,7 @@ WHERE
 		my $db_name = "";
 		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "id",                        value1 => $id, 
 				name2 => "scancore::db::${id}::host", value2 => $an->data->{scancore}{db}{$id}{host}, 
 				name3 => "hostname",                  value3 => $an->hostname, 
@@ -864,7 +870,7 @@ WHERE
 			if (($an->data->{scancore}{db}{$id}{host} eq $an->hostname) or ($an->data->{scancore}{db}{$id}{host} eq $an->short_hostname))
 			{
 				$db_name = $an->data->{scancore}{db}{$id}{name};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "db_name",                   value1 => $db_name, 
 					name2 => "scancore::db::${id}::name", value2 => $an->data->{scancore}{db}{$id}{name}, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -875,7 +881,7 @@ WHERE
 		{
 			my $start      = time;
 			my $shell_call = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." $db_name -c 'VACUUM FULL;'\"";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "start",      value1 => $start, 
 				name2 => "shell_call", value2 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -884,14 +890,14 @@ WHERE
 			{
 				chomp;
 				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			close $file_handle;
 			
 			my $finished = time - $start;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "finished", value1 => $finished, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -917,13 +923,13 @@ sub prep_databases
 		#                     The actual query -----------------.        .------- Row 0
 		#                        Query this DB --.              |        |    .-- Columns 0
 		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($count < 1)
 		{
 			# Need to load the database schema.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
 			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
 			
 			# Send an alert telling the user that we've initialized this database.
@@ -942,7 +948,7 @@ sub prep_databases
 		else
 		{
 			# Table exists, schema load is not needed.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
