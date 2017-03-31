@@ -644,7 +644,7 @@ sub resume_server
 			alert_sort		=>	1,
 			alert_agent_name	=>	$THIS_FILE,
 			alert_title_key		=>	"an_alert_title_0005",
-			alert_message_key	=>	"scan_server_message_0019",
+			alert_message_key	=>	"scan_server_message_0024",
 			alert_message_variables	=>	{
 				server_name		=>	$server_name, 
 			},

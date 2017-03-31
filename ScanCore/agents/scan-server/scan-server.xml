@@ -100,13 +100,6 @@ New:
 The server: [#!variable!server_name!#] was in a paused state, which isn't supposed to happen. 
 A 'resume' was performed and the new state is: [#!variable!server_state!#].
 		</key>
-		<key name="scan_server_message_0019">
-The server: [#!variable!server_name!#] was stuck in a paused state, which should never happen.
-If this happened immediately after the server booted, then there should be no problems.
-If the server had been operating, you may need to check the consistency of the filesystems, databases or similar.
-A force-off was performed after a 'resume' failed.
-The server should be restarted by the Anvil! momentarily.
-		</key>
 		<key name="scan_server_message_0019">The server: [#!variable!server!#]'s was running on: [#!variable!old!#] but has now shut down.</key>
 		<key name="scan_server_message_0020">The server: [#!variable!server!#]'s has been started on: [#!variable!new!#].</key>
 		<key name="scan_server_message_0021">The server: [#!variable!server!#]'s is stopped.</key>
@@ -122,6 +115,13 @@ redefine the server with the following command;
 - [virsh define #!variable!backup!#]
 Once you have added the server to the Anvil!, you can re-enable this scan agent by undoing the
 change you made to striker.conf.
+		</key>
+		<key name="scan_server_message_0024">
+The server: [#!variable!server_name!#] was stuck in a paused state, which should never happen.
+If this happened immediately after the server booted, then there should be no problems.
+If the server had been operating, you may need to check the consistency of the filesystems, databases or similar.
+A force-off was performed after a 'resume' failed.
+The server should be restarted by the Anvil! momentarily.
 		</key>
 		
 		<!-- These are state strings added to other strings. -->

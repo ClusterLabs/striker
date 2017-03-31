@@ -16,7 +16,7 @@ strings file. Do this by prefixing all strings with 'scan_apc_pdu_'.
 		<key name="scan_apc_pdu_brand_0001">APC/Schneider Electronics PDU Scan Agent</key>
 		
 		<!-- Logs -->
-		<key name="scan_apc_ups_log_0001">Starting to read the SNMP OIDs for the PDU: [#!variable!pdu!#].</key>
+		<key name="scan_apc_pdu_log_0001">Starting to read the SNMP OIDs for the PDU: [#!variable!pdu!#].</key>
 		
 		<!-- APC PDU Agent-specific messages -->
 		<key name="scan_apc_pdu_message_0001">Starting #!string!scan_apc_pdu_brand_0001!#:</key>

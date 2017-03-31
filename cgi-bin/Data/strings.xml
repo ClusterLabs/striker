@@ -183,7 +183,6 @@
 		<key name="explain_0031">Windows servers tend to work best with 2 CPUs.</key>
 		<key name="explain_0032">More is not always better. When in doubt, start with 2 to 4. You can change this easily later.</key>
 		<key name="explain_0033">Please use only one node's storage pool.</key>
-		<!-- <key name="explain_0034"><![CDATA[Type "<span class="fixed_width">all</span>" to use the all of the available free space.<br />Enter a percentage to use that percent of the remaining free space.]]></key> -->
 		<key name="explain_0034"><![CDATA[Enter a fixed size or a percentage of remaining free space to use for this server.]]></key>
 		<key name="explain_0035">This is likely a bug in the program.</key>
 		<key name="explain_0036"><![CDATA[Save the current configuration of this #!string!brand_0002!# to a file on your computer.<br />This can be used to restore the configuration should this dashboard get reset or replaced.]]></key>
@@ -1125,7 +1124,6 @@
 		<key name="state_0051">Didn't shut down</key>
 		<key name="state_0052">Storage Pool Mismatch</key>
 		<key name="state_0053">Not enough space</key>
-		<key name="state_0054"><![CDATA[Pool 1: [<span class="fixed_width">#!variable!pool1_device!#</span>, <span class="fixed_width">#!variable!pool1_size!#</span>]<br />Pool 2: [<span class="fixed_width">#!variable!pool2_device!#</span>, <span class="fixed_width">#!variable!pool2_size!#</span>]<br /><span class="subtle_text">Pool 1 inc. [<span class="fixed_width">#!variable!media_size!#</span>] Media Libraray.</span>]]></key> <!-- Not used now -->
 		<key name="state_0054"><![CDATA[Servers: [<span class="highlight_detail">#!variable!pool1_size!#</span>], Library: [<span class="highlight_detail">#!variable!media_size!#</span>].</span>]]></key>
 		<key name="state_0055"><![CDATA[Backing device: [<span class="highlight_detail">#!variable!device!#</span>] Not Found.]]></key>
 		<key name="state_0056">No backing device specified</key>
@@ -2647,9 +2645,7 @@ Deadline Scheduler Configuration (sda):
 		<key name="aft_error_0003"><![CDATA[The 'storcli64' program appears to not be installed. Expected it to be at: [#!variable!path!#].]]></key>
 		<key name="aft_error_0004"><![CDATA[The 'fio' program appears to not be installed. Expected it to be at: [#!variable!path!#].]]></key>
 		<key name="aft_error_0005"><![CDATA[The '--runtime X' switch must be set to an integer (number of seconds to run for per loop).]]></key>
-		<key name="aft_error_0005"><![CDATA[The '--runtime X' switch must be set to an integer (number of seconds to run for per loop).]]></key>
 		
-
 		<!-- anvil-safe-start -->
 		<key name="asst_log_0001">#!variable!this_file!# has started.</key>
 		<key name="asst_log_0002">...free...</key>

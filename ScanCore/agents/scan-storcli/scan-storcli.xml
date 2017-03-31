@@ -623,7 +623,6 @@ https://alteeve.ca/w/Support
 		<key name="auto_rebuild">Automatic Rebuild</key>
 		<key name="backend_port_count">Backend Port Count</key>
 		<key name="background_initialization_rate_percent">Background Initialization Rate (Percent)</key>
-		<key name="battery_fru">Battery FRU</key>
 		<key name="battery_learn_reoccurrence">Battery Relearn Interval</key>
 		<key name="battery_warning">Battery Warning Enabled</key>
 		<key name="bbu_connected">BBU/FBU Connected?</key>
@@ -637,7 +636,7 @@ https://alteeve.ca/w/Support
 		<key name="boot_volume_supported">Boot Volume Supported?</key>
 		<key name="bootloader_version">Controller Boot Loader Version</key>
 		<key name="bus_number">Mainboard BUS Number</key>
-		<key name="cachevault_flash_size">Cachevault (FBU) Flash Size</key>
+		<key name="cachevault_flash_size">Cachevault (FBU) Flash Size</key>	<!-- Also used in cachevaults -->
 		<key name="chip_revision">Controller ASIC Revision</key>
 		<key name="cluster_active">Conroller Cluster Active?</key>
 		<key name="cluster_permitted">Controller Cluster Permitted?</key>
@@ -706,13 +705,12 @@ https://alteeve.ca/w/Support
 		<key name="deny_serial_ata_tunneling_protocol_passthrough">Deny "SATA Tunneling Protocol Pass-Through"?</key>
 		<key name="deny_serial_management_protocol_passthrough">Deny "Serial Management Protocol Pass-Through"?</key>
 		<key name="deny_virtual_disk_locate">Deny "Virtual Drive Locate"?</key>
-		<key name="device_id">Controller Device ID</key>
 		<key name="device_interface">Controller Interface</key>
 		<key name="device_number">Controller Device Number</key>
 		<key name="direct_attached_drives_spun_up_per_minute">Direct-Connect Drives Spun-Up Per Minute</key>
 		<key name="disable_online_controller_reset_policy">Disable "Online Controller Reset Policy"?</key>
 		<key name="disable_online_premium_feature_key_change">Disable "Premium Feature Key (PFK) Change"?</key>
-		<key name="disk_cache_policy">Virtual Drive Cache Policy Supported?</key>
+		<key name="disk_cache_policy">Virtual Drive Cache Policy Supported?</key>	<!-- Also used in virtual drives -->
 		<key name="drive_coercion_mode">Drive Coercion Mode</key>
 		<key name="drive_groups">Number Of Drive Groups</key>
 		<key name="driver_name">Linux Driver</key>
@@ -883,12 +881,12 @@ https://alteeve.ca/w/Support
 		<!-- BBU Strings -->
 		<key name="absolute_state_of_charge">Absolute State Of Charge (Percent)</key>
 		<key name="app_data">Application Data</key>
-		<key name="auto_learn_mode">Automatic Learning Mode</key>
-		<key name="auto_learn_period">Automatic Learning Interval</key>
+		<key name="auto_learn_mode">Automatic Learning Mode</key>	<!-- Also used in cachevaults -->
+		<key name="auto_learn_period">Automatic Learning Interval</key>	<!-- Also used in cachevaults -->
 		<key name="average_time_to_empty">Average Time To Empty</key>
 		<key name="average_time_to_full">Average Time To Full</key>
 		<key name="battery_backup_charge_time">Battery Backup Charge (Hold-Up) Time</key>
-		<key name="battery_fru">Battery Field Replaceable Unit (FRU) Number</key>
+		<key name="battery_fru">Battery Field Replaceable Unit (FRU) Number</key>	<!-- Also used in the controller section -->
 		<key name="battery_pack_missing">Battery Missing?</key>
 		<key name="battery_state">Battery State</key>
 		<key name="cache_offload_premium_feature_required">"Cache Offload" Premium Feature Required?</key>
@@ -899,11 +897,11 @@ https://alteeve.ca/w/Support
 		<key name="charging_terminated">Charging Terminated?</key>
 		<key name="current">Current</key>
 		<key name="cycle_count">Charge/Discharge Cycle Count</key>
-		<key name="date_of_manufacture">Date Manufactured</key>
-		<key name="design_capacity">Design Capacity</key>
+		<key name="date_of_manufacture">Date Manufactured</key>		<!-- Also used in cachevaults -->
+		<key name="design_capacity">Design Capacity</key>		<!-- Also used in cachevaults -->
 		<key name="design_voltage">Design Voltage</key>
 		<key name="device_chemistry">Battery Chemistry</key>
-		<key name="device_name">Device Name</key>
+		<key name="device_name">Device Name</key>			<!-- Also used in cachevaults -->
 		<key name="discharging">Discharging?</key>
 		<key name="full_charge_capacity">Full Charge Capacity</key>
 		<key name="fully_charged">Fully Charged?</key>
@@ -914,12 +912,12 @@ https://alteeve.ca/w/Support
 		<key name="learn_cycle_requested">Learn Cycle Requested?</key>
 		<key name="learn_cycle_status">Learn Cycle Status</key>
 		<key name="learn_cycle_timeout">Learn Cycle Timeout?</key>
-		<key name="learn_delay_interval">Learn Cycle Delay Interval</key>
-		<key name="manufacture_name">Manufacturer Model Name</key>
+		<key name="learn_delay_interval">Learn Cycle Delay Interval</key>	<!-- Also used in cachevaults -->
+		<key name="manufacture_name">Manufacturer Model Name</key>		<!-- Also used in cachevaults -->
 		<key name="max_error">Maximum Errors</key>
-		<key name="module_microcode_update_required">Module Microcode Update Required?</key>
-		<key name="next_learn_time">Next Scheduled Learn Cycle</key>
-		<key name="no_space_to_cache_offload">No Space To Cache Offload?</key>
+		<key name="module_microcode_update_required">Module Microcode Update Required?</key>	<!-- Also used in cachevaults -->
+		<key name="next_learn_time">Next Scheduled Learn Cycle</key>		<!-- Also used in cachevaults -->
+		<key name="no_space_to_cache_offload">No Space To Cache Offload?</key>	<!-- Also used in cachevaults -->
 		<key name="over_charged">Over Charged?</key>	<!-- Warning -->
 		<key name="over_temperature">Over Temperature?</key>	<!-- Warning -->
 		<key name="pack_is_about_to_fail_and_should_be_replaced">Battery Unit Is About To Fail?</key>	<!-- Warning -->
@@ -931,41 +929,26 @@ https://alteeve.ca/w/Support
 		<key name="remaining_capacity_low">Remaining Capacity Low?</key>	<!-- Warning -->
 		<key name="remaining_time_alarm_status">Remaining Time Alarm?</key>
 		<key name="remaining_time_alarm">Remainin Time Alarm Threshold</key>
-		<key name="replacement_required">Replacement Required?</key>	<!-- Warning -->
+		<key name="replacement_required">Replacement Required?</key>	<!-- Warning -->	<!-- Also used in cachevaults -->
 		<key name="run_time_to_empty">Runtime To Empty</key>
 		<key name="specification_info">Specification Information</key>
 		<key name="temperature_status">Temperature Status</key>	<!-- Warning -->
 		<key name="terminate_discharge_alarm">Terminate Discharge Alarm?</key>
 		<key name="transparent_learn">Transparent Learn</key>
-		<key name="type">Battery Backup Unit Type</key>
+		<key name="type">Type</key>	<!-- Also used in cachevaults -->
 		<key name="voltage">Voltage Status</key>
 		
 		<!-- Cachevault Strings -->
-		<key name="auto_learn_mode">Automatic Learn Mode</key>
-		<key name="auto_learn_period">Automatic Learn Interval</key>
-		<key name="cachevault_flash_size">Cachevault Flash Size</key>
 		<key name="capacitance">Capacitance (Percent)</key>
-		<key name="date_of_manufacture">Manufacture Date</key>
-		<key name="design_capacity">Design Capacity</key>
-		<key name="device_name">Manufacturer Device Name</key>
-		<key name="learn_delay_interval">Learn Delay Interval</key>
-		<key name="manufacture_name">Manufacturer's Name</key>
-		<key name="module_microcode_update_required">Cachevault Module's Microcode Update Required?</key>
-		<key name="next_learn_time">Next Scheduled Learn Time</key>
-		<key name="no_space_to_cache_offload">No Space To Cache Offload</key>
 		<key name="pack_energy">Cachevault Pack Energy</key>
 		<key name="remaining_reserve_space">Remaining Reserve Space</key>
-		<key name="replacement_required">Replacement Required?</key>	<!-- warning -->
-		<key name="state">State</key>	<!-- warning -->
 		<key name="tmmfru">TMM Field Replacable Unit Number</key>
-		<key name="type">Pack Type</key>
 		
 		<!-- Virtual Drive -->
 		<key name="active_operations">Active Operations</key>
 		<key name="creation_date">Creation Date</key>
 		<key name="creation_time">Creation Time</key>
 		<key name="data_protection">Data Protection?</key>
-		<key name="disk_cache_policy">Disk Cache Policy</key>
 		<key name="emulation_type">Emulation Type</key>
 		<key name="encryption">Encryption</key>
 		<key name="exposed_to_os">Exposed To The Operating System?</key>
@@ -989,7 +972,7 @@ https://alteeve.ca/w/Support
 		<key name="raid_type">RAID Type</key>
 		<key name="read_cache">Read Cache</key>
 		<key name="scheduled_consistency_check">Scheduled Consistency Check?</key>
-		<key name="write_cache">Write Cache?</key>
+		<key name="write_cache">Write Cache</key>	<!-- Also used in Physical Disks -->
 		
 		<!-- Physical Disk -->
 		<key name="bbm_error_count">Bad Block Management (BBM) Error Count</key>
@@ -998,7 +981,7 @@ https://alteeve.ca/w/Support
 		<key name="commissioned_spare">Commissioned Spare?</key>
 		<key name="connected_port_number">Connected Port Number</key>
 		<key name="connector_name">Connector Name</key>
-		<key name="device_id">Device ID</key>
+		<key name="device_id">Device ID</key>		<!-- Also used in the controller -->
 		<key name="device_speed">Drive Link Speed</key>
 		<key name="drive_media">Drive Type</key>
 		<key name="drive_model">Drive Model Number</key>
@@ -1040,11 +1023,10 @@ https://alteeve.ca/w/Support
 		<key name="smart_alert_flagged_by_drive">SMART Alert Flagged By Drive?</key>	<!-- Warning -->
 		<key name="span">Span</key>
 		<key name="spun_up">Spun-Up?</key>
-		<key name="state">State</key>
+		<key name="state">State</key>			<!-- Also used in cachevaults -->
 		<key name="successful_diagnostics_completion_on">Successful Diagnostics Completion On Date?</key>
 		<key name="wide_port_capable">Wide Port Capable?</key>
 		<key name="world_wide_name">World Wide Name (WWN)</key>
-		<key name="write_cache">Write Cache</key>
 		<key name="drive_temperature">Drive's Temperature</key>
 		
 		<!-- Sensor message titles -->
