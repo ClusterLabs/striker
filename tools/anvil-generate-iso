@@ -1260,6 +1260,7 @@ perl-CGI
 perl-Crypt-SSLeay
 perl-DBD-Pg
 perl-Digest-SHA
+perl-Digest-SHA1
 perl-Mail-RFC822-Address
 perl-Net-SSH2
 perl-Net-Telnet
@@ -4139,6 +4140,7 @@ sub get_package_list
 		"perl-DBD-Pg.x86_64",
 		"perl-DBI.x86_64",
 		"perl-Digest-SHA.x86_64",
+		"perl-Digest-SHA1.x86_64",
 		"perl-ExtUtils-MakeMaker.x86_64",
 		"perl-ExtUtils-ParseXS.x86_64",
 		"perl-HTML-Parser.x86_64",
