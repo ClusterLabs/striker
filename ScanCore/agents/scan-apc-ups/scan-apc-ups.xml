@@ -327,6 +327,8 @@ Connection to the UPS: [#!variable!ups_name!#] has been restored.
 		<key name="scan_apc_ups_health_0018">The UPS is in power saving mode. The front panel display will be off but the UPS is operating normally.</key>
 		<key name="scan_apc_ups_health_0019">The UPS is in SPoT (Self Power Test) operating mode.</key> <!-- http://www.apcmedia.com/salestools/COCR-9TZK8N/COCR-9TZK8N_R0_EN.pdf -->
 		<key name="scan_apc_ups_health_0020">The UPS is in ECOnversion mode. The UPS is providing power to the downstream devices via the bypass. The UPS's inverter is operational and ready to take over the output load if an input fault occurs.</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
+		<!-- This is used to catch invalid returned values. -->
+		<key name="scan_apc_ups_health_0099">The UPS Reported a health value that isn't recognized. It should have reported an integer between 1~20, but: [#!variable!bad_value!#] was received..</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
 		
 		<!-- The UPS reports the last transfer as integers. These are
 		     used to translate those states into strings that a human
@@ -343,6 +345,8 @@ Connection to the UPS: [#!variable!ups_name!#] has been restored.
 		<key name="scan_apc_ups_last_xfer_0008">The UPS last transfered to batteries because of a brief, significant spike of input voltage from the mains circuit.</key>
 		<key name="scan_apc_ups_last_xfer_0009">The UPS last transfered to batteries as part of a planned self-test.</key>
 		<key name="scan_apc_ups_last_xfer_0010">The UPS last transfered to batteries because of a significant change of input voltage from the mains circuit.</key>
+		<!-- This is used to catch invalid returned values. -->
+		<key name="scan_apc_ups_last_xfer_0099">The UPS Reported a last transfer value that isn't recognized. It should have reported an integer between 1~10, but: [#!variable!bad_value!#] was received..</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
 		
 		<!-- The UPS reports the battery state as an integer. These are
 		     used to translate those states into strings that a human
@@ -361,6 +365,8 @@ Connection to the UPS: [#!variable!ups_name!#] has been restored.
 		<key name="scan_apc_ups_battery_health_0000">The UPS battery health is unknown.</key>
 		<key name="scan_apc_ups_battery_health_0001">The UPS battery is healthy.</key>
 		<key name="scan_apc_ups_battery_health_0002">The UPS battery has failed and needs to be replaced.</key>
+		<!-- This is used to catch invalid returned values. -->
+		<key name="scan_apc_ups_battery_health_0099">The UPS battery health value that isn't recognized. It should have reported an integer between 1~2, but: [#!variable!bad_value!#] was received..</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
 		
 		<!-- The UPS reports the input sensitive as an integer. These are used to translate those 
 		     levels into strings that a human would understand. See the MIB for OID 

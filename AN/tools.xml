@@ -49,6 +49,7 @@ This is the AN::Tools master 'words' file.
 		<key name="an_brand_0005">Raritan</key>
 		
 		<!-- States -->
+		<key name="an_state_0001">Unknown</key>
 		<key name="an_state_0002">Stopped</key>
 		<key name="an_state_0003">Running</key>
 		<key name="an_state_0004">Offline</key>

@@ -547,9 +547,7 @@ sub register_alert
 	if ($this_level > $lowest_log_level)
 	{
 		# Return.
-		$an->Log->entry({log_level => 3, message_key => "tools_log_0004", message_variables => {
-			message_key => "$alert_message_key"
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "tools_log_0004", message_variables => { message_key => $alert_message_key }, file => $THIS_FILE, line => __LINE__});
 		return(0);
 	}
 	
