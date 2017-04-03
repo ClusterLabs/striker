@@ -5325,10 +5325,6 @@ sub translate_strings
 	{
 		$return = $an->String->get({key => "tools_suffix_0081"});
 	}
-# 	elsif (lc($string) eq "")
-# 	{
-# 		$return = $an->String->get({key => ""});
-# 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return",  value1 => $return, 

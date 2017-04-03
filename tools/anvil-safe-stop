@@ -394,7 +394,7 @@ sub shed_load
 				node => $an->hostname(),
 				ram  => $an->Readable->bytes_to_hr({'bytes' => $local_server_ram })
 			}})."\n";
-			print $an->String->get({key => "assp_message_0010", variables => { 
+			print $an->String->get({key => "assp_message_0012", variables => { 
 				node => $an->data->{sys}{peer_node},
 				ram  => $an->Readable->bytes_to_hr({'bytes' => $peer_server_ram }),
 			}})."\n";
@@ -412,7 +412,7 @@ sub shed_load
 		else
 		{
 			# Peer has more RAM in use by servers, so we'll shut down the local system.
-			print $an->String->get({key => "assp_message_0010", variables => { 
+			print $an->String->get({key => "assp_message_0012", variables => { 
 				node => $an->hostname(),
 				ram  => $an->Readable->bytes_to_hr({'bytes' => $local_server_ram })
 			}})."\n";
@@ -570,10 +570,9 @@ sub shutdown_node
 				{
 					if ($an->data->{switches}{reason} =~ /\W/)
 					{
-						$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
-							name1 => "reason", value1 => $an->data->{switches}{reason}, 
-						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 0, message_key => "assp_warning_0002", message_variables => { reason => $an->data->{switches}{reason} }, file => $THIS_FILE, line => __LINE__});
 						$an->data->{switches}{reason} = "";
+						
 						$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
 							name1 => "switches::reason", value1 => $an->data->{switches}{reason}, 
 						}, file => $THIS_FILE, line => __LINE__});

@@ -87,7 +87,7 @@ sub change_apache_password
 	if (not $new_password)
 	{
 		# Um...
-		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0196", message_variables => { user => $user }, code => 196, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0198", message_variables => { user => $user }, code => 198, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -96,7 +96,7 @@ sub change_apache_password
 	if (($< != 0) && ($> != 0))
 	{
 		# Not root
-		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0197", message_variables => { user => $user }, code => 197, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0199", message_variables => { user => $user }, code => 199, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -196,7 +196,7 @@ fi;";
 	if (($create_file) && (not $user_count))
 	{
 		# No file and no user... can't proceed.
-		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0196", message_variables => { user => $user }, code => 196, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0200", message_variables => { user => $user }, code => 200, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	

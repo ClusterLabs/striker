@@ -42,11 +42,9 @@ This is the AN::Tools master 'words' file.
 		<key name="an_0011">Warning</key>
 		
 		<!-- Branding stuff that others might want to change. -->
-		<key name="an_brand_0001">https://alteeve.ca</key>
+		<key name="an_brand_0001">https://alteeve.com</key>
 		<key name="an_brand_0002">ScanCore</key>
 		<key name="an_brand_0003">Anvil!</key>                   <!-- This version is used in plain-text files and in some buttons. -->
-		<key name="an_brand_0004">APC</key>
-		<key name="an_brand_0005">Raritan</key>
 		
 		<!-- States -->
 		<key name="an_state_0001">Unknown</key>
@@ -664,7 +662,7 @@ Variables:
 		<key name="warning_title_0010">Operation Aborted</key>
 		
 		<!-- Warning messages -->
-		<key name="warning_message_0001">The detected operating system: [#!variable!os!#] is not recognized by AN::Tools. Please send this error message and your operating system details to AN! (#!variable!an_brand_0001!#) so that we can add support for your OS. For now, I will proceed with Linux-type settings. This may not work.</key>
+		<key name="warning_message_0001">The detected operating system: [#!variable!os!#] is not recognized by AN::Tools. Please send this error message and your operating system details to AN! (#!string!an_brand_0001!#) so that we can add support for your OS. For now, I will proceed with Linux-type settings. This may not work.</key>
 		<key name="warning_message_0002">Unable to determine what environment this script is being called in.</key>
 		<key name="warning_message_0003"><![CDATA[AN::Tools::Cman->boot_server() was asked to boot: [#!variable!server!#], but that was not found. Unable to proceed.]]></key>
 		<key name="warning_message_0004">Booting the server: [#!variable!server!#] failed. No healthy node was found and the boot wasn't forced, so the server will be left off.</key>
@@ -766,14 +764,14 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_message_0016">The passed byte size: [#!variable!size!#] contains an illegal value. Byte sizes can only be signed integers. It may also have commas in it which will be removed automatically.</key>
 		<key name="error_message_0017">The passed byte size: [#!variable!size!#] in the string: [sign: #!variable!sign!#, size: #!variable!size!#, type: #!variable!type!#] contains an illegal value. Sizes can only be integers or real numbers. It may also have commas in it which will be removed automatically.</key>
 		<key name="error_message_0018">The passed byte size: [#!variable!size!#] in the string: [sign: #!variable!sign!#, size: #!variable!size!#, type: #!variable!type!#] appears to be a byte size already but the size does not seem to be an integer. Byte sizes can only be signed integers. It may also have commas in it which will be removed automatically.</key>
-		<key name="error_message_0019">...free...</key>
+		<key name="error_message_0019">#!free!#</key>
 		<key name="error_message_0020">The passed real number: [#!variable!number!#] contains an illegal value. Only digits and one decimal place are allowed in the real number being rounded.</key>
 		<key name="error_message_0021">Loading the perl module '#!variable!module!#' failed with the error: [#!variable!error!#].</key>
 		<key name="error_message_0022">The shell call:  [#!variable!shell_call!#] failed with the error: [#!variable!error!#].</key>
 		<key name="error_message_0023">Failed to read or generate a (sane) UUID. Expected the format: '012345-6789-abcd-ef01-23456789abcd' but got: [#!variable!bad_uuid!#]. This could mean the 'get' values was a host name that was not found in the database.</key>
 		<key name="error_message_0024">Failed to generate UUID.</key>
-		<key name="error_message_0025">Connecting to the target machine: [#!variable!target!#] on requested TCP port: [#!variable!port!#] is not possible, the port is invalid.</key>
-		<key name="error_message_0026">#!variable!method!# was asked to call: [#!variable!shell_call!#] but no target was defined. This is probably a program error, sorry about the inconvenience. Please contact support (#!string!brand_0012!#) and we will try to help fix this.</key>
+		<key name="error_message_0025">#!free!#</key>
+		<key name="error_message_0026">#!free!#</key>
 		<key name="error_message_0027">Host name: [#!variable!target!#] does not resolve to an IP address.</key>
 		<key name="error_message_0028"><![CDATA[Connection to: [#!variable!target!#] on port: [#!variable!port!#] as the user: [#!variable!user!#] was refused.</br /> If you recently booted this server, it may be just about finished booting. It is normal for the connection to be refused for a brief time during the boot process.]]></key>
 		<key name="error_message_0029">No route to: [#!variable!target!#]. Is the machine in the process of booting up or powering off? Is this dashboard server on the same network?</key>
@@ -799,7 +797,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_message_0049"><![CDATA[The 'AN::Tools::Get->server_uuid()' method was called but the 'server' value wasn't set.]]></key>
 		<key name="error_message_0050"><![CDATA[The 'AN::Tools::Get->remote_anvil_details()' method was called but the 'anvil' value wasn't set.]]></key>
 		<key name="error_message_0051"><![CDATA[The 'AN::Tools::Get->server_data()' method was called but the 'server' value wasn't set.]]></key>
-		<key name="error_message_0052">Failed to create a symlink from: [#!variable!target!#] to: [#!variable!link!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_message_0052">#!free!#</key>
 		<key name="error_message_0053">Failed to delete the file: [#!variable!file!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_message_0054"><![CDATA[The 'AN::Tools::Check->daemon()' method was called but the 'daemon' value wasn't set.]]></key>
 		<key name="error_message_0055"><![CDATA[The 'AN::Tools::Check->kernel_module()' method was called but the 'module' value wasn't set.]]></key>
@@ -844,7 +842,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0086"><![CDATA[The 'AN::Tools::Get' module's 'smtp_data()' method was called but neither a server or UUID was passed in.]]></key>
 		<key name="error_message_0087"><![CDATA[The 'AN::Tools::Get' module's 'alert_data()' method was called but neither a target or UUID was passed in.]]></key>
 		<key name="error_message_0088"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_notifications()' method was called without passing in a target or UUID.]]></key>
-		<key name="error_message_0089"><![CDATA[The 'AN::Tools::Storage' module's 'read_words()' method was called without passing in a file to read.]]></key>
+		<key name="error_message_0089">#!free!#</key>
 		<key name="error_message_0090"><![CDATA[The 'AN::Tools::Get' module's 'recipient_data()' method was called but no recipient, anvil or notification target UUID was passed in.]]></key>
 		<key name="error_message_0091"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_recipients()' method was called without passing in an #!string!an_brand_0003!# and/or notification UUID.]]></key>
 		<key name="error_message_0092"><![CDATA[The 'AN::Tools::Get' module's 'server_data()' method failed to find the requested server's XML definition data.]]></key>
@@ -897,7 +895,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0139"><![CDATA[The 'AN::Tools::Striker' module's '_join_anvil()' method was called without passing in an Anvil! UUID.]]></key>
 		<key name="error_message_0140"><![CDATA[The 'AN::Tools::Striker' module's '_join_anvil()' method was called without passing in an Anvil! node name.]]></key>
 		<key name="error_message_0141"><![CDATA[The 'AN::Tools::Striker' module's '_dual_join()' method was called without passing in an Anvil! UUID.]]></key>
-		<key name="error_message_0142"><![CDATA[The 'AN::Tools::Striker' module's '_cold_stop_anvil' saw a node power off but failed to parse out the file name. This is likely a program error.]]></key>
+		<key name="error_message_0142">#!free!#</key>
 		<key name="error_message_0143"><![CDATA[The 'AN::Tools::Striker' module's '_fence_node()' method was called without passing in an Anvil! UUID.]]></key>
 		<key name="error_message_0144"><![CDATA[The 'AN::Tools::Striker' module's '_fence_node()' method was called without passing in an Anvil! node name.]]></key>
 		<key name="error_message_0145"><![CDATA[The 'AN::Tools::Check' module's 'on_same_network()' method was called without passing in a remote host name or IP address.]]></key>
@@ -932,8 +930,8 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0174"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' method was called without a target being set.]]></key>
 		<key name="error_message_0175"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' was asked to connecto to the target machine: [#!variable!target!#] on requested TCP port: [#!variable!port!#], but the port is invalid.]]></key>
 		<key name="error_message_0176"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called before ScanCore has run on both nodes. Please make sure that ScanCore is enabled and has run at least once.]]></key>
-		<key name="error_message_0177"><![CDATA[The 'AN::Tools::Get' module's 'dr_target_data()' method was called without passing in a DR Target UUID.]]></key>
-		<key name="error_message_0178"><![CDATA[The 'AN::Tools::Get' module's 'dr_target_data()' method was called with the DR Target UUID: [#!variable!uuid!#] which isn't a valid UUID.]]></key>
+		<key name="error_message_0177"><![CDATA[The 'AN::Tools::Get' module's 'dr_target_data()' method was called without passing in a DR Target name or UUID.]]></key>
+		<key name="error_message_0178"><![CDATA[The 'AN::Tools::Get' module's 'dr_target_data()' method was called with the DR Target name or UUID: [#!variable!target!#] which wasn't found.]]></key>
 		<key name="error_message_0179"><![CDATA[The 'AN::Tools::Get' module's 'dr_target_data()' method was called but neither an DR target name or UUID was passed in.]]></key>
 		<key name="error_message_0180"><![CDATA[The 'AN::Tools::Get' module's 'dr_job_data()' method was called but neither an DR job name or UUID was passed in.]]></key>
 		<key name="error_message_0181"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_servers()' method was called without passing in a server name or server UUID.]]></key>

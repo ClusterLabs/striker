@@ -94,9 +94,7 @@ $an->Get->switches();
 $an->Readable->base2(1);
 
 # Log our startup
-$an->Log->entry({log_level => 2, message_key => "anp_log_0001", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 2, message_key => "anp_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 # If the user didn't tell us where to test, read our hostname and find the peer's hostname from cluster.conf
 # and then set the peer's storage network as the interface to use.

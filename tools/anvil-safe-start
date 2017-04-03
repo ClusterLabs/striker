@@ -15,7 +15,7 @@
 # 9  = A DRBD resource on the local machine failed to connect.
 # 10 = A clustered LV failed to ACTIVATE.
 # 11 = Failed to mount /shared
-# 12 = Failed to find this Anvil!'s password.
+# 12 = unused
 # 13 = During single-node start, the 'cman' daemon was found to already be running which should not happen.
 #
 # TODO:
@@ -201,8 +201,6 @@ $an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variabl
 #    speed. If it looks like resync will take > 5 minutes 10 seconds after boosting, abort the wait.
 #    - Reset DRBD config before proceeding.
 # 6. Using Start Groups/Delays (and ignoring 'clean' off VMs), boot servers.
-# 
-
 
 # Now wait for access to a ScanCore database.
 wait_for_scancore_database($an);
@@ -1722,7 +1720,7 @@ sub start_drbd
 				if ($local_resource->{connection_state} =~ /StandAlone/) 
 				{
 					# Failed to Connect...
-					$an->Alert->error({title_key => "an_0003", message_key => "asst_error_0007", message_variables => { resource => $resource }, code => 8, file => $THIS_FILE, line => __LINE__});
+					$an->Alert->error({title_key => "an_0003", message_key => "asst_error_0008", message_variables => { resource => $resource }, code => 8, file => $THIS_FILE, line => __LINE__});
 					$an->nice_exit({exit_code => 8});
 				}
 			}
@@ -2051,6 +2049,7 @@ sub wait_if_node2
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "peer_key", value1 => $peer_key,
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		$an->Remote->wait_on_peer({
 			program		=>	$an->data->{sys}{program_name}, 
 			target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},

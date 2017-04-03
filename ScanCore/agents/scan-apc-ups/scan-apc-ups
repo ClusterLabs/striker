@@ -1244,9 +1244,8 @@ sub find_changes
 						name2 => "old_apc_ups_health", value2 => $old_apc_ups_health, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					my $level             = "notice";
-					my $title_key         = "an_alert_title_0003";
-					my $message_key       = "";
+					my $level     = "notice";
+					my $title_key = "an_alert_title_0003";
 					
 					### There are 20 possible states 
 					### (* == warning, rest are notice):
@@ -1392,9 +1391,8 @@ sub find_changes
 						name2 => "old_apc_ups_last_transfer_reason", value2 => $old_apc_ups_last_transfer_reason, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					my $level             = "notice";
-					my $title_key         = "an_alert_title_0003";
-					my $message_key       = "";
+					my $level     = "notice";
+					my $title_key = "an_alert_title_0003";
 					
 					### There are 10 possible states 
 					### (* == warning, rest are notice):
@@ -1705,9 +1703,8 @@ AND
 						$old_apc_ups_battery_health = 99;
 					}
 					
-					my $level             = "notice";
-					my $title_key         = "an_alert_title_0003";
-					my $message_key       = "";
+					my $level     = "notice";
+					my $title_key = "an_alert_title_0003";
 					
 					### There are 2 possible states  (* == warning):
 					#  1 - The UPS battery is healthy.
@@ -1777,14 +1774,13 @@ AND
 					# By default, this is a simple 'info' level alert.
 					my $level       = "info";
 					my $title_key   = "an_alert_title_0002";
-					my $message_key = "";
+					my $message_key = "scan_apc_ups_note_0022";
 					my $send_alert  = 0;
 					
 					# Is the battery charging or discharging?
 					if ($new_apc_ups_battery_percentage_charge > $old_apc_ups_battery_percentage_charge)
 					{
 						# Charging
-						$message_key = "scan_apc_ups_note_0022";
 						if ($new_apc_ups_battery_percentage_charge eq "100")
 						{
 							# Full charge
@@ -1886,9 +1882,9 @@ AND
 						name2 => "old_apc_ups_battery_state", value2 => $old_apc_ups_battery_state, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					my $level             = "notice";
-					my $title_key         = "an_alert_title_0003";
-					my $message_key       = "";
+					my $level       = "notice";
+					my $title_key   = "an_alert_title_0003";
+					my $message_key = "scan_apc_ups_note_0028";
 					
 					### There are four possible states (* == warning):
 					# *1 - The UPS battery is in an unknown state.
@@ -1918,7 +1914,6 @@ AND
 						# Entered a warning state.
 						$level       = "warning";
 						$title_key   = "an_alert_title_0004";
-						$message_key = "scan_apc_ups_note_0028";
 					}
 					elsif (($old_apc_ups_battery_state eq "1") or ($old_apc_ups_battery_state eq "4"))
 					{
@@ -1954,7 +1949,7 @@ AND
 					# By default, this is an info level alert.
 					my $level       = "info";
 					my $title_key   = "an_alert_title_0002";
-					my $message_key = "";
+					my $message_key = "scan_apc_ups_note_0030";
 					my $send_alert  = 0;
 					
 					# These are thresholds
@@ -1974,7 +1969,6 @@ AND
 					{
 						# Rising. Has it crossed the shutdown, critical or alert 
 						# thresholds?
-						$message_key = "scan_apc_ups_note_0030";
 						if ($new_apc_ups_battery_temperature > $shutdown_temperature)
 						{
 							# Crossed the shutdown temperature. Kill the UPS.
@@ -2296,7 +2290,7 @@ WHERE
 					# alert.
 					my $level       = "info";
 					my $title_key   = "an_alert_title_0002";
-					my $message_key = "";
+					my $message_key = "scan_apc_ups_note_0041";
 					my $send_alert  = 0;
 					
 					# These are thresholds
@@ -2315,7 +2309,6 @@ WHERE
 					if ($new_apc_ups_input_voltage > $old_apc_ups_input_voltage)
 					{
 						# It is rising. 
-						$message_key = "scan_apc_ups_note_0041";
 						
 						# Has it crossed over the high-voltage transfer threshold? 
 						# If not, has it crossed over the low-voltage clear level?
@@ -2579,7 +2572,7 @@ WHERE
 					# caught by the loss of input voltage.
 					my $level       = "info";
 					my $title_key   = "an_alert_title_0002";
-					my $message_key = "";
+					my $message_key = "scan_apc_ups_note_0052";
 					my $send_alert  = 0;
 					
 					# Is the old time '0'?
@@ -2600,7 +2593,6 @@ WHERE
 					else
 					{
 						# A normal change.
-						$message_key = "scan_apc_ups_note_0052";
 					}
 					
 					$an->Alert->register_alert({

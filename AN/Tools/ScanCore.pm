@@ -2559,17 +2559,17 @@ sub insert_or_update_nodes_cache
 	# We need a host_uuid, node_uuid and name
 	if (not $node_cache_host_uuid)
 	{
-		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0108", code => 108, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_cache_node_uuid)
 	{
-		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0109", code => 109, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_cache_name)
 	{
-		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0110", code => 110, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	

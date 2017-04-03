@@ -315,7 +315,7 @@ WHERE
 		else
 		{
 			# The post-migration script no longer exists.
-			$an->Log->entry({log_level => 1, message_key => "ams_warning_0003", message_variables => { script => $post_migration_script }, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 1, message_key => "ams_warning_0004", message_variables => { script => $post_migration_script }, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -378,8 +378,8 @@ sub sanity_check_cluster
 		else
 		{
 			# It is not me, it is you.
-			print $an->String->get({key => "ams_error_0002"})."\n";
-			$an->Log->entry({log_level => 0, message_key => "ams_error_0002", file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "ams_error_0003"})."\n";
+			$an->Log->entry({log_level => 0, message_key => "ams_error_0003", file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 4});
 		}
 	}

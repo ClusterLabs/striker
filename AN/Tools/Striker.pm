@@ -3101,7 +3101,7 @@ WHERE
 					max_ram		=>	$say_requested_ram,
 				}});
 			print $an->Web->template({file => "server.html", template => "update-server-error-message", replace => { 
-				title		=>	"#!string!title_0025!",
+				title		=>	"#!string!title_0025!#",
 				message		=>	$message,
 			}});
 		}
@@ -3113,7 +3113,7 @@ WHERE
 					max_cpus	=>	$max_cpus,
 				}});
 			print $an->Web->template({file => "server.html", template => "update-server-error-message", replace => { 
-				title		=>	"#!string!title_0026!",
+				title		=>	"#!string!title_0026!#",
 				message		=>	$message,
 			}});
 		}
@@ -7128,7 +7128,6 @@ sub _dual_join
 		}
 		
 		# We're done.
-		$an->Log->entry({log_level => 2, message_key => "log_0125", file => $THIS_FILE, line => __LINE__});
 		print $an->Web->template({file => "server.html", template => "dual-join-anvil-footer"});
 	}
 	else
@@ -7898,12 +7897,12 @@ sub _get_storage_data
 	
 	if (not $anvil_uuid)
 	{
-		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0139", code => 139, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0155", code => 155, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	if (not $node_name)
 	{
-		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0140", code => 140, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0156", code => 156, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -9990,7 +9989,7 @@ sub _migrate_server
 	if (not $target)
 	{
 		# Couldn't log into either node.
-		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0126", message_variables => { server => $server }, code => 126, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0131", message_variables => { server => $server }, code => 131, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -13001,7 +13000,7 @@ sub _poweron_node
 	# Die if I don't know who my target is.
 	if (not $node_key)
 	{
-		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0150", message_variables => { node_name => $node_name }, code => 150, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0153", message_variables => { node_name => $node_name }, code => 153, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -14121,7 +14120,7 @@ sub _server_eject_media
 	# Die if I wasn't passed a server name.
 	if (not $server)
 	{
-		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0125", code => 125, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0185", code => 185, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	

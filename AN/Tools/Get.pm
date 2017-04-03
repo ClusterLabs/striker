@@ -684,7 +684,7 @@ sub dr_target_data
 	if ((not $dr_target_name) && (not $dr_target_uuid))
 	{
 		# What is my purpose?
-		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0179", code => 179, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0177", code => 177, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -706,13 +706,16 @@ FROM
     dr_targets 
 WHERE 
 ";
+	my $target = "";
 	if ($dr_target_uuid)
 	{
-		$query .= "dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($dr_target_uuid);
+		$query  .= "dr_target_uuid = ".$an->data->{sys}{use_db_fh}->quote($dr_target_uuid);
+		$target =  $dr_target_uuid;
 	}
 	else
 	{
 		$query .= "dr_target_name = ".$an->data->{sys}{use_db_fh}->quote($dr_target_name);
+		$target =  $dr_target_name;
 	}
 	$query .= "
 ;";
@@ -726,6 +729,12 @@ WHERE
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
+	if (not $count)
+	{
+		# not a valid UUID or name
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0178", message_variables => { target => $target } code => 178, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
 	foreach my $row (@{$results})
 	{
 		my $dr_target_uuid            =         $row->[0]; 
@@ -2835,7 +2844,7 @@ sub peer_network_details
 	else
 	{
 		# Failed to find my peer's network details
-		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0090", code => 90, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0129", code => 129, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	

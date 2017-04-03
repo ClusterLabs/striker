@@ -2173,7 +2173,7 @@ sub configure_cman
 	}
 	elsif ($an->data->{node}{node2}{has_servers})
 	{
-		# Use node1's cluster.conf
+		# Use node2's cluster.conf
 		$an->Log->entry({log_level => 2, message_key => "log_0270", message_variables => {
 			active_node => $an->data->{sys}{anvil}{node2}{name},
 			file        => "cluster.conf",

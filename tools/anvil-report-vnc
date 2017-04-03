@@ -74,19 +74,13 @@ $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 
-$an->Log->entry({log_level => 3, message_key => "arv_log_0001", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 3, message_key => "arv_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 # Exit if no Anvil! or server name was passed in.
 if ((not $an->data->{switches}{anvil}) or (not $an->data->{switches}{server}))
 {
 	$an->Alert->error({title_key => "an_0003", message_key => "arv_error_0001", code => 1, file => $THIS_FILE, line => __LINE__});
 }
-
-$an->Log->entry({log_level => 2, message_key => "arv_log_0001", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
 
 # Log that we're looking for the login credentials to the defined node.
 $an->Log->entry({log_level => 2, message_key => "arv_log_0002", message_variables => {
@@ -123,16 +117,12 @@ foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
 if ($an->data->{anvil}{id})
 {
 	# Woot!
-	$an->Log->entry({log_level => 2, message_key => "arv_log_0003", message_variables => {
-		anvil	=>	$an->data->{switches}{anvil}, 
-	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "arv_log_0003", message_variables => { anvil => $an->data->{switches}{anvil} }, file => $THIS_FILE, line => __LINE__});
 }
 else
 {
 	# Well foo. 
-	$an->Alert->error({title_key => "an_0003", message_key => "arv_error_0002", message_variables => {
-		anvil	=>	$an->data->{switches}{anvil},
-	}, code => 2, file => $THIS_FILE, line => __LINE__});
+	$an->Alert->error({title_key => "an_0003", message_key => "arv_error_0002", message_variables => { anvil => $an->data->{switches}{anvil} }, code => 2, file => $THIS_FILE, line => __LINE__});
 }
 
 # Now find the server

@@ -1982,7 +1982,7 @@ sub _mark_disk_missing
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = $an->String->get({key => "", variables => { 
+		$message_body  = $an->String->get({key => "lsi_0008", variables => { 
 				disk	=>	$an->data->{cgi}{disk_address},
 				adapter	=>	$an->data->{cgi}{adapter},
 				message	=>	$return_string,

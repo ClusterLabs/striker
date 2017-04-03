@@ -1647,7 +1647,7 @@ sub update_cluster_conf
 		if (not $an->data->{sys}{anvil}{name})
 		{
 			# Unknown Anvil!
-			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0207", message_variables => { anvil_uuid => $anvil_uuid }, code => 207, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0216", message_variables => { anvil_uuid => $anvil_uuid }, code => 216, file => $THIS_FILE, line => __LINE__});
 			return("");
 		}
 	}

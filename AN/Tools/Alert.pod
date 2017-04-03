@@ -568,7 +568,7 @@ The 'AN::Tools::ScanCore' module's 'insert_or_update_notifications()' method was
 
 =head2 C<89>
 
-The 'AN::Tools::Storage' module's 'read_words()' method was called without passing in a file to read.
+unused
 
 =head2 C<90>
 
@@ -780,7 +780,7 @@ The 'AN::Tools::Striker' module's '_dual_join()' method was called without passi
 
 =head2 C<142>
 
-The 'AN::Tools::Striker' module's '_cold_stop_anvil' saw a node power off but failed to parse out the file name. This is likely a program error.
+unused
 
 =head2 C<143>
 
@@ -920,11 +920,11 @@ The 'AN::Tools::Striker' module's 'load_anvil()' method was called before ScanCo
 
 =head2 C<177>
 
-The 'AN::Tools::Get' module's 'dr_target_data()' method was called without passing in a DR Target UUID.
+The 'AN::Tools::Get' module's 'dr_target_data()' method was called without passing in a DR Target name or UUID.
 
 =head2 C<178>
 
-The 'AN::Tools::Get' module's 'dr_target_data()' method was called with an invalid DR Target UUID.
+The 'AN::Tools::Get' module's 'dr_target_data()' method was called with an invalid DR Target name or UUID.
 
 =head2 C<179>
 

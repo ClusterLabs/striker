@@ -1390,7 +1390,7 @@ WHERE
 					}
 					elsif ($new_apc_pdu_outlet_state eq "off")
 					{
-						$say_state = "#!string:an_state_0006!#";
+						$say_state = "#!string!an_state_0006!#";
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "new_apc_pdu_outlet_state", value1 => $new_apc_pdu_outlet_state, 
 						}, file => $THIS_FILE, line => __LINE__});
@@ -1641,7 +1641,7 @@ INSERT INTO
 				}
 				elsif ($new_apc_pdu_outlet_state eq "off")
 				{
-					$say_state = "#!string:an_state_0006!#";
+					$say_state = "#!string!an_state_0006!#";
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_apc_pdu_outlet_state", value1 => $new_apc_pdu_outlet_state, 
 					}, file => $THIS_FILE, line => __LINE__});
