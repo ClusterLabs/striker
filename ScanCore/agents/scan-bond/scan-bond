@@ -1001,16 +1001,31 @@ sub find_changes
 						name2 => "old_bond_mode", value2 => $old_bond_mode, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					my $say_new_bond_mode = "#!string!scan_bond_mode_${new_bond_mode}!#";
-					my $say_old_bond_mode = "#!string!scan_bond_mode_${old_bond_mode}!#";
+					# Make sure we have a valid mode integer
+					my $bad_value         = "";
+					my $say_new_bond_mode = $new_bond_mode;
+					my $say_old_bond_mode = $old_bond_mode;
+					if (($new_bond_mode =~ /\D/) or (($new_bond_mode < 0) or ($new_bond_mode > 4)))
+					{
+						# We'll use '99' as a generic "this is not known"
+						$bad_value         = $new_bond_mode;
+						$say_new_bond_mode = 99;
+					}
+					elsif (($old_bond_mode =~ /\D/) or (($old_bond_mode < 0) or ($old_bond_mode > 4)))
+					{
+						# We'll use '99' as a generic "this is not known"
+						$bad_value         = $old_bond_mode;
+						$say_old_bond_mode = 99;
+					}
 					
 					# Tell the user.
 					my $alert_title_key         = "an_alert_title_0004";
 					my $alert_message_key       = "scan_bond_warning_0002";
 					my $alert_message_variables = {
 						bond_name		=>	$bond_name,
-						new_value		=>	$say_new_bond_mode,
-						old_value		=>	$say_old_bond_mode,
+						new_value		=>	"#!string!scan_bond_mode_".$say_new_bond_mode."!#",
+						old_value		=>	"#!string!scan_bond_mode_".$say_old_bond_mode."!#",
+						bad_value		=>	$bad_value,
 					};
 					if ($new_bond_mode eq "0")
 					{
@@ -1070,11 +1085,11 @@ sub find_changes
 					my $say_old_bond_primary_reselect = "#!string!scan_bond_reselect_${old_bond_primary_reselect}!#";
 					my $say_new_bond_primary_reselect = "#!string!scan_bond_reselect_${new_bond_primary_reselect}!#";
 					
-					if ($old_bond_primary_reselect !~ /^\d+/)
+					if (($old_bond_primary_reselect !~ /^\d+/) or (($old_bond_primary_reselect < 0) or ($old_bond_primary_reselect > 2)))
 					{
 						$say_old_bond_primary_reselect = "#!string!scan_bond_reselect_9999!#";
 					}
-					if ($new_bond_primary_reselect !~ /^\d+/)
+					if ($new_bond_primary_reselect !~ /^\d+/) or (($new_bond_primary_reselect < 0) or ($new_bond_primary_reselect > 2)))
 					{
 						$say_new_bond_primary_reselect = "#!string!scan_bond_reselect_9999!#";
 					}

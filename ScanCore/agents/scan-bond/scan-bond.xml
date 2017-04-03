@@ -39,6 +39,7 @@ all strings with 'scan_bond_'.
 		<key name="scan_bond_mode_4">Dynamic Link-Aggregation Group (802.3ad)</key>
 		<key name="scan_bond_mode_5">Balanced Transmit Load Balancing</key>
 		<key name="scan_bond_mode_6">Balanced Transmit and Receive Load Balancing</key>
+		<key name="scan_bond_mode_99">The bond mode isn't recognized. It should have reported an integer between 0~6, but: [#!variable!bad_value!#] was received..</key>
 		
 		<!-- This is the primary reselect options. See:
 		     https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Deployment_Guide/sec-Specific_Kernel_Module_Capabilities.html#sec-Using_Channel_Bonding

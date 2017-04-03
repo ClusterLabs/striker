@@ -1414,13 +1414,13 @@ sub find_changes
 					my $bad_value                            = "";
 					my $say_new_apc_ups_last_transfer_reason = $new_apc_ups_last_transfer_reason;
 					my $say_old_apc_ups_last_transfer_reason = $old_apc_ups_last_transfer_reason;
-					if (($new_apc_ups_last_transfer_reason =~ /\D/) or (($new_apc_ups_last_transfer_reason < 0) or ($new_apc_ups_last_transfer_reason > 20)))
+					if (($new_apc_ups_last_transfer_reason =~ /\D/) or (($new_apc_ups_last_transfer_reason < 0) or ($new_apc_ups_last_transfer_reason > 10)))
 					{
 						# We'll use '99' as a generic "this is not known"
 						$bad_value                            = $new_apc_ups_last_transfer_reason;
 						$say_new_apc_ups_last_transfer_reason = 99;
 					}
-					elsif (($old_apc_ups_last_transfer_reason =~ /\D/) or (($old_apc_ups_last_transfer_reason < 0) or ($old_apc_ups_last_transfer_reason > 20)))
+					elsif (($old_apc_ups_last_transfer_reason =~ /\D/) or (($old_apc_ups_last_transfer_reason < 0) or ($old_apc_ups_last_transfer_reason > 10)))
 					{
 						# We'll use '99' as a generic "this is not known"
 						$bad_value                            = $old_apc_ups_last_transfer_reason;
@@ -1692,13 +1692,13 @@ AND
 					my $bad_value                      = "";
 					my $say_new_apc_ups_battery_health = $new_apc_ups_battery_health;
 					my $say_old_apc_ups_battery_health = $old_apc_ups_battery_health;
-					if (($new_apc_ups_battery_health =~ /\D/) or (($new_apc_ups_battery_health < 0) or ($new_apc_ups_battery_health > 20)))
+					if (($new_apc_ups_battery_health =~ /\D/) or (($new_apc_ups_battery_health < 0) or ($new_apc_ups_battery_health > 2)))
 					{
 						# We'll use '99' as a generic "this is not known"
 						$bad_value                  = $new_apc_ups_battery_health;
 						$new_apc_ups_battery_health = 99;
 					}
-					elsif (($old_apc_ups_battery_health =~ /\D/) or (($old_apc_ups_battery_health < 0) or ($old_apc_ups_battery_health > 20)))
+					elsif (($old_apc_ups_battery_health =~ /\D/) or (($old_apc_ups_battery_health < 0) or ($old_apc_ups_battery_health > 2)))
 					{
 						# We'll use '99' as a generic "this is not known"
 						$bad_value                  = $old_apc_ups_battery_health;
@@ -1895,6 +1895,24 @@ AND
 					#  2 - The UPS battery is operating normally.
 					#  3 - The UPS battery is in a low voltage state.
 					# *4 - The UPS battery is in a failed state and needs to be replaced.
+					
+					# Make sure we have a valid health integer
+					my $bad_value                     = "";
+					my $say_new_apc_ups_battery_state = $new_apc_ups_battery_state;
+					my $say_old_apc_ups_battery_state = $old_apc_ups_battery_state;
+					if (($new_apc_ups_battery_state =~ /\D/) or (($new_apc_ups_battery_state < 0) or ($new_apc_ups_battery_state > 4)))
+					{
+						# We'll use '99' as a generic "this is not known"
+						$bad_value                     = $new_apc_ups_battery_state;
+						$say_new_apc_ups_battery_state = 99;
+					}
+					elsif (($old_apc_ups_battery_state =~ /\D/) or (($old_apc_ups_battery_state < 0) or ($old_apc_ups_battery_state > 4)))
+					{
+						# We'll use '99' as a generic "this is not known"
+						$bad_value                     = $old_apc_ups_battery_state;
+						$say_old_apc_ups_battery_state = 99;
+					}
+					
 					if (($new_apc_ups_battery_state eq "1") or ($new_apc_ups_battery_state eq "4"))
 					{
 						# Entered a warning state.
@@ -1916,8 +1934,8 @@ AND
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
 							ups_name		=>	$new_apc_ups_name,
-							new_value		=>	"#!string!scan_apc_ups_battery_state_".sprintf("%04d", $new_apc_ups_battery_state)."!#",
-							old_value		=>	"#!string!scan_apc_ups_battery_state_".sprintf("%04d", $old_apc_ups_battery_state)."!#",
+							new_value		=>	"#!string!scan_apc_ups_battery_state_".sprintf("%04d", $say_new_apc_ups_battery_state)."!#",
+							old_value		=>	"#!string!scan_apc_ups_battery_state_".sprintf("%04d", $say_old_apc_ups_battery_state)."!#",
 							battery_model		=>	$new_apc_ups_battery_model,
 						},
 					});
@@ -2234,6 +2252,23 @@ WHERE
 						name2 => "old_apc_ups_input_sensitivity", value2 => $old_apc_ups_input_sensitivity, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
+					# Make sure we have a valid health integer
+					my $bad_value                         = "";
+					my $say_new_apc_ups_input_sensitivity = $new_apc_ups_input_sensitivity;
+					my $say_old_apc_ups_input_sensitivity = $old_apc_ups_input_sensitivity;
+					if (($new_apc_ups_input_sensitivity =~ /\D/) or (($new_apc_ups_input_sensitivity < 0) or ($new_apc_ups_input_sensitivity > 4)))
+					{
+						# We'll use '99' as a generic "this is not known"
+						$bad_value                     = $new_apc_ups_input_sensitivity;
+						$say_new_apc_ups_input_sensitivity = 99;
+					}
+					elsif (($old_apc_ups_input_sensitivity =~ /\D/) or (($old_apc_ups_input_sensitivity < 0) or ($old_apc_ups_input_sensitivity > 4)))
+					{
+						# We'll use '99' as a generic "this is not known"
+						$bad_value                         = $old_apc_ups_input_sensitivity;
+						$say_old_apc_ups_input_sensitivity = 99;
+					}
+					
 					# This is an 'notice' level event because the admin probably made the
 					# change
 					$an->Alert->register_alert({
@@ -2243,8 +2278,8 @@ WHERE
 						alert_message_key	=>	"scan_apc_ups_note_0040",
 						alert_message_variables	=>	{
 							ups_name		=>	$new_apc_ups_name,
-							new_value		=>	"#!string!scan_apc_ups_sensitivity_".sprintf("%04d", $new_apc_ups_input_sensitivity)."!#",
-							old_value		=>	"#!string!scan_apc_ups_sensitivity_".sprintf("%04d", $old_apc_ups_input_sensitivity)."!#",
+							new_value		=>	"#!string!scan_apc_ups_sensitivity_".sprintf("%04d", $say_new_apc_ups_input_sensitivity)."!#",
+							old_value		=>	"#!string!scan_apc_ups_sensitivity_".sprintf("%04d", $say_old_apc_ups_input_sensitivity)."!#",
 						},
 					});
 				}
