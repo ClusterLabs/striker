@@ -10,7 +10,7 @@
 # along with this program; if not, write to the Free Software Foundation,
 # Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# This file is part of the Anvil! HA stack (https://alteeve.ca/w/Anvil!).
+# This file is part of the Anvil! HA stack (https://alteeve.com/w/Anvil!).
 # 
 # It does nothing but wait for all DRBD resources to become Primary/Primary.
 # It is meant to slow down rgmanager so that it doesn't start clvmd until

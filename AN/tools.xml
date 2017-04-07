@@ -178,13 +178,13 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0015">The preferred node: [#!variable!preferred_node!#]'s storage is not ready, but the secondary: [#!variable!secondary_node!#] node is healthy. Booting: [#!variable!server!#] it there now.</key>
 		<key name="tools_log_0016">The preferred node: [#!variable!preferred_node!#]'s storage is not ready, but the secondary: [#!variable!secondary_node!#]'s storage is. The secondary node is not healthy, but the boot was forced. Booting: [#!variable!server!#] it there now.</key>
 		<key name="tools_log_0017">Successfully booted: [#!variable!server!#] on: [#!variable!node!#].</key>
-		<key name="tools_log_0018">The file: [#!variable!file!#] wasn't found.</key>
+		<key name="tools_log_0018">#!free!#</key>
 		<key name="tools_log_0019">Connected to database: [#!variable!name!#] (id: [#!variable!id!#]) on host: [#!variable!host!#:#!variable!port!#].</key>
 		<key name="tools_log_0020">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be initialized.</key>
 		<key name="tools_log_0021">[ #!variable!title!# ] - #!variable!message!#</key>
 		<key name="tools_log_0022">The DB with ID: [#!variable!id!#]'s core tables are behind.</key>
 		<key name="tools_log_0023">The database: [#!variable!name!#] on: [#!variable!host!#] needs to have the: [#!variable!file!#] SQL schema loaded.</key>
-		<key name="tools_log_0024">Setting mode to: [#!variable!directory_mode!#].</key>
+		<key name="tools_log_0024">#!free!#</key>
 		<key name="tools_log_0025">Start template: [#!variable!template!#] from file: [#!variable!file!#]</key>
 		<key name="tools_log_0026">End template: [#!variable!template!#] from file: [#!variable!file!#]</key>
 		<key name="tools_log_0027">The Install Manifest with UUID: [#!variable!uuid!#] has a node: [#!variable!node!#] with an interface: [#!variable!name!#] with a malformed MAC address: [#!variable!mac!#], ignored. Format must be 'xx:xx:xx:xx:xx:xx'.</key>
@@ -651,8 +651,8 @@ Variables:
 		
 		<!-- Warning titles -->
 		<key name="warning_title_0001">Unknown OS</key>
-		<key name="warning_title_0002">Unknown Environment</key>
-		<key name="warning_title_0003">AN::Tools::Check->ping() called without a target being specified.</key>
+		<key name="warning_title_0002">#!free!#</key>
+		<key name="warning_title_0003">#!free!#</key>
 		<key name="warning_title_0004">Missing argument</key>
 		<key name="warning_title_0005">Failed to create an RSA key for the user: [#!variable!user!#]. Skipping this user.</key>
 		<key name="warning_title_0006">The user: [#!variable!user!#], has a public RSA file: [#!variable!file!#], but the key wasn't found or read.</key>
@@ -663,7 +663,7 @@ Variables:
 		
 		<!-- Warning messages -->
 		<key name="warning_message_0001">The detected operating system: [#!variable!os!#] is not recognized by AN::Tools. Please send this error message and your operating system details to AN! (#!string!an_brand_0001!#) so that we can add support for your OS. For now, I will proceed with Linux-type settings. This may not work.</key>
-		<key name="warning_message_0002">Unable to determine what environment this script is being called in.</key>
+		<key name="warning_message_0002">#!free!#</key>
 		<key name="warning_message_0003"><![CDATA[AN::Tools::Cman->boot_server() was asked to boot: [#!variable!server!#], but that was not found. Unable to proceed.]]></key>
 		<key name="warning_message_0004">Booting the server: [#!variable!server!#] failed. No healthy node was found and the boot wasn't forced, so the server will be left off.</key>
 		<key name="warning_message_0005">One or more virtual hard drives used by the server: [#!variable!server!#] is on a replicated storage that is not 'UpToDate' on both nodes. The boot was forced though, so it will be booted on: [#!variable!server!#] now. If either node goes offline, this server will lose access to its storage!</key>
@@ -689,7 +689,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		]]></key>
 		<key name="warning_message_0013">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] was refused. Is the database server running?</key>
 		<key name="warning_message_0014">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] failed because the name could not be translated to an IP address. Is this database setup in '/etc/hosts'?</key>
-		<key name="warning_message_0015">Unable to ping the database host: [#!variable!host!#] accessible from this dashboard?</key>
+		<key name="warning_message_0015">#!free!#</key>
 		<key name="warning_message_0016">The host with the UUID: [#!variable!uuid!#] does not have a health state. Assuming it is OK.</key>
 		<key name="warning_message_0017">No 'power_check' command found in cache for the target: [#!variable!name!# (#!variable!uuid!#)]. Unable to check the power status.</key>
 		<key name="warning_message_0018"><![CDATA[Failed to open a: [#!variable!protocol!#] socket to: [#!variable!target!#] on port: [#!variable!port!#]. The error was: [#!variable!error!#].]]></key>

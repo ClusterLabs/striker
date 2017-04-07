@@ -1,70 +1,5 @@
 <!-- These are templates for the main page; the stuff shown just after an Anvil! is selected. -->
 
-<!-- start redirect-to-configure -->
-<head>
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<title>Striker</title>
-	<META HTTP-EQUIV="Refresh" CONTENT="0; URL=/cgi-bin/Configure">
-</head>
-<!-- end redirect-to-configure -->
-
-<!-- start no-anvil-found -->
-<table align="center">
-	<tr>
-		<td colspan="3">
-			<b>#!string!title_0001!#</b>
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_bad">
-			#!string!row_0003!#
-		</td>
-		<td>
-			<br />
-			#!replace!message!#<br />
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end no-anvil-found -->
-
-<!-- start connection-error-table-header -->
-<table>
-	<tr>
-		<td colspan="3">
-			#!replace!title!#
-		</td>
-	</tr>
-<!-- end connection-error-table-header -->
-
-<!-- start connection-error-node-entry -->
-	<tr>
-		<td>
-			<span class="fixed_width">#!replace!node!#</span>
-		</td>
-		<td>
-			<span class="fixed_width">#!replace!state!#</span>
-		</td>
-		<td>
-			#!replace!note!#
-		</td>
-	</tr>
-<!-- end connection-error-node-entry -->
-
-<!-- start connection-error-try-again -->
-	<tr>
-		<td colspan="3">
-			<div class="align_right"><a href="#!replace!cgi_string!#"><b>Try Again</b></a></div>
-		</td>
-	</tr>
-<!-- end connection-error-try-again -->
-
-<!-- start close-table -->
-</table>
-<br />
-<!-- end close-table -->
-
 <!-- start no-access-message -->
 <table>
 	<tr>
@@ -106,6 +41,3 @@
 </table>
 <br />
 <!-- end lv-inactive-error -->
-
-<!-- start migrate-server-footer -->
-<!-- end migrate-server-footer -->

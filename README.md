@@ -18,11 +18,10 @@ Online Documentation
 --------------------
 
   A core component of the beta to final transition will be the completion of
-the associated documentation. For now, the only complete documentation is the
-old stand-alone high-availability platform linked below. This section will be
-updated as the documentation progresses.
+the associated documentation. The new documentation is still being worked on,
+but you can read what exists so far here.
 
-- https://alteeve.ca/w/AN!Cluster_Tutorial_2
+- https://www.alteeve.com/w/Build_an_m2_Anvil!
 
 Support
 -------
@@ -36,6 +35,6 @@ the 'Cluster Labs - Users' mailing list:
 
 Commercial support and 24x7x365 monitoring is available:
 
-- https://alteeve.ca/w/Support
+- https://alteeve.com/w/Support
 
 

@@ -112,5 +112,5 @@ start_udev
 /mnt/systemroot/root/partition_drives.sh
 ====
 
-1. https://alteeve.ca/w/Setting_Up_a_PXE_Server_on_an_RPM-based_OS
-2. https://alteeve.ca/w/Kickstart"
+1. https://alteeve.com/w/Setting_Up_a_PXE_Server_on_an_RPM-based_OS
+2. https://alteeve.com/w/Kickstart"

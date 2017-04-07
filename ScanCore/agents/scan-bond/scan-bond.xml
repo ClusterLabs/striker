@@ -246,7 +246,7 @@ The failure count of the network interface: [#!variable!interface_name!#] in the
 The MAC address of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has changed.
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
   Note: This usually indicates that the network card itself was changed.
-  Note: See: https://alteeve.ca/w/MAC for more information on what a MAC address is.
+  Note: See: https://alteeve.com/w/MAC for more information on what a MAC address is.
 		</key>
 		<key name="scan_bond_warning_0039">
 The "slave queue ID" of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has changed.
@@ -319,7 +319,7 @@ SWITCHES
                   
 SUPPORT
 
-https://alteeve.ca/w/Support                             Alteeve's Niche! Inc.
+https://alteeve.com/w/Support                             Alteeve's Niche! Inc.
 		]]></key>
 		<key name="scan_bond_message_0003">It looks like this system has no bonded network interfaces, exiting.</key>
 	</lang>

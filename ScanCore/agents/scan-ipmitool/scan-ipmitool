@@ -5,7 +5,7 @@
 #
 # ScanCore Scan Agent for 'ipmitool' to query IPMI data.
 #
-# https://alteeve.ca
+# https://alteeve.com
 # 
 # Exit Codes:
 # 0   - Success
@@ -20,7 +20,7 @@
 #   Possibly try pinging the IPMI from the peer as it is not always possible to ping our own interface when
 #   the IPMI and eth device share the same physical connector.
 # - Update the string processing from the '!!x!name=a,value=b,units=c!!' method to the new method here:
-#   https://alteeve.ca/w/ScanCore#Unit_Parsing
+#   https://alteeve.com/w/ScanCore#Unit_Parsing
 # - Change 'ipmitool_value_id' to 'ipmitool_value_uuid'.
 # 
 # NOTE: 

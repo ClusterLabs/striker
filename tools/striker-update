@@ -495,11 +495,11 @@ sub update_an_repo
 	my $shell_call = "
 if [ -e '".$an->data->{path}{an_repo}."' ]
 then
-    if \$(".$an->data->{path}{'grep'}." -q alteeve.ca ".$an->data->{path}{an_repo}.");
+    if \$(".$an->data->{path}{'grep'}." -q alteeve.com ".$an->data->{path}{an_repo}.");
     then 
         ".$an->data->{path}{echo}." update; 
-        ".$an->data->{path}{sed}." -i 's/alteeve.ca/alteeve.com/' ".$an->data->{path}{an_repo}."
-        if \$(".$an->data->{path}{'grep'}." -q alteeve.ca ".$an->data->{path}{an_repo}.");
+        ".$an->data->{path}{sed}." -i 's/alteeve.com/alteeve.com/' ".$an->data->{path}{an_repo}."
+        if \$(".$an->data->{path}{'grep'}." -q alteeve.com ".$an->data->{path}{an_repo}.");
         then
             ".$an->data->{path}{echo}." \"failed\"
         else
@@ -562,7 +562,7 @@ fi
 		elsif ($line eq "failed")
 		{
 			print "[ Error ] - The RPM repo: [".$an->data->{path}{an_repo}."] on: [$target] needs to be updated, but the update failed.\n";
-			print "[ Error ]   The URL should change from 'alteeve.ca' to 'alteeve.com'.\n";
+			print "[ Error ]   The URL should change from 'alteeve.com' to 'alteeve.com'.\n";
 			exit(22);
 		}
 		elsif ($line eq "success")

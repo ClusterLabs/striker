@@ -42,7 +42,7 @@ Other values will be added later
 <anvil>
 	<cluster id="an-cluster-05">
 		<nodes>
-			<node id="an-c05n01.alteeve.ca" short_name="an-c05n01">
+			<node id="an-c05n01.alteeve.com" short_name="an-c05n01">
 				<buttons>
 					<poweron>0</span>
 					<poweroff>0></span>

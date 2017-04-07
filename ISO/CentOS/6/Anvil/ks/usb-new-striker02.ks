@@ -22,7 +22,7 @@ timezone --utc America/Toronto
 # This sets the (first) ethernet device. There is currently no way to map
 # device names to physical interfaces. For this reason, we use DHCP for install
 # and configure the network manually post-install.
-network --device eth0 --bootproto dhcp --onboot yes --hostname new-striker02.alteeve.ca
+network --device eth0 --bootproto dhcp --onboot yes --hostname new-striker02.alteeve.com
 
 # This is the root user's password. The one below should be taken as an example
 # and changed as it is a terrible password.
@@ -301,11 +301,11 @@ cat > /root/example_striker-installer.txt << EOF
 ./striker-installer \\
  -b 10.20.4.2/16 \\
  -i 10.255.4.2/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\
- -n "an-striker02.alteeve.ca" \\
+ -n "an-striker02.alteeve.com" \\
  -c "Alteeve's Niche!" \\
  -u "admin:Initial1" \\
  --gui \\
- --peer-dashboard hostname=an-striker01.alteeve.ca,bcn_ip=10.20.4.1 \\
+ --peer-dashboard hostname=an-striker01.alteeve.com,bcn_ip=10.20.4.1 \\
  --router-mode \\
  -p 10.20.10.210:10.20.10.219 \\
  -d git

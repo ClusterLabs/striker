@@ -7,7 +7,7 @@
 # This software was created by Alteeve's Niche! Inc. and has been released
 # under the terms of the GNU GPL version 2.
 #
-# https://alteeve.ca
+# https://alteeve.com
 # 
 # Exit Codes:
 # 0  - Success
@@ -816,7 +816,7 @@ Normal install:
                   
 SUPPORT
 
-https://alteeve.ca/w/Support
+https://alteeve.com/w/Support
                                                               Alteeve's Niche!
 |;
 	open (my $file_handle, ">", "/tmp/anvil-map-network-help") or die "Couldn't write help to /tmp/, error was: $!\n";

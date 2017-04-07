@@ -3,7 +3,7 @@
 # This software was created by Alteeve's Niche! Inc. and has been released
 # under the terms of the GNU GPL version 2.
 #
-# https://alteeve.ca
+# https://alteeve.com
 # 
 # Exit Codes:
 # 0  - Success
@@ -743,7 +743,7 @@ my $conf = {
 	url		=>	{
 		git_master	=>	"https://github.com/ClusterLabs/striker/archive/master.zip",
 		striker		=>	"https://github.com/ClusterLabs/striker/archive/#!striker_version!#.zip",
-		latest_release	=>	"https://alteeve.ca/striker_latest.txt",
+		latest_release	=>	"https://alteeve.com/striker_latest.txt",
 	},
 	# This will be changed to have two of each link if four NICs are found.
 	nics		=>	["bcn_link1", "ifn_link1"],
@@ -815,7 +815,7 @@ logger($conf, $THIS_FILE, __LINE__, " #   ___ _       _ _                       
 logger($conf, $THIS_FILE, __LINE__, " #  / __| |_ _ _(_) |_____ _ _                                 -=] Installer  #", 1);
 logger($conf, $THIS_FILE, __LINE__, " #  \\__ \\  _| '_| | / / -_) '_|                                               #", 1);
 logger($conf, $THIS_FILE, __LINE__, " #  |___/\\__|_| |_|_\\_\\___|_|                                                 #", 1);
-logger($conf, $THIS_FILE, __LINE__, " #                                               https://alteeve.ca/w/Striker #", 1);
+logger($conf, $THIS_FILE, __LINE__, " #                                               https://alteeve.com/w/Striker #", 1);
 logger($conf, $THIS_FILE, __LINE__, " ##############################################################################", 1);
 
 # This sanity-checks the passed in command line switches and returns '1' if
@@ -3639,7 +3639,7 @@ sub configure_shorewall
 	}
 	
 	### Now prepare my configuration files.
-	# Zones - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#zones
+	# Zones - https://alteeve.com/w/Shorewall_on_RPM-based_Servers#zones
 	my $zones = "
 #
 # Shorewall version 4 - Zones File
@@ -3657,7 +3657,7 @@ net     ipv4
 loc     ipv4
 ";
 	
-	# Interfaces - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#interfaces
+	# Interfaces - https://alteeve.com/w/Shorewall_on_RPM-based_Servers#interfaces
 	my $interfaces  = "
 #
 # Shorewall version 4 - Interfaces File
@@ -3675,7 +3675,7 @@ net		$ifn_interface
 loc		$bcn_interface		dhcp
 ";
 	
-	# Policy - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#policy
+	# Policy - https://alteeve.com/w/Shorewall_on_RPM-based_Servers#policy
 	my $policy = "
 #
 # Shorewall version 4 - Policy File
@@ -3698,7 +3698,7 @@ loc	fw	DROP
 loc	net	ACCEPT
 ";
 	
-	# Rules - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#rules
+	# Rules - https://alteeve.com/w/Shorewall_on_RPM-based_Servers#rules
 	my $rules = "
 #
 # Shorewall version 4 - Rules File
@@ -3754,7 +3754,7 @@ ACCEPT		loc		fw		tcp	6000
 ACCEPT		loc		fw		tcp	8099
 ";
 	
-	# Masquarade - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#masq
+	# Masquarade - https://alteeve.com/w/Shorewall_on_RPM-based_Servers#masq
 	my $masq = "
 #
 # Shorewall version 4 - Masq file
@@ -8833,7 +8833,7 @@ EXAMPLE
 Normal install
 
  ./striker-installer -c "Alteeve's Niche\!" \
-                  -n an-striker01.alteeve.ca \
+                  -n an-striker01.alteeve.com \
                   -u "admin:secret password" \
                   -p 10.20.10.200:10.20.10.210 \
                   -b 10.20.4.1/16 \
@@ -8842,7 +8842,7 @@ Normal install
 Developer install, using local copies of ISOs:
 
  ./striker-installer -c "Alteeve's Niche\!" \
-                  -n an-striker01.alteeve.ca \
+                  -n an-striker01.alteeve.com \
                   -d git \
                   -u "admin:secret password" \
                   -p 10.20.10.200:10.20.10.210 \
@@ -8854,7 +8854,7 @@ Note: As with any bash call, you must escape '!' characters with '\!'.
                   
 SUPPORT
 
-https://alteeve.ca/w/Support
+https://alteeve.com/w/Support
 
 							      Alteeve's Niche!
 |;

@@ -16,7 +16,7 @@
 # under the terms of the GNU GPL version 2.
 #
 # Madison Kelly - mkelly@alteeve.ca
-# https://alteeve.ca
+# https://alteeve.com
 # 
 # Exit codes:
 # 0  = Normal exit
@@ -1778,7 +1778,7 @@ Stop the timer entirely on all UPSes found in /etc/hosts
                   
 SUPPORT
 
-https://alteeve.ca/w/Support
+https://alteeve.com/w/Support
 
                                                               Alteeve's Niche!
 ";

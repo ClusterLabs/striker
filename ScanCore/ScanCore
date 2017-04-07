@@ -3,7 +3,7 @@
 # This software was created by Alteeve's Niche! Inc. and has been released
 # under the terms of the GNU GPL version 2.
 #
-# https://alteeve.ca
+# https://alteeve.com
 # 
 # Exit Codes:
 # 0  - Success
@@ -64,7 +64,7 @@ my $an = AN::Tools->new({data =>
 		},
 		# Things set here are meant to be overwritable by the user in striker.conf.
 		scancore			=>	{
-			# Set to '1' to add the footer warning that the email did not come from alteeve.ca.
+			# Set to '1' to add the footer warning that the email did not come from alteeve.com.
 			append_email_footer	=>	0,
 			archive			=>	{
 				directory		=>	"/var/ScanCore/archives/",
@@ -5335,7 +5335,7 @@ sub translate_strings
 ### NOTE: This is called loosely. It is entirely possible that 'units' is NOT valid. Simply return nothing in
 ###       such cases.
 # This looks at the 'unit' and if it is one of the ones described in the ScanCore "Unit Parsing" page, 
-# translate it. See: https://alteeve.ca/w/ScanCore#Unit_Parsing
+# translate it. See: https://alteeve.com/w/ScanCore#Unit_Parsing
 sub translate_units
 {
 	my ($an, $value, $units, $user_units) = @_;

@@ -13,13 +13,13 @@
 # If you are concerned about these risks, please stick to command line tools.
 # 
 # This program is designed to extend Anvil!s built according to this tutorial:
-# - https://alteeve.ca/w/AN!Cluster_Tutorial_2
+# - https://alteeve.com/w/AN!Cluster_Tutorial_2
 #
 # This program's source code and updates are available on Github:
 # - https://github.com/digimer/striker
 #
 # Author;
-# Alteeve's Niche!  -  https://alteeve.ca
+# Alteeve's Niche!  -  https://alteeve.com
 # 
 
 use strict;
@@ -8111,7 +8111,7 @@ Description:
 If you have any questions or concerns, please don't hesitate to
 contact support. 
 
-                    https://alteeve.ca/w/Support
+                    https://alteeve.com/w/Support
 
                                                      Alteeve's Niche!
                                                        Anvil! Monitor

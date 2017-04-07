@@ -45,7 +45,7 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 		<key name="scancore_brand_0001">ScanCore</key>
 		<key name="scancore_brand_0002">#!free!#</key>
 		<key name="scancore_brand_0003">Alteeve's Niche!</key>
-		<key name="scancore_brand_0004">https://alteeve.ca/w/Support</key>
+		<key name="scancore_brand_0004">https://alteeve.com/w/Support</key>
 		<key name="scancore_brand_0005">Please contact #!string!scancore_brand_0003!# for support: #!string!scancore_brand_0004!#</key>
 		
 		<!-- Log titles -->

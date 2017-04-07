@@ -3373,7 +3373,7 @@ sub manifests_menu
 		}
 		else
 		{
-			my $anvil_prefix_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
+			my $anvil_prefix_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
 			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0159!#",
 				explain		=>	$an->data->{sys}{expert_ui} ? "#!string!terse_0061!#" : "#!string!explain_0061!#",
@@ -3399,7 +3399,7 @@ sub manifests_menu
 		}
 		else
 		{
-			my $anvil_sequence_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
+			my $anvil_sequence_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
 			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0161!#",
 				explain		=>	$an->data->{sys}{expert_ui} ? "#!string!terse_0063!#" : "#!string!explain_0063!#",
@@ -3425,7 +3425,7 @@ sub manifests_menu
 		}
 		else
 		{
-			my $anvil_domain_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
+			my $anvil_domain_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cgi::anvil_domain", value1 => $an->data->{cgi}{anvil_domain},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3679,7 +3679,7 @@ sub manifests_menu
 						selected => $an->data->{cgi}{anvil_storage_pool1_unit},
 						width    => 60,
 					});
-				my $anvil_storage_pool1_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
+				my $anvil_storage_pool1_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-and-select-entry", replace => { 
 					row		=>	"#!string!row_0199!#",
 					explain		=>	$an->data->{sys}{expert_ui} ? "#!string!terse_0115!#" : "#!string!explain_0115!#",
@@ -3943,7 +3943,7 @@ sub manifests_menu
 		}
 		else
 		{
-			my $anvil_name_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration" }});
+			my $anvil_name_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration" }});
 			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0005!#",
 				explain		=>	$an->data->{sys}{expert_ui} ? "#!string!terse_0095!#" : "#!string!explain_0095!#",
@@ -3975,7 +3975,7 @@ sub manifests_menu
 		}
 		else
 		{
-			my $anvil_ifn_gateway_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" }});
+			my $anvil_ifn_gateway_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" }});
 			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0188!#",
 				explain		=>	$an->data->{sys}{expert_ui} ? "#!string!terse_0092!#" : "#!string!explain_0092!#",
@@ -4124,10 +4124,10 @@ sub manifests_menu
 			{
 				$say_name_row     = "#!string!row_0178!#";
 				$say_name_explain = $an->data->{sys}{expert_ui} ? "#!string!terse_0082!#" : "#!string!explain_0082!#";
-				$say_name_url     = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
+				$say_name_url     = "https://alteeve.com/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
 				$say_ip_row       = "#!string!row_0179!#";
 				$say_ip_explain   = $an->data->{sys}{expert_ui} ? "#!string!terse_0083!#" : "#!string!explain_0083!#";
-				$say_ip_url       = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Network_Switches";
+				$say_ip_url       = "https://alteeve.com/w/AN!Cluster_Tutorial_2#Network_Switches";
 			}
 			elsif ($i == 2)
 			{
@@ -4201,10 +4201,10 @@ sub manifests_menu
 			{
 				$say_name_row     = "#!string!row_0170!#";
 				$say_name_explain = $an->data->{sys}{expert_ui} ? "#!string!terse_0074!#" : "#!string!explain_0074!#";
-				$say_name_url     = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
+				$say_name_url     = "https://alteeve.com/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
 				$say_ip_row       = "#!string!row_0171!#";
 				$say_ip_explain   = $an->data->{sys}{expert_ui} ? "#!string!terse_0075!#" : "#!string!explain_0075!#";
-				$say_ip_url       = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Network_Managed_UPSes_Are_Worth_It";
+				$say_ip_url       = "https://alteeve.com/w/AN!Cluster_Tutorial_2#Network_Managed_UPSes_Are_Worth_It";
 			}
 			elsif ($i == 2)
 			{
@@ -4280,7 +4280,7 @@ sub manifests_menu
 			my $say_ip_explain     = "";
 			my $say_name_url       = "";
 			my $say_ip_url         = "";
-			my $say_agent_url      = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Defining_Fence_Devices";
+			my $say_agent_url      = "https://alteeve.com/w/AN!Cluster_Tutorial_2#Defining_Fence_Devices";
 			my $say_agent_explain  = "";
 			
 			# Set the agent to use the global default if not set already.
@@ -4299,9 +4299,9 @@ sub manifests_menu
 			{
 				$say_pdu           = $an->data->{sys}{install_manifest}{pdu_count} == 2 ? "#!string!device_0011!#"  : "#!string!device_0007!#";
 				$say_name_explain  = $an->data->{sys}{expert_ui} ? "#!string!terse_0078!#" : "#!string!explain_0078!#";
-				$say_name_url      = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
+				$say_name_url      = "https://alteeve.com/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
 				$say_ip_explain    = $an->data->{sys}{expert_ui} ? "#!string!terse_0079!#" : "#!string!explain_0079!#";
-				$say_ip_url        = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F";
+				$say_ip_url        = "https://alteeve.com/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F";
 				$say_agent_explain = $an->data->{sys}{expert_ui} ? "#!string!terse_0150!#" : "#!string!explain_0150!#";
 			}
 			elsif ($i == 2)
@@ -4417,13 +4417,13 @@ sub manifests_menu
 			{
 				$say_name_row       = "#!string!row_0182!#";
 				$say_name_explain   = $an->data->{sys}{expert_ui} ? "#!string!terse_0086!#" : "#!string!explain_0086!#";
-				$say_name_url       = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
+				$say_name_url       = "https://alteeve.com/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
 				$say_bcn_ip_row     = "#!string!row_0183!#";
 				$say_bcn_ip_explain = $an->data->{sys}{expert_ui} ? "#!string!terse_0087!#" : "#!string!explain_0087!#";
-				$say_bcn_ip_url     = "https://alteeve.ca/w/Striker";
+				$say_bcn_ip_url     = "https://alteeve.com/w/Striker";
 				$say_ifn_ip_row     = "#!string!row_0184!#";
 				$say_ifn_ip_explain = $an->data->{sys}{expert_ui} ? "#!string!terse_0088!#" : "#!string!explain_0088!#";
-				$say_ifn_ip_url     = "https://alteeve.ca/w/Striker";
+				$say_ifn_ip_url     = "https://alteeve.com/w/Striker";
 			}
 			elsif ($i == 2)
 			{
@@ -4543,7 +4543,7 @@ sub manifests_menu
 			}
 			else
 			{
-				my $anvil_node_name_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
+				my $anvil_node_name_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"#!string!row_0165!#",
 					explain		=>	$explain_name,
@@ -4570,7 +4570,7 @@ sub manifests_menu
 			}
 			else
 			{
-				my $anvil_node_bcn_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" }});
+				my $anvil_node_bcn_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Subnets" }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"#!string!row_0166!#",
 					explain		=>	$explain_bcn_ip,
@@ -4597,7 +4597,7 @@ sub manifests_menu
 			}
 			else
 			{
-				my $anvil_node_ipmi_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#What_is_IPMI" }});
+				my $anvil_node_ipmi_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#What_is_IPMI" }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"#!string!row_0168!#",
 					explain		=>	$explain_ipmi_ip,
@@ -4624,7 +4624,7 @@ sub manifests_menu
 			}
 			else
 			{
-				my $anvil_node_sn_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" }});
+				my $anvil_node_sn_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Subnets" }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"#!string!row_0167!#",
 					explain		=>	$explain_sn_ip,
@@ -4651,7 +4651,7 @@ sub manifests_menu
 			}
 			else
 			{
-				my $anvil_node_ifn_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" }});
+				my $anvil_node_ifn_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Subnets" }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"#!string!row_0169!#",
 					explain		=>	$explain_ifn_ip,
@@ -4701,7 +4701,7 @@ sub manifests_menu
 				}
 				else
 				{
-					my $pdu_outlet_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" }});
+					my $pdu_outlet_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" }});
 					print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 						row		=>	$say_pdu_name,
 						explain		=>	$say_explain,

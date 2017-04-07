@@ -5,7 +5,7 @@
 #
 # ScanCore Scan Agent for LSI-based RAID controllers using the 'storcli64' command line tool.
 #
-# https://alteeve.ca
+# https://alteeve.com
 # 
 # Exit Codes:
 # 0  - Success
@@ -5035,7 +5035,7 @@ WHERE
 								
 								# Check for some important issues
 								#if ($variable =~ /memory_correctable_errors/)
-								# Nothing seems to be of special interest... See: SELECT a.host_name, b.storcli_cachevault_serial_number AS sn, b.storcli_cachevault_type, storcli_cachevault_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_cachevaults b, storcli_variables c WHERE a.host_uuid = b.storcli_cachevault_host_uuid AND b.storcli_cachevault_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a07n01.alteeve.ca';
+								# Nothing seems to be of special interest... See: SELECT a.host_name, b.storcli_cachevault_serial_number AS sn, b.storcli_cachevault_type, storcli_cachevault_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_cachevaults b, storcli_variables c WHERE a.host_uuid = b.storcli_cachevault_host_uuid AND b.storcli_cachevault_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a07n01.alteeve.com';
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	$alert_level, 
@@ -6246,7 +6246,7 @@ WHERE
 									$title_key   = "an_alert_title_0004";
 									$message_key = "scan_storcli_warning_0051";
 								}
-								# Other things that might be of interest... See: SELECT a.host_name, b.storcli_bbu_serial_number AS sn, b.storcli_bbu_type, b.storcli_bbu_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_bbus b, storcli_variables c WHERE a.host_uuid = b.storcli_bbu_host_uuid AND b.storcli_bbu_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a05n01.alteeve.ca';
+								# Other things that might be of interest... See: SELECT a.host_name, b.storcli_bbu_serial_number AS sn, b.storcli_bbu_type, b.storcli_bbu_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_bbus b, storcli_variables c WHERE a.host_uuid = b.storcli_bbu_host_uuid AND b.storcli_bbu_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a05n01.alteeve.com';
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	$alert_level, 
@@ -7427,7 +7427,7 @@ AND
 										name3 => "message_key", value3 => $message_key, 
 									}, file => $THIS_FILE, line => __LINE__});
 								}
-								# There more of interest... See: SELECT a.host_name, b.storcli_controller_serial_number AS sn, b.storcli_controller_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_controllers b, storcli_variables c WHERE a.host_uuid = b.storcli_controller_host_uuid AND b.storcli_controller_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a07n01.alteeve.ca';
+								# There more of interest... See: SELECT a.host_name, b.storcli_controller_serial_number AS sn, b.storcli_controller_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_controllers b, storcli_variables c WHERE a.host_uuid = b.storcli_controller_host_uuid AND b.storcli_controller_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a07n01.alteeve.com';
 							}
 							$an->Alert->register_alert({
 								alert_level		=>	$alert_level, 

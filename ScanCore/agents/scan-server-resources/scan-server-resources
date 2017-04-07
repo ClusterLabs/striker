@@ -20,7 +20,7 @@
 # The 'host' can be an IP address or a resolvable host name. Optionally, a port can be specified with the 
 # suffix '<name_or_ip>:<port>'. The default port is 26845.
 # 
-# https://alteeve.ca
+# https://alteeve.com
 # 
 # Exit Codes:
 # 0   - Success

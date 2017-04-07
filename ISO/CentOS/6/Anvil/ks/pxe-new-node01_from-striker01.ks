@@ -23,7 +23,7 @@ timezone --utc America/Toronto
 # This sets the (first) ethernet device. There is currently no way to map
 # device names to physical interfaces. For this reason, we use DHCP for install
 # and configure the network manually post-install.
-network --device eth0 --bootproto dhcp --onboot yes --hostname new-node01.alteeve.ca
+network --device eth0 --bootproto dhcp --onboot yes --hostname new-node01.alteeve.com
 
 # This is the root user's password. The one below should be taken as an example
 # and changed as it is a terrible password.

@@ -4,7 +4,7 @@
 # dashboard machines. From there, other dashboards and Anvil! nodes can be installed via PXE booting the 
 # first Striker dashboard using the 'Install Target' feature.
 # 
-# (c) Alteeve's Niche! Inc, 2016 - https://alteeve.ca
+# (c) Alteeve's Niche! Inc, 2016 - https://alteeve.com
 # 
 # This program is released under the GPL v2+
 # 
@@ -68,7 +68,7 @@ my $conf = {
 			udevadm		=>	"--version",
 		},
 		source_iso	=>	"",
-		support_url	=>	"https://alteeve.ca/w/Support",
+		support_url	=>	"https://alteeve.com/w/Support",
 		usb_device	=>	"",
 		usb_partition	=>	"",
 		usb_mount	=>	"/tmp/anvil_usb",
@@ -76,10 +76,10 @@ my $conf = {
 		local_os	=>	"",
 	},
 	url		=>	{
-		'ldlinux.c32'	=>	"https://alteeve.ca/an-repo/misc/syslinux/ldlinux.c32",
-		'libcom32.c32'	=>	"https://alteeve.ca/an-repo/misc/syslinux/libcom32.c32",
-		'libutil.c32'	=>	"https://alteeve.ca/an-repo/misc/syslinux/libutil.c32",
-		'vesamenu.c32'	=>	"https://alteeve.ca/an-repo/misc/syslinux/vesamenu.c32",
+		'ldlinux.c32'	=>	"https://alteeve.com/an-repo/misc/syslinux/ldlinux.c32",
+		'libcom32.c32'	=>	"https://alteeve.com/an-repo/misc/syslinux/libcom32.c32",
+		'libutil.c32'	=>	"https://alteeve.com/an-repo/misc/syslinux/libutil.c32",
+		'vesamenu.c32'	=>	"https://alteeve.com/an-repo/misc/syslinux/vesamenu.c32",
 	},
 };
 

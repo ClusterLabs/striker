@@ -18598,7 +18598,7 @@ sub verify_drbd_resources_are_connected
 	return($return_code);
 }
 
-# This pings alteeve.ca to check for internet access.
+# This pings alteeve.com to check for internet access.
 sub verify_internet_access
 {
 	my $self      = shift;
