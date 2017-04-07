@@ -16,9 +16,6 @@ with 'scan_apc_ups_'.
 		<!-- Strings that can change by rebranding -->
 		<key name="scan_apc_ups_brand_0001">APC/Schneider Electronics UPS Scan Agent</key>
 		
-		<!-- Log titles -->
-		<key name="scan_apc_ups_title_0001"></key>
-		
 		<!-- Log messages -->
 		<key name="scan_apc_ups_log_0001">The DB table [#!variable!table!#] for the UPS with the serial number: [#!variable!ups_name!#] (named: [#!variable!ups_name!#]) needs to be updated.</key>
 		<key name="scan_apc_ups_log_0002">Starting to read the SNMP OIDs for the UPS: [#!variable!ups!#].</key>
@@ -295,9 +292,6 @@ Warning: The UPS power state and hold up time can no longer be monitored.
 Connection to the UPS: [#!variable!ups_name!#] has been restored.
 		</key>
 		
-		<!-- Warnings. -->
-		<key name="scan_apc_ups_warning_0001"></key>
-		
 		<!-- Errors -->
 		<key name="scan_apc_ups_error_0001">The variable: [#!variable!name!#] should have been an integer, but it appears it was not. Read: [#!variable!value!#].</key>
 		
@@ -438,7 +432,7 @@ https://alteeve.ca/w/Support
 							      Alteeve's Niche!
 		]]></key>
 		<key name="scan_apc_ups_message_0003">No APC/Schneider brand UPSes found, exiting.</key>
-		<key name="scan_apc_ups_message_0004">A new APC/Schneider brand UPS was found!</key>
+		<key name="scan_apc_ups_message_0004">A new APC/Schneider brand UPS named: [#!variable!name!#] was found!</key>
 		<key name="scan_apc_ups_message_0005">
 
 -=] UPS Information:
@@ -492,6 +486,6 @@ https://alteeve.ca/w/Support
 		</key>
 		<key name="scan_apc_ups_message_0006">The UPS is not running on batteries.</key>
 		<key name="scan_apc_ups_message_0007">The UPS has been running on batteries for: [#!variable!output_time_on_batteries!#]</key>
-		<key name="scan_apc_ups_message_0008">A new UPS named: [#!variable!name!#] has been found</key>
+		<key name="scan_apc_ups_message_0008">#!free!#</key>
 	</lang>
 </strings>

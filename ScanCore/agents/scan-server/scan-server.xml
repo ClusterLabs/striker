@@ -18,17 +18,6 @@ not to use names used by the main Striker strings file. Do this by prefixing all
 		<!-- Log messages -->
 		<key name="scan_server_log_0001">The 'libvirtd' daemon was set to start on boot in run-level 3 and/or 5 (3: [#!variable!3!#], 5: [#!variable!5!#]), turning it off again.</key>
 		
-		<!-- Notices -->
-		<key name="scan_server_note_0001"></key>
-		
-		<!-- Warnings. -->
-		<key name="scan_server_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
-		
-		<!-- Errors -->
-		<key name="scan_server_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
-		<key name="scan_server_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
-		<key name="scan_server_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
-		
 		<!-- server Agent-specific messages -->
 		<key name="scan_server_message_0001">Starting #!string!scan_server_brand_0001!#:</key>
 		<key name="scan_server_message_0002"><![CDATA[
@@ -87,10 +76,10 @@ New:
 ====
 		</key>
 		<key name="scan_server_message_0008">The server: [#!variable!server!#]'s host has changed: [#!variable!old!#] -> [#!variable!new!#]</key>
-		<key name="scan_server_message_0009">The server: [#!variable!server!#]'s host has been recorded as: [#!variable!new!#].</key>
+		<key name="scan_server_message_0009">#!free!#</key>
 		<key name="scan_server_message_0010">The server: [#!variable!server!#]'s state has changed:[#!variable!old!#] -> [#!variable!new!#]</key>
-		<key name="scan_server_message_0011">The server: [#!variable!server!#]'s state has been recorded as: [#!variable!new!#].</key>
-		<key name="scan_server_message_0012">The server with UUID: [#!variable!uuid!#]'s name has changed: [#!variable!old!#] -> [#!variable!new!#]</key>
+		<key name="scan_server_message_0011">#!free!#</key>
+		<key name="scan_server_message_0012">#!free!#</key>
 		<key name="scan_server_message_0013">The server: [#!variable!server!#]'s has moved to a new Anvil! system: [#!variable!anvil_name!#]:</key>
 		<key name="scan_server_message_0014">The server: [#!variable!server!#] had the disc image: [#!variable!file!#] mounted, which no longer exists. The disc has been ejected.</key>
 		<key name="scan_server_message_0015">The server: [#!variable!server_name!#] with UUID: [#!variable!server_uuid!#] wasn't found in this scan, ignoring it.</key>

@@ -897,7 +897,7 @@ sub get_switches
 sub select_nics
 {
 	my ($conf) = @_;
-
+	
 	if ($conf->{script})
 	{
 		print "#!string!script_0036!#\n" if $conf->{debug};

@@ -2026,7 +2026,7 @@ sub _add_server_to_anvil
 			server		=>	$server,
 			failover_domain	=>	$failover_domain,
 		}});
-		print $an->Web->template({file => "server.html", template => "add-server-to-anvil-header-detail", replace => { title => $title }});
+		print $an->Web->template({file => "server.html", template => "add-server-to-anvil-header-details", replace => { title => $title }});
 	}
 	
 	# If there is no password set, abort.
@@ -5402,7 +5402,7 @@ fi;
 				file		=>	$file,
 				ls_exit_code	=>	$ls_exit_code,
 			}});
-			print $an->Web->template({file => "server.html", template => "remove-vm-definition-failed", replace => { message => $message }});
+			print $an->Web->template({file => "server.html", template => "remove-server-definition-failed", replace => { message => $message }});
 		}
 		
 		# Mark it as deleted.
@@ -6513,7 +6513,7 @@ sub _display_server_details
 					{
 						my $say_host     =  $an->data->{server}{$server}{host};
 						   $say_host     =~ s/\..*//;
-						   $say_net_host =  $an->Web->template({file => "server.html", template => "display-server-details-entra-nics", replace => { 
+						   $say_net_host =  $an->Web->template({file => "server.html", template => "display-server-details-extra-nics", replace => { 
 								say_host	=>	$say_host,
 								bridge		=>	$bridge[$i] ? $bridge[$i] : "--",
 								device		=>	$device[$i] ? $device[$i] : "--",
@@ -6523,7 +6523,7 @@ sub _display_server_details
 				}
 				
 				# Show extra LVs and/or networks.
-				$server_details_panel .= $an->Web->template({file => "server.html", template => "display-server-details-entra-storage", replace => { 
+				$server_details_panel .= $an->Web->template({file => "server.html", template => "display-server-details-extra-storage", replace => { 
 						say_lv_path	=>	$say_lv_path,
 						say_lv_size	=>	$say_lv_size,
 						say_network	=>	$say_network,

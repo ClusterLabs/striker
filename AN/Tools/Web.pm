@@ -747,15 +747,11 @@ sub no_db_access
 	
 	my $menu = $an->Web->template({file => "configure.html", template => "no-database-access"});
 	
-	print $an->Web->template({
-			file		=>	"configure.html",
-			template	=>	"configure-main-page",
-			replace		=>	{
-				header		=>	$header, 
-				body		=>	$menu, 
-				footer		=>	$footer, 
-			},
-		});
+	print $an->Web->template({file => "configure.html", template => "configure-main-page", replace => {
+			header => $header, 
+			body   => $menu, 
+			footer => $footer, 
+		}});
 	
 	
 	return(0);

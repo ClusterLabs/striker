@@ -221,6 +221,8 @@ if (not $target_count)
 }
 
 ### Still alive? Time for work!
+print $an->String->get({key => "scan_remote_access_log_0001"})."\n";
+
 # Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
 prep_databases($an);
 

@@ -1400,7 +1400,7 @@ WHERE
 						alert_sort		=>	$an->data->{sys}{alert_sort}++,
 						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0008",
-						alert_message_key	=>	"pdu_name",
+						alert_message_key	=>	"scan_apc_pdu_message_0036",
 						alert_message_variables	=>	{
 							pdu_name		=>	$pdu_host_name, 
 							outlet			=>	sprintf("%02d", $apc_pdu_outlet_number),

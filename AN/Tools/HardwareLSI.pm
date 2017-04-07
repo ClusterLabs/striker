@@ -2222,7 +2222,7 @@ sub _put_disk_online
 				message	=>	$return_string,
 			}});
 	}
-	print $an->Web->template({file => "lsi-storage.html", template => "lsi-complete-table-messag", replace => { 
+	print $an->Web->template({file => "lsi-storage.html", template => "lsi-complete-table-message", replace => { 
 		title		=>	"#!string!lsi_0030!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,

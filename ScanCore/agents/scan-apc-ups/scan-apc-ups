@@ -2885,7 +2885,7 @@ INSERT INTO
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
 				alert_agent_name	=>	$THIS_FILE,
-				alert_title_key		=>	"scan_apc_ups_message_0008",
+				alert_title_key		=>	"scan_apc_ups_message_0004",
 				alert_title_variables	=>	{
 					name			=>	$new_apc_ups_name,
 				},

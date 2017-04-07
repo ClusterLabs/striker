@@ -67,28 +67,6 @@ $(function() {
 <br />
 <!-- end auto-refresh-header -->
 
-<!-- This was used when we used guacamole -->
-<!-- start old-footer -->
-<table class="hidden_table" width="100%">
-	<tr>
-		<td class="td_hidden">
-			<span class="legal">
-			#!string!legal_0001!#<br />
-			#!string!legal_0002!#<br />
-			#!string!legal_0003!#<br />
-			</span>
-		</td>
-	</tr>
-</table>
-<p style="position:fixed; right:10; bottom:0"><a href="#!replace!guacamole_url!#" target="_new" class="subtle_link">&#191;</a></p>
-</body>
-<script type="text/javascript" src="#!conf!url::skins!#/#!conf!sys::skin!#/common.js"></script>
-<script type="text/javascript" src="#!conf!url::skins!#/#!conf!sys::skin!#/config.js"></script>
-<img src="#!conf!url::skins!#/#!conf!sys::skin!#/images/t.png" onload="show_on_load();" border="0" />
-<img src="#!conf!url::skins!#/#!conf!sys::skin!#/images/t.png" onload="hide_on_load();" border="0" />
-</html>
-<!-- end old-footer -->
-
 <!-- start footer -->
 <table class="hidden_table" width="100%">
 	<tr>
@@ -170,39 +148,6 @@ $(function() {
 </div>
 <!-- end scanning-message -->
 
-<!-- start hr_to_bytes-error -->
-<table>
-	<tr>
-		<td class="highlight_bad">
-			#!string!row_0040!#
-		</td>
-	</tr>
-	<tr>
-		<td>
-			#!replace!message!#<br />
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end hr_to_bytes-error -->
-
-<!-- start restart-guacamole-header -->
-<table>
-	<tr>
-		<td class="highlight_ready_bold" colspan="2">
-			#!string!title_0017!#
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class="highlight_ready">#!string!row_0127!#</span>
-		</td>
-		<td>
-			<br />
-			#!string!message_0052!#:<br />
-			<br />
-<!-- end restart-guacamole-header -->
-
 <!-- start open-shell-call-output -->
 	<tr>
 		<td class="highlight_note">
@@ -220,64 +165,6 @@ $(function() {
 		</td>
 	</tr>
 <!-- end close-shell-call-output -->
-
-<!-- start restart-guacamole-footer -->
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td>
-			<span class="highlight_good_bold">Done</span>
-		</td>
-		<td>
-			<br />
-			#!string!explain_0019!#<br />
-			<br />
-		</td>
-	</tr>
-	<tr>
-		<td colspan="2">
-			#!string!message_0053!#<br />
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end restart-guacamole-footer -->
-
-<!-- start generic-note -->
-	<tr>
-		<td class="highlight_warning_bold">
-			#!string!row_0032!#
-		</td>
-		<td>
-			#!replace!message!#
-		</td>
-	</tr>
-<!-- end generic-note -->
-
-<!-- start generic-error -->
-	<tr>
-		<td class="highlight_bad_bold">
-			#!string!row_0096!#
-		</td>
-		<td>
-			#!replace!message!#
-		</td>
-	</tr>
-<!-- end generic-error -->
-
-<!-- start shell-output-header -->
-	<tr>
-		<td class="highlight_warning_bold">
-			#!string!row_0155!#
-		</td>
-		<td>
-<!-- end shell-output-header -->
-
-<!-- start shell-output-footer -->
-		</td>
-	</tr>
-<!-- end shell-output-footer -->
 
 <!-- start disabled-button -->
 <span class="disabled_button">#!replace!button_text!#</span>
@@ -299,10 +186,6 @@ $(function() {
 <a href="#!replace!button_link!#" id="#!replace!id!#">#!replace!button_text!#</a>
 <!-- end enabled-button-no-class -->
 
-<!-- start enabled-button-no-class-new-tab -->
-<a href="#!replace!button_link!#" id="#!replace!id!#" target="_new">#!replace!button_text!#</a>
-<!-- end enabled-button-no-class-new-tab -->
-
 <!-- start form-button -->
 <input type="submit" class="#!replace!class!#" name="#!replace!name!#" id="#!replace!id!#" value="#!replace!value!#" />
 <!-- end form-button -->
@@ -314,10 +197,6 @@ $(function() {
 <!-- start image -->
 <img src="#!replace!image_source!#" id="#!replace!id!#" alt="#!replace!alt_text!#">
 <!-- end image -->
-
-<!-- start image_with_js -->
-<img #!replace!javascript!# src="#!replace!image_source!#" id="#!replace!id!#" alt="#!replace!alt_text!#">
-<!-- end image_with_js -->
 
 <!-- start form-input -->
 			<input type="#!replace!type!#" name="#!replace!name!#" id="#!replace!id!#" value="#!replace!value!#" class="#!replace!class!#">
@@ -334,56 +213,3 @@ $(function() {
 <!-- start form-input-no-class-defined-width -->
 			<input type="#!replace!type!#" name="#!replace!name!#" id="#!replace!id!#" value="#!replace!value!#" style="width: #!replace!width!#;">
 <!-- end form-input-no-class-defined-width -->
-
-<!-- start bad-definition-file -->
-<table class="hidden_table">
-	<tr>
-		<td class="highlight_warning_bold" class="td_hidden_white">
-			#!string!title_0147!#
-		</td>
-	</tr>
-	<tr>
-		<td style="text-align: left;" class="td_hidden_white">
-			<br />
-			#!string!message_0337!#<br />
-			<br />
-			#!replace!error!#<br />
-			<br />
-			<hr />
-			<span class="fixed_width">
-			#!replace!definition_content!#
-			</span>
-			<hr />
-			</br>
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end bad-definition-file -->
-
-<!-- start no-definition-file -->
-<table>
-	<tr>
-		<td colspan="2" class="highlight_warning_bold">
-			#!string!title_0147!#
-		</td>
-	</tr>
-	<tr>
-		<td class="highlight_bad_bold">
-			#!string!row_0096!#
-		</td>
-		<td>
-			<br />
-			#!string!message_0337!#<br />
-			<br />
-			#!replace!error!#<br />
-			<br />
-		</td>
-	</tr>
-</table>
-<br />
-<!-- end no-definition-file -->
-
-<!-- start subtle_text -->
-<span class="subtle_text">#!replace!string!#</span>
-<!-- end subtle_text -->

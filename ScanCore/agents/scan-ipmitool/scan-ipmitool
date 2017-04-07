@@ -815,7 +815,7 @@ WHERE
 						# or below tolerances.
 						my $level       = "info";
 						my $title_key   = "an_alert_title_0002";
-						my $message_key = "scan_ipmitool_message_0013";
+						my $message_key = "scan_ipmitool_message_0014";
 						
 						# If this is a temperature, see if we need to 
 						# trigger an alarm and set/clear the 'temperature'
@@ -1082,7 +1082,7 @@ INSERT INTO
 					{
 						$level       = "warning";
 						$title_key   = "an_alert_title_0004";
-						$message_key = "scan_ipmitool_message_0013";
+						$message_key = "scan_ipmitool_message_0015";
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 							name1 => "level",       value1 => $level, 
 							name2 => "title_key",   value2 => $title_key, 
@@ -1204,7 +1204,7 @@ INSERT INTO
 				{
 					$level       = "warning";
 					$title_key   = "an_alert_title_0004";
-					$message_key = "scan_ipmitool_message_0013";
+					$message_key = "scan_ipmitool_message_0015";
 				}
 				$an->Alert->register_alert({
 					alert_level		=>	$level, 

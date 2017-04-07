@@ -103,7 +103,7 @@
 		<key name="brand_0013">anvil</key>
 		<key name="brand_0014"><![CDATA[If you aren't sure what to do, please <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
 		<key name="brand_0015"><![CDATA[<i>ScanCore</i>]]></key>
-		<key name="brand_0016"><![CDATA[<span class="code">safe-anvil-start</span>]]></key>
+		<key name="brand_0016">#!free!#</key>
 		<key name="brand_0017">APC</key>
 		<key name="brand_0018">Raritan</key>
 		<key name="brand_0019">ScanCore</key>
@@ -171,7 +171,7 @@
 		<key name="explain_0019">Any existing open connections to servers may need to be reopened.</key>
 		<key name="explain_0020">The physical disks below are not currently a member of any logical disk.</key>
 		<key name="explain_0021">The server is shut off.</key>
-		<key name="explain_0022">I am sorry, but without this information, I can not continue.</key>
+		<key name="explain_0022">#!free!#</key>
 		<key name="explain_0023">Configure mail server(s) to use when sending alert emails.</key>
 		<key name="explain_0024"><![CDATA[This can be whatever you want, but it must be unique.<br />It is good to keep this short.]]></key>
 		<key name="explain_0025"><![CDATA[This fine-tunes the hypervisor for your operating system.<br />If your OS is not listed, choose the one that is the closest match.]]></key>
@@ -491,7 +491,7 @@
 		<key name="row_0001">New!</key>
 		<key name="row_0002">Notes</key>
 		<key name="row_0003">Unknown</key>
-		<key name="row_0004">#!string!brand_0003!# Data Incomplete</key>
+		<key name="row_0004">#!free!#</key>
 		<key name="row_0005">#!string!brand_0003!# Name</key>
 		<key name="row_0006">Node 1 Name</key>
 		<key name="row_0007">Node 2 Name</key>
@@ -499,13 +499,13 @@
 		<key name="row_0009">Node 2 IP Address</key>
 		<key name="row_0010">Node 1 TCP Port</key>
 		<key name="row_0011">Node 2 TCP Port</key>
-		<key name="row_0012">Missing Node Name</key>
+		<key name="row_0012">#!free!#</key>
 		<key name="row_0013">Validating</key>
 		<key name="row_0014">Mail Server User</key>
-		<key name="row_0015">Alert Recipient</key>
+		<key name="row_0015">#!free!#</key>
 		<key name="row_0016">Mail Server Port</key>
 		<key name="row_0017">Add a New #!string!brand_0003!#</key>
-		<key name="row_0018">Sanity Checks Passed!</key>
+		<key name="row_0018">#!free!#</key>
 		<key name="row_0019">Done!</key>
 		<key name="row_0020">Problems Found</key>
 		<key name="row_0021">Description</key>
@@ -521,15 +521,15 @@
 		<key name="row_0031">Alert Recipient(s)</key>
 		<key name="row_0032">Note</key>
 		<key name="row_0033">No Access</key>
-		<key name="row_0034">Verification Failed</key>
-		<key name="row_0035">Bad Hostname</key>
-		<key name="row_0036">Permission Denied</key>
-		<key name="row_0037">Connection Refused</key>
-		<key name="row_0038">Connection Timed Out</key>
-		<key name="row_0039">Network Unreachable</key>
+		<key name="row_0034">#!free!#</key>
+		<key name="row_0035">#!free!#</key>
+		<key name="row_0036">#!free!#</key>
+		<key name="row_0037">#!free!#</key>
+		<key name="row_0038">#!free!#</key>
+		<key name="row_0039">#!free!#</key>
 		<key name="row_0040"><![CDATA[Error in <span class="fixed_width">hr_to_bytes()</span>]]></key>
-		<key name="row_0041">Connection Problem</key>
-		<key name="row_0042">Inaccesible</key>
+		<key name="row_0041">#!free!#</key>
+		<key name="row_0042">#!free!#</key>
 		<key name="row_0043">Inactive Logical Volume</key>
 		<key name="row_0044">Warning</key>
 		<key name="row_0045">Unable to Proceed</key>
@@ -617,7 +617,7 @@
 		<key name="row_0127">Output</key>
 		<key name="row_0128">Foreign State</key>
 		<key name="row_0129">Aborted</key>
-		<key name="row_0130">Backup</key>
+		<key name="row_0130">#!free!#</key>
 		<key name="row_0131">Push</key>
 		<key name="row_0132">Upload</key>
 		<key name="row_0133">Failed</key>
@@ -712,7 +712,7 @@
 		<key name="row_0222">Checking Storage</key>
 		<key name="row_0223">Checking Internet Access</key>
 		<key name="row_0224">Note!</key>
-		<key name="row_0225">PTSes</key>
+		<key name="row_0225">#!free!#</key>
 		<key name="row_0226">Installing Programs</key>
 		<key name="row_0227">Updating OS</key>
 		<key name="row_0228">Network Configuration</key>
@@ -732,7 +732,7 @@
 		<key name="row_0242">Registration failed</key>
 		<key name="row_0243">Checking for Execution Environment</key>
 		<key name="row_0244">Repositories</key>
-		<key name="row_0245">Adding local repository</key>
+		<key name="row_0245">#!free!#</key>
 		<key name="row_0246">Replicated Storage Partition</key>
 		<key name="row_0247">Rebooting</key>
 		<key name="row_0248">Node #!variable!node!#</key>
@@ -758,9 +758,9 @@
 		<key name="row_0268">Configure FS Table</key>
 		<key name="row_0269">Unconfigured</key>
 		<key name="row_0270">Stopping Server</key>
-		<key name="row_0271">Withdrawing Node</key>
-		<key name="row_0272">Powering down Node</key>
-		<key name="row_0273">In progress</key>
+		<key name="row_0271">#!free!#</key>
+		<key name="row_0272">#!free!#</key>
+		<key name="row_0273">#!free!#</key>
 		<key name="row_0274">Try Again</key>
 		<key name="row_0275">Alternate NTP Servers</key>
 		<key name="row_0276">PDU Pair 1</key>
@@ -779,28 +779,28 @@
 		<key name="row_0289">Configuring #!string!brand_0015!#</key>
 		<key name="row_0290">Configuring SELinux</key>
 		<key name="row_0291">MTU Byte Size</key>
-		<key name="row_0292">Synchronized</key>
+		<key name="row_0292">#!free!#</key>
 		<key name="row_0293">Migration Type</key>
 		<key name="row_0294">Pre-Migration Script</key>
 		<key name="row_0295">Post-Migration Script</key>
-		<key name="row_0296">PTS 1 Host Name</key>
-		<key name="row_0297">PTS 1 IP Address</key>
-		<key name="row_0298">PTS 2 Host Name</key>
-		<key name="row_0299">PTS 2 IP Address</key>
-		<key name="row_0300">Port Number</key>
+		<key name="row_0296">#!free!#</key>
+		<key name="row_0297">#!free!#</key>
+		<key name="row_0298">#!free!#</key>
+		<key name="row_0299">#!free!#</key>
+		<key name="row_0300">#!free!#</key>
 		<key name="row_0301">Login Name</key>
 		<key name="row_0302">Login Password</key>
 		<key name="row_0303">Password Security</key>
 		<key name="row_0304">Connection Security</key>
 		<key name="row_0305">Form Error</key>
 		<key name="row_0306">Confirm Delete</key>
-		<key name="row_0307">Owns</key>
+		<key name="row_0307">#!free!#</key>
 		<key name="row_0308">Target</key>
 		<key name="row_0309">Language</key>
 		<key name="row_0310">Alert Level</key>
 		<key name="row_0311">Measurements</key>
 		<key name="row_0312">Caution</key>
-		<key name="row_0313">Manifest</key>
+		<key name="row_0313">#!free!#</key>
 		<key name="row_0314">Backup Mail Server</key>
 		<key name="row_0315">Disabled</key>
 		<key name="row_0316">Use Caching</key>
@@ -811,7 +811,7 @@
 		<key name="row_0321">Image Copies</key>
 		<key name="row_0322">Servers</key>
 		<key name="row_0323">Job Name</key>
-		<key name="row_0324">Auto-Prune</key>
+		<key name="row_0324">#!free!#</key>
 		<key name="row_0325">Schedule</key>
 		<key name="row_0326">Target Name</key>
 		<key name="row_0327">Target Password</key>
@@ -875,13 +875,13 @@
 		
 		<!-- Strings coming from scripts. -->
 		<key name="script_0001">Backing up some network related system files.</key>
-		<key name="script_0002">When prompted, unplug the desired network cable, wait a couple of seconds and then plug it back in.</key>
-		<key name="script_0003"><![CDATA[[ <span class="highlight_bad">Error</span> ] - The Storage Network details were not given.]]></key>
-		<key name="script_0004"><![CDATA[[ <span class="highlight_bad">Error</span> ] - The Internet-Facing Network details were not given.]]></key>
-		<key name="script_0005"><![CDATA[<br />Sanity checks complete.]]></key>
+		<key name="script_0002">#!free!#</key>
+		<key name="script_0003">#!free!#</key>
+		<key name="script_0004">#!free!#</key>
+		<key name="script_0005">#!free!#</key>
 		<key name="script_0006"><![CDATA[[ <span class="highlight_bad">Error</span> ] - The backup directory is not defined!]]></key>
 		<key name="script_0007"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Unable to safely proceed, exiting.]]></key>
-		<key name="script_0008"><![CDATA[[ <span class="highlight_bad">Error</span> ] - The backup directory was not created.]]></key>
+		<key name="script_0008">#!free!#</key>
 		<key name="script_0009"><![CDATA[The backup directory: [<span class="code">#!variable!backups!#</span>] doesn't exist, creating it.]]></key>
 		<key name="script_0010">Backup directory successfully created.</key>
 		<key name="script_0011"><![CDATA[[ <span class="highlight_warning">Warning</span> ] - Failed to create the directory: [<span class="code">#!variable!backups!#</span>]. The error was: <span class="code">#!variable!error!#</span>]]></key>
@@ -921,121 +921,29 @@
 		<key name="script_0045"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Exiting.]]></key>
 		<key name="script_0046"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Desired NIC: [<span class="code">#!variable!nic!#</span>] doesn't have a referenced interface!]]></key>
 		<key name="script_0047"><![CDATA[Interface: [<span class="code">#!variable!mac!#</span>], currently named: [<span class="code">#!variable!current!#</span>], will be renamed to: [<span class="code">#!variable!new!#</span>]]]></key>
-		<!-- wtf is this? -->
-		<key name="script_0048"><![CDATA[
-<br />
-<table class="hidden_table">
-	<tr>
-		<td colspan="2">
-			The <b>#!string!brand_0005!#</b> interface will be set to:
-		</td>
-	</tr>
-	<tr>
-		<td>
-			IP:
-		</td>
-		<td class="code">
-			#!variable!bcn_ip!#
-		</td>
-	</tr>
-	<tr>
-		<td>
-			Netmask:
-		</td>
-		<td class="code">
-			#!variable!bcn_netmask!#
-		</td>
-	</tr>
-	<tr>
-		<td colspan="2">
-			The <b>#!string!brand_0007!#</b> interface will be set to:
-		</td>
-	</tr>
-	<tr>
-		<td>
-			IP:
-		</td>
-		<td class="code">
-			#!variable!sn_ip!#
-		</td>
-	</tr>
-	<tr>
-		<td>
-			Netmask:
-		</td>
-		<td class="code">
-			#!variable!sn_netmask!#
-		</td>
-	</tr>
-	<tr>
-		<td colspan="2">
-			The <b>#!string!brand_0009!#</b> interface will be set to:
-		</td>
-	</tr>
-	<tr>
-		<td>
-			IP:
-		</td>
-		<td class="code">
-			#!variable!ifn_ip!#
-		</td>
-	</tr>
-	<tr>
-		<td>
-			Netmask:
-		</td>
-		<td class="code">
-			#!variable!ifn_netmask!#
-		</td>
-	</tr>
-	<tr>
-		<td>
-			Gateway:
-		</td>
-		<td class="code">
-			#!variable!ifn_gateway!#
-		</td>
-	</tr>
-	<tr>
-		<td>
-			DNS 1:
-		</td>
-		<td class="code">
-			#!variable!ifn_dns1!#
-		</td>
-	</tr>
-	<tr>
-		<td>
-			DNS 2:
-		</td>
-		<td class="code">
-			#!variable!ifn_dns2!#
-		</td>
-	</tr>
-</table>
-		]]></key>
-		<key name="script_0049"><![CDATA[Writing the new udev rules file: [<span class="code">#!variable!file!#</span>]]]></key>
-		<key name="script_0050"><![CDATA[Desired NIC: [<span class="code">#!variable!nic!#</span>] doesn't have a referenced MAC address!]]></key>
-		<key name="script_0051">Deleting old network configuration files:</key>
-		<key name="script_0052"><![CDATA[Deleting file: [<span class="code">#!variable!file!#</span>]]]></key>
-		<key name="script_0053"><![CDATA[Unable to delete: [<span class="code">#!variable!file!#</span>]. The error was: <span class="code">#!variable!error!#</span>]]></key>
-		<key name="script_0054">Writing new network configuration files.</key>
-		<key name="script_0055"><![CDATA[#!string!brand_0009!# Bridge: [<span class="code">#!variable!file!#</span>]]]></key>
-		<key name="script_0056"><![CDATA[#!string!brand_0009!# Bond: [<span class="code">#!variable!file!#</span>]]]></key>
-		<key name="script_0057"><![CDATA[#!string!brand_0007!# Bond: [<span class="code">#!variable!file!#</span>]]]></key>
-		<key name="script_0058"><![CDATA[#!string!brand_0005!# Bond: [<span class="code">#!variable!file!#</span>]]]></key>
+		<key name="script_0048">#!free!#</key>
+		<key name="script_0049">#!free!#</key>
+		<key name="script_0050">#!free!#</key>
+		<key name="script_0051">#!free!#</key>
+		<key name="script_0052">#!free!#</key>
+		<key name="script_0053">#!free!#</key>
+		<key name="script_0054">#!free!#</key>
+		<key name="script_0055">#!free!#</key>
+		<key name="script_0056">#!free!#</key>
+		<key name="script_0057">#!free!#</key>
+		<key name="script_0058">#!free!#</key>
 		<key name="script_0059"><![CDATA[#!string!brand_0005!# - Link #!variable!number!#]]></key>
-		<key name="script_0060"><![CDATA[#!string!brand_0006!# Link #!variable!number!#]]></key>
+		<key name="script_0060">#!free!#</key>
 		<key name="script_0061"><![CDATA[#!string!brand_0007!# - Link #!variable!number!#]]></key>
-		<key name="script_0062"><![CDATA[#!string!brand_0008!# Link #!variable!number!#]]></key>
+		<key name="script_0062">#!free!#</key>
 		<key name="script_0063"><![CDATA[#!string!brand_0009!# - Link #!variable!number!#]]></key>
-		<key name="script_0064"><![CDATA[#!string!brand_0010!# Link #!variable!number!#]]></key>
-		<key name="script_0065">Network already configured, skipping.</key>
-		<key name="script_0066"><![CDATA[#!variable!name!#: [<span class="code">#!variable!file!#</span>]]]></key>
+		<key name="script_0064">#!free!#</key>
+		<key name="script_0065">#!free!#</key>
+		<key name="script_0066">#!free!#</key>
 		<key name="script_0067">Interface summary:</key>
 		<key name="script_0068"><![CDATA[Done, thank you.]]></key>
 		<key name="script_0069"><![CDATA[<span class="highlight_good_bold">Ready</span>: Please wait <b>five seconds</b> between unplugging and plugging the cables.<br /><span class="highlight_note_bold">Note</span>: There will be a delay when you reseat the cable currently used to talk to the node.<br />]]></key>
-		<key name="script_0070">#!variable!interface!#, Link #!variable!link!#</key>
+		<key name="script_0070">#!free!#</key>
 		
 		<!-- Symbols, digits, etc. -->
 		<key name="symbol_0001">1</key>
@@ -1613,19 +1521,19 @@
 		<key name="message_0181">It looks like the attempt to start the server Failed. Will try to recover now...</key>
 		<key name="message_0182">Trying again to start the server...</key>
 		<key name="message_0183">It looks like there is a problem with this server.</key>
-		<key name="message_0184"><![CDATA[It appears that node <span class="fixed_width">#!variable!message!#</span> is no longer ready to run <span class="fixed_width">#!variable!server!#</span>.]]></key>
+		<key name="message_0184">#!free!#</key>
 		<key name="message_0185">This could be because some time has passed and the state of the node has changed.</key>
 		<key name="message_0186">Please go back to the status page for more details.</key>
-		<key name="message_0187"><![CDATA[It appears that node <span class="fixed_width">#!variable!target!#</span> is no longer ready to run <span class="fixed_width">#!variable!server!#</span>.]]></key>
+		<key name="message_0187">#!free!#</key>
 		<key name="message_0188">This can take a while, please be patient!</key>
 		<key name="message_0189"><![CDATA[This process will complete before the storage services start.<br />Please give a minute or two for storage to come online.]]></key>
 		<key name="message_0190"><![CDATA[It appears that <span class="fixed_width">#!variable!node!#</span> has already joined the #!string!brand_0003!#.]]></key>
 		<key name="message_0191"><![CDATA[This command can take up to <span class="highlight_detail">two minutes</span> to generate output.]]></key>
-		<key name="message_0192">All children should be gone now but it seems the program went into an infinit loop.</key>
+		<key name="message_0192">#!free!#</key>
 		<key name="message_0193">If the server powered off properly, the #!string!brand_0003!# should boot it back up in a moment.</key>
-		<key name="message_0194">#!string!brand_0002!# appears to have failed to read the server's information properly.</key>
-		<key name="message_0195"><![CDATA[Removal of <span class="fixed_width">#!variable!server!#</span> has been aborted!]]></key>
-		<key name="message_0196"><![CDATA[Can't delete <span class="fixed_width">#!variable!server!#</span> until at least one node is online.]]></key>
+		<key name="message_0194">#!free!#</key>
+		<key name="message_0195">#!free!#</key>
+		<key name="message_0196">#!free!#</key>
 		<key name="message_0197">The server has been successfully removed.</key>
 		<key name="message_0198"><![CDATA[The removal call should have exited with exit code <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!ccs_exit_code!#</span> was received.]]></key>
 		<key name="message_0199">The server has been forced off.</key>
@@ -1636,7 +1544,7 @@
 		<key name="message_0204"><![CDATA[The call to remove the server's storage should have exited with exit code <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!lvremove_exit_code!#</span> was received.]]></key>
 		<key name="message_0205"><![CDATA[The server <span class="fixed_width">#!variable!server!#</span> has been removed.]]></key>
 		<key name="message_0206">It would appear that something went very wrong!</key>
-		<key name="message_0207"><![CDATA[I was asked to delete the server definition file <span class="fixed_width">#!variable!file!#</span>, which does not belong to the #!string!brand_0003!#.]]></key>
+		<key name="message_0207">#!free!#</key>
 		<key name="message_0208"><![CDATA[For security reasons, only files in <span class="fixed_width">/shared/definitions/</span> can be deleted.]]></key>
 		<key name="message_0209"><![CDATA[The file <span class="fixed_width">#!variable!file!#</span> has been deleted.]]></key>
 		<key name="message_0210"><![CDATA[I tried to delete the file <span class="fixed_width">#!variable!file!#</span> and then verify that it was indeed removed.<br />This should have returned <span class="fixed_width">2</span>, but <span class="fixed_width">#!variable!ls_exit_code!#</span> was returned instead.]]></key>
@@ -1644,11 +1552,11 @@
 		<key name="message_0212"><![CDATA[I tried to archive the file <span class="fixed_width">#!variable!file!#</span> as <span class="fixed_width">#!variable!destination!#</span>.<br />This should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!cp_exit_code!#</span> was returned instead.]]></key>
 		<key name="message_0213"><![CDATA[This will complete once <span class="fixed_width">#!variable!node_name!#</span> has closed the connection.<br />It may take a minute before the node shows as powered off on the dashboard.]]></key>
 		<key name="message_0214"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_name!#</span> is either already off, is now in use by a server or is replicating data to an inconsistent peer.]]></key>
-		<key name="message_0215"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but the command to do so was not found in the cache. Manual power up is required.]]></key>
-		<key name="message_0216"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but it appears to already be running. Start up aborted.]]></key>
-		<key name="message_0217"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but I am not able to log into the taget node's out of band management interface <span class="fixed_width">#!variable!target_host!#</span>.<br />Please check to see if the address, user or password has changed. Unable to continue.]]></key>
-		<key name="message_0218"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but I am not on the same subnet as its out of band management interface at <span class="fixed_width">#!variable!target_host!#</span>.<br />Please restore access to the target subnet. Unable to continue.]]></key>
-		<key name="message_0219"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but I don't have a recorded method of checking or changing the power state for <span class="fixed_width">#!variable!target_host!#</span>.<br />Please restore access to the target subnet. Unable to continue.]]></key>
+		<key name="message_0215">#!free!#</key>
+		<key name="message_0216">#!free!#</key>
+		<key name="message_0217">#!free!#</key>
+		<key name="message_0218">#!free!#</key>
+		<key name="message_0219">#!free!#</key>
 		<key name="message_0220"><![CDATA[I will now try to power on both nodes in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="message_0221">It may take a few minutes before the dashboard can log into either node.</key>
 		<key name="message_0222"><![CDATA[I will now try to power on <span class="fixed_width">#!variable!node_name!#</span>.]]></key>
@@ -1656,17 +1564,17 @@
 		<key name="message_0224"><![CDATA[An unknown error has occured. Is <span class="fixed_width">#!variable!node!#</span>'s IPMI interface reachable?]]></key>
 		<key name="message_0225"><![CDATA[The node <span class="fixed_width">#!variable!node_name!#</span> is already reported as being powered up.]]></key>
 		<key name="message_0226"><![CDATA[The node <span class="fixed_width">#!variable!node_name!#</span>'s out of band management interface is currently unreachable.]]></key>
-		<key name="message_0227"><![CDATA[I was asked to power on #!variable!node!# via its peer #!variable!peer!#, but the power command is empty.<br />This is likely a program error.]]></key>
-		<key name="message_0228"><![CDATA[I wasn't able to find the command needed to power on <span class="fixed_width">#!variable!node_name!#</span>.]]></key>
+		<key name="message_0227">#!free!#</key>
+		<key name="message_0228">#!free!#</key>
 		<key name="message_0229">Either this node has not been seen before or the cache for this node was deleted.</key>
 		<key name="message_0230">You can not power on the node from the dashboard at this time.</key>
-		<key name="message_0231">Unable to determine the commands needed to fence #!variable!node!#. One of the nodes need to be accessible or the cache file must exist with the correct command.</key>
-		<key name="message_0232"><![CDATA[Trying to fence <span class="fixed_width">#!variable!node!#</span>, but its peer, <span class="fixed_width">#!variable!peer!#</span>, is also offline and the fence device at <span class="fixed_width">#!variable!address!#</span> is not accessible from this machine.<br />Unable to proceed with fence action.]]></key>
+		<key name="message_0231">#!free!#</key>
+		<key name="message_0232">#!free!#</key>
 		<key name="message_0233"><![CDATA[I will now attempt to fence <span class="fixed_width">#!variable!node_name!#</span>.]]></key>
-		<key name="message_0234"><![CDATA[Fencing using the <span class="fixed_width">#!variable!method_name!#</span> method succeeded. Proceeding with unfence action.]]></key>
-		<key name="message_0235"><![CDATA[Fencing using the <span class="fixed_width">#!variable!method_name!#</span> method failed. Will try next method, if available.]]></key>
-		<key name="message_0236"><![CDATA[Unfencing using the <span class="fixed_width">#!variable!method_name!#</span> method succeeded. Fence operation a complete success!]]></key>
-		<key name="message_0237"><![CDATA[Unfencing using the <span class="fixed_width">#!variable!method_name!#</span> method failed.<br />\nThe core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service.<br />\nIf another fence method remains, it will now be tried in hopes of assisting recovery.]]></key>
+		<key name="message_0234">#!free!#</key>
+		<key name="message_0235">#!free!#</key>
+		<key name="message_0236">#!free!#</key>
+		<key name="message_0237">#!free!#</key>
 		<key name="message_0238">Stopping the #!string!brand_0003!# resource manager now..</key>
 		<key name="message_0239"><![CDATA[The '<span class="highlight_detail">#!string!row_0283!#</span>' must be a digit, representing a number of seconds (was passed: [<span class="fixed_width">#!variable!value!#</span>]). By default, this is '<span class="fixed_width">0</span>'.]]></key>
 		<key name="message_0240">The #!string!brand_0003!# resource manager stopped successfully.</key>
@@ -1680,20 +1588,20 @@
 		<key name="message_0248">#!string!brand_0003!#'s resource manager failed to stop!</key>
 		<key name="message_0249"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_name!#</span> is either already off, is now in use by a server or is replicating data to an inconsistent peer.]]></key>
 		<key name="message_0250">#!string!brand_0003!#'s resource manager recovered successfully!</key>
-		<key name="message_0251"><![CDATA[Checking the <span class="fixed_width">#!variable!storage_service!#</span> storage service now.]]></key>
+		<key name="message_0251">#!free!#</key>
 		<key name="message_0252"><![CDATA[This requires a rescan of the #!string!brand_0003!#, please be patient.]]></key>
-		<key name="message_0253"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage service has failed!]]></key>
-		<key name="message_0254"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage will now be cycled...]]></key>
-		<key name="message_0255"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage service has been disabled.]]></key>
+		<key name="message_0253">#!free!#</key>
+		<key name="message_0254">#!free!#</key>
+		<key name="message_0255">#!free!#</key>
 		<key name="message_0256">Attempting to re-enable it now...</key>
-		<key name="message_0257"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage has been restarted.]]></key>
+		<key name="message_0257">#!free!#</key>
 		<key name="message_0258">Recovery has completed successfully!</key>
-		<key name="message_0259"><![CDATA[Please log into <span class="fixed_width_button">#!variable!node!#</span> and locate what held open the storage service.]]></key>
+		<key name="message_0259">#!free!#</key>
 		<key name="message_0260"><![CDATA[Trying to withdraw from the #!string!brand_0003!# before this is fixed could cause problems.]]></key>
 		<key name="message_0261">Proceed carefully!</key>
-		<key name="message_0262"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage service failed to restart!]]></key>
-		<key name="message_0263"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage service failed to disable!]]></key>
-		<key name="message_0264"><![CDATA[The <span class="fixed_width_button">#!variable!storage_service!#</span> storage service appears to be ok!]]></key>
+		<key name="message_0262">#!free!#</key>
+		<key name="message_0263">#!free!#</key>
+		<key name="message_0264">#!free!#</key>
 		<key name="message_0265">Recovery of the storage services appears to be unnecessary.</key>
 		<key name="message_0266">Unable to identify the storage service for this node! This is likely a program error.</key>
 		<key name="message_0267">Failed to restart the resource manager daemon!</key>
@@ -1702,27 +1610,27 @@
 		<key name="message_0270">on</key> <!-- Used to 'vg *on* pv'... -->
 		<key name="message_0271"><![CDATA[I found a server with the name <span class="fixed_width">#!variable!server!#</span> which is not managed by the #!string!brand_0003!# yet.<br /><b>If this is a new server that is still being installed, please ignore this message.</b><br />If you do not have the original dashboard install window open anymore, you can <a href="#!variable!url!#"><b>click here to add it</b></a> to this #!string!brand_0003!# now.]]></key>
 		<key name="message_0272"><![CDATA[Gathering information from <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>
-		<key name="message_0273">This could take a minute to complete.</key>
-		<key name="message_0274"><![CDATA[I was asked to call: '<span class="fixed_width">#!variable!shell_call!#</span>' but no node was defined.<br />This is probably a program error, sorry about the inconvenience. Please <a href="#!string!brand_0012!#" target="_new">contact support</a> and we will try to help fix this.]]></key>
+		<key name="message_0273">#!free!#</key>
+		<key name="message_0274">#!free!#</key>
 		<key name="message_0275"><![CDATA[Unable to connect to either node in the #!string!brand_0003!#.]]></key>
 		<key name="message_0276"><![CDATA[Please ensure both nodes are online, and then try pushing the configuration again.]]></key>
 		<key name="message_0277"><![CDATA[Only one node is online.]]></key>
 		<key name="message_0278"><![CDATA[To prevent configuration divergence, both nodes must be online and accessible.]]></key>
-		<key name="message_0279"><![CDATA[The <span class="fixed_width">#!variable!node!#</span> node's ssh fingerprint has not been recorded yet, doing so now...]]></key>
-		<key name="message_0280"><![CDATA[On the <span class="fixed_width">#!variable!node!#</span> node, I am backing up the: <span class="fixed_width">#!variable!source!#</span> file to: <span class="fixed_width">#!variable!destination!#</span>.<br />If the <span class="fixed_width">#!variable!source!#</span> does not exist, you will see a harmless error below.]]></key>
-		<key name="message_0281"><![CDATA[Pushing the updated <span class="fixed_width">#!variable!config_file!#</span> to <span class="fixed_width">#!variable!node!#</span>.]]></key>
+		<key name="message_0279">#!free!#</key>
+		<key name="message_0280">#!free!#</key>
+		<key name="message_0281">#!free!#</key>
 		<key name="message_0282">Command output below (if any)</key>
-		<key name="message_0283">Config directory exists</key>
-		<key name="message_0284">Backup successful</key>
-		<key name="message_0285">Backup failed or not possible</key>
+		<key name="message_0283">#!free!#</key>
+		<key name="message_0284">#!free!#</key>
+		<key name="message_0285">#!free!#</key>
 		<key name="message_0286"><![CDATA[The #!string!brand_0003!# has been rebuilt successfully!<br />It is already in your #!string!brand_0002!# database, so you're all set!<br /><a href="#!variable!url!#">Click here</a> to start using your #!string!brand_0003!#.]]></key>
 		<key name="message_0287">View or upate the system configuration for this #!string!brand_0002!#.</key>
 		<key name="message_0288">I will now download:</key>
 		<key name="message_0289">From the website:</key>
 		<key name="message_0290">Download Completed.</key>
-		<key name="message_0291"><![CDATA[Progress: <span class="fixed_width">#!variable!percent!#%</span> finished, <span class="fixed_width">#!variable!received!#</span> downloaded at ~ <span class="fixed_width">#!variable!rate!# MiB/sec</span>.]]></key>
-		<key name="message_0292">Approximately #!variable!time_remaining!# remaining.</key>
-		<key name="message_0293"><![CDATA[<b>#!variable!hours!#</b> #!variable!say_hour!#, <b>#!variable!minutes!#</b> #!variable!say_minute!# and <b>#!variable!seconds!#</b> #!variable!say_second!#.]]></key>
+		<key name="message_0291">#!free!#</key>
+		<key name="message_0292">#!free!#</key>
+		<key name="message_0293">#!free!#</key>
 		<key name="message_0294"><![CDATA[Will be downloaded directly to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="message_0295">The file:</key>
 		<key name="message_0296">Found at the web address:</key>
@@ -1748,8 +1656,8 @@
 		<key name="message_0316"><![CDATA[This will delete <span class="fixed_width">#!variable!name!#</span> from the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="message_0317">Any output from the shell will be below (none expected):</key>
 		<key name="message_0318"><![CDATA[The file <span class="fixed_width">#!variable!name!#</span> on the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# is already gone.]]></key>
-		<key name="message_0319"><![CDATA[The directory: <span class="fixed_fidth">#!variable!directory!#</span> does not exist.]]></key>
-		<key name="message_0320"><![CDATA[The directory: <span class="fixed_fidth">#!variable!directory!#</span> is not readible by the <span class="fixed_fidth">#!variable!user!#</span> user.]]></key>
+		<key name="message_0319">#!free!#</key>
+		<key name="message_0320">#!free!#</key>
 		<key name="message_0321">(Patches welcomed) :)</key>
 		<key name="message_0322">Disc read failed, please reload to try again.</key>
 		<key name="message_0323">No disc found.</key>
@@ -1767,46 +1675,46 @@
 		<key name="message_0335">The new definition file is ok.</key>
 		<key name="message_0336">The new definition file appears to be corrupt. Restoring the backup now.</key>
 		<key name="message_0337"><![CDATA[It looks like there was a program error!]]></key>
-		<key name="message_0338"><![CDATA[I was about to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears the contents are empty.]]></key>
-		<key name="message_0339"><![CDATA[I was about to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears the contents are not formed properly.]]></key>
-		<key name="message_0340"><![CDATA[After trying to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />a check was made and the file was deemed to be corrupt. The original file was restored from backup file: [<span class="fixed_width">#!variable!backup_file!#</span>], which was created just before the new file was written.]]></key>
-		<key name="message_0341"><![CDATA[I was asked to uptade the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears that I don't have the original definition file's contents.]]></key>
+		<key name="message_0338">#!free!#</key>
+		<key name="message_0339">#!free!#</key>
+		<key name="message_0340">#!free!#</key>
+		<key name="message_0341">#!free!#</key>
 		<key name="message_0342">The definition file needs to be updated to switch the Server's graphics to VNC.</key>
 		<key name="message_0343">Add an existing #!string!brand_0003!# to this #!string!brand_0002!# dashboard.</key>
 		<key name="message_0344">Backup this #!string!brand_0002!#'s configuration or load a saved configuration file.</key>
 		<key name="message_0345">Create, load or run an installation manifest for new or replacement #!string!brand_0003!# node(s).</key>
-		<key name="message_0346"><![CDATA[For #!string!brand_0003!# "<span class="code">#!variable!anvil!#</span>" created on <span class="highlight_ready">#!variable!date!#</span> at <span class="highlight_ready">#!variable!time!#</span>.]]></key>
-		<key name="message_0347"><![CDATA[Are you sure you want to delete the: <span class="code"><span class="highlight_ready">#!variable!file!#</span></span> file?]]></key>
-		<key name="message_0348"><![CDATA[Failed to delete the manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].<br />It does not appear to exist. Did someone else delete it already?]]></key>
-		<key name="message_0349"><![CDATA[Successfully deleted the install manifest file: [<span class="code"><span class="highlight_ready">#!variable!file!#</span></span>].]]></key>
-		<key name="message_0350"><![CDATA[Failed to load the manifest file: [<span class="code"><span class="highlight_ready">#!variable!manifest_file!#</span></span>].<br />Was it deleted, perhaps?]]></key>
+		<key name="message_0346">#!free!#</key>
+		<key name="message_0347">#!free!#</key>
+		<key name="message_0348">#!free!#</key>
+		<key name="message_0349">#!free!#</key>
+		<key name="message_0350">#!free!#</key>
 		<key name="message_0351"><![CDATA[Please <b>carefully</b> review the information below.<br />If you are happy with the values, enter the current IP address and password for the nodes below.<br />If this is being run to replace a lost node, enter the healthy node's IP.<br />Its data will be used to populate the other node (overriding manifest values as needed).]]></key>
 		<key name="message_0352"><![CDATA[&lt;prompt&gt;]]></key>
 		<key name="message_0353">Script?</key>
-		<key name="message_0354"><![CDATA[[ <span class="highlight_bad_bold">Error</span> ] - ]]></key>
+		<key name="message_0354">#!free!#</key>
 		<key name="message_0355"><![CDATA[One or both of the nodes recently started.<br />The: [<span class="highlight_detail">anvil-safe-start</span>] tool is running, so start-up is underway.<br />Please be patient. Some steps can take up to five minutes to complete.<br />Services should come online shortly.]]></key>
 		<key name="message_0356"><![CDATA[#!string!brand_0002!# takes great care not to change existing configurations, but no program is perfect.<br />If you are replacing a failed node, please be sure you have good backups before continuing!<br />It is strongly advised to replace lost nodes during a maintenance window, just to be extra safe.]]></key>
 		<key name="message_0357"><![CDATA[&lt;Remainder of Space&gt;]]></key>
 		<key name="message_0358"><![CDATA[Unable to connect to any of the #!string!brand_0015!# databases configured in: [<span class="highlight_detail">#!data!path::striker_config!#</span>].]]></key>
-		<key name="message_0359"><![CDATA[I am sorry, but there was a problem with the connection to the: [<span class="fixed_width">#!variable!node!#</span>], so the upload of the file: [<span class="fixed_width">#!variable!file!#</span>] failed.]]></key>
+		<key name="message_0359">#!free!#</key>
 		<key name="message_0360"><![CDATA[The '<span class="highlight_detail">#!variable!field!#</span>' field can not be blank.]]></key>
 		<key name="message_0361"><![CDATA[I am sorry, but I could not access one or both nodes. I need access to both nodes in order to setup the #!string!brand_0003!#.<br />Please go back and verify that the <i>current</i> IP addresses and password are entered for each node.]]></key>
 		<key name="message_0362"><![CDATA[I am sorry, but both nodes must be version 6.x of Red Hat Enterprise Linux or a derivative.]]></key>
 		<key name="message_0363"><![CDATA[There was a problem writing out the cluster configuration file.<br />Without this file properly in place, installation can not proceed.]]></key>
-		<key name="message_0364"><![CDATA[A program called <span class="highlight_detail">libvirtd</span> was found to be running on the dashboard.<br />We tried to turned it off because it can conflicts with us being an install target.<br />This attempt failed, so it probably will have to be stopped manually by running, as the <span class="highlight_detail">root</span> user,<br /><span class="highlight_detail">#!conf!path::initd_libvirtd!# stop</span>]]></key>
-		<key name="message_0365"><![CDATA[The '<span class="highlight_detail">#!string!row_0302!#</span>' field can only be blank is '<span class="highlight_detail">#!string!row_0302!#</span>' is set to '<span class="highlight_detail">#!string!row_0302!#</span>'.]]></key>
+		<key name="message_0364">#!free!#</key>
+		<key name="message_0365">#!free!#</key>
 		<key name="message_0366"><![CDATA[There appears to be no access to the Internet.<br />This should be ok, the Striker dashboards can provide needed packages.]]></key>
-		<key name="message_0367"><![CDATA[Failed to add the local repositories.]]></key>
+		<key name="message_0367">#!free!#</key>
 		<key name="message_0368"><![CDATA[The program <span class="code">parted</span> is not installed and an attempt to install it failed.<br />The install will attempt to proceed but it will likely fail.]]></key>
 		<key name="message_0369"><![CDATA[One or more packages failed to install.<br />#!string!message_0372!#]]></key>
 		<key name="message_0370"><![CDATA[One or more packages failed to install.<br />It looks like there is no connection to the Internet, so you may need to install packages manually.<br />#!string!message_0372!#]]></key>
 		<key name="message_0371"><![CDATA[The connection information for node: [<span class="highlight_detail">#!variable!node!#</span>] appears to be incorrect.]]></key>
 		<key name="message_0372"><![CDATA[Installation has failed.]]></key>
-		<key name="message_0373"><![CDATA[Node: [<span class="fixed_width">#!variable!node!#</span>] has port: [<span class="fixed_width">#!variable!port!#</span>] set, which is invalid.]]></key>
+		<key name="message_0373">#!free!#</key>
 		<key name="message_0374"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!#?]]></key>
 		<key name="message_0375"><![CDATA[The requested pool 1 size was: [<span class="highlight_detail">#!variable!say_requested_size!#</span>], but only: [<span class="highlight_detail">#!variable!say_new_size!#</span>] is available,<br />which is: [<span class="highlight_detail">#!variable!say_difference!#</span>] less than requested.<br />The pool was reduced to fit and pool 2 <b>not</b> will be created.]]></key>
-		<key name="message_0376"><![CDATA[Updated: [<span class="highlight_detail">#!conf!cgi::run!#</span>]<br />The new MAC address mapping has been recorded.]]></key>
-		<key name="message_0377">Saved.</key>
+		<key name="message_0376">#!free!#</key>
+		<key name="message_0377">#!free!#</key>
 		<key name="message_0378"><![CDATA[<span class="highlight_bad_bold">Error</span>: The tool <span class="code">anvil-map-network</span> was not found on the node.<br />Did you run the Striker dashboard stage-1 install by mistake, perhaps?<br />Once fixed, please try reloading this page.]]></key>
 		<key name="message_0379"><![CDATA[The: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been deleted.]]></key>
 		<key name="message_0380"><![CDATA[Both nodes need (at least) six network cards. If you have six network cards, then there might be a program problems.<br />(Sorry about that)]]></key>
@@ -1816,7 +1724,7 @@
 		<key name="message_0384"><![CDATA[Registration with RHN failed. The install will try to proceed, but may fail.<br />If it does, please check the RHN credentials you passed or manually register the nodes.]]></key>
 		<key name="message_0385">RHN registration not possible. The user name and password must both be passed.</key>
 		<key name="message_0386"><![CDATA[The <span class="code">perl</span> programming language is not available and could not be installed.<br />Without this, the tools needed to configure the nodes won't run.<br />]]></key>
-		<key name="message_0387"><![CDATA[Failed to add the repository listed above.<br />Install will attempt to proceed, but it may fail to install some programs.]]></key>
+		<key name="message_0387">#!free!#</key>
 		<key name="message_0388"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!name!#</span>] #!string!brand_0003!# failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!anvils!#</span>] system(s) and [<span class="highlight_detail">#!variable!nodes!#</span>] node(s) remained.]]></key>
 		<key name="message_0389"><![CDATA[I was asked to create a partition, but I couldn't determine where the free space started and ended.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], partition size: [<span class="fixed_width">#!variable!size!#</span>], shell call: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
 		<key name="message_0390"><![CDATA[An error was received while trying to create a partition.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>]<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
@@ -1834,38 +1742,38 @@
 		<key name="message_0402"><![CDATA[The #!string!brand_0003!# has been built successfully!<br />The next step is to <a href="#!variable!url!#">add it</a> to your #!string!brand_0002!# dashboard!]]></key>
 		<key name="message_0403"><![CDATA[<br />The initial scan of: [<span class="highlight_detail">#!variable!device!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>],<br />which is the backing device for resource: [<span class="highlight_detail">#!variable!resource!#</span>], showed it to be a <span class="highlight_detail">drbd</span> device.<br />However, the drbd program doesn't recognize it and would not use it.<br />This can happen if you are rebuilding a node that previously used drbd.<br />To prevent accidental data loss, the installer will exit now.<br /><br />If you want to clear it, log into the node and run:<br />[<span class="highlight_detail">drbdadm create-md #!variable!resource!#</span>].<br /><span class="highlight_dangerous">Warning!</span> - That command will destroy any data on that partition!<br /><br />]]></key>
 		<key name="message_0404"><![CDATA[There was a problem building your #!string!brand_0003!#. Sorry about that.<br />Please correct the problems and try to run the install again.<br />If there are no useful messages above, please check <span class="code">#!data!log::file!#</span>.<br />#!string!brand_0014!#]]></key>
-		<key name="message_0405"><![CDATA[This #!string!brand_0002!# dashboard is not configured to be an <a href="https://alteeve.ca/w/Anvil!_m2_Tutorial#Do_we_want_to_be_an_Anvil.21_node_install_target.3F" target="_new">#!string!button_0056!#</a>.]]></key>
-		<key name="message_0406"><![CDATA[The "#!string!button_0056!#" service is currently running.]]></key>
-		<key name="message_0407"><![CDATA[The "#!string!button_0056!#" service is currently stopped.]]></key>
-		<key name="message_0408"><![CDATA[The "#!string!button_0056!#" service is in an unknown state ('<span class="code">/etc/init.d/dhcpd status</span>' returns an unexpected return code).<br />#!string!brand_0014!#]]></key>
+		<key name="message_0405">#!free!#</key>
+		<key name="message_0406">#!free!#</key>
+		<key name="message_0407">#!free!#</key>
+		<key name="message_0408">#!free!#</key>
 		<key name="message_0409"><![CDATA[Enabling the "#!string!button_0056!#" feature may cause network problems!<br /><br />By default, #!string!brand_0002!# tries to minimize the risk of interfering with your network<br />by enabling the install manifest feature on the <a href="https://alteeve.ca/w/Back-Channel_Network" target="_new">#!string!brand_0005!#</a> only.<br />However, if the confiuration was manually changed, or if your network doesn't use <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" target="_new">VLANs</a> to isolate the #!string!brand_0005!#,<br />this feature could interrupt other machines on your network when they request a <a href="https://alteeve.ca/w/DHCP_on_an_RPM-based_OS" target="_new">DHCP</a> lease renewal.<br />Likewise, if the #!string!brand_0005!# is not isolated, your new node or #!string!brand_0002!# machine<br />may get an <a href="https://alteeve.ca/w/IP" target="_new">IP address</a> from another machine on your network and fail to install off of this #!string!brand_0002!# machine.<br />If you're having trouble with this feature, please feel free to <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
-		<key name="message_0410"><![CDATA[Failed to start the "#!string!button_0056!#" function.<br />This requires the "<span class="fixed_width">dhcpd</span>" to be installed, but it wasn't found.<br />#!string!brand_0014!#]]></key>
-		<key name="message_0411"><![CDATA[The "#!string!button_0056!#" function is now enabled.<br />Please remember to turn this off once you are done.<br />Remember to <a href="https://alteeve.ca/w/Configuring_Network_Boot_on_Fujitsu_Primergy" target="_new">network boot</a> your new machine using the one of the <a href="https://alteeve.ca/w/Back-Channel_Network" target="_new">#!string!brand_0006!#</a>-connected interfaces.]]></key>
-		<key name="message_0412"><![CDATA[Failed to start the "#!string!button_0056!#" function.<br />It could be bad permissions or ownership of the <a href="https://en.wikipedia.org/wiki/Setuid" target="_new">setuid</a> script called: [<span class="fixed_width">#!conf!path::control_dhcpd!#</span>].<br />This needs to be owned by the <span class="fixed_width">root</a> user and have the mode <span class="fixed_width">6755</a> set.<br />There might be more information in the log file: [<span class="fixed_width">#!conf!path::log_file!#</span>].<br />#!string!brand_0014!#]]></key>
-		<key name="message_0413"><![CDATA[Failed to stop the "#!string!button_0056!#" function. This requires the "<span class="fixed_width">dhcpd</span>" to be stopped, but it returned an unexpected exit code.<br />There might be more information in the log file: [<span class="fixed_width">#!conf!path::log_file!#</span>]. #!string!brand_0014!#]]></key>
-		<key name="message_0414"><![CDATA[The "#!string!button_0056!#" function has been stopped.]]></key>
-		<key name="message_0415"><![CDATA[Failed to stop the "#!string!button_0056!#" function. This requires the "<span class="fixed_width">dhcpd</span>" to be stopped, which is performed using a special <a href="https://en.wikipedia.org/wiki/Setuid" target="_new">setuid</a> script called: [<span class="fixed_width">#!conf!path::control_dhcpd!#</span>].<br />This needs to be owned by the <span class="fixed_width">root</a> user and have the mode <span class="fixed_width">6755</a> set. #!string!brand_0014!#]]></key>
-		<key name="message_0416"><![CDATA[The "#!string!button_0056!#" service depends on '<span class="code">dhcpd</span>' which is configured via the: [<span class="code">#!conf!path::dhcpd_conf!#</span>] file.<br />It looks like the directory this file is in can't be read by the system user with user ID: [<span class="code">#!conf!sys::striker_uid!#</span>].<br />#!string!brand_0014!#]]></key>
+		<key name="message_0410">#!free!#</key>
+		<key name="message_0411">#!free!#</key>
+		<key name="message_0412">#!free!#</key>
+		<key name="message_0413">#!free!#</key>
+		<key name="message_0414">#!free!#</key>
+		<key name="message_0415">#!free!#</key>
+		<key name="message_0416">#!free!#</key>
 		<key name="message_0417"><![CDATA[It looks like this #!string!brand_0002!# dashboard has not yet been configured.<br />Click on "<span class="highlight_ready">#!string!button_0059!#</span>" to configure!]]></key>
 		<key name="message_0418"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br />Is this really what you want to do?]]></key>
 		<key name="message_0419"><![CDATA[Cold-Stopping the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# was aborted because it is already offline, or connection was lost.]]></key>
 		<key name="message_0420"><![CDATA[Starting the graceful shut down of the [<span class="highlight_detail">#!variable!server!#</span>] server...<br />If it doesn't shut down promptly, please log in and, if necessary, initiate the shut down.]]></key>
-		<key name="message_0421"><![CDATA[Failed to graceful shut down: [<span class="highlight_detail">#!variable!server!#</span>]!]]></key>
-		<key name="message_0422"><![CDATA[All servers are now offline. Proceeding with withdrawl...]]></key>
-		<key name="message_0423"><![CDATA[Cold-stop has been aborted.]]></key>
-		<key name="message_0424"><![CDATA[The node: [<span class="highlight_detail">#!variable!node!#</span>] is already withdrawn.]]></key>
-		<key name="message_0425"><![CDATA[Starting to withdraw: [<span class="highlight_detail">#!variable!node!#</span>] from the cluster.<br />Please be patient! This can sometimes take a few minutes!]]></key>
-		<key name="message_0426"><![CDATA[One of the nodes didn't cleanly withdraw from the cluster.]]></key>
-		<key name="message_0427"><![CDATA[Both nodes have been withdrawn! Powering down now...]]></key>
-		<key name="message_0428"><![CDATA[Power-down initiated. The node should offline in a few moments.]]></key>
+		<key name="message_0421">#!free!#</key>
+		<key name="message_0422">#!free!#</key>
+		<key name="message_0423">#!free!#</key>
+		<key name="message_0424">#!free!#</key>
+		<key name="message_0425">#!free!#</key>
+		<key name="message_0426">#!free!#</key>
+		<key name="message_0427">#!free!#</key>
+		<key name="message_0428">#!free!#</key>
 		<key name="message_0429"><![CDATA[Cold-Stop completed successfully!]]></key>
-		<key name="message_0430"><![CDATA[Powering down: [<span class="highlight_detail">#!variable!node!#</span>]...]]></key>
+		<key name="message_0430">#!free!#</key>
 		<key name="message_0431"><![CDATA[A newly created partition is not aligned properly.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>],<br />start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>].<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].<br />The #!string!brand_0003!# will work, but performance will be sub-optimal.<br />Correcting the partition alignment is advised!<br>#!string!brand_0014!#]]></key>
 		<key name="message_0432"><![CDATA[If you think the problem is now resolved, you can try re-running the install.]]></key>
 		<key name="message_0433"><![CDATA[If this node was part of an #!string!brand_0003!# before, it might be seeing the old <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Clustered_Logical_Volume_Management" target="_new">LVM</a><br />signature from the previous install. There is no safe way to determine if this is<br />the case, or if this partition contains real data. So for safety, the install will now abort.<br />If you are sure that there is no data on the partition, you can wipe any<br />data using the 'dd' command. To do this, you need to log into the node(s) and run:<br /><br /><span class="code">dd if=/dev/zero of=#!data!drive_signature_found::device!# bs=4M count=1000</span><br /><br />The signature found was: [<span class="code">#!data!drive_signature_found::type!#</span>].<br /><br /><span class="highlight_dangerous_bold">BE WARNED!</span><br /><br />The above command, if misused, can destroy all data on the node!<br />]]></key>
 		<key name="message_0434"><![CDATA[It looked like the server install should have started, but it wasn't found when checked.]]></key>
-		<key name="message_0435"><![CDATA[The "#!string!button_0056!#" function is not available.]]></key>
-		<key name="message_0436"><![CDATA[Power-down initiated. The node should offline in a few moments.<br /><span class="highlight_warning_bold">All devices powered by your UPS(es) will lose power shortly</span>!<br />This likely includes this #!string!brand_0002!#.<br />The UPS(es) will restore power after their configured "sleep time", usually five minutes.<br />You can monitor this by examining the LCD panel on the UPSes (if equipped).If the dashboards are running #!string!brand_0015!# with the 'nodemonitor' scan agent,<br />and if the dashboards are configured to power on when AC is restored,<br />your #!string!brand_0003!# should boot shortly there after.<br />If the nodes are using the #!string!brand_0016!# tool,<br />then your server(s) should come online automatically.]]></key>
+		<key name="message_0435">#!free!#</key>
+		<key name="message_0436">#!free!#</key>
 		<key name="message_0437"><![CDATA[Failed to provision the new server: [#!variable!server!#].<br />It is possible that something on the node: [#!variable!node!#] is using too much RAM.<br />#!string!brand_0014!#]]></key>
 		<key name="message_0438"><![CDATA[The provision script: [#!variable!provision_script!#] appears to be incomplete.<br />The error message received when trying to run it was:<br /><span class="highlight_detail">#!variable!error!#</span><br />#!string!brand_0014!#]]></key>
 		<key name="message_0439"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br /><br /><span class="highlight_dangerous_bold">Both UPSes will cease providing power approximately: [<span class="highlight_detail">#!conf!sys::apc::reboot::power_off_delay!# seconds</span>] after the last node powers down!</span><br /><br /><span class="highlight_good_bold">Power will be restored after approximately: [<span class="highlight_detail">#!conf!sys::apc::reboot::sleep_time!# seconds</span>].</span><br /><br />If properly configured, the system should power back up automatically.<br /><br />Is this really what you want to do?]]></key>
@@ -1877,26 +1785,26 @@
 		<key name="message_0445"><![CDATA[The request to force-off the [<span class="highlight_detail">#!variable!server!#</span>] has timed out.]]></key>
 		<key name="message_0446"><![CDATA[The request to power-off the [<span class="highlight_detail">#!variable!node!#</span>] node has timed out.]]></key>
 		<key name="message_0447"><![CDATA[The request to fence the: [<span class="highlight_detail">#!variable!node!#</span>] node has timed out.]]></key>
-		<key name="message_0448"><![CDATA[The host's SSH fingerprint has changed!<br />It would be a security risk to proceed.<br />If you rebuilt the node, on this dashboard,<br />edit: [<span class="highlight_detail">#!variable!bad_file!#</span>]<br />and delete line: [#<span class="highlight_detail">#!variable!bad_line!#</span>].]]></key>
-		<key name="message_0449"><![CDATA[Merged our configuration with: [<span class="highlight_detail">#!variable!peer!#</span>]<br />Setup Virtual Machine Manager (if it is installed)]]>.</key>
+		<key name="message_0448">#!free!#</key>
+		<key name="message_0449">#!free!#</key>
 		<key name="message_0450"><![CDATA[There was a problem connecting the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />Please check the logs for details on the problem.<br />]]></key>
-		<key name="message_0451"><![CDATA[The #!string!brand_0003!#: [<span class="highlight_detail">#!variable!anvil!#</span>] was deleted.]]></key>
+		<key name="message_0451">#!free!#</key>
 		<key name="message_0452">seconds after:</key> <!-- This is used between the 'boot delay' and 'boot after' select box. -->
 		<key name="message_0453"><![CDATA[The: [<span class="highlight_detail">#!variable!smtp!#</span>] SMTP server has been deleted.]]></key>
 		<key name="message_0454"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!target!#</span>] notification target?]]></key>
-		<key name="message_0455"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!target!#</span>] notification target failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!targets!#</span>] target(s) remained.]]></key>
+		<key name="message_0455">#!free!#</key>
 		<key name="message_0456"><![CDATA[The: [<span class="highlight_detail">#!variable!target!#</span>] notification target has been deleted.]]></key>
 		<key name="message_0457"><![CDATA[Enabling the install target feature means that this #!string!brand_0020!# will start offering IP addresses.<br />These IP addresses will be on the <a href="#!string!url_0005!#" target="_new" class="highlight_detail">#!string!brand_0005!#</a>, which should be isolated and cause no issues.<br />If your network doesn't isolate the #!string!brand_0006!#, this might cause a conflict with devices requesting a network address.<br /> Are you ready to enable this feature?]]></key>
 		<key name="message_0458"><![CDATA[The install target function has been enabled successfully.]]></key>
 		<key name="message_0459"><![CDATA[The install target function has been disabled successfully.]]></key>
 		<key name="message_0460"><![CDATA[#!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>], created on: [<a href="#!variable!raw!#"><span class="highlight_detail">#!variable!date!#</span></a>].]]></key>
 		<key name="message_0461"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!anvil!#</span>] install manifest failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!manifests!#</span>] manifest(s) remained.]]></key>
-		<key name="message_0462"><![CDATA[Successfully deleted the install manifest for the #!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>].]]></key>
-		<key name="message_0463"><![CDATA[Are you sure you want to delete the install manifest for the #!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>]?]]></key>
+		<key name="message_0462">#!free!#</key>
+		<key name="message_0463">#!free!#</key>
 		<key name="message_0464"><![CDATA[The install manifest has been updated to record the MAC addresses.]]></key>
 		<key name="message_0465"><![CDATA[<span class="highlight_detail">#!variable!owner!#</span><br />#!variable!description!#]]></key>
 		<key name="message_0466"><![CDATA[I was asked to check the daemons for a node, but was not passed a node name. This is likely a program error.]]></key>
-		<key name="message_0467"><![CDATA[I was asked to check on a VM that didn't have the <span class="code">vm:</span> prefix. I got the name: <span class="code">#!variable!server!#</span>. This is likely a programming error.]]></key>
+		<key name="message_0467">#!free!#</key>
 		<key name="message_0468"><![CDATA[I was asked to check the node readiness to run the: [#!variable!server!#] server, but was not passed a node name. This is likely a program error.]]></key>
 		<key name="message_0469"><![CDATA[I was asked to look at a server's definition file, but no server was specified. This is likely a program error.]]></key>
 		<key name="message_0470"><![CDATA[Are you certain that you want to delete the install manifest for: [<span class="highlight_detail">#!variable!anvil!#</span>]?]]></key>
@@ -1923,15 +1831,15 @@
 		<key name="message_0491"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!target!#</span>] disaster recovery target?]]></key>
 		<key name="message_0492"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!dr_target!#</span>] DR target failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!count!#</span>] DR target(s) remained.]]></key>
 		<key name="message_0493"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!count!#</span>] DR job(s) remained.]]></key>
-		<key name="message_0494"><![CDATA[The: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job has been deleted.]]></key>
+		<key name="message_0494">#!free!#</key>
 		<key name="message_0495"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!job!#</span>] disaster recovery job?]]></key>
 		<key name="message_0496"><![CDATA[The schedule nickname '<span class="highlight_detail">#!data!cgi::dr_job_schedule!#</span>' is a valid cron table nickname, but it is not supported by Striker.]]></key>
 		<key name="message_0497"><![CDATA[The schedule string: [<span class="highlight_detail">#!data!cgi::dr_job_schedule!#</span>] is malformed. There should be five sections (separated by spaces).]]></key>
-		<key name="message_0498"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!count!#</span>] DR target(s) remained.]]></key>
-		<key name="message_0499"><![CDATA[The: [<span class="highlight_detail">#!variable!dr_job!#</span>] DR job has been deleted.]]></key>
-		<key name="message_0500"><![CDATA[There were no available servers to select for this DR job.<br />Please select an #!string!brand_0003!# hosting servers.]]></key>
+		<key name="message_0498">#!free!#</key>
+		<key name="message_0499">#!free!#</key>
+		<key name="message_0500">#!free!#</key>
 		<key name="message_0501"><![CDATA[Running the install for <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>
-		<key name="message_0502"><![CDATA[Files being downloaded on either node of #!string!brand_0003!#: [#!variable!anvil_name!#] will be shown below.]]></key>
+		<key name="message_0502">#!free!#</key>
 		<key name="message_0503"><![CDATA[About to abort the download of: [<span class="highlight_detail">#!variable!url!#</span>].<br />The partially downloaded file will be <span class="highlight_good">preserved</span>.<br />If you restart the download of the same file later, it should pick up where it left off.]]></key>
 		<key name="message_0504"><![CDATA[About to abort the download of: [<span class="highlight_detail">#!variable!url!#</span>].<br />The partially downloaded file will be <span class="highlight_bad">deleted</span>.]]></key>
 		<key name="message_0505"><![CDATA[The download of: [<span class="highlight_detail">#!variable!url!#</span>] has been aborted.]]></key>
@@ -3312,6 +3220,7 @@ Starting download:
 		<key name="adf_error_0005">The requested URL: [#!variable!url!#] failed because there is no route to that host.</key>
 		<key name="adf_error_0006">I was asked to abort another download, but the passed in string: [#!variable!abort!#] is not a UUID or PID.</key>
 		<key name="adf_error_0007">The requested URL: [#!variable!url!#] failed because the network is unreachable.</key>
+		<key name="adf_error_0099">The requested URL: [#!variable!url!#] failed for an unknown reason.</key>
 		
 		<!-- messages -->
 		<key name="adf_message_0001"><![CDATA[
@@ -3663,7 +3572,7 @@ SUPPORT
 ]]>
 		</key>
 		<key name="acs_report_0009"><![CDATA[+------------------------------------------------------------------------------------------------------------+]]></key>
-		<key name="acs_report_0010">#!free!#></key>
+		<key name="acs_report_0010">#!free!#</key>
 		<key name="acs_report_0011"><![CDATA[| Server Name                              |    State     | Host                                             |]]></key>
 		<key name="acs_report_0012"><![CDATA[| #!variable!server_name!# | #!variable!state!# | #!variable!host!#                   |]]></key>
 		<key name="acs_report_0013"><![CDATA[
@@ -3757,7 +3666,7 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
-		<key name="scp_message_0002"></key>
+		<key name="scp_message_0002">#!free!#</key>
 		<key name="scp_message_0003">You have used '--force', the password will change even though nodes or dashboards are inaccessible.</key>
 		<key name="scp_message_0004"><![CDATA[
 You have asked to change the passwords on this dashboard. 

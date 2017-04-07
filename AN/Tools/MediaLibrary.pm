@@ -254,7 +254,11 @@ sub _abort_download
 	}
 	
 	# Print the footer
-	my $string_key = $subtask eq "delete" ? "message_0506" : "message_0505";
+	my $string_key = "message_0505";
+	if ($subtask eq "delete")
+	{
+		$string_key = "message_0506";
+	}
 	my $message    = $an->String->get({key => $string_key, variables => { url => $url }});
 	print $an->Web->template({file => "media-library.html", template => "download-aborted", replace => { 
 		message      => $message,
@@ -351,9 +355,13 @@ sub _confirm_abort_download
 		name4 => "url",        value4 => $url,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $warning   = $subtask eq "abort" ? "message_0503" : "message_0504";
+	my $warning_key = "message_0504";
+	if ($subtask eq "abort")
+	{
+		$warning_key = "message_0503";
+	}
 	my $say_title = $an->String->get({key => "title_0208"});
-	my $message   = $an->String->get({key => $warning, variables => { url => $url }});
+	my $message   = $an->String->get({key => $warning_key, variables => { url => $url }});
 	
 	my $confirm_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 			button_class	=>	"bold_button",
@@ -1041,7 +1049,7 @@ sub _image_and_upload
 		{
 			# The drive vanished.
 			my $say_missing_drive = $an->String->get({key => "message_0304", variables => { device => $dev }});
-			my $say_try_again     = $an->Web->template({file => "common.html", template => "enabled_button_no_class", replace => { 
+			my $say_try_again     = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 				button_link	=>	$an->data->{sys}{cgi_string},
 				button_text	=>	"#!string!button_0043!#",
 			}});
@@ -1054,7 +1062,7 @@ sub _image_and_upload
 		{
 			# Need to reload to read the disc.
 			my $say_drive_not_ready = $an->String->get({key => "message_0305", variables => { device => $dev }});
-			my $say_try_again       = $an->Web->template({file => "common.html", template => "enabled_button_no_class", replace => { 
+			my $say_try_again       = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 					button_link	=>	$an->data->{sys}{cgi_string},
 					button_text	=>	"#!string!button_0043!#",
 				}});
@@ -1067,7 +1075,7 @@ sub _image_and_upload
 		{
 			# No disc in the drive
 			my $say_no_disc   = $an->String->get({key => "message_0307", variables => { device => $dev }});
-			my $say_try_again = $an->Web->template({file => "common.html", template => "enabled_button_no_class", replace => { 
+			my $say_try_again = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 					button_link	=>	$an->data->{sys}{cgi_string},
 					button_text	=>	"#!string!button_0043!#",
 				}});
@@ -1388,11 +1396,19 @@ sub _monitor_downloads
 					name4 => "url",      value4 => $url, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				if (($failed =~ /\D/) or (($failed < 1) or ($failed > 7)))
+				{
+					$failed = 99;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "failed", value1 => $failed, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
 				my $string_key   = "adf_error_000".$failed;
 				my $error_string = $an->String->get({key => $string_key, variables => { 
 					uuid     => $uuid,
 					out_file => $out_file,
-					url     => $url,
+					url      => $url,
 				}});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "error_string", value1 => $error_string, 

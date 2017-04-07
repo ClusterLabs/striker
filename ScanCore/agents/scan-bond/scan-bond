@@ -2689,7 +2689,7 @@ sub translate_mode_number_to_string_key
 		name1 => "mode_number", value1 => "$mode_number" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $string_key = "";
+	my $string_key = "scan_bond_mode_99";
 	if    ($mode_number == 0) { $string_key = "scan_bond_mode_0"; }
 	elsif ($mode_number == 1) { $string_key = "scan_bond_mode_1"; }
 	elsif ($mode_number == 2) { $string_key = "scan_bond_mode_2"; }

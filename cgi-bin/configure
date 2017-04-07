@@ -3128,7 +3128,7 @@ sub manifests_menu
 			if ($return_code eq "1")
 			{
 				# Something went wrong.
-				my $button = $an->Web->template({file => "config.html", template => "form-button", replace => { 
+				my $button = $an->Web->template({file => "common.html", template => "form-button", replace => { 
 						class	=>	"bold_button", 
 						name	=>	"confirm",
 						id	=>	"confirm",
@@ -4713,27 +4713,6 @@ sub manifests_menu
 					}});
 				}
 			}
-			
-			print $an->Web->template({file => "config.html", template => "install-manifest-form-nodes", replace => { 
-				anvil_node2_name		=>	$an->data->{cgi}{anvil_node2_name},
-				anvil_node2_name_star		=>	$an->data->{form}{anvil_node2_name_star},
-				anvil_node2_bcn_ip		=>	$an->data->{cgi}{anvil_node2_bcn_ip},
-				anvil_node2_bcn_ip_star		=>	$an->data->{form}{anvil_node2_bcn_ip_star},
-				anvil_node2_ipmi_ip		=>	$an->data->{cgi}{anvil_node2_ipmi_ip},
-				anvil_node2_ipmi_ip_star	=>	$an->data->{form}{anvil_node2_ipmi_ip_star},
-				anvil_node2_sn_ip		=>	$an->data->{cgi}{anvil_node2_sn_ip},
-				anvil_node2_sn_ip_star		=>	$an->data->{form}{anvil_node2_sn_ip_star},
-				anvil_node2_ifn_ip		=>	$an->data->{cgi}{anvil_node2_ifn_ip},
-				anvil_node2_ifn_ip_star		=>	$an->data->{form}{anvil_node2_ifn_ip_star},
-				anvil_node2_pdu1_outlet		=>	$an->data->{cgi}{anvil_node2_pdu1_outlet},
-				anvil_node2_pdu1_outlet_star	=>	$an->data->{form}{anvil_node2_pdu1_outlet_star},
-				anvil_node2_pdu2_outlet		=>	$an->data->{cgi}{anvil_node2_pdu2_outlet},
-				anvil_node2_pdu2_outlet_star	=>	$an->data->{form}{anvil_node2_pdu2_outlet_star},
-				anvil_node2_pdu3_outlet		=>	$an->data->{cgi}{anvil_node2_pdu3_outlet},
-				anvil_node2_pdu3_outlet_star	=>	$an->data->{form}{anvil_node2_pdu3_outlet_star},
-				anvil_node2_pdu4_outlet		=>	$an->data->{cgi}{anvil_node2_pdu4_outlet},
-				anvil_node2_pdu4_outlet_star	=>	$an->data->{form}{anvil_node2_pdu4_outlet_star},
-			}});
 		}
 		
 		# Footer.
@@ -5169,16 +5148,12 @@ sub dr_job_menu
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
 	# Print it!
-	print $an->Web->template({
-			file		=>	"configure.html",
-			template	=>	"configure-main-page",
-			replace		=>	{
-				header		=>	$header, 
-				notices		=>	$notice_message,
-				body		=>	$menu, 
-				footer		=>	$footer, 
-			},
-		});
+	print $an->Web->template({file => "configure.html", template => "configure-main-page", replace => {
+			header  => $header, 
+			notices => $notice_message,
+			body    => $menu, 
+			footer  => $footer, 
+		}});
 	
 	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
 	$an->data->{sys}{footer_printed} = 1;
@@ -5520,16 +5495,12 @@ sub dr_target_menu
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
 	# Print it!
-	print $an->Web->template({
-			file		=>	"configure.html",
-			template	=>	"configure-main-page",
-			replace		=>	{
-				header		=>	$header, 
-				notices		=>	$notice_message,
-				body		=>	$menu, 
-				footer		=>	$footer, 
-			},
-		});
+	print $an->Web->template({file => "configure.html", template => "configure-main-page", replace => {
+			header   => $header, 
+			notices  => $notice_message,
+			body     => $menu, 
+			footer   => $footer, 
+		}});
 	
 	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
 	$an->data->{sys}{footer_printed} = 1;
@@ -5908,16 +5879,12 @@ sub notify_menu
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
 	# Print it!
-	print $an->Web->template({
-			file		=>	"configure.html",
-			template	=>	"configure-main-page",
-			replace		=>	{
-				header		=>	$header, 
-				notices		=>	$notice_message,
-				body		=>	$menu, 
-				footer		=>	$footer, 
-			},
-		});
+	print $an->Web->template({file => "configure.html", template => "configure-main-page", replace => {
+			header  => $header, 
+			notices => $notice_message,
+			body    => $menu, 
+			footer  => $footer, 
+		}});
 	
 	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
 	$an->data->{sys}{footer_printed} = 1;
@@ -6286,16 +6253,12 @@ sub smtp_menu
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
 	# Print it!
-	print $an->Web->template({
-			file		=>	"configure.html",
-			template	=>	"configure-main-page",
-			replace		=>	{
-				header		=>	$header, 
-				notices		=>	$notice_message,
-				body		=>	$menu, 
-				footer		=>	$footer, 
-			},
-		});
+	print $an->Web->template({file => "configure.html", template => "configure-main-page", replace => {
+			header  => $header, 
+			notices => $notice_message,
+			body    => $menu, 
+			footer  => $footer, 
+		}});
 	
 	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
 	$an->data->{sys}{footer_printed} = 1;
@@ -6570,16 +6533,12 @@ sub owner_menu
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
 	# Print it!
-	print $an->Web->template({
-			file		=>	"configure.html",
-			template	=>	"configure-main-page",
-			replace		=>	{
-				header		=>	$header, 
-				notices		=>	$notice_message,
-				body		=>	$menu, 
-				footer		=>	$footer, 
-			},
-		});
+	print $an->Web->template({file => "configure.html", template => "configure-main-page", replace => {
+			header  => $header, 
+			notices => $notice_message,
+			body    => $menu, 
+			footer  => $footer, 
+		}});
 	
 	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
 	$an->data->{sys}{footer_printed} = 1;
@@ -6865,16 +6824,12 @@ sub local_striker_menu
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
 	# Print it!
-	print $an->Web->template({
-			file		=>	"configure.html",
-			template	=>	"configure-main-page",
-			replace		=>	{
-				header		=>	$header, 
-				notices		=>	$notice_message,
-				body		=>	$menu, 
-				footer		=>	$footer, 
-			},
-		});
+	print $an->Web->template({file => "configure.html", template => "configure-main-page", replace => {
+			header  => $header, 
+			notices => $notice_message,
+			body    => $menu, 
+			footer  => $footer, 
+		}});
 	
 	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
 	$an->data->{sys}{footer_printed} = 1;
@@ -7418,16 +7373,12 @@ sub anvil_menu
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
 	# Print it!
-	print $an->Web->template({
-			file		=>	"configure.html",
-			template	=>	"configure-main-page",
-			replace		=>	{
-				header		=>	$header, 
-				notices		=>	$notice_message,
-				body		=>	$menu, 
-				footer		=>	$footer, 
-			},
-		});
+	print $an->Web->template({file => "configure.html", template => "configure-main-page", replace => {
+			header  => $header, 
+			notices => $notice_message,
+			body    => $menu, 
+			footer  => $footer, 
+		}});
 	
 	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
 	$an->data->{sys}{footer_printed} = 1;
@@ -7778,16 +7729,12 @@ sub show_main_menu
 	# Build the body of the menu.	
 	my $menu = $an->Web->template({file => "configure.html", template => "configure-menu", replace => { options => $menu_items }});
 	
-	print $an->Web->template({
-			file		=>	"configure.html",
-			template	=>	"configure-main-page",
-			replace		=>	{
-				header		=>	$header, 
-				notices		=>	$notice_message,
-				body		=>	$menu, 
-				footer		=>	$footer, 
-			},
-		});
+	print $an->Web->template({file => "configure.html", template => "configure-main-page", replace => {
+			header  => $header, 
+			notices => $notice_message,
+			body    => $menu, 
+			footer  => $footer, 
+		}});
 	
 	# Mark the footer as having been printed now so that $an->nice_exit() doesn't duplicate it.
 	$an->data->{sys}{footer_printed} = 1;

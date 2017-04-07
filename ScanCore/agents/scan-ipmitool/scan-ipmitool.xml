@@ -25,10 +25,6 @@ with 'scan_ipmitool_'.
 		<!-- Errors -->
 		<key name="scan_ipmitool_error_0001">The query: [#!variable!query!#] against DB: [#!variable!id!#] returned: [#!variable!count!#] rows. Only '1' should have been returned!</key>
 		
-		<!-- Sensor status strings -->
-		<key name="scan_ipmitool_sensor_status_0001">OK</key>		<!-- ok -->
-		<key name="scan_ipmitool_sensor_status_0002">No Signal</key>	<!-- ns -->
-		
 		<!-- Sensor names -->
 		<key name="scan_ipmitool_sensor_name_0001">Ambient Temperature</key>
 		<key name="scan_ipmitool_sensor_name_0002">#!variable!voltage!#vDC Battery</key>
@@ -54,12 +50,6 @@ with 'scan_ipmitool_'.
 		<key name="scan_ipmitool_sensor_name_0022">Main Stand-by #!variable!voltage!#vDC Rail</key>
 		<key name="scan_ipmitool_sensor_name_0023">Mainboard Temperature</key>
 		<key name="scan_ipmitool_sensor_name_0024">Total Power Draw</key>
-		
-		<!-- Notices -->
-		<key name="scan_ipmitool_note_0001">
-The IPMI sensor: [#!variable!sensor_name!#] has appeared:
-- [#!variable!old_value!#] -> [#!variable!new_value!#]
-		</key>
 		
 		<!-- IPMI Agent-specific messages -->
 		<key name="scan_ipmitool_message_0001">Starting #!string!scan_ipmitool_brand_0001!#</key>
@@ -168,6 +158,16 @@ The new sensor: [#!variable!sensor_name!#] has been found.
 		<key name="scan_ipmitool_message_0014">
 The sensor: [#!variable!sensor_name!#] has changed.
 - [#!variable!old_sensor_value!#] -> [#!variable!new_sensor_value!#]
+		</key>
+		<key name="scan_ipmitool_message_0015">
+The new sensor: [#!variable!sensor_name!#] has been found.
+  Warning: It is not in an OK state!
+- Value: [#!variable!sensor_value!#], Status: [#!variable!sensor_status!#]
+- Thresholds:
+  - High critical: [#!variable!high_critical!#]
+  - High warning:  [#!variable!high_warning!#]
+  - Low warning:   [#!variable!low_warning!#]
+  - Low critical:  [#!variable!low_critical!#]
 		</key>
 		
 		<!-- Sensor message titles -->

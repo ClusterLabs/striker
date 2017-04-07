@@ -58,9 +58,6 @@ all strings with 'scan_bond_'.
 		<key name="scan_bond_reselect_--">Unknown</key>
 		<key name="scan_bond_reselect_9999">Unknown</key>
 		
-		<!-- Notices -->
-		<key name="scan_bond_note_0001"></key>
-		
 		<!-- Warnings. -->
 		<key name="scan_bond_warning_0001">
 The bond: [#!variable!bond_name!#] mode has gone back to being 'Active/Passive', which is good.

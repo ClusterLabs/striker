@@ -91,8 +91,5 @@ https://alteeve.ca/w/Support
 		<key name="scan_ping_target_message_0005">A new target is now being pinged: [#!variable!target!#] and it is responding.</key>
 		<key name="scan_ping_target_message_0006">A new target: [#!variable!target!#], which is not responding, will be monitored using pings.</key>
 		<key name="scan_ping_target_message_0007">The time to ping: [#!variable!target!#], has changed; [#!variable!old_ping_time!# ms] -> [#!variable!new_ping_time!# ms].</key>	<!-- ms == milliseconds -->
-		
-		<!-- Sensor message titles -->
-		<key name="scan_ping_target_title_0001"></key>
 	</lang>
 </strings>

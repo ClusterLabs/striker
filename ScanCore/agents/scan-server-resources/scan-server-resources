@@ -1966,7 +1966,7 @@ WHERE
 						if ($old_server_resource_disk_options eq "DELETED")
 						{
 							$title_key   = "an_alert_title_0006";
-							$message_key = "scan_server_resources_message_0033";
+							$message_key = "scan_server_resources_message_0032";
 							
 							# Clear the old warning.
 							my $clear = $an->Alert->check_alert_sent({
@@ -2181,8 +2181,9 @@ WHERE
 						alert_sort		=>	$an->data->{sys}{alert_sort}++,
 						alert_agent_name	=>	$THIS_FILE,
 						alert_title_key		=>	"an_alert_title_0004",
-						alert_message_key	=>	"scan_server_resources_message_0013",
+						alert_message_key	=>	"scan_server_resources_message_0033",
 						alert_message_variables	=>	{
+							target			=>	$say_target, 
 							host_name		=>	$new_server_resource_host_name,
 							mount_point		=>	$server_resource_disk_mount_point,
 						},

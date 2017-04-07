@@ -341,7 +341,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 </key>
 		<key name="scan_storcli_warning_0003">- Controller: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0004">- Controller: [#!variable!serial_number!#]: New variable found; #!variable!name!#: [#!variable!value!#]</key>
-		<key name="scan_storcli_warning_0005">- Controller: [#!variable!serial_number!#]: Old variable lost; #!variable!name!#: [#!variable!old_value!#]</key>
+		<key name="scan_storcli_warning_0005">#!free!#</key>
 		<key name="scan_storcli_warning_0006">- Controller: [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0007">- Controller: [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
 		<key name="scan_storcli_warning_0008">The controller: [#!variable!model!#] with the serial number: [#!variable!serial_number!#] has vanished!</key>
@@ -496,7 +496,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_warning_0040">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
 		<key name="scan_storcli_warning_0041">- A new variable was found on the Cachevault (FBU): [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
 		<key name="scan_storcli_warning_0042">- The Cachevault (FBU): [#!variable!cachevault_serial_number!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
-		<key name="scan_storcli_warning_0043">- The Cachevault (FBU): [#!variable!cachevault_serial_number!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
+		<key name="scan_storcli_warning_0043">#!free!#</key>
 		<key name="scan_storcli_warning_0044">
 - The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]
   If this ticks up by '1', and this hasn't changed recently before, it is generally safe to ignore. 
@@ -546,8 +546,8 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_error_0001">The 'storcli64' program was not found at: [#!variable!path!#], exiting.</key>
 		<key name="scan_storcli_error_0002">The 'storcli64' program was found at: [#!variable!path!#], but it is not executable. exiting.</key>
 		<key name="scan_storcli_error_0003">No LSI-based RAID controllers were found, exiting.</key>
-		<key name="scan_storcli_error_0004">Requested data from controller: [#!variable!requested_controller!#] but got data from: [#!variable!this_controller!#]. Exiting.</key>
-		<key name="scan_storcli_error_0005">Requested data from adapter: [#!variable!adapter!#] but got an unexpected status. Expected 'Success', but got: [#!variable!status!#]. Exiting.</key>
+		<key name="scan_storcli_error_0004">#!free!#</key>
+		<key name="scan_storcli_error_0005">#!free!#</key>
 		<key name="scan_storcli_error_0006">Failed to find the serial number for the adapter: [#!variable!adapter!#]. Please check the output of '#!data!path::storcli64!# #!data!sys::arguments::controller_info!#' and look for the 'Serial Number = X' string. Exiting.</key>
 		<key name="scan_storcli_error_0007">The battery backup unit (BBU) with the serial number: [#!variable!serial_number!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
 		<key name="scan_storcli_error_0008">The controller with serial number: [#!variable!serial_number!#] could not be converted to a controller UUID. This is probably a program error, sorry about that.</key>
@@ -555,18 +555,6 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_error_0010">The virtual drive (VD) with the ID string: [#!variable!id_string!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
 		<key name="scan_storcli_error_0011">The drive group (DG) with the ID string: [#!variable!id_string!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
 		<key name="scan_storcli_error_0012">The physical drive (PV) with the serial number: [#!variable!serial_number!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
-		
-		<!-- Storcli section names -->
-		<key name="scan_storcli_section_0001">Basic Information</key>
-		<key name="scan_storcli_section_0002">Firmware Versions</key>
-		<key name="scan_storcli_section_0003">Pending Images in Flash</key>
-		<key name="scan_storcli_section_0004">Bus</key>
-		<key name="scan_storcli_section_0005">Status</key>
-		<key name="scan_storcli_section_0006">Supported Adapter Operations</key>
-		<key name="scan_storcli_section_0007"></key>
-		<key name="scan_storcli_section_0008"></key>
-		<key name="scan_storcli_section_0009"></key>
-		<key name="scan_storcli_section_0010"></key>
 		
 		<!-- Storcli Agent-specific messages -->
 		<key name="scan_storcli_message_0001">Starting #!string!scan_storcli_brand_0001!#:</key>
@@ -608,7 +596,6 @@ https://alteeve.ca/w/Support
 
 							      Alteeve's Niche!
 		]]></key>
-		<key name="scan_storcli_message_0003"></key>
 		
 		<!-- This translates raw variable names into a given language's version of the same. -->
 		<!-- Controller Options -->
@@ -1028,8 +1015,5 @@ https://alteeve.ca/w/Support
 		<key name="wide_port_capable">Wide Port Capable?</key>
 		<key name="world_wide_name">World Wide Name (WWN)</key>
 		<key name="drive_temperature">Drive's Temperature</key>
-		
-		<!-- Sensor message titles -->
-		<key name="scan_storcli_title_0001"></key>
 	</lang>
 </strings>

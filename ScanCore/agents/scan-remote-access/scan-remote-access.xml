@@ -83,8 +83,5 @@ https://alteeve.ca/w/Support
 		<key name="scan_remote_access_message_0004">Lost access to the target machine: [#!variable!target!#]!</key>
 		<key name="scan_remote_access_message_0005">A new target is now being accessed: [#!variable!target!#] and it is online</key>
 		<key name="scan_remote_access_message_0006">A new target: [#!variable!target!#], which is currently inaccessible, will be monitored for access.</key>
-		
-		<!-- Sensor message titles -->
-		<key name="scan_remote_access_title_0001"></key>
 	</lang>
 </strings>

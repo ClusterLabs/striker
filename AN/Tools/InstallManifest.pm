@@ -6221,7 +6221,7 @@ sub configure_storage_stage2
 		$node2_message = "#!string!state_0059!#";
 		$ok            = 0;
 	}
-	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-messag", replace => { 
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0249!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
@@ -14110,10 +14110,6 @@ sub run_new_install_manifest
 			$message = $an->String->get({key => "message_0402", variables => { url => $url }});
 		}
 		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-success", replace => { message => $message }});
-		
-		### NOTE: I can't find this template anywhere... o_O
-		# Enough of that, now everyone go home.
-		#print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-footer"});
 	}
 	
 	return(0);

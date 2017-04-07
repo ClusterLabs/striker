@@ -4536,7 +4536,7 @@ sub check_email_configuration
 	if ($reconfigure)
 	{
 		# Write the new relay file.
-		$an->Log->entry({log_level => 1, message_key => "scancore_log_0034", message_variables => { postfix_relay_file => $an->data->{path}{postfix_relay_file} }, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0038", message_variables => { postfix_relay_file => $an->data->{path}{postfix_relay_file} }, file => $THIS_FILE, line => __LINE__});
 		
 		my $shell_call = $an->data->{path}{postfix_relay_file};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

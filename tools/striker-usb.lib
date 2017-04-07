@@ -272,7 +272,6 @@ sub remote_call
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - << remote: [$remote], port: [$port]");
 		if (($port < 0) || ($port > 65536))
 		{
-			# Variables for 'message_0373'.
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The TCP port: [$port] is out of range. It must be between 1 and 65536. The default is '22'.");
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   The error was hit calling: [$shell_call]");
 			exit(8);

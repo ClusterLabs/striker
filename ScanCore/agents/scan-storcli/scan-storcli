@@ -2633,7 +2633,7 @@ WHERE
 							alert_sort		=>	$an->data->{sys}{alert_sort},
 							alert_header		=>	$main_table_changed ? "FALSE" : "TRUE",
 							alert_title_key		=>	"an_alert_title_0003",
-							alert_message_key	=>	"scan_storcli_warning_0021",
+							alert_message_key	=>	"scan_storcli_warning_0022",
 							alert_message_variables	=>	{
 								id_string		=>	$storcli_virtual_drive_id_string,
 								name			=>	$variable,
@@ -5468,7 +5468,7 @@ sub process_bbus
 				alert_agent_name	=>	$THIS_FILE,
 				alert_sort		=>	$an->data->{sys}{alert_sort},	
 				alert_title_key		=>	"an_alert_title_0003",
-				alert_message_key	=>	"scan_storcli_note_0001",
+				alert_message_key	=>	"scan_storcli_note_0003",
 				alert_message_variables	=>	{
 					on_controller		=>	$host_controller_serial_number,
 					serial_number		=>	$bbu_serial_number,
@@ -6244,7 +6244,7 @@ WHERE
 								{
 									$alert_level = "warning";
 									$title_key   = "an_alert_title_0004";
-									$message_key = "scan_storcli_warning_0050";
+									$message_key = "scan_storcli_warning_0051";
 								}
 								# Other things that might be of interest... See: SELECT a.host_name, b.storcli_bbu_serial_number AS sn, b.storcli_bbu_type, b.storcli_bbu_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_bbus b, storcli_variables c WHERE a.host_uuid = b.storcli_bbu_host_uuid AND b.storcli_bbu_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a05n01.alteeve.ca';
 							}

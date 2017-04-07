@@ -50,23 +50,14 @@ all strings with 'scan_clustat_'.
 		<key name="scan_clustat_note_0028">The server: [#!variable!service!#] has been migrated from: [#!variable!source!#] to: [#!variable!target!#].</key>
 		
 		<!-- Warnings. -->
-		<key name="scan_clustat_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
-		<key name="scan_clustat_warning_0002">Is the server running and does the firewall allow connections on TCP port: [#!variable!port!#]?</key>
-		<key name="scan_clustat_warning_0003"><![CDATA[The password was not passed, and it is required. Please set: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
-		<key name="scan_clustat_warning_0004"><![CDATA[The password set for the user: [#!variable!user!#] is incorrect. Please update: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
-		<key name="scan_clustat_warning_0005">
-The error was:
-----------
-#!variable!dbi_error!#
-----------
-		</key>
-		<key name="scan_clustat_warning_0006">This database can not be used, skipping it.</key>
-		<key name="scan_clustat_warning_0007">Error during DB 'do'. The error was:
-----------
-#!variable!dbi_error!#
-----------
-		</key>
-		<key name="scan_clustat_warning_0008">There were errors writing data to the database. Rolling back!</key>
+		<key name="scan_clustat_warning_0001">#!free!#</key>
+		<key name="scan_clustat_warning_0002">#!free!#</key>
+		<key name="scan_clustat_warning_0003">#!free!#</key>
+		<key name="scan_clustat_warning_0004">#!free!#</key>
+		<key name="scan_clustat_warning_0005">#!free!#</key>
+		<key name="scan_clustat_warning_0006">#!free!#</key>
+		<key name="scan_clustat_warning_0007">#!free!#</key>
+		<key name="scan_clustat_warning_0008">#!free!#</key>
 		<key name="scan_clustat_warning_0009">
 The cluster's state has changed in an unexpected way.
 - Cluster name:  [#!variable!old_cluster_name!#] -> [#!variable!new_cluster_name!#]
@@ -113,11 +104,6 @@ This should never happen.
 #!string!scancore_brand_0005!#
 		</key>
 		<key name="scan_clustat_warning_0025">There are no servers running on the peer node, and we have: [#!variable!servers!#] hosted here. The fence delay does not favour us, so that will now be fixed.</key>
-		
-		<!-- Errors -->
-		<key name="scan_clustat_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
-		<key name="scan_clustat_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
-		<key name="scan_clustat_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		
 		<!-- clustat Agent-specific messages -->
 		<key name="scan_clustat_message_0001">Starting #!string!scan_clustat_brand_0001!#:</key>
