@@ -79,6 +79,13 @@ if (($an->data->{switches}{f}) or
 	$an->data->{sys}{fast} = 1;
 }
 
+# This tool was designed to run on nodes, not dashboards.
+if (not -e $an->data->{path}{cluster_conf})
+{
+	print $an->String->get({key => "acs_error_0001"})."\n";
+	$an->nice_exit({exit_code => 1});
+}
+
 # Gather whatever we can find.
 gather_data($an);
 report_findings($an);

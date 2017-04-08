@@ -732,7 +732,7 @@ WHERE
 	if (not $count)
 	{
 		# not a valid UUID or name
-		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0178", message_variables => { target => $target } code => 178, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0178", message_variables => { target => $target }, code => 178, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	foreach my $row (@{$results})

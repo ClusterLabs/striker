@@ -54,7 +54,7 @@ my $an = AN::Tools->new({data => {
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",
 			log_level		=>	2,
-			program_name		=>	$program_name,
+			program_name		=>	$THIS_FILE,
 		},
 		$THIS_FILE 	=>	{
 			log_db_transactions	=>	0,
@@ -109,7 +109,7 @@ sub find_disks
 		# Everything here that we care about is a symlink
 		next if $file eq ".";
 		next if $file eq "..";
-		my $full_path = "$directory/$file";
+		my $full_path = $an->data->{path}{sysfs_block}."/$file";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "full_path", value1 => $full_path, 
 		}, file => $THIS_FILE, line => __LINE__});
