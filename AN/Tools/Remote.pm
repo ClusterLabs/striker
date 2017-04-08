@@ -875,7 +875,7 @@ sub _check_known_hosts_for_target
 	my $target          = $parameter->{target}          ? $parameter->{target}          : "";
 	my $port            = $parameter->{port}            ? $parameter->{port}            : "";
 	my $known_hosts     = $parameter->{known_hosts}     ? $parameter->{known_hosts}     : "";
-	my $user            = $parameter->{user}            ? $parameter->{user}            : "";
+	my $user            = $parameter->{user}            ? $parameter->{user}            : $<;
 	my $delete_if_found = $parameter->{delete_if_found} ? $parameter->{delete_if_found} : 0;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "target",          value1 => $target,

@@ -5199,9 +5199,10 @@ sub users_home
 		if ($line =~ /^$user:/)
 		{
 			$users_home = (split/:/, $line)[5];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "users_home", value1 => $users_home, 
 			}, file => $THIS_FILE, line => __LINE__});
+			last;
 		}
 	}
 	close $file_handle;

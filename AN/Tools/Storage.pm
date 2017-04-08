@@ -64,6 +64,7 @@ sub cleanup_gfs2
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "cleanup_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
@@ -183,6 +184,7 @@ sub find
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	$an->Alert->_set_error;
 	
 	# Setup default values
@@ -253,6 +255,7 @@ sub prep_uuid
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Did the user give us a UUID to use?
 	my $host_uuid = $parameter->{host_uuid} ? $parameter->{host_uuid} : "";
@@ -380,11 +383,10 @@ UUID=\$(".$an->data->{path}{cat}." ".$an->data->{path}{host_uuid}.")
 # in a new anonymous hash.
 sub read_conf
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an    = $self->parent;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
@@ -501,9 +503,8 @@ sub read_hosts
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
@@ -574,9 +575,8 @@ sub read_ssh_config
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_ssh_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
@@ -625,9 +625,8 @@ sub read_words
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_words" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
@@ -918,6 +917,7 @@ sub read_xml_file
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_xml_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
@@ -975,6 +975,7 @@ sub rsync
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "rsync" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	$an->Alert->_set_error;
 	
 	# Check my parameters.
@@ -1049,7 +1050,7 @@ sub rsync
 		$an->Log->entry({log_level => 2, message_key => "log_0035", message_variables => { target => $remote_machine }, file => $THIS_FILE, line => __LINE__});
 		$an->Remote->add_target_to_known_hosts({
 			target => $remote_machine, 
-			user   => $remote_user,
+			user   => $<,
 		});
 		
 		# Make sure we have a target and password for the remote machine.
@@ -1113,9 +1114,8 @@ sub search_dirs
 {
 	my $self  = shift;
 	my $array = shift;
-	
-	# This just makes the code more consistent.
 	my $an    = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "search_dirs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
@@ -1161,9 +1161,8 @@ sub _create_rsync_wrapper
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an    = $self->parent;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_create_rsync_wrapper" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	$an->Alert->_set_error;
 	
 	# Check my parameters.
