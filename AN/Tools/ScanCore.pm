@@ -3170,7 +3170,7 @@ sub insert_or_update_servers
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $server_uuid                     = $parameter->{server_uuid}                     ? $parameter->{server_uuid}                     : "";
 	my $server_anvil_uuid               = $parameter->{server_anvil_uuid}               ? $parameter->{server_anvil_uuid}               : "";
@@ -4646,7 +4646,7 @@ sub parse_install_manifest
 					my $ip = $data->{node}{$node}{network}->[0]->{$network}->[0]->{ip};
 					$an->data->{install_manifest}{$uuid}{node}{$node}{network}{$network}{ip} = $ip ? $ip : "";
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name3 => "install_manifest::${uuid}::node::${node}::network::${network}::ip", value1 => $an->data->{install_manifest}{$uuid}{node}{$node}{network}{$network}{ip},
+						name1 => "install_manifest::${uuid}::node::${node}::network::${network}::ip", value1 => $an->data->{install_manifest}{$uuid}{node}{$node}{network}{$network}{ip},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
@@ -4694,10 +4694,10 @@ sub parse_install_manifest
 					$an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{password}        = $password        ? $password        : "";
 					$an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{password_script} = $password_script ? $password_script : "";
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-						name1 => "install_manifest::${uuid}::node::${node}::kvm::${reference}::name",            value3 => $an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{name},
-						name2 => "install_manifest::${uuid}::node::${node}::kvm::${reference}::port",            value4 => $an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{port},
-						name3 => "install_manifest::${uuid}::node::${node}::kvm::${reference}::user",            value5 => $an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{user},
-						name4 => "install_manifest::${uuid}::node::${node}::kvm::${reference}::password_script", value7 => $an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{password_script},
+						name1 => "install_manifest::${uuid}::node::${node}::kvm::${reference}::name",            value1 => $an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{name},
+						name2 => "install_manifest::${uuid}::node::${node}::kvm::${reference}::port",            value2 => $an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{port},
+						name3 => "install_manifest::${uuid}::node::${node}::kvm::${reference}::user",            value3 => $an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{user},
+						name4 => "install_manifest::${uuid}::node::${node}::kvm::${reference}::password_script", value4 => $an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{password_script},
 					}, file => $THIS_FILE, line => __LINE__});
 					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 						name1 => "install_manifest::${uuid}::node::${node}::kvm::${reference}::password", value1 => $an->data->{install_manifest}{$uuid}{node}{$node}{kvm}{$reference}{password},
@@ -5233,7 +5233,7 @@ sub parse_install_manifest
 						name3 => "install_manifest::${uuid}::common::striker::name::${name}::user",     value3 => $an->data->{install_manifest}{$uuid}{common}{striker}{name}{$name}{user},
 						name4 => "install_manifest::${uuid}::common::striker::name::${name}::database", value4 => $an->data->{install_manifest}{$uuid}{common}{striker}{name}{$name}{database},
 					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 4, message_key => "an_variables_0006", message_variables => {
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 						name1 => "install_manifest::${uuid}::common::striker::name::${name}::password", value1 => $an->data->{install_manifest}{$uuid}{common}{striker}{name}{$name}{password},
 					}, file => $THIS_FILE, line => __LINE__});
 				}

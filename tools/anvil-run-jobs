@@ -287,8 +287,8 @@ sub run_jobs
 		   $output  =~ s/#!token!#/$token/;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "token",   value1 => $token, 
-			name1 => "command", value1 => $command, 
-			name1 => "output",  value1 => $output, 
+			name2 => "command", value2 => $command, 
+			name3 => "output",  value3 => $output, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Open up a file handle to write out to the output file.

@@ -1037,6 +1037,7 @@ sub disconnect_from_databases
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "disconnect_from_databases" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $marked_inactive = 0;
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -1071,6 +1072,7 @@ sub do_db_query
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "do_db_query" }, file => $THIS_FILE, line => __LINE__});
 	
 	# Where we given a specific ID to use?
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1144,6 +1146,7 @@ sub do_db_write
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "do_db_write" }, file => $THIS_FILE, line => __LINE__});
 	
 	# Setup my variables.
 	my $id      = $parameter->{id}      ? $parameter->{id}      : "";
@@ -1390,7 +1393,7 @@ AND
 		my $last_updated = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $last_updated = 0 if not defined $last_updated;
 		   
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "last_updated",                       value1 => $last_updated, 
 			name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1398,7 +1401,7 @@ AND
 		{
 			$an->data->{scancore}{sql}{source_updated_time} = $last_updated;
 			$an->data->{scancore}{sql}{source_db_id}        = $id;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "scancore::sql::source_db_id",        value1 => $an->data->{scancore}{sql}{source_db_id}, 
 				name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1775,7 +1778,7 @@ sub initialize_db
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => { function => "initialize_db" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $success = 1;
 	my $id      = $parameter->{id} ? $parameter->{id} : "";
@@ -2005,7 +2008,7 @@ sub locking
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "locking" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $request     = defined $parameter->{request}     ? $parameter->{request}     : 0;
 	my $release     = defined $parameter->{release}     ? $parameter->{release}     : 0;
@@ -2247,7 +2250,7 @@ sub prep_for_archive
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_for_archive" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $string = defined $parameter->{string} ? $parameter->{string} : '\N';
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -2270,7 +2273,7 @@ sub set_update_db_flag
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_update_db_flag" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $set  = defined $parameter->{set}    ? $parameter->{set}    : 0;
 	my $wait = defined $parameter->{'wait'} ? $parameter->{'wait'} : 0;

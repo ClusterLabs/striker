@@ -176,7 +176,7 @@ sub _abort_download
 				my $seconds_running  = $5;
 				my $url              = $6;
 				my $out_file         = $7;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 					name1 => "done",             value1 => $done, 
 					name2 => "uuid",             value2 => $uuid, 
 					name3 => "bytes_downloaded", value3 => $bytes_downloaded, 
@@ -1354,7 +1354,7 @@ sub _monitor_downloads
 				my $seconds_running  = $5;
 				my $url              = $6;
 				my $out_file         = $7;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 					name1 => "done",             value1 => $done, 
 					name2 => "uuid",             value2 => $uuid, 
 					name3 => "bytes_downloaded", value3 => $bytes_downloaded, 

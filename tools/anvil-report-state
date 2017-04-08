@@ -2094,7 +2094,7 @@ sub gather_clustat
 			   $service_name =~ s/^.*?://;
 			my $host         =  $hash_ref->{owner};
 			my $state        =  $hash_ref->{state_str};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "is_server",    value1 => $is_server, 
 				name2 => "service_name", value2 => $service_name, 
 				name3 => "host",         value3 => $host, 

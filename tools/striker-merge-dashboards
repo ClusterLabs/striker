@@ -494,7 +494,7 @@ sub diff_local_and_peer_hosts
 				{
 					my $address = $an->data->{hosts}{merged}{$this_host}{ip};
 					$an->data->{hosts}{new}{$address} = "" if not defined $an->data->{hosts}{new}{$address};
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "address",              value1 => $address, 
 						name2 => "hosts::new::$address", value2 => $an->data->{hosts}{new}{$address}, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -1366,7 +1366,7 @@ sub prepare_for_run
 		}
 		
 		# Now I should know who my peer is.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "run::peer_hostname", value1 => $an->data->{run}{peer_hostname}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $an->data->{run}{peer_hostname})

@@ -158,7 +158,7 @@ sub _control_disk_id_led
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_header" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_control_disk_id_led" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $action   = defined $parameter->{action}   ? $parameter->{action}   : "";
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";

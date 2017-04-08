@@ -3810,12 +3810,7 @@ sub _check_peer_access
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "peer_access",  value1 => $peer_access,
-		name2 => "peer_cman_up", value2 => $peer_cman_up,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "peer_access",  value1 => $peer_access,
 		name2 => "peer_cman_up", value2 => $peer_cman_up,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6787,11 +6782,11 @@ sub _display_watchdog_panel
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
 	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
-		name1 => "anvil_name", value1 => $anvil_name,
-		name2 => "node1_name", value2 => $node1_name,
-		name3 => "node2_name", value3 => $node2_name,
+		name2 => "anvil_name", value2 => $anvil_name,
+		name3 => "node1_name", value3 => $node1_name,
+		name4 => "node2_name", value4 => $node2_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: We used to try and use a node to cancel the countdown, but we're not doing that anymore 
@@ -7283,8 +7278,8 @@ sub _fence_node
 		
 		my $shell_call = $an->data->{path}{fence_node}." $node_name";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value2 => $target,
-			name2 => "shell_call", value1 => $shell_call,
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$target,
@@ -7529,8 +7524,8 @@ sub _force_off_server
 	print $an->Web->template({file => "server.html", template => "force-off-server-header", replace => { title => $say_title }});
 	my $shell_call = $an->data->{path}{virsh}." destroy $server";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "target",     value2 => $target,
-		name2 => "shell_call", value1 => $shell_call,
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$target,
@@ -9050,7 +9045,7 @@ sub _manage_server
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			$an->data->{resources}{allocated_cores} += $an->data->{server}{$server}{details}{cpu_count};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "resources::allocated_cores",            value1 => $an->data->{resources}{allocated_cores},
 				name2 => "server::${server}::details::cpu_count", value2 => $an->data->{server}{$server}{details}{cpu_count},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -9156,7 +9151,7 @@ sub _manage_server
 		name2 => "target",   value2 => $target,
 		name3 => "port",     value3 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -10635,7 +10630,7 @@ sub _parse_clustat_xml
 			   $service_name =~ s/^.*?://;
 			my $host         =  $hash_ref->{owner};
 			my $state        =  $hash_ref->{state_str};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "is_server",    value1 => $is_server, 
 				name2 => "service_name", value2 => $service_name, 
 				name3 => "host",         value3 => $host, 
@@ -11378,7 +11373,7 @@ sub _parse_dmidecode
 			{
 				$an->data->{node}{$node_name}{hardware}{cpu}{$this_socket}{cores} =  $1;
 				$an->data->{node}{$node_name}{hardware}{total_node_cores}         += $an->data->{node}{$node_name}{hardware}{cpu}{$this_socket}{cores};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "node::${node_name}::hardware::cpu::${this_socket}::cores", value1 => $an->data->{node}{$node_name}{hardware}{cpu}{$this_socket}{cores},
 					name2 => "node::${node_name}::hardware::total_node_cores",           value2 => $an->data->{node}{$node_name}{hardware}{total_node_cores},
 				}, file => $THIS_FILE, line => __LINE__});
@@ -12017,8 +12012,8 @@ sub _parse_meminfo
 		{
 			$an->data->{node}{$node_name}{hardware}{meminfo}{memtotal} = $1;
 			$an->data->{node}{$node_name}{hardware}{meminfo}{memtotal} = $an->Readable->hr_to_bytes({size => $an->data->{node}{$node_name}{hardware}{meminfo}{memtotal} });
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name2 => "node::${node_name}::hardware::meminfo::memtotal", value2 => $an->data->{node}{$node_name}{hardware}{meminfo}{memtotal},
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node_name}::hardware::meminfo::memtotal", value1 => $an->data->{node}{$node_name}{hardware}{meminfo}{memtotal},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -12480,7 +12475,7 @@ sub _post_node_calculations
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
 	
 	# If I have no $an->data->{node}{$node_name}{hardware}{total_memory} value, use the 'meminfo' size.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node_name}::hardware::total_memory",      value1 => $an->data->{node}{$node_name}{hardware}{total_memory},
 		name2 => "node::${node_name}::hardware::meminfo::memtotal", value2 => $an->data->{node}{$node_name}{hardware}{meminfo}{memtotal},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -12603,7 +12598,7 @@ sub _post_scan_calculations
 	{
 		# Record this node's RAM and CPU as the maximum available if the max cores and max ram is 0 
 		# or greater than that on this node.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "resources::total_ram",                       value1 => $an->data->{resources}{total_ram},
 			name2 => "node::${node_name}::hardware::total_memory", value2 => $an->data->{node}{$node_name}{hardware}{total_memory},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -12983,7 +12978,7 @@ sub _poweron_node
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 		name1 => "anvil_name", value1 => $anvil_name,
 		name2 => "node_key",   value2 => $node_key,
 		name3 => "peer_key",   value3 => $peer_key,
@@ -13170,28 +13165,28 @@ sub _process_task
 			if (($peer_access) && ($peer_cman_up))
 			{
 				$an->data->{cgi}{confirm} = "true";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "cgi::confirm", value1 => $an->data->{cgi}{confirm}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ((not $peer_access) && (not $peer_cman_up))
 			{
 				$confirm_reason = "#!string!message_0148!#<br />#!string!message_0149!#";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "confirm_reason", value1 => $confirm_reason, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif (not $peer_access)
 			{
 				$confirm_reason = "#!string!message_0149!#";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "confirm_reason", value1 => $confirm_reason, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif (not $peer_cman_up)
 			{
 				$confirm_reason = "#!string!message_0148!#";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "confirm_reason", value1 => $confirm_reason, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -13946,11 +13941,11 @@ sub _read_server_definition
 		if ($line =~ /<memory unit='(.*?)'>(\d+)<\/memory>/)
 		{
 			# Record the memory, multiple by 1024 to get bytes.
-			my $units                             = $1;
-			my $ram                               = $2;
+			my $units                                     = $1;
+			my $ram                                       = $2;
 			   $an->data->{server}{$server}{details}{ram} = $an->Readable->hr_to_bytes({size => $ram, type => $units });
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name2 => "server::${server}::details::ram", value2 => $an->data->{server}{$server}{details}{ram},
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "server::${server}::details::ram", value1 => $an->data->{server}{$server}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		

@@ -59,6 +59,7 @@ sub add_rsa_key_to_target
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "add_rsa_key_to_target" }, file => $THIS_FILE, line => __LINE__});
 	
 	# We don't try to divine the user, so we need to called to tell us who we're dealing with.
 	my $user            = $parameter->{user};
@@ -293,6 +294,7 @@ sub generate_rsa_public_key
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "generate_rsa_public_key" }, file => $THIS_FILE, line => __LINE__});
 	
 	# We don't try to divine the user, so we need to called to tell us who we're dealing with.
 	my $user             = $parameter->{user};
@@ -300,7 +302,7 @@ sub generate_rsa_public_key
 	my $home             = $an->Get->users_home({user => $user});
 	my $rsa_private_file = "${home}/.ssh/id_rsa";
 	my $rsa_public_file  = "${rsa_private_file}.pub";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "user",             value1 => $user, 
 		name2 => "home",             value2 => $home,
 		name3 => "key_size",         value3 => $key_size,
@@ -363,6 +365,7 @@ sub remote_call
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "remote_call" }, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the target and port so that we can create the ssh_fh key
 	my $target     = $parameter->{target};
@@ -721,6 +724,7 @@ sub wait_on_peer
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "wait_on_peer" }, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $parameter->{program})
 	{

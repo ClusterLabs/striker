@@ -1099,7 +1099,7 @@ sub drbd_data
 								}, file => $THIS_FILE, line => __LINE__});
 								
 								$return->{resource_file}{$resource}{disk}{$name} = $value;
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "resource_file::${resource}::disk::${name}", value1 => $return->{resource_file}{$resource}{disk}{$name},
 								}, file => $THIS_FILE, line => __LINE__});
 							}
@@ -1254,7 +1254,7 @@ sub drbd_data
 						my $percent_synced = $1;
 						$return->{resource}{$resource}{syncing}        = 1;
 						$return->{resource}{$resource}{percent_synced} = $percent_synced;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "resource::${resource}::syncing",        value1 => $return->{resource}{$resource}{syncing},
 							name2 => "resource::${resource}::percent_synced", value2 => $return->{resource}{$resource}{percent_synced},
 						}, file => $THIS_FILE, line => __LINE__});
@@ -1286,7 +1286,7 @@ sub drbd_data
 						# Convert to raw seconds.
 						$return->{resource}{$resource}{eta_to_sync} = ($hours * 3600) + ($minutes * 60) + $seconds;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name4 => "resource::${resource}::eta_to_sync", value4 => $return->{resource}{$resource}{eta_to_sync}, 
+							name1 => "resource::${resource}::eta_to_sync", value1 => $return->{resource}{$resource}{eta_to_sync}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					if ($line =~ /speed: (.*?) \((.*?)\)/)
@@ -1693,7 +1693,7 @@ sub local_anvil_details
 	
 	# Find the servers running locally and store their details, if we're in the cluster.
 	my $clustat_data = $an->Cman->get_clustat_data();
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "clustat_data->cluster::name", value1 => $clustat_data->{cluster}{name}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($clustat_data->{cluster}{name})
@@ -3120,7 +3120,7 @@ sub ram_used_by_pid
 		my $kilobytes   =  ($line =~ /total (\d+)K/i)[0];
 		my $bytes       =  ($kilobytes * 1024);
 		   $total_bytes += $bytes;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "kilobytes",   value1 => "$kilobytes", 
 			name2 => "bytes",       value2 => "$bytes", 
 			name3 => "total_bytes", value3 => "$total_bytes"
@@ -4986,7 +4986,7 @@ sub upses
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "users_home" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "upses" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_uuid = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -5044,7 +5044,7 @@ sub upses_under_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "users_home" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "upses_under_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $upses     = {};
 	my $node_name = $parameter->{node_name} ? $parameter->{node_name} : "";

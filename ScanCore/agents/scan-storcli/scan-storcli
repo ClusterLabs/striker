@@ -3022,14 +3022,14 @@ sub process_a_physical_disk
 	{
 		$clear_high_critical = $high_warning + 1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name7  => "clear_high_critical", value7  => $clear_high_critical, 
+			name1 => "clear_high_critical", value1 => $clear_high_critical, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ($clear_low_critical > $low_warning)
 	{
 		$clear_low_critical = $low_warning - 1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name7  => "clear_low_critical", value7  => $clear_low_critical, 
+			name1 => "clear_low_critical", value1 => $clear_low_critical, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -3378,8 +3378,8 @@ INSERT INTO
 		{
 			# I'll need the old controller's serial number.
 			my $old_host_controller_serial_number = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name2 => "old_host_controller_serial_number", value2 => $old_host_controller_serial_number,
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "old_host_controller_serial_number", value1 => $old_host_controller_serial_number,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Send a warning level alert because these really should never change.
@@ -5344,14 +5344,14 @@ sub process_bbus
 		{
 			$clear_high_critical = $high_warning + 1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name7  => "clear_high_critical", value7  => $clear_high_critical, 
+				name1 => "clear_high_critical", value1 => $clear_high_critical, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($clear_low_critical > $low_warning)
 		{
 			$clear_low_critical = $low_warning - 1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name7  => "clear_low_critical", value7  => $clear_low_critical, 
+				name1 => "clear_low_critical", value1 => $clear_low_critical, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
@@ -6498,14 +6498,14 @@ sub process_controllers
 	{
 		$clear_high_critical = $high_warning + 1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name7  => "clear_high_critical", value7  => $clear_high_critical, 
+			name1 => "clear_high_critical", value1 => $clear_high_critical, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ($clear_low_critical > $low_warning)
 	{
 		$clear_low_critical = $low_warning - 1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name7  => "clear_low_critical", value7  => $clear_low_critical, 
+			name1 => "clear_low_critical", value1 => $clear_low_critical, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -7747,16 +7747,16 @@ WHERE
 		my $storcli_cachevault_type               = defined $row->[6] ? $row->[6] : "";
 		my $storcli_cachevault_model              = defined $row->[7] ? $row->[7] : "";
 		my $storcli_cachevault_manufacture_date   = defined $row->[8] ? $row->[8] : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 			name1 => "storcli_cachevault_uuid",               value1 => $storcli_cachevault_uuid, 
 			name2 => "storcli_cachevault_controller_uuid",    value2 => $storcli_cachevault_controller_uuid, 
 			name3 => "storcli_cachevault_serial_number",      value3 => $storcli_cachevault_serial_number, 
-			name3 => "storcli_cachevault_state",              value3 => $storcli_cachevault_state, 
-			name4 => "storcli_cachevault_design_capacity",    value4 => $storcli_cachevault_design_capacity, 
-			name5 => "storcli_cachevault_replacement_needed", value5 => $storcli_cachevault_replacement_needed, 
-			name6 => "storcli_cachevault_type",               value6 => $storcli_cachevault_type, 
-			name7 => "storcli_cachevault_model",              value7 => $storcli_cachevault_model, 
-			name8 => "storcli_cachevault_manufacture_date",   value8 => $storcli_cachevault_manufacture_date, 
+			name4 => "storcli_cachevault_state",              value4 => $storcli_cachevault_state, 
+			name5 => "storcli_cachevault_design_capacity",    value5 => $storcli_cachevault_design_capacity, 
+			name6 => "storcli_cachevault_replacement_needed", value6 => $storcli_cachevault_replacement_needed, 
+			name7 => "storcli_cachevault_type",               value7 => $storcli_cachevault_type, 
+			name8 => "storcli_cachevault_model",              value8 => $storcli_cachevault_model, 
+			name9 => "storcli_cachevault_manufacture_date",   value9 => $storcli_cachevault_manufacture_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Store the information about this cachevault
@@ -9932,7 +9932,7 @@ WHERE
 			my $storcli_variable_is_temperature = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_is_temperature};
 			my $storcli_variable_name           = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_name};
 			my $storcli_variable_value          = $an->data->{db_data}{unified}{storcli_variables}{modified_date}{$modified_date}{storcli_variable_uuid}{$storcli_variable_uuid}{storcli_variable_value};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "storcli_variable_uuid",           value1 => $storcli_variable_uuid, 
 				name2 => "storcli_variable_source_table",   value2 => $storcli_variable_source_table, 
 				name3 => "storcli_variable_source_uuid",    value3 => $storcli_variable_source_uuid, 
@@ -10551,7 +10551,7 @@ sub get_physical_disk_data
 			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}           = $drive_model;
 			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}               = $spun_up;
 			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}         = $serial_number;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 				name1  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::device_id",             value1  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}, 
 				name2  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::state",                 value2  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}, 
 				name3  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size",            value3  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 

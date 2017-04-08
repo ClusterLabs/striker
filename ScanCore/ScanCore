@@ -1257,7 +1257,7 @@ sub check_for_dlm_hang
 	my $reboot = 0;
 	### NOTE: This exposes the password.
 	my $power_check_command = $an->data->{cache}{$node}{info}{power_check_command};
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "power_check_command", value1 => $power_check_command, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($power_check_command)
@@ -1269,7 +1269,7 @@ sub check_for_dlm_hang
 		my $password  = $node_info->{password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target", value1 => $target,
-			name2 => "port",   value1 => $port,
+			name2 => "port",   value2 => $port,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "password", value1 => $password,
@@ -1657,7 +1657,7 @@ sub check_shorewall
 		my $rc5   = $state->{5};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "rc3", value1 => $rc3, 
-			name2 => "rc5", value1 => $rc5, 
+			name2 => "rc5", value2 => $rc5, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -2925,7 +2925,7 @@ AND
 sub check_load_shed_variable
 {
 	my ($an, $thermal_load_shed_variable, $host_uuid) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_load_shed_variable" }, message_key => "an_variables_0005", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_load_shed_variable" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "thermal_load_shed_variable", value1 => $thermal_load_shed_variable, 
 		name2 => "host_uuid",                  value2 => $host_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5673,7 +5673,7 @@ WHERE
 			my $node_cache_name      = $an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}{node_cache_name};
 			my $node_cache_data      = $an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}{node_cache_data};
 			my $node_cache_note      = $an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}{node_cache_note};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "node_cache_node_uuid", value1 => $node_cache_node_uuid, 
 				name2 => "node_cache_name",      value2 => $node_cache_name, 
 				name3 => "node_cache_data",      value3 => $node_cache_data, 

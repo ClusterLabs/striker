@@ -450,7 +450,7 @@ WHERE
 			start_delay	=>	$server_start_delay, 
 		};
 		$an->data->{server_name}{$server_name}{uuid} = $server_uuid;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 			name1 => "server_uuid",                              value1 => $server_uuid, 
 			name2 => "server_uuid::${server_uuid}::processed",   value2 => $an->data->{server_uuid}{$server_uuid}{processed}, 
 			name3 => "server_uuid::${server_uuid}::name",        value3 => $an->data->{server_uuid}{$server_uuid}{name},
@@ -2794,7 +2794,7 @@ sub find_myself
 		name3 => "sys::anvil_name", value3 => $an->data->{sys}{anvil_name}, 
 		name4 => "sys::anvil_uuid", value4 => $an->data->{sys}{anvil_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	

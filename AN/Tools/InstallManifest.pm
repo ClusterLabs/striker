@@ -803,7 +803,7 @@ sub calculate_storage_pool_sizes
 					
 					# Final sanity check; Add up the three calculated sizes and make sure
 					# I'm not trying to ask for more space than is available.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 						name1 => "media_library_byte_size", value1 => $media_library_byte_size,
 						name2 => "pool1_byte_size",         value2 => $pool1_byte_size,
 						name3 => "pool2_byte_size",         value3 => $pool2_byte_size,
@@ -1092,7 +1092,7 @@ sub check_config_for_anvil
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "cgi::anvil_name", value1 => $an->data->{cgi}{anvil_name},
 			name2 => "this_anvil_name", value2 => $this_anvil_name,
-			name3 => "this_anvil_uuid", value2 => $this_anvil_uuid,
+			name3 => "this_anvil_uuid", value3 => $this_anvil_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_name} eq $this_anvil_name)
 		{
@@ -3117,7 +3117,7 @@ sub configure_ipmi_on_node
 		name6 => "target",        value6 => $target, 
 		name7 => "port",          value7 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "ipmi_password", value1 => $ipmi_password, 
 		name2 => "password",      value2 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -7332,7 +7332,7 @@ sub create_partition_on_node
 				
 				# Update the 'use_end'
 				$use_end = $end;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "use_end", value1 => $use_end,
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -11670,7 +11670,7 @@ sub map_network
 	# * The MACs seen on each node match MACs passed in from CGI (or 
 	# * Loaded from manifest
 	# * If the existing network appears complete already.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 		name1  => "conf::node::${node1}::set_nic::bcn_link1", value1  => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
 		name2  => "conf::node::${node1}::set_nic::bcn_link2", value2  => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2},
 		name3  => "conf::node::${node1}::set_nic::sn_link1",  value3  => $an->data->{conf}{node}{$node1}{set_nic}{sn_link1},
@@ -11858,8 +11858,8 @@ sub map_network
 			{
 				my $mac = $an->data->{conf}{node}{$node}{unknown_nic}{$nic};
 				$an->data->{conf}{node}{$node}{set_nic}{$nic} = $mac;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "conf::node::${node}::set_nic::${nic}",  value1 => $an->data->{conf}{node}{$node}{set_nic}{$nic},
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "conf::node::${node}::set_nic::${nic}", value1 => $an->data->{conf}{node}{$node}{set_nic}{$nic},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -17156,7 +17156,7 @@ sub start_cman
 	{
 		# Start cman on both nodes at the same time.
 		my $command  = $an->data->{path}{initd}."/cman start";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "command", value1 => $command,
 		}, file => $THIS_FILE, line => __LINE__});
 		

@@ -331,6 +331,7 @@ sub daemon
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "daemon" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $state = 2;
 	if (not $parameter->{daemon})
@@ -459,6 +460,7 @@ sub drbd_resource
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "drbd_resource" }, file => $THIS_FILE, line => __LINE__});
 	
 	$an->Alert->_set_error;
 	
@@ -694,6 +696,7 @@ sub kernel_module
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "kernel_module" }, file => $THIS_FILE, line => __LINE__});
 	
 	$an->Alert->_set_error;
 	
@@ -980,16 +983,7 @@ sub _os
 	}
 	else
 	{
-		# Huh?
-# 		$an->Alert->warning({
-# 			title_key		=>	"warning_title_0001",
-# 			message_key		=>	"warning_message_0001",
-# 			message_variables	=>	{
-# 				os			=>	$^O,
-# 			},
-# 			file			=>	$THIS_FILE,
-# 			line			=>	__LINE__
-# 		});
+		# Huh? Set '/'...
 		$an->_directory_delimiter("/");
 	}
 	

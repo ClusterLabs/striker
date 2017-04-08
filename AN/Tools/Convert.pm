@@ -52,9 +52,8 @@ sub convert_format_mmddyy_to_yymmdd
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "convert_format_mmddyy_to_yymmdd" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $date = $parameter->{date};
 	return("#!null!#") if not $date;
@@ -80,9 +79,8 @@ sub convert_to_celsius
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "convert_to_celsius" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $temperature = $parameter->{temperature};
 	return("#!null!#") if not $temperature;
@@ -111,9 +109,8 @@ sub convert_to_fahrenheit
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "convert_to_fahrenheit" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $temperature = $parameter->{temperature};
 	return("#!null!#") if not $temperature;

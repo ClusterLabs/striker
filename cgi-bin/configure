@@ -726,10 +726,10 @@ sub load_anvil_form
 	}
 	
 	# Tease out the details
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "cgi::anvil_owner_uuid", value1 => $an->data->{cgi}{anvil_owner_uuid},
-		name1 => "cgi::anvil_smtp_uuid", value1 => $an->data->{cgi}{anvil_smtp_uuid},
-			name2 => "cgi::anvil_uuid",           value2 => $an->data->{cgi}{anvil_uuid},
+		name2 => "cgi::anvil_smtp_uuid",  value2 => $an->data->{cgi}{anvil_smtp_uuid},
+		name3 => "cgi::anvil_uuid",       value3 => $an->data->{cgi}{anvil_uuid},
 	}, file => $THIS_FILE, line => __LINE__});
 	load_owner_form($an, $owners, $an->data->{cgi}{anvil_owner_uuid});
 	load_smtp_form($an,  $smtp,   $an->data->{cgi}{anvil_smtp_uuid});
@@ -6439,8 +6439,8 @@ sub owner_menu
 				my $anvil_description = $hash_ref->{anvil_description};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "cgi::anvil_uuid",        value1 => $an->data->{cgi}{anvil_uuid},
-					name1 => "cgi::anvil_name",        value1 => $an->data->{cgi}{anvil_name},
-					name2 => "cgi::anvil_description", value2 => $an->data->{cgi}{anvil_description},
+					name2 => "cgi::anvil_name",        value2 => $an->data->{cgi}{anvil_name},
+					name3 => "cgi::anvil_description", value3 => $an->data->{cgi}{anvil_description},
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				if (not $break_printed)

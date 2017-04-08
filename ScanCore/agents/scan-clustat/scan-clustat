@@ -830,7 +830,7 @@ WHERE
 			# Case 1 & 2 go to the public schema.
 			# 
 			# All other records are written directly to the history schema as needed.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "id", value1 => $id,
 			}, file => $THIS_FILE, line => __LINE__});
 			my $query = "";

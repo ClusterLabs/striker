@@ -578,7 +578,7 @@ sub check_libvirtd
 		my $rc5   = $state->{5};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "rc3", value1 => $rc3, 
-			name2 => "rc5", value1 => $rc5, 
+			name2 => "rc5", value2 => $rc5, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	

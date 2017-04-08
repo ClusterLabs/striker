@@ -623,7 +623,7 @@ sub configure_ipmi
 	my $target       = $parameter->{target}       ? $parameter->{target}       : "";
 	my $port         = $parameter->{port}         ? $parameter->{port}         : "";
 	my $password     = $parameter->{password}     ? $parameter->{password}     : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "ipmi_ip",       value1 => $ipmi_ip, 
 		name2 => "ipmi_netmask",  value2 => $ipmi_netmask, 
 		name3 => "ipmi_user",     value3 => $ipmi_user, 

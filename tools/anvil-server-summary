@@ -135,7 +135,7 @@ $an->nice_exit({exit_code => 0});
 sub report_anvil_servers
 {
 	my ($an, $anvil_name, $anvil_uuid) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "report_anvil_servers" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "report_anvil_servers" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 	}, file => $THIS_FILE, line => __LINE__});

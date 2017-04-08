@@ -2607,7 +2607,7 @@ sub validate_cluster_and_storage
 {
 	my ($an, $fatal) = @_;
 	$fatal = 1 if not defined $fatal;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "validate_cluster_and_storage" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "validate_cluster_and_storage" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "fatal", value1 => $fatal, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2683,7 +2683,7 @@ sub validate_cluster_and_storage
 sub check_cluster_and_storage
 {
 	my ($an, $node_key) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_cluster_and_storage" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_cluster_and_storage" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node_key", value1 => $node_key, 
 	}, file => $THIS_FILE, line => __LINE__});
 	

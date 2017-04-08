@@ -272,7 +272,7 @@ sub hostname
 {
 	my $self = shift;
 	
-	my $an = $self;
+	my $an       = $self;
 	my $hostname = "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "ENV{HOSTNAME}", value1 => $ENV{HOSTNAME},

@@ -56,6 +56,7 @@ sub round
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "round" }, file => $THIS_FILE, line => __LINE__});
 	
 	# Setup my numbers.
 	my $num    = $parameter->{number} ? $parameter->{number} : 0;

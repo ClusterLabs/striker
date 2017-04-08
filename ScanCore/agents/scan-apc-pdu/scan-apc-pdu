@@ -561,7 +561,7 @@ WHERE
 		my $apc_pdu_variable_is_temperature =         $row->[2];
 		my $apc_pdu_variable_name           =         $row->[3];
 		my $apc_pdu_variable_value          = defined $row->[4] ? $row->[4] : "NULL";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "apc_pdu_variable_uuid",           value1 => $apc_pdu_variable_uuid, 
 			name2 => "apc_pdu_variable_apc_pdu_uuid",   value2 => $apc_pdu_variable_apc_pdu_uuid, 
 			name3 => "apc_pdu_variable_is_temperature", value3 => $apc_pdu_variable_is_temperature, 
