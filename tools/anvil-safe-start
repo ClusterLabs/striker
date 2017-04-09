@@ -180,6 +180,7 @@ if ((not $an->data->{switches}{force}) && (not $an->data->{tools}{'anvil-safe-st
 
 # Log our startup
 $an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+print $an->String->get({key => "asst_log_0001", variables => { this_file => $THIS_FILE }})."\n";
 
 ### Process
 # 1. Check if I am enabled in striker.conf and that no other copies are running.
@@ -220,6 +221,7 @@ my $cman_state = $an->Check->daemon({daemon => "cman"});
 $an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 	name1 => "cman_state", value1 => $cman_state, 
 }, file => $THIS_FILE, line => __LINE__});
+
 if ($cman_state)
 {
 	# Error out... cman shouldn't be running so what?!
@@ -245,6 +247,7 @@ start_servers($an);
 
 # We're done.
 $an->Log->entry({log_level => 1, message_key => "asst_log_0006", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+print $an->String->get({key => "asst_log_0006", variables => { this_file => $THIS_FILE }})."\n";
 $an->nice_exit({exit_code => 0});
 
 
@@ -401,6 +404,7 @@ sub start_servers
 	{
 		# None found, we're out.
 		$an->Log->entry({log_level => 1, message_key => "asst_log_0024", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "asst_log_0024"})."\n";
 		return(0);
 	}
 	
@@ -635,34 +639,32 @@ WHERE
 					if ($an->data->{server_uuid}{$start_after}{processed})
 					{
 						# Looks like it.
+						my $variables = {
+							server      => $server_name, 
+							start_after => $an->data->{server_uuid}{$server_uuid}{name},
+						};
 						if ($an->data->{server_uuid}{$start_after}{processed} eq "1")
 						{
 							# The dependent was cleanly turned off, so we might 
 							# as well boot it now.
-							$an->Log->entry({log_level => 1, message_key => "asst_log_0027", message_variables => {
-								server      => $server_name, 
-								start_after => $an->data->{server_uuid}{$server_uuid}{name},
-							}, file => $THIS_FILE, line => __LINE__});
+							$an->Log->entry({log_level => 1, message_key => "asst_log_0027", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+							print $an->String->get({key => "asst_log_0027", variables => $variables})."\n";
 							$boot = 1;
 						}
 						elsif ($an->data->{server_uuid}{$start_after}{processed} eq "2")
 						{
 							# The dependent is configured to never boot, so there
 							# is no reason to wait.
-							$an->Log->entry({log_level => 1, message_key => "asst_log_0028", message_variables => {
-								server      => $server_name, 
-								start_after => $an->data->{server_uuid}{$server_uuid}{name},
-							}, file => $THIS_FILE, line => __LINE__});
+							$an->Log->entry({log_level => 1, message_key => "asst_log_0028", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+							print $an->String->get({key => "asst_log_0028", variables => $variables})."\n";
 							$boot = 1;
 						}
 						elsif ($an->data->{server_uuid}{$start_after}{processed} eq "3")
 						{
 							# The dependent failed to boot, so there is no reason
 							# to wait.
-							$an->Log->entry({log_level => 1, message_key => "asst_log_0029", message_variables => {
-								server      => $server_name, 
-								start_after => $an->data->{server_uuid}{$server_uuid}{name},
-							}, file => $THIS_FILE, line => __LINE__});
+							$an->Log->entry({log_level => 1, message_key => "asst_log_0029", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+							print $an->String->get({key => "asst_log_0029", variables => $variables})."\n";
 							$boot = 1;
 						}
 						else
@@ -677,26 +679,24 @@ WHERE
 								name3 => "time_since_boot",                        value3 => $time_since_boot, 
 								name4 => "start_delay",                            value4 => $start_delay, 
 							}, file => $THIS_FILE, line => __LINE__});
+							my $variables = {
+								server          => $server_name, 
+								start_after     => $an->data->{server_uuid}{$server_uuid}{name},
+								start_delay     => $start_delay, 
+								time_since_boot => $time_since_boot, 
+							};
 							if ($time_since_boot >= $start_delay)
 							{
 								# Boot it!
-								$an->Log->entry({log_level => 1, message_key => "asst_log_0030", message_variables => {
-									server          => $server_name, 
-									start_after     => $an->data->{server_uuid}{$server_uuid}{name},
-									start_delay     => $start_delay, 
-									time_since_boot => $time_since_boot, 
-								}, file => $THIS_FILE, line => __LINE__});
+								$an->Log->entry({log_level => 1, message_key => "asst_log_0030", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+								print $an->String->get({key => "asst_log_0030", variables => $variables})."\n";
 								$boot = 1;
 							}
 							else
 							{
 								# Not yet.
-								$an->Log->entry({log_level => 1, message_key => "asst_log_0031", message_variables => {
-									server          => $server_name, 
-									start_after     => $an->data->{server_uuid}{$server_uuid}{name},
-									start_delay     => $start_delay, 
-									time_since_boot => $time_since_boot, 
-								}, file => $THIS_FILE, line => __LINE__});
+								$an->Log->entry({log_level => 1, message_key => "asst_log_0031", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+								print $an->String->get({key => "asst_log_0031", variables => $variables})."\n";
 								
 								$all_dealt_with = 0;
 								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -717,10 +717,12 @@ WHERE
 				else
 				{
 					# The dependent doesn't seem to exist now, so we'll boot immediately.
-					$an->Log->entry({log_level => 1, message_key => "asst_log_0032", message_variables => {
+					my $variables = {
 						server           => $server_name, 
 						start_after_uuid => $an->data->{server_uuid}{$server_uuid}{name},
-					}, file => $THIS_FILE, line => __LINE__});
+					};
+					$an->Log->entry({log_level => 1, message_key => "asst_log_0032", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+					print $an->String->get({key => "asst_log_0032", variables => $variables})."\n";
 					$boot = 1;
 				}
 				
@@ -785,6 +787,7 @@ WHERE
 		{
 			### TODO: Determine if sleeping only 1 second puts too much of a load on the system.
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0026", file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "asst_log_0026"})."\n";
 			sleep 3;
 		}
 	}
@@ -1056,6 +1059,7 @@ sub wait_for_storage
 		if (not $storage_up)
 		{
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0025", file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "asst_log_0025"})."\n";
 			sleep 5;
 		}
 	}
@@ -1117,9 +1121,8 @@ sub check_shared
 		if (not $shared_mounted)
 		{
 			$mounted = 0;
-			$an->Log->entry({log_level => 1, message_key => "asst_log_0023", message_variables => {
-				node => $an->hostname, 
-			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 1, message_key => "asst_log_0023", message_variables => { node => $an->hostname }, file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "asst_log_0023", variables => { node => $an->hostname }})."\n";
 		}
 		close $file_handle;
 	}
@@ -1158,9 +1161,8 @@ sub check_shared
 			if (not $shared_mounted)
 			{
 				$mounted = 0;
-				$an->Log->entry({log_level => 1, message_key => "asst_log_0023", message_variables => {
-					node => $node, 
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 1, message_key => "asst_log_0023", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
+				print $an->String->get({key => "asst_log_0023", variables => { node => $node }})."\n";
 			}
 		}
 	}
@@ -1250,10 +1252,12 @@ sub start_clvmd
 		{
 			# Needs to be activated.
 			my $logical_volume = $1;
-			$an->Log->entry({log_level => 1, message_key => "asst_log_0021", message_variables => {
+			my $variables      = {
 				logical_volume => $logical_volume, 
 				node           => $peer_name, 
-			}, file => $THIS_FILE, line => __LINE__});
+			};
+			$an->Log->entry({log_level => 1, message_key => "asst_log_0021", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "asst_log_0021", variables => $variables})."\n";
 			
 			my $shell_call = $an->data->{path}{lvchange}." -ay $logical_volume";
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
@@ -1291,10 +1295,12 @@ sub start_clvmd
 		{
 			# Needs to be activated.
 			my $logical_volume = $1;
-			$an->Log->entry({log_level => 1, message_key => "asst_log_0021", message_variables => {
+			my $variables      = {
 				logical_volume => $logical_volume, 
 				node           => $local_name, 
-			}, file => $THIS_FILE, line => __LINE__});
+			};
+			$an->Log->entry({log_level => 1, message_key => "asst_log_0021", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "asst_log_0021", variables => $variables})."\n";
 			
 			my $shell_call = $an->data->{path}{lvchange}." -ay $logical_volume";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1355,10 +1361,12 @@ sub start_clvmd
 						name1 => "logical_volume", value1 => $logical_volume,
 						name2 => "inactive",       value2 => $inactive,
 					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 1, message_key => "asst_log_0020", message_variables => {
+					my $variables = {
 						logical_volume => $logical_volume, 
 						node           => $node, 
-					}, file => $THIS_FILE, line => __LINE__});
+					};
+					$an->Log->entry({log_level => 1, message_key => "asst_log_0020", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+					print $an->String->get({key => "asst_log_0020", variables => $variables})."\n";
 				}
 			}
 		}
@@ -1372,6 +1380,7 @@ sub start_clvmd
 		{
 			# Yay us!
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0022", file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "asst_log_0022"})."\n";
 		}
 	}
 	
@@ -1879,10 +1888,12 @@ sub start_drbd
 			{
 				# Boost the sync speed and then wait 15 seconds and check again to see what 
 				# the ETA becomes.
-				$an->Log->entry({log_level => 1, message_key => "asst_log_0014", message_variables => {
+				my $variables = {
 					sync_eta => $sync_eta, 
 					resource => $resource, 
-				}, file => $THIS_FILE, line => __LINE__});
+				};
+				$an->Log->entry({log_level => 1, message_key => "asst_log_0014", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+				print $an->String->get({key => "asst_log_0014", variables => $variables})."\n";
 				
 				# I can always issue this locally.
 				my $shell_call = $an->data->{path}{drbdadm}." disk-options --c-plan-ahead=0 --resync-rate=".$an->data->{'anvil-safe-start'}{drbd}{boost_speed}."M $resource";
@@ -1920,10 +1931,13 @@ sub start_drbd
 				if ($sync_eta > $an->data->{'anvil-safe-start'}{drbd}{max_wait_time})
 				{
 					# Still too long, we'll abort now and boot the servers on whoever is UpToDate
-					$an->Log->entry({log_level => 1, message_key => "asst_log_0015", message_variables => {
+					my $variables = {
 						sync_eta => $sync_eta, 
 						resource => $resource, 
-					}, file => $THIS_FILE, line => __LINE__});
+					};
+					$an->Log->entry({log_level => 1, message_key => "asst_log_0015", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+					print $an->String->get({key => "asst_log_0015", variables => $variables})."\n";
+					
 					$wait_for_sync = 0;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "wait_for_sync", value1 => $wait_for_sync, 
@@ -1938,10 +1952,12 @@ sub start_drbd
 			if ($wait_for_sync)
 			{
 				# Excellent! Wait for it to sync
-				$an->Log->entry({log_level => 1, message_key => "asst_log_0016", message_variables => {
+				my $variables = {
 					sync_eta => $sync_eta, 
 					resource => $resource, 
-				}, file => $THIS_FILE, line => __LINE__});
+				};
+				$an->Log->entry({log_level => 1, message_key => "asst_log_0016", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+				print $an->String->get({key => "asst_log_0016", variables => $variables})."\n";
 				
 				my $finished = 0;
 				until ($finished)
@@ -1956,18 +1972,19 @@ sub start_drbd
 					{
 						# We're done!
 						$finished = 1;
-						$an->Log->entry({log_level => 1, message_key => "asst_log_0017", message_variables => {
-							resource => $resource, 
-						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 1, message_key => "asst_log_0017", message_variables => { resource => $resource }, file => $THIS_FILE, line => __LINE__});
+						print $an->String->get({key => "asst_log_0017", variables => { resource => $resource }})."\n";
 					}
 					else
 					{
-						$local_resource = $an->Check->drbd_resource({resource => $resource});
-						$sync_eta       = $local_resource->{sync_eta};
-						$an->Log->entry({log_level => 1, message_key => "asst_log_0018", message_variables => {
+						   $local_resource = $an->Check->drbd_resource({resource => $resource});
+						   $sync_eta       = $local_resource->{sync_eta};
+						my $variables      = {
 							sync_eta => $sync_eta, 
 							resource => $resource, 
-						}, file => $THIS_FILE, line => __LINE__});
+						};
+						$an->Log->entry({log_level => 1, message_key => "asst_log_0018", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+						print $an->String->get({key => "asst_log_0018", variables => $variables})."\n";
 					}
 				}
 			}
@@ -2000,6 +2017,7 @@ sub start_drbd
 		{
 			# The resource is already fully sync'ed.
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0019", message_variables => { resource => $resource }, file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "asst_log_0019", variables => { resource => $resource }})."\n";
 		}
 	}
 	
@@ -2025,11 +2043,13 @@ sub wait_for_scancore_database
 		if (not $connections)
 		{
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0009", file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "asst_log_0009", variables => { this_file => $THIS_FILE }})."\n";
 			sleep 30;
 		}
 		else
 		{
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0033", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "asst_log_0033", variables => { connections => $connections }})."\n";
 		}
 	}
 	
@@ -2457,6 +2477,7 @@ sub wait_for_access
 			
 			# Something isn't responding, so sleep.
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0007", file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "asst_log_0007"})."\n";
 			sleep 5;
 		}
 		
@@ -2531,16 +2552,17 @@ sub wait_for_access
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($error)
 			{
-				$an->Log->entry({log_level => 1, message_key => "asst_log_0010", message_variables => {
+				my $variables = {
 					peer	=>	$an->data->{sys}{anvil}{$peer_key}{name},
 					error	=>	$error, 
-				}, file => $THIS_FILE, line => __LINE__});
+				};
+				$an->Log->entry({log_level => 1, message_key => "asst_log_0010", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+				print $an->String->get({key => "asst_log_0010", variables => $variables})."\n";
 			}
 			else
 			{
-				$an->Log->entry({log_level => 1, message_key => "asst_log_0011", message_variables => {
-					peer	=>	$an->data->{sys}{anvil}{$peer_key}{name},
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 1, message_key => "asst_log_0011", message_variables => { peer => $an->data->{sys}{anvil}{$peer_key}{name} }, file => $THIS_FILE, line => __LINE__});
+				print $an->String->get({key => "asst_log_0011", variables => { peer => $an->data->{sys}{anvil}{$peer_key}{name} }})."\n";
 			}
 			# Sleep a bit.
 			sleep 5;

@@ -1036,8 +1036,8 @@ sub get_clustat_data
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: This needs to change to use -x.
-	my $shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{clustat}." -x; ".$an->data->{path}{echo}." clustat:\$?";
+	# We redirect STDERR to /dev/null to avoid printing the 'Could not connect to CMAN' message
+	my $shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{clustat}." -x 2>/dev/null; ".$an->data->{path}{echo}." clustat:\$?";
 	my $return     = [];
 	my $details    = {
 			cluster		=>	{

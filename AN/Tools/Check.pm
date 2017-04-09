@@ -344,8 +344,7 @@ sub daemon
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "daemon", value1 => $daemon, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
@@ -369,8 +368,7 @@ sub daemon
 	if ($target)
 	{
 		# Remote call.
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});

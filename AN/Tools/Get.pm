@@ -1708,7 +1708,7 @@ sub local_anvil_details
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	
+
 	# Now see if this Anvil! is in the database or, failing that, if it was read in from striker.conf.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_name", value1 => $return->{anvil_name}, 

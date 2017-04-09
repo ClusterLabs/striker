@@ -2542,7 +2542,7 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_log_0030">The server: [#!variable!server!#] is set to start: [#!variable!start_delay!#] seconds after: [#!variable!start_after!#]. It was booted: [#!variable!time_since_boot!#] seconds ago, so we're ready. The server will now be booted.</key>
 		<key name="asst_log_0031">The server: [#!variable!server!#] is set to start: [#!variable!start_delay!#] seconds after: [#!variable!start_after!#]. It was booted: [#!variable!time_since_boot!#] seconds ago, so we still need to wait.</key>
 		<key name="asst_log_0032">The server: [#!variable!server!#] is set to start after a server with the UUID: [#!variable!start_after_uuid!#] which wasn't found on this #!string!brand_0004!#, so there is no point in waiting. The server will boot now.</key>
-		<key name="asst_log_0033">Now connected to: [#!variable!connections!#] database(s), proceeding.</key>
+		<key name="asst_log_0033">Connected to: [#!variable!connections!#] database(s), proceeding.</key>
 		
 		<!-- normal messages -->
 		<key name="asst_message_0001">#!free!#</key>

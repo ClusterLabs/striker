@@ -426,7 +426,7 @@ while(1)
 	}
 	
 	# Visual break in the log file
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "scancore::sleep_time",                     value1 => $an->data->{scancore}{sleep_time}, 
 		name2 => "----------------------------------------", value2 => "----------------------------------------", 
 	}, file => $THIS_FILE, line => __LINE__});
