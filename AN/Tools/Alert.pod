@@ -392,7 +392,7 @@ The C<AN::Tools::Storage-E<gt>find()> was set to be fatal if the requested file 
 
 =head2 C<45>
 
-The C<AN::Tools::Storage-E<gt>search_dirs()> was passed an argument that wasn't an array reference or a comma-seperated list of directories.
+The C<AN::Tools::Storage-E<gt>search_dirs()> was passed an argument that wasn't an array reference or a comma-separated list of directories.
 
 =head2 C<46>
 
@@ -516,7 +516,7 @@ The 'AN::Tools::Get' module's 'template()' method failed to find a template file
 
 =head2 C<76>
 
-The 'AN::Tools::String' module's private '_process_string_replace()' method hit an infitie loop while replacing '#!replace!...!#' replacement variables. The template file and template segment will be listed in the error. If this is triggered erroneously, increase the 'sys::error_limit' value.
+The 'AN::Tools::String' module's private '_process_string_replace()' method hit an infinite loop while replacing '#!replace!...!#' replacement variables. The template file and template segment will be listed in the error. If this is triggered erroneously, increase the 'sys::error_limit' value.
 
 =head2 C<77>
 
@@ -912,7 +912,7 @@ The 'AN::Tools::Remote' module's 'remote_call()' method was called without a tar
 
 =head2 C<175>
 
-The 'AN::Tools::Remote' module's 'remote_call()' method was asked to connecto to a target machine on an invalid TCP port.
+The 'AN::Tools::Remote' module's 'remote_call()' method was asked to connect to a target machine on an invalid TCP port.
 
 =head2 C<176>
 
@@ -1028,7 +1028,7 @@ The 'AN::Tools::System' module's 'change_postgresql_password()' was called witho
 
 =head2 C<204>
 
-The 'AN::Tools::Striker' module's 'update_striker_conf()' was called without a vairable to work on.
+The 'AN::Tools::Striker' module's 'update_striker_conf()' was called without a variable to work on.
 
 =head2 C<205>
 

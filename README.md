@@ -27,9 +27,9 @@ Support
 -------
 
 The Anvil! is supported commercially and in the open source tradition. Alteeve
-is a member of the "Cluster Labs" open source high availability community. 
-Users can find support on freenode.net's '#clusterlabs' IRC channel and on 
-the 'Cluster Labs - Users' mailing list:
+is a member of the "Cluster Labs" open source clustering community. Users can 
+find support on freenode.net's '#clusterlabs' IRC channel and on the 'Cluster 
+Labs - Users' mailing list:
 
 - http://clusterlabs.org/mailman/listinfo/users
 

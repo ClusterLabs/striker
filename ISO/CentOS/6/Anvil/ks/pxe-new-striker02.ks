@@ -1,4 +1,4 @@
-### Alteeve's Niche! Inc. - Anvil! High Availability Platform
+### Alteeve's Niche! Inc. - Anvil! Intelligent Availability™ Platform
 # License: GPLv2
 # Built:   2016-06-06 21:18:37
 # Target:  Network Install (PXE)

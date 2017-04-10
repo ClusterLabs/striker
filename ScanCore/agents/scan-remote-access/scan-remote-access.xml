@@ -26,7 +26,7 @@ Striker strings file. Do this by prefixing all strings with 'scan_remote_access_
 DESCRIPTION
 
 This program is a "scan agent" for the ScanCore decision engine tool for the
-Anvil! high-availabiltiy platform.
+Anvil! Intelligent Availability™ platform.
 
 It checks to see if a target machine can be accessed over SSH. The target can 
 be any machine that supports SSH access; Dashboards, nodes, hosted servers or

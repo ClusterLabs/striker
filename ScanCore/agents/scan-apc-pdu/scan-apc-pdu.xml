@@ -23,7 +23,7 @@ strings file. Do this by prefixing all strings with 'scan_apc_pdu_'.
 DESCRIPTION
 
 This program is a "scan agent" for the ScanCore decision engine, part of the
-Anvil! Intelligent-availabiltiy™ system.
+Anvil! Intelligent Availability™ system.
 
 It monitors APC/Schneider brand network-connected switched PDUs.
 
@@ -44,7 +44,7 @@ SWITCHES
  --pdus <pdu1>[,<pdu2>,...,<pduN>]
 
 	Specify the PDU(s) to query. If host names are used, they must be 
-	convertable to IP addresses. Two or more PDUs can be defined using
+	convertible to IP addresses. Two or more PDUs can be defined using
 	commas and *no* spaces to separate them.
 	
 	This is optional. By default, the scan agent will read /etc/hosts and
@@ -105,12 +105,12 @@ A new PDU: [#!variable!name!# has been found
 		<key name="scan_apc_pdu_message_0026">The amperage draw on phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] has changed; [#!variable!old_phase_current_amperage!#] -> [#!variable!new_phase_current_amperage!#]</key>
 		<key name="scan_apc_pdu_message_0027">The phase number: [#!variable!phase!#] on the PDU: [#!variable!name!#] has returned.</key>
 		<key name="scan_apc_pdu_message_0028">The phase number: [#!variable!phase!#] on the PDU: [#!variable!name!#] has vanished!</key>
-		<key name="scan_apc_pdu_message_0029">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is below the low-warning threshold!</key>
-		<key name="scan_apc_pdu_message_0030">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is back below the high critical alert threshold.</key>
-		<key name="scan_apc_pdu_message_0031">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is back below the high warning alert threshold.</key>
-		<key name="scan_apc_pdu_message_0032">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is critically high! If the load increases much further, power output may be lost! Reduce load immediately!</key>
-		<key name="scan_apc_pdu_message_0033">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is back above the low-warning threshold.</key>
-		<key name="scan_apc_pdu_message_0034">The amperage drawing theough phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] has risen above the high warning alert threshold. Be careful about adding any further load on this PDU.</key>
+		<key name="scan_apc_pdu_message_0029">The amperage drawing through phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is below the low-warning threshold!</key>
+		<key name="scan_apc_pdu_message_0030">The amperage drawing through phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is back below the high critical alert threshold.</key>
+		<key name="scan_apc_pdu_message_0031">The amperage drawing through phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is back below the high warning alert threshold.</key>
+		<key name="scan_apc_pdu_message_0032">The amperage drawing through phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is critically high! If the load increases much further, power output may be lost! Reduce load immediately!</key>
+		<key name="scan_apc_pdu_message_0033">The amperage drawing through phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] is back above the low-warning threshold.</key>
+		<key name="scan_apc_pdu_message_0034">The amperage drawing through phase: [#!variable!phase!#] on the PDU: [#!variable!name!#] has risen above the high warning alert threshold. Be careful about adding any further load on this PDU.</key>
 		<key name="scan_apc_pdu_message_0035">The outlet number: [#!variable!outlet!#] on the PDU: [#!variable!name!#] has vanished!</key>
 		<key name="scan_apc_pdu_message_0036">A new outlet: [#!variable!outlet!#] was found on the PDU: [#!variable!pdu_name!#], on phase: [#!variable!on_phase!#] and it is: [#!variable!state!#] (name: [#!variable!name!#])</key>
 		<key name="scan_apc_pdu_message_0037">The outlet number: [#!variable!outlet!#] on the PDU: [#!variable!name!#] has returned.</key>

@@ -59,9 +59,9 @@ with 'scan_ipmitool_'.
 DESCRIPTION
 
 This program is a "scan agent" for the ScanCore alert, monitoring and recovery
-tool for the Anvil! high-availabiltiy platform.
+tool for the Anvil! Intelligent Availability™ platform.
 
-It monitors health of nodes (and IPMI-equiped Striker dashboards) using the
+It monitors health of nodes (and IPMI-equipped Striker dashboards) using the
 'ipmitool' program. It uses the IPMI's network connection to monitor machines.
 
 On Anvil! nodes, the thermal information will be used by ScanCore to determine

@@ -1531,7 +1531,7 @@ sub scan_servers
 				$an->data->{server}{$server}{can_migrate}      = 1;
 			}
 			
-			# Disable Anvil! withdrawl of this node.
+			# Disable Anvil! withdrawal of this node.
 			$an->data->{node}{$node1_name}{enable_withdraw} = 0;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "node::${node1_name}::enable_withdraw", value1 => $an->data->{node}{$node1_name}{enable_withdraw},
@@ -1556,7 +1556,7 @@ sub scan_servers
 				$an->data->{server}{$server}{can_migrate}      = 1;
 			}
 			
-			# Disable withdrawl of this node.
+			# Disable withdrawal of this node.
 			$an->data->{node}{$node2_name}{enable_withdraw} = 0;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "node${node2_name}::enable_withdraw",  value1 => $an->data->{node}{$node2_name}{enable_withdraw},
@@ -5046,7 +5046,7 @@ sub _confirm_withdraw_node
 			anvil		=>	$anvil_name,
 		}});
 	my $say_message = $an->String->get({key => "message_0145", variables => { node_name => $an->data->{cgi}{node_name} }});
-	print $an->Web->template({file => "server.html", template => "confirm-withdrawl", replace => { 
+	print $an->Web->template({file => "server.html", template => "confirm-withdrawal", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
 		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
@@ -10864,7 +10864,7 @@ sub _parse_daemons
 	my $data       = $parameter->{data};
 	
 	# If all daemons are down, record here that I can shut down this server. If any are up, enable 
-	# withdrawl.
+	# withdrawal.
 	$an->data->{node}{$node_name}{enable_poweroff} = 1;
 	$an->data->{node}{$node_name}{enable_withdraw} = 0;
 	
@@ -10915,7 +10915,7 @@ sub _parse_daemons
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# If cman is running, enable withdrawl. If not, enable shut down.
+	# If cman is running, enable withdrawal. If not, enable shut down.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "node::${node_name}::daemon::cman::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{cman}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -12441,7 +12441,7 @@ sub _parse_virsh
 		
 		if ($state eq "paused")
 		{
-			# This server is being migrated here, disable withdrawl of this node and migration of
+			# This server is being migrated here, disable withdrawal of this node and migration of
 			# this server.
 			$an->data->{node}{$node_name}{enable_withdraw} = 0;
 			$an->data->{server}{$server}{can_migrate}      = 0;

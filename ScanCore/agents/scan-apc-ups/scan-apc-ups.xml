@@ -93,7 +93,7 @@ The UPS: [#!variable!ups_name!#] is using a new internal measurement of temperat
   Note: #!string!scancore_brand_0001!# converts everything internally to #!string!tools_suffix_0011!# (#!string!tools_suffix_0010!#), so this change should have no visible impact.
 		</key>
 		<key name="scan_apc_ups_note_0015">
-The UPS: [#!variable!ups_name!#] network interfaces's firmware has been updated:
+The UPS: [#!variable!ups_name!#] network interface's firmware has been updated:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
   Note: The firmware is software inside the UPS's network interface card that controls how the card operates and how users interact with it. Typically a firmware is upgraded by an administrator to fix bugs or add new functionality.
 		</key>
@@ -328,17 +328,17 @@ Connection to the UPS: [#!variable!ups_name!#] has been restored.
 		     used to translate those states into strings that a human
 		     would understand. See the MIB for OID 
 		     .1.3.6.1.4.1.318.1.1.1.3.2.5.0 -->
-		<key name="scan_apc_ups_last_xfer_0000">There is no information on when the UPS last transfered to battery.</key>
-		<key name="scan_apc_ups_last_xfer_0001">The UPS has not transfered to battery power since the last time it booted.</key>
-		<key name="scan_apc_ups_last_xfer_0002">The UPS last transfered to batteries because of high input voltage.</key>
-		<key name="scan_apc_ups_last_xfer_0003">The UPS last transfered to batteries because of a brown out. That is, a prolonged drop in input voltage from the mains circuit.</key>
-		<key name="scan_apc_ups_last_xfer_0004">The UPS last transfered to batteries because of a black out. That is, a prolonged loss of input voltage from the mains circuit.</key>
-		<key name="scan_apc_ups_last_xfer_0005">The UPS last transfered to batteries because of a brief, minor reduction of input voltage from the mains circuit.</key>
-		<key name="scan_apc_ups_last_xfer_0006">The UPS last transfered to batteries because of a brief, significant reduction of input voltage from the mains circuit.</key>
-		<key name="scan_apc_ups_last_xfer_0007">The UPS last transfered to batteries because of a brief, minor increase of input voltage from the mains circuit.</key>
-		<key name="scan_apc_ups_last_xfer_0008">The UPS last transfered to batteries because of a brief, significant spike of input voltage from the mains circuit.</key>
-		<key name="scan_apc_ups_last_xfer_0009">The UPS last transfered to batteries as part of a planned self-test.</key>
-		<key name="scan_apc_ups_last_xfer_0010">The UPS last transfered to batteries because of a significant change of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0000">There is no information on when the UPS last transferred to battery.</key>
+		<key name="scan_apc_ups_last_xfer_0001">The UPS has not transferred to battery power since the last time it booted.</key>
+		<key name="scan_apc_ups_last_xfer_0002">The UPS last transferred to batteries because of high input voltage.</key>
+		<key name="scan_apc_ups_last_xfer_0003">The UPS last transferred to batteries because of a brown out. That is, a prolonged drop in input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0004">The UPS last transferred to batteries because of a black out. That is, a prolonged loss of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0005">The UPS last transferred to batteries because of a brief, minor reduction of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0006">The UPS last transferred to batteries because of a brief, significant reduction of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0007">The UPS last transferred to batteries because of a brief, minor increase of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0008">The UPS last transferred to batteries because of a brief, significant spike of input voltage from the mains circuit.</key>
+		<key name="scan_apc_ups_last_xfer_0009">The UPS last transferred to batteries as part of a planned self-test.</key>
+		<key name="scan_apc_ups_last_xfer_0010">The UPS last transferred to batteries because of a significant change of input voltage from the mains circuit.</key>
 		<!-- This is used to catch invalid returned values. -->
 		<key name="scan_apc_ups_last_xfer_0099">The UPS Reported a last transfer value that isn't recognized. It should have reported an integer between 1~10, but: [#!variable!bad_value!#] was received..</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
 		
@@ -372,7 +372,7 @@ Connection to the UPS: [#!variable!ups_name!#] has been restored.
 		<key name="scan_apc_ups_sensitivity_0001">The UPS is automatically determining the input power sensitivity.</key>
 		<key name="scan_apc_ups_sensitivity_0002">The UPS is set to have a low input sensitivity. It will not switch to batteries unless the input power degrades significantly. This mode should only be used if the downstream equipment can handle a wider range of input voltages and frequencies.</key>
 		<key name="scan_apc_ups_sensitivity_0003">The UPS is set to medium input sensitivity. This will cause the UPS to transfer to battery power under moderately distorted input.</key>
-		<key name="scan_apc_ups_sensitivity_0004">The UPS is set to high sensitivity. It will switch to battery power under minor input distortion, providing the best protection for downstream equipment, but will shorten the servicable life of the batteries if input power distorts frequently.</key>
+		<key name="scan_apc_ups_sensitivity_0004">The UPS is set to high sensitivity. It will switch to battery power under minor input distortion, providing the best protection for downstream equipment, but will shorten the serviceable life of the batteries if input power distorts frequently.</key>
 		<!-- This is used to catch invalid returned values. -->
 		<key name="scan_apc_ups_sensitivity_0099">The UPS sensitivity value isn't recognized. It should have reported an integer between 1~2, but: [#!variable!bad_value!#] was received..</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
 		
@@ -384,7 +384,7 @@ Connection to the UPS: [#!variable!ups_name!#] has been restored.
 DESCRIPTION
 
 This program is a "scan agent" for the ScanCore decision engine, part of the
-Anvil! Intelligent-availabiltiy™ system.
+Anvil! Intelligent Availability™ system.
 
 It monitors APC/Schneider brand UPSes. When run on Anvil! nodes, it will
 gracefully shut down all servers, withdraw the nodes from the cluster stack and
@@ -412,7 +412,7 @@ SWITCHES
  --upses <ups1>[,<ups2>,...,<upsN>]
 
 	Specify the UPS(es) to query. If host names are used, they must be 
-	convertable to IP addresses. Two or more UPSes can be defined using
+	convertible to IP addresses. Two or more UPSes can be defined using
 	commas and *no* spaces to separate them.
 	
 	This is optional. By default, the scan agent will read /etc/hosts and

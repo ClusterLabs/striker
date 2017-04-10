@@ -1396,17 +1396,17 @@ sub find_changes
 					
 					### There are 10 possible states 
 					### (* == warning, rest are notice):
-					#  0 -  There is no information on when the UPS last transfered to battery.
-					#  1 -  The UPS has not transfered to battery power since the last time it booted.
-					#  2 -  The UPS last transfered to batteries because of high input voltage.
-					# *3 -  The UPS last transfered to batteries because of a brown out. That is, a prolonged drop in input voltage from the mains circuit.
-					# *4 -  The UPS last transfered to batteries because of a black out. That is, a prolonged loss of input voltage from the mains circuit.
-					#  5 -  The UPS last transfered to batteries because of a brief, minor reduction of input voltage from the mains circuit.
-					# *6 -  The UPS last transfered to batteries because of a brief, significant reduction of input voltage from the mains circuit.
-					#  7 -  The UPS last transfered to batteries because of a brief, minor increase of input voltage from the mains circuit.
-					# *8 -  The UPS last transfered to batteries because of a brief, significant spike of input voltage from the mains circuit.
-					#  9 -  The UPS last transfered to batteries as part of a planned self-test.
-					# *10 - The UPS last transfered to batteries because of a significant change of input voltage from the mains circuit.
+					#  0 -  There is no information on when the UPS last transferred to battery.
+					#  1 -  The UPS has not transferred to battery power since the last time it booted.
+					#  2 -  The UPS last transferred to batteries because of high input voltage.
+					# *3 -  The UPS last transferred to batteries because of a brown out. That is, a prolonged drop in input voltage from the mains circuit.
+					# *4 -  The UPS last transferred to batteries because of a black out. That is, a prolonged loss of input voltage from the mains circuit.
+					#  5 -  The UPS last transferred to batteries because of a brief, minor reduction of input voltage from the mains circuit.
+					# *6 -  The UPS last transferred to batteries because of a brief, significant reduction of input voltage from the mains circuit.
+					#  7 -  The UPS last transferred to batteries because of a brief, minor increase of input voltage from the mains circuit.
+					# *8 -  The UPS last transferred to batteries because of a brief, significant spike of input voltage from the mains circuit.
+					#  9 -  The UPS last transferred to batteries as part of a planned self-test.
+					# *10 - The UPS last transferred to batteries because of a significant change of input voltage from the mains circuit.
 					
 					# Make sure we have a valid health integer
 					my $bad_value                            = "";

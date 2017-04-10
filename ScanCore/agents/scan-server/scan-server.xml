@@ -84,7 +84,7 @@ New:
 		<key name="scan_server_message_0014">The server: [#!variable!server!#] had the disc image: [#!variable!file!#] mounted, which no longer exists. The disc has been ejected.</key>
 		<key name="scan_server_message_0015">The server: [#!variable!server_name!#] with UUID: [#!variable!server_uuid!#] wasn't found in this scan, ignoring it.</key>
 		<key name="scan_server_message_0016">The server: [#!variable!server_name!#]'s definition file: [#!variable!definition_file!#] wasn't found. Skipping missing ISO file check.</key>
-		<key name="scan_server_message_0017">The server: [#!variable!server_name!#]'s definition file: [#!variable!definition_file!#] exisits, but it appears the XML data inside it is missing or incomplete. Skipping missing ISO file check.</key>
+		<key name="scan_server_message_0017">The server: [#!variable!server_name!#]'s definition file: [#!variable!definition_file!#] exists, but it appears the XML data inside it is missing or incomplete. Skipping missing ISO file check.</key>
 		<key name="scan_server_message_0018">
 The server: [#!variable!server_name!#] was in a paused state, which isn't supposed to happen. 
 A 'resume' was performed and the new state is: [#!variable!server_state!#].

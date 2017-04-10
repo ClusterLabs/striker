@@ -381,7 +381,7 @@ sub find_physical_drives
 	
 # 	foreach my $adapter (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}})
 # 	{
-# 		foreach my $enclusure (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}{$adapter}{enclosure}})
+# 		foreach my $enclosure (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}{$adapter}{enclosure}})
 # 		{
 # 			foreach my $slot (sort {$a cmp $b} keys %{$conf->{physical_drive}{adapter}{$adapter}{enclosure}{$enclosure}{slot}})
 # 			{

@@ -34,7 +34,7 @@ all strings with 'scan_bond_'.
 		-->
 		<key name="scan_bond_mode_0">Balance Round-Robin</key>
 		<key name="scan_bond_mode_1">Active/Backup</key>
-		<key name="scan_bond_mode_2">Balaced Source/Target MAC XOR'ed</key>
+		<key name="scan_bond_mode_2">Balanced Source/Target MAC XOR'ed</key>
 		<key name="scan_bond_mode_3">Broadcast</key>
 		<key name="scan_bond_mode_4">Dynamic Link-Aggregation Group (802.3ad)</key>
 		<key name="scan_bond_mode_5">Balanced Transmit Load Balancing</key>

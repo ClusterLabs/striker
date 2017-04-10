@@ -1687,7 +1687,7 @@ SWITCHES
 
  -h, -?, --help
 
-	Show this dialoge and exit.
+	Show this dialogue and exit.
 
  --power_off_delay <seconds>
 
@@ -1745,7 +1745,7 @@ SWITCHES
  --ups <ups1>[,<ups2>,...,<upsN>]
 
 	Define the specific UPS(es) to work on. If host names are used, they
-	must be convertable to IP addresses. Two or more UPSes can be defined
+	must be convertible to IP addresses. Two or more UPSes can be defined
 	using commas and *no* spaces to separate them.
 
 

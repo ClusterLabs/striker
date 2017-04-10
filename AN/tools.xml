@@ -140,7 +140,7 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_suffix_0074">Consistent</key>
 		<key name="tools_suffix_0075">Inconsistent</key>
 		<key name="tools_suffix_0076">Direct IO</key>
-		<key name="tools_suffix_0077">Hard Drisk Drive (HDD)</key>
+		<key name="tools_suffix_0077">Hard Disk Drive (HDD)</key>
 		<key name="tools_suffix_0078">Solid State Disk (SSD)</key>
 		<key name="tools_suffix_0079">Serial Attached SCSI (SAS)</key>
 		<key name="tools_suffix_0080">Serial ATA (SATA)</key>
@@ -715,7 +715,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<!-- Error titles -->
 		<key name="error_title_0001">Invalid Argument</key>
 		<key name="error_title_0002">File not found</key>
-		<key name="error_title_0003">'AN::Tools::Storage->search_dirs()' was passed an argument that wasn't an array reference or a comma-seperated list of directories.</key>
+		<key name="error_title_0003">'AN::Tools::Storage->search_dirs()' was passed an argument that wasn't an array reference or a comma-separated list of directories.</key>
 		<key name="error_title_0004">Invalid String Key</key>
 		<key name="error_title_0005">Missing Variables</key>
 		<key name="error_title_0006">Unable to find the words file</key>
@@ -748,7 +748,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>
 		<key name="error_message_0002">I was asked to find the file: [#!variable!file!#] but failed to do so. This request was set to be fatal on failure.</key>
-		<key name="error_message_0003">The AN::Tools::Storage method 'search_dirs' was passed an invalid 'array' argument: [#!variable!array!#]. This must be an array reference or a comma-seperated list of directories to search within.</key>
+		<key name="error_message_0003">The AN::Tools::Storage method 'search_dirs' was passed an invalid 'array' argument: [#!variable!array!#]. This must be an array reference or a comma-separated list of directories to search within.</key>
 		<key name="error_message_0004">The invalid argument: [#!variable!set!#] was passed into the 'AN::Tools::String->force_utf8()'. Only 1 or 0 are valid arguments.</key>
 		<key name="error_message_0005">The 'AN::Tools::String' module's 'get' method was passed an invalid 'hash' argument: [#!variable!hash!#]. This must be a hash reference containing data read in from an XML words file by the 'read_words()' method.</key>
 		<key name="error_message_0006">The 'AN::Tools::String' module's 'get' method was passed an invalid 'variable' argument: [#!variable!variables!#]. This must be a hash reference containing the key name intended to replace corresponding #!variable!...!# replacement key in the requested string.</key>
@@ -756,7 +756,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_message_0008">The 'AN::Tools::String' module's 'get()' was passed a string with a '#!variable!*!#' replacement key without a hash reference containing the replacement keys. This would trigger an infinite loop and is thus a fatal error.</key>
 		<key name="error_message_0009">The words file: [#!variable!file!#] could not be found. Please check that it exists.</key>
 		<key name="error_message_0010">The words file: [#!variable!file!#] was found but could not be read. Please check that it exists.</key>
-		<key name="error_message_0011">The AN::Tools::String methid 'read' was not able to open the words file: [#!variable!file!#]. The error was: #!variable!error!#</key>
+		<key name="error_message_0011">The AN::Tools::String method 'read' was not able to open the words file: [#!variable!file!#]. The error was: #!variable!error!#</key>
 		<key name="error_message_0012">The 'AN::Tools::Log' module's 'level()' method was passed a non-integer argument: [#!variable!set!#]. Only integers are valid.</key>
 		<key name="error_message_0013">The invalid argument: [#!variable!set!#] was passed into the 'AN::Tools::Readable' module's 'base2' method.</key>
 		<key name="error_message_0014">The number: [#!variable!number!#] passed into the 'AN::Tools::Readable' module's 'comma' method contains a non-digit character or too many decimals.</key>
@@ -829,7 +829,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0073"><![CDATA[The 'AN::Tools::Get' module's 'template()' method was called without a template file passed.]]></key>
 		<key name="error_message_0074"><![CDATA[The 'AN::Tools::Get' module's 'template()' method was called without a template name passed.]]></key>
 		<key name="error_message_0075"><![CDATA[The 'AN::Tools::Get' module's 'template()' method failed to find the template file: [#!variable!file!#].]]></key>
-		<key name="error_message_0076"><![CDATA[The 'AN::Tools::String' module's private '_process_string_replace()' method hit an infitie loop while replacing "replace" variables in the template file: [#!variable!file!#] in the template: [#!variable!template!#]. If this is triggered erroneously, increase the 'sys::error_limit' value.]]></key>
+		<key name="error_message_0076"><![CDATA[The 'AN::Tools::String' module's private '_process_string_replace()' method hit an infinite loop while replacing "replace" variables in the template file: [#!variable!file!#] in the template: [#!variable!template!#]. If this is triggered erroneously, increase the 'sys::error_limit' value.]]></key>
 		<key name="error_message_0077"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_smtp()' method was called without passing in an SMTP server name.]]></key>
 		<key name="error_message_0078"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_owners()' method was called without passing in an #!string!an_brand_0003!# owner name.]]></key>
 		<key name="error_message_0079"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_anvils()' method was called without passing in an #!string!an_brand_0003!# name.]]></key>
@@ -928,7 +928,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0172"><![CDATA[The 'AN::Tools::Check' module's 'ping()' method was called without 'ip' being set.]]></key>
 		<key name="error_message_0173"><![CDATA[The 'AN::Tools::Get' module's 'ip_from_hostname()' method was called without a host name being set.]]></key>
 		<key name="error_message_0174"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' method was called without a target being set.]]></key>
-		<key name="error_message_0175"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' was asked to connecto to the target machine: [#!variable!target!#] on requested TCP port: [#!variable!port!#], but the port is invalid.]]></key>
+		<key name="error_message_0175"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' was asked to connect to the target machine: [#!variable!target!#] on requested TCP port: [#!variable!port!#], but the port is invalid.]]></key>
 		<key name="error_message_0176"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called before ScanCore has run on both nodes. Please make sure that ScanCore is enabled and has run at least once.]]></key>
 		<key name="error_message_0177"><![CDATA[The 'AN::Tools::Get' module's 'dr_target_data()' method was called without passing in a DR Target name or UUID.]]></key>
 		<key name="error_message_0178"><![CDATA[The 'AN::Tools::Get' module's 'dr_target_data()' method was called with the DR Target name or UUID: [#!variable!target!#] which wasn't found.]]></key>
@@ -957,7 +957,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0201"><![CDATA[The 'AN::Tools::System' module's 'change_postgresql_password()' was called without a user name to change the password for.]]></key>
 		<key name="error_message_0202"><![CDATA[The 'AN::Tools::System' module's 'change_postgresql_password()' wanting to change the password for the user: [#!variable!user!#], but no password was given.]]></key>
 		<key name="error_message_0203"><![CDATA[The 'AN::Tools::System' module's 'change_postgresql_password()' wanting to change the password for the user: [#!variable!user!#], but was called without root privileges.]]></key>
-		<key name="error_message_0204"><![CDATA[The 'AN::Tools::Striker' module's 'update_striker_conf()' was called without a vairable to work on.]]></key>
+		<key name="error_message_0204"><![CDATA[The 'AN::Tools::Striker' module's 'update_striker_conf()' was called without a variable to work on.]]></key>
 		<key name="error_message_0205"><![CDATA[The 'AN::Tools::Striker' module's 'get_db_id_from_striker_conf()' was called without an array reference of host(s) to match.]]></key>
 		<key name="error_message_0206"><![CDATA[The 'AN::Tools::Striker' module's 'get_db_id_from_striker_conf()' was called with an empty array reference of host(s) to match.]]></key>
 		<key name="error_message_0207"><![CDATA[The 'AN::Tools::Cman' module's 'update_cluster_conf()' was called without an invalid Anvil! UUID string: [#!variable!anvil_uuid!#].]]></key>

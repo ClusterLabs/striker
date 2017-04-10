@@ -384,7 +384,7 @@ sub _insert_variables_into_string
 		# Die if I've looped too many times.
 		if ($i > $an->_error_limit)
 		{
-			die "$THIS_FILE ".__LINE__."; Infitie loop detected while inserting variables into the string: [$parameter->{string}].\n";
+			die "$THIS_FILE ".__LINE__."; Infinite loop detected while inserting variables into the string: [$parameter->{string}].\n";
 		}
 		$i++;
 	}

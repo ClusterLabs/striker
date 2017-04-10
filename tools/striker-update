@@ -322,7 +322,7 @@ if ($show_anvil_warning)
 		print "# updated, the nodes will be rebooted as well.\n";
 		print "#\n";
 		print "# Servers running on a node will be migrated to their peer node prior to\n";
-		print "# withdrawl. If a server's migration type is 'cold' (NOT the default), this\n";
+		print "# withdrawal. If a server's migration type is 'cold' (NOT the default), this\n";
 		print "# will cause the server to be rebooted.\n";
 		print "###############################################################################\n\n";
 	}
@@ -4380,7 +4380,7 @@ SWITCHES
 
  -h, -?, --help
 
-	Show this dialoge and exit.
+	Show this dialogue and exit.
 
  --master
 

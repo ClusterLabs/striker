@@ -3189,7 +3189,7 @@ sub query_ipmi_targets
 	return(0);
 }
 
-### TODO: This currently has no way of dealing with IPMI-equiped dashboards.
+### TODO: This currently has no way of dealing with IPMI-equipped dashboards.
 # This calls anvil-report-ipmi-details to find IPMI devices to scan. It also handles any user-defined IPMI 
 # devices set in striker.conf.
 sub find_ipmi_targets

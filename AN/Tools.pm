@@ -1427,7 +1427,7 @@ sub _fcntl_loaded
 	return ($self->{LOADED}{Fcntl});
 }
 
-# This is called when I need to parse a double-colon seperated string into two or more elements which 
+# This is called when I need to parse a double-colon separated string into two or more elements which 
 # represent keys in the 'conf' hash. Once suitably split up, the 'value' is read. For example, passing
 # ('conf', 'foo::bar') will return the previously-set value 'baz'.
 sub _get_hash_reference

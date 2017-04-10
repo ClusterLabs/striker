@@ -563,7 +563,7 @@ sub gather_virsh
 		# Record the state
 		$an->data->{gathered}{server}{$server}{'state'} = $state;
 		
-		# And if we're alive, disable withdrawl because we're hosting a server (or are about to).
+		# And if we're alive, disable withdrawal because we're hosting a server (or are about to).
 		$an->data->{gathered}{sys}{enable_withdraw} = 0;
 		
 		if ($state eq "paused")
@@ -1553,7 +1553,7 @@ fi;
 	}
 	close $file_handle;
 	
-	# If cman is running, enable withdrawl. If not, enable shut down.
+	# If cman is running, enable withdrawal. If not, enable shut down.
 	if ($an->data->{gathered}{daemon}{cman}{exit_code} eq "0")
 	{
 		$an->data->{gathered}{sys}{enable_withdraw} = 1;

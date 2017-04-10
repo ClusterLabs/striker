@@ -41,7 +41,7 @@ Other detected variables:
 
 Other detected variables:
 </key>
-		<key name="scan_storcli_note_0004">A new Broadcom (AVAGO/LSI) Storage controller Dirtual Drive (VD) has been found.
+		<key name="scan_storcli_note_0004">A new Broadcom (AVAGO/LSI) Storage controller Virtual Drive (VD) has been found.
 - On Controller: .... [#!variable!on_controller!#]
 - ID String: ........ [#!variable!id_string!#]
 - Creation Date: .... [#!variable!creation_date!#]
@@ -564,7 +564,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 DESCRIPTION
 
 This program is a "scan agent" for the ScanCore alert, monitoring and recovery
-tool for the Anvil! high-availabiltiy platform.
+tool for the Anvil! Intelligent Availability™ platform.
 
 It monitors health of LSI-based RAID controllers using the 'storcli64' command
 line tool. 
@@ -625,7 +625,7 @@ https://alteeve.com/w/Support
 		<key name="bus_number">Mainboard BUS Number</key>
 		<key name="cachevault_flash_size">Cachevault (FBU) Flash Size</key>	<!-- Also used in cachevaults -->
 		<key name="chip_revision">Controller ASIC Revision</key>
-		<key name="cluster_active">Conroller Cluster Active?</key>
+		<key name="cluster_active">Controller Cluster Active?</key>
 		<key name="cluster_permitted">Controller Cluster Permitted?</key>
 		<key name="cluster_support">Controller Cluster Supported?</key>
 		<key name="configurable_abort_consistency_check_on_error">User Configurable "Abort Consistency Check on Error"?</key>
@@ -764,7 +764,7 @@ https://alteeve.com/w/Support
 		<key name="oemid">Controller OEM Identification</key>
 		<key name="on_board_expander">On-Board Expander?</key>
 		<key name="on_board_memory_size">On-Board RAM Size</key>
-		<key name="patrol_read_rate_percent">Patrol Read Rate (Persent)</key>
+		<key name="patrol_read_rate_percent">Patrol Read Rate (Percent)</key>
 		<key name="patrol_read_reoccurrence">Patrol Read Interval</key>
 		<key name="pci_address">PCI Bus Address</key>
 		<key name="performance_metrics">Virtual Drive Performance Metrics Supported?</key>
@@ -833,9 +833,9 @@ https://alteeve.com/w/Support
 		<key name="support_power_save_max_with_cache">Maximum Power Save With Cache Supported?</key>
 		<key name="support_power_state">Power Save Supported?</key>
 		<key name="support_premium_feature_key">Premium Feature Keys Supported?</key>
-		<key name="support_protection_information">Support "Pretection Information"?</key>
+		<key name="support_protection_information">Support "Protection Information"?</key>
 		<key name="support_reset_now">Support "Reset Now"?</key>
-		<key name="support_scsi_enclusure_service_monitoring">Support SCSI Enclosure Service Monitoring?</key>
+		<key name="support_scsi_enclosure_service_monitoring">Support SCSI Enclosure Service Monitoring?</key>
 		<key name="support_security">Support Security?</key>
 		<key name="support_security_on_jbod">Support Security On JBOD?</key>
 		<key name="support_security_subsystem_class_association">Support Security Subsystem Class Association?</key>
@@ -915,7 +915,7 @@ https://alteeve.com/w/Support
 		<key name="remaining_capacity_alarm">Remaining Capacity Alarm</key>
 		<key name="remaining_capacity_low">Remaining Capacity Low?</key>	<!-- Warning -->
 		<key name="remaining_time_alarm_status">Remaining Time Alarm?</key>
-		<key name="remaining_time_alarm">Remainin Time Alarm Threshold</key>
+		<key name="remaining_time_alarm">Remaining Time Alarm Threshold</key>
 		<key name="replacement_required">Replacement Required?</key>	<!-- Warning -->	<!-- Also used in cachevaults -->
 		<key name="run_time_to_empty">Runtime To Empty</key>
 		<key name="specification_info">Specification Information</key>
@@ -929,7 +929,7 @@ https://alteeve.com/w/Support
 		<key name="capacitance">Capacitance (Percent)</key>
 		<key name="pack_energy">Cachevault Pack Energy</key>
 		<key name="remaining_reserve_space">Remaining Reserve Space</key>
-		<key name="tmmfru">TMM Field Replacable Unit Number</key>
+		<key name="tmmfru">TMM Field Replaceable Unit Number</key>
 		
 		<!-- Virtual Drive -->
 		<key name="active_operations">Active Operations</key>
@@ -974,7 +974,7 @@ https://alteeve.com/w/Support
 		<key name="drive_model">Drive Model Number</key>
 		<key name="drive_size">Drive Capacity</key>
 		<key name="emergency_spare">Emergency Spare?</key>
-		<key name="enclosure_position">Enclusure Position</key>
+		<key name="enclosure_position">Enclosure Position</key>
 		<key name="firmware_release_number">Firmware Release Number</key>
 		<key name="firmware_revision">Firmware Revision</key>
 		<key name="interface">Interface Type</key>
