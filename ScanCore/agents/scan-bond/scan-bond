@@ -1089,7 +1089,7 @@ sub find_changes
 					{
 						$say_old_bond_primary_reselect = "#!string!scan_bond_reselect_9999!#";
 					}
-					if ($new_bond_primary_reselect !~ /^\d+/) or (($new_bond_primary_reselect < 0) or ($new_bond_primary_reselect > 2)))
+					if (($new_bond_primary_reselect !~ /^\d+/) or (($new_bond_primary_reselect < 0) or ($new_bond_primary_reselect > 2)))
 					{
 						$say_new_bond_primary_reselect = "#!string!scan_bond_reselect_9999!#";
 					}

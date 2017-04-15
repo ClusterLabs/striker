@@ -1703,8 +1703,9 @@ AND
 						$old_apc_ups_battery_health = 99;
 					}
 					
-					my $level     = "notice";
-					my $title_key = "an_alert_title_0003";
+					my $level       = "notice";
+					my $title_key   = "an_alert_title_0003";
+					my $message_key = "scan_apc_ups_note_0061";
 					
 					### There are 2 possible states  (* == warning):
 					#  1 - The UPS battery is healthy.
