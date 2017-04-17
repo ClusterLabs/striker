@@ -1382,7 +1382,7 @@ INSERT INTO
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			$an->Alert->register_alert({
-				alert_level		=>	"notice", 
+				alert_level		=>	"warning", 
 				alert_agent_name	=>	$THIS_FILE,
 				alert_title_key		=>	"scan_server_message_0003",
 				alert_title_variables	=>	{

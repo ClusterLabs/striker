@@ -293,7 +293,7 @@ if ($an->data->{switches}{'no-refresh'})
 	print "we will use what is already cached in:\n";
 	print "- Striker: [".$an->data->{path}{updates}{striker}."]\n\n";
 }
-elsif (($an->data->{switches}{master}) && (not $an->data->{sys}{offline}))
+elsif (($an->data->{switches}{master}) && (not $an->data->{switches}{offline}))
 {
 	print "We will download the latest source code from GitHub's master branch.\n";
 	print "- NOTE: This should only be done on test and development platforms!\n\n";
@@ -1865,7 +1865,7 @@ sub update_nodes
 	}
 	sleep 2;
 	
-	print "- Verifying that all servers are off of: [$say_second_node]...";
+	print "- Verifying that all servers are off of: [$say_second_node]...\n";
 	$shell_call = $an->data->{path}{virsh}." list --all";
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target     => $target,
@@ -3442,7 +3442,7 @@ sub convert_iso_to_files
 			}, file => $THIS_FILE, line => __LINE__});
 			if (-e $source_check)
 			{
-				print "- Mounted successfully. Copying source to: [$img_directory]";
+				print "- Mounted successfully. Copying source to: [$img_directory]\n";
 				rsync_data($an, $temporary_mount."/*", $img_directory);
 			}
 			
