@@ -2419,6 +2419,16 @@ creating or editing ~/.gconf/apps/virt-manager.
 
 SWITCHES
 
+ --disable
+ 
+	This disables this program by setting:
+	
+		tools::striker-configure-vmm::enabled = 0
+	
+	in #!data!path::striker_config!#.
+	
+	It also removes the link to this program from GDM's PreSession script.
+
  --enable
 
 	This enables this program by setting:
@@ -2431,16 +2441,6 @@ SWITCHES
 	it will run as the user logs in, ensuring virt-manager is always 
 	configured properly.
 
- --disable
- 
-	This disables this program by setting:
-	
-		tools::striker-configure-vmm::enabled = 0
-	
-	in #!data!path::striker_config!#.
-	
-	It also removes the link to this program from GDM's PreSession script.
-
  --force
 
 	This will prevent the program from confirming with the user before 
@@ -2449,6 +2449,11 @@ SWITCHES
  -h, -?, --help
 
 	Show this dialogue and exit.
+
+ --status
+ 
+	Prints out a short message indicating whether VMM will be configured
+	when gnome logs in or not.
 
                   
 SUPPORT
@@ -2459,6 +2464,8 @@ SUPPORT
 ]]>
 		</key>
 		<key name="scv_message_0016">Setting up passwordless SSH to the nodes (which will do nothing if that feature is disabled).</key>
+		<key name="scv_message_0017">Configuration of Virtual Machine Manager on Gnome login is enabled.</key>
+		<key name="scv_message_0018">Configuration of Virtual Machine Manager on Gnome login is disabled.</key>
 		
 		<!-- warning messages -->
 		<key name="scv_warning_0001">Failed to disable #!variable!this_file!#! Please set 'tools::striker-configure-vmm::enabled = 0' manually.</key>

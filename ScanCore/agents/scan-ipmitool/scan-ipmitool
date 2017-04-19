@@ -739,6 +739,15 @@ sub find_changes
 					name7 => "new_ipmitool_sensor_low_warning",   value7 => $new_ipmitool_sensor_low_warning, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				# If the value is NULL and it's a digit-based value, switch it to '0'
+				if ((($new_ipmitool_sensor_units eq "C") or ($new_ipmitool_sensor_units eq "F") or ($new_ipmitool_sensor_units eq "RPM")) && ($new_ipmitool_value_sensor_value eq "NULL"))
+				{
+					$new_ipmitool_value_sensor_value = 0;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "new_ipmitool_value_sensor_value", value1 => $new_ipmitool_value_sensor_value, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
 				# Have I seen this sensor before?
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "ref(sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name})", value1 => ref($an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}), 
@@ -765,6 +774,15 @@ sub find_changes
 						name7 => "old_ipmitool_sensor_low_critical",  value7 => $old_ipmitool_sensor_low_critical, 
 						name8 => "old_ipmitool_sensor_low_warning",   value8 => $old_ipmitool_sensor_low_warning, 
 					}, file => $THIS_FILE, line => __LINE__});
+					
+					# If the value is NULL and it's a digit-based value, switch it to '0'
+					if ((($old_ipmitool_sensor_units eq "C") or ($old_ipmitool_sensor_units eq "F") or ($old_ipmitool_sensor_units eq "RPM")) && ($old_ipmitool_value_sensor_value eq "NULL"))
+					{
+						$old_ipmitool_value_sensor_value = 0;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "old_ipmitool_value_sensor_value", value1 => $old_ipmitool_value_sensor_value, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
 					
 					# These will be used in alert messages, if needed.
 					my $sensor_name      = "name=$ipmitool_sensor_name:units=$new_ipmitool_sensor_units";
@@ -986,10 +1004,24 @@ AND
 				}
 				else
 				{
+					### NOTE: If the new value is 'na', we ignore it as it is likely a 
+					###       sensor that doesn't actually exist.
+					if ($an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value} eq "NULL")
+					{
+						# Ignore it.
+						$an->Log->entry({log_level => 3, message_key => "scan_ipmitool_log_0005", message_variables => { sensor_name => $ipmitool_sensor_name }, file => $THIS_FILE, line => __LINE__});
+						delete $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name};
+						next;
+					}
+					
 					### New record, INSERT it and sent an 'notice' level alert.
 					# Generate a new UUID for this ipmi target.
 					my $ipmitool_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});;
+					
+					# Record the new UUID
 					$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid} = $ipmitool_uuid;
+					
+					# Save the new sensor.
 					my $query = "
 INSERT INTO 
     ipmitool 
@@ -1116,6 +1148,16 @@ INSERT INTO
 					name1 => "ipmitool_sensor_name", value1 => $ipmitool_sensor_name, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				### NOTE: If the new value is 'na', we ignore it as it is likely a 
+				###       sensor that doesn't actually exist.
+				if ($an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value} eq "NULL")
+				{
+					# Ignore it.
+					$an->Log->entry({log_level => 3, message_key => "scan_ipmitool_log_0005", message_variables => { sensor_name => $ipmitool_sensor_name }, file => $THIS_FILE, line => __LINE__});
+					delete $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name};
+					next;
+				}
+				
 				# Generate and record the UUID
 				my $ipmitool_uuid                     = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
 				$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid} = $ipmitool_uuid;
@@ -1136,6 +1178,15 @@ INSERT INTO
 					name6 => "new_ipmitool_sensor_low_critical",  value6 => $new_ipmitool_sensor_low_critical, 
 					name7 => "new_ipmitool_sensor_low_warning",   value7 => $new_ipmitool_sensor_low_warning, 
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If the value is NULL and it's a digit-based value, switch it to '0'
+				if ((($new_ipmitool_sensor_units eq "C") or ($new_ipmitool_sensor_units eq "F") or ($new_ipmitool_sensor_units eq "RPM")) && ($new_ipmitool_value_sensor_value eq "NULL"))
+				{
+					$new_ipmitool_value_sensor_value = 0;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "new_ipmitool_value_sensor_value", value1 => $new_ipmitool_value_sensor_value, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 				
 				my $query = "
 INSERT INTO 
@@ -1620,6 +1671,17 @@ sub log_abnormal_temperatures
 	my $new_ipmitool_sensor_high_warning  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning};
 	my $new_ipmitool_sensor_low_critical  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical};
 	my $new_ipmitool_sensor_low_warning   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "machine",                         value1 => $machine, 
+		name2 => "ipmitool_sensor_name",            value2 => $ipmitool_sensor_name, 
+		name3 => "new_ipmitool_value_sensor_value", value3 => $new_ipmitool_value_sensor_value, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If the sensor value is 'na', ignore it.
+	if ($new_ipmitool_value_sensor_value eq "NULL")
+	{
+		return(0);
+	}
 	
 	### High Warning
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -1865,6 +1927,15 @@ sub process_temperature_change
 		name4 => "new_ipmitool_sensor_low_critical",  value4 => $new_ipmitool_sensor_low_critical, 
 		name5 => "new_ipmitool_sensor_low_warning",   value5 => $new_ipmitool_sensor_low_warning, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If the value is NULL and it's a digit-based value, switch it to '0'
+	if ($new_ipmitool_value_sensor_value eq "NULL")
+	{
+		$new_ipmitool_value_sensor_value = 0;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "new_ipmitool_value_sensor_value", value1 => $new_ipmitool_value_sensor_value, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# Old value, if it exists.
 	my $old_ipmitool_value_sensor_value = $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value} ? $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value} : 0;
@@ -3055,13 +3126,23 @@ sub query_ipmi_targets
 		{
 			chomp;
 			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => ">> line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 			   $line =~ s/^\s+//;
 			   $line =~ s/\s+$//;
 			   $line =~ s/\s+\|/|/g;
 			   $line =~ s/\|\s+/|/g;
-			   $line =~ s/na//g;
+			
+			my $i = 0;
+			while ($line =~ /\|na\|/)
+			{
+				$line =~ s/\|na\|/|NULL|/g;
+				$i++;
+				die "Loop processing: [$line]\n" if $i > 20;
+			}
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
+				name1 => "<< line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			### TODO: If we determine that the IPMI BMC is hung, set the health to '10'
@@ -3101,8 +3182,20 @@ sub query_ipmi_targets
 				$high_critical, 
 				$high_fail) = split /\|/, $line;
 			
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+				name1  => "sensor_name",   value1  => $sensor_name, 
+				name2  => "current_value", value2  => $current_value, 
+				name3  => "units",         value3  => $units, 
+				name4  => "status",        value4  => $status, 
+				name5  => "low_fail",      value5  => $low_fail, 
+				name6  => "low_critical",  value6  => $low_critical, 
+				name7  => "low_warning",   value7  => $low_warning, 
+				name8  => "high_warning",  value8  => $high_warning, 
+				name9  => "high_critical", value9  => $high_critical, 
+				name10 => "high_fail",     value10 => $high_fail, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			next if not $sensor_name;
-			next if not $status;
 			next if not $status;
 			next if $units =~ /discrete/;
 			#next if $status =~ /^0x/;
@@ -3111,6 +3204,9 @@ sub query_ipmi_targets
 			$units = "%" if $units =~ /percent/i;
 			$units = "W" if $units =~ /watt/i;
 			$units = "V" if $units =~ /volt/i;
+			
+			# The status line is NOT NULL, so I need to change it to 'na' (not available).
+			$status = "na" if $status eq "NULL";
 			
 			# Values in the DB that are 'double precision' must be 'NULL' if not set.
 			$current_value = 'NULL' if not $current_value;

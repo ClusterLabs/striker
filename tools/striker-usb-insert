@@ -1125,13 +1125,13 @@ fi;";
 					if ($line =~ /rc:(\d+)/)
 					{
 						my $return_code = $1;
-						if ($return_code eq "0")
+						if ($return_code eq "3")
 						{
 							# It is not running.
 							$start_nfs = 1;
 							logger($conf, $THIS_FILE, __LINE__, "NFS is NOT running, it will be started now.");
 						}
-						elsif ($return_code eq "3")
+						elsif ($return_code eq "0")
 						{
 							logger($conf, $THIS_FILE, __LINE__, "NFS is running, no further action needed.");
 						}

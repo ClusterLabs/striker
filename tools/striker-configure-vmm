@@ -192,7 +192,7 @@ $an->default_log_language($an->data->{sys}{log_language});
 $an->default_log_file    ($an->data->{path}{log_file});
 $an->Log->level          ($an->data->{sys}{log_level});
 $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
-$an->Storage->read_words  ({file => $an->data->{path}{striker_strings}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 
 if (($an->data->{switches}{h})   or 
@@ -228,6 +228,11 @@ elsif ($an->data->{switches}{disable})
 	# Remove ourself to GDM's PreSession script, if needed.
 	manage_gdm_presession($an, "remove");
 	update_configuration($an, "disable");
+	$an->nice_exit({exit_code => 0});
+}
+elsif (($an->data->{switches}{status}) or ($an->data->{switches}{'state'}))
+{
+	manage_gdm_presession($an, "status");
 	$an->nice_exit({exit_code => 0});
 }
 
@@ -458,11 +463,11 @@ sub manage_gdm_presession
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Read in the existing one.
-	my $raw_file     = "";
-	my $changed      = 0;
-	my $entry_exists = 0;
-	my $path         = $an->data->{path}{gdm_presession};
-	my $shell_call   = $path;
+	my $raw_file       = "";
+	my $changed        = 0;
+	my $entry_exists   = 0;
+	my $path           = $an->data->{path}{gdm_presession};
+	my $shell_call     = $path;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -488,7 +493,21 @@ sub manage_gdm_presession
 	}
 	close $file_handle;
 	
-	if ((not $entry_exists) && ($task eq "add"))
+	if ($task eq "status")
+	{
+		if ($entry_exists)
+		{
+			# Enabled.
+			print $an->String->get({key => "scv_message_0017"})."\n";
+		}
+		else
+		{
+			# Disabled.
+			print $an->String->get({key => "scv_message_0018"})."\n";
+		}
+		$changed = 0;
+	}
+	elsif ((not $entry_exists) && ($task eq "add"))
 	{
 		$raw_file .= $0."\n";
 		$changed   = 1;
