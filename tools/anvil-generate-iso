@@ -137,6 +137,8 @@ my $conf = {
 			'efd54b939787519b350d986329e2c7a3'	=>	"CentOS 6.7, Disk 2",
 			'f73c2c4dd333c202ca85ea66120cacdf'	=>	"CentOS 6.8, Disk 1",
 			'cdd5b1c1af837774f4fa3a105365a218'	=>	"CentOS 6.8, Disk 2",
+			'2e227fa14c8a9791293b6525289c7dad'	=>	"CentOS 6.9, Disk 1",
+			'e2152e0eeb082a92c0f925e7a99c872c'	=>	"CentOS 6.9, Disk 2",
 		},
 		# This will be set to 'rhel' or 'centos', depending on the source ISO type.
 		os		=>	"",
