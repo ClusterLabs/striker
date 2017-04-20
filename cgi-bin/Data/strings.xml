@@ -577,7 +577,7 @@
 		<key name="row_0097">Enabling the Server</key>
 		<key name="row_0098">Starting</key>
 		<key name="row_0099">Beginning</key>
-		<key name="row_0100">#!free!#</key>
+		<key name="row_0100">No Storage</key>
 		<key name="row_0101">#!free!#</key>
 		<key name="row_0102">Bad Server Name</key>
 		<key name="row_0103">Duplicate Server Name</key>
@@ -1452,7 +1452,7 @@
 		<key name="message_0122">#!free!#</key>
 		<key name="message_0123">#!free!#</key>
 		<key name="message_0124">#!free!#</key>
-		<key name="message_0125">#!free!#</key>
+		<key name="message_0125"><![CDATA[No storage was requested for this server.]]></key>
 		<key name="message_0126">No change to the hardware configuration.</key>
 		<key name="message_0127"><![CDATA[The server name can't have spaces or any of the following characters in the name: [<span class="highlight_detail">; &amp; | $ ^ &lt; &gt; [ ] ( ) { } !</span>].]]></key>
 		<key name="message_0128"><![CDATA[The server name <span class="fixed_width">#!variable!server!#</span> is already in use.]]></key>

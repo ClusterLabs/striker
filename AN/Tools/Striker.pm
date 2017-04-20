@@ -4671,13 +4671,18 @@ sub _confirm_provision_server
 	# Sort out my data from CGI
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	my $scan_anvil = defined $parameter->{scan_anvil} ? $parameter->{scan_anvil} : 1;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
+		name3 => "scan_anvil", value3 => $scan_anvil,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Scan the Anvil!
-	$an->Striker->scan_anvil();
+	if ($scan_anvil)
+	{
+		$an->Striker->scan_anvil();
+	}
 	
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -13351,7 +13356,7 @@ sub _process_task
 			{
 				# Something wasn't sane.
 				$an->Log->entry({log_level => 2, message_key => "log_0217", file => $THIS_FILE, line => __LINE__});
-				$an->Striker->_confirm_provision_server();
+				$an->Striker->_confirm_provision_server({scan_anvil => 0});
 			}
 		}
 		else
@@ -15326,6 +15331,10 @@ sub _verify_server_config
 			name1 => "host_node", value1 => $an->data->{new_server}{host_node},
 			name2 => "vg_list",   value2 => $an->data->{cgi}{vg_list},
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# We'll set this to '1' if storage was requested. This is how we catch when someone forgets 
+		# to ask for any storage.
+		my $storage_requested = 0;
 		foreach my $vg (split /,/, $an->data->{cgi}{vg_list})
 		{
 			my $short_vg   = $vg;
@@ -15347,10 +15356,11 @@ sub _verify_server_config
 			my $say_node      = $short_node;
 			my $vg_key        = "vg_$vg";
 			my $vg_suffix_key = "vg_suffix_$vg";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "say_node",      value1 => $say_node,
 				name2 => "vg_key",        value2 => $vg_key,
 				name3 => "vg_suffix_key", value3 => $vg_suffix_key,
+				name4 => "cgi::$vg_key",  value4 => $an->data->{cgi}{$vg_key},
 			}, file => $THIS_FILE, line => __LINE__});
 			next if not $an->data->{cgi}{$vg_key};
 			
@@ -15432,11 +15442,20 @@ sub _verify_server_config
 					
 					push @{$an->data->{new_server}{vg}{$vg}{lvcreate_size}}, "$lv_size";
 				}
+				$storage_requested = 1;
 			}
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "host_node", value1 => $an->data->{new_server}{host_node},
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Error if the user didn't request disk space.
+		if (not $storage_requested)
+		{
+			my $say_row     = $an->String->get({key => "row_0100"});
+			my $say_message = $an->String->get({key => "message_0129"});
+			push @errors, "$say_row#!#$say_message";
+		}
 		
 		# Make sure the user specified an install disc.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
