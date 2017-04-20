@@ -3966,6 +3966,7 @@ sub get_package_list
 		"libidn.x86_64",
 		"libiec61883.x86_64",
 		"libjpeg-turbo.x86_64",
+		"libkadm5.x86_64",
 		"libmcpp.x86_64",
 		"libmng.x86_64",
 		"libnih.x86_64",
@@ -4211,7 +4212,8 @@ sub get_package_list
 		"pygtk2.x86_64",
 		"pyorbit.x86_64",
 		"python-argparse.noarch",
-		"python-dateutil.noarch", 
+		"python-dateutil.noarch",
+		"python-decorator.noarch",
 		"python-deltarpm.x86_64",
 		"python-dmidecode.x86_64", 
 		"python-ethtool.x86_64",
@@ -4220,6 +4222,7 @@ sub get_package_list
 		"python-lxml.x86_64",
 		"python-magic.x86_64",
 		"python-pycurl.x86_64",
+		"python-six.noarch",
 		"python-suds.noarch",
 		"python-urlgrabber.noarch",
 		"python-virtinst.noarch",
@@ -4426,6 +4429,7 @@ sub get_package_list
 	$conf->{sys}{packages}{rhel} = [
 		"python-gudev.x86_64",					# python-gudev-147.1-4.el6_0.1.x86_64.rpm
 		"python-rhsm.x86_64",					# python-rhsm-1.14.3-1.el6.x86_64.rpm
+		"python-rhsm-certificates.x86_64",			# python-rhsm-certificates
 		"redhat-indexhtml.noarch",				# redhat-indexhtml-6-6.el6.noarch.rpm
 		"redhat-release-server.x86_64",				# redhat-release-server-6Server-6.7.0.3.el6.x86_64.rpm
 		"redhat-support-lib-python.noarch",			# redhat-support-lib-python-0.9.7-3.el6.noarch.rpm
