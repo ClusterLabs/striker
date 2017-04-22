@@ -6031,7 +6031,9 @@ sub read_variable
 	# If we don't have a UUID, see if we can find one for the given SMTP server name.
 	my $query = "
 SELECT 
-    variable_value 
+    variable_value, 
+    variable_uuid, 
+    round(extract(epoch from modified_date)) 
 FROM 
     variables 
 WHERE ";
@@ -6060,6 +6062,7 @@ AND
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $variable_value = "";
+	my $modified_date  = "";
 	my $results        = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count          = @{$results};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -6069,14 +6072,18 @@ AND
 	foreach my $row (@{$results})
 	{
 		$variable_value = defined $row->[0] ? $row->[0] : "";
+		$variable_uuid  =         $row->[1];
+		$modified_date  =         $row->[2];
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "variable_name",  value1 => $variable_name, 
 			name2 => "variable_value", value2 => $variable_value, 
+			name3 => "variable_uuid",  value3 => $variable_uuid, 
+			name4 => "modified_date",  value4 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	return($variable_value);
+	return($variable_value, $variable_uuid, $modified_date);
 }
 
 # This generates an Install Manifest and records it in the 'manifests' table.

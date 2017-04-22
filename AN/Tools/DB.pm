@@ -2045,9 +2045,11 @@ sub locking
 	# If I have been asked to check, we will return the variable_uuid if a lock is set.
 	if ($check)
 	{
-		my $lock_value = $an->ScanCore->read_variable({variable_name => $variable_name});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "lock_value", value1 => $lock_value, 
+		my ($lock_value, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({variable_name => $variable_name});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "lock_value",    value1 => $lock_value, 
+			name2 => "variable_uuid", value2 => $variable_uuid, 
+			name3 => "modified_date", value3 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		return($lock_value);
@@ -2058,9 +2060,11 @@ sub locking
 	{
 		# We check to see if there is a lock before we clear it. This way we don't log that we 
 		# released a lock unless we really released a lock.
-		my $lock_value = $an->ScanCore->read_variable({variable_name => $variable_name});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "lock_value", value1 => $lock_value, 
+		my ($lock_value, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({variable_name => $variable_name});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "lock_value",    value1 => $lock_value, 
+			name2 => "variable_uuid", value2 => $variable_uuid, 
+			name3 => "modified_date", value3 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($lock_value)
@@ -2120,10 +2124,12 @@ sub locking
 		$waiting = 0;
 		
 		# See if we had a lock.
-		my $lock_value = $an->ScanCore->read_variable({variable_name => $variable_name});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "waiting",    value1 => $waiting, 
-			name2 => "lock_value", value2 => $lock_value, 
+		my ($lock_value, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({variable_name => $variable_name});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "waiting",       value1 => $waiting, 
+			name2 => "lock_value",    value2 => $lock_value, 
+			name3 => "variable_uuid", value3 => $variable_uuid, 
+			name4 => "modified_date", value4 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($lock_value =~ /^(.*?)::(.*?)::(\d+)/)
 		{
@@ -2451,9 +2457,11 @@ sub wait_if_db_is_updating
 	$an->Alert->_set_error;
 	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "wait_if_db_is_updating" }, file => $THIS_FILE, line => __LINE__});
 	
-	my $last_peer_state = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	my ($last_peer_state, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "last_peer_state", value1 => $last_peer_state,
+		name2 => "variable_uuid",   value2 => $variable_uuid, 
+		name3 => "modified_date",   value3 => $modified_date, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($last_peer_state) && ($last_peer_state =~ /^\d+$/))
 	{
@@ -2463,9 +2471,11 @@ sub wait_if_db_is_updating
 			$an->Log->entry({log_level => 1, message_key => "scancore_log_0092", file => $THIS_FILE, line => __LINE__});
 			sleep 10;
 			
-			$last_peer_state = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			($last_peer_state, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "last_peer_state", value1 => $last_peer_state,
+				name2 => "variable_uuid",   value2 => $variable_uuid, 
+				name3 => "modified_date",   value3 => $modified_date, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}

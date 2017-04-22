@@ -2604,27 +2604,31 @@ sub check_single_node_start
 			name2 => "last_booted_variable", value2 => $last_booted_variable,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $last_peer_state = $an->ScanCore->read_variable({
+		my ($last_peer_state, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({
 				variable_name         => $peer_state_variable,
 				variable_source_uuid  => $an->data->{sys}{host_uuid},
 				variable_source_table => "hosts",
 			});
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
 			name1 => "last_peer_state", value1 => $last_peer_state,
+			name2 => "variable_uuid",   value2 => $variable_uuid, 
+			name3 => "modified_date",   value3 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($last_peer_state eq "off")
 		{
 			# It was off. See if we've kicked it before and, if so, how long ago.
-			my $last_booted = $an->ScanCore->read_variable({
+			my ($last_booted, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({
 				variable_name         => $last_booted_variable,
 				variable_source_uuid  => $an->data->{sys}{host_uuid},
 				variable_source_table => "hosts",
 			});
 			$last_booted = 0 if not $last_booted;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "last_booted", value1 => $last_booted,
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "last_booted",   value1 => $last_booted,
+				name2 => "variable_uuid", value2 => $variable_uuid, 
+				name3 => "modified_date", value3 => $modified_date, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# I am allowed to boot when the current time is greater than the last boot time plus

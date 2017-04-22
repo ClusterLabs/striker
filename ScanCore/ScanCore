@@ -3179,15 +3179,17 @@ WHERE
 	# the health is equal or worse, we will clear this if it was set. If we're healthier, we will return
 	# '2' (requesting a migration) once this variable is older than 'scancore::health::migration_delay'.
 	my $variable_name  = "health_triggered_migration";
-	my $went_sick_time = $an->ScanCore->read_variable({
+	my ($went_sick_time, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({
 			variable_name         => $variable_name,
 			variable_source_uuid  => $an->data->{sys}{host_uuid},
 			variable_source_table => "hosts",
 		});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "variable_name",   value1 => $variable_name, 
 		name2 => "sys::host_uuid",  value2 => $an->data->{sys}{host_uuid}, 
 		name3 => "went_sick_time",  value3 => $went_sick_time, 
+		name4 => "variable_uuid",   value4 => $variable_uuid, 
+		name5 => "modified_date",   value5 => $modified_date, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# NOTE: We don't check the readiness of the peer to because 'anvil-migrate-server' has the health 
@@ -11075,7 +11077,7 @@ sub call_agents
 		### TODO: Put a time limit on these...
 		my $start_time =  time;
 		my $say_agent  = ($agent =~ /.*\/(.*)$/)[0];
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0015", message_variables => { agent => "$say_agent" }, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0015", message_variables => { agent => "$say_agent" }, file => $THIS_FILE, line => __LINE__});
 		
 		# I call these sequentially to minimize the load on the host.
 		my $agent_rc   = "9999";
@@ -11128,7 +11130,7 @@ WHERE
 AND
     agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -11161,7 +11163,7 @@ INSERT INTO
 );
 ";
 			$query =~ s/'NULL'/NULL/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -11180,7 +11182,7 @@ WHERE
     agent_uuid      = ".$an->data->{sys}{use_db_fh}->quote($agent_uuid)."
 ;";
 			$query =~ s/'NULL'/NULL/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
