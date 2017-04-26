@@ -2372,10 +2372,11 @@ sub check_fence_delay
 			# 0 = success
 			if (not $rc)
 			{
+				# The fence delay was changed, send out an alert
 				$an->Alert->register_alert({
-					alert_level		=>	"warning", 
+					alert_level		=>	"notice", 
 					alert_agent_name	=>	$THIS_FILE,
-					alert_title_key		=>	"an_alert_title_0004",
+					alert_title_key		=>	"an_alert_title_0003",
 					alert_message_key	=>	"scan_clustat_note_0027",
 					alert_message_variables	=>	{
 						node			=>	$my_name,

@@ -46,7 +46,7 @@ all strings with 'scan_clustat_'.
 		<key name="scan_clustat_note_0024">The server: [#!variable!service!#] has shutdown.</key>
 		<key name="scan_clustat_note_0025">The service: [#!variable!service!#] is being stopped on the host: [#!variable!host!#].</key>
 		<key name="scan_clustat_note_0026">The service: [#!variable!service!#] has been stopped.</key>
-		<key name="scan_clustat_note_0027">All servers are now running on: [#!variable!node!#], so the fence delay was changed to favour this node.</key>
+		<key name="scan_clustat_note_0027">All servers are now running on: [#!variable!node!#], so this node has been designated as the primary node.</key>
 		<key name="scan_clustat_note_0028">The server: [#!variable!service!#] has been migrated from: [#!variable!source!#] to: [#!variable!target!#].</key>
 		
 		<!-- Warnings. -->
