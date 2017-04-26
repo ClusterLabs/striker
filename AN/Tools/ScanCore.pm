@@ -1294,26 +1294,26 @@ WHERE
 	}
 	$query .= "
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return  = [];
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
 	{
-		my $recipient_uuid         = $row->[0];
-		my $recipient_anvil_uuid   = $row->[1];
-		my $recipient_notify_uuid  = $row->[2];
-		my $recipient_notify_level = $row->[3];
-		my $recipient_note         = $row->[4] ? $row->[4] : "";
-		my $modified_date          = $row->[5];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		my $recipient_uuid         =         $row->[0];
+		my $recipient_anvil_uuid   =         $row->[1];
+		my $recipient_notify_uuid  = defined $row->[2] ? $row->[2] : "";
+		my $recipient_notify_level = defined $row->[3] ? $row->[3] : "";
+		my $recipient_note         = defined $row->[4] ? $row->[4] : "";
+		my $modified_date          =         $row->[5];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 			name1 => "recipient_uuid",         value1 => $recipient_uuid, 
 			name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid, 
 			name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid, 

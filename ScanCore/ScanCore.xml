@@ -17,9 +17,10 @@ the main Striker strings file. Do this by prefixing all strings with
 		<key name="scancore_email_0001">[ #!string!scancore_brand_0001!# ] - #!variable!level!# - #!variable!subject!#</key>
 <!-- This forms the email, so do NOT translate 'From: ', 'To: ' or 'Subject: '! Also, there must be a blank line before the message body. -->
 		<key name="scancore_email_0002">
-From:    #!variable!from!#
-To:      #!variable!to!#
-Subject: #!variable!subject!#
+From:     #!variable!from!#
+To:       #!variable!to!#
+Subject:  #!variable!subject!#
+Reply-To: #!variable!reply_to!#
 
 #!variable!body!#
 		</key>
@@ -40,6 +41,7 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
   #!variable!message!#
 		</key>
 		<key name="scancore_email_0006">#!variable!message!#</key>
+		<key name="scancore_email_0007">Other recipients: #!variable!recipients!#</key>
 		
 		<!-- Strings that can change by rebranding -->
 		<key name="scancore_brand_0001">ScanCore</key>

@@ -145,12 +145,15 @@ my $conf = {
 };
 
 # Should I live?
+record($conf, "$THIS_FILE ".__LINE__."; Checking for duplicate runs.\n");
 avoid_duplicate_run($conf);
 
 # Who am I?
+record($conf, "$THIS_FILE ".__LINE__."; Getting my hostname.\n");
 get_hostname($conf);
 
 # What Anvil! am I in?
+record($conf, "$THIS_FILE ".__LINE__."; Reading the configuration file.\n");
 read_conf($conf);
 if (not $conf->{this_cluster})
 {
@@ -174,15 +177,19 @@ detected.
 }
 
 # Read in cluster.conf.
+record($conf, "$THIS_FILE ".__LINE__."; Reading the cluster configuration file.\n");
 read_cluster_conf($conf);
 
 # How am I?
+record($conf, "$THIS_FILE ".__LINE__."; Checking states.\n");
 read_states($conf);
 
 # Tell the user.
+record($conf, "$THIS_FILE ".__LINE__."; Sending the initial report.\n");
 initial_report($conf);
 
 # Infinite loop time
+record($conf, "$THIS_FILE ".__LINE__."; Entering run loop.\n");
 while (1)
 {
 	#record($conf, "$THIS_FILE ".__LINE__."; Checking for changes.\n");

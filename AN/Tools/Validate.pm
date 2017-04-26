@@ -62,11 +62,11 @@ sub is_cron_schedule
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_email" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_email" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $is_valid = 1;
 	my $schedule = $parameter->{schedule} ? $parameter->{schedule} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "schedule", value1 => $schedule,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -74,7 +74,7 @@ sub is_cron_schedule
 	{
 		# Yup. Convert it to the normal string though.
 		my $nickname = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "nickname", value1 => $nickname,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -92,28 +92,28 @@ sub is_cron_schedule
 		elsif ((lc($nickname) eq "yearly") or (lc($nickname) eq "annually"))
 		{
 			$schedule = "0 0 1 1 *";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "schedule", value1 => $schedule,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (lc($nickname) eq "monthly")
 		{
 			$schedule = "0 0 1 * *";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "schedule", value1 => $schedule,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (lc($nickname) eq "weekly")
 		{
 			$schedule = "0 0 * * 0";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "schedule", value1 => $schedule,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (lc($nickname) eq "daily")
 		{
 			$schedule = "0 0 * * *";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "schedule", value1 => $schedule,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -121,7 +121,7 @@ sub is_cron_schedule
 		{
 			# Really?! Oooookay.,,
 			$schedule = "0 * * * *";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "schedule", value1 => $schedule,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -129,7 +129,7 @@ sub is_cron_schedule
 		{
 			# Not valid.
 			$is_valid = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "is_valid", value1 => $is_valid,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -150,7 +150,7 @@ sub is_cron_schedule
 		my $days_of_month = $3;
 		my $months        = $4;
 		my $days_of_week  = $5;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "minutes",       value1 => $minutes,
 			name2 => "hours",         value2 => $hours,
 			name3 => "days_of_month", value3 => $days_of_month,
@@ -166,7 +166,7 @@ sub is_cron_schedule
 			{
 				my $left_side  = $1;
 				my $right_side = $2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "left_side",  value1 => $left_side,
 					name2 => "right_side", value2 => $right_side,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -180,7 +180,7 @@ sub is_cron_schedule
 					{
 						# The minute range is invalid
 						$is_valid = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "is_valid", value1 => $is_valid,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -192,7 +192,7 @@ sub is_cron_schedule
 					{
 						# The minute is invalid
 						$is_valid = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "is_valid", value1 => $is_valid,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -201,7 +201,7 @@ sub is_cron_schedule
 				{
 					# Not sure what the left side is, but it isn't valid.
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -212,7 +212,7 @@ sub is_cron_schedule
 				if ($right_side =~ /\D/)
 				{
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -226,7 +226,7 @@ sub is_cron_schedule
 				{
 					# The minute range is invalid
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -238,7 +238,7 @@ sub is_cron_schedule
 				{
 					# The minute is invalid
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -247,7 +247,7 @@ sub is_cron_schedule
 			{
 				# Invalid
 				$is_valid = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "is_valid", value1 => $is_valid,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -261,7 +261,7 @@ sub is_cron_schedule
 			{
 				my $left_side  = $1;
 				my $right_side = $2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "left_side",  value1 => $left_side,
 					name2 => "right_side", value2 => $right_side,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -275,7 +275,7 @@ sub is_cron_schedule
 					{
 						# The hour range is invalid
 						$is_valid = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "is_valid", value1 => $is_valid,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -287,7 +287,7 @@ sub is_cron_schedule
 					{
 						# The hour is invalid
 						$is_valid = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "is_valid", value1 => $is_valid,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -296,7 +296,7 @@ sub is_cron_schedule
 				{
 					# Not sure what the left side is, but it isn't valid.
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -307,7 +307,7 @@ sub is_cron_schedule
 				if ($right_side =~ /\D/)
 				{
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -321,7 +321,7 @@ sub is_cron_schedule
 				{
 					# The hour range is invalid
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -333,7 +333,7 @@ sub is_cron_schedule
 				{
 					# The hour is invalid
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -342,7 +342,7 @@ sub is_cron_schedule
 			{
 				# Invalid
 				$is_valid = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "is_valid", value1 => $is_valid,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -356,7 +356,7 @@ sub is_cron_schedule
 			{
 				my $left_side  = $1;
 				my $right_side = $2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "left_side",  value1 => $left_side,
 					name2 => "right_side", value2 => $right_side,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -370,7 +370,7 @@ sub is_cron_schedule
 					{
 						# The day_of_month range is invalid
 						$is_valid = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "is_valid", value1 => $is_valid,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -382,7 +382,7 @@ sub is_cron_schedule
 					{
 						# The day_of_month is invalid
 						$is_valid = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "is_valid", value1 => $is_valid,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -391,7 +391,7 @@ sub is_cron_schedule
 				{
 					# Not sure what the left side is, but it isn't valid.
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -402,7 +402,7 @@ sub is_cron_schedule
 				if ($right_side =~ /\D/)
 				{
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -416,7 +416,7 @@ sub is_cron_schedule
 				{
 					# The day_of_month range is invalid
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -428,7 +428,7 @@ sub is_cron_schedule
 				{
 					# The day_of_month is invalid
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -437,7 +437,7 @@ sub is_cron_schedule
 			{
 				# Invalid
 				$is_valid = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "is_valid", value1 => $is_valid,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -461,7 +461,7 @@ sub is_cron_schedule
 			elsif ($month =~ /^oct/i) { $month = 10; }
 			elsif ($month =~ /^nov/i) { $month = 11; }
 			elsif ($month =~ /^dec/i) { $month = 12; }
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "month", value1 => $month,
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -470,7 +470,7 @@ sub is_cron_schedule
 			{
 				my $left_side  = $1;
 				my $right_side = $2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "left_side",  value1 => $left_side,
 					name2 => "right_side", value2 => $right_side,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -484,7 +484,7 @@ sub is_cron_schedule
 					{
 						# The month range is invalid
 						$is_valid = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "is_valid", value1 => $is_valid,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -496,7 +496,7 @@ sub is_cron_schedule
 					{
 						# The month is invalid
 						$is_valid = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "is_valid", value1 => $is_valid,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -505,7 +505,7 @@ sub is_cron_schedule
 				{
 					# Not sure what the left side is, but it isn't valid.
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -516,7 +516,7 @@ sub is_cron_schedule
 				if ($right_side =~ /\D/)
 				{
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -530,7 +530,7 @@ sub is_cron_schedule
 				{
 					# The month range is invalid
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -542,7 +542,7 @@ sub is_cron_schedule
 				{
 					# The month is invalid
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -551,7 +551,7 @@ sub is_cron_schedule
 			{
 				# Invalid
 				$is_valid = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "is_valid", value1 => $is_valid,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -570,7 +570,7 @@ sub is_cron_schedule
 			elsif ($day_of_week =~ /^fri/i) { $day_of_week = 5; }
 			elsif ($day_of_week =~ /^sat/i) { $day_of_week = 6; }
 			elsif ($day_of_week eq "7")     { $day_of_week = 0; }
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "day_of_week", value1 => $day_of_week,
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -579,7 +579,7 @@ sub is_cron_schedule
 			{
 				my $left_side  = $1;
 				my $right_side = $2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "left_side",  value1 => $left_side,
 					name2 => "right_side", value2 => $right_side,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -593,7 +593,7 @@ sub is_cron_schedule
 					{
 						# The day_of_week range is invalid
 						$is_valid = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "is_valid", value1 => $is_valid,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -605,7 +605,7 @@ sub is_cron_schedule
 					{
 						# The day_of_week is invalid
 						$is_valid = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "is_valid", value1 => $is_valid,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -614,7 +614,7 @@ sub is_cron_schedule
 				{
 					# Not sure what the left side is, but it isn't valid.
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -625,7 +625,7 @@ sub is_cron_schedule
 				if ($right_side =~ /\D/)
 				{
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -639,7 +639,7 @@ sub is_cron_schedule
 				{
 					# The day_of_week range is invalid
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -651,7 +651,7 @@ sub is_cron_schedule
 				{
 					# The day_of_week is invalid
 					$is_valid = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "is_valid", value1 => $is_valid,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -660,7 +660,7 @@ sub is_cron_schedule
 			{
 				# Invalid
 				$is_valid = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "is_valid", value1 => $is_valid,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -670,12 +670,12 @@ sub is_cron_schedule
 	{
 		# Malformed.
 		$is_valid = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "is_valid", value1 => $is_valid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "is_valid", value1 => $is_valid,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($is_valid);
@@ -687,10 +687,10 @@ sub is_email
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_email" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_email" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $email = $parameter->{email} ? $parameter->{email} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "email", value1 => $email,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -700,12 +700,12 @@ sub is_email
 	if (valid($email))
 	{
 		$valid = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "valid", value1 => $valid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "valid", value1 => $valid,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($valid);
@@ -717,7 +717,7 @@ sub is_domain_name
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_domain_name" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_domain_name" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $name = $parameter->{name} ? $parameter->{name} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -753,7 +753,7 @@ sub is_integer_or_unsigned_float
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_integer_or_unsigned_float" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_integer_or_unsigned_float" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $number = $parameter->{number} ? $parameter->{number} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -845,7 +845,7 @@ sub is_url
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "is_url" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_url" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $url = $parameter->{url} ? $parameter->{url} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

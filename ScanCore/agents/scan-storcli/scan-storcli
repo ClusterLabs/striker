@@ -7419,6 +7419,17 @@ AND
 							# noisey later (better safe than sorry).
 							$an->data->{sys}{alert_sort}++; 
 							
+							# The 'Safe ID' seems to change frequently, so we 
+							# drop this to an 'info' level alert.
+							if ($variable eq "safe_id")
+							{
+								$alert_level = "info";
+								$title_key   = "an_alert_title_0002";
+								$message_key = "scan_storcli_note_0070";
+							}
+							
+							# If it is a temperature, we may want to make some 
+							# changes to the alert level/message.
 							if ($type ne "temperature")
 							{
 								if ($old_variable_value eq "VANISHED")
@@ -7465,6 +7476,7 @@ AND
 								}
 								# There more of interest... See: SELECT a.host_name, b.storcli_controller_serial_number AS sn, b.storcli_controller_model, c.storcli_variable_name AS variable, c.storcli_variable_value AS value, c.storcli_variable_is_temperature AS temp, c.modified_date FROM hosts a, storcli_controllers b, storcli_variables c WHERE a.host_uuid = b.storcli_controller_host_uuid AND b.storcli_controller_uuid = c.storcli_variable_source_uuid AND a.host_name = 'an-a07n01.alteeve.com';
 							}
+							
 							$an->Alert->register_alert({
 								alert_level		=>	$alert_level, 
 								alert_agent_name	=>	$THIS_FILE,

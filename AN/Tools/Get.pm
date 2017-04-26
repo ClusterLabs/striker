@@ -33,6 +33,7 @@ my $THIS_FILE = "Get.pm";
 # node_pdus
 # node_upses
 # notify_data
+# other_alert_recipients
 # owner_data
 # peer_network_details
 # pids				- Move to System.pm
@@ -2739,6 +2740,162 @@ WHERE
 	}
 	
 	return($return);
+}
+
+# This takes a user's email address and alert level and returns a comma-separated list of other alert 
+# recipients at the same or higher alert levels (if any).
+sub other_alert_recipients
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "other_alert_recipients" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# The use will be an email address. The 'level' is an integer representing the alert level of this 
+	# user (we'll build our list of recipients equal to and lower than this level).
+	# debug    = 5
+	# info     = 4
+	# notice   = 3
+	# warning  = 2
+	# critical = 1
+	# ignore   = 0
+	my $user       = defined $parameter->{user}       ? $parameter->{user}       : "";
+	my $user_level = defined $parameter->{level}      ? $parameter->{level}      : "";
+	my $anvil_uuid = defined $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "user",       value1 => $user, 
+		name2 => "user_level", value2 => $user_level, 
+		name3 => "anvil_uuid", value3 => $anvil_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I am getting peers for a node, I need to query the database. If it's a dashboard, I need to get
+	# it from the config file variables.
+	my $recipients = "";
+	if ($an->Get->what_am_i eq "dashboard")
+	{
+		# Loop through any notification targets.
+		my $this_level = "warning";
+		foreach my $this_user (split/,/, $an->data->{striker}{email}{notify})
+		{
+			$this_user =~ s/\s+//;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_user", value1 => $this_user, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($this_user =~ /^(.*?):(.*)$/)
+			{
+				$this_user  = $1;
+				$this_level = $2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "this_user",  value1 => $this_user, 
+					name2 => "this_level", value2 => $this_level, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# If this is the same user, skip it.
+			next if $this_user eq $user;
+			
+			# Convert the level to a number and see if it is lower than this user's level.
+			$this_level = $an->Alert->convert_level_name_to_number({level => $this_level});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_level", value1 => $this_level, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Skip this user if they're ignoring.
+			next if not $this_level;
+			
+			# If this user is equal to or less than the user, add them to the recipients list.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "user_level", value1 => $user_level, 
+				name2 => "this_level", value1 => $this_level, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($user_level >= $this_level)
+			{
+				$recipients .= "$this_user, ";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "recipients", value1 => $recipients, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	elsif ($anvil_uuid)
+	{
+		my $query = "
+SELECT 
+    a.anvil_name, 
+    b.notify_name, 
+    b.notify_target, 
+    c.recipient_notify_level 
+FROM 
+    anvils a, 
+    notifications b, 
+    recipients c 
+WHERE 
+    a.anvil_uuid = c.recipient_anvil_uuid 
+AND 
+    b.notify_uuid = c.recipient_notify_uuid 
+AND 
+    c.recipient_notify_level IS DISTINCT FROM 'ignore' 
+AND 
+    b.notify_target LIKE '%\@%' 
+AND 
+    a.anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $anvil_name    = $row->[0];
+			my $notify_name   = $row->[1];
+			my $notify_target = $row->[2];
+			my $notify_level  = $row->[3];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "anvil_name",    value1 => $anvil_name, 
+				name2 => "notify_name",   value2 => $notify_name,
+				name3 => "notify_target", value3 => $notify_target,
+				name4 => "notify_level",  value4 => $notify_level,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Skip if this recipient is the user.
+			next if $notify_target eq $user;
+			
+			# Convert this alert level to a number.
+			$notify_level = $an->Alert->convert_level_name_to_number({level => $notify_level});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "notify_level", value1 => $notify_level, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Skip this user if they're ignoring.
+			next if not $notify_level;
+			
+			# If this user is equal to or less than the user, add them to the recipients list.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "user_level",   value1 => $user_level, 
+				name2 => "notify_level", value1 => $notify_level, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($user_level >= $notify_level)
+			{
+				$recipients .= "$notify_target, ";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "recipients", value1 => $recipients, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	$recipients =~ s/, $//;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "recipients", value1 => $recipients, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($recipients);
 }
 
 # This returns data about the given Anvil! owner (taking either the owner name or its UUID)

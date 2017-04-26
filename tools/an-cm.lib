@@ -235,7 +235,8 @@ sub check_host
 	my $vd        = "";
 	my $target_id = "";
 	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{ipmitool} sdr";
+	my $sc = $conf->{path}{ipmitool}." sdr";
+	#record($conf, "$THIS_FILE ".__LINE__."; shell call: [".$sc."]\n");
 	open ($fh, "$sc 2>&1 |") || die "Failed to call: [$sc], error: $!\n";
 	while (<$fh>)
 	{
@@ -7894,22 +7895,32 @@ sub check_mail_config
 	my ($conf) = @_;
 	
 	my $write_relay_file = 0;
-	record($conf, "$THIS_FILE ".__LINE__."; Checking to see of the email relay file: [$conf->{path}{postfix_relay_file}] needs to be updated.\n");
+	record($conf, "$THIS_FILE ".__LINE__."; Checking to see of the email relay file: [".$conf->{path}{postfix_relay_file}."] needs to be updated.\n");
 	if (-e $conf->{path}{postfix_relay_file})
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; It exists, reading it.\n");
 		my $alt_server_found = 0;
-		open (my $file_handle, "<", "$conf->{path}{postfix_relay_file}") or die "Failed to read: [./version], the error was: $!\n";
+		open (my $file_handle, "<".$conf->{path}{postfix_relay_file}) or die "Failed to read: [".$conf->{path}{postfix_relay_file}."], the error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line].\n");
 			if ($line =~ /^(.*?):(\d+)\s(.*?):(.*)$/)
 			{
 				my $domain   = $1;
 				my $port     = $2;
 				my $username = $3;
 				my $password = $4;
+				record($conf, "$THIS_FILE ".__LINE__."; >> domain: [$domain]\n");
+				$domain =~ s/^\[//;
+				$domain =~ s/\]$//;
+				record($conf, "$THIS_FILE ".__LINE__."; << domain: [$domain]\n");
+				
+				record($conf, "$THIS_FILE ".__LINE__."; domain: [$domain], smtp::server: [".$conf->{smtp}{server}."].\n");
+				record($conf, "$THIS_FILE ".__LINE__."; port: [$port], smtp::port: [".$conf->{smtp}{port}."].\n");
+				record($conf, "$THIS_FILE ".__LINE__."; username: [$username], smtp::username: [".$conf->{smtp}{username}."].\n");
+				record($conf, "$THIS_FILE ".__LINE__."; password: [$password], smtp::password: [".$conf->{smtp}{password}."].\n");
 				if (($domain   ne $conf->{smtp}{server})   or 
 				    ($port     ne $conf->{smtp}{port})     or 
 				    ($username ne $conf->{smtp}{username}) or 
@@ -7923,21 +7934,29 @@ sub check_mail_config
 			{
 				my $alt_domain = $1;
 				my $alt_port   = $2;
+				record($conf, "$THIS_FILE ".__LINE__."; alt_domain: [$alt_domain]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; alt_port: [$alt_port]\n");
+				
 				my $port       = $conf->{smtp}{alt_port}   ? $conf->{smtp}{alt_port}   : $conf->{smtp}{port};
 				my $alt_server = $conf->{smtp}{alt_server} ? $conf->{smtp}{alt_server} : "";
 				
+				record($conf, "$THIS_FILE ".__LINE__."; alt_domain: [$alt_domain], alt_server: [$alt_server]\n");
+				record($conf, "$THIS_FILE ".__LINE__."; alt_port: [$alt_port], port: [$port]\n");
 				if (($alt_domain ne $alt_server) or ($port ne $alt_port))
 				{
 					$write_relay_file = 1;
+					record($conf, "$THIS_FILE ".__LINE__."; The alternate mail server details have changed, rewriting the relay file.\n");
 				}
 				$alt_server_found = 1;
 			}
 		}
 		close $file_handle;
 		
+		record($conf, "$THIS_FILE ".__LINE__."; smtp::alt_server: [".$conf->{smtp}{alt_server}."], alt_server_found: [$alt_server_found].\n");
 		if (($conf->{smtp}{alt_server}) && (not $alt_server_found))
 		{
 			$write_relay_file = 1;
+			record($conf, "$THIS_FILE ".__LINE__."; An alternate server was specified but no alternate server was configured yet, rewriting the relay file.\n");
 		}
 	}
 	else

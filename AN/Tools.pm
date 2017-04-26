@@ -661,6 +661,8 @@ sub _set_defaults
 	
 	# Striker stuff
 	$an->data->{striker}{log_db_transactions}              = 0;
+	$an->data->{striker}{email}{use_server}                = "";
+	$an->data->{striker}{email}{notify}                    = "";
 	
 	# Remote USB stuff
 	$an->data->{'remote-usb'}{enable_remote_usb_mount}     = 0;
