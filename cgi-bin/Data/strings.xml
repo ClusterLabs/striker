@@ -1108,7 +1108,7 @@
 		
 		
 		<!-- Titles used in tables (and options in <select> fields) -->
-		<key name="title_0001">#!free!#</key>
+		<key name="title_0001">Natification target changes saved</key>
 		<key name="title_0002">#!free!#</key>
 		<key name="title_0003">#!free!#</key>
 		<key name="title_0004">#!free!#</key>
@@ -1317,9 +1317,10 @@
 		<key name="title_0208">About to abort the download.</key>
 		<key name="title_0209">Download aborted.</key>
 		<key name="title_0210"><![CDATA[About to live-migrate the server: [<span class="highlight_detail">#!variable!server!#</span>] to: [<b><span class="highlight_detail">#!variable!target!#</span></b>].]]></key>
+		<key name="title_0211">Add, edit or delete notification targets that alerts can be sent to.</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
-		<key name="message_0001">#!free!#</key>
+		<key name="message_0001"><![CDATA[Successfully saved changes for the: [<span class="highlight_detail">#!variable!target!#</span>] notification target.]]></key>
 		<key name="message_0002">#!free!#</key>
 		<key name="message_0003">#!free!#</key>
 		<key name="message_0004">#!free!#</key>

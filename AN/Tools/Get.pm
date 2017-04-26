@@ -2839,6 +2839,10 @@ AND
 AND 
     b.notify_target LIKE '%\@%' 
 AND 
+    b.notify_target != ".$an->data->{sys}{use_db_fh}->quote($user)."
+AND 
+    b.notify_note IS DISTINCT FROM 'DELETED' 
+AND 
     a.anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)."
 ;";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2873,15 +2877,12 @@ AND
 				name1 => "notify_level", value1 => $notify_level, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# Skip this user if they're ignoring.
-			next if not $notify_level;
-			
 			# If this user is equal to or less than the user, add them to the recipients list.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "user_level",   value1 => $user_level, 
-				name2 => "notify_level", value1 => $notify_level, 
+				name2 => "notify_level", value2 => $notify_level, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($user_level >= $notify_level)
+			if ($user_level <= $notify_level)
 			{
 				$recipients .= "$notify_target, ";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {

@@ -3597,7 +3597,7 @@ sub process_alerts
 	
 	# Get notification target data so that we know what languages to search for keys in.
 	my $languages = [];
-	my $query     = "SELECT notify_language FROM notifications";
+	my $query     = "SELECT DISTINCT notify_language FROM notifications;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3676,7 +3676,6 @@ ORDER BY
 			name10 => "modified_date",           value10 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		### TODO: Something is putting duplicate entries in $languages array ref.
 		# Check to make sure we have both the $alert_title_key and $alert_message_key. If we're 
 		# missing either, we'll send a generic "oh crap" alert and then delete it so that Strings 
 		# doesn't error out and block alert emails.
@@ -4071,7 +4070,7 @@ sub send_email
 					name1 => "user_level",  value1 => $user_level, 
 					name2 => "alert_level", value2 => $alert_level, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if ($user_level <= $alert_level)
+				if ($user_level >= $alert_level)
 				{
 					if ($alert_header)
 					{

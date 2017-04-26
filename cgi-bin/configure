@@ -1045,7 +1045,10 @@ sub save_notify_form
 	my $error_fields   = [];
 	my $notice_message = "";
 	
-	# Do I have an notify?
+	# Do I have a notification target?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::notify_target", value1 => $an->data->{cgi}{notify_target},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{cgi}{notify_target})
 	{
 		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0308!#" }});
@@ -1088,6 +1091,18 @@ sub save_notify_form
 		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
 				title	=>	"#!string!title_0194!#",
 				errors	=>	$error_body,
+			}});
+	}
+	else
+	{
+		# It saved, return a success message.
+		my $message        = $an->String->get({key => "message_0001", variables => { target => $an->data->{cgi}{notify_target} }});
+		   $notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
+				title		=>	"#!string!title_0001!#",
+				row_class	=>	"highlight_good_bold",
+				row_body	=>	"#!string!row_0083!#",
+				message_class	=>	"",
+				message_body	=>	$message,
 			}});
 	}
 	
@@ -5546,7 +5561,7 @@ sub notify_menu
 	{
 		# Save, if something changed.
 		($notice_message, $error_fields) = save_notify_form($an);
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -5840,7 +5855,7 @@ sub notify_menu
 	
 	# Put the menu template together
 	my $menu = $an->Web->template({file => "web.html", template => "generic-4column-menu", replace => {
-			title		=>	"#!string!title_0199!#",
+			title		=>	"#!string!title_0211!#",
 			menu_items	=>	$menu_items,
 		}});
 	# Wrap it in a <form>
