@@ -187,6 +187,12 @@ $an->data->{sys}{debug} = 1 if $an->data->{switches}{v};
 $an->data->{sys}{debug} = 2 if $an->data->{switches}{vv};
 $an->data->{sys}{debug} = 3 if $an->data->{switches}{vvv};
 
+# If the user used '--anvil', copy it to 'anvil-name')
+if ($an->data->{switches}{'anvil'})
+{
+	$an->data->{switches}{'anvil-name'} = $an->data->{switches}{'anvil'};
+}
+
 # Is this a striker dashboard?
 if (not -e $an->data->{path}{striker})
 {
@@ -4352,7 +4358,7 @@ ISO-mounted repo to a normal file (and remove the ISO from /etc/fstab).
 
 SWITCHES
 
- --anvil-name {all,<anvil_name>}
+ --anvil, --anvil-name {all,<anvil_name>}
  --anvil-uuid <anvil_uuid>
 
 	This is the Anvil! name or UUID to update. When '--gather-only' is 

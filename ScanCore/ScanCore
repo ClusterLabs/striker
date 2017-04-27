@@ -11279,6 +11279,7 @@ sub scan_directory
 			push @{$an->data->{sys}{agents}}, $full_path;
 		}
 	}
+	closedir(DIRECTORY);
 	
 	return(0);
 }
