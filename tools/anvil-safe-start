@@ -1001,7 +1001,7 @@ sub wait_for_storage
 						# should be picked up in the next loop.
 						if ((not $storage_enabled) && ($state eq "disabled"))
 						{
-							my $shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{clusvcadm}." -e $service || ".$an->data->{path}{echo}." timed out";
+							my $shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{clusvcadm}." -F -e $service || ".$an->data->{path}{echo}." timed out";
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 								name1 => "shell_call", value1 => $shell_call, 
 							}, file => $THIS_FILE, line => __LINE__});

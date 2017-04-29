@@ -13641,6 +13641,13 @@ sub _provision_server
 		# Switch the type to win2k8 as win2016 isn't recognized by virt-install yet.
 		$an->data->{cgi}{os_variant} = "win2k8";
 	}
+	elsif ($an->data->{cgi}{os_variant} eq "solaris11")
+	{
+		# Solaris 11.3 panics hard with --cpu host', so we'll switch to '--cpu core2duo'. There is no
+		# 'solaris11' os varient, so we'll switch it back to 10.
+		$an->data->{cgi}{os_variant} = "solaris10";
+		$provision .= "  --cpu core2duo \\\\\n";
+	}
 	else
 	{
 		$provision .= "  --cpu host \\\\\n";

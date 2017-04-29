@@ -1868,6 +1868,16 @@ WHERE
 							};
 						}
 						
+						# failed -> starting/started	= failed/recovering
+						elsif (($old_status =~ /fail/i) &&
+						       ($new_status =~ /start/i))
+						{
+							$say_alert_message = "scan_clustat_note_0029"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
 						# wat?
 						elsif ($old_status ne $new_status)
 						{

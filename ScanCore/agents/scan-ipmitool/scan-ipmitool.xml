@@ -22,9 +22,10 @@ with 'scan_ipmitool_'.
 		<key name="scan_ipmitool_log_0003">Failed to query node: [#!variable!machine!#]'s IPMI interface using the call: [#!variable!call!#]. Is the password correct?</key>
 		<key name="scan_ipmitool_log_0004">The thermal sensor named: [#!variable!sensor_name!#] has not changed.</key>
 		<key name="scan_ipmitool_log_0005">The sensor named: [#!variable!sensor_name!#] doesn't exist in the database, but its value is 'na', so it probably doesn't really exist. Ignoring it.</key>
-		<key name="scan_ipmitool_log_0006">The sensor named: [#!variable!sensor_name!#] appears to have vanished, but this is the first scan that it vanished. We're noting it, but not triggering an alert yet.</key>
+		<key name="scan_ipmitool_log_0006">The sensor named: [#!variable!sensor_name!#] appears to have vanished, but this is the first scan that it vanished. If it is gone for: [#!data!scan-ipmitool::sensor_loss_count_to_alarm!#] scans, we'll send an alarm.</key>
 		<key name="scan_ipmitool_log_0007">The sensor named: [#!variable!sensor_name!#] has returned.</key>
-		<key name="scan_ipmitool_log_0008">The sensor named: [#!variable!sensor_name!#] appears to have actually vanished. This is not the first time it disappeared.</key>
+		<key name="scan_ipmitool_log_0008">The sensor named: [#!variable!sensor_name!#] appears to have actually vanished. It has been gone for: [#!data!scan-ipmitool::sensor_loss_count_to_alarm!#] scans.</key>
+		<key name="scan_ipmitool_log_0009">The sensor named: [#!variable!sensor_name!#] appears to have vanished. It hasn't been seen in: [#!variable!scans!#] scans. If it is gone for: [#!data!scan-ipmitool::sensor_loss_count_to_alarm!#] scans, we'll send an alarm.</key>
 		
 		<!-- Errors -->
 		<key name="scan_ipmitool_error_0001">The query: [#!variable!query!#] against DB: [#!variable!id!#] returned: [#!variable!count!#] rows. Only '1' should have been returned!</key>

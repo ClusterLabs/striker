@@ -48,6 +48,7 @@ all strings with 'scan_clustat_'.
 		<key name="scan_clustat_note_0026">The service: [#!variable!service!#] has been stopped.</key>
 		<key name="scan_clustat_note_0027">All servers are now running on: [#!variable!node!#], so this node has been designated as the primary node.</key>
 		<key name="scan_clustat_note_0028">The server: [#!variable!service!#] has been migrated from: [#!variable!source!#] to: [#!variable!target!#].</key>
+		<key name="scan_clustat_note_0029">The server: [#!variable!service!#] recovered from a failed state.</key>
 		
 		<!-- Warnings. -->
 		<key name="scan_clustat_warning_0001">#!free!#</key>
@@ -87,7 +88,12 @@ The service: [#!variable!service!#]'s status has changed in an unexpected way.
 Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
 		</key>
 		<key name="scan_clustat_warning_0013">The server: [#!variable!service!#] failed to boot. Recovery will be attempted now...</key>
-		<key name="scan_clustat_warning_0014">The server: [#!variable!service!#] has failed!</key>
+		<key name="scan_clustat_warning_0014">
+The server: [#!variable!service!#] has entered a failed state. 
+This can happen if the server took more than 2 minutes to stop after a graceful shutdown request. 
+That can happen because the server is installing updates, a program blocked the shutdown or it ignored the request to shut down.
+Connect to the server and shut it down manually please.
+		</key>
 		<key name="scan_clustat_warning_0015">The service: [#!variable!service!#] failed to start!</key>
 		<key name="scan_clustat_warning_0016">The service: [#!variable!service!#] has failed!</key>
 		<key name="scan_clustat_warning_0017">The service: [#!variable!service!#] has been restarted on the host: [#!variable!host!#]. This is generally not normal, unless someone is doing work on a node.</key>

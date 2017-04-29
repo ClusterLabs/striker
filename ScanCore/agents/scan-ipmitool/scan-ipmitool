@@ -145,6 +145,9 @@ SET search_path = history, pg_catalog;
 			# It will be marked as 'clear' when the temperature drops this many °C below the 
 			# critical temperature.
 			machine				=>	{},
+			# This is the number of scans in a row that a sensor needs to be gone for before we
+			# trigger an alarm.
+			sensor_loss_count_to_alarm	=>	3,
 			# These are used when no other limits are set for a given sensor.
 			thresholds			=>	{
 				'default'			=>	{
@@ -811,27 +814,60 @@ sub find_changes
 							variable_source_uuid  => $an->data->{sys}{host_uuid},
 							variable_source_table => "ipmitool",
 						});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-						name1 => "sensor_missing", value1 => $sensor_missing, 
-						name2 => "variable_uuid",  value2 => $variable_uuid, 
-						name3 => "modified_date",  value3 => $modified_date, 
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+						name1 => "sensor_missing",                            value1 => $sensor_missing, 
+						name2 => "variable_uuid",                             value2 => $variable_uuid, 
+						name3 => "modified_date",                             value3 => $modified_date, 
+						name4 => "scan-ipmitool::sensor_loss_count_to_alarm", value4 => $an->data->{'scan-ipmitool'}{sensor_loss_count_to_alarm}, 
 					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Increment the read value by 1 to add this scan.
+					if (($sensor_missing =~ /^\d+$/) && ($sensor_missing > 0))
+					{
+						$sensor_missing++;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "sensor_missing", value1 => $sensor_missing, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
 					if (($new_ipmitool_sensor_status eq "na") && ($old_ipmitool_sensor_status ne "na"))
 					{
 						# Is this the first time I've seen this?
-						if ($sensor_missing eq "TRUE")
+						if (($sensor_missing =~ /^\d+$/) && ($sensor_missing > 0))
 						{
-							# Just vanished
-							$an->Log->entry({log_level => 1, message_key => "scan_ipmitool_log_0008", message_variables => { sensor_name => $ipmitool_sensor_name }, file => $THIS_FILE, line => __LINE__});
+							# This isn't the first time it was lost. has it passed the threshold?
+							if ($sensor_missing >= $an->data->{'scan-ipmitool'}{sensor_loss_count_to_alarm})
+							{
+								# It's really gone, sound the alarm.
+								$an->Log->entry({log_level => 1, message_key => "scan_ipmitool_log_0008", message_variables => { sensor_name => $ipmitool_sensor_name }, file => $THIS_FILE, line => __LINE__});
+							}
+							else
+							{
+								# It is gone, but it's not the first time and
+								# we've not passed the alert threshold. 
+								$an->Log->entry({log_level => 1, message_key => "scan_ipmitool_log_0009", message_variables => { 
+									sensor_name => $ipmitool_sensor_name,
+									scans       => $sensor_missing,
+								}, file => $THIS_FILE, line => __LINE__});
+								$an->ScanCore->insert_or_update_variables({
+									variable_uuid         => $variable_uuid, 
+									variable_name         => $variable_name,
+									variable_value        => $sensor_missing,
+									variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+									variable_source_table => "ipmitool", 
+									update_value_only     => 1,
+								});
+								delete $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name};
+								next;
+							}
 						}
 						else
 						{
-							# It is.
+							# It is. Set the loss count to 1
 							$an->Log->entry({log_level => 1, message_key => "scan_ipmitool_log_0006", message_variables => { sensor_name => $ipmitool_sensor_name }, file => $THIS_FILE, line => __LINE__});
 							$an->ScanCore->insert_or_update_variables({
 								variable_uuid         => $variable_uuid, 
 								variable_name         => $variable_name,
-								variable_value        => "TRUE",
+								variable_value        => 1,
 								variable_source_uuid  => $an->data->{sys}{host_uuid}, 
 								variable_source_table => "ipmitool", 
 								update_value_only     => 1,
@@ -840,14 +876,14 @@ sub find_changes
 							next;
 						}
 					}
-					elsif ($sensor_missing eq "TRUE")
+					elsif (($new_ipmitool_sensor_status ne "na") && ($old_ipmitool_sensor_status eq "na") && ($sensor_missing =~ /^\d+$/) && ($sensor_missing > 0))
 					{
 						# It disappeared in a previous sweep. Delete the variable.
 						$an->Log->entry({log_level => 1, message_key => "scan_ipmitool_log_0007", message_variables => { sensor_name => $ipmitool_sensor_name }, file => $THIS_FILE, line => __LINE__});
 						$an->ScanCore->insert_or_update_variables({
 							variable_uuid         => $variable_uuid, 
 							variable_name         => $variable_name,
-							variable_value        => "FALSE",
+							variable_value        => 0,
 							variable_source_uuid  => $an->data->{sys}{host_uuid}, 
 							variable_source_table => "ipmitool", 
 							update_value_only     => 1,
