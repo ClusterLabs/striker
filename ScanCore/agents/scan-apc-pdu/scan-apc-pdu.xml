@@ -121,10 +121,14 @@ The state of the outlet: [#!variable!outlet!#], on the PDU: [#!variable!name!#] 
 - Was the down-stream node fenced?
 		</key>
 		<key name="scan_apc_pdu_message_0041">
-The PDU model: [#!variable!model!#] with the serial number: [#!variable!serial_number!#] at the IP address: [#!variable!ip_address!#] has vanished! 
+The PDU model: [#!variable!model!#] at the IP address: [#!variable!ip_address!#] has vanished! 
 - Did the network cable come unplugged?
 		</key>
 		<key name="scan_apc_pdu_message_0042">The PDU model: [#!variable!model!#] with the serial number: [#!variable!serial_number!#] at the IP address: [#!variable!ip_address!#] has returned.</key>
+		<key name="scan_apc_pdu_message_0043">The PDU named: [#!variable!pdu_name!#] has been missing for: [#!data!scan-apc-pdu::sensor_loss_count_to_alarm!#] scans. Sending an alert.</key>
+		<key name="scan_apc_pdu_message_0044">The PDU named: [#!variable!pdu_name!#] has been missing for: [#!variable!scans!#]. If it is gone for: [#!data!scan-apc-pdu::sensor_loss_count_to_alarm!#] scans we will send an alert.</key>
+		<key name="scan_apc_pdu_message_0045">The PDU named: [#!variable!pdu_name!#] just went missing. If it is missing for: [#!data!scan-apc-pdu::sensor_loss_count_to_alarm!#] scans we will send an alert.</key>
+		<key name="scan_apc_pdu_message_0046">The PDU named: [#!variable!pdu_name!#] has returned.</key>
 		
 	</lang>
 </strings>

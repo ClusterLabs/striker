@@ -148,6 +148,9 @@ SET search_path = history, pg_catalog;
 			# A warning or critical alert has to be this number of amps above/below the threshold
 			# for the alert to be cleared.
 			clear_alert_threshold		=>	2,
+			# This is the number of scans in a row that an alert state needs to exist for before 
+			# we trigger an alarm.
+			sensor_loss_count_to_alarm	=>	3,
 		},
 		'oids'		=>	{
 			apc_pdu			=>	{
@@ -1217,6 +1220,10 @@ WHERE
 				# Did it just vanish?
 				my $apc_pdu_phase_uuid = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_uuid};
 				my $apc_pdu_phase_note = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_note};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "apc_pdu_phase_uuid", value1 => $apc_pdu_phase_uuid, 
+					name2 => "apc_pdu_phase_note", value2 => $apc_pdu_phase_note, 
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($apc_pdu_phase_note ne "DELETED")
 				{
 					# Yup
@@ -1229,8 +1236,8 @@ SET
 WHERE 
     apc_pdu_phase_uuid = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_phase_uuid)." 
 ;";
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "query", value1 => $query
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query, 
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
 
@@ -1672,13 +1679,18 @@ INSERT INTO
 		my $apc_pdu_note         = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_note};
 		my $apc_pdu_model_number = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_model_number};
 		my $apc_pdu_ipv4_address = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_ipv4_address};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-			name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
-			name2 => "apc_pdu_uuid",          value2 => $apc_pdu_uuid,
-			name3 => "apc_pdu_note",          value3 => $apc_pdu_note,
-			name4 => "apc_pdu_model_number",  value4 => $apc_pdu_model_number,
-			name5 => "apc_pdu_ipv4_address",  value5 => $apc_pdu_ipv4_address,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "apc_pdu_serial_number",              value1 => $apc_pdu_serial_number, 
+			name2 => "apc_pdu_uuid",                       value2 => $apc_pdu_uuid,
+			name3 => "apc_pdu_note",                       value3 => $apc_pdu_note,
+			name4 => "apc_pdu_model_number",               value4 => $apc_pdu_model_number,
+			name5 => "apc_pdu_ipv4_address",               value5 => $apc_pdu_ipv4_address,
+			name6 => "dont_delete::$apc_pdu_ipv4_address", value6 => $apc_pdu_ipv4_address,
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Skip a PDU that just recently went missing 
+		next if $an->data->{dont_delete}{$apc_pdu_ipv4_address};
+		
 		if ($apc_pdu_note ne "DELETED")
 		{
 			# Yup! send an alert.
@@ -3219,7 +3231,7 @@ sub gather_pdu_data
 	foreach my $pdu_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-pdu'}{pdu}})
 	{
 		my $pdu_ip = $an->data->{'scan-apc-pdu'}{pdu}{$pdu_name};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "pdu_name", value1 => $pdu_name,
 			name2 => "pdu_ip",   value2 => $pdu_ip,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3227,40 +3239,84 @@ sub gather_pdu_data
 		# This will be set if we can query the PDU.
 		my $apc_pdu_serial_number = "";
 		
+		# This will get set to '1' if the PDU doesn't respond but hasn't been missing for 
+		# 'scan-apc-pdu::sensor_loss_count_to_alarm' scans yet.
+		$an->data->{dont_delete}{$pdu_ip} = 0;
+		
+		# This is used to determine if we need to set or clear a comms-lost alert.
+		my $variable_name = "apc_pdu_communication_lost:$pdu_name";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable_name", value1 => $variable_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my ($pdu_missing, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({
+				variable_name         => $variable_name,
+				variable_source_uuid  => $an->data->{sys}{host_uuid},
+				variable_source_table => "apc_pdus",
+			});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "pdu_missing",                              value1 => $pdu_missing, 
+			name2 => "variable_uuid",                            value2 => $variable_uuid, 
+			name3 => "modified_date",                            value3 => $modified_date, 
+			name4 => "scan-apc-pdu::sensor_loss_count_to_alarm", value4 => $an->data->{'scan-apc-pdu'}{sensor_loss_count_to_alarm}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		# Can I ping it? This returns '1' if it was pingable, '0' if not.
 		my ($pinged) = $an->Check->ping({ping => $pdu_ip});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "pinged", value1 => $pinged, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		### NOTE: Test code, remove later.
+		if ((0) && ($pdu_ip eq "10.20.2.1"))
+		{
+			$pinged = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pinged", value1 => $pinged, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
 		if (not $pinged)
 		{
-			# Nope :(
-			# Alert the user, if this is the first time it was lost.
-			my $set = $an->Alert->check_alert_sent({
-				type			=>	"warning",
-				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$pdu_name,
-				alert_name		=>	"apc_pdu_communication_lost",
-				modified_date		=>	$an->data->{sys}{db_timestamp},
-			});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "set", value1 => $set, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($set)
+			# Nope. Alert the user, if this is the PDU has been missing long enough.
+			if ((($pdu_missing =~ /^\d+$/) && ($pdu_missing > 0)) or ($an->data->{'scan-apc-pdu'}{sensor_loss_count_to_alarm} == 1))
 			{
-				# This is a new loss of comms.
-				$an->Alert->register_alert({
-					alert_level		=>	"warning", 
-					alert_agent_name	=>	$THIS_FILE,
-					alert_title_key		=>	"an_alert_title_0004",
-					alert_message_key	=>	"scan_apc_pdu_message_0004",
-					alert_message_variables	=>	{
-						pdu_name		=>	$pdu_name,
-					},
-				});
-
-				# If we've seen this PDU before, make it's note as DELETED
-				my $query = "
+				# Bump the missing count to account for this scan.
+				$pdu_missing++;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "pdu_missing", value1 => $pdu_missing, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# This isn't the first time it was lost. has it passed the threshold?
+				if ($pdu_missing >= $an->data->{'scan-apc-pdu'}{sensor_loss_count_to_alarm})
+				{
+					# Is this the first time hitting this number?
+					my $set = $an->Alert->check_alert_sent({
+						type			=>	"warning",
+						alert_sent_by		=>	$THIS_FILE,
+						alert_record_locator	=>	$pdu_name,
+						alert_name		=>	"apc_pdu_communication_lost",
+						modified_date		=>	$an->data->{sys}{db_timestamp},
+					});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "set", value1 => $set, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($set)
+					{
+						# It's really gone, sound the alarm.
+						$an->Log->entry({log_level => 1, message_key => "scan_apc_pdu_message_0043", message_variables => { pdu_name => $pdu_name }, file => $THIS_FILE, line => __LINE__});
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_message_key	=>	"scan_apc_pdu_message_0004",
+							alert_message_variables	=>	{
+								pdu_name		=>	$pdu_name,
+							},
+						});
+						
+						# If we've seen this PDU before, make it's note as DELETED
+						my $query = "
 SELECT 
     apc_pdu_uuid 
 FROM 
@@ -3270,19 +3326,19 @@ WHERE
 AND 
     apc_pdu_host_uuid    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				my $apc_pdu_uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-				   $apc_pdu_uuid = "" if not defined $apc_pdu_uuid;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if ($apc_pdu_uuid)
-				{
-					# Mark it as DELETED
-					my $query = "
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						my $apc_pdu_uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+						$apc_pdu_uuid = "" if not defined $apc_pdu_uuid;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "apc_pdu_uuid", value1 => $apc_pdu_uuid, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($apc_pdu_uuid)
+						{
+							# Mark it as DELETED
+							my $query = "
 UPDATE 
     apc_pdus 
 SET 
@@ -3291,18 +3347,52 @@ SET
 WHERE 
     apc_pdu_uuid  = ".$an->data->{sys}{use_db_fh}->quote($apc_pdu_uuid)."
 ;";
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "query", value1 => $query, 
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "query", value1 => $query, 
+							}, file => $THIS_FILE, line => __LINE__});
+							$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+						}
+					}
 				}
+				else
+				{
+					# It is gone, but it's not the first time and we've not 
+					# passed the alert threshold. 
+					$an->data->{dont_delete}{$pdu_ip} = 1;
+					$an->Log->entry({log_level => 1, message_key => "scan_apc_pdu_message_0044", message_variables => { 
+						pdu_name => $pdu_name,
+						scans    => $pdu_missing,
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->ScanCore->insert_or_update_variables({
+						variable_uuid         => $variable_uuid, 
+						variable_name         => $variable_name,
+						variable_value        => $pdu_missing,
+						variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+						variable_source_table => "apc_pdus", 
+						update_value_only     => 1,
+					});
+				}
+			}
+			else
+			{
+				# It is. Set the loss count to 1
+				$an->data->{dont_delete}{$pdu_ip} = 1;
+				$an->Log->entry({log_level => 1, message_key => "scan_apc_pdu_message_0045", message_variables => { pdu_name => $pdu_name }, file => $THIS_FILE, line => __LINE__});
+				$an->ScanCore->insert_or_update_variables({
+					variable_uuid         => $variable_uuid, 
+					variable_name         => $variable_name,
+					variable_value        => 1,
+					variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+					variable_source_table => "apc_pdus", 
+					update_value_only     => 1,
+				});
 			}
 		}
 		else
 		{
 			# Yup!
 			$apc_pdu_serial_number = read_oid($an, $pdu_ip,, $an->data->{oids}{apc_pdu}{apc_pdu_serial_number});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3328,7 +3418,7 @@ WHERE
 			
 			# Record the SN, mark that we accessed it and create a look-up for SN to name
 			$an->data->{serial_to_name}{$apc_pdu_serial_number} = $pdu_name;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "serial_to_name::$apc_pdu_serial_number", value1 => $an->data->{serial_to_name}{$apc_pdu_serial_number}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3341,7 +3431,7 @@ WHERE
 				alert_name		=>	"apc_pdu_communication_lost",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "cleared", value1 => $cleared, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($cleared)
@@ -3355,6 +3445,21 @@ WHERE
 					alert_message_variables	=>	{
 						pdu_name		=>	$pdu_name,
 					},
+				});
+			}
+			
+			# If the PDU was missing before, clear it.
+			if (($pdu_missing =~ /^\d+$/) && ($pdu_missing > 0))
+			{
+				# It disappeared in a previous sweep. Set the variable to 0.
+				$an->Log->entry({log_level => 1, message_key => "scan_apc_pdu_message_0046", message_variables => { pdu_name => $pdu_name }, file => $THIS_FILE, line => __LINE__});
+				$an->ScanCore->insert_or_update_variables({
+					variable_uuid         => $variable_uuid, 
+					variable_name         => $variable_name,
+					variable_value        => 0,
+					variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+					variable_source_table => "apc_pdus", 
+					update_value_only     => 1,
 				});
 			}
 		}

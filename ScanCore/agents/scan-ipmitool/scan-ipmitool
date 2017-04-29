@@ -878,7 +878,7 @@ sub find_changes
 					}
 					elsif (($new_ipmitool_sensor_status ne "na") && ($old_ipmitool_sensor_status eq "na") && ($sensor_missing =~ /^\d+$/) && ($sensor_missing > 0))
 					{
-						# It disappeared in a previous sweep. Delete the variable.
+						# It disappeared in a previous sweep. Set the variable to 0.
 						$an->Log->entry({log_level => 1, message_key => "scan_ipmitool_log_0007", message_variables => { sensor_name => $ipmitool_sensor_name }, file => $THIS_FILE, line => __LINE__});
 						$an->ScanCore->insert_or_update_variables({
 							variable_uuid         => $variable_uuid, 
