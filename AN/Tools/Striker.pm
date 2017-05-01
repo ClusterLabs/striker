@@ -2342,7 +2342,8 @@ fi
 		}
 	}
 	
-	# We'll switch to boot the 'hd' first if needed and add a cdrom if it doesn't exist.
+	# We'll switch to boot the 'hd' first if needed and add a cdrom if it doesn't exist. We'll also 
+	# change the 'on_reboot' element to 'restart' to make it easier to use the boot menu.
 	my $new_xml = "";
 	my $hd_seen = 0;
 	my $cd_seen = 0;
@@ -2379,6 +2380,10 @@ fi
 				# Inject an optical drive.
 				$new_xml .= "    <boot dev='cdrom'/>\n";
 			}
+		}
+		if ($line =~ /<on_reboot>destroy<\/on_reboot>/)
+		{
+			$line =~ s/<on_reboot>destroy<\/on_reboot>/<on_reboot>restart<\/on_reboot>/;
 		}
 		$new_xml .= "$line\n";
 	}
