@@ -79,6 +79,20 @@ to ScanCore to allow it to determine when a node that has gone into
 emergency-stop can be safely rebooted.
 
 
+VARIABLES
+
+scan-ipmitool::sensor_loss_count_to_alarm = X
+
+	This can be set to a while number in striker.conf to control how many 
+	times a scans in a row that a sensor needs to be missing before an 
+	alert is generated. The default is '3'. 
+	
+	On occassion, ipmitool (or the IPMI BMC) will report a sensor as 
+	missing on a given pass, the returning a short time later. By waiting a
+	certain number of losses before triggering the alarm, we can reduce the
+	chance of false alarms.
+
+
 SWITCHES
 
 

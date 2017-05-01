@@ -283,13 +283,13 @@ The total lifetime power output from the UPS: [#!variable!ups_name!#] has increa
 - [#!variable!old_value!# kWh] -> [#!variable!new_value!# kWh]
 		</key>
 		<key name="scan_apc_ups_note_0059">
-Connection to the UPS: [#!variable!ups_name!#] has been lost!
+Communication with the UPS: [#!variable!ups_name!#] has been lost!
 Warning: The UPS power state and hold up time can no longer be monitored. 
-         Graceful shutdown in the case of a power loss may not function until 
+         Graceful shutdown in the case of a power loss will not function until 
          communication is restored!
 		</key>
 		<key name="scan_apc_ups_note_0060">
-Connection to the UPS: [#!variable!ups_name!#] has been restored.
+Communication with the UPS: [#!variable!ups_name!#] has been restored.
 		</key>
 		<key name="scan_apc_ups_note_0061">
 The UPS: [#!variable!ups_name!#] battery health has changed:
@@ -400,6 +400,19 @@ health of APC brand UPSes so that ScanCore can determine when it is safe to
 restart nodes that have gone into emergency-stop. 
 
 
+VARIABLES
+
+scan-apc-ups::sensor_loss_count_to_alarm = X
+
+	This can be set to a while number in striker.conf to control how many 
+	times a communication to the UPS has to be lost for, before triggering
+	an alarm. The default is '3'. 
+	
+	This is designed to reduce the number of alerts caused by busy networks
+	causing occassional pings to fail, or to avoid alarms caused by 
+	momentarily unplugging and plugging back in a network cable.
+
+
 SWITCHES
 
 
@@ -490,6 +503,9 @@ https://alteeve.com/w/Support
 		</key>
 		<key name="scan_apc_ups_message_0006">The UPS is not running on batteries.</key>
 		<key name="scan_apc_ups_message_0007">The UPS has been running on batteries for: [#!variable!output_time_on_batteries!#]</key>
-		<key name="scan_apc_ups_message_0008">#!free!#</key>
+		<key name="scan_apc_ups_message_0008">The UPS named: [#!variable!ups_name!#] has been missing for: [#!data!scan-apc-ups::sensor_loss_count_to_alarm!#] scans. Sending an alert.</key>
+		<key name="scan_apc_ups_message_0009">The UPS named: [#!variable!ups_name!#] has been missing for: [#!variable!scans!#]. If it is gone for: [#!data!scan-apc-ups::sensor_loss_count_to_alarm!#] scans we will send an alert.</key>
+		<key name="scan_apc_ups_message_0010">The UPS named: [#!variable!ups_name!#] just went missing. If it is missing for: [#!data!scan-apc-ups::sensor_loss_count_to_alarm!#] scans we will send an alert.</key>
+		<key name="scan_apc_ups_message_0011">Communication with the UPS named: [#!variable!ups_name!#] has been restored.</key>
 	</lang>
 </strings>

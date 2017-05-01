@@ -110,6 +110,9 @@ SET search_path = history, pg_catalog;
 			# This is the number of volts above the low voltage trasfer lever or below the high 
 			# voltage transfer level needed to clear the alert.
 			transfer_voltage_clear_delta	=>	2,
+			# This is the number of scans in a row that an alert state needs to exist for before 
+			# we trigger an alarm.
+			sensor_loss_count_to_alarm	=>	3,
 		},
 		'default'		=>	{
 			battery			=>	{
@@ -315,7 +318,7 @@ $an->nice_exit({exit_code => 0});
 sub archive_if_needed
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the 'trigger' is '0', archiving is disabled.
 	if (not $an->data->{scancore}{archive}{trigger})
@@ -342,7 +345,7 @@ sub archive_if_needed
 	#    records from the database.
 	
 	# Update the archive path, if set by a user. Also verify that there are sane archive values.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
 		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
 		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
@@ -351,21 +354,21 @@ sub archive_if_needed
 	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
 	{
 		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{trigger} = 100000;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{count} = 50000;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -373,7 +376,7 @@ sub archive_if_needed
 	if (not -e $an->data->{path}{scancore_archive})
 	{
 		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -381,7 +384,7 @@ sub archive_if_needed
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -419,7 +422,7 @@ sub archive_if_needed
 	my $archive_needed = 0;
 	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "table", value1 => $table, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -445,13 +448,13 @@ AND
     b.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
 		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $records = 0 if not defined $records;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "records", value1 => $records, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -593,7 +596,7 @@ AND
 sub process_temperatures
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_temperatures" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_temperatures" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: We use 'sensor_host' to hold the serial number of the device hosting the sensor.
 	# First, read in all existing entries. We'll compare and UPDATE or INSERT as needed and DELETE any 
@@ -613,7 +616,7 @@ WHERE
 AND 
     temperature_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -627,7 +630,7 @@ AND
 		my $temperature_celsius     = $row->[3];
 		my $temperature_state       = $row->[4];
 		my $temperature_is          = $row->[5];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "temperature_uuid",        value1 => $temperature_uuid,
 			name2 => "temperature_sensor_name", value2 => $temperature_sensor_name,
 			name3 => "temperature_sensor_host", value3 => $temperature_sensor_host,
@@ -652,7 +655,7 @@ AND
 			my $new_temperature_celsius = $an->data->{new}{temperature}{$variable}{$serial_number}{temperature_celsius};
 			my $new_temperature_state   = $an->data->{new}{temperature}{$variable}{$serial_number}{temperature_state};
 			my $new_temperature_is      = $an->data->{new}{temperature}{$variable}{$serial_number}{temperature_is};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "variable",                value1 => $variable, 
 				name2 => "serial_number",           value2 => $serial_number, 
 				name3 => "new_temperature_celsius", value3 => $new_temperature_celsius, 
@@ -665,7 +668,7 @@ AND
 			{
 				my $health_source_name                           = "temperature:".$serial_number;
 				   $an->data->{health}{new}{$health_source_name} = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -673,7 +676,7 @@ AND
 			{
 				my $health_source_name                           = "temperature:".$serial_number;
 				   $an->data->{health}{new}{$health_source_name} = 2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -686,7 +689,7 @@ AND
 				my $old_temperature_celsius = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_celsius};
 				my $old_temperature_state   = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_state};
 				my $old_temperature_is      = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_is};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "temperature_uuid",         value1 => $temperature_uuid,
 					name2 => "old_temperature_celsius",  value2 => $old_temperature_celsius,
 					name3 => "old_temperature_state",    value3 => $old_temperature_state,
@@ -710,14 +713,14 @@ WHERE
     temperature_uuid    = ".$an->data->{sys}{use_db_fh}->quote($temperature_uuid).";
 ";
 					push @{$an->data->{sys}{sql}}, $query;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
 					# No change.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "variable",      value1 => $variable,
 						name2 => "serial_number", value2 => $serial_number,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -756,7 +759,7 @@ INSERT INTO
 );
 ";
 				push @{$an->data->{sys}{sql}}, $query;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -772,7 +775,7 @@ INSERT INTO
 			my $old_temperature      = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_celsius};
 			my $old_state            = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_state};
 			my $old_is               = $an->data->{old}{temperature}{$variable}{$serial_number}{temperature_is};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "variable",             value1 => $variable, 
 				name2 => "serial_number",        value2 => $serial_number, 
 				name3 => "old_temperature_uuid", value3 => $old_temperature_uuid, 
@@ -792,7 +795,7 @@ WHERE
     temperature_uuid   = ".$an->data->{sys}{use_db_fh}->quote($old_temperature_uuid).";
 ";
 			push @{$an->data->{sys}{sql}}, $query;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			$query = "
@@ -802,7 +805,7 @@ WHERE
     temperature_uuid   = ".$an->data->{sys}{use_db_fh}->quote($old_temperature_uuid).";
 ";
 			push @{$an->data->{sys}{sql}}, $query;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -913,7 +916,7 @@ sub find_changes
 		my $alert_temperature = ($new_apc_ups_battery_alarm_temperature - $an->data->{'scan-apc-ups'}{temperature_warning_delta});
 		my $sensor_host_key   = "ups:".$new_apc_ups_serial_number.":battery";
 		my $variable          = "apc_ups_battery_temperature";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "alert_temperature", value1 => $alert_temperature,
 			name2 => "sensor_host_key",   value2 => $sensor_host_key,
 			name3 => "variable",          value3 => $variable,
@@ -924,7 +927,7 @@ sub find_changes
 			$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $new_apc_ups_battery_temperature;
 			$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = "critical";
 			$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = "high";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
 				name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
 				name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
@@ -936,7 +939,7 @@ sub find_changes
 			$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $new_apc_ups_battery_temperature;
 			$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = "warning";
 			$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = "high";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
 				name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
 				name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
@@ -948,7 +951,7 @@ sub find_changes
 			$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $new_apc_ups_battery_temperature;
 			$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = "ok";
 			$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = "nominal";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
 				name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
 				name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
@@ -1018,7 +1021,7 @@ sub find_changes
 			my $old_apc_ups_nmc_firmware_version  = $an->data->{sql}{$ups_serial_number}{apc_ups_nmc_firmware_version};
 			my $old_apc_ups_nmc_serial_number     = $an->data->{sql}{$ups_serial_number}{apc_ups_nmc_serial_number};
 			my $old_apc_ups_nmc_mac_address       = $an->data->{sql}{$ups_serial_number}{apc_ups_nmc_mac_address};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
 				name1  => "apc_ups_uuid",                      value1  => $apc_ups_uuid, 
 				name2  => "old_apc_ups_name",                  value2  => $old_apc_ups_name, 
 				name3  => "old_apc_ups_ip",                    value3  => $old_apc_ups_ip, 
@@ -2788,7 +2791,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_nmc_mac_address).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -2822,7 +2825,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_battery_voltage).",  
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -2848,7 +2851,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_input_1m_minimum_input_voltage).",  
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -2939,7 +2942,8 @@ INSERT INTO
 	my $query = "
 SELECT 
     apc_ups_uuid, 
-    apc_ups_serial_number
+    apc_ups_serial_number, 
+    apc_ups_ip 
 FROM 
     apc_ups
 WHERE
@@ -2964,10 +2968,15 @@ AND
 	{
 		my $this_apc_ups_uuid          = $row->[0];
 		my $this_apc_ups_serial_number = $row->[1];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		my $this_apc_ups_ip            = $row->[2];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "this_apc_ups_uuid",          value1 => $this_apc_ups_uuid, 
 			name2 => "this_apc_ups_serial_number", value2 => $this_apc_ups_serial_number, 
+			name3 => "this_apc_ups_ip",            value3 => $this_apc_ups_ip, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Skip a UPSes that just recently went missing 
+		next if $an->data->{dont_delete}{$this_apc_ups_ip};
 		
 		# Change the 'apc_ups_health' to '0'.
 		my $query .= "
@@ -3125,19 +3134,19 @@ AND
 				# Something changed if load shedding is disabled.
 				if ($an->data->{scancore}{disable}{load_shedding})
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "power_ups_name", value1 => $power_ups_name,
 						name2 => "apc_ups_name",   value2 => $apc_ups_name,
 					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "power_on_battery",   value1 => $power_on_battery,
 						name2 => "apc_ups_on_battery", value2 => $apc_ups_on_battery,
 					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "power_seconds_left",               value1 => $power_seconds_left,
 						name2 => "apc_ups_output_estimated_runtime", value2 => $apc_ups_output_estimated_runtime,
 					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "power_charge_percentage",           value1 => $power_charge_percentage,
 						name2 => "apc_ups_battery_percentage_charge", value2 => $apc_ups_battery_percentage_charge,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -3360,7 +3369,7 @@ AND
     a.apc_ups_uuid = c.apc_ups_input_apc_ups_uuid 
 AND 
     a.apc_ups_uuid = d.apc_ups_output_apc_ups_uuid;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -3523,9 +3532,9 @@ AND
 sub update_db
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
@@ -3558,7 +3567,7 @@ sub update_db
 sub update_db_apc_ups_battery
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_battery" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_battery" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_ups_battery' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -3873,7 +3882,7 @@ INSERT INTO
 sub update_db_apc_ups_output
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_output" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_output" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_ups_output' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -4155,7 +4164,7 @@ INSERT INTO
 sub update_db_apc_ups_input
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_output" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups_output" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_ups_input' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -4274,7 +4283,7 @@ AND
 					$an->data->{db_data}{$id}{apc_ups_input}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::apc_ups_input::apc_ups_input_apc_ups_uuid::${apc_ups_input_apc_ups_uuid}::exists", value1 => $an->data->{db_data}{$id}{apc_ups_input}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{apc_ups_input}{apc_ups_input_apc_ups_uuid}{$apc_ups_input_apc_ups_uuid}{'exists'})
@@ -4423,7 +4432,7 @@ INSERT INTO
 sub update_db_apc_ups
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_apc_ups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'apc_ups' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -4804,7 +4813,7 @@ INSERT INTO
 sub prep_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -4866,9 +4875,26 @@ sub gather_ups_data
 			name2 => "ups_ip",   value2 => $ups_ip,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# This is a visual break in the logs. Useful when printing all the OID queries.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "----------------------------------------",      value1 => "----------------------------------------", 
+		# This will get set to '1' if the UPS doesn't respond but hasn't been missing for 
+		# 'scan-apc-ups::sensor_loss_count_to_alarm' scans yet.
+		$an->data->{dont_delete}{$ups_ip} = 0;
+		
+		# This is used to determine if we need to set or clear a comms-lost alert.
+		my $variable_name = "apc_ups_communication_lost:$ups_name";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable_name", value1 => $variable_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my ($ups_missing, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({
+				variable_name         => $variable_name,
+				variable_source_uuid  => $an->data->{sys}{host_uuid},
+				variable_source_table => "apc_ups",
+			});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "ups_missing",                              value1 => $ups_missing, 
+			name2 => "variable_uuid",                            value2 => $variable_uuid, 
+			name3 => "modified_date",                            value3 => $modified_date, 
+			name4 => "scan-apc-ups::sensor_loss_count_to_alarm", value4 => $an->data->{'scan-apc-ups'}{sensor_loss_count_to_alarm}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Can I ping it?
@@ -4877,36 +4903,88 @@ sub gather_ups_data
 			name1 => "ups::${ups_name}::ip", value1 => $an->data->{ups}{$ups_name}{ip}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		### TODO: Set 'apc_ups_health' to '99' when comms are lost.
 		# This returns '1' if it was pingable, '0' if not.
 		my ($pinged) = $an->Check->ping({ping => $ups_ip});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "pinged", value1 => $pinged, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not $pinged)
 		{
-			# Nope :(
+			# Nope. 
 			$an->data->{ups}{$ups_name}{model} = "#!no_connection!#";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "ups::${ups_name}::model", value1 => $an->data->{ups}{$ups_name}{model}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# Alert the user, if this is the first time it was lost.
-			my $set = $an->Alert->check_alert_sent({
-				type			=>	"warning",
-				alert_sent_by		=>	$THIS_FILE,
-				alert_record_locator	=>	$ups_name,
-				alert_name		=>	"apc_ups_communication_lost",
-				modified_date		=>	$an->data->{sys}{db_timestamp},
-			});
-			if ($set)
+			# Alert the user, if this is the UPS has been missing long enough.
+			if ((($ups_missing =~ /^\d+$/) && ($ups_missing > 0)) or ($an->data->{'scan-apc-ups'}{sensor_loss_count_to_alarm} == 1))
 			{
-				# This is a new loss of comms.
-				$an->Alert->register_alert({
-					alert_level		=>	"warning", 
-					alert_agent_name	=>	$THIS_FILE,
-					alert_title_key		=>	"an_alert_title_0004",
-					alert_message_key	=>	"scan_apc_ups_note_0059",
-					alert_message_variables	=>	{
-						ups_name		=>	$ups_name,
-					},
+				# Bump the missing count to account for this scan.
+				$ups_missing++;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "ups_missing", value1 => $ups_missing, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# This isn't the first time it was lost. has it passed the threshold?
+				if ($ups_missing >= $an->data->{'scan-apc-ups'}{sensor_loss_count_to_alarm})
+				{
+					# Nope. Alert the user, if this is the first time it was lost.
+					my $set = $an->Alert->check_alert_sent({
+						type			=>	"warning",
+						alert_sent_by		=>	$THIS_FILE,
+						alert_record_locator	=>	$ups_name,
+						alert_name		=>	"apc_ups_communication_lost",
+						modified_date		=>	$an->data->{sys}{db_timestamp},
+					});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "set", value1 => $set, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($set)
+					{
+						# This is a new loss of comms.
+						$an->Log->entry({log_level => 1, message_key => "scan_apc_ups_message_0008", message_variables => { ups_name => $ups_name }, file => $THIS_FILE, line => __LINE__});
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_message_key	=>	"scan_apc_ups_note_0059",
+							alert_message_variables	=>	{
+								ups_name		=>	$ups_name,
+							},
+						});
+					}
+				}
+				else
+				{
+					# It is gone, but it's not the first time and we've not 
+					# passed the alert threshold. 
+					$an->data->{dont_delete}{$ups_ip} = 1;
+					$an->Log->entry({log_level => 1, message_key => "scan_apc_ups_message_0009", message_variables => { 
+						ups_name => $ups_name,
+						scans    => $ups_missing,
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->ScanCore->insert_or_update_variables({
+						variable_uuid         => $variable_uuid, 
+						variable_name         => $variable_name,
+						variable_value        => $ups_missing,
+						variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+						variable_source_table => "apc_ups", 
+						update_value_only     => 1,
+					});
+				}
+			}
+			else
+			{
+				# It is. Set the loss count to 1
+				$an->data->{dont_delete}{$ups_ip} = 1;
+				$an->Log->entry({log_level => 1, message_key => "scan_apc_ups_message_0010", message_variables => { ups_name => $ups_name }, file => $THIS_FILE, line => __LINE__});
+				$an->ScanCore->insert_or_update_variables({
+					variable_uuid         => $variable_uuid, 
+					variable_name         => $variable_name,
+					variable_value        => 1,
+					variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+					variable_source_table => "apc_ups", 
+					update_value_only     => 1,
 				});
 			}
 		}
@@ -4927,6 +5005,9 @@ sub gather_ups_data
 				alert_name		=>	"apc_ups_communication_lost",
 				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cleared", value1 => $cleared, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($cleared)
 			{
 				# There was an alert and it has now been cleared.
@@ -4940,6 +5021,21 @@ sub gather_ups_data
 					},
 				});
 			}
+			
+			# If the UPS was missing before, clear it.
+			if (($ups_missing =~ /^\d+$/) && ($ups_missing > 0))
+			{
+				# It disappeared in a previous sweep. Set the variable to 0.
+				$an->Log->entry({log_level => 1, message_key => "scan_apc_ups_message_0011", message_variables => { ups_name => $ups_name }, file => $THIS_FILE, line => __LINE__});
+				$an->ScanCore->insert_or_update_variables({
+					variable_uuid         => $variable_uuid, 
+					variable_name         => $variable_name,
+					variable_value        => 0,
+					variable_source_uuid  => $an->data->{sys}{host_uuid}, 
+					variable_source_table => "apc_ups", 
+					update_value_only     => 1,
+				});
+			}
 		}
 		
 		# If I got a model, I found a UPS.
@@ -4950,12 +5046,6 @@ sub gather_ups_data
 			next;
 		}
 		$no_ups_found = 0;
-		
-		# If the UPS is an SURTD model, we may need to adjust some of the OIDs we use.
-		if ($an->data->{ups}{$ups_name}{model} =~ /SRT/i)
-		{
-			# Do things special (yet).
-		}
 		
 		# Now that I can trust my OIDs, lets start gathering data! Keep track of how long it took to
 		# query the OIDs.
@@ -5594,7 +5684,7 @@ sub find_upses
 		# we can ping them. If we can, we'll scan them. This will be important for dashboards to 
 		# determine if/when it is safe to boot a node.
 		my $host_type = $an->Get->what_am_i();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "host_type", value1 => $host_type, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($host_type eq "dashboard")
@@ -5605,7 +5695,7 @@ sub find_upses
 			foreach my $hash_ref (@{$anvil_data})
 			{
 				my $anvil_uuid = $hash_ref->{anvil_uuid};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "anvil_uuid", value1 => $anvil_uuid, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -5618,14 +5708,14 @@ sub find_upses
 				foreach my $ip (sort {$a cmp $b} keys %{$upses})
 				{
 					my $ups_name = $upses->{$ip}{name};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "ups_name", value1 => $ups_name, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					if (not exists $an->data->{'scan-apc-ups'}{ups}{$ups_name})
 					{
 						$an->data->{'scan-apc-ups'}{ups}{$ups_name} = $ip;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "scan-apc-ups::ups::$ups_name", value1 => $an->data->{'scan-apc-ups'}{ups}{$ups_name}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}

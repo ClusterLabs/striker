@@ -28,6 +28,19 @@ Anvil! Intelligent Availability™ system.
 It monitors APC/Schneider brand network-connected switched PDUs.
 
 
+VARIABLES
+
+scan-apc-pdu::sensor_loss_count_to_alarm = X
+
+	This can be set to a while number in striker.conf to control how many 
+	times a communication to the PDU has to be lost for, before triggering
+	an alarm. The default is '3'. 
+	
+	This is designed to reduce the number of alerts caused by busy networks
+	causing occassional pings to fail, or to avoid alarms caused by 
+	momentarily unplugging and plugging back in a network cable.
+
+
 SWITCHES
 
 
@@ -128,7 +141,7 @@ The PDU model: [#!variable!model!#] at the IP address: [#!variable!ip_address!#]
 		<key name="scan_apc_pdu_message_0043">The PDU named: [#!variable!pdu_name!#] has been missing for: [#!data!scan-apc-pdu::sensor_loss_count_to_alarm!#] scans. Sending an alert.</key>
 		<key name="scan_apc_pdu_message_0044">The PDU named: [#!variable!pdu_name!#] has been missing for: [#!variable!scans!#]. If it is gone for: [#!data!scan-apc-pdu::sensor_loss_count_to_alarm!#] scans we will send an alert.</key>
 		<key name="scan_apc_pdu_message_0045">The PDU named: [#!variable!pdu_name!#] just went missing. If it is missing for: [#!data!scan-apc-pdu::sensor_loss_count_to_alarm!#] scans we will send an alert.</key>
-		<key name="scan_apc_pdu_message_0046">The PDU named: [#!variable!pdu_name!#] has returned.</key>
+		<key name="scan_apc_pdu_message_0046">Communication with the PDU named: [#!variable!pdu_name!#] has been restored.</key>
 		
 	</lang>
 </strings>

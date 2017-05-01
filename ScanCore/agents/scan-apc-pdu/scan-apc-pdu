@@ -3266,16 +3266,6 @@ sub gather_pdu_data
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "pinged", value1 => $pinged, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		### NOTE: Test code, remove later.
-		if ((0) && ($pdu_ip eq "10.20.2.1"))
-		{
-			$pinged = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "pinged", value1 => $pinged, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
 		if (not $pinged)
 		{
 			# Nope. Alert the user, if this is the PDU has been missing long enough.
