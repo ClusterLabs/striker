@@ -10,6 +10,8 @@
 # 3  = Load shedding failed because we can't access the peer to determine its state.
 # 4  = Both nodes are SyncSource or Diskless, so load shedding is not possible.
 # 5  = We're SyncSource (or our peer is Diskless), so local shutdown is aborted.
+# 6  = Migrating a server failed.
+# 7  = Stopping a server failed.
 #
 # TODO:
 # - Abort the start if any interfaces are missing (ie: after a mobo was changed)
@@ -541,25 +543,12 @@ sub shutdown_node
 			if ($migrate)
 			{
 				# Get off my lawn!
-				my ($success, $migrate_output) = do_migration($an, $server);
-				$an->Log->entry({log_level => 0, message_key => "an_variables_0002", message_variables => {
-					name1 => "success",        value1 => $success, 
-					name2 => "migrate_output", value2 => $migrate_output, 
+				my ($migrate_output) = do_migration($an, $server);
+				$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
+					name1 => "migrate_output", value1 => $migrate_output, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				$output .= $migrate_output;
-				
-				# Shut it down if migration failed.
-				$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
-					name1 => "success", value1 => $success, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if (not $success)
-				{
-					$output .= $an->Cman->stop_server({
-						server => $server, 
-						reason => $an->data->{sys}{stop_reason},
-					});
-				}
 			}
 			else
 			{
@@ -588,10 +577,23 @@ sub shutdown_node
 				}
 				
 				# Today is a good day to die.
-				$output .= $an->Cman->stop_server({
+				my ($success, $command_output) = $an->Cman->stop_server({
 					server => $server, 
 					reason => $an->data->{sys}{stop_reason},
 				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "success", value1 => $success, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($success)
+				{
+					$output .= $command_output;
+				}
+				else
+				{
+					# Failed to stop the server, abort.
+					$an->Alert->error({title_key => "an_0003", message_key => "assp_error_0005", code => 7, file => $THIS_FILE, line => __LINE__});
+					$an->nice_exit({exit_code => 7});
+				}
 			}
 		}
 	}
@@ -821,27 +823,24 @@ sub local_shut_down
 			if ($migrate_servers)
 			{
 				# OK, so we're still OK to migrate, do so.
-				my ($success, $output) = do_migration($an, $server);
-				
-				# Shut it down if migration failed.
-				$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
-					name1 => "success", value1 => $success, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if (not $success)
-				{
-					$an->Cman->stop_server({
-						server => $server, 
-						reason => $an->data->{sys}{stop_reason},
-					});
-				}
+				my ($output) = do_migration($an, $server);
 			}
 			else
 			{
 				# Shut 'er down.
-				$an->Cman->stop_server({
+				my ($success, $command_output) = $an->Cman->stop_server({
 					server => $server, 
 					reason => $an->data->{sys}{stop_reason},
 				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "success", value1 => $success, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $success)
+				{
+					# Failed to stop the server, abort.
+					$an->Alert->error({title_key => "an_0003", message_key => "assp_error_0005", code => 7, file => $THIS_FILE, line => __LINE__});
+					$an->nice_exit({exit_code => 7});
+				}
 			}
 		}
 		else
@@ -853,10 +852,19 @@ sub local_shut_down
 				### NOTE: to future-me; yes, you can call 'clusvcadm -d' while a 
 				###       'clusvcadm -M' is in progress.
 				# Crap. Stop it.
-				$an->Cman->stop_server({
+				my ($success, $command_output) = $an->Cman->stop_server({
 					server => $server, 
 					reason => $an->data->{sys}{stop_reason},
 				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "success", value1 => $success, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $success)
+				{
+					# Failed to stop the server, abort.
+					$an->Alert->error({title_key => "an_0003", message_key => "assp_error_0005", code => 7, file => $THIS_FILE, line => __LINE__});
+					$an->nice_exit({exit_code => 7});
+				}
 			}
 		}
 	}
@@ -951,8 +959,7 @@ sub do_migration
 	# We force the migration because we're going down, and in cases where we're load shedding, both nodes
 	# will be in a 'warning' state.
 	my $output     = "";
-	my $success    = 1;
-	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server --force";
+	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server --force; ".$an->data->{path}{'echo'}." return_code:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -964,18 +971,51 @@ sub do_migration
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /fail/i)
+		if ($line =~ /return_code:(\d+)$/)
 		{
-			$success = 0;
+			my $return_code = $1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "success", value1 => $success, 
+				name1 => "return_code", value1 => $return_code,
 			}, file => $THIS_FILE, line => __LINE__});
+			if ($return_code eq "1")
+			{
+				print $an->String->get({key => "script_0048"})."\n";
+				$an->nice_exit({exit_code => 6});
+			}
+			elsif ($return_code eq "2")
+			{
+				print $an->String->get({key => "script_0049"})."\n";
+				$an->nice_exit({exit_code => 6});
+			}
+			elsif ($return_code eq "3")
+			{
+				print $an->String->get({key => "script_0050"})."\n";
+				$an->nice_exit({exit_code => 6});
+			}
+			elsif ($return_code eq "4")
+			{
+				print $an->String->get({key => "script_0051"})."\n";
+				$an->nice_exit({exit_code => 6});
+			}
+			elsif ($return_code eq "5")
+			{
+				print $an->String->get({key => "script_0052"})."\n";
+				$an->nice_exit({exit_code => 6});
+			}
+			elsif ($return_code eq "6")
+			{
+				print $an->String->get({key => "script_0053"})."\n";
+				$an->nice_exit({exit_code => 6});
+			}
 		}
-		$output .= "$line\n";
+		else
+		{
+			$output .= "$line\n";
+		}
 	}
 	close $file_handle;
 	
-	return($success, $output);
+	return($output);
 }
 
 # This figures out what to do.

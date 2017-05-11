@@ -86,6 +86,7 @@
 		<key name="button_0079">DR Jobs</key>
 		<key name="button_0080">Locations</key>
 		<key name="button_0081">Preserve</key>
+		<key name="button_0082">Manual Shutdown Required</key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -865,8 +866,8 @@
 		
 		<!-- Strings coming from scripts. -->
 		<key name="script_0001">Backing up some network related system files.</key>
-		<key name="script_0002">#!free!#</key>
-		<key name="script_0003">#!free!#</key>
+		<key name="script_0002">This is likely a program error.</key>
+		<key name="script_0003">ScanCore will need to be manually re-enabled.</key>
 		<key name="script_0004">#!free!#</key>
 		<key name="script_0005">#!free!#</key>
 		<key name="script_0006"><![CDATA[[ <span class="highlight_bad">Error</span> ] - The backup directory is not defined!]]></key>
@@ -911,12 +912,12 @@
 		<key name="script_0045"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Exiting.]]></key>
 		<key name="script_0046"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Desired NIC: [<span class="code">#!variable!nic!#</span>] doesn't have a referenced interface!]]></key>
 		<key name="script_0047"><![CDATA[Interface: [<span class="code">#!variable!mac!#</span>], currently named: [<span class="code">#!variable!current!#</span>], will be renamed to: [<span class="code">#!variable!new!#</span>]]]></key>
-		<key name="script_0048">#!free!#</key>
-		<key name="script_0049">#!free!#</key>
-		<key name="script_0050">#!free!#</key>
-		<key name="script_0051">#!free!#</key>
-		<key name="script_0052">#!free!#</key>
-		<key name="script_0053">#!free!#</key>
+		<key name="script_0048">The name of the server to migrate was not passed.</key>
+		<key name="script_0049">The server is stopped, migration isn't possible.</key>
+		<key name="script_0050">The cluster resource manager isn't running on the node hosting the server. Aborting.</key>
+		<key name="script_0051">The cluster resource manager isn't running on the target. Aborting.</key>
+		<key name="script_0052">The target node is not healthy and the migration wasn't forced. Aborting.</key>
+		<key name="script_0053">The cold migration required stopping the server, and the shutdown failed. The server probably ignored the request to shut down. Aborting.</key>
 		<key name="script_0054">#!free!#</key>
 		<key name="script_0055">#!free!#</key>
 		<key name="script_0056">#!free!#</key>
@@ -1321,8 +1322,8 @@
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[Successfully saved changes for the: [<span class="highlight_detail">#!variable!target!#</span>] notification target.]]></key>
-		<key name="message_0002">#!free!#</key>
-		<key name="message_0003">#!free!#</key>
+		<key name="message_0002">The server was in a failed state, disabling it now.</key>
+		<key name="message_0003">The server failed to stop. Did it ignore the shutdown request?</key>
 		<key name="message_0004">#!free!#</key>
 		<key name="message_0005">#!free!#</key>
 		<key name="message_0006">#!free!#</key>
@@ -1449,7 +1450,7 @@
 		<key name="message_0118"><![CDATA[Writing provision script to <span class="fixed_width">#!variable!script!#</span>]]></key>
 		<key name="message_0119"><![CDATA[Written.<br />Starting the installation of <span class="fixed_width">#!variable!server!#</span> now.]]></key>
 		<key name="message_0120">Done.</key>
-		<key name="message_0121">The updated note was saved.</key>
+		<key name="message_0121">The server's database information has been updated.</key>
 		<key name="message_0122">#!free!#</key>
 		<key name="message_0123">#!free!#</key>
 		<key name="message_0124">#!free!#</key>
@@ -1521,7 +1522,7 @@
 		<key name="message_0190"><![CDATA[It appears that <span class="fixed_width">#!variable!node!#</span> has already joined the #!string!brand_0003!#.]]></key>
 		<key name="message_0191"><![CDATA[This command can take up to <span class="highlight_detail">two minutes</span> to generate output.]]></key>
 		<key name="message_0192">#!free!#</key>
-		<key name="message_0193">If the server powered off properly, the #!string!brand_0003!# should boot it back up in a moment.</key>
+		<key name="message_0193">#!free!#</key>
 		<key name="message_0194">#!free!#</key>
 		<key name="message_0195">#!free!#</key>
 		<key name="message_0196">#!free!#</key>
@@ -2668,6 +2669,7 @@ SUPPORT
 		<key name="assp_error_0002">Unable to access the peer: [#!variable!peer!#], peer may be offline, load shedding aborted.</key>
 		<key name="assp_error_0003">Both nodes have at least on replicated storage device that is 'SyncSource' (or one node is 'Diskless'). Neither node can safely shut down. If a node is 'Diskless', a full shutdown (and repair!) is required. You can manually boost sync rate if required. Please see: [#!string!url_0008!#]</key>
 		<key name="assp_error_0004">This machine's replicated storage is 'SyncSource' (or the peer is 'Diskless'). Shutting down would cause the peer to lose storage and hang, so shut down is aborted. If a node is 'Diskless', a full shutdown (and repair!) is required. You can manually boost sync rate if required. Please see: [#!string!url_0008!#]</key>
+		<key name="assp_error_0005">Failed to stop the server: [#!variable!server!#]. Did it ignore the request to shut down? If so, you will need to recover the server before trying to shut down again.</key>
 		
 		<!-- messages -->
 		<key name="assp_message_0001"><![CDATA[
@@ -2867,6 +2869,7 @@ Either the node's healthy is not OK and/or the storage under the server is not r
 * Storage: [#!variable!storage!#]
 [ Note ] - Migration can be forced with '--force', if the situation is dire enough. 
 		</key>
+		<key name="ams_error_0005">The server failed to stop during a cold migration. Aborting!</key>
 		
 		
 		<!-- striker-delete-anvil -->
@@ -3138,6 +3141,7 @@ SUPPORT
 		<!-- errors -->
 		<key name="assv_error_0001"><![CDATA[The server you wish to shut down must be specified via '--server <name>'. See --help for more information.]]></key>
 		<key name="assv_error_0002"><![CDATA[Failed to connect to any #!string!brand_0019!# databases. Please (carefully) shut down the server using the 'clusvcadm' command directly.]]></key>
+		<key name="assv_error_0003"><![CDATA[Failed to stop the server! The server has entered the 'failed' state. Please manually stop it, then try stopping it again.]]></key>
 		
 		<!-- message -->
 		<key name="assv_message_0001"><![CDATA[

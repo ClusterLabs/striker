@@ -780,6 +780,12 @@ sub parse_text_line
 	# 'Da bad. ;_;
 	$line =~ s/(failed)/<span class="highlight_bad">$1<\/span>/ig;
 	$line =~ s/\[\s+(failed)\s+\]/[ <span class="highlight_bad">$1<\/span> ]/ig;
+	$line =~ s/(failure)/<span class="highlight_bad">$1<\/span>/ig;
+	$line =~ s/\[\s+(failure)\s+\]/[ <span class="highlight_bad">$1<\/span> ]/ig;
+	
+	# Um...
+	$line =~ s/(warning)/<span class="highlight_warning">$1<\/span>/ig;
+	$line =~ s/\[\s+(warning)\s+\]/[ <span class="highlight_warning">$1<\/span> ]/ig;
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "line", value1 => $line,

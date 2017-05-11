@@ -7,6 +7,7 @@
 # 0 = Normal exit.
 # 1 = No server name passed in
 # 2 = Failed to connect to any ScanCore database.
+# 3 = Failed to stop the server.
 # 
 
 use strict; 
@@ -79,18 +80,19 @@ if (not $an->data->{switches}{server})
 
 # Connect to the databases.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => {
-	connections => $connections,
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
 
 # OK, shut down.
 if ($connections)
 {
 	my $stop_reason = $an->data->{switches}{reason} ? $an->data->{switches}{reason} : "clean";
-	my $stop_return = $an->Cman->stop_server({
+	my ($success, $stop_return) = $an->Cman->stop_server({
 			server => $an->data->{switches}{server},
 			reason => $stop_reason,
 		});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "success", value1 => $success,
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (split/\n/, $stop_return)
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -102,6 +104,13 @@ if ($connections)
 	
 	# Cleanup.
 	$an->DB->disconnect_from_databases();
+	
+	# If it failed, throw an error.
+	if (not $success)
+	{
+		$an->Alert->error({title_key => "an_0003", message_key => "assv_error_0003", code => 3, file => $THIS_FILE, line => __LINE__});
+		$an->nice_exit({exit_code => 3});
+	}
 }
 else
 {

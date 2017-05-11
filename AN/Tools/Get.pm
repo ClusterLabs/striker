@@ -3921,6 +3921,72 @@ WHERE
 	return($return);
 }
 
+# This calls 'virsh list --all' to try and find the named server on one of the hosts. This is used when 
+# clusvcadm isn't useful.
+sub server_host
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "server_host" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $host   = "";
+	my $server = $parameter->{server} ? $parameter->{server} : "";
+	
+	# No sense proceeding if there is no server to check.
+	return($host) if not $server;
+	
+	# 
+	foreach my $node_key ("node1", "node2")
+	{
+		next if $host;
+		my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+		my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+		my $shell_call = $an->data->{path}{virsh}." list --all";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "port",       value2 => $port,
+			name3 => "shell_call", value3 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port,
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$line = $an->String->clean_spaces({string => $line});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /\d+ $server (.*)$/)
+			{
+				my $state = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "state", value1 => $state, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (($state =~ /running/) or ($state =~ /paused/))
+				{
+					$host = $an->data->{sys}{anvil}{$node_key}{name};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "host", value1 => $host, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "host", value1 => $host, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($host);
+}
+
 # This looks for a server by name on both nodes. If it is not found on either, it looks for the server in
 # /server/definitions/<server>.xml. Once found (if found), the UUID is pulled out and returned to the caller.
 sub server_uuid

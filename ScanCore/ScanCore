@@ -2490,16 +2490,20 @@ WHERE
 	# 1 = Both nodes have the same health.
 	# 2 = We're healther than our peer (migrate)
 	# 3 = We're sicker than our peer (do nothing)
+	my $return = 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_health_ok", value1 => $node_health_ok, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($node_health_ok == 2)
 	{
 		# Migrate all servers to us.
-		migrate_all_servers_to_here($an);
+		$return = migrate_all_servers_to_here($an);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "return", value1 => $return, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	return(0);
+	return($return);
 }
 
 ### NOTE: This is only called by nodes.
@@ -2571,12 +2575,13 @@ sub migrate_all_servers_to_here
 	close $file_handle;
 	
 	# Well?
+	my $return = 0;
 	if (@{$to_migrate} > 0)
 	{
 		# Migrate!
 		foreach my $server (sort {$a cmp $b} @{$to_migrate})
 		{
-			my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server";
+			my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server; ".$an->data->{path}{'echo'}." return_code:\$?";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -2584,10 +2589,17 @@ sub migrate_all_servers_to_here
 			while(<$file_handle>)
 			{
 				chomp;
-				my $line =  $_;
+				my $line = $_;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /return_code:(\d+)$/)
+				{
+					$return = $1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "return", value1 => $return,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 			close $file_handle;
 		}
@@ -2596,7 +2608,7 @@ sub migrate_all_servers_to_here
 	### TODO: Update cluster.conf to set this node as the node with the 'delay' (or have scan-clustat 
 	###       do it).
 	
-	return(0);
+	return($return);
 }
 
 ### NOTE: Thos is only called by nodes.

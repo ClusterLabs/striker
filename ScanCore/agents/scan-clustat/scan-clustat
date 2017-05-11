@@ -157,15 +157,6 @@ if ($an->data->{'scan-clustat'}{disable})
 	$an->nice_exit({exit_code => 1});
 }
 
-print $an->String->get({key => "scan_clustat_message_0001"})."\n";
-
-# Read in clustat. If it returns '1', then clustat wasn't found and we will exit.
-if (parse_clustat($an))
-{
-	# Clustat not found, exit.
-	$an->nice_exit({exit_code => 1});
-}
-
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 $an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
@@ -202,6 +193,15 @@ $an->data->{sys}{clustat_service_id_query} = "SELECT clustat_service_id FROM clu
 # the DB was loaded.
 prep_databases($an);
 
+print $an->String->get({key => "scan_clustat_message_0001"})."\n";
+
+# Read in clustat. If it returns '1', then clustat wasn't found and we will exit.
+if (parse_clustat($an))
+{
+	# Clustat not found, exit.
+	$an->nice_exit({exit_code => 1});
+}
+
 # Look to see if any databases need to be updated.
 update_db($an);
 
@@ -223,7 +223,7 @@ $an->nice_exit({exit_code => 0});
 sub update_db
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
@@ -248,7 +248,7 @@ sub update_db
 sub update_db_clustat_service
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat_service", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat_service" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'clustat_service' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -506,7 +506,7 @@ INSERT INTO
 sub update_db_clustat_node
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat_node", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'clustat_node' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -742,7 +742,7 @@ INSERT INTO
 sub update_db_clustat
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'clustat' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -964,7 +964,7 @@ INSERT INTO
 sub prep_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -1010,7 +1010,7 @@ sub prep_databases
 sub find_changes
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in last scan data (if any).
 	my $id               = $an->data->{sys}{read_db_id};
@@ -2286,7 +2286,7 @@ WHERE
 sub check_fence_delay
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_fence_delay", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_fence_delay" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $my_name = $an->hostname();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => { 
@@ -2403,7 +2403,7 @@ sub check_fence_delay
 sub recover_server
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "recover_server", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "recover_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# I can only recover it if the tool exists. :)
 	if (-e $an->data->{path}{'anvil-recover-server'})
@@ -2431,7 +2431,7 @@ sub recover_server
 sub insert_into_clustat_service
 {
 	my ($an, $service) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_into_clustat_service", }, message_key => "tools_log_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_into_clustat_service" }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "service", value1 => "$service" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2477,7 +2477,7 @@ INSERT INTO
 sub update_clustat_service
 {
 	my ($an, $service) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_clustat_service", }, message_key => "tools_log_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_clustat_service" }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "service", value1 => "$service" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2519,7 +2519,7 @@ WHERE
 sub insert_into_clustat_node
 {
 	my ($an, $node) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_into_clustat_node", }, message_key => "tools_log_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_into_clustat_node" }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "node", value1 => "$node" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2559,7 +2559,7 @@ INSERT INTO
 sub update_clustat_node
 {
 	my ($an, $node) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_clustat_node", }, message_key => "tools_log_0003", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_clustat_node" }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "node", value1 => "$node" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2595,7 +2595,7 @@ WHERE
 sub read_last_scan
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Couple of variables to make the code cleaner
 	my $id        = $an->data->{sys}{read_db_id};
@@ -2764,7 +2764,7 @@ AND
 sub parse_clustat
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_clustat", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_clustat" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code  = 0;
 	if (-e $an->data->{path}{clustat})
@@ -2776,10 +2776,8 @@ sub parse_clustat
 		while(<$file_handle>)
 		{
 			chomp;
-			my $line =  $_;
-			   $line =~ s/^\s+//;
-			   $line =~ s/\s+$//;
-			   $line =~ s/\s+/ /g;
+			my $line = $_;
+			   $line = $an->String->clean_spaces({string => $line});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => "$line"
 			}, file => $THIS_FILE, line => __LINE__});
@@ -2830,7 +2828,7 @@ sub parse_clustat
 				$an->data->{clustat}{service}{$service}{status}    = $status    ? $status : "--";
 				$an->data->{clustat}{service}{$service}{is_server} = $is_server;
 				
-				$an->Log->entry({log_level => 3, message_key => "scancore_log_0019", message_variables => { 
+				$an->Log->entry({log_level => 2, message_key => "scancore_log_0019", message_variables => { 
 					name1 => "clustat::service::${service}::host",      value1 => $an->data->{clustat}{service}{$service}{host},
 					name2 => "clustat::service::${service}::status",    value2 => $an->data->{clustat}{service}{$service}{status},
 					name3 => "clustat::service::${service}::is_server", value3 => $an->data->{clustat}{service}{$service}{is_server},
@@ -2843,6 +2841,13 @@ sub parse_clustat
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => { 
 						name1 => "sys::host_count::${host}", value1 => $an->data->{sys}{host_count}{$host},
 					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# If this is a server and if the state is 'failed', see if the server is off
+				# on both nodes. If it is, disable it.
+				if (($status eq "failed") && ($type eq "vm"))
+				{
+					cleanup_server($an, $service);
 				}
 			}
 			# Parse nodes. Note the '\d' to differentiate node lines from service lines.
@@ -2883,11 +2888,162 @@ sub parse_clustat
 	return($return_code);
 }
 
+# This looks to see if the server is running on me or the peer (using virsh) and, if not, disables the server service.
+sub cleanup_server
+{
+	my ($an, $server) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "cleanup_server" }, message_key => "tools_log_0003", message_variables => { 
+		name1 => "server", value1 => "$server" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $server_is_running = 0;
+	
+	# Is it running here?
+	my $shell_call = $an->data->{path}{virsh}." list --all";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => { 
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		   $line = $an->String->clean_spaces({string => $line});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /\d+ $server (.*)$/)
+		{
+			my $state = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "state", value1 => $state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($state =~ /running/) or ($state =~ /paused/))
+			{
+				$server_is_running = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_is_running", value1 => $server_is_running, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+	}
+	
+	# If I didn't find it here, check on my peer.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server_is_running", value1 => $server_is_running, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $server_is_running)
+	{
+		# Check the peer.
+		$an->Striker->load_anvil();
+		
+		my $node_name     = $an->hostname;
+		my $peer_node_key = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node_name",     value1 => $node_name, 
+			name2 => "peer_node_key", value2 => $peer_node_key, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->Striker->scan_node({
+			uuid       => $an->data->{sys}{anvil}{$peer_node_key}{uuid},
+			short_scan => 1,
+		});
+
+		my $peer_online = $an->data->{sys}{anvil}{$peer_node_key}{online};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_online", value1 => $peer_online, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($peer_online)
+		{
+			my $target   = $an->data->{sys}{anvil}{$peer_node_key}{use_ip};
+			my $port     = $an->data->{sys}{anvil}{$peer_node_key}{use_port};
+			my $password = $an->data->{sys}{anvil}{$peer_node_key}{use_port};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target, 
+				name2 => "shell_call", value2 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$line = $an->String->clean_spaces({string => $line});
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next if not $line;
+				
+				if ($line =~ /\d+ $server (.*)$/)
+				{
+					my $state = $1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "state", value1 => $state, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if (($state =~ /running/) or ($state =~ /paused/))
+					{
+						$server_is_running = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "server_is_running", value1 => $server_is_running, 
+						}, file => $THIS_FILE, line => __LINE__});
+						last;
+					}
+				}
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server_is_running", value1 => $server_is_running, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $server_is_running)
+			{
+				# Call 'disable' against the server service.
+				my $shell_call = $an->data->{path}{clusvcadm}." -d vm:$server";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => { 
+					name1 => "shell_call", value1 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+				while (<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					$line = $an->String->clean_spaces({string => $line});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if ($line =~ /success/i)
+					{
+						# Send an alert.
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_message_key	=>	"scan_clustat_warning_0026",
+							alert_message_variables	=>	{
+								server			=>	$server,
+							},
+						});
+					}
+				}
+			}
+		}
+		
+	}
+	
+	return(0);
+}
+
 # Print the usage information.
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print $an->String->get({key => "scan_clustat_message_0002"})."\n";
 

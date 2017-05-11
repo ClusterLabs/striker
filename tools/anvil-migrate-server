@@ -10,6 +10,7 @@
 # 3  = rgmanager isn't running locally
 # 4  = rgmanager isn't running on the peer.
 # 5  = The target node is not healthy and '--force' wasn't used.
+# 6  = Failed to stop the server during a cold migration.
 # 
 
 use strict; 
@@ -179,12 +180,22 @@ sub migrate_server
 	{
 		### Two-step
 		# Off
-		my $return = $an->Cman->stop_server({server => $an->data->{switches}{server}});
+		my ($success, $return) = $an->Cman->stop_server({server => $an->data->{switches}{server}});
 		foreach my $line (split/\n/, $return)
 		{
 			print "$line\n";
 		}
 		$return = "";
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "success", value1 => $success,
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $success)
+		{
+			# Abort
+			$an->Log->entry({log_level => 0, message_key => "ams_error_0005", file => $THIS_FILE, line => __LINE__});
+			$an->nice_exit({exit_code => 6});
+		}
 		
 		# This is likely not needed.
 		sleep 1;

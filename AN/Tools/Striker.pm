@@ -6755,9 +6755,37 @@ sub _display_server_state_and_controls
 			$prefered_host                          = "<span class=\"highlight_bad\">#!string!state_0001!#</span>";
 			$start_button                           = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0029!#" }});
 			$migrate_button                         = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0024!#" }});
-			$stop_button                            = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0033!#" }});
-			$force_off_button                       = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0027!#" }});
+			$stop_button                            = "<span class=\"highlight_warning\">#!string!button_0082!#</span>";
 			$say_delete_button                      = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0030!#" }});
+			
+			# I want to be able to force-off if it is running on a node.
+			my $server_host = $an->Get->server_host({server => $server});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server_host", value1 => $server_host, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($server_host)
+			{
+				my $expire_time      = time + $an->data->{sys}{expire_timeout};
+				   $force_off_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
+						button_class	=>	"highlight_dangerous",
+						button_link	=>	"?anvil_uuid=$anvil_uuid&server=$server&task=force_off_server&expire=$expire_time",
+						button_text	=>	"#!string!button_0027!#",
+						id		=>	"force_off_server_$server",
+					}});
+				if ($server_host eq $an->data->{sys}{anvil}{node1}{name})
+				{
+					$an->data->{server}{$server}{say_node1} = "<span class=\"highlight_warning\">#!string!state_0003!#</span>";
+				}
+				elsif ($server_host eq $an->data->{sys}{anvil}{node2}{name})
+				{
+					$an->data->{server}{$server}{say_node2} = "<span class=\"highlight_warning\">#!string!state_0003!#</span>";
+				}
+			}
+			else
+			{
+				# It is already off. It should be cleaned up by ScanCore shortly.
+				$force_off_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0027!#" }});
+			}
 		}
 		
 		$server_state_and_control_panel .= $an->Web->template({file => "server.html", template => "display-server-details-entry", replace => { 
@@ -7473,6 +7501,14 @@ sub _force_off_server
 		print $an->Web->template({file => "server.html", template => "force-off-server-aborted", replace => { message => $say_message }});
 		return("");
 	}
+	elsif ($server_host =~ /unknown/i)
+	{
+		# It might be failed, do we know if it is on a node using virsh?
+		$server_host = $an->Get->server_host({server => $server});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "server_host", value1 => $server_host, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	my $node_key = "";
 	if ($server_host eq $an->data->{sys}{anvil}{node1}{name})
@@ -7545,14 +7581,12 @@ sub _force_off_server
 	});
 	foreach my $line (@{$return})
 	{
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
+		$line = $an->Web->parse_text_line({line => $line});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		next if not $line;
 		
-		   $line    = $an->Web->parse_text_line({line => $line});
 		my $message = ($line =~ /^(.*)\[/)[0];
 		my $status  = ($line =~ /(\[.*)$/)[0];
 		if (not $message)
@@ -7565,6 +7599,52 @@ sub _force_off_server
 			message	=>	$message,
 		}});
 	}
+	
+	# If the server was in a 'failed' state, clear it.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server::${server}::state", value1 => $an->data->{server}{$server}{'state'}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{server}{$server}{'state'} eq "failed")
+	{
+		# Disable the service.
+		print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { 
+			status	=>	"<span class=\"hightlight_warning\">#!string!title_0190!#</span>",
+			message	=>	"#!string!message_0002!#",
+		}});
+		
+		my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$line = $an->Web->parse_text_line({line => $line});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next if not $line;
+			
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { 
+				status	=>	$status,
+				message	=>	$message,
+			}});
+		}
+	}
+	
 	print $an->Web->template({file => "server.html", template => "force-off-server-footer"});
 	
 	return(0);
@@ -9998,8 +10078,9 @@ sub _migrate_server
 		return("");
 	}
 	
-	# Call 'anvil-boot-server'
-	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server";
+	# Call 'anvil-migrate-server'
+	my $return_code = 0;
+	my $shell_call  = $an->data->{path}{'anvil-migrate-server'}." --server $server; ".$an->data->{path}{'echo'}." return_code:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
@@ -10018,18 +10099,65 @@ sub _migrate_server
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			   $line    = $an->Web->parse_text_line({line => $line});
-			my $message = ($line =~ /^(.*)\[/)[0];
-			my $status  = ($line =~ /(\[.*)$/)[0];
-			if (not $message)
+			if ($line =~ /return_code:(\d+)$/)
 			{
-				$message = $line;
-				$status  = "";
+				$return_code = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code,
+				}, file => $THIS_FILE, line => __LINE__});
+				my $status  = "";
+				my $message = "";
+				if ($return_code eq "1")
+				{
+					$status  =  $an->String->get({key => "row_0096"});
+					$message =  $an->String->get({key => "script_0048"});
+					$message .= "<br />".$an->String->get({key => "script_0002"});
+				}
+				elsif ($return_code eq "2")
+				{
+					$status  =  $an->String->get({key => "row_0096"});
+					$message =  $an->String->get({key => "script_0049"});
+				}
+				elsif ($return_code eq "3")
+				{
+					$status  =  $an->String->get({key => "row_0096"});
+					$message =  $an->String->get({key => "script_0050"});
+				}
+				elsif ($return_code eq "4")
+				{
+					$status  =  $an->String->get({key => "row_0096"});
+					$message =  $an->String->get({key => "script_0051"});
+				}
+				elsif ($return_code eq "5")
+				{
+					$status  =  $an->String->get({key => "row_0096"});
+					$message =  $an->String->get({key => "script_0052"});
+				}
+				elsif ($return_code eq "6")
+				{
+					$status  =  $an->String->get({key => "row_0096"});
+					$message =  $an->String->get({key => "script_0053"});
+				}
+				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+					status	=>	$status,
+					message	=>	$message,
+				}});
 			}
-			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
-				status	=>	$status,
-				message	=>	$message,
-			}});
+			else
+			{
+				   $line    = $an->Web->parse_text_line({line => $line});
+				my $message = ($line =~ /^(.*)\[/)[0];
+				my $status  = ($line =~ /(\[.*)$/)[0];
+				if (not $message)
+				{
+					$message = $line;
+					$status  = "";
+				}
+				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+					status	=>	$status,
+					message	=>	$message,
+				}});
+			}
 		}
 		print $an->Web->template({file => "server.html", template => "start-server-output-footer"});
 	}
@@ -14810,6 +14938,7 @@ sub _stop_server
 	});
 	
 	# Call 'clusvcadm -d ...'
+	my $failed     = 0;
 	my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
@@ -14823,17 +14952,11 @@ sub _stop_server
 	});
 	foreach my $line (@{$return})
 	{
+		$line = $an->String->clean_spaces({string => $line});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		#$line =~ s/Local machine/$say_node/;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
+		next if not $line;
 		
 		   $line    = $an->Web->parse_text_line({line => $line});
 		my $message = ($line =~ /^(.*)\[/)[0];
@@ -14847,11 +14970,36 @@ sub _stop_server
 			status	=>	$status,
 			message	=>	$message,
 		}});
+		
+		if ($line =~ /failure/i)
+		{
+			$failed = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "failed", value1 => $failed,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
-	$an->ScanCore->update_server_stop_reason({
-		server_name => $server, 
-		stop_reason => "user_stopped",
-	});
+	if ($failed)
+	{
+		# Clear the stop reason
+		$an->ScanCore->update_server_stop_reason({
+			server_name => $server, 
+			stop_reason => "",
+		});
+		
+		# print a warning.
+		print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+			status	=>	"<span class=\"hightlight_warning\">#!string!title_0190!#</span>",
+			message	=>	"#!string!message_0003!#",
+		}});
+	}
+	else
+	{
+		$an->ScanCore->update_server_stop_reason({
+			server_name => $server, 
+			stop_reason => "user_stopped",
+		});
+	}
 	
 	print $an->Web->template({file => "server.html", template => "stop-server-footer"});
 	

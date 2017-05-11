@@ -1295,6 +1295,7 @@ sub get_cluster_server_list
 	return($servers, $state);
 }
 
+### NOTE: This doesn't seem to be used anymore.
 ### NOTE: This must be called from one of the nodes.
 # This migrates the server.
 sub migrate_server
@@ -1312,7 +1313,7 @@ sub migrate_server
 	}
 	
 	my $return     = "";
-	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server";
+	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server; ".$an->data->{path}{'echo'}." return_code:\$?";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1320,8 +1321,45 @@ sub migrate_server
 	while(<$file_handle>)
 	{
 		chomp;
-		my $line   =  $_;
-		   $return .= "$line\n";
+		my $line =  $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /return_code:(\d+)$/)
+		{
+			my $return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($return_code eq "1")
+			{
+				$return .= $an->String->get({key => "script_0048"});
+			}
+			elsif ($return_code eq "2")
+			{
+				$return .= $an->String->get({key => "script_0049"});
+			}
+			elsif ($return_code eq "3")
+			{
+				$return .= $an->String->get({key => "script_0050"});
+			}
+			elsif ($return_code eq "4")
+			{
+				$return .= $an->String->get({key => "script_0051"});
+			}
+			elsif ($return_code eq "5")
+			{
+				$return .= $an->String->get({key => "script_0052"});
+			}
+			elsif ($return_code eq "6")
+			{
+				$return .= $an->String->get({key => "script_0053"});
+			}
+		}
+		else
+		{
+			$return .= "$line\n";
+		}
 	}
 	close $file_handle;
 	
@@ -1470,7 +1508,7 @@ sub stop_server
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $reason   = $parameter->{reason}   ? $parameter->{reason}   : "clean";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "server", value1 => $server, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
@@ -1494,7 +1532,7 @@ sub stop_server
 	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
 		### Remote calls
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1508,7 +1546,7 @@ sub stop_server
 	else
 	{
 		### Local calls
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -1520,27 +1558,36 @@ sub stop_server
 		}
 		close $file_handle;
 	}
+	my $success = 0;
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		$output .= "$line\n";
+		if ($line =~ /fail/i)
+		{
+			$success = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "success", value1 => $success,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
-	# TODO: Handle stop failures
-	my $details     = $an->Get->server_data({server => $server});
-	my $server_uuid = $details->{uuid};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "server_uuid", value1 => $server_uuid, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{sys}{read_db_id})
+	if ($success)
 	{
-		my $query = "
+		my $details     = $an->Get->server_data({server => $server});
+		my $server_uuid = $details->{uuid};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "server_uuid", value1 => $server_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{sys}{read_db_id})
+		{
+			my $query = "
 UPDATE 
     servers 
 SET 
@@ -1549,13 +1596,18 @@ SET
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
-	return($output);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "success", value1 => $success, 
+		name2 => "output",  value2 => $output, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($success, $output);
 }
 
 # This updates cluster.conf in a limited set of ways. It can change which node has the fence delay, the 
