@@ -1878,6 +1878,18 @@ WHERE
 							};
 						}
 						
+						# failed -> disabled	= cleared after failed
+						elsif (($old_status =~ /fail/i) &&
+						       ($new_status =~ /disable/i))
+						{
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_note_0030"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
 						# wat?
 						elsif ($old_status ne $new_status)
 						{

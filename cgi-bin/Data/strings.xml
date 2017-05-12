@@ -917,7 +917,7 @@
 		<key name="script_0050">The cluster resource manager isn't running on the node hosting the server. Aborting.</key>
 		<key name="script_0051">The cluster resource manager isn't running on the target. Aborting.</key>
 		<key name="script_0052">The target node is not healthy and the migration wasn't forced. Aborting.</key>
-		<key name="script_0053">The cold migration required stopping the server, and the shutdown failed. The server probably ignored the request to shut down. Aborting.</key>
+		<key name="script_0053">The cold migration required stopping the server, and the shutdown failed. The server probably ignored the request to shut down. Please manually shut it down to clear the 'failed' state.</key>
 		<key name="script_0054">#!free!#</key>
 		<key name="script_0055">#!free!#</key>
 		<key name="script_0056">#!free!#</key>
@@ -1495,7 +1495,11 @@
 		<key name="message_0163"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span> will be booted on the #!string!brand_0003!# node <span class="fixed_width">#!variable!node_name!#</span>.]]></key>
 		<key name="message_0164">The node was selected because it is either the preferred host or the only host ready to run this server.</key>
 		<key name="message_0165"><![CDATA[The server named: [<span class="highlight_detail">#!variable!server!#</span>] is about to be shut down.]]></key>
-		<key name="message_0166"><![CDATA[If <span class="fixed_width">#!variable!server!#</span> is not listening to <a href="https://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface" target="new">ACPI</a> calls, this attempt to shut down the node will fail!<br />Make sure that Linux machines are running <span class="fixed_width">acpid</span> and that <b>Windows</b> machines have <b>no pending updates</b>.<br />If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within <u>120 seconds</u>, it will be <span class="highlight_dangerous"><b>forced off</b></span>!]]></key>
+		<key name="message_0166"><![CDATA[
+If <span class="fixed_width">#!variable!server!#</span> is not listening to <a href="https://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface" target="new">ACPI</a> calls, this attempt to shut down the node will fail!<br />
+Make sure that Linux machines are running <span class="fixed_width">acpid</span> and that <b>Windows</b> machines have <b>no pending updates</b>.<br />
+If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within <u>120 seconds</u>, it will be marked as <a href="#!string!url_0010!#" target="_new"><span class="highlight_bad">Failed</span></a>!
+		]]></key>
 		<key name="message_0167"><![CDATA[Before proceeding, it is <b>strongly advised</b> that you connect to the server.<br />If there are updates pending, please <b>reboot</b> the server first.<br />This will ensure that server shuts down cleanly.]]></key>
 		<key name="message_0168"><![CDATA[The server named: [<span class="highlight_detail">#!variable!server!#</span>] is about to be <span class="highlight_dangerous">forcibly powered off</span>!]]></key>
 		<key name="message_0169">This action is the same as pulling the power on a hardware server!</key>
@@ -3141,7 +3145,7 @@ SUPPORT
 		<!-- errors -->
 		<key name="assv_error_0001"><![CDATA[The server you wish to shut down must be specified via '--server <name>'. See --help for more information.]]></key>
 		<key name="assv_error_0002"><![CDATA[Failed to connect to any #!string!brand_0019!# databases. Please (carefully) shut down the server using the 'clusvcadm' command directly.]]></key>
-		<key name="assv_error_0003"><![CDATA[Failed to stop the server! The server has entered the 'failed' state. Please manually stop it, then try stopping it again.]]></key>
+		<key name="assv_error_0003"><![CDATA[Failed to stop the server! The server has entered the 'failed' state. Please manually stop it. ScanCore should clean it up shortly after it shuts down.]]></key>
 		
 		<!-- message -->
 		<key name="assv_message_0001"><![CDATA[

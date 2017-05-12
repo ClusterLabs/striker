@@ -14984,7 +14984,7 @@ sub _stop_server
 		# Clear the stop reason
 		$an->ScanCore->update_server_stop_reason({
 			server_name => $server, 
-			stop_reason => "",
+			stop_reason => "failed",
 		});
 		
 		# print a warning.

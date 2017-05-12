@@ -49,6 +49,7 @@ all strings with 'scan_clustat_'.
 		<key name="scan_clustat_note_0027">All servers are now running on: [#!variable!node!#], so this node has been designated as the primary node.</key>
 		<key name="scan_clustat_note_0028">The server: [#!variable!service!#] has been migrated from: [#!variable!source!#] to: [#!variable!target!#].</key>
 		<key name="scan_clustat_note_0029">The server: [#!variable!service!#] recovered from a failed state.</key>
+		<key name="scan_clustat_note_0030">The server: [#!variable!service!#] is off, so its failed state was cleared. It is now in the disabled state.</key>
 		
 		<!-- Warnings. -->
 		<key name="scan_clustat_warning_0001">#!free!#</key>
