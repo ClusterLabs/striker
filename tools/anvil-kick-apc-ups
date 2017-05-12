@@ -523,7 +523,7 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 		else
 		{
 			# We're good.
-			logger($conf, $THIS_FILE, __LINE__, "- Watchdog timer is kicking the UPS: [$conf->{hosts}{by_ip}{$ups}->[0]] ($ups).");
+			logger($conf, $THIS_FILE, __LINE__, "- Watchdog timer is kicking the UPS: [$ups].");
 		
 			# Cancel a pending shut-off
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Cancelling any pending power off.");

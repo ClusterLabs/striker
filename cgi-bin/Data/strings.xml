@@ -1324,8 +1324,8 @@
 		<key name="message_0001"><![CDATA[Successfully saved changes for the: [<span class="highlight_detail">#!variable!target!#</span>] notification target.]]></key>
 		<key name="message_0002">The server was in a failed state, disabling it now.</key>
 		<key name="message_0003">The server failed to stop. Did it ignore the shutdown request?</key>
-		<key name="message_0004">#!free!#</key>
-		<key name="message_0005">#!free!#</key>
+		<key name="message_0004">Both nodes appear to already be off. Proceeding with UPS power cycle.</key>
+		<key name="message_0005">Both nodes appear to already be off. Proceeding with UPS power off.</key>
 		<key name="message_0006">#!free!#</key>
 		<key name="message_0007">#!free!#</key>
 		<key name="message_0008">#!free!#</key>
@@ -1908,8 +1908,16 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		
 		<!-- Log messages -->
 		<key name="log_0001">===] Log opened on #!variable!date!# at #!variable!time!#. [===</key>
-		<key name="log_0002">#!free!#</key>
-		<key name="log_0003">#!free!#</key>
+		<key name="log_0002">
+#############################################################################################################
+# Beginning update of: [#!variable!target!#]
+#############################################################################################################
+		</key>
+		<key name="log_0003">
+#############################################################################################################
+# Finished updating: [#!variable!target!#]
+#############################################################################################################
+		</key>
 		<key name="log_0004">#!free!#</key>
 		<key name="log_0005">#!free!#</key>
 		<key name="log_0006">#!free!#</key>

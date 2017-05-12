@@ -4197,32 +4197,39 @@ sub _cold_stop_anvil
 			}
 			else
 			{
-				# Try pinging both nodes.
-				my $ping_node1 = 0;
-				my $ping_node2 = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "sys::anvil::node1::bcn_ip", value1 => $an->data->{sys}{anvil}{node1}{bcn_ip},
-					name2 => "sys::anvil::node2::bcn_ip", value2 => $an->data->{sys}{anvil}{node2}{bcn_ip},
-				}, file => $THIS_FILE, line => __LINE__});
-				if ($an->Validate->is_ipv4({ip => $an->data->{sys}{anvil}{node1}{bcn_ip}}))
+				# Try pinging both nodes, if they were on to begin with.
+				if (($an->data->{sys}{anvil}{node1}{use_ip}) && ($an->data->{sys}{anvil}{node2}{use_ip}))
 				{
-					($ping_node1) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node1}{bcn_ip}});
-				}
-				if ($an->Validate->is_ipv4({ip => $an->data->{sys}{anvil}{node1}{bcn_ip}}))
-				{
-					($ping_node2) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node2}{bcn_ip}});
-				}
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "ping_node1", value1 => $ping_node1,
-					name2 => "ping_node2", value2 => $ping_node2,
-				}, file => $THIS_FILE, line => __LINE__});
-				if (($ping_node1) or ($ping_node2))
-				{
-					$both_down = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "both_down", value1 => $both_down,
+					my $ping_node1 = 0;
+					my $ping_node2 = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "sys::anvil::node1::bcn_ip", value1 => $an->data->{sys}{anvil}{node1}{bcn_ip},
+						name2 => "sys::anvil::node2::bcn_ip", value2 => $an->data->{sys}{anvil}{node2}{bcn_ip},
 					}, file => $THIS_FILE, line => __LINE__});
-					sleep 5;
+					if ($an->Validate->is_ipv4({ip => $an->data->{sys}{anvil}{node1}{bcn_ip}}))
+					{
+						($ping_node1) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node1}{bcn_ip}});
+					}
+					if ($an->Validate->is_ipv4({ip => $an->data->{sys}{anvil}{node1}{bcn_ip}}))
+					{
+						($ping_node2) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node2}{bcn_ip}});
+					}
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "ping_node1", value1 => $ping_node1,
+						name2 => "ping_node2", value2 => $ping_node2,
+					}, file => $THIS_FILE, line => __LINE__});
+					if (($ping_node1) or ($ping_node2))
+					{
+						$both_down = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "both_down", value1 => $both_down,
+						}, file => $THIS_FILE, line => __LINE__});
+						sleep 5;
+					}
+				}
+				else
+				{
+					$an->Log->entry({log_level => 2, message_key => "message_0004", file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -4280,20 +4287,31 @@ sub _cold_stop_anvil
 			}
 			else
 			{
-				# Try pinging both nodes.
-				my ($ping_node1) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node1}{use_ip}});
-				my ($ping_node2) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node2}{use_ip}});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "ping_node1", value1 => $ping_node1,
-					name2 => "ping_node2", value2 => $ping_node2,
-				}, file => $THIS_FILE, line => __LINE__});
-				if (($ping_node1) or ($ping_node2))
+				# Try pinging both nodes, if they were on to begin with.
+				if (($an->data->{sys}{anvil}{node1}{use_ip}) && ($an->data->{sys}{anvil}{node2}{use_ip}))
 				{
-					$both_down = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "both_down", value1 => $both_down,
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "sys::anvil::node1::use_ip", value1 => $an->data->{sys}{anvil}{node1}{use_ip},
+						name2 => "sys::anvil::node2::use_ip", value2 => $an->data->{sys}{anvil}{node2}{use_ip},
 					}, file => $THIS_FILE, line => __LINE__});
-					sleep 5;
+					my ($ping_node1) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node1}{use_ip}});
+					my ($ping_node2) = $an->Check->ping({ping => $an->data->{sys}{anvil}{node2}{use_ip}});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "ping_node1", value1 => $ping_node1,
+						name2 => "ping_node2", value2 => $ping_node2,
+					}, file => $THIS_FILE, line => __LINE__});
+					if (($ping_node1) or ($ping_node2))
+					{
+						$both_down = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "both_down", value1 => $both_down,
+						}, file => $THIS_FILE, line => __LINE__});
+						sleep 5;
+					}
+				}
+				else
+				{
+					$an->Log->entry({log_level => 2, message_key => "message_0005", file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}

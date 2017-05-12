@@ -925,7 +925,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0169"><![CDATA[The 'AN::Tools::Get' module's 'upses_under_node()' method was called without a node name or a node UUID.]]></key>
 		<key name="error_message_0170"><![CDATA[The 'AN::Tools::Get' module's 'upses_under_node()' method was called with the node name: [#!variable!node_name!#] which wasn't found in the database.]]></key>
 		<key name="error_message_0171"><![CDATA[The 'AN::Tools::Get' module's 'upses()' method was called without an Anvil! UUID.]]></key>
-		<key name="error_message_0172"><![CDATA[The 'AN::Tools::Check' module's 'ping()' method was called without 'ip' being set.]]></key>
+		<key name="error_message_0172"><![CDATA[The 'AN::Tools::Check' module's 'ping()' method was called without 'ping' being set.]]></key>
 		<key name="error_message_0173"><![CDATA[The 'AN::Tools::Get' module's 'ip_from_hostname()' method was called without a host name being set.]]></key>
 		<key name="error_message_0174"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' method was called without a target being set.]]></key>
 		<key name="error_message_0175"><![CDATA[The 'AN::Tools::Remote' module's 'remote_call()' was asked to connect to the target machine: [#!variable!target!#] on requested TCP port: [#!variable!port!#], but the port is invalid.]]></key>
