@@ -1558,7 +1558,7 @@ sub stop_server
 		}
 		close $file_handle;
 	}
-	my $success = 0;
+	my $success = 1;
 	foreach my $line (@{$return})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {

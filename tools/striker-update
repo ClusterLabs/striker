@@ -840,10 +840,6 @@ sub update_local
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_local" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	print "###############################################################################\n";
-	print "# Beginning update of: [".$an->hostname."]\n";
-	print "###############################################################################\n";
-	
 	# Disable ScanCore.
 	print "###############################################################################\n";
 	print "# NOTE: ScanCore will be disabled. If anything causes the upgrade process to\n";
@@ -859,10 +855,6 @@ sub update_local
 	manage_scancore($an, "enable");
 	
 	print "The update process has completed.\n\n";
-	
-	print "###############################################################################\n";
-	print "# Finished updating: [".$an->hostname."]\n";
-	print "###############################################################################\n";
 	
 	return(0);
 }
@@ -1037,9 +1029,6 @@ sub update_all
 	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
 	{
 		my $password = $dashboards->{$dashboard};
-		print "###############################################################################\n";
-		print "# Beginning update of: [".$dashboard."]\n";
-		print "###############################################################################\n";
 
 		print "- Disabling ScanCore on Striker dashboard: [$dashboard]\n";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -1061,9 +1050,6 @@ sub update_all
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		print "###############################################################################\n";
-		print "# Finished updating: [".$dashboard."]\n";
-		print "###############################################################################\n";
 	}
 	foreach my $anvil_name (sort {$a cmp $b} keys %{$anvils})
 	{
@@ -1088,9 +1074,6 @@ sub update_all
 				name1 => "node_name", value1 => $node_name,
 				name2 => "node_uuid", value2 => $node_uuid,
 			}, file => $THIS_FILE, line => __LINE__});
-			print "###############################################################################\n";
-			print "# Beginning update of: [".$anvil_name."] -> [".$node_name."]\n";
-			print "###############################################################################\n";
 			
 			# I reload and rescan each loop in case I am updating two or more Anvil! systems
 			print "- Disabling ScanCore on Anvil!: [$anvil_name]'s node: [$node_name]...\n";
@@ -1119,9 +1102,6 @@ sub update_all
 					name1 => "line", value1 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			print "###############################################################################\n";
-			print "# Finished updating: [".$anvil_name."] -> [".$node_name."]\n";
-			print "###############################################################################\n";
 		}
 	}
 	print "- Disabling the local ScanCore and waiting for it to exit...\n";
@@ -2213,6 +2193,10 @@ sub update_target
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	print "###############################################################################\n";
+	print "# Beginning update of: [".$target."]\n";
+	print "###############################################################################\n";
+	
 	# Before we do anything, make sure the an-el6-repo is fixed.
 	update_an_repo($an, $target, $port, $password);
 	
@@ -2517,6 +2501,10 @@ done
 		}, file => $THIS_FILE, line => __LINE__});
 		print "- Done!\n\n";
 	}
+	
+	print "###############################################################################\n";
+	print "# Finished updating: [".$target."]\n";
+	print "###############################################################################\n";
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "rebooted", value1 => $rebooted, 
