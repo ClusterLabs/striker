@@ -1326,7 +1326,7 @@
 		<key name="message_0003">The server failed to stop. Did it ignore the shutdown request?</key>
 		<key name="message_0004">Both nodes appear to already be off. Proceeding with UPS power cycle.</key>
 		<key name="message_0005">Both nodes appear to already be off. Proceeding with UPS power off.</key>
-		<key name="message_0006">#!free!#</key>
+		<key name="message_0006"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been aborted because one of the servers did not shut down.<br />Please manually shut down the server (or wait if it is shutting down but taking time), then try again.]]></key>
 		<key name="message_0007">#!free!#</key>
 		<key name="message_0008">#!free!#</key>
 		<key name="message_0009">#!free!#</key>
@@ -1602,7 +1602,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="message_0266">#!free!#</key>
 		<key name="message_0267">#!free!#</key>
 		<key name="message_0268">Both physical nodes appear to be powered off. Your #!string!brand_0003!# details are not available at this time.</key>
-		<key name="message_0269">Unable to connect to either #!string!brand_0003!# node. The status is not available at this time.</key>
+		<key name="message_0269"><![CDATA[Unable to connect to either #!string!brand_0003!# node. The status is not available at this time.<br />The nodes might be booting up. If so, please wait a few minutes.]]></key>
 		<key name="message_0270">on</key> <!-- Used to 'vg *on* pv'... -->
 		<key name="message_0271"><![CDATA[I found a server with the name <span class="fixed_width">#!variable!server!#</span> which is not managed by the #!string!brand_0003!# yet.<br /><b>If this is a new server that is still being installed, please ignore this message.</b><br />If you do not have the original dashboard install window open anymore, you can <a href="#!variable!url!#"><b>click here to add it</b></a> to this #!string!brand_0003!# now.]]></key>
 		<key name="message_0272"><![CDATA[Gathering information from <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>

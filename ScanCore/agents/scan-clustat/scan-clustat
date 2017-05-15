@@ -1882,9 +1882,22 @@ WHERE
 						elsif (($old_status =~ /fail/i) &&
 						       ($new_status =~ /disable/i))
 						{
+							# This is left as a notice level because we'll send 
+							# an alert-level inside the server cleanup function,
+							# making this a duplicate.
+							$say_alert_message = "scan_clustat_note_0030"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# failed -> disabled	= cleared after failed
+						elsif (($old_status =~ /stop/i) &&
+						       ($new_status =~ /fail/i))
+						{
 							$say_alert_level   = "warning";
 							$say_alert_title   = "an_alert_title_0004"; 
-							$say_alert_message = "scan_clustat_note_0030"; 
+							$say_alert_message = "scan_clustat_warning_0027"; 
 							$variables         = {
 								service		=>	$service,
 							};
@@ -3033,9 +3046,9 @@ sub cleanup_server
 					{
 						# Send an alert.
 						$an->Alert->register_alert({
-							alert_level		=>	"warning", 
+							alert_level		=>	"warning",
 							alert_agent_name	=>	$THIS_FILE,
-							alert_title_key		=>	"an_alert_title_0004",
+							alert_title_key		=>	"an_alert_title_0006",
 							alert_message_key	=>	"scan_clustat_warning_0026",
 							alert_message_variables	=>	{
 								server			=>	$server,

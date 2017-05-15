@@ -3927,6 +3927,7 @@ sub _cold_stop_anvil
 		}});
 		
 		# Find a node to use to stop the servers.
+		my $abort = 0;
 		my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "node_name", value1 => $node_name,
@@ -3958,7 +3959,7 @@ sub _cold_stop_anvil
 				}});
 				
 				my $shell_output = "";
-				my $shell_call   = $an->data->{path}{'anvil-stop-server'}." --server $server --reason cold_stop";
+				my $shell_call   = $an->data->{path}{'anvil-stop-server'}." --server $server --reason cold_stop; ".$an->data->{path}{'echo'}." return_code:\$?";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "target",     value1 => $target,
 					name2 => "shell_call", value2 => $shell_call,
@@ -3971,19 +3972,40 @@ sub _cold_stop_anvil
 				});
 				foreach my $line (@{$return})
 				{
-					$line =~ s/^\s+//;
-					$line =~ s/\s+$//;
-					$line =~ s/\s+/ /g;
+					$line = $an->String->clean_spaces({string => $line});
 					$line =~ s/Local machine/$node_name/;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					$line         =  $an->Web->parse_text_line({line => $line});
-					$shell_output .= "$line<br />\n";
+					$line = $an->Web->parse_text_line({line => $line});
 					if ($line =~ /success/i)
 					{
-						$an->data->{server}{$server}{'state'} = "disabled";
+						$an->data->{server}{$server}{'state'} =  "disabled";
+						$shell_output                         .= "$line<br />\n";
+					}
+					elsif ($line =~ /fail/i)
+					{
+						$an->data->{server}{$server}{'state'} =  "failed";
+						$shell_output                         .= "$line<br />\n";
+						$abort                                =  1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "abort", value1 => $abort,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					elsif ($line =~ /return_code:(\d+)$/)
+					{
+						my $return_code = $1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "return_code", value1 => $return_code,
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($return_code ne "0")
+						{
+							$abort = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "abort", value1 => $abort,
+							}, file => $THIS_FILE, line => __LINE__});
+						}
 					}
 				}
 				$shell_output =~ s/\n$//;
@@ -3996,6 +4018,20 @@ sub _cold_stop_anvil
 					message_class	=>	"quoted_text",
 					message		=>	$shell_output,
 				}});
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "abort", value1 => $abort,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($abort)
+			{
+				my $say_title   = $an->String->get({key => "title_0184"});
+				my $say_message = $an->String->get({key => "message_0006", variables => { anvil => $anvil_name }});
+				print $an->Web->template({file => "server.html", template => "cold-stop-aborted", replace => { 
+					title	=>	$say_title,
+					message	=>	$say_message,
+				}});
+				return(1);
 			}
 		}
 		

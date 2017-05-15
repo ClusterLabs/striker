@@ -111,7 +111,8 @@ This should never happen.
 #!string!scancore_brand_0005!#
 		</key>
 		<key name="scan_clustat_warning_0025">There are no servers running on the peer node, and we have: [#!variable!servers!#] hosted here. The fence delay does not favour us, so that will now be fixed.</key>
-		<key name="scan_clustat_warning_0026">The server: [#!variable!server!#] was in a failed state and it was not running on either node, so the 'failed' state was cleared.</key>
+		<key name="scan_clustat_warning_0026">The server: [#!variable!server!#] was in a failed state, and it is not running on either node now, so the 'failed' state was cleared.</key>
+		<key name="scan_clustat_warning_0027">The server: [#!variable!service!#] failed to stop in time after a request to shut down. It is now marked as 'failed', which will be cleared once it does finally shut down. Manual shut down is likely required.</key>
 		
 		<!-- clustat Agent-specific messages -->
 		<key name="scan_clustat_message_0001">Starting #!string!scan_clustat_brand_0001!#:</key>
