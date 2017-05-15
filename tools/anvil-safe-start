@@ -19,7 +19,8 @@
 # 13 = During single-node start, the 'cman' daemon was found to already be running which should not happen.
 #
 # TODO:
-# - 
+# - Check network connections using IPs from 'ip addr list' so that bad entries in /etc/hosts (like after a 
+#   changed IP) won't cause this to hang.
 #
 # BUG:
 # - 
@@ -841,6 +842,7 @@ sub wait_for_storage
 	
 	# First, loop locally watching clustat for the storage services.
 	my $started_waiting        = time;
+	my $enable_storage_time    = $started_waiting + 60;
 	my $restart_rgmanager_time = $started_waiting + 120;
 	my $force_reset_time       = $started_waiting + 300;
 	my $peer_key               = $an->data->{sys}{peer_key};
@@ -849,15 +851,16 @@ sub wait_for_storage
 	my $peer_state_variable    = "sys::node::".$peer_name."::last_seen";
 	my $last_booted_variable   = "sys::node::".$peer_name."::last_booted_without";
 	my $storage_up             = 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 		name1 => "started_waiting",        value1 => $started_waiting, 
-		name2 => "restart_rgmanager_time", value2 => $restart_rgmanager_time, 
-		name3 => "force_reset_time",       value3 => $force_reset_time, 
-		name4 => "local_key",              value4 => $local_key,
-		name5 => "peer_key",               value5 => $peer_key,
-		name6 => "peer_name",              value6 => $peer_name,
-		name7 => "peer_state_variable",    value7 => $peer_state_variable,
-		name8 => "last_booted_variable",   value8 => $last_booted_variable,
+		name2 => "enable_storage_time",    value2 => $enable_storage_time, 
+		name3 => "restart_rgmanager_time", value3 => $restart_rgmanager_time, 
+		name4 => "force_reset_time",       value4 => $force_reset_time, 
+		name5 => "local_key",              value5 => $local_key,
+		name6 => "peer_key",               value6 => $peer_key,
+		name7 => "peer_name",              value7 => $peer_name,
+		name8 => "peer_state_variable",    value8 => $peer_state_variable,
+		name9 => "last_booted_variable",   value9 => $last_booted_variable,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# I need to know my service names so that if 'who' is set to 'local', we only watch that service.
@@ -869,6 +872,61 @@ sub wait_for_storage
 	
 	until ($storage_up)
 	{
+		# If either storage is 'disabled', call -e
+		if (time > $enable_storage_time)
+		{
+			my $to_enable  = "";
+			my $shell_call = $an->data->{path}{clustat};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /(storage_.*?) .*? disabled/)
+				{
+					# Enable it.
+					$to_enable = $1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "to_enable", value1 => $to_enable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "to_enable", value1 => $to_enable, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($to_enable)
+			{
+				my $shell_call = $an->data->{path}{timeout}." 15 ".$an->data->{path}{clusvcadm}." -e $to_enable || ".$an->data->{path}{echo}." timed out";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				close $file_handle;
+				
+				# Give the storage a bit to start coming online.
+				sleep 5;
+			}
+		}
+		
 		# If I've waited too long, clvmd might be hung. Try force-stopping clvmd and then restarting
 		# rgmanager.
 		if (time > $restart_rgmanager_time)
