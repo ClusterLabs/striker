@@ -2330,12 +2330,22 @@ WHERE
 		}
 		
 		# Load shed! Tell the user.
-		$an->Alert->register_alert({
-			alert_level		=>	"warning", 
-			alert_agent_name	=>	$THIS_FILE,
-			alert_title_key		=>	"an_alert_title_0004",
-			alert_message_key	=>	$message_key,
+		my $set = $an->Alert->check_alert_sent({
+			type			=>	"warning",
+			alert_sent_by		=>	$THIS_FILE,
+			alert_record_locator	=>	$an->hostname,
+			alert_name		=>	"load_shed_needed",
+			modified_date		=>	$an->data->{sys}{db_timestamp},
 		});
+		if ($set)
+		{
+			$an->Alert->register_alert({
+				alert_level		=>	"warning", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_title_key		=>	"an_alert_title_0004",
+				alert_message_key	=>	$message_key,
+			});
+		}
 		
 		# Send the email, because we might be about to die.
 		process_alerts($an, 0);
@@ -2407,6 +2417,13 @@ WHERE
 			alert_name		=>	"shutdown_should_have_happened",
 			modified_date		=>	$an->data->{sys}{db_timestamp},
 		});
+		my $cleared_load_shed = $an->Alert->check_alert_sent({
+			type			=>	"clear",
+			alert_sent_by		=>	$THIS_FILE,
+			alert_record_locator	=>	$an->hostname,
+			alert_name		=>	"load_shed_needed",
+			modified_date		=>	$an->data->{sys}{db_timestamp},
+		});
 		if ($cleared_node_sick)
 		{
 			# Tell the user that we're OK.
@@ -2423,6 +2440,7 @@ WHERE
 			# Send the email
 			process_alerts($an, 0);
 		}
+		
 	}
 	
 	### Log the state, if needed. Note that load shedding is handled in 'anvil-safe-stop', not here.

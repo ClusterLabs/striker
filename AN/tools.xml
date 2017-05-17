@@ -663,7 +663,7 @@ Variables:
 		
 		<!-- Warning messages -->
 		<key name="warning_message_0001">The detected operating system: [#!variable!os!#] is not recognized by AN::Tools. Please send this error message and your operating system details to AN! (#!string!an_brand_0001!#) so that we can add support for your OS. For now, I will proceed with Linux-type settings. This may not work.</key>
-		<key name="warning_message_0002">#!free!#</key>
+		<key name="warning_message_0002">The database with the ID: [#!variable!id!#] did not respond to pings and 'scancore::db::#!variable!id!#::ping_before_connect' is not set to '0' in '#!data!path::striker_config!#', skipping it.</key>
 		<key name="warning_message_0003"><![CDATA[AN::Tools::Cman->boot_server() was asked to boot: [#!variable!server!#], but that was not found. Unable to proceed.]]></key>
 		<key name="warning_message_0004">Booting the server: [#!variable!server!#] failed. No healthy node was found and the boot wasn't forced, so the server will be left off.</key>
 		<key name="warning_message_0005">One or more virtual hard drives used by the server: [#!variable!server!#] is on a replicated storage that is not 'UpToDate' on both nodes. The boot was forced though, so it will be booted on: [#!variable!server!#] now. If either node goes offline, this server will lose access to its storage!</key>
@@ -770,8 +770,8 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_message_0022">The shell call:  [#!variable!shell_call!#] failed with the error: [#!variable!error!#].</key>
 		<key name="error_message_0023">Failed to read or generate a (sane) UUID. Expected the format: '012345-6789-abcd-ef01-23456789abcd' but got: [#!variable!bad_uuid!#]. This could mean the 'get' values was a host name that was not found in the database.</key>
 		<key name="error_message_0024">Failed to generate UUID.</key>
-		<key name="error_message_0025">#!free!#</key>
-		<key name="error_message_0026">#!free!#</key>
+		<key name="error_message_0025"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_health()' method was called without a health agent name being passed.]]></key>
+		<key name="error_message_0026"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_health()' method was called without a health source name being passed.]]></key>
 		<key name="error_message_0027">Host name: [#!variable!target!#] does not resolve to an IP address.</key>
 		<key name="error_message_0028"><![CDATA[Connection to: [#!variable!target!#] on port: [#!variable!port!#] as the user: [#!variable!user!#] was refused.</br /> If you recently booted this server, it may be just about finished booting. It is normal for the connection to be refused for a brief time during the boot process.]]></key>
 		<key name="error_message_0029">No route to: [#!variable!target!#]. Is the machine in the process of booting up or powering off? Is this dashboard server on the same network?</key>

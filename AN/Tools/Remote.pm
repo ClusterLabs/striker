@@ -617,6 +617,7 @@ sub remote_call
 		}
 		else
 		{
+			### TODO: Timeout if the call doesn't respond in X seconds, closing the filehandle if hit.
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "channel",    value1 => $channel, 
 				name2 => "shell_call", value2 => $shell_call, 

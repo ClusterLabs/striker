@@ -1301,6 +1301,8 @@ WHERE
 					if (($old_status =~ /Online, rgmanager/i) &&
 					    ($new_status =~ /Online/i))
 					{
+						$say_alert_level   = "warning";
+						$say_alert_title   = "an_alert_title_0004"; 
 						$say_alert_message = "scan_clustat_note_0005";
 						$variables         = {
 							node		=>	$node,
@@ -1323,6 +1325,8 @@ WHERE
 					elsif (($old_status =~ /Online/i) &&
 					       ($new_status =~ /Online, rgmanager/i))
 					{
+						$say_alert_level   = "warning";
+						$say_alert_title   = "an_alert_title_0006"; 
 						$say_alert_message = "scan_clustat_note_0009"; 
 						$variables         = {
 							node		=>	$node,
@@ -1333,6 +1337,8 @@ WHERE
 					elsif (($old_status =~ /Offline/i) &&
 					       ($new_status =~ /Online, rgmanager/i))
 					{
+						$say_alert_level   = "warning";
+						$say_alert_title   = "an_alert_title_0006"; 
 						$say_alert_message = "scan_clustat_note_0010"; 
 						$variables         = {
 							node		=>	$node,
@@ -1343,6 +1349,8 @@ WHERE
 					elsif (($old_status =~ /Online/i) &&
 					       ($new_status =~ /Offline/i))
 					{
+						$say_alert_level   = "warning";
+						$say_alert_title   = "an_alert_title_0004"; 
 						$say_alert_message = "scan_clustat_note_0007"; 
 						$variables         = {
 							node		=>	$node,
@@ -1353,6 +1361,8 @@ WHERE
 					elsif (($old_status =~ /Offline/i) &&
 					       ($new_status =~ /Online/i))
 					{
+						$say_alert_level   = "warning";
+						$say_alert_title   = "an_alert_title_0006"; 
 						$say_alert_message = "scan_clustat_note_0008"; 
 						$variables         = {
 							node		=>	$node,

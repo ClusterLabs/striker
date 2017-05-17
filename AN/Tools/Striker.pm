@@ -9778,9 +9778,18 @@ sub _manage_server
 	my $cpu_cores = [];
 	foreach my $core_num (1..$max_cpu_count)
 	{
-		if ($max_cpu_count > 9)
+		# Zero-pad the number, if necessary
+		if ($max_cpu_count > 999)
 		{
-			push @{$cpu_cores}, $core_num;
+			push @{$cpu_cores}, sprintf("%04d", $core_num);;
+		}
+		elsif ($max_cpu_count > 99)
+		{
+			push @{$cpu_cores}, sprintf("%03d", $core_num);;
+		}
+		elsif ($max_cpu_count > 9)
+		{
+			push @{$cpu_cores}, sprintf("%02d", $core_num);;
 		}
 		else
 		{

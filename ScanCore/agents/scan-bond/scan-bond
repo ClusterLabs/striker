@@ -1381,6 +1381,36 @@ AND
 							bond_name	=>	$bond_interface_name, 
 						}, file => $THIS_FILE, line => __LINE__});
 						
+						### Health values for current state;
+						# * 'up' or 'going back' = 0
+						# * 'down'               = 1
+						if (($new_bond_interface_mii_status eq "up") or ($new_bond_interface_mii_status eq "going back"))
+						{
+							# If set, this delete it. If deleted, "deleted" will 
+							# be returned. A blank string is returned if the 
+							# entry didn't exist.
+							my $health_uuid = $an->ScanCore->insert_or_update_health({
+								health_agent_name    => $THIS_FILE,
+								health_source_name   => "$bond_interface_name:link_state",
+								health_source_weight => 0,
+							});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "health_uuid", value1 => $health_uuid, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif ($new_bond_interface_mii_status eq "down")
+						{
+							# Set the value to '1', if not already
+							my $health_uuid = $an->ScanCore->insert_or_update_health({
+								health_agent_name    => $THIS_FILE,
+								health_source_name   => "$bond_interface_name:link_state",
+								health_source_weight => 1,
+							});
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "health_uuid", value1 => $health_uuid, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						
 						### The way things might change and what they might mean;
 						# * The MII status changed.
 						#   * 'up' -> 'down'         = Link failed, warning level 

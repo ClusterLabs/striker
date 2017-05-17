@@ -679,6 +679,12 @@ sub connect_to_databases
 		my $user     = $an->data->{scancore}{db}{$id}{user}     ? $an->data->{scancore}{db}{$id}{user}     : ""; # This should fail
 		my $password = $an->data->{scancore}{db}{$id}{password} ? $an->data->{scancore}{db}{$id}{password} : "";
 		
+		# If not set, we will always ping before connecting.
+		if ((not exists $an->data->{scancore}{db}{$id}{ping_before_connect}) or (not defined $an->data->{scancore}{db}{$id}{ping_before_connect}))
+		{
+			$an->data->{scancore}{db}{$id}{ping_before_connect} = 1;
+		}
+		
 		# These are not used yet.
 		my $postgres_password = $an->data->{scancore}{db}{$id}{postgres_password} ? $an->data->{scancore}{db}{$id}{postgres_password} : "";
 		my $initialize        = $an->data->{scancore}{db}{$id}{initialize}        ? $an->data->{scancore}{db}{$id}{initialize}        : 0;
@@ -719,8 +725,31 @@ sub connect_to_databases
 		# Assemble my connection string
 		my $db_connect_string = "$driver:dbname=$name;host=$host;port=$port";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "db_connect_string", value1 => $db_connect_string
+			name1 => "db_connect_string", value1 => $db_connect_string, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::db::${id}::ping_before_connect", value1 => $an->data->{scancore}{db}{$id}{ping_before_connect}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{scancore}{db}{$id}{ping_before_connect})
+		{
+			# Can I ping?
+			my ($pinged) = $an->Check->ping({ping => $host, count => 1});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pinged", value1 => $pinged, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $pinged)
+			{
+				$an->Log->entry({log_level => 1, message_key => "warning_message_0002", message_variables => { id => $id }, file => $THIS_FILE, line => __LINE__});
+				
+				$an->data->{scancore}{db}{$id}{connection_error} = [];
+				push @{$failed_connections}, $id;
+				
+				$an->Alert->warning({ message_key => "warning_message_0002", message_variables => { id => $id }, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0002", message_variables => { id => $id }};
+				next;
+			}
+		}
 		
 		# Connect!
 		my $dbh = "";

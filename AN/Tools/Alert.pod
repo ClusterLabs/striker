@@ -310,11 +310,11 @@ The 'AN::Tools::Storage->rsync() method was called without a 'source' parameter.
 
 =head2 C<25>
 
-A directory was passed to a method that does not exist yet. Please create the directory mentioned in the error.
+The 'AN::Tools::ScanCore' module's 'insert_or_update_health()' method was called without a health agent name being passed.
 
 =head2 C<26>
 
-A directory was passed to a method that exists but is not writeable by either the user or group that the method was running as. Please change the permissions on the directory to be writeable by the user or group specified in the error or specify a different directory that is writeable.
+The 'AN::Tools::ScanCore' module's 'insert_or_update_health()' method was called without a health source name being passed.
 
 =head2 C<27>
 

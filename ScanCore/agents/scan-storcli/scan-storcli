@@ -302,7 +302,7 @@ archive_if_needed($an);
 # Look to see if any databases need to be updated.
 update_db($an);
 
-# Finally, process health weights.
+# Figure out, other than temperatures, what should be added to or removed from health.
 pre_process_health($an);
 
 # Look for changes.
@@ -629,7 +629,6 @@ WHERE
 	
 	return(0);
 }
-
 
 # This looks for anything other than temperature sensors that will feed into the health of the node.
 sub pre_process_health

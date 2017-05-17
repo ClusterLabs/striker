@@ -36,6 +36,7 @@ my $THIS_FILE = "ScanCore.pm";
 # insert_or_update_anvils
 # insert_or_update_dr_jobs
 # insert_or_update_dr_targets
+# insert_or_update_health
 # insert_or_update_nodes
 # insert_or_update_nodes_cache
 # insert_or_update_notifications
@@ -2325,6 +2326,194 @@ WHERE
 	}
 	
 	return($dr_target_uuid);
+}
+
+# This updates (or inserts) a record in the 'health' table. Different from other tables, a new value of '0'
+# will delete the record.
+sub insert_or_update_health
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $health_uuid          = $parameter->{health_uuid}          ? $parameter->{health_uuid}          : "";
+	my $health_host_uuid     = $parameter->{health_host_uuid}     ? $parameter->{health_host_uuid}     : $an->data->{sys}{host_uuid};
+	my $health_agent_name    = $parameter->{health_agent_name}    ? $parameter->{health_agent_name}    : "";
+	my $health_source_name   = $parameter->{health_source_name}   ? $parameter->{health_source_name}   : "";
+	my $health_source_weight = $parameter->{health_source_weight} ? $parameter->{health_source_weight} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+		name1 => "health_uuid",          value1 => $health_uuid, 
+		name2 => "health_host_uuid",     value2 => $health_host_uuid, 
+		name3 => "health_agent_name",    value3 => $health_agent_name, 
+		name4 => "health_source_name",   value4 => $health_source_name, 
+		name5 => "health_source_weight", value5 => $health_source_weight, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: Add checks
+	if (not $health_agent_name)
+	{
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0025", code => 25, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	if (not $health_source_name)
+	{
+		$an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0026", code => 26, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# If I have an old value, we'll store it in this variable.
+	my $old_health_source_weight = 0;
+	
+	# If we don't have a UUID, see if we can find one for the given host UUID.
+	if ($health_uuid)
+	{
+		# Read the old value
+		my $query = "
+SELECT 
+    health_source_weight 
+FROM 
+    health 
+WHERE 
+    health_uuid = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+			
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$old_health_source_weight = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "old_health_source_weight", value1 => $old_health_source_weight, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	else
+	{
+		my $query = "
+SELECT 
+    health_uuid,
+    health_source_weight 
+FROM 
+    health 
+WHERE 
+    health_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($health_host_uuid)." 
+AND 
+    health_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($health_agent_name)."
+AND 
+    health_source_name = ".$an->data->{sys}{use_db_fh}->quote($health_source_name)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+			
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$health_uuid              = $row->[0]; 
+			$old_health_source_weight = $row->[1];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "health_uuid",              value1 => $health_uuid, 
+				name2 => "old_health_source_weight", value2 => $old_health_source_weight, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	if ($health_uuid)
+	{
+		# I have a health_uuid. Do I have a weight? If so, has it changed?
+		if (not $health_source_weight)
+		{
+			# No weight, delete the entry.
+			my $query = "
+UPDATE 
+    health 
+SET 
+    health_source_name = 'DELETED', 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    health_uuid        = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)."
+;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			
+			$query = "
+DELETE FROM 
+    health 
+WHERE 
+    health_uuid        = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)."
+;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			
+			# Set the health_uuid to be 'deleted' so the caller knows we cleared it.
+			$health_uuid = "deleted";
+		}
+		elsif ($health_source_weight ne $old_health_source_weight)
+		{
+			# Update the weight.
+			my $query = "
+UPDATE 
+    health 
+SET 
+    health_source_weight = ".$an->data->{sys}{use_db_fh}->quote($health_source_weight).", 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    health_uuid          = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)."
+;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		}
+	}
+	else
+	{
+		# I don't have a health_uuid. Do I have a weight?
+		if ($health_source_weight)
+		{
+			# Yes, INSERT the new value.
+			   $health_uuid = $an->Get->uuid();
+			my $query       = "
+INSERT INTO 
+    health 
+(
+    health_uuid,
+    health_host_uuid, 
+    health_agent_name, 
+    health_source_name, 
+    health_source_weight, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($health_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_host_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_agent_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_source_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($health_source_weight).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+			$query =~ s/'NULL'/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return($health_uuid);
 }
 
 # This updates (or inserts) a record in the 'nodes' table.

@@ -1444,7 +1444,7 @@ sub report_status
 	
 	# If the user is running this with a short interval, warn them that it places a high load on the 
 	# system.
-	if ($an->data->{sys}{interval} < 10)
+	if (($an->data->{sys}{interval}) && ($an->data->{sys}{interval} < 10))
 	{
 		$page .= $an->String->get({key => "acs_report_0016"})."\n";
 	}
