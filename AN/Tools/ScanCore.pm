@@ -2335,7 +2335,7 @@ sub insert_or_update_health
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $health_uuid          = $parameter->{health_uuid}          ? $parameter->{health_uuid}          : "";
 	my $health_host_uuid     = $parameter->{health_host_uuid}     ? $parameter->{health_host_uuid}     : $an->data->{sys}{host_uuid};
@@ -2432,7 +2432,8 @@ AND
 		# I have a health_uuid. Do I have a weight? If so, has it changed?
 		if (not $health_source_weight)
 		{
-			# No weight, delete the entry.
+			# No weight, delete the entry. This is a two-step process to make sure the update to 
+			# DELETED and the actually delete happen together.
 			my $query = "
 UPDATE 
     health 
@@ -2445,7 +2446,7 @@ WHERE
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
 			
 			$query = "
 DELETE FROM 
@@ -2456,7 +2457,10 @@ WHERE
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+			
+			# Commit 
+			$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
 			
 			# Set the health_uuid to be 'deleted' so the caller knows we cleared it.
 			$health_uuid = "deleted";
@@ -4152,7 +4156,7 @@ SELECT
 FROM 
     variables 
 WHERE 
-    variable_name         = ".$an->data->{sys}{use_db_fh}->quote($variable_name);
+    variable_name = ".$an->data->{sys}{use_db_fh}->quote($variable_name);
 		if (($variable_source_uuid ne "NULL") && ($variable_source_table ne "NULL"))
 		{
 			$query .= "

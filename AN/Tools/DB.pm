@@ -34,6 +34,7 @@ my $THIS_FILE = "DB.pm";
 # update_time
 # verify_host_uuid
 # wait_if_db_is_updating
+# _test_access
 
 
 #############################################################################################################
@@ -1150,6 +1151,9 @@ sub do_db_query
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	# Test access to the DB before we do the actual query
+	$an->DB->_test_access({id => $id});
+	
 	# Do the query.
 	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0029", message_variables => { 
 		query    => $query, 
@@ -1157,7 +1161,6 @@ sub do_db_query
 		db_error => $DBI::errstr, 
 	}, code => 2, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: If a target DB becomes unavailable, call a disconnect and remove its ID from the list of DBs.
 	# Execute on the query
 	$DBreq->execute() or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
 					query    => $query, 
@@ -1317,6 +1320,10 @@ sub do_db_write
 		{
 			$an->data->{dbh}{$id}->begin_work;
 		}
+		
+		# Test access to the DB before we do the actual query
+		$an->DB->_test_access({id => $id});
+		
 		foreach my $query (@{$query_set})
 		{
 			# Record the query
@@ -1340,7 +1347,6 @@ sub do_db_write
 				}, code => 72, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			### TODO: If a target DB becomes unavailable, call a disconnect and remove its ID from the list of DBs.
 			# Do the do.
 			$an->data->{dbh}{$id}->do($query) or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
 								query    => $query, 
@@ -2516,5 +2522,47 @@ sub wait_if_db_is_updating
 #############################################################################################################
 # Internal methods                                                                                          #
 #############################################################################################################
+
+# This does a simple 'SELECT 1' from the DB ID with 'alarm()' that will kill this script if the DB handle 
+# hangs from a sudden loss of a DB.
+sub _test_access
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "_test_access" }, file => $THIS_FILE, line => __LINE__});
+	
+	my $id = $parameter->{id} ? $parameter->{id} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "id", value1 => $id, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Log our test
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0018", message_variables => {
+		host => $an->data->{scancore}{db}{$id}{host}, 
+		port => $an->data->{scancore}{db}{$id}{port}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $query = "SELECT 1";
+	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0029", message_variables => { 
+		query    => $query, 
+		server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name},
+		db_error => $DBI::errstr, 
+	}, code => 2, file => $THIS_FILE, line => __LINE__});
+	
+	# Give the test query 3 seconds to respond
+	alarm(10);
+	$DBreq->execute() or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
+					query    => $query, 
+					server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
+					db_error => $DBI::errstr
+				}, code => 3, file => $THIS_FILE, line => __LINE__});
+	# If we're here, we made contact.
+	alarm(0);
+	
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0024", file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
 
 1;

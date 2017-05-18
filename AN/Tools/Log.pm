@@ -240,9 +240,12 @@ sub entry
 		
 		if ($title)
 		{
-			if ($an->data->{sys}{'log'}{log_pid})
+			#    Old variable                          New variable
+			if (($an->data->{sys}{'log'}{log_pid}) or ($an->data->{sys}{'log'}{pid}))
 			{
-				$string = "$now_date $now_time - ".$$." - $file $line; [ $title ] - $message";
+				my $caller     = ($0 =~ /^.*\/(.*)$/)[0];
+				my $pid_string = $caller.":".$$;
+				$string = "$now_date $now_time - $pid_string - $file $line; [ $title ] - $message";
 			}
 			else
 			{
