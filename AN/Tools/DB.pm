@@ -2550,7 +2550,7 @@ sub _test_access
 		db_error => $DBI::errstr, 
 	}, code => 2, file => $THIS_FILE, line => __LINE__});
 	
-	# Give the test query 3 seconds to respond
+	# Give the test query a few seconds to respond, just in case we have some latency to a remote DB.
 	alarm(10);
 	$DBreq->execute() or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
 					query    => $query, 

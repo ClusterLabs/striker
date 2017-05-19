@@ -2885,7 +2885,7 @@ sub parse_clustat
 					cleanup_server($an, $service);
 				}
 			}
-			# Parse nodes. Note the '\d' to differentiate node lines from service lines.
+			# Parse nodes. Note the '\d+' to differentiate node lines from service lines.
 			elsif ($line =~ /^(.*?) (\d+) (.*)/)
 			{
 				my $node    = $1;

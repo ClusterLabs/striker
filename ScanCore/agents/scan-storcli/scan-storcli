@@ -7525,6 +7525,7 @@ WHERE
 							alert_title_key		=>	"an_alert_title_0003",
 							alert_message_key	=>	"scan_storcli_warning_0004",
 							alert_message_variables	=>	{
+								serial_number		=>	$serial_number,
 								name			=>	$variable,
 								value			=>	$new_variable_value,
 							},

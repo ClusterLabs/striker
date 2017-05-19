@@ -203,6 +203,10 @@ SET search_path = history, pg_catalog;
 				'CPU8'				=>	{
 					jump				=>	10,
 				},
+				# The ROC on LSI controllers can just dramatically
+				'RAID Controller'		=>	{
+					jump				=>	15,
+				},
 			},
 			# TODO: Remove this and have Striker pull the list of thermal sensors read in the 
 			#       last $timestamp.

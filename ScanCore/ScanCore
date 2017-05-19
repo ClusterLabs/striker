@@ -2596,6 +2596,21 @@ sub migrate_all_servers_to_here
 	my $return = 0;
 	if (@{$to_migrate} > 0)
 	{
+		# Tell the user what we're doing.
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scancore_warning_0001",
+			alert_message_variables	=>	{
+				host_name		=>	$an->hostname,
+				peer_name		=>	$peer_name,
+			},
+		});
+		
+		# Send the email
+		process_alerts($an, 0);
+		
 		# Migrate!
 		foreach my $server (sort {$a cmp $b} @{$to_migrate})
 		{
@@ -2621,6 +2636,18 @@ sub migrate_all_servers_to_here
 			}
 			close $file_handle;
 		}
+		
+		# All done
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scancore_warning_0002",
+			alert_message_variables	=>	{
+				host_name		=>	$an->hostname,
+				peer_name		=>	$peer_name,
+			},
+		});
 	}
 	
 	### TODO: Update cluster.conf to set this node as the node with the 'delay' (or have scan-clustat 

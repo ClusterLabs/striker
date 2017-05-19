@@ -170,8 +170,11 @@ error when trying to translate it, the alert will be skipped. The details were:
 		</key>
 		
 		<!-- Warnings. -->
-		<key name="scancore_warning_0001">#!free!#</key>
-		<key name="scancore_warning_0002">#!free!#</key>
+		<key name="scancore_warning_0001">
+This node is healthier that the peer. Initiating proactive live migration.
+- All servers will now migrate from [#!variable!peer_name!#] to: [#!variable!host_name!#]
+		</key>
+		<key name="scancore_warning_0002">Preventative migration complete.</key>
 		<key name="scancore_warning_0003">#!free!#</key>
 		<key name="scancore_warning_0004">#!free!#</key>
 		<key name="scancore_warning_0005">#!free!#</key>

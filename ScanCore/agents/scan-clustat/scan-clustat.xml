@@ -24,12 +24,24 @@ all strings with 'scan_clustat_'.
 		<key name="scan_clustat_note_0002">It appears that the 'clustat' service: [#!variable!service!#] was deleted.</key>
 		<key name="scan_clustat_note_0003">It appears that the server: [#!variable!service!#] was deleted.</key>
 		<key name="scan_clustat_note_0004">The new node: [#!variable!node!#] has appeared.</key>
-		<key name="scan_clustat_note_0005">It looks like 'rgmanager' (the cluster's resource manager) was stopped on the node: [#!variable!node!#]. It is still an #!string!brand_0004!# member, but it can no longer recover lost servers.</key>
+		<key name="scan_clustat_note_0005">
+It looks like 'rgmanager' (the cluster's resource manager) was stopped on the node: [#!variable!node!#]. 
+It is still an #!string!brand_0004!# member, but it can no longer recover lost servers.
+- NOTE: If this node's rgmanager has stopped, it's view of the peer's state may be inaccurate.
+		</key>
 		<key name="scan_clustat_note_0006">The node has joined the cluster stack: [#!variable!cluster!#].</key>
 		<key name="scan_clustat_note_0007">The cluster manager was stopped on the node: [#!variable!node!#]. The node is no longer participating in the #!string!brand_0004!#.</key>
 		<key name="scan_clustat_note_0008">The node: [#!variable!node!#] has rejoined the #!string!brand_0004!#, but it is not yet able to take over lost servers. It should be ready in the next minute or so.</key>
-		<key name="scan_clustat_note_0009">The node: [#!variable!node!#] is now a full member of #!string!brand_0004!#. As soon as its storage is 'UpToDate', it will be ready to take over servers.</key>
-		<key name="scan_clustat_note_0010">The node: [#!variable!node!#] has fully rejoined the #!string!brand_0004!#. As soon as its storage is 'UpToDate', it will be ready to take over servers.</key>
+		<key name="scan_clustat_note_0009">
+The node: [#!variable!node!#] is now a full member of #!string!brand_0004!#. 
+As soon as its storage is 'UpToDate', it will be ready to take over servers.
+- NOTE: If this node is the one that joined, it's view of the peer's state may be inaccurate.
+		</key>
+		<key name="scan_clustat_note_0010">
+The node: [#!variable!node!#] has fully rejoined the #!string!brand_0004!#. 
+As soon as its storage is 'UpToDate', it will be ready to take over servers.
+- NOTE: If this node is the one that joined, it's view of the peer's state may be inaccurate.
+		</key>
 		<key name="scan_clustat_note_0011">The service: [#!variable!service!#] is starting on the host: [#!variable!host!#]...</key>
 		<key name="scan_clustat_note_0012">The node: [#!variable!node!#]'s internal ID number has changed from: [#!variable!old_id!#] to:  [#!variable!new_id!#]. This should never unless an admin changed this intentionally.</key>
 		<key name="scan_clustat_note_0013">The new service: [#!variable!service!#] has appeared.</key>
