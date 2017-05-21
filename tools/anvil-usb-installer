@@ -522,7 +522,7 @@ sub write_device
 	print "- Copying the 'syslinux' files into place.\n";
 	$shell_call = $conf->{executable}{syslinux}." --install ".$conf->{sys}{usb_partition};
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
-	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;

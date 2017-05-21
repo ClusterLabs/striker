@@ -8308,38 +8308,42 @@ sub do_node_reboot
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
+		# Update the IP address if needed.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target, 
+			name2 => "new_bcn_ip", value2 => $new_bcn_ip, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($target ne $new_bcn_ip)
+		{
+			$target = $new_bcn_ip;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
 		# We need to give the system time to shut down.
 		my $has_shutdown = 0;
-		my $time_limit   = 120;
+		my $time_limit   = $an->data->{sys}{reboot_timeout};
 		my $uptime_max   = $time_limit + 60;
 		my $timeout      = time + $time_limit;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "time",       value1 => time,
-			name2 => "timeout",    value2 => $timeout,
-			name3 => "uptime_max", value3 => $uptime_max,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "time",                value1 => time,
+			name2 => "sys::reboot_timeout", value2 => $an->data->{sys}{reboot_timeout},
+			name3 => "time_limit",          value3 => $time_limit,
+			name4 => "timeout",             value4 => $timeout,
+			name5 => "uptime_max",          value5 => $uptime_max,
 		}, file => $THIS_FILE, line => __LINE__});
 		while (not $has_shutdown)
 		{
+			sleep 3;
+			
 			# 1 == pinged, 0 == failed.
 			my ($ping) = $an->Check->ping({ping => $target, count => 3});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "target", value1 => $target,
 				name2 => "ping",   value2 => $ping,
 			}, file => $THIS_FILE, line => __LINE__});
-			if (not $ping)
-			{
-				if (not $has_shutdown)
-				{
-					# Switch the target
-					$has_shutdown = 1;
-					$target       = $new_bcn_ip;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "has_shutdown", value1 => $has_shutdown,
-						name2 => "target",       value2 => $target,
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-			}
-			else
+			if ($ping)
 			{
 				# We can ping it, so log in and see if the uptime is short. Failure to log in
 				# will cause the uptime to return '0'.
@@ -8374,7 +8378,6 @@ sub do_node_reboot
 				}, file => $THIS_FILE, line => __LINE__});
 				last;
 			}
-			sleep 3;
 		}
 		
 		# Now loop for 'sys::reboot_timeout' seconds waiting to see if the node recovers.
