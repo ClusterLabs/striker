@@ -4690,8 +4690,8 @@ WHERE
 						# an alert from the start, but will only actually send if 
 						# something has changed.
 						my $message_key       = "scan_storcli_warning_0038";
-						my $alert_level       = "notice";
-						my $title_key         = "an_alert_title_0003";
+						my $alert_level       = "info";
+						my $title_key         = "an_alert_title_0002";
 						my $temperature_state = "ok";
 						my $temperature_is    = "nominal";
 						if ($type eq "temperature")
