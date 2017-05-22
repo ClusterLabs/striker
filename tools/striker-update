@@ -2214,8 +2214,17 @@ for repo in \$(".$an->data->{path}{ls}." ".$an->data->{path}{yum_repos}."/);
 do 
     ".$an->data->{path}{sed}." -i '/priority=/d' ".$an->data->{path}{yum_repos}."/\${repo};
 done
-".$an->data->{path}{yum}." clean expire-cache && ".$an->data->{path}{yum}." -y update";
-
+".$an->data->{path}{yum}." clean expire-cache
+";
+		if ($an->data->{switches}{offline})
+		{
+			$shell_call .= $an->data->{path}{yum}." -y update --disablerepo=* --enablerepo=*striker*";
+		}
+		else
+		{
+			$shell_call .=  $an->data->{path}{yum}." -y update";
+		}
+		
 		if ($target eq "local")
 		{
 			# Local call. If an update is needed, we'll set 'sys::reboot_needed' and tell the user to 
@@ -3068,6 +3077,10 @@ sub gather_updated_rpms_from_anvil
 	# Download updates now
 	print "- Downloading, NOT installing, updated RPMs on: [$target]...\n";
 	$shell_call = $an->data->{path}{yum}." -y update --downloadonly";
+	if ($an->data->{switches}{offline})
+	{
+		$shell_call = $an->data->{path}{yum}." -y update --downloadonly --disablerepo=* --enablerepo=*striker*";
+	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "port",       value2 => $port,
@@ -3681,6 +3694,10 @@ sub download_os_updates
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "download_os_updates" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $an->data->{path}{yum}." -y update --downloadonly";
+	if ($an->data->{switches}{offline})
+	{
+		$shell_call = $an->data->{path}{yum}." -y update --downloadonly --disablerepo=* --enablerepo=*striker*";
+	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
