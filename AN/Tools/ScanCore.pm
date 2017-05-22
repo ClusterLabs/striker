@@ -6479,7 +6479,7 @@ Striker Version: ".$an->data->{sys}{version}."
 			<fence order=\"ipmi,pdu\" post_join_delay=\"90\" delay=\"15\" delay_node=\"".$an->data->{cgi}{anvil_node1_name}."\" />
 		</cluster>
 		<drbd>
-			<disk disk-barrier=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'}."\" disk-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'}."\" md-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}."\" c-plan-ahead =\"".$an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'}."\" c-max-rate =\"".$an->data->{cgi}{'anvil_drbd_disk_c-max-rate'}."\" c-min-rate =\"".$an->data->{cgi}{'anvil_drbd_disk_c-min-rate'}."\" c-fill-target =\"".$an->data->{cgi}{'anvil_drbd_disk_c-fill-target'}."\" />
+			<disk disk-barrier=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'}."\" disk-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'}."\" md-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}."\" c-plan-ahead=\"".$an->data->{cgi}{'anvil_drbd_disk_c-plan-ahead'}."\" c-max-rate=\"".$an->data->{cgi}{'anvil_drbd_disk_c-max-rate'}."\" c-min-rate=\"".$an->data->{cgi}{'anvil_drbd_disk_c-min-rate'}."\" c-fill-target=\"".$an->data->{cgi}{'anvil_drbd_disk_c-fill-target'}."\" />
 			<options cpu-mask=\"".$an->data->{cgi}{'anvil_drbd_options_cpu-mask'}."\" />
 			<net max-buffers=\"".$an->data->{cgi}{'anvil_drbd_net_max-buffers'}."\" sndbuf-size=\"".$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}."\" rcvbuf-size=\"".$an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}."\" />
 		</drbd>

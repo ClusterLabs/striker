@@ -1103,6 +1103,45 @@ sub rsync
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /Offending key in (\/.*\/).ssh\/known_hosts:(\d+)$/)
+		{
+			### TODO: I'm still mixed on taking this behaviour... a trade off between useability 
+			###       and security... As of now, the logic for doing it is that the BCN should 
+			###       be isolated and secured so favour usability.
+			# Need to delete the old key or warn the user.
+			my $path        = $1;
+			my $line_number = $2;
+			   $failed      = 1;
+			my $source      = $path.".ssh\/known_hosts";
+			my $destination = $path."known_hosts.".$an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "path",        value1 => $path, 
+				name2 => "line_number", value2 => $line_number, 
+				name3 => "failed",      value3 => $failed, 
+				name4 => "source",      value4 => $source, 
+				name5 => "destination", value5 => $destination, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line_number)
+			{
+				my $shell_call = $an->data->{path}{cp}." $source $destination && ".$an->data->{path}{sed}." -ie '".$line_number."d' $source";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+				while(<$file_handle>)
+				{
+					# There should never be any output, but just in case...
+					chomp;
+					my $line = $_;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				close $file_handle;
+			}
+		}
 	}
 	close $file_handle;
 	

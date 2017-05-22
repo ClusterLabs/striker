@@ -1633,7 +1633,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="message_0297">It appears you clicked '#!string!button_0042!#' without first selecting a file.</key>
 		<key name="message_0298">Please go back and try again.</key>
 		<key name="message_0299">Now uploading to the #!string!brand_0003!#.</key>
-		<key name="message_0300">It looks like the upload failed.</key>
+		<key name="message_0300"><![CDATA[It looks like the upload failed. If a node was recently rebuilt,<br />the old SSH fingerprint might have still been on record.<br />If so, the old fingerprint should now be removed. Please try again.<br />If the problem persists, please <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
 		<key name="message_0301">It looks like the upload succeeded.</key>
 		<key name="message_0302"><![CDATA[There is a file on the #!string!brand_0003!# called <span class="fixed_width">#!variable!name!#</span> on the #!string!brand_0003!#.]]></key>
 		<key name="message_0303">Please go back and give the file a different name.</key>
@@ -1642,7 +1642,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="message_0306">Please reload to try and read the disc again.</key>
 		<key name="message_0307"><![CDATA[The disc in <span class="fixed_width">#!variable!device!#</span> appears to have been removed.]]></key>
 		<key name="message_0308"><![CDATA[<span class="highlight_unavailable">(no other servers exists)</span>]]></key>
-		<key name="message_0309">It looks like the upload failed.</key>
+		<key name="message_0309">#!free!#</key>
 		<key name="message_0310">It looks like the upload succeeded, unlinking the source image.</key>
 		<key name="message_0311">The disc will be converted into an image file.</key>
 		<key name="message_0312">For a DVD, this could take around 10 minutes to complete.</key>
