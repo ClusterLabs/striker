@@ -2955,7 +2955,7 @@ WHERE
 sub process_a_physical_disk
 {
 	my ($an, $storcli_virtual_drive_id_string, $drive_group, $enclosure_id, $slot_number) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_a_physical_disk" }, message_key => "an_variables_0004", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_a_physical_disk" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "storcli_virtual_drive_id_string", value1 => $storcli_virtual_drive_id_string, 
 		name2 => "drive_group",                     value2 => $drive_group, 
 		name3 => "enclosure_id",                    value3 => $enclosure_id, 
@@ -2971,7 +2971,7 @@ sub process_a_physical_disk
 	# I need the drive's serial number right off the bat.
 	#					 =             virtual_drive::0000000051622771-vd0            ::drive_group::0::           enclosure_id::7::            slot_number::1::           variable::serial_number: [S7M1RD440000E722PB9N]
 	my $storcli_physical_drive_serial_number = $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{serial_number};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "storcli_physical_drive_serial_number", value1 => $storcli_physical_drive_serial_number,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($storcli_physical_drive_serial_number)
@@ -3123,7 +3123,7 @@ sub process_a_physical_disk
 	# be deleted, but their value will be set to 'VANISHED'.
 	if ($is_new)
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
 			name1  => "storcli_physical_drive_serial_number", value1  => $storcli_physical_drive_serial_number,
 			name2  => "storcli_physical_drive_uuid",          value2  => $storcli_physical_drive_uuid,
 			name3  => "host_controller_serial_number",        value3  => $host_controller_serial_number,
@@ -3393,7 +3393,7 @@ INSERT INTO
 		my $old_vendor                       = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
 		my $old_model                        = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 		my $old_self_encrypting_drive        = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0022", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0022", message_variables => {
 			name1  => "storcli_physical_drive_serial_number", value1  => $storcli_physical_drive_serial_number,
 			name2  => "old_physical_drive_serial_number",     value2  => $old_physical_drive_serial_number,
 			name3  => "controller_uuid",                      value3  => $controller_uuid,
@@ -8161,7 +8161,7 @@ FROM
 WHERE
     storcli_physical_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -8183,7 +8183,7 @@ WHERE
 		my $storcli_physical_drive_vendor                = defined $row->[9]  ? $row->[9]  : "";
 		my $storcli_physical_drive_model                 = defined $row->[10] ? $row->[10] : "";
 		my $storcli_physical_drive_self_encrypting_drive = defined $row->[11] ? $row->[11] : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 			name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
 			name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
 			name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
@@ -8360,7 +8360,7 @@ FROM
 WHERE
     storcli_physical_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -8385,7 +8385,7 @@ WHERE
 			my $storcli_physical_drive_model                 = defined $row->[10] ? $row->[10] : "";
 			my $storcli_physical_drive_self_encrypting_drive = defined $row->[11] ? $row->[11] : "";
 			my $modified_date                                =         $row->[12];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
 				name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
 				name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
 				name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
@@ -8454,7 +8454,7 @@ WHERE
 			my $storcli_physical_drive_vendor                = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
 			my $storcli_physical_drive_model                 = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 			my $storcli_physical_drive_self_encrypting_drive = $an->data->{db_data}{unified}{storcli_physical_drives}{modified_date}{$modified_date}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 				name1  => "storcli_physical_drive_uuid",                  value1  => $storcli_physical_drive_uuid, 
 				name2  => "storcli_physical_drive_controller_uuid",       value2  => $storcli_physical_drive_controller_uuid, 
 				name3  => "storcli_physical_drive_virtual_drive",         value3  => $storcli_physical_drive_virtual_drive, 
@@ -10563,6 +10563,9 @@ sub get_physical_disk_data
 			$sector_size           = $9;
 			$drive_model           = $10;
 			$spun_up               = $11;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
 				name1  => "enclosure_id",          value1  => $enclosure_id, 
 				name2  => "slot_number",           value2  => $slot_number, 
@@ -10587,7 +10590,7 @@ sub get_physical_disk_data
 					name1 => "drive_group", value1 => $drive_group, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			else
+			elsif ($drive_group =~ /^\d+$/)
 			{
 				# Find the virtual drive this drive is connected to, if any.
 				foreach my $this_virtual_drive (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
@@ -10607,6 +10610,14 @@ sub get_physical_disk_data
 						last;
 					}
 				}
+			}
+			else
+			{
+				# Not sure that this should ever happen...
+				$an->Log->entry({log_level => 1, message_key => "scan_storcli_warning_0005", message_variables => {
+					line        => $line, 
+					drive_group => $drive_group,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "virtual_drive", value1 => $virtual_drive, 
@@ -10830,7 +10841,10 @@ sub get_physical_disk_data
 			my $this_drive_group = $1;
 			my $span             = $2;
 			my $row              = $3;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "this_drive_group", value1 => $this_drive_group, 
 				name2 => "span",             value2 => $span, 
 				name3 => "row",              value3 => $row, 
@@ -10844,7 +10858,7 @@ sub get_physical_disk_data
 				$an->Log->entry({log_level => 0, title_key => "tools_title_0002", message_key => "scan_storcli_warning_0001", message_variables => { 
 					adapter         => $adapter,
 					serial_number   => $serial_number, 
-					virtual_drive    => $virtual_drive, 
+					virtual_drive   => $virtual_drive, 
 					enclosure_id    => $enclosure_id, 
 					slot_number     => $slot_number, 
 					span            => $span, 
@@ -11260,6 +11274,9 @@ sub process_vg_pd_list_data
 		name4 => "id_string",     value4 => $id_string, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "line", value1 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
 	### Sector size is either '512B' or '4 KB'
 	#               EID:Slt       DID     State   DG      Size       Intf  Med     SED     PI      SeSz     Model      Sp
 	#               252:0         9       Onln    0       136.218 GB SAS   HDD     N       N       512B     MK1401GRRB U
@@ -11488,6 +11505,9 @@ sub process_vg_overview_data
 	my $array_size                  = "";
 	my $name                        = "";
 	my $id_string                   = "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "line", value1 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
 	# Get the line when there is no name
 	#	        0   / 0      RAID5   Optl    RW      Yes     NRWBD   -       OFF     953.531 GB
 	if ($line =~ /^(\d+)\/(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+ \wB)$/i)

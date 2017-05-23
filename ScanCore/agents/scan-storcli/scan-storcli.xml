@@ -345,7 +345,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 </key>
 		<key name="scan_storcli_warning_0003">- Controller: [#!variable!serial_number!#]: '#!variable!name!#' has changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0004">- Controller: [#!variable!serial_number!#]: New variable found; #!variable!name!#: [#!variable!value!#]</key>
-		<key name="scan_storcli_warning_0005">#!free!#</key>
+		<key name="scan_storcli_warning_0005">Processed an invalid drive group: [#!variable!drive_group!#] from the line: [#!variable!line!#]!</key>
 		<key name="scan_storcli_warning_0006">- Controller: [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0007">- Controller: [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
 		<key name="scan_storcli_warning_0008">The controller: [#!variable!model!#] with the serial number: [#!variable!serial_number!#] has vanished!</key>

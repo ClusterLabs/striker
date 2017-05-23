@@ -11202,7 +11202,7 @@ sub call_agents
 		
 		# Note how long it took.
 		my $runtime   = time - $start_time;
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0020", message_variables => { 
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0020", message_variables => { 
 			agent   => $say_agent, 
 			runtime => $runtime 
 		}, file => $THIS_FILE, line => __LINE__});
