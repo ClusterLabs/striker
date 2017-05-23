@@ -560,9 +560,9 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_error_0011">The drive group (DG) with the ID string: [#!variable!id_string!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
 		<key name="scan_storcli_error_0012">The physical drive (PV) with the serial number: [#!variable!serial_number!#] didn't have a reported host controller serial number. This is probably a program error, sorry about that.</key>
 		<key name="scan_storcli_error_0013">Failed to find the serial number for the physical drive (PV) in the virtual drive: [#!variable!virtual_drive!#] and drive group: [#!variable!drive_group!#] in enclosure: [#!variable!enclosure_id!#] in slot: [#!variable!slot_number!#]. This is probably a program error, sorry about that.</key>
-		<key name="scan_storcli_error_0014">Old UUID for drive group: [#!variable!drive_group!#] found. This is likelt a program error.</key>
-		<key name="scan_storcli_error_0015">Controller serial number for the drive group with UUID: [#!variable!drive_group_uuid!#] found. This is likelt a program error.</key>
-		<key name="scan_storcli_error_0016">Non-numeric value in a numeric variable; virtual drive blocks: [#!variable!virtual_drive_blocks!#], drives per span: [#!variable!drives_per_span], or span depth: [#!variable!span_depth!#]. This is likelt a program error.</key>
+		<key name="scan_storcli_error_0014">Old UUID for drive group: [#!variable!drive_group!#] found. This is likely a program error.</key>
+		<key name="scan_storcli_error_0015">Controller UUID for the drive group with UUID: [#!variable!drive_group_uuid!#] not found. This is likely a program error.</key>
+		<key name="scan_storcli_error_0016">Non-numeric value in a numeric variable; virtual drive blocks: [#!variable!virtual_drive_blocks!#], drives per span: [#!variable!drives_per_span], or span depth: [#!variable!span_depth!#]. This is likely a program error.</key>
 		
 		<!-- Storcli Agent-specific messages -->
 		<key name="scan_storcli_message_0001">Starting #!string!scan_storcli_brand_0001!#:</key>

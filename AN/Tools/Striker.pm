@@ -2932,12 +2932,21 @@ sub _change_server
 	my $current_boot_device   =  $an->data->{server}{$server}{current_boot_device};
 	my $requested_boot_device =  $an->data->{cgi}{boot_device};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-		name1 => "server",             value1 => $server,
+		name1 => "server",         value1 => $server,
 		name2 => "requested_ram",  value2 => $requested_ram,
 		name3 => "current_ram",    value3 => $current_ram,
 		name4 => "requested_cpus", value4 => $requested_cpus,
 		name5 => "current_cpus",   value5 => $current_cpus,
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# The CPU select is 0-padded on the left to sort better. We strip those leading 0s off here.
+	if ($requested_cpus =~ /^0/)
+	{
+		$requested_cpus =~ s/^0+//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "requested_cpus", value1 => $requested_cpus,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# Read in the existing note (if any) from the database.
 	my $return = $an->Get->server_data({
@@ -9711,7 +9720,7 @@ sub _manage_server
 
 	my $current_cpu_count = $an->data->{server}{$server}{details}{cpu_count};
 	my $max_cpu_count     = $an->data->{resources}{total_threads};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "current_cpu_count", value1 => $current_cpu_count,
 		name2 => "max_cpu_count",     value2 => $max_cpu_count,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -9781,27 +9790,51 @@ sub _manage_server
 		# Zero-pad the number, if necessary
 		if ($max_cpu_count > 999)
 		{
-			push @{$cpu_cores}, sprintf("%04d", $core_num);;
+			push @{$cpu_cores}, sprintf("%04d", $core_num);
 		}
 		elsif ($max_cpu_count > 99)
 		{
-			push @{$cpu_cores}, sprintf("%03d", $core_num);;
+			push @{$cpu_cores}, sprintf("%03d", $core_num);
 		}
 		elsif ($max_cpu_count > 9)
 		{
-			push @{$cpu_cores}, sprintf("%02d", $core_num);;
+			push @{$cpu_cores}, sprintf("%02d", $core_num);
 		}
 		else
 		{
 			push @{$cpu_cores}, $core_num;
 		}
 	}
+	
+	# To match in the select box, I need to zero-pad the current number of CPU cores to match the zero-
+	# padding used in the select box.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "current_cpu_count", value1 => $current_cpu_count,
+		name2 => "cgi::cpu_cores",    value2 => $an->data->{cgi}{cpu_cores},
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	   $an->data->{cgi}{cpu_cores} = $current_cpu_count if not $an->data->{cgi}{cpu_cores};
-	my $select_cpu_cores           = $an->Web->build_select({
+	my $cpu_cores_selected         = $an->data->{cgi}{cpu_cores};
+	if (length($max_cpu_count) > 3)
+	{
+		$cpu_cores_selected = sprintf("%04d", $cpu_cores_selected);
+	}
+	elsif (length($max_cpu_count) == 3)
+	{
+		$cpu_cores_selected = sprintf("%03d", $cpu_cores_selected);
+	}
+	elsif (length($max_cpu_count) == 2)
+	{
+		$cpu_cores_selected = sprintf("%02d", $cpu_cores_selected);
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cpu_cores_selected", value1 => $cpu_cores_selected,
+	}, file => $THIS_FILE, line => __LINE__});
+	my $select_cpu_cores = $an->Web->build_select({
 			name     => "cpu_cores", 
 			options  => $cpu_cores, 
 			blank    => 0,
-			selected => $an->data->{cgi}{cpu_cores},
+			selected => $cpu_cores_selected,
 			width    => 60,
 		});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

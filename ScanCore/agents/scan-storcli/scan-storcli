@@ -330,7 +330,7 @@ $an->nice_exit({exit_code => 0});
 sub archive_if_needed
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the 'trigger' is '0', archiving is disabled.
 	if (not $an->data->{scancore}{archive}{trigger})
@@ -357,7 +357,7 @@ sub archive_if_needed
 	#    records from the database.
 	
 	# Update the archive path, if set by a user. Also verify that there are sane archive values.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
 		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
 		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
@@ -366,21 +366,21 @@ sub archive_if_needed
 	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
 	{
 		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{trigger} = 100000;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{count} = 50000;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -388,7 +388,7 @@ sub archive_if_needed
 	if (not -e $an->data->{path}{scancore_archive})
 	{
 		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -396,7 +396,7 @@ sub archive_if_needed
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -453,7 +453,7 @@ sub archive_if_needed
 	my $archive_needed = 0;
 	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "table", value1 => $table, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -471,7 +471,7 @@ WHERE
 		
 		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $records = 0 if not defined $records;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "records", value1 => $records, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1083,7 +1083,7 @@ WHERE
     temperature_uuid    = ".$an->data->{sys}{use_db_fh}->quote($temperature_uuid).";
 ";
 					push @{$an->data->{sys}{sql}}, $query;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1129,7 +1129,7 @@ INSERT INTO
 );
 ";
 				push @{$an->data->{sys}{sql}}, $query;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1924,7 +1924,7 @@ WHERE
 ;";
 					# Now record the query in the array
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "query", value1 => $query
+						name1 => "query", value1 => $query, 
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
 				}
@@ -1938,6 +1938,9 @@ WHERE
 		# Delete the Drive Group from the last scan so that we can find controllers that have been removed.
 		if (exists $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid})
 		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "sql::storcli_drive_groups::storcli_drive_group_uuid::$storcli_drive_group_uuid", value1 => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
 			delete $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid};
 		}
 	}
@@ -2759,6 +2762,9 @@ WHERE
 	{
 		# Drive Group vanished!
 		my $storcli_drive_group_id_string = $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_id_string};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli_drive_group_id_string", value1 => $storcli_drive_group_id_string,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If this drive group is '9999', we won't care if it vanishes because it was a pseudo DG 
 		# anyway.
@@ -2769,6 +2775,19 @@ WHERE
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "controller_uuid", value1 => $controller_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If I don't have the controller ID, see if I can parse it from the 
+		if ((not $controller_uuid) && ($storcli_drive_group_id_string =~ /^(.*?)-vd/))
+		{
+			my $serial_number   = $1;
+			   $controller_uuid = $an->data->{'scan-storcli'}{controllers}{by_serial}{$serial_number} ? $an->data->{'scan-storcli'}{controllers}{by_serial}{$serial_number} : "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "serial_number",   value1 => $serial_number,
+				name2 => "controller_uuid", value2 => $controller_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# If I still don't have a controller UUID, then something serious went wrong.
 		if (not $controller_uuid)
 		{
 			$an->Alert->error({title_key => "an_0003", message_key => "scan_storcli_error_0015", message_variables => { drive_group_uuid => $storcli_drive_group_uuid }, code => 15, file => $THIS_FILE, line => __LINE__});
@@ -8104,7 +8123,7 @@ WHERE
 			storcli_drive_group_scheduled_cc	=>	$storcli_drive_group_scheduled_cc, 
 			storcli_drive_group_write_cache		=>	$storcli_drive_group_write_cache, 
 		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
 			name1  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_virtual_drive_uuid", value1  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_virtual_drive_uuid}, 
 			name2  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_id_string",          value2  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_id_string}, 
 			name3  => "sql::storcli_drive_groups::storcli_drive_group_uuid::${storcli_drive_group_uuid}::storcli_drive_group_access",             value3  => $an->data->{sql}{storcli_drive_groups}{storcli_drive_group_uuid}{$storcli_drive_group_uuid}{storcli_drive_group_access}, 
@@ -10507,8 +10526,9 @@ sub get_physical_disk_data
 	my $sector_size           = 0;
 	my $sector_variables      = [];
 	my $shell_call            = $an->data->{path}{storcli64}." /c".$adapter." ".$an->data->{sys}{arguments}{physical_disk_data};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "virtual_drive", value1 => $virtual_drive, 
+		name2 => "shell_call",    value2 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while(<$file_handle>)
@@ -10543,7 +10563,7 @@ sub get_physical_disk_data
 			$sector_size           = $9;
 			$drive_model           = $10;
 			$spun_up               = $11;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
 				name1  => "enclosure_id",          value1  => $enclosure_id, 
 				name2  => "slot_number",           value2  => $slot_number, 
 				name3  => "device_id",             value3  => $device_id, 
@@ -10606,7 +10626,7 @@ sub get_physical_disk_data
 			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_model}           = $drive_model;
 			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{spun_up}               = $spun_up;
 			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{on_controller}         = $serial_number;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
 				name1  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::device_id",             value1  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{device_id}, 
 				name2  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::state",                 value2  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{'state'}, 
 				name3  => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::drive_size",            value3  => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{drive_size}, 
@@ -10766,6 +10786,9 @@ sub get_physical_disk_data
 			$start_break      = 0;
 			$sector_size      = 0;
 			$sector_variables = [];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "virtual_drive", value1 => $virtual_drive, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		next if not $enclosure_id;
 		
@@ -10997,7 +11020,7 @@ sub get_physical_disk_data
 			
 			# Record
 			$an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable} = $value;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "virtual_drive::${virtual_drive}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::${type}::$variable", value1 => $an->data->{virtual_drive}{$virtual_drive}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{$type}{$variable}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -11053,7 +11076,7 @@ sub get_virtual_drive_data
 			
 			# We set the VD '9999' to the same SN so that we can find unallocated disks later.
 			my $unallocated_id_string = $serial_number."-vd9999";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "unallocated_id_string", value1 => $unallocated_id_string, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{virtual_drive}{$unallocated_id_string}{variable}{on_controller})
@@ -11258,7 +11281,7 @@ sub process_vg_pd_list_data
 		   $drive_group           = 9999 if $drive_group eq "-";
 		   $protection_info       = $protection_info       =~ /n/i ? "No" : "Yes";
 		   $self_encrypting_drive = $self_encrypting_drive =~ /n/i ? "No" : "Yes";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
 			name1  => "enclosure_id",          value1  => $enclosure_id, 
 			name2  => "slot_number",           value2  => $slot_number, 
 			name3  => "device_id",             value3  => $device_id, 
@@ -11512,7 +11535,7 @@ sub process_vg_overview_data
 		$array_size                  = $10;
 		$name                        = $11;
 		$id_string                   = $serial_number."-vd".$virtual_drive;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 			name1  => "drive_group",                 value1  => $drive_group, 
 			name2  => "virtual_drive",               value2  => $virtual_drive, 
 			name3  => "raid_type",                   value3  => $raid_type, 

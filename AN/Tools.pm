@@ -951,6 +951,8 @@ sub _set_defaults
 		"debiansqueeze#!#Debian Squeeze",
 		"debianlenny#!#Debian Lenny",
 		"debianetch#!#Debian Etch",
+		"fedora18#!#Fedora 25",
+		"fedora18#!#Fedora 24",
 		"fedora18#!#Fedora 23",
 		"fedora18#!#Fedora 22",
 		"fedora18#!#Fedora 21",
