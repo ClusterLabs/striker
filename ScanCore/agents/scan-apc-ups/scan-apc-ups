@@ -4943,11 +4943,17 @@ sub gather_ups_data
 					{
 						# This is a new loss of comms.
 						$an->Log->entry({log_level => 1, message_key => "scan_apc_ups_message_0008", message_variables => { ups_name => $ups_name }, file => $THIS_FILE, line => __LINE__});
+						my $message_key = "scan_apc_ups_note_0059";
+						if ($an->data->{tools}{'anvil-kick-apc-ups'}{enabled})
+						{
+							# The UPS watchdog feature is enabled...
+							$message_key = "scan_apc_ups_note_0062";
+						}
 						$an->Alert->register_alert({
 							alert_level		=>	"warning", 
 							alert_agent_name	=>	$THIS_FILE,
 							alert_title_key		=>	"an_alert_title_0004",
-							alert_message_key	=>	"scan_apc_ups_note_0059",
+							alert_message_key	=>	$message_key,
 							alert_message_variables	=>	{
 								ups_name		=>	$ups_name,
 							},

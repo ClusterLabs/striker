@@ -136,10 +136,10 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 		<key name="scancore_log_0074">#!free!#</key>
 		<key name="scancore_log_0075">#!free!#</key>
 		<key name="scancore_log_0076">#!free!#</key>
-		<key name="scancore_log_0077">The power feeding this machine has entered a warning state.</key>
-		<key name="scancore_log_0078">The temperature of this machine has entered a warning state!</key>
-		<key name="scancore_log_0079">The power feeding this machine has entered a critical state.</key>
-		<key name="scancore_log_0080">The temperature of this machine has entered a critical state!</key>
+		<key name="scancore_log_0077">The power feeding this machine is in a warning state.</key>
+		<key name="scancore_log_0078">The temperature of this machine is in a warning state!</key>
+		<key name="scancore_log_0079">The power feeding this machine is in a critical state.</key>
+		<key name="scancore_log_0080">The temperature of this machine is in a critical state!</key>
 		<key name="scancore_log_0081">The power feeding this machine has returned to a healthy state.</key>
 		<key name="scancore_log_0082">The temperature of this machine has returned to a healthy state!</key>
 		<key name="scancore_log_0083">#!string!scancore_brand_0001!# was invoked with '--one-shot' and the run is finished, exiting.</key>

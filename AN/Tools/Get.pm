@@ -3940,15 +3940,18 @@ sub server_host
 	foreach my $node_key ("node1", "node2")
 	{
 		next if $host;
+		my $online     = $an->data->{sys}{anvil}{$node_key}{online};
 		my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 		my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 		my $password   = $an->data->{sys}{anvil}{$node_key}{password};
 		my $shell_call = $an->data->{path}{virsh}." list --all";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "port",       value2 => $port,
-			name3 => "shell_call", value3 => $shell_call,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "online",     value1 => $online,
+			name2 => "target",     value2 => $target,
+			name3 => "port",       value3 => $port,
+			name4 => "shell_call", value4 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
+		next if not $online;
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$target,
 			port		=>	$port,

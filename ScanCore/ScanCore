@@ -198,7 +198,7 @@ $an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
 # See if the user is forcing the issue
 $an->Get->switches();
-$an->Log->adjust_log_level({key => $THIS_FILE});
+$an->Log->adjust_log_level({key => "scancore"});
 
 # Help?
 if (($an->data->{switches}{h})   or 
@@ -323,17 +323,13 @@ while(1)
 	$an->Storage->read_conf   ({file => $an->data->{path}{striker_config}});
 	$an->Storage->read_words  ({file => $an->data->{path}{scancore_strings}});
 	$an->Storage->read_words  ({file => $an->data->{path}{striker_strings}});
-	$an->Log->adjust_log_level({key  => $THIS_FILE});
+	$an->Log->adjust_log_level({key  => "scancore"});
 	$an->Log->level           ($an->data->{scancore}{log_level});
 	$an->data->{scancore}{enabled} = 1 if $an->data->{switches}{force};
 	load_agent_strings($an);
 
 	# Set the log level in case it was changed in the config file.
 	$an->Log->level($an->data->{scancore}{log_level});
-	
-	# TODO: Calc the md5s of ScanCore's core files and if they change, exit.
-	# Calculate the sum and see if it has changed.
-	#calculate_scancore_sum($an);
 	
 	# Did the user disable ScanCore while it was sleeping?
 	exit_if_disabled($an);
@@ -1937,19 +1933,17 @@ AND
 		my $last_shutdown = 0;
 		my $query         = "
 SELECT 
-    round(extract(epoch from modified_date))
+    round(extract(epoch from modified_date)) 
 FROM 
     history.hosts 
 WHERE 
-    host_name           = ".$an->data->{sys}{use_db_fh}->quote($node)." 
+    host_name = ".$an->data->{sys}{use_db_fh}->quote($node)." 
 AND 
-    host_emergency_stop = TRUE 
+    (host_stop_reason = 'temperature' OR host_stop_reason = 'shed_load') 
 AND 
-    host_stop_reason    = 'temperature' 
-AND 
-    modified_date > (now() - interval '6h')
+    modified_date > (now() - interval '6h') 
 ORDER BY 
-    modified_date ASC
+    modified_date DESC
 ;";
 		# There should always be at least one.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2852,12 +2846,20 @@ AND
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "both_nodes_online", value1 => $both_nodes_online,
 		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online},
+			name2 => "sys::anvil::node2::online", value2 => $an->data->{sys}{anvil}{node2}{online},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $an->data->{sys}{anvil}{node1}{online}) or (not $an->data->{sys}{anvil}{node2}{online}))
 		{
 			# Disable load shedding because our peer is dead.
-			$both_nodes_online = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "both_nodes_online", value1 => $both_nodes_online,
+			$both_nodes_online  = 0;
+			$evaluate_load_shed = 0;
+			$shed_load          = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "both_nodes_online",  value1 => $both_nodes_online,
+				name2 => "evaluate_load_shed", value2 => $evaluate_load_shed,
+				name3 => "shed_load",          value3 => $shed_load,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
@@ -2902,10 +2904,12 @@ AND
 				}, file => $THIS_FILE, line => __LINE__});
 				next if $an->data->{sys}{anvil}{$node_key}{host_uuid} eq $an->data->{sys}{host_uuid};
 				
-				$peer_host_uuid = $an->data->{sys}{anvil}{$node_key}{host_uuid};
+				
 				$peer_host_name = $an->data->{sys}{anvil}{$node_key}{name};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "peer_host_uuid", value1 => $peer_host_uuid,
+				$peer_host_uuid = $an->data->{sys}{anvil}{$node_key}{host_uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "peer_host_name", value1 => $peer_host_name,
+					name2 => "peer_host_uuid", value2 => $peer_host_uuid,
 				}, file => $THIS_FILE, line => __LINE__});
 				last;
 			}
@@ -11348,10 +11352,10 @@ sub scan_directory
 sub avoid_duplicate_run
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $my_pid = $$;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "my_pid", value1 => $my_pid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -11359,27 +11363,27 @@ sub avoid_duplicate_run
 	# be waiting on the lock. We don't worry about lock age because any other node or dashboard will reap
 	# the lock if it gets too old.
 	my $lock = $an->DB->locking({check => 1});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "lock", value1 => $lock,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $already_running = 0;
 	my $other_pids      = [];
 	my $shell_call      = $an->data->{path}{ps}." aux | ".$an->data->{path}{'grep'}." -v grep | ".$an->data->{path}{'grep'}." -v tail | ".$an->data->{path}{'grep'}." -v '\/bin\/sh' | ".$an->data->{path}{'grep'}." $THIS_FILE";
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^.*?\s+(\d+)\s/)
 		{
 			my $pid = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "pid", value1 => $pid,
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -11387,7 +11391,7 @@ sub avoid_duplicate_run
 			{
 				# Another copy is running.
 				$already_running = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "already_running", value1 => $already_running,
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -11405,7 +11409,7 @@ sub avoid_duplicate_run
 		my $current_time = time;
 		my $difference   = $current_time - $last_updated;
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "last_updated",               value1 => $last_updated, 
 			name2 => "current_time",               value2 => $current_time, 
 			name3 => "difference",                 value3 => $difference, 
@@ -11427,7 +11431,7 @@ sub avoid_duplicate_run
 				
 				# Kill it
 				my $shell_call = $an->data->{path}{'kill'}." $pid";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -11435,7 +11439,7 @@ sub avoid_duplicate_run
 				{
 					chomp;
 					my $line = $_;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}

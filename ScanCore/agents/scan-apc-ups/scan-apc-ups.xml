@@ -295,6 +295,13 @@ Communication with the UPS: [#!variable!ups_name!#] has been restored.
 The UPS: [#!variable!ups_name!#] battery health has changed:
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
 		</key>
+		<key name="scan_apc_ups_note_0062">
+Communication with the UPS: [#!variable!ups_name!#] has been lost!
+Warning: The UPS watchdog feature is enabled! If the UPS was counting down
+         when the connection was lost, it might be about to power cycle.
+         If communication is lost to both/all UPSes, all power could soon be
+         lost and the full Anvil! stack will hard power cycle!
+		</key>
 		
 		<!-- Errors -->
 		<key name="scan_apc_ups_error_0001">The variable: [#!variable!name!#] should have been an integer, but it appears it was not. Read: [#!variable!value!#].</key>
