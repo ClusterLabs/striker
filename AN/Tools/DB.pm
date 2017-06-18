@@ -291,173 +291,180 @@ LIMIT 1
 	
 	# If I got a date, proceed.
 	my $archive_file = "";
+	my $start_time   = time;
 	if ($date)
 	{
-		# Start the output file.
-		my $start_time    =  time;
-		my $date_and_time =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
-		   $date_and_time =~ s/:/-/g;
-		   $archive_file  =  $an->data->{path}{scancore_archive}."/scancore-archive_".$table."_".$an->hostname."_".$date_and_time."_".$loop.".out";
-		   $archive_file  =~ s/\/+/\//g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "loop",          value1 => $loop,
-			name2 => "date_and_time", value2 => $date_and_time,
-			name3 => "archive_file",  value3 => $archive_file,
+		# If archiving to disk is enabled, do so now.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::save_to_disk", value1 => $an->data->{scancore}{archive}{save_to_disk}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Build the 'COPY' header and query (we'll rebuild the query if we have a join table)
-		my $header = "COPY $table (";
-		my $query  = "\nSELECT \n";
-		foreach my $column (@{$columns})
+		if ($an->data->{scancore}{archive}{save_to_disk})
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "column", value1 => $column, 
+			# Start the output file.
+			my $date_and_time =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
+			$date_and_time =~ s/:/-/g;
+			$archive_file  =  $an->data->{path}{scancore_archive}."/scancore-archive_".$table."_".$an->hostname."_".$date_and_time."_".$loop.".out";
+			$archive_file  =~ s/\/+/\//g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "loop",          value1 => $loop,
+				name2 => "date_and_time", value2 => $date_and_time,
+				name3 => "archive_file",  value3 => $archive_file,
 			}, file => $THIS_FILE, line => __LINE__});
-			next if (($column eq "modified_date") or ($column eq "history_id"));
-			$header .= "$column, ";
-			$query  .= "    $column, \n";
-		}
-		$header .= "modified_date) FROM stdin;\n";
-		$query  .= "    modified_date 
+			
+			# Build the 'COPY' header and query (we'll rebuild the query if we have a join table)
+			my $header = "COPY $table (";
+			my $query  = "\nSELECT \n";
+			foreach my $column (@{$columns})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "column", value1 => $column, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next if (($column eq "modified_date") or ($column eq "history_id"));
+				$header .= "$column, ";
+				$query  .= "    $column, \n";
+			}
+			$header .= "modified_date) FROM stdin;\n";
+			$query  .= "    modified_date 
 FROM 
     history.$table 
 WHERE 
     modified_date <= '$date'
-";
-		if (ref($conditionals) eq "HASH")
-		{
-			foreach my $key (sort {$a cmp $b} keys %{$conditionals})
-			{
-				my $value = $conditionals->{$key};
-				$query .= "AND \n    $key = ".$an->data->{sys}{use_db_fh}->quote($value)." \n";
-			}
-		}
-	$query .= "ORDER BY 
-    modified_date DESC
-;";
-		# Rebuild the query if we have a join table.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "join_table", value1 => $join_table, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($join_table)
-		{
-			# Rebuild the query...
-			$query = "\nSELECT \n";
-			foreach my $column (@{$columns})
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "column", value1 => $column, 
-				}, file => $THIS_FILE, line => __LINE__});
-				next if (($column eq "modified_date") or ($column eq "history_id"));
-				$query  .= "    a.".$column.", \n";
-			}
-			$query  .= "    a.modified_date 
-FROM 
-    history.$table a, 
-    $join_table b
-WHERE 
-    a.modified_date <= '$date'
 ";
 			if (ref($conditionals) eq "HASH")
 			{
 				foreach my $key (sort {$a cmp $b} keys %{$conditionals})
 				{
 					my $value = $conditionals->{$key};
-					# I usually want to quote the value, unless it's a referenced column 
-					# from the joined table (which will always start with 'a.foo' or 
-					# 'b.foo').
-					if ($value !~ /^[ab]\./)
-					{
-						$value = $an->data->{sys}{use_db_fh}->quote($value);
-					}
-					$query .= "AND \n    $key = $value \n";
+					$query .= "AND \n    $key = ".$an->data->{sys}{use_db_fh}->quote($value)." \n";
 				}
 			}
-			$query .= "ORDER BY 
+	$query .= "ORDER BY 
+    modified_date DESC
+;";
+			# Rebuild the query if we have a join table.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "join_table", value1 => $join_table, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($join_table)
+			{
+				# Rebuild the query...
+				$query = "\nSELECT \n";
+				foreach my $column (@{$columns})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "column", value1 => $column, 
+					}, file => $THIS_FILE, line => __LINE__});
+					next if (($column eq "modified_date") or ($column eq "history_id"));
+					$query  .= "    a.".$column.", \n";
+				}
+				$query  .= "    a.modified_date 
+FROM 
+    history.$table a, 
+    $join_table b
+WHERE 
+    a.modified_date <= '$date'
+";
+				if (ref($conditionals) eq "HASH")
+				{
+					foreach my $key (sort {$a cmp $b} keys %{$conditionals})
+					{
+						my $value = $conditionals->{$key};
+						# I usually want to quote the value, unless it's a referenced column 
+						# from the joined table (which will always start with 'a.foo' or 
+						# 'b.foo').
+						if ($value !~ /^[ab]\./)
+						{
+							$value = $an->data->{sys}{use_db_fh}->quote($value);
+						}
+						$query .= "AND \n    $key = $value \n";
+					}
+				}
+				$query .= "ORDER BY 
     a.modified_date DESC
 ;";
-		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "header", value1 => $header, 
-			name2 => "query",  value2 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Open the file
-		my $header_date = $an->Get->date_and_time({split_date_time => 0});
-		my $shell_call  = $archive_file;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-		print $file_handle "-- $header_date\n";
-		print $file_handle $an->data->{scancore}{archive}{dump_file_header}."\n";
-		print $file_handle $header;
-		
-		# Do the query against the source DB and loop through the results.
-		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-		my $count   = @{$results};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "count",   value1 => $count, 
-			name2 => "results", value2 => $results, 
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $row (@{$results})
-		{
-			# Build the string.
-			my $line = "";
-			my $i    = 0;
-			foreach my $column (@{$columns})
+			}
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "header", value1 => $header, 
+				name2 => "query",  value2 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Open the file
+			my $header_date = $an->Get->date_and_time({split_date_time => 0});
+			my $shell_call  = $archive_file;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			print $file_handle "-- $header_date\n";
+			print $file_handle $an->data->{scancore}{archive}{dump_file_header}."\n";
+			print $file_handle $header;
+			
+			# Do the query against the source DB and loop through the results.
+			my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+			my $count   = @{$results};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "count",   value1 => $count, 
+				name2 => "results", value2 => $results, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $row (@{$results})
 			{
-				next if (($column eq "modified_date") or ($column eq "history_id"));
-				my $value = defined $row->[$i] ? $row->[$i] : '\N';
-				$i++;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "i",      value1 => $i, 
-					name2 => "column", value2 => $column, 
-					name3 => "value",  value3 => $value, 
+				# Build the string.
+				my $line = "";
+				my $i    = 0;
+				foreach my $column (@{$columns})
+				{
+					next if (($column eq "modified_date") or ($column eq "history_id"));
+					my $value = defined $row->[$i] ? $row->[$i] : '\N';
+					$i++;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "i",      value1 => $i, 
+						name2 => "column", value2 => $column, 
+						name3 => "value",  value3 => $value, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# We need to convert tabs and newlines into \t and \n
+					$value =~ s/\t/\\t/g;
+					$value =~ s/\n/\\n/g;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "<< value", value1 => $value, 
+					}, file => $THIS_FILE, line => __LINE__});
+				
+					$line .= $value."\t";
+				}
+				
+				# Add the modified_date and close the line
+				my $modified_date =  defined $row->[$i] ? $row->[$i] : '\N';
+				$line          .= $modified_date."\n";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "i",             value1 => $i, 
+					name2 => "modified_date", value2 => $modified_date, 
+					name3 => "line",          value3 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				# We need to convert tabs and newlines into \t and \n
-				$value =~ s/\t/\\t/g;
-				$value =~ s/\n/\\n/g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "<< value", value1 => $value, 
-				}, file => $THIS_FILE, line => __LINE__});
-			
-				$line .= $value."\t";
+				# The 'history_id' is NOT consistent between databases! So we don't record it here.
+				print $file_handle $line;
 			}
 			
-			# Add the modified_date and close the line
-			my $modified_date =  defined $row->[$i] ? $row->[$i] : '\N';
-			   $line          .= $modified_date."\n";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "i",             value1 => $i, 
-				name2 => "modified_date", value2 => $modified_date, 
-				name3 => "line",          value3 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
+			# Close it up.
+			print $file_handle "\\.\n\n";;
+			close $file_handle;
 			
-			# The 'history_id' is NOT consistent between databases! So we don't record it here.
-			print $file_handle $line;
-		}
-		
-		# Close it up.
-		print $file_handle "\\.\n\n";;
-		close $file_handle;
-		
-		# Compress, if requested.
-		if ($compress)
-		{
-			my ($compressed_file, $output) = $an->System->compress_file({file => $archive_file});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "compressed_file", value1 => $compressed_file, 
-				name2 => "output",          value2 => $output, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($compressed_file)
+			# Compress, if requested.
+			if ($compress)
 			{
-				$archive_file = $compressed_file;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "archive_file", value1 => $archive_file, 
+				my ($compressed_file, $output) = $an->System->compress_file({file => $archive_file});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "compressed_file", value1 => $compressed_file, 
+					name2 => "output",          value2 => $output, 
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($compressed_file)
+				{
+					$archive_file = $compressed_file;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "archive_file", value1 => $archive_file, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 		}
 		

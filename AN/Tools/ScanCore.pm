@@ -136,6 +136,7 @@ sub check_ram_usage
 	{
 		my $query = "
 SELECT 
+    ram_used_uuid, 
     ram_used_bytes 
 FROM 
     ram_used 
@@ -147,11 +148,32 @@ AND
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
-		my $ram_used_bytes = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "ram_used_bytes", value1 => $ram_used_bytes
+		
+		my $ram_used_uuid  = "";
+		my $ram_used_bytes = "";
+		my $return  = [];
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
-		if (not $ram_used_bytes)
+		foreach my $row (@{$results})
+		{
+			$ram_used_uuid  = $row->[0];
+			$ram_used_bytes = $row->[1];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ram_used_uuid",  value1 => $ram_used_uuid, 
+				name2 => "ram_used_bytes", value2 => $ram_used_bytes, 
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+		
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "ram_used_uuid",  value1 => $ram_used_uuid, 
+			name2 => "ram_used_bytes", value2 => $ram_used_bytes, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $ram_used_uuid)
 		{
 			# Add this agent to the DB
 			my $query = "
@@ -181,12 +203,10 @@ INSERT INTO
 UPDATE 
     ram_used 
 SET
-    ram_used_bytes     = ".$an->data->{sys}{use_db_fh}->quote($used_ram).", 
-    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    ram_used_bytes = ".$an->data->{sys}{use_db_fh}->quote($used_ram).", 
+    modified_date  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    ram_used_by        = ".$an->data->{sys}{use_db_fh}->quote($program_name)." 
-AND
-    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    ram_used_uuid  = ".$an->data->{sys}{use_db_fh}->quote($ram_used_uuid)."
 ;";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 

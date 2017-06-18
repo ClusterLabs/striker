@@ -624,6 +624,7 @@ sub _set_defaults
 	$an->data->{path}{nodes}{'wait-for-drbd_initd'}   = "/etc/init.d/wait-for-drbd";
 	
 	# ScanCore things set here are meant to be overwritable by the user in striker.conf.
+	$an->data->{scancore}{archive}{save_to_disk}           = 0;
 	$an->data->{scancore}{archive}{directory}              = "/var/ScanCore/archives/";
 	$an->data->{scancore}{archive}{trigger}                = 100000;
 	$an->data->{scancore}{archive}{count}                  = 50000;
