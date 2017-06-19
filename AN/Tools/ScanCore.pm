@@ -1943,12 +1943,13 @@ WHERE
 			    ($old_anvil_password    ne $anvil_password)) 
 			{
 				# Something changed, save.
-				my $query = "
+				my $say_smtp = $anvil_smtp_uuid ? $an->data->{sys}{use_db_fh}->quote($anvil_smtp_uuid) : "NULL";
+				my $query    = "
 UPDATE 
     anvils 
 SET 
     anvil_owner_uuid  = ".$an->data->{sys}{use_db_fh}->quote($anvil_owner_uuid).",
-    anvil_smtp_uuid   = ".$an->data->{sys}{use_db_fh}->quote($anvil_smtp_uuid).",
+    anvil_smtp_uuid   = $say_smtp,
     anvil_name        = ".$an->data->{sys}{use_db_fh}->quote($anvil_name).", 
     anvil_description = ".$an->data->{sys}{use_db_fh}->quote($anvil_description).",
     anvil_note        = ".$an->data->{sys}{use_db_fh}->quote($anvil_note).",
