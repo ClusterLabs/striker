@@ -108,6 +108,7 @@ my $an = AN::Tools->new({
 			reboot			=>	"/sbin/reboot",
 			sed			=>	"/bin/sed",
 			striker			=>	"/var/www/cgi-bin/striker",
+			striker_config		=>	"/etc/striker/striker.conf",
 			striker_dir		=>	"/sbin/striker/",
 			tar			=>	"/bin/tar",
 			tarball_dir		=>	"",
@@ -1568,16 +1569,16 @@ sub update_nodes
 	my $second_array    = $node1_servers;
 	my $first_node_key  = "node2";
 	my $second_node_key = "node1";
-	my $say_first_node  = $an->data->{sys}{anvil}{node1}{name};
-	my $say_second_node = $an->data->{sys}{anvil}{node2}{name};
+	my $say_first_node  = $an->data->{sys}{anvil}{node2}{name};
+	my $say_second_node = $an->data->{sys}{anvil}{node1}{name};
 	if ($first_target eq "node1")
 	{
 		$first_array     = $node1_servers;
 		$second_array    = $node2_servers;
 		$first_node_key  = "node1";
 		$second_node_key = "node2";
-		$say_first_node  = $an->data->{sys}{anvil}{node2}{name};
-		$say_second_node = $an->data->{sys}{anvil}{node1}{name};
+		$say_first_node  = $an->data->{sys}{anvil}{node1}{name};
+		$say_second_node = $an->data->{sys}{anvil}{node2}{name};
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "first_node_key",  value1 => $first_node_key,
