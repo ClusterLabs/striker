@@ -4662,14 +4662,12 @@ SWITCHES
 
 --release <tag>
 
-	Downloads a specific Striker version based on a guthub release tag.
+	Downloads a specific Striker version based on a github release tag.
 
 --source
 
 	This must be the full path and file name to the source ISO to base the
 	Anvil! ISO on. 
-	
-	NOTE: The source *MUST* be the 'DVD 1' ISO for release 6.7.
 	
 	If you provide a RHEL ISO, the resulting Anvil! ISO will include RPMs 
 	appropriate for registering against Red Hat. Please note that you will
@@ -4693,11 +4691,11 @@ EXAMPLES
 
 	Build a RHEL-based Anvil! ISO:
 	
-		./anvil-generate-iso --source ./rhel-server-6.7-x86_64-dvd.iso
+		./anvil-generate-iso --source ./rhel-server-6.9-x86_64-dvd.iso
 	
 	Build a CentOS-based Anvil ISO:
 	
-		./anvil-generate-iso --source ./CentOS-6.7-x86_64-bin-DVD1.iso
+		./anvil-generate-iso --source ./CentOS-6.9-x86_64-bin-DVD1.iso,./CentOS-6.9-x86_64-bin-DVD2.iso
 	
                   
 SUPPORT
