@@ -52,6 +52,7 @@ use strict;
 use warnings;
 use AN::Tools;
 use Data::Dumper;
+use Math::BigInt;
 no warnings 'recursion';
 
 # Disable buffering.
@@ -10964,10 +10965,15 @@ sub get_physical_disk_data
 			{
 				my $size        = $1;
 				my $hex_sectors = $2;
-				my $sectors     = hex $hex_sectors;
-				my $bytes       = $an->Readable->hr_to_bytes({base2 => 1, size => $size});
-				   $value       = "$bytes bytes, $sectors sectors";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "size",        value1 => $size, 
+					name2 => "hex_sectors", value2 => $hex_sectors, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $sectors = Math::BigInt->new($hex_sectors);
+				my $bytes   = $an->Readable->hr_to_bytes({base2 => 1, size => $size});
+				   $value   = "$bytes bytes, $sectors sectors";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 					name1 => "size",        value1 => $size, 
 					name2 => "bytes",       value2 => $bytes, 
 					name3 => "hex_sectors", value3 => $hex_sectors, 
