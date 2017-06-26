@@ -681,12 +681,12 @@ sub pre_process_health
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $value = $an->data->{controller}{serial_number}{$serial_number}{variable}{$variable};
-			if (($variable eq "alarm_state") && (lc($value) ne "off"))
+			if (($variable eq "alarm_state") && (lc($value) ne "missing") && (lc($value) ne "off"))
 			{
 				my $health_source_name                           = "controller:".$variable;
 				   $an->data->{health}{new}{$health_source_name} = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif (($variable eq "memory_correctable_errors") && ($value ne "0"))
@@ -694,8 +694,8 @@ sub pre_process_health
 				# TODO: I might want to scale this where 1~X = 1, Y~Z = 3, etc
 				my $health_source_name                           = "controller:".$variable;
 				   $an->data->{health}{new}{$health_source_name} = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif (($variable eq "memory_uncorrectable_errors") && ($value ne "0"))
@@ -703,8 +703,8 @@ sub pre_process_health
 				# TODO: I might want to scale this where 1~X = 5, Y~Z = 10, etc
 				my $health_source_name                           = "controller:".$variable;
 				   $an->data->{health}{new}{$health_source_name} = 5;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif (($variable eq "controller_status") && (lc($value) ne "optimal"))
@@ -712,8 +712,8 @@ sub pre_process_health
 				# 'Needs Attention' when array degrades
 				my $health_source_name                           = "controller:".$variable;
 				   $an->data->{health}{new}{$health_source_name} = 5;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}

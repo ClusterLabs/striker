@@ -1939,7 +1939,7 @@ FROM
 WHERE 
     host_name = ".$an->data->{sys}{use_db_fh}->quote($node)." 
 AND 
-    (host_stop_reason = 'temperature' OR host_stop_reason = 'shed_load') 
+    host_stop_reason = 'temperature' 
 AND 
     modified_date > (now() - interval '6h') 
 ORDER BY 
