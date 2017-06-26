@@ -2318,9 +2318,12 @@ WHERE
 	{
 		# Which message?
 		my $message_key = "scancore_warning_0026";
+		my $shell_call  = $an->data->{path}{'anvil-safe-stop'}." --shed-load --reason power_loss";
 		if ($node_temperature_ok eq "4")
 		{
+			# It's a thermal load shed.
 			$message_key = "scancore_warning_0027";
+			$shell_call  = $an->data->{path}{'anvil-safe-stop'}." --shed-load --reason temperature";
 		}
 		
 		# Load shed! Tell the user.
@@ -2345,7 +2348,6 @@ WHERE
 		process_alerts($an, 0);
 		
 		# Now call the load shedding.
-		my $shell_call = $an->data->{path}{'anvil-safe-stop'}." --shed-load --reason power_loss";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});

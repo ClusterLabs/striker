@@ -179,8 +179,8 @@ sub shed_load
 	
 	# Can we reach the peer?
 	my $peer_access = $an->Check->access({
-		target		=>	$an->data->{sys}{peer_node},
-		password	=>	$an->data->{sys}{anvil_password},
+		target   => $an->data->{sys}{peer_node},
+		password => $an->data->{sys}{anvil_password},
 	});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "peer_access", value1 => $peer_access, 
@@ -455,6 +455,44 @@ sub shed_load
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
 			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If this is a temperature-based load shed, then mark the target's stop reason as 'temperature' so 
+	# that it is counted when calculating the cool-down boot delay.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "switches::reason", value1 => $an->data->{switches}{reason}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{switches}{reason} eq "temperature")
+	{
+		my $target_host_uuid = $an->data->{sys}{host_uuid};
+		if ($an->data->{sys}{shutdown_target} eq $an->data->{sys}{peer_node})
+		{
+			my $peer_name        = $an->data->{sys}{peer_node};
+			my $peer_key         = $an->data->{sys}{node_name}{$peer_name}{peer_node_key};
+			   $target_host_uuid = $an->data->{sys}{anvil}{$peer_key}{host_uuid};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "peer_name",        value1 => $peer_name, 
+				name2 => "peer_key",         value2 => $peer_key, 
+				name3 => "target_host_uuid", value3 => $target_host_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		if ($target_host_uuid)
+		{
+			my $query = "
+UPDATE 
+    hosts 
+SET 
+    host_stop_reason = 'temperature', 
+    modified_date    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    host_uuid        = ".$an->data->{sys}{use_db_fh}->quote($target_host_uuid).";";
+			$query =~ s/'NULL'/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
