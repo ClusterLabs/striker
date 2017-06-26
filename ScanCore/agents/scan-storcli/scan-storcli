@@ -13267,6 +13267,20 @@ sub find_lsi_controllers
 	# This will keep track of how many controllers we find.
 	my $adapter_count = 0;
 	
+	# Vendor-specific copies of storcli replace it. So first, check to see if that is the case on this 
+	# node.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::perccli64", value1 => $an->data->{path}{perccli64}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (-e $an->data->{path}{perccli64})
+	{
+		# It does, replace the 'storcli64' path.
+		$an->data->{path}{storcli64} = $an->data->{path}{perccli64};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::storcli64", value1 => $an->data->{path}{storcli64}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	# First, do we have storcli64 installed?
 	if (not -e $an->data->{path}{storcli64})
 	{
