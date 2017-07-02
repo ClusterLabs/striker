@@ -3545,12 +3545,17 @@ sub find_executables
 [ Error ]   everything:
 [ Error ] 
 ";
-		if ($conf->{sys}{os_type} eq "fedora")
+		if ($conf->{sys}{local_os} eq "fedora")
 		{
 			print "[ Error ] - \$ sudo dnf -y install createrepo genisoimage libcdio";
 		}
-		elsif ($conf->{sys}{os_type} eq "ubuntu")
+		elsif ($conf->{sys}{local_os} eq "ubuntu")
 		{
+			print "[ Error ] - \$ sudo apt-get install createrepo genisoimage libcdio-utils fuseiso";
+		}
+		elsif ($conf->{sys}{local_os} =~ /suse/i)
+		{
+			print "[ Error ] - \$ sudo zypper in createrepo genisoimage libcdio16 libcdio-utils";
 		}
 		else
 		{
