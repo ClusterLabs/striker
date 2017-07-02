@@ -52,6 +52,7 @@ use strict;
 use warnings;
 use AN::Tools;
 use Data::Dumper;
+use Math::BigInt;
 no warnings 'recursion';
 
 # Disable buffering.
@@ -680,12 +681,12 @@ sub pre_process_health
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $value = $an->data->{controller}{serial_number}{$serial_number}{variable}{$variable};
-			if (($variable eq "alarm_state") && (lc($value) ne "off"))
+			if (($variable eq "alarm_state") && (lc($value) ne "missing") && (lc($value) ne "off"))
 			{
 				my $health_source_name                           = "controller:".$variable;
 				   $an->data->{health}{new}{$health_source_name} = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif (($variable eq "memory_correctable_errors") && ($value ne "0"))
@@ -693,8 +694,8 @@ sub pre_process_health
 				# TODO: I might want to scale this where 1~X = 1, Y~Z = 3, etc
 				my $health_source_name                           = "controller:".$variable;
 				   $an->data->{health}{new}{$health_source_name} = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif (($variable eq "memory_uncorrectable_errors") && ($value ne "0"))
@@ -702,8 +703,8 @@ sub pre_process_health
 				# TODO: I might want to scale this where 1~X = 5, Y~Z = 10, etc
 				my $health_source_name                           = "controller:".$variable;
 				   $an->data->{health}{new}{$health_source_name} = 5;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif (($variable eq "controller_status") && (lc($value) ne "optimal"))
@@ -711,8 +712,8 @@ sub pre_process_health
 				# 'Needs Attention' when array degrades
 				my $health_source_name                           = "controller:".$variable;
 				   $an->data->{health}{new}{$health_source_name} = 5;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -10964,10 +10965,15 @@ sub get_physical_disk_data
 			{
 				my $size        = $1;
 				my $hex_sectors = $2;
-				my $sectors     = hex $hex_sectors;
-				my $bytes       = $an->Readable->hr_to_bytes({base2 => 1, size => $size});
-				   $value       = "$bytes bytes, $sectors sectors";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "size",        value1 => $size, 
+					name2 => "hex_sectors", value2 => $hex_sectors, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $sectors = Math::BigInt->new($hex_sectors);
+				my $bytes   = $an->Readable->hr_to_bytes({base2 => 1, size => $size});
+				   $value   = "$bytes bytes, $sectors sectors";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 					name1 => "size",        value1 => $size, 
 					name2 => "bytes",       value2 => $bytes, 
 					name3 => "hex_sectors", value3 => $hex_sectors, 
@@ -13260,6 +13266,20 @@ sub find_lsi_controllers
 	
 	# This will keep track of how many controllers we find.
 	my $adapter_count = 0;
+	
+	# Vendor-specific copies of storcli replace it. So first, check to see if that is the case on this 
+	# node.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::perccli64", value1 => $an->data->{path}{perccli64}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (-e $an->data->{path}{perccli64})
+	{
+		# It does, replace the 'storcli64' path.
+		$an->data->{path}{storcli64} = $an->data->{path}{perccli64};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::storcli64", value1 => $an->data->{path}{storcli64}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# First, do we have storcli64 installed?
 	if (not -e $an->data->{path}{storcli64})

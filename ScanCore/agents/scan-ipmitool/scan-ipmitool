@@ -3315,6 +3315,15 @@ sub query_ipmi_targets
 			$high_critical = 'NULL' if not $high_critical;
 			$high_fail     = 'NULL' if not $high_fail;
 			
+			# Some values list 'inf' on some machines (HP...). Convert these to NULL.
+			$current_value = 'NULL' if $current_value eq "inf";
+			$low_fail      = 'NULL' if $low_fail      eq "inf";
+			$low_critical  = 'NULL' if $low_critical  eq "inf";
+			$low_warning   = 'NULL' if $low_warning   eq "inf";
+			$high_warning  = 'NULL' if $high_warning  eq "inf";
+			$high_critical = 'NULL' if $high_critical eq "inf";
+			$high_fail     = 'NULL' if $high_fail     eq "inf";
+			
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "sensor_name",   value1  => $sensor_name, 
 				name2  => "current_value", value2  => $current_value, 

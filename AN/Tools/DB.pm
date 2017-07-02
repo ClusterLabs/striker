@@ -1382,8 +1382,8 @@ sub do_db_write
 }
 
 ### TODO: If the tables were dropped for some reason, but the updated table left alone, a sync will be needed
-###       but not set here. In v3, we should take an option table name and do:
-###       'SELECT modified_data FROM $table ORDER BY modified_date DESC LIMIT 1;'
+###       but not set here. In v3, we should take an optional table name and do:
+###       'SELECT modified_date FROM $table ORDER BY modified_date DESC LIMIT 1;'
 ###       If any tables return a different value, or one table returns a value and another doesn't, set the 
 ###       resync-required flag.
 # This returns the most up to date database ID, the time it was last updated and an array or DB IDs that are 

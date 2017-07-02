@@ -1198,6 +1198,7 @@ sub _set_paths
 	$an->data->{path}{'ssh-keyscan'}          = "/usr/bin/ssh-keyscan";
 	$an->data->{path}{'ssh-copy-id'}          = "/usr/bin/ssh-copy-id";
 	$an->data->{path}{storcli64}              = "/sbin/storcli64";
+	$an->data->{path}{perccli64}              = "/opt/MegaRAID/perccli/perccli64";
 	$an->data->{path}{su}                     = "/bin/su";
 	$an->data->{path}{timeout}                = "/usr/bin/timeout";
 	$an->data->{path}{tput}                   = "/usr/bin/tput";
