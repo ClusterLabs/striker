@@ -4088,6 +4088,7 @@ INSERT INTO
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}})
 			{
 				# This variable has vanished
+				next if not defined $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_value};
 				my $old_variable_value = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_value};
 				my $variable_uuid      = $an->data->{sql}{storcli_variables}{storcli_variable_uuid}{source_table}{'storcli_physical_drives'}{source_uuid}{$storcli_physical_drive_uuid}{$type}{$variable}{storcli_variable_uuid};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {

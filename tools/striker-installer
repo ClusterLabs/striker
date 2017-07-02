@@ -815,7 +815,7 @@ logger($conf, $THIS_FILE, __LINE__, " #   ___ _       _ _                       
 logger($conf, $THIS_FILE, __LINE__, " #  / __| |_ _ _(_) |_____ _ _                                 -=] Installer  #", 1);
 logger($conf, $THIS_FILE, __LINE__, " #  \\__ \\  _| '_| | / / -_) '_|                                               #", 1);
 logger($conf, $THIS_FILE, __LINE__, " #  |___/\\__|_| |_|_\\_\\___|_|                                                 #", 1);
-logger($conf, $THIS_FILE, __LINE__, " #                                               https://alteeve.com/w/Striker #", 1);
+logger($conf, $THIS_FILE, __LINE__, " #                                              https://alteeve.com/w/Striker #", 1);
 logger($conf, $THIS_FILE, __LINE__, " ##############################################################################", 1);
 
 # This sanity-checks the passed in command line switches and returns '1' if
