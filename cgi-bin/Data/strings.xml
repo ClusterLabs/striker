@@ -3603,7 +3603,7 @@ SUPPORT
 DESCRIPTION
 
 This program is used to change the password of the local striker dashboard or
-of an Anvil! node pair. 
+an Anvil! node pair. 
 
 When changing the local Striker dashboard password, it will attempt to log into
 any Anvil! nodes it knows about and update their password for this dashboard's 
@@ -3678,7 +3678,10 @@ SUPPORT
 		<key name="scp_message_0003">You have used '--force', the password will change even though nodes or dashboards are inaccessible.</key>
 		<key name="scp_message_0004"><![CDATA[
 You have asked to change the passwords on this dashboard. 
-We will update the password for this machine on accessible nodes as well.
+[ Note ] - To ensure that other dashboards and nodes can continue to access the
+[ Note ]   database on this machine, we will update this machine's password in 
+[ Note ]   the striker.conf file on the peer dashboard(s) and Anvil! nodes, as 
+[ Note ]   applicable.
 ]]>
 		</key>
 		<key name="scp_message_0005"><![CDATA[

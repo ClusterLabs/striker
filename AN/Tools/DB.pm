@@ -803,18 +803,15 @@ sub connect_to_databases
 			}
 			elsif ($DBI::errstr =~ /password authentication failed for user/)
 			{
-				$an->Alert->warning({ message_key => "warning_message_0012", message_variables => {
+				my $variables = {
 					name        => $name,
 					host        => $host,
 					user        => $user,
 					id          => $id,
 					config_file => $an->data->{path}{striker_config},
-				}, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0012", message_variables => {
-					user		=>	$user,
-					id		=>	$id,
-					config_file	=>	$an->data->{path}{striker_config},
-				}};
+				};
+				$an->Alert->warning({ message_key => "warning_message_0012", message_variables => $variables, quiet => $quiet, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0012", message_variables => $variables };
 			}
 			elsif ($DBI::errstr =~ /Connection refused/)
 			{
