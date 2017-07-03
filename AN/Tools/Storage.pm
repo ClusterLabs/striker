@@ -1075,10 +1075,11 @@ sub rsync
 	
 	# If local, call rsync directly. If remote, setup the rsync wrapper
 	my $shell_call = $an->data->{path}{rsync}." $switches $source $destination";
+	my $wrapper    = "";
 	if ($remote_machine)
 	{
 		# Remote target, wrapper needed.
-		my $wrapper = $an->Storage->_create_rsync_wrapper({
+		$wrapper = $an->Storage->_create_rsync_wrapper({
 			target   => $target,
 			password => $password, 
 		});
@@ -1144,6 +1145,12 @@ sub rsync
 		}
 	}
 	close $file_handle;
+	
+	# Clean up the rsync wrapper, if appropriate.
+	if (($wrapper) && (-e $wrapper))
+	{
+		unlink $wrapper;
+	}
 	
 	return($failed);
 }
@@ -1227,7 +1234,7 @@ sub _create_rsync_wrapper
 ".$an->data->{path}{echo}." 'eval spawn rsync \$argv' >> $wrapper
 ".$an->data->{path}{echo}." 'expect \"password:\" \{ send \"$password\\n\" \}' >> $wrapper
 ".$an->data->{path}{echo}." 'expect eof' >> $wrapper
-".$an->data->{path}{'chmod'}." 755 $wrapper;";
+".$an->data->{path}{'chmod'}." 700 $wrapper;";
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
