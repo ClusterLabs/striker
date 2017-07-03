@@ -4150,7 +4150,7 @@ sub insert_or_update_variables
 	
 	# If we have a variable UUID but not a name, read the variable name. If we don't have a UUID, see if
 	# we can find one for the given variable name.
-	if (not $variable_name)
+	if (($an->Validate->is_uuid({uuid => $variable_uuid})) && (not $variable_name))
 	{
 		my $query = "
 SELECT 
@@ -4159,17 +4159,17 @@ FROM
     variables 
 WHERE 
     variable_uuid = ".$an->data->{sys}{use_db_fh}->quote($variable_uuid);
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$variable_name = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		$variable_name = "" if not defined $variable_name;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "variable_name", value1 => $variable_name, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	if (not $variable_uuid)
+	if (($variable_name) && (not $variable_uuid))
 	{
 		my $query = "
 SELECT 
@@ -4188,7 +4188,7 @@ AND
 ";
 		}
 		$query .= ";";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -4201,14 +4201,14 @@ AND
 		foreach my $row (@{$results})
 		{
 			$variable_uuid = $row->[0];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "variable_uuid", value1 => $variable_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# If I still don't have an variable_uuid, we're INSERT'ing .
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "variable_uuid", value1 => $variable_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $variable_uuid)
@@ -4241,7 +4241,7 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -6271,7 +6271,7 @@ AND
 		}
 	}
 	$query .= ";";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -6289,7 +6289,7 @@ AND
 		$variable_uuid  =         $row->[1];
 		$modified_date  =         $row->[2];
 		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "variable_name",  value1 => $variable_name, 
 			name2 => "variable_value", value2 => $variable_value, 
 			name3 => "variable_uuid",  value3 => $variable_uuid, 

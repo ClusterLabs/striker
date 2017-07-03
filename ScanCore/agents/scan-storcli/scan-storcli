@@ -2897,7 +2897,7 @@ sub process_physical_disks
 		my $old_controller_uuid             = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid};
 		my $old_model                       = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 		my $old_controller_serial_number    = $an->data->{'scan-storcli'}{controllers}{by_uuid}{$old_controller_uuid};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "old_physical_disk_serial_number", value1 => $old_physical_disk_serial_number,
 			name2 => "old_controller_uuid",          value2 => $old_controller_uuid,
 			name3 => "old_model",                    value3 => $old_model,
@@ -3095,7 +3095,7 @@ sub process_a_physical_disk
 	{
 		# Yup!
 		$storcli_physical_drive_uuid = $an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "storcli_physical_drive_uuid", value1 => $storcli_physical_drive_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -3103,14 +3103,14 @@ sub process_a_physical_disk
 	{
 		$is_new                      = 1;
 		$storcli_physical_drive_uuid = $an->Get->uuid();
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "is_new",                      value1 => $is_new,
 			name2 => "storcli_physical_drive_uuid", value2 => $storcli_physical_drive_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number} = $storcli_physical_drive_serial_number;
-		$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_uuid;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number} = $storcli_physical_drive_uuid;
+		$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_serial_number;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "scan-storcli::physical_drives::by_serial::$storcli_physical_drive_serial_number", value1 => $an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number},
 			name2 => "scan-storcli::physical_drives::by_uuid::$storcli_physical_drive_uuid",            value2 => $an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4657,7 +4657,7 @@ UPDATE
     storcli_cachevaults
 SET
     storcli_cachevault_controller_uuid    = ".$an->data->{sys}{use_db_fh}->quote($controller_uuid).", 
-    storcli_cachevault_serial_number      = ".$an->data->{sys}{use_db_fh}->quote($old_controller_uuid).", 
+    storcli_cachevault_serial_number      = ".$an->data->{sys}{use_db_fh}->quote($cachevault_serial_number).", 
     storcli_cachevault_type               = ".$an->data->{sys}{use_db_fh}->quote($new_type).", 
     storcli_cachevault_model              = ".$an->data->{sys}{use_db_fh}->quote($new_model).", 
     storcli_cachevault_state              = ".$an->data->{sys}{use_db_fh}->quote($new_state).", 
@@ -8200,9 +8200,15 @@ WHERE
 			name12 => "storcli_physical_drive_self_encrypting_drive", value12 => $storcli_physical_drive_self_encrypting_drive, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Store the information about this physical drive
+		# Make it so that we can look up the serial number from the drive's UUID and vice versa
 		$an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number} = $storcli_physical_drive_uuid;
 		$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_serial_number;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "scan-storcli::physical_drives::by_serial::${storcli_physical_drive_serial_number}", value1 => $an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number}, 
+			name2 => "scan-storcli::physical_drives::by_uuid::${storcli_physical_drive_uuid}",            value2 => $an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the information about this physical drive
 		$an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid} = {
 			storcli_physical_drive_controller_uuid		=>	$storcli_physical_drive_controller_uuid, 
 			storcli_physical_drive_virtual_drive		=>	$storcli_physical_drive_virtual_drive, 
@@ -8216,7 +8222,7 @@ WHERE
 			storcli_physical_drive_model			=>	$storcli_physical_drive_model, 
 			storcli_physical_drive_self_encrypting_drive	=>	$storcli_physical_drive_self_encrypting_drive, 
 		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
 			name1  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_controller_uuid",       value1  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_controller_uuid}, 
 			name2  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_virtual_drive",         value2  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_virtual_drive}, 
 			name3  => "sql::storcli_physical_drives::storcli_physical_drive_uuid::${storcli_physical_drive_uuid}::storcli_physical_drive_drive_group",           value3  => $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_drive_group}, 

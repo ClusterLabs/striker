@@ -1484,10 +1484,33 @@ AND
 			
 			# A database is behind, resync
 			$an->data->{scancore}{db_resync_needed} = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "scancore::db_to_update::${id}::behind", value1 => $an->data->{scancore}{db_to_update}{$id}{behind}, 
 				name2 => "scancore::db_resync_needed",            value2 => $an->data->{scancore}{db_resync_needed}, 
 			}, file => $THIS_FILE, line => __LINE__});
+				
+			# We can't trust this database for reads, so switch to another database for reads if
+			# necessary.
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "id",              value1 => $id, 
+				name2 => "sys::read_db_id", value2 => $an->data->{sys}{read_db_id}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($id eq $an->data->{sys}{read_db_id})
+			{
+				# Switch.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => ">> sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $this_id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+				{
+					next if $this_id eq $id;
+					$an->data->{sys}{read_db_id} = $this_id;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "<< sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
 		}
 		else
 		{
@@ -2067,7 +2090,7 @@ sub locking
 	my $set            = 0;
 	my $variable_name  = "lock_request";
 	my $variable_value = $source_name."::".$source_uuid."::".time;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "variable_name",  value1 => $variable_name, 
 		name2 => "variable_value", value2 => $variable_value, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2164,7 +2187,7 @@ sub locking
 		
 		# See if we had a lock.
 		my ($lock_value, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({variable_name => $variable_name});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "waiting",       value1 => $waiting, 
 			name2 => "lock_value",    value2 => $lock_value, 
 			name3 => "variable_uuid", value3 => $variable_uuid, 
@@ -2178,7 +2201,7 @@ sub locking
 			my $current_time     = time;
 			my $timeout_time     = $lock_time + $an->data->{scancore}{locking}{reap_age};
 			my $lock_age         = $current_time - $lock_time;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "lock_source_name", value1 => $lock_source_name, 
 				name2 => "lock_source_uuid", value2 => $lock_source_uuid, 
 				name3 => "current_time",     value3 => $current_time, 
@@ -2196,7 +2219,7 @@ sub locking
 					variable_value    => "",
 					update_value_only => 1,
 				});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "variable_uuid", value1 => $variable_uuid, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}

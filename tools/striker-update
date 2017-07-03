@@ -87,6 +87,7 @@ my $an = AN::Tools->new({
 			# Some of the paths to executables weren't defined in older versions of Tools.pm.
 			'anvil-migrate-server'	=>	"/sbin/striker/anvil-migrate-server",
 			'anvil-safe-start'	=>	"/sbin/striker/anvil-safe-start",
+			bzip2			=>	"/usr/bin/bzip2",
 			createrepo		=>	"/usr/bin/createrepo",
 			curl			=>	"/usr/bin/curl",
 			current_dir		=>	$ENV{PWD},
@@ -100,16 +101,19 @@ my $an = AN::Tools->new({
 			iso_directory		=>	"/var/www/html/#!os_type!#/x86_64/iso",
 			log_file		=>	"/var/log/striker.log",
 			mount			=>	"/bin/mount",
+			mv			=>	"/bin/mv",
 			# This is needed for some legacy support
 			nodes			=>	{
 				'anvil-safe-start'	=>	"/sbin/striker/anvil-safe-start",
 			},
 			os_release		=>	"/etc/redhat-release",
+			pg_dump			=>	"/usr/bin/pg_dump",
 			reboot			=>	"/sbin/reboot",
 			sed			=>	"/bin/sed",
 			striker			=>	"/var/www/cgi-bin/striker",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_dir		=>	"/sbin/striker/",
+			su			=>	"/bin/su",
 			tar			=>	"/bin/tar",
 			tarball_dir		=>	"",
 			unzip			=>	"/usr/bin/unzip",
@@ -454,6 +458,25 @@ if ($an->data->{switches}{'gather-only'})
 	exit(0);
 }
 
+# Stop apache locally.
+print "- Stopping apache (disabling Striker's web interface).\n";
+my $shell_call = "/etc/init.d/httpd stop";
+$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	name1 => "shell_call", value1 => $shell_call, 
+}, file => $THIS_FILE, line => __LINE__});
+open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+while(<$file_handle>)
+{
+	chomp;
+	my $line = $_;
+		$line =~ s/\r//;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "line", value1 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
+}
+close $file_handle;
+
+
 # If I am still alive, what am I doing?
 if (($an->data->{switches}{'anvil-name'}) or ($an->data->{switches}{'anvil-uuid'}))
 {
@@ -465,6 +488,24 @@ else
 	# I'm updating the local dashboard only.
 	update_local($an);
 }
+
+# Start apache locally.
+print "- Restarting apache (enabling Striker's web interface).\n";
+$shell_call = "/etc/init.d/httpd stop";
+$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	name1 => "shell_call", value1 => $shell_call, 
+}, file => $THIS_FILE, line => __LINE__});
+open ($file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+while(<$file_handle>)
+{
+	chomp;
+	my $line = $_;
+		$line =~ s/\r//;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "line", value1 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
+}
+close $file_handle;
 
 print "[ Note ] - No changes were made to 'striker.conf'.\n";
 print "[ Note ]   If you wish to check for new options, please see:\n";
@@ -632,10 +673,12 @@ sub update_scancore_databases
 			name1 => "db_owner", value1 => $db_owner, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# There are three things to check;
+		# There are four things to check;
 		# 1. Does the locations table exist? If not, add it.
 		# 2. Does the hosts table have the 'location_uuid' column? Add it and redo the procedure and trigger, if not.
 		# 3. Does the states table have a history table? If so, remove it and its procedure/trigger.
+		# 4. Does the history_storcli_physical_drives has the out of order procedure? If so, replace 
+		#    it and flush the history table.
 		
 		# First, do we need to add the 'locations' table?
 		$query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='locations' AND schemaname='public';";
@@ -785,7 +828,7 @@ CREATE TRIGGER trigger_hosts
 			push @{$queue}, $query;
 		}
 		
-		# Third and last; Does the states table have a history table? If so, remove it and its procedure/trigger.
+		# Third; Does the states table have a history table? If so, remove it and its procedure/trigger.
 		$query = "SELECT * FROM pg_catalog.pg_tables WHERE tablename = 'states' AND schemaname = 'history';";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
@@ -813,6 +856,166 @@ CREATE TRIGGER trigger_hosts
 			push @{$queue}, $query;
 		}
 		
+		# Fourth; Is the storcli_physical_drives function broken?
+		$query = "SELECT prosrc FROM pg_proc WHERE proname = 'history_storcli_physical_drives';";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my $function = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "function", value1 => $function, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($function)
+		{
+			my $bad           = 0;
+			my $bad_next_line = "";
+			foreach my $line (split/\n/, $function)
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /history_storcli_physical_drives.storcli_physical_drive_slot_number/)
+				{
+					# If this is the next line, we've git the bug.
+					$bad_next_line = "storcli_physical_drive_size";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "bad_next_line", value1 => $bad_next_line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					next;
+				}
+				if (($bad_next_line) && ($line =~ /$bad_next_line/))
+				{
+					$bad = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "bad", value1 => $bad, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "bad", value1 => $bad, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($bad)
+			{
+				print "[ Warning ] - This database has the bugged 'history_storcli_physical_drives()' function.\n";
+				print "[ Warning ]   The function will be repaired and erroneous data will be removed from the database.\n";
+				
+				# Purge old data
+				foreach my $schema ("history", "public")
+				{
+					# Read in all the drives we know about and build a list of UUIDs to delete 
+					# from this schema
+					my $query     = "
+SELECT 
+    storcli_physical_drive_uuid, 
+    storcli_physical_drive_serial_number, 
+    storcli_physical_drive_size, 
+    storcli_physical_drive_sector_size, 
+    storcli_physical_drive_vendor, 
+    storcli_physical_drive_model 
+FROM 
+    ".$schema.".storcli_physical_drives;";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Do the query against the source DB and loop through the results.
+					my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+					foreach my $row (@{$results})
+					{
+						my $storcli_physical_drive_uuid          =         $row->[0]; 
+						my $storcli_physical_drive_serial_number = defined $row->[1] ? $row->[1] : "";
+						my $storcli_physical_drive_size          = defined $row->[2] ? $row->[2] : "";
+						my $storcli_physical_drive_sector_size   = defined $row->[3] ? $row->[3] : "";
+						my $storcli_physical_drive_vendor        = defined $row->[4] ? $row->[4] : "";
+						my $storcli_physical_drive_model         = defined $row->[5] ? $row->[5] : "";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+							name1 => "storcli_physical_drive_uuid",          value1 => $storcli_physical_drive_uuid,
+							name2 => "storcli_physical_drive_serial_number", value2 => $storcli_physical_drive_serial_number,
+							name3 => "storcli_physical_drive_size",          value3 => $storcli_physical_drive_size,
+							name4 => "storcli_physical_drive_sector_size",   value4 => $storcli_physical_drive_sector_size,
+							name5 => "storcli_physical_drive_vendor",        value5 => $storcli_physical_drive_vendor,
+							name6 => "storcli_physical_drive_model",         value6 => $storcli_physical_drive_model,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# Now check for bad data.
+						if ($storcli_physical_drive_serial_number =~ /^\d+\.\d+ \w\B/)
+						{
+							# Bad.
+							push @{$queue}, "DELETE FROM ".$schema.".storcli_physical_drives WHERE storcli_physical_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).";";
+							next;
+						}
+						if (($storcli_physical_drive_size eq "512B") or ($storcli_physical_drive_size eq "4KN"))
+						{
+							# Bad.
+							push @{$queue}, "DELETE FROM ".$schema.".storcli_physical_drives WHERE storcli_physical_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).";";
+							next;
+						}
+						if (($storcli_physical_drive_sector_size ne "512B") && ($storcli_physical_drive_sector_size ne "4KN"))
+						{
+							# Bad.
+							push @{$queue}, "DELETE FROM ".$schema.".storcli_physical_drives WHERE storcli_physical_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).";";
+							next;
+						}
+						if (($schema eq "public") && ($storcli_physical_drive_model eq "VANISHED"))
+						{
+							push @{$queue}, "DELETE FROM ".$schema.".storcli_physical_drives WHERE storcli_physical_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).";";
+							next;
+						}
+					}
+				}
+				
+				# Now the erroneous data should be gone, we can fix the procedure.
+				push @{$queue}, "DROP FUNCTION history_storcli_physical_drives() CASCADE;";
+				push @{$queue}, 'CREATE FUNCTION history_storcli_physical_drives() RETURNS trigger
+AS $$
+DECLARE
+        history_storcli_physical_drives RECORD;
+BEGIN
+        SELECT INTO history_storcli_physical_drives * FROM storcli_physical_drives WHERE storcli_physical_drive_uuid=new.storcli_physical_drive_uuid;
+        INSERT INTO history.storcli_physical_drives
+                (storcli_physical_drive_uuid, 
+                 storcli_physical_drive_host_uuid,
+                 storcli_physical_drive_controller_uuid, 
+                 storcli_physical_drive_virtual_drive, 
+                 storcli_physical_drive_drive_group, 
+                 storcli_physical_drive_enclosure_id, 
+                 storcli_physical_drive_slot_number, 
+                 storcli_physical_drive_serial_number, 
+                 storcli_physical_drive_size, 
+                 storcli_physical_drive_sector_size, 
+                 storcli_physical_drive_vendor, 
+                 storcli_physical_drive_model, 
+                 storcli_physical_drive_self_encrypting_drive, 
+                 modified_date)
+        VALUES
+                (history_storcli_physical_drives.storcli_physical_drive_uuid,
+                 history_storcli_physical_drives.storcli_physical_drive_host_uuid,
+                 history_storcli_physical_drives.storcli_physical_drive_controller_uuid, 
+                 history_storcli_physical_drives.storcli_physical_drive_virtual_drive, 
+                 history_storcli_physical_drives.storcli_physical_drive_drive_group, 
+                 history_storcli_physical_drives.storcli_physical_drive_enclosure_id, 
+                 history_storcli_physical_drives.storcli_physical_drive_slot_number, 
+                 history_storcli_physical_drives.storcli_physical_drive_serial_number, 
+                 history_storcli_physical_drives.storcli_physical_drive_size, 
+                 history_storcli_physical_drives.storcli_physical_drive_sector_size, 
+                 history_storcli_physical_drives.storcli_physical_drive_vendor, 
+                 history_storcli_physical_drives.storcli_physical_drive_model, 
+                 history_storcli_physical_drives.storcli_physical_drive_self_encrypting_drive, 
+                 history_storcli_physical_drives.modified_date);
+        RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_physical_drives() OWNER TO '.$db_owner.';';
+				push @{$queue}, '
+CREATE TRIGGER trigger_storcli_physical_drives
+        AFTER INSERT OR UPDATE ON storcli_physical_drives
+        FOR EACH ROW EXECUTE PROCEDURE history_storcli_physical_drives();';
+			}
+		}
+		
 		# Do I have pending queries?
 		my $queue_length = @{$queue};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -821,6 +1024,31 @@ CREATE TRIGGER trigger_hosts
 		if ($queue_length)
 		{
 			print "- Database updates needed, applying now.\n";
+			
+			# Create a backup of the database if it is on this host.
+			print "[ Debug ] - Database host: [$db_host], this host: [".$an->hostname."]\n" if $an->data->{sys}{debug} >= 2;
+			if ($db_host eq $an->hostname)
+			{
+				print "- Creating a backup of the database.\n";
+				my $backup_file = $db_name."_pre-upgrade.".time.".out";
+				my $shell_call  = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{pg_dump}." $db_name > /tmp/$backup_file\" && ".$an->data->{path}{mv}." /tmp/$backup_file /root/ && ".$an->data->{path}{bzip2}." /root/$backup_file";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					print "[ Debug ] - Output: [$line]\n" if $an->data->{sys}{debug} >= 2; 
+				}
+				close $file_handle;
+				print "- Done! Backup saved as: [/root/".$backup_file.".bz2]\n";
+			}
+			
 			$an->DB->do_db_write({id => $id, query => $queue, source => $THIS_FILE, line => __LINE__});
 			print "[ NOTE ] - 'drop cascades' warnings are safe to ignore.\n";
 		}
@@ -842,11 +1070,15 @@ sub update_local
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_local" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Disable ScanCore.
-	print "###############################################################################\n";
-	print "# NOTE: ScanCore will be disabled. If anything causes the upgrade process to\n";
-	print "#       abort unexpectedly, you may need to manually re-enable it by running:\n";
-	print "#       ".$an->data->{path}{ScanCore}." --enable\n";
-	print "###############################################################################\n\n";
+	print "###############################################################################
+# NOTE: ScanCore and Apache will be disabled. If anything causes the upgrade 
+#       process to abort unexpectedly, you may need to manually re-enable them
+#       by running:
+#       ".$an->data->{path}{ScanCore}." --enable
+#       /etc/init.d/httpd start
+###############################################################################
+
+";
 	
 	manage_scancore($an, "disable");
 	
@@ -1016,12 +1248,17 @@ sub update_all
 	print "- Ready to start the update process!\n\n";
 	
 	# Disable ScanCore on all dashboards and nodes, then go into a loop until all of them have exited.
-	print "###############################################################################\n";
-	print "# NOTE: ScanCore will be disabled on all dashboards and nodes. If anything\n";
-	print "#       causes the upgrade process to abort unexpectedly, you may need to\n";
-	print "#       manually re-enable ScanCore by running:\n";
-	print "#       ".$an->data->{path}{ScanCore}." --enable\n";
-	print "###############################################################################\n\n";
+	print "###############################################################################
+# NOTE: ScanCore will be disabled on all dashboards and nodes. Apache will be 
+#       also stopped on the dashboards to disable Striker. If anything causes 
+#       the upgrade process to abort unexpectedly, you may need to manually 
+#       re-enable ScanCore on all machines by running:
+#       ".$an->data->{path}{ScanCore}." --enable
+#       On dashboards, run this to restart Apache (Striker):
+#       /etc/init.d/httpd start
+###############################################################################
+
+";
 	
 	# We'll call '--disable' on the peer dashboards, then all nodes, then on ourself. The local disable 
 	# will wait until ScanCore exits, then we'll go into a loop while we wait for any stragglers to exit.
@@ -1030,8 +1267,11 @@ sub update_all
 	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
 	{
 		my $password = $dashboards->{$dashboard};
-
-		print "- Disabling ScanCore on Striker dashboard: [$dashboard]\n";
+		
+		# We'll also disable apache, to make sure no one tries to use Striker.
+		$shell_call .= "; /etc/init.d/httpd stop";
+		
+		print "- Disabling Apache and ScanCore on Striker dashboard: [$dashboard]\n";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "dashboard",  value1 => $dashboard,
 			name2 => "shell_call", value2 => $shell_call,
@@ -1047,6 +1287,7 @@ sub update_all
 		});
 		foreach my $line (@{$return})
 		{
+			$line =~ s/\r//;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1333,8 +1574,11 @@ sub update_all
 	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
 	{
 		my $password = $dashboards->{$dashboard};
+		
+		# We'll also re-enable apache, to make sure no one tries to use Striker.
+		$shell_call .= "; /etc/init.d/httpd start";
 
-		print "- Enabling ScanCore on Striker dashboard: [$dashboard]\n";
+		print "- Enabling Apache and ScanCore on Striker dashboard: [$dashboard]\n";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "dashboard",  value1 => $dashboard,
 			name2 => "shell_call", value2 => $shell_call,
@@ -1350,6 +1594,7 @@ sub update_all
 		});
 		foreach my $line (@{$return})
 		{
+			$line =~ s/\r//;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});

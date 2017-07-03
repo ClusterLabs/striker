@@ -548,11 +548,11 @@ BEGIN
 		 history_storcli_physical_drives.storcli_physical_drive_drive_group, 
 		 history_storcli_physical_drives.storcli_physical_drive_enclosure_id, 
 		 history_storcli_physical_drives.storcli_physical_drive_slot_number, 
+		 history_storcli_physical_drives.storcli_physical_drive_serial_number, 
 		 history_storcli_physical_drives.storcli_physical_drive_size, 
 		 history_storcli_physical_drives.storcli_physical_drive_sector_size, 
 		 history_storcli_physical_drives.storcli_physical_drive_vendor, 
 		 history_storcli_physical_drives.storcli_physical_drive_model, 
-		 history_storcli_physical_drives.storcli_physical_drive_serial_number, 
 		 history_storcli_physical_drives.storcli_physical_drive_self_encrypting_drive, 
 		 history_storcli_physical_drives.modified_date);
 	RETURN NULL;
