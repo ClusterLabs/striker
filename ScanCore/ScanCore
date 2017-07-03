@@ -6754,7 +6754,7 @@ FROM
 				name1 => "recipient_uuid",         value1 => $recipient_uuid, 
 				name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid,
 				name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid,
-				name4 => "recipient_notify_level", value4 => $recipient_notify_uuid,
+				name4 => "recipient_notify_level", value4 => $recipient_notify_level,
 				name5 => "recipient_note",         value5 => $recipient_note, 
 				name6 => "modified_date",          value6 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
@@ -6763,7 +6763,7 @@ FROM
 			$an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid} = {
 				recipient_anvil_uuid	=>	$recipient_anvil_uuid,
 				recipient_notify_uuid	=>	$recipient_notify_uuid,
-				recipient_notify_level	=>	$recipient_notify_uuid,
+				recipient_notify_level	=>	$recipient_notify_level,
 				recipient_note		=>	$recipient_note, 
 			};
 			
@@ -6772,7 +6772,7 @@ FROM
 			$an->data->{db_data}{$id}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid} = {
 				recipient_anvil_uuid	=>	$recipient_anvil_uuid,
 				recipient_notify_uuid	=>	$recipient_notify_uuid,
-				recipient_notify_level	=>	$recipient_notify_uuid,
+				recipient_notify_level	=>	$recipient_notify_level,
 				recipient_note		=>	$recipient_note, 
 			};
 		}
@@ -6795,7 +6795,7 @@ FROM
 				name1 => "recipient_uuid",         value1 => $recipient_uuid, 
 				name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid,
 				name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid,
-				name4 => "recipient_notify_level", value4 => $recipient_notify_uuid,
+				name4 => "recipient_notify_level", value4 => $recipient_notify_level,
 				name5 => "recipient_note",         value5 => $recipient_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})

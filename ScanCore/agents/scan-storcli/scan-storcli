@@ -3108,8 +3108,8 @@ sub process_a_physical_disk
 			name2 => "storcli_physical_drive_uuid", value2 => $storcli_physical_drive_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number} = $storcli_physical_drive_uuid;
-		$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_serial_number;
+		$an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number} = $storcli_physical_drive_serial_number;
+		$an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid}            = $storcli_physical_drive_uuid;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "scan-storcli::physical_drives::by_serial::$storcli_physical_drive_serial_number", value1 => $an->data->{'scan-storcli'}{physical_drives}{by_serial}{$storcli_physical_drive_serial_number},
 			name2 => "scan-storcli::physical_drives::by_uuid::$storcli_physical_drive_uuid",            value2 => $an->data->{'scan-storcli'}{physical_drives}{by_uuid}{$storcli_physical_drive_uuid},
