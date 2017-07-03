@@ -5744,15 +5744,7 @@ sub parse_install_manifest
 		my $pdu3_key          = "anvil_node".$i."_pdu3_outlet";
 		my $pdu4_key          = "anvil_node".$i."_pdu4_outlet";
 		
-		# IPMI is, by default, tempremental about passwords. If the manifest doesn't specify 
-		# the password to use, we'll copy the cluster password but then strip out special 
-		# characters and shorten it to 16 characters or less.
-		my $default_ipmi_pw =  $an->data->{cgi}{anvil_password};
-			$default_ipmi_pw =~ s/!//g;
-		if (length($default_ipmi_pw) > 16)
-		{
-			$default_ipmi_pw = substr($default_ipmi_pw, 0, 16);
-		}
+		my $default_ipmi_pw   =  $an->data->{cgi}{anvil_password};
 		
 		# Find the IPMI, PDU and KVM reference names
 		my $ipmi_reference = "";
@@ -5861,6 +5853,23 @@ sub parse_install_manifest
 			name1 => "cgi::$ipmi_password_key", value1 => $an->data->{cgi}{$ipmi_password_key},
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		# IPMI is, by default, tempremental about passwords. If the manifest doesn't specify the 
+		# password to use, we'll copy the cluster password but then strip out special characters and 
+		# shorten it to 16 characters or less.
+		$an->data->{cgi}{$ipmi_password_key} =~ s/ //g;
+		$an->data->{cgi}{$ipmi_password_key} =~ s/!//g;
+		if (length($an->data->{cgi}{$ipmi_password_key}) > 16)
+		{
+			$an->data->{cgi}{$ipmi_password_key} = substr($an->data->{cgi}{$ipmi_password_key}, 0, 16);
+		}
+		
+		# Make sure the password matches later when we generate the cluster.conf file.
+		$an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{password} = $an->data->{cgi}{$ipmi_password_key};
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+			name1 => "cgi::$ipmi_password_key",                                                     value1 => $an->data->{cgi}{$ipmi_password_key},
+			name2 => "install_manifest::${uuid}::node::${node}::ipmi::${ipmi_reference}::password", value2 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{password},
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		# If the user remapped their network, we don't want to undo the results.
 		if (not $an->data->{cgi}{perform_install})
 		{
@@ -5959,8 +5968,8 @@ sub parse_install_manifest
 					}
 					# Build the string
 					my $string =  "<device name=\"$reference\"";
-						$string .= " ipaddr=\"$name\"" if $name;
-						$string .= " login=\"$user\""  if $user;
+					   $string .= " ipaddr=\"$name\"" if $name;
+					   $string .= " login=\"$user\""  if $user;
 					# One or the other, not both.
 					if ($password)
 					{

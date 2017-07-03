@@ -517,7 +517,6 @@ sub generate_kickstart_body
 	my $packages       = get_packages($conf, $machine);
 	my $common_post    = get_common_post($conf);
 	my $copy_logs      = get_copy_logs($conf);
-	my $host_uuid      = get_uuid($conf);
 	
 	# (De)branding doesn't apply to the kickstart comment header.
 	my $ks_body = "### $conf->{sys}{ks}{company_name} - $conf->{sys}{ks}{anvil_name} - $conf->{sys}{ks}{byline}
@@ -905,10 +904,6 @@ cat > ".$conf->{path}{example_install}." << EOF
 # and then call it with 'sh ".$conf->{path}{example_install}."' to save typing
 # all this out.
 # 
-# If you are rebuilding or replacing a dashboard and you know what the old host
-# UUID was, you can specify it with '--host-uuid <uuid>' to have Scanner link
-# this machine to the previous one's data in the ScanCore database.
-# 
 # To understand what all these switches do, and what other switches are 
 # available, please run './striker-installer --help'. 
 
@@ -920,7 +915,6 @@ cat > ".$conf->{path}{example_install}." << EOF
  -b $my_bcn_ip/$conf->{sys}{ks}{bcn_netmask} \\\\
  -p $dhcp_range \\\\
  --peer-dashboard hostname=$conf->{sys}{ks}{prefix}-striker0${peer_number}.$conf->{sys}{ks}{domain},bcn_ip=$peer_ip \\\\
- --host-uuid $host_uuid \\\\
 ";
 		# Use '--rhn' on RHEL only.
 		if ($conf->{sys}{os_type} eq "rhel")

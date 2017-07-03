@@ -3309,9 +3309,7 @@ sub configure_ipmi_on_node
 					if ($line =~ /Success/i)
 					{
 						# Woo!
-						$an->Log->entry({log_level => 2, message_key => "log_0130", message_variables => {
-							channel => $channel, 
-						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 2, message_key => "log_0130", message_variables => { target => $channel }, file => $THIS_FILE, line => __LINE__});
 					}
 					elsif ($line =~ /wrong password size/i)
 					{
@@ -3323,9 +3321,7 @@ sub configure_ipmi_on_node
 					{
 						# Password didn't take. :(
 						$return_code = 1;
-						$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => {
-							channel => $channel, 
-						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => { target => $channel }, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				if ($try_20)
@@ -3350,17 +3346,13 @@ sub configure_ipmi_on_node
 						if ($line =~ /Success/i)
 						{
 							# Woo!
-							$an->Log->entry({log_level => 2, message_key => "log_0133", message_variables => {
-								channel => $channel, 
-							}, file => $THIS_FILE, line => __LINE__});
+							$an->Log->entry({log_level => 2, message_key => "log_0133", message_variables => { target => $channel }, file => $THIS_FILE, line => __LINE__});
 						}
 						elsif ($line =~ /password incorrect/i)
 						{
 							# Password didn't take. :(
 							$return_code = 1;
-							$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => {
-								channel => $channel, 
-							}, file => $THIS_FILE, line => __LINE__});
+							$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => { target => $channel }, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 				}

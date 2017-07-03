@@ -147,6 +147,7 @@ my $conf = {
 		'chmod'			=>	"/bin/chmod",
 		'chown'			=>	"/bin/chown",
 		curl			=>	"/usr/bin/curl",
+		dmidecode		=>	"/usr/sbin/dmidecode",
 		echo			=>	"/bin/echo",
 		gcc			=>	"/usr/bin/gcc",
 		git			=>	"/usr/bin/git",
@@ -5505,6 +5506,34 @@ sub install_striker_files
 			exit(43);
 		}
 	}
+	else
+	{
+		# Use the system UUID as reported by dmidecode.
+		my $shell_call = $conf->{executable}{dmidecode}." --string system-uuid";
+		my $host_uuid  = "";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+			if ($line =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i)
+			{
+				$host_uuid = lc($line);
+				logger($conf, $THIS_FILE, __LINE__, "- host_uuid: [$host_uuid]", 1);
+			}
+		}
+		close $file_handle;
+		
+		if ($host_uuid)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The system UUID is being used for the host UUID.", 1);
+			open (my $file_handle, ">", $conf->{path}{host_uuid}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{host_uuid}], the error was: $!\n";
+			print $file_handle $host_uuid."\n";
+			close $file_handle;
+		}
+	}
 	
 	# Update /etc/striker/striker.conf if a custom config was not used.
 	if (not $conf->{switches}{'custom-config'})
@@ -8657,18 +8686,11 @@ SWITCHES
 
 	If you want to use a set UUID to identify this machine in ScanCore, you
 	can do so using this switch. This will only make sense if you are 
-	rebuilding or replacing an old UUID. To record a machine's existing
-	host UUID, back up:
-
-|;
-	$help .= "	$conf->{path}{host_uuid}\n";
-$help .= q|
-	In it will be the UUID used to identify each Anvil!
-	machine (Striker dashboards and Anvil! nodes). Note that the Install
-	Manifest records the UUIDs assigned to nodes as well. So replacing a
-	node using the previous manifest automatically re-uses the previous
-	host UUID.
-
+	rebuilding or replacing an old dashboard with new hardware and you want 
+	to use the old UUID to link the systems in the ScanCore database.
+	
+	Normally, the system UUID reported by dmidecode is used.
+	
  -i <ip_address/netmask>,dg=<ip_address>[,dns1=<ip_address>,dns2=<ip_address>]
 
 	This sets the IP address and subnet to be assigned to the 
