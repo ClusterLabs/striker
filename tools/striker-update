@@ -491,7 +491,7 @@ else
 
 # Start apache locally.
 print "- Restarting apache (enabling Striker's web interface).\n";
-$shell_call = "/etc/init.d/httpd stop";
+$shell_call = "/etc/init.d/httpd start";
 $an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 	name1 => "shell_call", value1 => $shell_call, 
 }, file => $THIS_FILE, line => __LINE__});
