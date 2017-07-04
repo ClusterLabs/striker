@@ -66,7 +66,7 @@ else
 {
 	# Who is the current host and which node is out target?
 	my $server = $an->data->{switches}{server};
-	$an->Log->entry({log_level => 2, message_key => "atpostm_warning_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "server", value1  => $server, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -79,7 +79,7 @@ else
 	else
 	{
 		my $host = $clustat_data->{server}{$server}{host};
-		$an->Log->entry({log_level => 2, message_key => "atpostm_warning_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1  => "host", value1  => $host, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $host) or ($host eq "none"))
@@ -91,7 +91,7 @@ else
 		{
 			# We have a host, so who is the peer?
 			my $peer = $clustat_data->{node}{'local'}{name} eq $host ? $clustat_data->{node}{peer}{name} : $clustat_data->{node}{'local'}{name};
-			$an->Log->entry({log_level => 2, message_key => "atpostm_warning_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1  => "peer", value1  => $peer, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
