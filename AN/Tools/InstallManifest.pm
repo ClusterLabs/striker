@@ -4021,8 +4021,16 @@ COMMIT";
 		name1 => "node", value1 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Make this smarter so that it deletes everything ***EXCEPT*** ifcfg-lo
-	my $shell_call = $an->data->{path}{rm}." -f ".$an->data->{path}{nodes}{ifcfg_directory}."/ifcfg-eth*";
+	# This removes all existing configuration files except for ifcfg-lo.
+	my $shell_call = "
+for iface in \$(".$an->data->{path}{ls}." /etc/sysconfig/network-scripts/ifcfg-* | ".$an->data->{path}{'grep'}." -v ifcfg-lo);
+do
+    echo \"Removing: \$iface\";
+    ".$an->data->{path}{rm}." -f \$iface;
+done
+echo \"Remaining interface configuration files:\"
+".$an->data->{path}{ls}." /etc/sysconfig/network-scripts/
+";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
