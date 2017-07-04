@@ -458,25 +458,6 @@ if ($an->data->{switches}{'gather-only'})
 	exit(0);
 }
 
-# Stop apache locally.
-print "- Stopping apache (disabling Striker's web interface).\n";
-my $shell_call = "/etc/init.d/httpd stop";
-$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-	name1 => "shell_call", value1 => $shell_call, 
-}, file => $THIS_FILE, line => __LINE__});
-open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-while(<$file_handle>)
-{
-	chomp;
-	my $line = $_;
-		$line =~ s/\r//;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "line", value1 => $line, 
-	}, file => $THIS_FILE, line => __LINE__});
-}
-close $file_handle;
-
-
 # If I am still alive, what am I doing?
 if (($an->data->{switches}{'anvil-name'}) or ($an->data->{switches}{'anvil-uuid'}))
 {
@@ -488,24 +469,6 @@ else
 	# I'm updating the local dashboard only.
 	update_local($an);
 }
-
-# Start apache locally.
-print "- Restarting apache (enabling Striker's web interface).\n";
-$shell_call = "/etc/init.d/httpd start";
-$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-	name1 => "shell_call", value1 => $shell_call, 
-}, file => $THIS_FILE, line => __LINE__});
-open ($file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-while(<$file_handle>)
-{
-	chomp;
-	my $line = $_;
-		$line =~ s/\r//;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "line", value1 => $line, 
-	}, file => $THIS_FILE, line => __LINE__});
-}
-close $file_handle;
 
 print "[ Note ] - No changes were made to 'striker.conf'.\n";
 print "[ Note ]   If you wish to check for new options, please see:\n";
@@ -1070,15 +1033,11 @@ sub update_local
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_local" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Disable ScanCore.
-	print "###############################################################################
-# NOTE: ScanCore and Apache will be disabled. If anything causes the upgrade 
-#       process to abort unexpectedly, you may need to manually re-enable them
-#       by running:
-#       ".$an->data->{path}{ScanCore}." --enable
-#       /etc/init.d/httpd start
-###############################################################################
-
-";
+	print "###############################################################################\n";
+	print "# NOTE: ScanCore will be disabled. If anything causes the upgrade process to\n";
+	print "#       abort unexpectedly, you may need to manually re-enable it by running:\n";
+	print "#       ".$an->data->{path}{ScanCore}." --enable\n";
+	print "###############################################################################\n\n";
 	
 	manage_scancore($an, "disable");
 	
@@ -1248,17 +1207,12 @@ sub update_all
 	print "- Ready to start the update process!\n\n";
 	
 	# Disable ScanCore on all dashboards and nodes, then go into a loop until all of them have exited.
-	print "###############################################################################
-# NOTE: ScanCore will be disabled on all dashboards and nodes. Apache will be 
-#       also stopped on the dashboards to disable Striker. If anything causes 
-#       the upgrade process to abort unexpectedly, you may need to manually 
-#       re-enable ScanCore on all machines by running:
-#       ".$an->data->{path}{ScanCore}." --enable
-#       On dashboards, run this to restart Apache (Striker):
-#       /etc/init.d/httpd start
-###############################################################################
-
-";
+	print "###############################################################################\n";
+	print "# NOTE: ScanCore will be disabled on all dashboards and nodes. If anything\n";
+	print "#       causes the upgrade process to abort unexpectedly, you may need to\n";
+	print "#       manually re-enable ScanCore by running:\n";
+	print "#       ".$an->data->{path}{ScanCore}." --enable\n";
+	print "###############################################################################\n\n";
 	
 	# We'll call '--disable' on the peer dashboards, then all nodes, then on ourself. The local disable 
 	# will wait until ScanCore exits, then we'll go into a loop while we wait for any stragglers to exit.
@@ -1267,11 +1221,7 @@ sub update_all
 	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
 	{
 		my $password = $dashboards->{$dashboard};
-		
-		# We'll also disable apache, to make sure no one tries to use Striker.
-		$shell_call .= "; /etc/init.d/httpd stop";
-		
-		print "- Disabling Apache and ScanCore on Striker dashboard: [$dashboard]\n";
+		print "- Disabling ScanCore on Striker dashboard: [$dashboard]\n";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "dashboard",  value1 => $dashboard,
 			name2 => "shell_call", value2 => $shell_call,
@@ -1287,7 +1237,6 @@ sub update_all
 		});
 		foreach my $line (@{$return})
 		{
-			$line =~ s/\r//;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1574,11 +1523,8 @@ sub update_all
 	foreach my $dashboard (sort {$a cmp $b} keys %{$dashboards})
 	{
 		my $password = $dashboards->{$dashboard};
-		
-		# We'll also re-enable apache, to make sure no one tries to use Striker.
-		$shell_call .= "; /etc/init.d/httpd start";
 
-		print "- Enabling Apache and ScanCore on Striker dashboard: [$dashboard]\n";
+		print "- Enabling ScanCore on Striker dashboard: [$dashboard]\n";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "dashboard",  value1 => $dashboard,
 			name2 => "shell_call", value2 => $shell_call,
@@ -1594,7 +1540,6 @@ sub update_all
 		});
 		foreach my $line (@{$return})
 		{
-			$line =~ s/\r//;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
