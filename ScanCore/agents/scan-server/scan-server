@@ -1279,11 +1279,11 @@ WHERE
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# This will happen whenever the virsh ID changes, disks are 
-					# inserted/ejected, etc. So it is a notice-level event.
+					# inserted/ejected, etc. So it is a info-level event.
 					$an->Alert->register_alert({
-						alert_level		=>	"notice", 
+						alert_level		=>	"info", 
 						alert_agent_name	=>	$THIS_FILE,
-						alert_title_key		=>	"an_alert_title_0003",
+						alert_title_key		=>	"an_alert_title_0002",
 						alert_message_key	=>	"scan_server_message_0007",
 						alert_message_variables	=>	{
 							server			=>	$new_server_name, 
