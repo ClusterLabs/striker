@@ -3715,6 +3715,11 @@ Proceed? [y/N]
 		<key name="scp_message_0029">Updating ScanCore password for the node: [#!variable!node_name!#]: </key>
 		<key name="scp_message_0030">Updating ScanCore password for the Anvil!: [#!variable!anvil_name!#]: </key>
 		<key name="scp_message_0031">Updating the Anvil! passwords are complete!</key>
+		<key name="scp_message_0032">
+*******************************************************************************
+[ Note ]: The IPMI password had to be changed slightly to: [#!variable!ipmi_password!#].
+*******************************************************************************
+		</key>
 		
 		<!-- errors -->
 		<key name="scp_error_0001">You must be root (or use sudo) to change passwords.</key>
