@@ -378,7 +378,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_warning_0012">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0013">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0014">- The BBU: [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
-		<key name="scan_storcli_warning_0015">- A new variable was found on the BBU: [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0015">- A new variable was found on the BBU: [#!variable!serial_number!#] = [#!variable!value!#]</key>
 		<key name="scan_storcli_warning_0016">- The BBU: [#!variable!bbu_serial_number!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		<key name="scan_storcli_warning_0017">The RAID controller's Virtual Drive (VD) properties have changed:
 - On Controller: .... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
@@ -411,7 +411,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_warning_0019">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0020">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0021">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' has vanished!</key>
-		<key name="scan_storcli_warning_0022">- A new variable was found on the Virtual Drive: [#!variable!id_string!#]; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0022">- A new variable was found on the Virtual Drive: [#!variable!id_string!#] = [#!variable!value!#]</key>
 		<key name="scan_storcli_warning_0023">The Virtual Drive: [#!variable!id_string!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		<key name="scan_storcli_warning_0024">The RAID controller's Drive Group (DG) properties have changed:
 - ID String: ................. [#!variable!old_id_string!#] -> [#!variable!new_id_string!#]
@@ -472,7 +472,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 </key>
 		<key name="scan_storcli_warning_0031">- The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0032">- The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
-		<key name="scan_storcli_warning_0033">- A new variable was found on the Physical Drive (PD): [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0033">- A new variable was found on the Physical Drive (PD): [#!variable!serial_number!#] = [#!variable!value!#]</key>
 		<key name="scan_storcli_warning_0034">- Physical Drive: [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
 		<key name="scan_storcli_warning_0035">- The Physical Drive: [#!variable!physical_disk_serial_number!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		<key name="scan_storcli_warning_0036">The RAID controller's Cachevault (FBU) properties have changed:
@@ -498,7 +498,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 		<key name="scan_storcli_warning_0038">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0039">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0040">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>
-		<key name="scan_storcli_warning_0041">- A new variable was found on the Cachevault (FBU): [#!variable!serial_number!#]; #!variable!name!#: [#!variable!value!#]</key>
+		<key name="scan_storcli_warning_0041">- A new variable was found on the Cachevault (FBU): [#!variable!serial_number!#] = [#!variable!value!#]</key>
 		<key name="scan_storcli_warning_0042">- The Cachevault (FBU): [#!variable!cachevault_serial_number!#] on the RAID controller: [#!variable!controller_serial_number!#] has vanished!</key>
 		<key name="scan_storcli_warning_0043">#!free!#</key>
 		<key name="scan_storcli_warning_0044">

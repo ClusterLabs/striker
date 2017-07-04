@@ -22,6 +22,9 @@
 # - Update the string processing from the '!!x!name=a,value=b,units=c!!' method to the new method here:
 #   https://alteeve.com/w/ScanCore#Unit_Parsing
 # - Change 'ipmitool_value_id' to 'ipmitool_value_uuid'.
+#
+# - A PSU wattage dropping to '0 Watts', in conjunction with it's fan dropping to '0' RPMs, is the sign that 
+#   input power was lost and should set a health score of ~5.
 # 
 # NOTE: 
 # - Health values
