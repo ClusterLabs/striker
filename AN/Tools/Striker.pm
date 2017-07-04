@@ -900,8 +900,7 @@ WHERE
 	{
 		my $time       = time;
 		my $difference = time - $old_stop_reason;
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "time",            value1 => $time, 
 			name2 => "old_stop_reason", value2 => $old_stop_reason, 
 			name3 => "difference",      value3 => $difference, 

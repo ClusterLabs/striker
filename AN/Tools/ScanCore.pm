@@ -6236,7 +6236,6 @@ sub read_variable
 	my $variable_source_uuid  = $parameter->{variable_source_uuid}  ? $parameter->{variable_source_uuid}  : "NULL";
 	my $variable_source_table = $parameter->{variable_source_table} ? $parameter->{variable_source_table} : "NULL";
 	my $id                    = $parameter->{id}                    ? $parameter->{id}                    : $an->data->{sys}{read_db_id};
-	### NOTE: Customer requested, move to 2 before v2.0 release
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "variable_uuid",         value1 => $variable_uuid, 
 		name2 => "variable_name",         value2 => $variable_name, 
@@ -6280,7 +6279,7 @@ AND
 		}
 	}
 	$query .= ";";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -6297,8 +6296,7 @@ AND
 		$variable_value = defined $row->[0] ? $row->[0] : "";
 		$variable_uuid  =         $row->[1];
 		$modified_date  =         $row->[2];
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "variable_name",  value1 => $variable_name, 
 			name2 => "variable_value", value2 => $variable_value, 
 			name3 => "variable_uuid",  value3 => $variable_uuid, 

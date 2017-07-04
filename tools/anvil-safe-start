@@ -835,8 +835,7 @@ sub start_the_cluster
 sub wait_for_storage
 {
 	my ($an, $who) = @_;
-	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 1, title_key => "tools_log_0001", title_variables => { function => "wait_for_storage" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "wait_for_storage" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "who", value1 => $who,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -865,8 +864,7 @@ sub wait_for_storage
 	
 	# I need to know my service names so that if 'who' is set to 'local', we only watch that service.
 	my $local_service = $local_key eq "node1" ? "storage_n01" : "storage_n02";
-	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "local_service", value1 => $local_service, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1016,8 +1014,7 @@ sub wait_for_storage
 		my $storage_enabled = 0;
 		my $storage_count   = 0;
 		my $shell_call      = $an->data->{path}{clustat};
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -1036,8 +1033,7 @@ sub wait_for_storage
 			{
 				my $service = $1;
 				my $state   = $2;
-				### NOTE: Customer requested, move to 2 before v2.0 release
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "service", value1 => $service, 
 					name2 => "state",   value2 => $state, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1045,8 +1041,7 @@ sub wait_for_storage
 				if ($state eq "started")
 				{
 					$storage_count++;
-					### NOTE: Customer requested, move to 2 before v2.0 release
-					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "storage_count", value1 => $storage_count, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1096,22 +1091,19 @@ sub wait_for_storage
 		{
 			# Now verify that '/shared/ is mounted on both nodes.
 			my $shared_up = check_shared($an, $who);
-			### NOTE: Customer requested, move to 2 before v2.0 release
-			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shared_up", value1 => $shared_up, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($shared_up)
 			{
 				$storage_up = 1;
-				### NOTE: Customer requested, move to 2 before v2.0 release
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "storage_up", value1 => $storage_up, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "storage_up", value1 => $storage_up, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $storage_up)
@@ -1129,8 +1121,7 @@ sub wait_for_storage
 sub check_shared
 {
 	my ($an, $who) = @_;
-	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 1, title_key => "tools_log_0001", title_variables => { function => "check_shared" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_shared" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "who", value1 => $who,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1271,8 +1262,7 @@ sub start_clvmd
 	# other's is active).
 	my $recheck = 0;
 	my $command = $an->data->{path}{lvscan};
-	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "command", value1 => $command,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($output) = $an->System->dual_command_run({
@@ -1301,8 +1291,7 @@ sub start_clvmd
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		next if not $line;
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "peer_name", value1 => $peer_name,
 			name2 => "line",      value2 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1344,8 +1333,7 @@ sub start_clvmd
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		next if not $line;
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "local_name", value1 => $local_name,
 			name2 => "line",       value2 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1882,8 +1870,7 @@ sub start_drbd
 		my $local_resource = $an->Check->drbd_resource({resource => $resource});
 		
 		# If I am here, DRBD should be fully up. See if we need to wait for DRBD to be UpToDate.
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "local_resource->{this_disk_state}", value1 => $local_resource->{this_disk_state}, 
 			name2 => "local_resource->{peer_disk_state}", value2 => $local_resource->{peer_disk_state}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1936,8 +1923,7 @@ sub start_drbd
 			# 'always_boost' is set, boost the sync speed.
 			my $wait_for_sync = 1;
 			my $sync_boosted  = 0;
-			### NOTE: Customer requested, move to 2 before v2.0 release
-			$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "wait_for_sync",                        value1 => $wait_for_sync, 
 				name2 => "sync_boosted",                         value2 => $sync_boosted, 
 				name3 => "anvil-safe-start::drbd::always_boost", value3 => $an->data->{'anvil-safe-start'}{drbd}{always_boost}, 
@@ -1955,8 +1941,7 @@ sub start_drbd
 				
 				# I can always issue this locally.
 				my $shell_call = $an->data->{path}{drbdadm}." disk-options --c-plan-ahead=0 --resync-rate=".$an->data->{'anvil-safe-start'}{drbd}{boost_speed}."M $resource";
-				### NOTE: Customer requested, move to 2 before v2.0 release
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -1980,8 +1965,7 @@ sub start_drbd
 				# How is it now?
 				$local_resource = $an->Check->drbd_resource({resource => $resource});
 				$sync_eta       = $local_resource->{sync_eta};
-				### NOTE: Customer requested, move to 2 before v2.0 release
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "sync_eta", value1 => $sync_eta, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -2055,8 +2039,7 @@ sub start_drbd
 			{
 				# Reset the sync speed.
 				$shell_call = $an->data->{path}{drbdadm}." adjust $resource";
-				### NOTE: Customer requested, move to 2 before v2.0 release
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -2370,8 +2353,7 @@ sub start_daemons
 		password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 	});
 	$shell_call = $an->data->{path}{initd}."/$daemon start";
-	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "local_state",  value1 => $local_state, 
 		name2 => "remote_state", value2 => $remote_state, 
 		name3 => "shell_call",   value3 => $shell_call,
@@ -2482,8 +2464,7 @@ sub wait_for_access
 	my $waiting_started_at = time;
 	my $stop_waiting_at    = $waiting_started_at + $an->data->{sys}{single_node_start}{boot_delay};
 	my $difference         = $stop_waiting_at - time;
-	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "waiting_started_at", value1 => $waiting_started_at,
 		name2 => "stop_waiting_at",    value2 => $stop_waiting_at,
 		name3 => "time",               value3 => time,
@@ -2643,8 +2624,7 @@ sub check_single_node_start
 	# Waited more that our boot delay and single node start is enabled, so see if we last saw the peer as
 	# offline and, if so, end the wait.
 	my $difference = $stop_waiting_at - time;
-	### NOTE: Customer requested, move to 2 before v2.0 release
-	$an->Log->entry({log_level => 1, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "peer_name",                       value1 => $peer_name, 
 		name2 => "sys::single_node_start::enabled", value2 => $an->data->{sys}{single_node_start}{enabled},
 		name3 => "waiting_started_at",              value3 => $waiting_started_at, 
@@ -2667,8 +2647,7 @@ sub check_single_node_start
 				variable_source_uuid  => $an->data->{sys}{host_uuid},
 				variable_source_table => "hosts",
 			});
-		### NOTE: Customer requested, move to 2 before v2.0 release
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "last_peer_state", value1 => $last_peer_state,
 			name2 => "variable_uuid",   value2 => $variable_uuid, 
 			name3 => "modified_date",   value3 => $modified_date, 
