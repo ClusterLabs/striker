@@ -2637,7 +2637,7 @@ sub migrate_all_servers_to_here
 		$an->Alert->register_alert({
 			alert_level		=>	"warning", 
 			alert_agent_name	=>	$THIS_FILE,
-			alert_title_key		=>	"an_alert_title_0004",
+			alert_title_key		=>	"an_alert_title_0006",
 			alert_message_key	=>	"scancore_warning_0002",
 			alert_message_variables	=>	{
 				host_name		=>	$an->hostname,
