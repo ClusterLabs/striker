@@ -13,6 +13,11 @@ What is an *Anvil!* Platform?
 
 In short, it is a server platform that just won't die.
 
+* How do you build an *Anvil!*?
+
+It's quite easy, but it does require a little more space than a README allows for.
+* [How to Build an m2 Anvil!](https://www.alteeve.com/w/Build_an_m2_Anvil!)
+
 The *Anvil!* was designed and extensively tested on [Primergy](http://www.fujitsu.com/global/products/computing/servers/primergy/) servers, Brocade [ICX](http://www.brocade.com/en/products-services/switches/campus-network-switches.html) switches and APC [SmartUPS](http://www.apc.com/smartups/index.cfm?ISOCountryCode=ca) UPSes and [Switched PDU](http://www.apc.com/shop/ca/en/categories/power-distribution/rack-power-distribution/switched-rack-pdu/_/N-17k76am)s. That said, the *Anvil!* platform is designed to be hardware agnostic and should work just fine on Dell, Cisco USC, NEC, Lenovo x-series, and other tier-1 server vendors. 
 
 [Alteeve](https://www.alteeve.com/), the company behind the *Anvil!* project, actively supports the [open source](https://www.alteeve.com/w/Support) community. We also offer commercial support contracts to assist with any stage of deployment, operation and custom development.
