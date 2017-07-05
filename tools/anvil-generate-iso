@@ -1665,6 +1665,7 @@ sub build_iso
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - say_user: [$say_user], say_host: [$say_host]\n" if $conf->{sys}{debug} >= 2;
 	
 	# Put the output path together.
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
 	my $output_file = $conf->{sys}{user}{current_dir}."/".$conf->{path}{working_dir}."/".$conf->{path}{iso}{file_name};
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - output_file: [$output_file]\n" if $conf->{sys}{debug} >= 2;
 	
@@ -1680,11 +1681,17 @@ sub build_iso
 	}
 	
 	# Build!
-	my $say_company    =  $conf->{sys}{ks}{company_name};
-	   $say_company    =~ s/!/\\\\\\/;
-	my $say_anvil      =  $conf->{sys}{ks}{anvil_name};
-	   $say_anvil      =~ s/!/\\\\\\/;
-	my $volume_id      = "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
+	my $say_company =  $conf->{sys}{ks}{company_name};
+	   $say_company =~ s/!/\\\\\\/;
+	my $say_anvil   =  $conf->{sys}{ks}{anvil_name};
+	   $say_anvil   =~ s/!/\\\\\\/;
+	my $volume_id   = "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::name::version: [$conf->{sys}{name}{version}], volume_id: [$volume_id]\n" if $conf->{sys}{debug} >= 2;
+	if ($conf->{sys}{name}{version} =~ /^v2/)
+	{
+		$volume_id = "Anvil_".$conf->{sys}{name}{mark}."-".$conf->{sys}{name}{version};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - volume_id: [$volume_id]\n" if $conf->{sys}{debug} >= 2;
+	}
 	my $shell_call     =  $conf->{executable}{mkisofs}." -rock -joliet-long -translation-table -no-emul-boot -boot-load-size 4 -boot-info-table -V '$volume_id' -appid '$say_anvil ".$conf->{sys}{name}{mark}." v".$conf->{sys}{name}{version}." Installer' -publisher \"$say_company - $conf->{sys}{ks}{support_url}\" -preparer 'Built by $say_user on $say_host at $say_date' -eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat -x 'lost+found' -o $output_file $conf->{path}{iso}{source_directory}";
 	my $mkisofs_output = "";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
@@ -2067,6 +2074,12 @@ sub download_striker
 		$source_name                  = $source_directory."/striker-".$conf->{sys}{name}{version};
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: [$source_name]\n" if $conf->{sys}{debug} >= 2;
 		$conf->{path}{iso}{file_name} =  "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
+		if ($conf->{sys}{name}{version} =~ /^v/)
+		{
+			$conf->{path}{iso}{file_name} =  "Anvil_".$conf->{sys}{name}{mark}."-".$conf->{sys}{name}{version};
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
+		}
 		if ($conf->{sys}{name}{suffix})
 		{
 			$conf->{path}{iso}{file_name} .= "-".$conf->{sys}{name}{suffix};
@@ -2896,16 +2909,22 @@ sub setup_build_environment
 	# Assemble the final ISO name
 	my $os_type                      = $conf->{sys}{os_type};
 	   $conf->{path}{iso}{file_name} = "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 3;
+	if ($conf->{sys}{name}{version} =~ /^v/)
+	{
+		$conf->{path}{iso}{file_name} = "Anvil_".$conf->{sys}{name}{mark}."-".$conf->{sys}{name}{version};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 3;
+	}
 	if ($conf->{sys}{name}{suffix})
 	{
 		$conf->{path}{iso}{file_name} .= "-".$conf->{sys}{name}{suffix};
 	}
 	$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{$os_type}."-".$conf->{sys}{name}{release}.".iso";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 3;
 	
 	# This will be where we look for updated RPMs.
 	$conf->{path}{updates_dir} = $conf->{sys}{user}{current_dir}."/".$conf->{path}{updates_dir}."/".$conf->{sys}{name}{$os_type};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::updates_dir: [$conf->{path}{updates_dir}]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::updates_dir: [$conf->{path}{updates_dir}]\n" if $conf->{sys}{debug} >= 3;
 	
 	return(0);
 }
@@ -3030,7 +3049,7 @@ sub build_source
 		my $destination = $conf->{path}{iso}{iso_packages}."/".$conf->{copy}{$package}{file};
 		if (-e $destination)
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ]- The package: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ]- The package: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 3;
 		}
 		else
 		{
@@ -3069,7 +3088,7 @@ sub build_source
 			foreach my $file (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}{$directory}})
 			{
 				next if $file eq "TRANS.TBL";
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - file: [$directory/$file]\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - file: [$directory/$file]\n" if $conf->{sys}{debug} >= 3;
 				# To determine the copy target, we first need to strip off the mount point 
 				# (if mounted) and append it to the source directory.
 				my $destination           = "";
@@ -3088,13 +3107,13 @@ sub build_source
 				}
 				$destination           =~ s/\/+/\//g;
 				$destination_directory =~ s/\/+/\//g;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - destination: [$destination], destination_directory: [$destination_directory]\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - destination: [$destination], destination_directory: [$destination_directory]\n" if $conf->{sys}{debug} >= 3;
 				# Create the destination directory if needed
 				$destination_directory = make_directory($conf, $destination_directory);
 				
 				if (-e $destination)
 				{
-					print "$THIS_FILE ".__LINE__."; [ Debug ]- The file: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
+					print "$THIS_FILE ".__LINE__."; [ Debug ]- The file: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 3;
 				}
 				else
 				{
