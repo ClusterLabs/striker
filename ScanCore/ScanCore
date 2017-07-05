@@ -1943,7 +1943,7 @@ AND
 AND 
     modified_date > (now() - interval '6h') 
 ORDER BY 
-    modified_date DESC
+    modified_date ASC
 ;";
 		# There should always be at least one.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1956,10 +1956,17 @@ ORDER BY
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			$last_shutdown = $row->[0];
+			my $this_shutdown = $row->[0];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "last_shutdown", value1 => $last_shutdown
+				name1 => "this_shutdown", value1 => $this_shutdown, 
 			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_shutdown > $last_shutdown)
+			{
+				$last_shutdown = $this_shutdown;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "last_shutdown", value1 => $last_shutdown, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "last_shutdown", value1 => $last_shutdown
@@ -2023,10 +2030,12 @@ ORDER BY
 		# Now, see if the last reboot time is more than delay time ago.
 		if ($delay)
 		{
-			my $last_shutdown_was = (time - $last_shutdown);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "last_shutdown_was", value1 => $last_shutdown_was, 
-				name2 => "delay",             value2 => $delay, 
+			my $now_time          = time;
+			my $last_shutdown_was = ($now_time - $last_shutdown);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "now_time",          value1 => $now_time, 
+				name2 => "last_shutdown_was", value2 => $last_shutdown_was, 
+				name3 => "delay",             value3 => $delay, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($last_shutdown_was < $delay)
 			{

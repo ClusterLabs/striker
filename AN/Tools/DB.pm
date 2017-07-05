@@ -2090,7 +2090,7 @@ sub locking
 	my $set            = 0;
 	my $variable_name  = "lock_request";
 	my $variable_value = $source_name."::".$source_uuid."::".time;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "variable_name",  value1 => $variable_name, 
 		name2 => "variable_value", value2 => $variable_value, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2187,7 +2187,7 @@ sub locking
 		
 		# See if we had a lock.
 		my ($lock_value, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({variable_name => $variable_name});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "waiting",       value1 => $waiting, 
 			name2 => "lock_value",    value2 => $lock_value, 
 			name3 => "variable_uuid", value3 => $variable_uuid, 
@@ -2201,7 +2201,7 @@ sub locking
 			my $current_time     = time;
 			my $timeout_time     = $lock_time + $an->data->{scancore}{locking}{reap_age};
 			my $lock_age         = $current_time - $lock_time;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "lock_source_name", value1 => $lock_source_name, 
 				name2 => "lock_source_uuid", value2 => $lock_source_uuid, 
 				name3 => "current_time",     value3 => $current_time, 
@@ -2219,7 +2219,7 @@ sub locking
 					variable_value    => "",
 					update_value_only => 1,
 				});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "variable_uuid", value1 => $variable_uuid, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -2230,7 +2230,7 @@ sub locking
 				$an->DB->mark_active({set => 0});
 				
 				$waiting = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "lock_source_uuid", value1 => $lock_source_uuid, 
 					name2 => "source_uuid",      value2 => $source_uuid, 
 					name3 => "waiting",          value3 => $waiting, 
