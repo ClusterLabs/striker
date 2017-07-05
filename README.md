@@ -8,8 +8,8 @@ What is an *Anvil!* Platform?
 * It is the first server platform designed with the singular focus of protecting your servers and keeping them running under even extreme fault conditions. 
 * It is fully self-contained, making it ideal for totally offline operation.
 * It is a "self driving" server availability platform that can continuously monitors internal and external data sources, compiling, analyzing and autonomously deciding when and what action to take to protect your servers. It is ideally suited for extended remote deployments and "hands off" operation.
-* It is based of an extensively field tested, open architecture with full data, mechanical and electrical redundancy allowing any component to be failed, removed and replaced without the need for a maintenance window.
-* It is extremely easy to use, minimizing the opportunity for human error and making it possible for "remote hands" to affect repairs without any prior availability experience and minimal technical knowledge.
+* It is based on an extensively field tested, open architecture with full data, mechanical and electrical redundancy allowing any component to be failed, removed and replaced without the need for a maintenance window. The *ANvil!* platform has over five years of real-world deployment over dozens of sites and an historic uptime of over 99.9999%. 
+* It is extremely easy to use, minimizing the opportunity for human error and making it as simple as possible for "remote hands" to affect repairs and replacements without any prior availability experience and minimal technical knowledge.
 
 In short, it is a server platform that just won't die.
 
