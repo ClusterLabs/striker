@@ -736,14 +736,14 @@ sub connect_to_databases
 			name1 => "db_connect_string", value1 => $db_connect_string, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::db::${id}::ping_before_connect", value1 => $an->data->{scancore}{db}{$id}{ping_before_connect}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{scancore}{db}{$id}{ping_before_connect})
 		{
 			# Can I ping?
 			my ($pinged) = $an->Check->ping({ping => $host, count => 1});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "pinged", value1 => $pinged, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $pinged)
