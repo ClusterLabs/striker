@@ -162,7 +162,7 @@ AND
 		{
 			$ram_used_uuid  = $row->[0];
 			$ram_used_bytes = $row->[1];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "ram_used_uuid",  value1 => $ram_used_uuid, 
 				name2 => "ram_used_bytes", value2 => $ram_used_bytes, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -192,7 +192,7 @@ INSERT INTO
 );
 ";
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -208,7 +208,7 @@ SET
 WHERE 
     ram_used_uuid  = ".$an->data->{sys}{use_db_fh}->quote($ram_used_uuid)."
 ;";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -225,7 +225,7 @@ WHERE
 		if (not $maximum_ram)
 		{
 			$maximum_ram = $an->data->{scancore}{maximum_ram} ? $an->data->{scancore}{maximum_ram} : (128 * 1048576);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "maximum_ram", value1 => $maximum_ram, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -233,7 +233,7 @@ WHERE
 		{
 			# Bad value, set the default.
 			$maximum_ram = 1073741824;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "maximum_ram", value1 => $maximum_ram, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}

@@ -1254,7 +1254,7 @@ sub find_changes
 					### (* == warning, rest are notice):
 					# *1 - The UPS's health is in an unknown state.
 					#  2 - The UPS is operating normally.
-					# *3 - The UPS is running on its batteries. It is likely that the input power feeding the UPS has failed.
+					#  3 - The UPS is running on its batteries. It is likely that the input power feeding the UPS has failed. (NOTE: This is not a warning because losing input voltage is the real sign of trouble, where this can be a self test).
 					#  4 - The UPS is compensating for low input power.
 					#  5 - The UPS is in a timed sleep. It will power back on when the timer has expired.
 					#  6 - The UPS is in bypass-mode and was placed in this mode by software. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.
@@ -1293,7 +1293,6 @@ sub find_changes
 					# If the old or new level is one worthy of a warning, set the alert 
 					# level to warning.
 					if (($new_apc_ups_health eq "1") or 
-					    ($new_apc_ups_health eq "3") or 
 					    ($new_apc_ups_health eq "7") or 
 					    ($new_apc_ups_health eq "8") or 
 					    ($new_apc_ups_health eq "11") or 
@@ -1304,7 +1303,6 @@ sub find_changes
 						$title_key = "an_alert_title_0004";
 					}
 					elsif (($old_apc_ups_health eq "1") or 
-					       ($old_apc_ups_health eq "3") or 
 					       ($old_apc_ups_health eq "7") or 
 					       ($old_apc_ups_health eq "8") or 
 					       ($old_apc_ups_health eq "11") or 
