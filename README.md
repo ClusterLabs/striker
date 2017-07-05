@@ -1,40 +1,18 @@
-Striker v2.0.0 - beta
+[Anvil!](https://www.alteeve.com/w/Anvil!) m2 - [Striker](https://www.alteeve.com/w/Striker) + [ScanCore](https://www.alteeve.com/w/ScanCore) v2.0.0
 =============
 
-  Striker is the user interface for the Anvil! "Intelligent Availability(tm)"
-platform. It includes 'ScanCore' and associated agents which provide the
-ever-growing intelligence that makes the Anvil! the next-generation of high
-availability server platforms.
+Welcome to the v2.0.0 release of the *Anvil!* m2 [Intelligent Availability](https://www.alteeve.com/w/Intelligent_Availability)™ platform! 
 
-  Version 2.0.0 is now in beta!
+What is an *Anvil!* Platform?
 
-  Anyone interested in testing out the new system is welcome to contact us. We
-will be happy to help users get their Anvil! systems up and running in exchange
-for helping us refine and stabilize the platform. Once Striker hits final 
-release, all beta participants will be eligable for 3 months of 24x7 monitoring
-by Alteeve, as our thank you for helping us make Striker even better.
+* It is the first server platform designed with the singular focus of protecting your servers and keeping them running under even extreme fault conditions. 
+* It is fully self-contained, making it ideal for totally offline operation.
+* It is a "self driving" server availability platform that can continuously monitors internal and external data sources, compiling, analyzing and autonomously deciding when and what action to take to protect your servers. It is ideally suited for extended remote deployments and "hands off" operation.
+* It is based of an extensively field tested, open architecture with full data, mechanical and electrical redundancy allowing any component to be failed, removed and replaced without the need for a maintenance window.
+* It is extremely easy to use, minimizing the opportunity for human error and making it possible for "remote hands" to affect repairs without any prior availability experience and minimal technical knowledge.
 
-Online Documentation
---------------------
+In short, it is a server platform that just won't die.
 
-  A core component of the beta to final transition will be the completion of
-the associated documentation. The new documentation is still being worked on,
-but you can read what exists so far here.
+The *Anvil!* was designed and extensively tested on [Primergy](http://www.fujitsu.com/global/products/computing/servers/primergy/) servers, Brocade [ICX](http://www.brocade.com/en/products-services/switches/campus-network-switches.html) switches and APC [SmartUPS](http://www.apc.com/smartups/index.cfm?ISOCountryCode=ca) UPSes and [Switched PDU](http://www.apc.com/shop/ca/en/categories/power-distribution/rack-power-distribution/switched-rack-pdu/_/N-17k76am)s. That said, the *Anvil!* platform is designed to be hardware agnostic and should work just fine on Dell, Cisco USC, NEC, Lenovo x-series, and other tier-1 server vendors. 
 
-- https://www.alteeve.com/w/Build_an_m2_Anvil!
-
-Support
--------
-
-The Anvil! is supported commercially and in the open source tradition. Alteeve
-is a member of the "Cluster Labs" open source clustering community. Users can 
-find support on freenode.net's '#clusterlabs' IRC channel and on the 'Cluster 
-Labs - Users' mailing list:
-
-- http://clusterlabs.org/mailman/listinfo/users
-
-Commercial support and 24x7x365 monitoring is available:
-
-- https://alteeve.com/w/Support
-
-
+[Alteeve](https://www.alteeve.com/), the company behind the *Anvil!* project, actively supports the [open source](https://www.alteeve.com/w/Support) community. We also offer commercial support contracts to assist with any stage of deployment, operation and custom development.
