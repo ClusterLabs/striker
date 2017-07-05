@@ -151,7 +151,7 @@ my $conf = {
 			release		=>	"6.8",
 			suffix		=>	"",
 			mark		=>	"m2",
-			version		=>	"v2.0.0",
+			version		=>	"2.0.0",
 		},
 		# This is will be set to '1' if the source ISO is not mounted.
 		use_isoread	=>	0,
@@ -2063,14 +2063,26 @@ sub download_striker
 	if ($download =~ /.*\/(.*)\.zip$/)
 	{
 		$conf->{sys}{name}{version}   = $1;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::name::version: [$conf->{sys}{name}{version}]\n" if $conf->{sys}{debug} >= 2;
 		$source_name                  = $source_directory."/striker-".$conf->{sys}{name}{version};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: [$source_name]\n" if $conf->{sys}{debug} >= 2;
 		$conf->{path}{iso}{file_name} =  "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
 		if ($conf->{sys}{name}{suffix})
 		{
 			$conf->{path}{iso}{file_name} .= "-".$conf->{sys}{name}{suffix};
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
 		}
 		$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{$os_type}."-".$conf->{sys}{name}{release}.".iso";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: [$source_name], sys::name::version: [$conf->{sys}{name}{version}], path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
+		
+		# If the source doesn't exist, try again without a preceding 'v' on the version number.
+		if ((not -e $source_name) && ($conf->{sys}{name}{version} =~ /^v2/))
+		{
+			my $source_version = ($conf->{sys}{name}{version} =~ /^v(.*)$/)[0];
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_version: [$source_version]\n" if $conf->{sys}{debug} >= 2;
+			   $source_name    = $source_directory."/striker-".$source_version;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_name: [$source_name]\n" if $conf->{sys}{debug} >= 2;
+		}
 	}
 	
 	if (-e $out_file)
@@ -2105,7 +2117,7 @@ sub download_striker
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
 	}
 	close $file_handle;
 	
@@ -2485,7 +2497,7 @@ sub download_file
 			chomp;
 			my $line = $_;
 			   $line =~ s/\r//;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
 			if ($line =~ /Content-Length: (\d+)$/)
 			{
 				$size = $1;
@@ -2909,15 +2921,15 @@ sub make_directory
 	if ($directory =~ /^~/)
 	{
 		$directory =~ s/^~/$conf->{sys}{user}{home}/;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 	}
 	if ($directory !~ /^\//)
 	{
 		$directory = $ENV{PWD}."/".$directory;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 	}
 	$directory =~ s/\/+/\//g;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 	
 	my $current_directory = "";
 	foreach my $sub_directory (split/\//, $directory)
@@ -2969,7 +2981,7 @@ sub build_source
 	{
 		my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
 		my $found         = 0;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 3;
 		
 		foreach my $iso (sort {$a cmp $b} keys %{$conf->{source_packages}})
 		{
@@ -2984,7 +2996,7 @@ sub build_source
 					print "$THIS_FILE ".__LINE__."; [ Debug ] - Source file: [$iso]:[$directory]/[$source_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 3;
 					if ($source_package =~ /^\Q$file\E-\d/)
 					{
-						print "$THIS_FILE ".__LINE__."; [ Debug ] - Source file: [$iso]:[$directory]/[$source_package] matches!\n" if $conf->{sys}{debug} >= 2;
+						print "$THIS_FILE ".__LINE__."; [ Debug ] - Source file: [$iso]:[$directory]/[$source_package] matches!\n" if $conf->{sys}{debug} >= 3;
 						$found++;
 						$conf->{copy}{$package} = {
 							source    => $iso,
@@ -3280,14 +3292,14 @@ sub prep_source
 	my $package_count = 0;
 	foreach my $iso (sort {$a cmp $b} keys %{$conf->{source_packages}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso]\n" if $conf->{sys}{debug} >= 3;
 		foreach my $directory (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}})
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso], Directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso], Directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 			foreach my $file (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}{$directory}})
 			{
 				next if $file !~ /\.rpm$/;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Source: [$iso]:[$directory]:[$file]\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Source: [$iso]:[$directory]:[$file]\n" if $conf->{sys}{debug} >= 3;
 				$package_count++;
 			}
 		}
