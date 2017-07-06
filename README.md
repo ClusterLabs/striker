@@ -1,4 +1,4 @@
-[Anvil!](https://www.alteeve.com/w/Anvil!) m2 - [Striker](https://www.alteeve.com/w/Striker) + [ScanCore](https://www.alteeve.com/w/ScanCore) v2.0.0
+[Anvil!](https://www.alteeve.com/w/Anvil!) m2 - [Striker](https://www.alteeve.com/w/Striker) + [ScanCore](https://www.alteeve.com/w/ScanCore) v2.0.1
 =============
 
 Welcome to the v2.0.0 release of the *Anvil!* m2 [Intelligent Availability](https://www.alteeve.com/w/Intelligent_Availability)™ platform! 
