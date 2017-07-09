@@ -5910,8 +5910,11 @@ WHERE
 						my $temperature_is    = "nominal";
 						if ($type eq "temperature")
 						{
-							# It's a temperature, so change the default message.
+							# It's a temperature, so change the default message 
+							# and drop the default alert level.
 							$message_key = "scan_storcli_note_0066";
+							$alert_level = "info";
+							$title_key   = "an_alert_title_0002";
 							if (($new_variable_value ne $old_variable_value))
 							{
 								# If the temperature is rising, see if we 
