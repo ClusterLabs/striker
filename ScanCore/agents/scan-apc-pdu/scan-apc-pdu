@@ -995,12 +995,13 @@ WHERE
 					}
 					else
 					{
-						# It's rebooted. This is warning level
+						# It's rebooted. This is notice level as it's generally just 
+						# the NIC rebooting and doesn't interfere with power.
 						$an->Alert->register_alert({
-							alert_level		=>	"warning", 
+							alert_level		=>	"notice", 
 							alert_sort		=>	$an->data->{sys}{alert_sort}++,
 							alert_agent_name	=>	$THIS_FILE,
-							alert_title_key		=>	"an_alert_title_0008",
+							alert_title_key		=>	"an_alert_title_0003",
 							alert_message_key	=>	"scan_apc_pdu_message_0014",
 							alert_message_variables	=>	{
 								name			=>	$pdu_host_name,
