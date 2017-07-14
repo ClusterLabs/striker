@@ -31,6 +31,9 @@
 # TODO:
 # - Check the cache policy and reset it to 'writeback' if the BBU/FBU is healthy and the cache changes to 
 #   write-through.
+# - When two or more drives have errors, 'drive:other_error_count' is only set to '1'. It should be the 
+#   number of drives with errors. Also, if the error on one drive got above 100, its weight should be '2' and
+#   above 1000, set to '3'.
 # 
 # NOTE:
 # - LSI seems to flip between "Virtual Drive" and "Virtual Disk". We're standardizing on "Virtual Drive".

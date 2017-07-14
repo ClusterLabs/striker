@@ -5869,6 +5869,10 @@ sub _display_free_resources
 	
 	# Always knock off some RAM for the host OS.
 	my $real_total_ram = $an->Readable->bytes_to_hr({'bytes' => $an->data->{resources}{total_ram} });
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "resources::total_ram", value1 => $an->data->{resources}{total_ram},
+		name2 => "real_total_ram",       value2 => $real_total_ram,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Reserved RAM and BIOS memory holes rarely leave us with an even GiB of total RAM. So we modulous 
 	# off the difference, then subtract that plus the reserved RAM to get an even left-over amount of 
@@ -11492,7 +11496,7 @@ sub _parse_dmidecode
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "resources::total_cores",   value1 => $an->data->{resources}{total_cores},
 		name2 => "resources::total_threads", value2 => $an->data->{resources}{total_threads},
-		name3 => "resources::total_memory",  value3 => $an->data->{resources}{total_ram},
+		name3 => "resources::total_ram",     value3 => $an->data->{resources}{total_ram},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $line (@{$data})
@@ -11667,7 +11671,7 @@ sub _parse_dmidecode
 			elsif ($line =~ /Form Factor: (.*)/)  { $dimm_form_factor = $1; }
 			elsif ($line =~ /Size: (.*)/)
 			{
-				$dimm_size = $1;
+				$dimm_size = lc($1);
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "node_name", value1 => $node_name,
 					name2 => "dimm_size", value2 => $dimm_size,
@@ -11684,6 +11688,11 @@ sub _parse_dmidecode
 				}
 				else
 				{
+					# The RAM is reported in 'MB', but it is actually 'MiB'.
+					if ($dimm_size !~ /ib$/)
+					{
+						$dimm_size =~ s/b$/ib/;
+					}
 					$dimm_size                                            =  $an->Readable->hr_to_bytes({size => $dimm_size });
 					$an->data->{node}{$node_name}{hardware}{total_memory} += $dimm_size;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -12243,7 +12252,12 @@ sub _parse_meminfo
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /MemTotal:\s+(.*)/)
 		{
-			$an->data->{node}{$node_name}{hardware}{meminfo}{memtotal} = $1;
+			# This is reported in KiB, though it generally shows as 'kB'.
+			$an->data->{node}{$node_name}{hardware}{meminfo}{memtotal} = lc($1);
+			if ($an->data->{node}{$node_name}{hardware}{meminfo}{memtotal} !~ /ib$/)
+			{
+				$an->data->{node}{$node_name}{hardware}{meminfo}{memtotal} =~ s/b$/ib/;
+			}
 			$an->data->{node}{$node_name}{hardware}{meminfo}{memtotal} = $an->Readable->hr_to_bytes({size => $an->data->{node}{$node_name}{hardware}{meminfo}{memtotal} });
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node::${node_name}::hardware::meminfo::memtotal", value1 => $an->data->{node}{$node_name}{hardware}{meminfo}{memtotal},
@@ -15554,7 +15568,7 @@ sub _verify_server_config
 		my $requested_ram = $an->Readable->hr_to_bytes({size => $an->data->{cgi}{ram}, type => $an->data->{cgi}{ram_suffix} });
 		my $diff          = $an->data->{resources}{total_ram} % (1024 ** 3);
 		my $available_ram = $an->data->{resources}{total_ram} - $diff - $an->data->{sys}{unusable_ram};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "requested_ram", value1 => $requested_ram,
 			name2 => "available_ram", value2 => $available_ram,
 		}, file => $THIS_FILE, line => __LINE__});
