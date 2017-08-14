@@ -917,8 +917,8 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0161"><![CDATA[The 'AN::Tools::InstallManifest' module's 'write_cluster_conf()' was called without a node name.]]></key>
 		<key name="error_message_0162"><![CDATA[The 'AN::Tools::System' module's 'daemon_boot_config()' was called without a daemon name.]]></key>
 		<key name="error_message_0163"><![CDATA[The 'AN::Tools::System' module's 'daemon_boot_config()' was called with an invalid 'set' value. Received: [#!variable!set!#], but only 'on' or 'off' are valid.]]></key>
-		<key name="error_message_0164"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_variables()' method was called without passing in an variable name or variable UUID.]]></key>
-		<key name="error_message_0165"><![CDATA[The 'AN::Tools::Web' module's 'read_variables()' method was called without passing in an variable name.]]></key>
+		<key name="error_message_0164"><![CDATA[The 'AN::Tools::Database' module's 'insert_or_update_variables()' method was called without passing in an variable name or variable UUID.]]></key>
+		<key name="error_message_0165"><![CDATA[The 'AN::Tools::Database' module's 'read_variables()' method was called without passing in an variable name.]]></key>
 		<key name="error_message_0166"><![CDATA[The 'AN::Tools::Get' module's 'server_uuid()' method was unable to gather the UUIDs of the Anvil! nodes.]]></key>
 		<key name="error_message_0167"><![CDATA[The 'AN::Tools::Get' module's 'server_xml()' method was called without a server name being passed.]]></key>
 		<key name="error_message_0168"><![CDATA[The 'AN::Tools::Readable' module's 'hr_to_bytes()' method was called with the value: [#!variable!value!#] which we split into the size: [#!variable!size!#] and type: [#!variable!type!#]. The type appears to be invalid.]]></key>
