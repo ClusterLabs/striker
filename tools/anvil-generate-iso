@@ -225,8 +225,12 @@ my $conf = {
 			},
 		},
 		Tools		=>	{
+			fence_apc_alteeve =>	{
+				url		=>	"https://raw.githubusercontent.com/ClusterLabs/striker/master/tools/fence_apc_alteeve",
+				mode		=>	0755,
+			},
 			fence_raritan_snmp =>	{
-				url		=>	"https://raw.githubusercontent.com/digimer/fence_raritan_snmp/master/fence_raritan_snmp",
+				url		=>	"https://raw.githubusercontent.com/ClusterLabs/striker/master/tools//fence_raritan_snmp",
 				mode		=>	0755,
 			},
 		},
@@ -627,11 +631,16 @@ curl http://$conf->{sys}{ks}{striker_bcn}.${source}/$os_dir/x86_64/img/striker/t
 chown root:root /sbin/striker/list-ips
 chmod 755 /sbin/striker/list-ips
 
-# Download 'fence_raritan_snmp' from the Striker we're installing from.
+# Download 'fence_raritan_snmp' and 'fence_apc_alteeve' from the Striker we're installing from.
 echo \"Downloading 'fence_raritan_snmp'.\"
 curl http://$conf->{sys}{ks}{striker_bcn}.${source}/$os_dir/x86_64/img/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
 chown root:root /usr/sbin/fence_raritan_snmp
 chmod 755 /usr/sbin/fence_raritan_snmp
+
+echo \"Downloading 'fence_apc_alteeve'.\"
+curl http://${striker_bcn}.${source}/$os_dir/x86_64/img/Tools/fence/fence_apc_alteeve > /usr/sbin/fence_apc_alteeve
+chown root:root /usr/sbin/fence_apc_alteeve
+chmod 755 /usr/sbin/fence_apc_alteeve
 
 # Download 'anvil-map-network' from the Striker we're installing from.
 echo \"Downloading 'anvil-map-network'.\"
@@ -832,9 +841,12 @@ cp /mnt/source/striker/tools/striker-rebuild-repo.sh /mnt/sysimage/sbin/striker/
 chown root:root /mnt/sysimage/sbin/striker/striker-rebuild-repo.sh
 chmod 755 /mnt/sysimage/sbin/striker/striker-rebuild-repo.sh
 
-# Copy the raritan fence agent into place.
+# Copy the raritan and alteeve-variant APC fence agents into place.
 echo 'Copying fence_raritan_snmp into /usr/sbin/'
 cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
+
+echo 'Copying fence_apc_alteeve into /usr/sbin/'
+cp /mnt/source/Tools/fence/fence_apc_alteeve /mnt/sysimage/usr/sbin/
 
 # Copy the node and dashboard KSes into place
 echo 'Copying the KS scripts into place.'
@@ -2469,6 +2481,17 @@ sub download_anrepo_tools
 		my $source    = $conf->{url}{Fujitsu}{primecollect}{url};
 		my $target    = $conf->{path}{iso}{iso_fujitsu}."/".$file_name;
 		my $mode      = $conf->{url}{Fujitsu}{primecollect}{mode};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
+		download_file($conf, $source, $target, $mode);
+	}
+	
+	# Alteeve-variant APC agent.
+	if (1)
+	{
+		my $file_name = ($conf->{url}{Tools}{fence_apc_alteeve}{url} =~ /^.*\/(.*)$/)[0];
+		my $source    = $conf->{url}{Tools}{fence_apc_alteeve}{url};
+		my $target    = $conf->{path}{iso}{iso_fence}."/".$file_name;
+		my $mode      = $conf->{url}{Tools}{fence_apc_alteeve}{mode};
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $source, $target, $mode);
 	}

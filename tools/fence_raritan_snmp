@@ -1,0 +1,1012 @@
+#!/usr/bin/perl
+#
+# Raritan SNMP Fence Agent
+# 
+# Core functions; 
+# 
+# Eric Knific (iggi)
+# eknific@etshost.com
+# www.etshost.com / www.ericknific.com / iggi.me
+# 
+# FenceAgentAPI adaption;
+# 
+# Alteeve's Niche! Inc. - Madison Kelly; mkelly@alteeve.ca
+# https://alteeve.ca/w/
+#
+# This software is released under the GPL v2. See the LICENSE file in the
+# configuration directory for a copy of the GPL v2.
+#
+# Bugs;
+# - None known
+# 
+# Requirements;
+#  perl net-snmp-utils
+#
+# Notes;
+# - SNMP return codes;
+#   0 = Off
+#   1 = On
+# - Actions
+#   0 = Off
+#   1 = On
+#   2 = Cycle
+# - FenceAgentAPI exit codes;
+#   See; https://fedorahosted.org/cluster/wiki/FenceAgentAPI#agent_ops
+# 
+# ToDo:
+# - Make calls to multiple ports asynchronous.
+# - Implement a timeout (-t, --timeout) before creating the lock.
+# - Implement snmp mode (v1,v2c,v3), user/pass, encryption
+#
+
+# Play safe!
+use strict;
+use warnings;
+
+# IO::Handle is used for logging and communicating with the Raritan device
+# via the snmp command line tools. Net::SNMP is not used to do availability
+# issues with EL6.
+use IO::Handle;
+
+# Catch signals for clean exits.
+$SIG{INT}  = \&_catch_sig;
+$SIG{TERM} = \&_catch_sig;
+
+# These are the default values and will be over-written by the config file's
+# variables which in turn can, in some cases, be over-written by command line
+# arguments.
+my $conf={
+	'system'	=>	{
+		agent_version	=>	"1.0",
+		version		=>	0,
+		list		=>	"",
+		monitor		=>	"",
+		rt_id		=>	0,
+		rt_num		=>	1,
+		got_cla		=>	0,	# This is set if command line arguments are read.
+		quiet		=>	0,
+		verbose		=>	0,
+		debug		=>	0,
+		lock_timeout	=>	120,
+		lock_file	=>	"/var/lock/fence_raritan_snmp.lock",
+		set_lock	=>	0,
+		'log'		=>	"/var/log/fence_raritan_snmp.log",
+		state_timeout	=>	30,	# This is the maximum number of seconds to wait for a state change confirmation.
+	},
+	path		=>	{
+		snmpset		=>	"/usr/bin/snmpset",
+		snmpget		=>	"/usr/bin/snmpget",
+	},
+	snmp		=>	{
+		ipaddr		=>	"",
+		tcp_port	=>	161,
+		node		=>	0,
+		password_script	=>	"",
+		action		=>	"",
+		agent		=>	"",	# This is only used by 'fenced'
+		rt_name		=>	"",	# This is used for the 'list' function.
+		handle		=>	"",
+		max_node	=>	0,
+		#oid_control	=>	".1.3.6.1.4.1.850.100.1.10.2.1.4.",
+		#oid_status	=>	".1.3.6.1.4.1.850.100.1.10.2.1.2.",
+		#oid_ip		=>	".1.3.6.1.4.1.850.10.1.2.1.0",
+		oid_control	=>	".1.3.6.1.4.1.13742.6.4.1.2.1.2.1.",
+		oid_status	=>	".1.3.6.1.4.1.13742.6.4.1.2.1.2.1.",
+		oid_ip		=>	".1.3.6.1.2.1.4.20.1.1",
+		community	=>	"private",
+		int_on		=>	1,
+		int_off		=>	0,
+	},
+	device		=>	{
+		ports		=>	16,
+	},
+};
+
+# Log file for output.
+my $log=IO::Handle->new();
+print "Opening: [$conf->{'system'}{'log'}] for logging.\n" if $conf->{'system'}{debug};
+open ($log, ">>$conf->{'system'}{'log'}") || die "Failed to open: [$conf->{'system'}{'log'}] for writing; Error: $!\n";
+
+# Set $log and STDOUT to hot (unbuffered) output.
+if (1)
+{
+	select $log;
+	$|=1;
+	select STDOUT;
+	$|=1;
+}
+
+# If this gets set in the next two function, the agent will exit.
+my $bad=0;
+
+# Read in arguments from the command line.
+($bad)=read_cla($conf, $log, $bad);
+
+# Now read in arguments from STDIN, which is how 'fenced' passes arguments.
+($bad)=read_stdin($conf, $log, $bad);
+
+# If I've been asked to show the metadata XML, do so and then exit.
+if ($conf->{snmp}{action} eq "metadata")
+{
+	metadata($conf, $log);
+	do_exit($conf, $log, 0);
+}
+
+# Start the logs.
+record($conf, $log, "-=] Called at: . [".get_date_time($conf)."]\n") if $conf->{'system'}{debug};
+
+# This loops until the lock file is removed. This is a terrible hack to deal
+# with two different sources calling this at once. This will be removed as soon
+# as I update NAOS with a proper semaphore.
+my $loop=0;
+# if the lock file is more than 300 seconds old, delete it as stale.
+while (-e $conf->{'system'}{lock_file})
+{
+	my $age=time-(stat($conf->{'system'}{lock_file}))[9];
+	record($conf, $log, __LINE__."; Waiting; lock: [$conf->{'system'}{lock_file}] is: [$age] second(s) old.\n");
+	if ($age > $conf->{'system'}{lock_timeout})
+	{
+		record($conf, $log, __LINE__."; lock: [$conf->{'system'}{lock_file}] is now stale, removing it.\n");
+		unlink $conf->{'system'}{lock_file} or die "Failed to remove lock file: [$conf->{'system'}{lock_timeout}], error: $!\n";
+		record($conf, $log, __LINE__."; Removed.\n");
+	}
+	sleep 1;
+}
+my $lock=IO::Handle->new();
+open ($lock, ">$conf->{'system'}{lock_file}") || die "Failed to create lock file: [$conf->{'system'}{lock_file}]; Error: $!\n";
+$conf->{'system'}{set_lock}=1;
+
+# This makes sure the node ID is 0 if not set.
+$conf->{snmp}{node}=0 if not $conf->{snmp}{node};
+record($conf, $log, "Will work on node: [$conf->{snmp}{node}]\n") if $conf->{'system'}{debug};
+
+if ($bad)
+{
+	unlink $conf->{'system'}{lock_file} if $conf->{'system'}{set_lock};
+	die "Exiting on errors.\n";
+}
+my @ny=("no", "yes");
+record($conf, $log, "Raritan: ..... [$conf->{snmp}{ipaddr}].\n") if $conf->{'system'}{debug};
+record($conf, $log, "Community: ..... [$conf->{snmp}{community}].\n") if $conf->{'system'}{debug};
+record($conf, $log, "Outlet: ........ [$conf->{snmp}{node}].\n") if $conf->{'system'}{debug};
+record($conf, $log, "Action: ........ [$conf->{snmp}{action}].\n") if $conf->{'system'}{debug};
+record($conf, $log, "Version Request: [".$ny[$conf->{'system'}{version}]."].\n") if $conf->{'system'}{debug};
+record($conf, $log, "Done reading args. Performing action, please wait.\n") if $conf->{'system'}{debug};
+
+# If I've been asked to show the version information, do so and then exit.
+if ($conf->{'system'}{version})
+{
+	version($conf, $log);
+	do_exit($conf, $log, 0);
+}
+
+# This checks to make sure I can reach the Raritan. It will exit if not.
+connect_to_rt($conf, $log);
+
+###############################################################################
+# What do?                                                                    #
+###############################################################################
+
+# When asked to 'monitor' or 'list'. being multi-port, this will return a CSV
+# of outlets and their current state.
+record($conf, $log, "Action: ........ [$conf->{snmp}{action}].\n") if $conf->{'system'}{debug};
+if (($conf->{snmp}{action} eq "monitor") or ($conf->{snmp}{action} eq "list"))
+{
+	record($conf, $log, "Calling the 'show_list' function.\n") if $conf->{'system'}{debug};
+	show_list($conf, $log);
+	do_exit($conf, $log, 0);
+}
+
+# If I made it this far, I am setting a state. Sort out what state from the
+# values in my conf->{snmp} hash.
+record($conf, $log, "Setting node: [$conf->{snmp}{node}] to action: [$conf->{snmp}{action}] using the Raritan: [$conf->{snmp}{ipaddr}] using the community: [$conf->{snmp}{community}]\n") if $conf->{'system'}{debug};
+
+# Do it!
+my $exit_code=process_action($conf, $log);
+record($conf, $log, "All calls complete, exiting.\n") if $conf->{'system'}{debug};
+
+# Cleanup and exit.
+# print "Going into do_exit().\n";
+do_exit($conf, $log, $exit_code);
+# print "Returned from do_exit().\n";
+
+
+###############################################################################
+# Here be functions.                                                          #
+###############################################################################
+
+# This connects to a Raritan to ensure it is available.
+sub connect_to_rt
+{
+	my ($conf, $log)=@_;
+	
+	# Make sure I can talk to the PDU.
+	my $ip;
+	my $snmp_string = "$conf->{snmp}{oid_ip}.$conf->{snmp}{ipaddr}";
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{snmpget} -v 2c -c $conf->{snmp}{community} $conf->{snmp}{ipaddr}:$conf->{snmp}{tcp_port} $snmp_string";
+	record($conf, $log, "calling: [$sc]\n") if $conf->{'system'}{debug};
+	open ($fh, "$sc 2>&1 |") || die "Shell call: [$sc] failed; Error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line=$_;
+		($ip)=($line=~/(\d+\.\d+\.\d+\.\d+)$/);
+		record($conf, $log, "Output: [$line]\n") if $conf->{'system'}{debug};
+	}
+	$fh->close;
+	my $exit=$?;
+	$ip="" if not defined $ip;	# Avoid 'undefined' errors.
+	record($conf, $log, "IP: [$ip], Exit code: [$exit]\n") if $conf->{'system'}{debug};
+	
+	# Problems accessing the PDU should cause the agent to exit with exit
+	# code '1'.
+	if ($exit > 0)
+	{
+		record($conf, $log, "Invalid exit code when trying to contact pdu: [$conf->{snmp}{ipaddr}] on TCP port: [$conf->{snmp}{tcp_port}]. Exit code: [$exit]\n", 1);
+		do_exit($conf, $log, 1);
+	}
+	elsif ($ip !~ /^\d+\.\d+\.\d+\.\d+$/)
+	{
+		record($conf, $log, "Invalid IP address returned from PDU: [$conf->{snmp}{ipaddr}] on TCP port: [$conf->{snmp}{tcp_port}]. Saw IP: [$ip]\n", 1);
+		do_exit($conf, $log, 1);
+	}
+	
+	return ($exit);
+}
+
+# This cleanly exits the agent.
+sub do_exit
+{
+	my ($conf, $log, $exit_status)=@_;
+	$exit_status=9 if not defined $exit_status;
+	
+	# Remove the lock.
+	unlink "$conf->{'system'}{lock_file}" if $conf->{'system'}{set_lock};
+	
+	# Close the log file handle, if it exists.
+	print $log "\n";
+	$log->close() if $log;
+	
+	exit ($exit_status);
+}
+
+# This gets the state for the requested node and return the state as 'on' or 
+# 'off'.
+sub get_state
+{
+	my ($conf, $log, $node)=@_;
+	
+	# Get the state of the port. (1=off, 2=on)
+	my $state;
+	my $snmp_string=$conf->{snmp}{oid_status}.$node;
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{snmpget} -v 2c -c $conf->{snmp}{community} $conf->{snmp}{ipaddr}:$conf->{snmp}{tcp_port} $snmp_string";
+	record($conf, $log, "calling: [$sc]\n") if $conf->{'system'}{debug};
+	open ($fh, "$sc 2>&1 |") || die "Shell call: [$sc] failed; Error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line=$_;
+		record($conf, $log, "Output: [$line]\n") if $conf->{'system'}{debug};
+		($state)=($line=~/\s+(\d+)$/);
+	}
+	$fh->close;
+	my $exit=$?;
+	record($conf, $log, "Exit code: [$exit]\n") if $conf->{'system'}{debug};
+	
+	$state = 99 if not defined $state;
+	if (($state eq $conf->{snmp}{int_on}) || ($state eq $conf->{snmp}{int_off}))
+	{
+		$conf->{node}{$node}{state} = $state eq $conf->{snmp}{int_off} ? "off" : "on";
+		record($conf, $log, "State: [$state], node::${node}::state: [$conf->{node}{$node}{state}].\n") if $conf->{'system'}{debug};
+	}
+	else
+	{
+		# Unknown state.
+		record($conf, $log, "Node '$node' is in the unknown state: [$state]. Expected '$conf->{snmp}{int_off}' (off) or '$conf->{snmp}{int_on}' (on).\n");
+		do_exit($conf, $log, 1);
+	}
+	
+	# Return the hash reference.
+	return ($conf->{node}{$node}{state});
+}
+
+# This disables and verifies the specified outlet. Failure returns 1, success
+# returns 0. It is up to the caller to react appropriately.
+# NOTE: I know I could merge this and the set_state_on() but I wanted to
+#       separate them to simplify the 'reboot' action (where only 'off' needs
+#       to succeed).
+sub set_state_off
+{
+	my ($conf, $log, $node)=@_;
+	
+	# Set the state of the port to off. (1=off, 2=on)
+	my $snmp_string=$conf->{snmp}{oid_control}.$node;
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{snmpset} -v 2c -c $conf->{snmp}{community} $conf->{snmp}{ipaddr}:$conf->{snmp}{tcp_port} $snmp_string i $conf->{snmp}{int_off}";
+	record($conf, $log, "calling: [$sc]\n") if $conf->{'system'}{debug};
+	open ($fh, "$sc 2>&1 |") || die "Shell call: [$sc] failed; Error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line=$_;
+		record($conf, $log, "Output: [$line]\n") if $conf->{'system'}{debug};
+	}
+	$fh->close;
+	my $exit=$?;
+	record($conf, $log, "Exit code: [$exit]\n") if $conf->{'system'}{debug};
+	
+	my $took_time;
+	for (1..$conf->{'system'}{state_timeout})
+	{
+		$took_time=$_;
+		sleep 1;
+		last if get_state($conf, $log, $node) eq "off";
+	}
+	
+	# If the node is on (state 2), return 1 (failure). Otherwise return 0
+	# (success).
+	my $return=0;
+	if ($conf->{node}{$node}{state} eq "off")
+	{
+		record($conf, $log, "SUCCESS: Disabled outlet: [$node]. Confirmed in: [$took_time seconds].\n");
+	}
+	else
+	{
+		record($conf, $log, "ERROR: Failed to disable (or confirm) that outlet: [$node] was turned off.\n", 1);
+		$return=1;
+	}
+	
+	return ($return);
+}
+
+# This enables and verifies the specified outlet. Failure returns 1, success
+# returns 0. It is up to the caller to react appropriately.
+sub set_state_on
+{
+	my ($conf, $log, $node)=@_;
+	
+	# Set the state of the port to on. (1=off, 2=on)
+	my $snmp_string=$conf->{snmp}{oid_control}.$node;
+	my $fh=IO::Handle->new();
+	my $sc="$conf->{path}{snmpset} -v 2c -c $conf->{snmp}{community} $conf->{snmp}{ipaddr}:$conf->{snmp}{tcp_port} $snmp_string i $conf->{snmp}{int_on}";
+	record($conf, $log, "calling: [$sc]\n") if $conf->{'system'}{debug};
+	open ($fh, "$sc 2>&1 |") || die "Shell call: [$sc] failed; Error: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line=$_;
+		record($conf, $log, "Output: [$line]\n") if $conf->{'system'}{debug};
+	}
+	$fh->close;
+	my $exit=$?;
+	record($conf, $log, "Exit code: [$exit]\n") if $conf->{'system'}{debug};
+	
+	my $took_time;
+	for (1..$conf->{'system'}{state_timeout})
+	{
+		$took_time=$_;
+		sleep 1;
+		last if get_state($conf, $log, $node) eq "on";
+	}
+	
+	# If the node is on (state 2), return 1 (failure). Otherwise return 0
+	# (success).
+	my $return=0;
+	if ($conf->{node}{$node}{state} eq "on")
+	{
+		record($conf, $log, "SUCCESS: Enabled outlet: [$node]. Confirmed in: [$took_time seconds].\n");
+	}
+	else
+	{
+		record($conf, $log, "ERROR: Failed to enable (or confirm) that outlet: [$node] was turned on.\n", 1);
+		$return=1;
+	}
+	
+	return ($return);
+}
+
+# This returns the 'help' message.
+sub help
+{
+	my ($conf, $log)=@_;
+	
+	# Point the user at the man page.
+	print "See 'man fence_raritan_snmp' for instructions on using the Raritan Fence Agent.\n";
+	
+	do_exit($conf, $log, 0);
+}
+
+# This simply prints the 'metadata' XML data to STDOUT.
+sub metadata
+{
+	my ($conf, $log)=@_;
+	
+	print q`
+<?xml version="1.0" ?>
+<resource-agent name="fence_raritan_snmp" shortdesc="Fence agent for Raritan Switched PDUs.">
+<longdesc>
+fence_raritan_snmp is a network-connected, multiport power fencing device.
+
+WARNING! Raritan PDUs can take a long time to act on and confirm state changes. This makes them less than idea as a cluster fence device. Expect 'reboot' actions to take up to 40 seconds to complete. When possible, configure these devices as backup/secondary fence devices.
+
+Raritan switched PDUs are multiport, network-switchable power distribution units. This agent accesses the device using the device's hostname and SNMP community name only. The login credentials are not used, so please be sure to configure the SNMP's NMS community to be sufficiently restrictive if the PDU is on a non-secure network.</longdesc>
+<parameters>
+	<parameter name="ipaddr" unique="1">
+		<getopt mixed="-a" />
+		<content type="string" />
+		<shortdesc lang="en">Resolvable host name or IP of the Raritan PDU.</shortdesc>
+	</parameter>
+	<parameter name="community" unique="1">
+		<getopt mixed="-c" />
+		<content type="string" />
+		<shortdesc lang="en">Set the community name. Default 'tripplite'.</shortdesc>
+	</parameter>
+	<parameter name="password" unique="1">
+		<getopt mixed="-p" />
+		<content type="string" />
+		<shortdesc lang="en">Password. *Not implemented*</shortdesc>
+	</parameter>
+	<parameter name="password_script" unique="1">
+		<getopt mixed="-S" />
+		<content type="string" />
+		<shortdesc lang="en">Script to retrieve password. *Not implemented*</shortdesc>
+	</parameter>
+	<parameter name="port" unique="1">
+		<getopt mixed="-n" />
+		<content type="integer" />
+		<shortdesc lang="en">The port (outlet number) to act on.</shortdesc>
+	</parameter>
+	<parameter name="login" unique="1">
+		<getopt mixed="-l" />
+		<content type="string" />
+		<shortdesc lang="en">User/login name. *Not implemented*</shortdesc>
+	</parameter>
+	<parameter name="action" unique="1">
+		<getopt mixed="-o" />
+		<content type="string" default="reboot"/>
+		<shortdesc lang="en">Action (operation) to take; off, on, reboot, status, monitor, list, metadata</shortdesc>
+	</parameter>
+	<parameter name="verbose" unique="1">
+		<getopt mixed="-v" />
+		<content type="boolean" />
+		<shortdesc lang="en">Print detailed agent progress to STDOUT.</shortdesc>
+	</parameter>
+	<parameter name="quiet" unique="1">
+		<getopt mixed="-q" />
+		<content type="boolean" />
+		<shortdesc lang="en">(default) Supress all output to STDOUT, including critical messages. Check logfile if used.</shortdesc>
+	</parameter>
+	<parameter name="debug" unique="1">
+		<getopt mixed="-d" />
+		<content type="boolean" />
+		<shortdesc lang="en">Print extensive debug information to STDOUT and to the log file.</shortdesc>
+	</parameter>
+	<parameter name="total_ports" unique="1">
+		<getopt mixed="-t" />
+		<content type="string" />
+		<shortdesc lang="en">Sets the number of outlets on the PDU. Default is 8.</shortdesc>
+	</parameter>
+	<parameter name="version" unique="1">
+		<getopt mixed="--version" />
+		<content type="boolean" />
+		<shortdesc lang="en">Prints the Raritan fence agent version and exits.</shortdesc>
+	</parameter>
+</parameters>
+<actions>
+	<action name="on" />
+	<action name="off" />
+	<action name="reboot" />
+	<action name="status" />
+	<action name="list" />
+	<action name="monitor" />
+	<action name="metadata" />
+</actions>
+</resource-agent>
+`;
+	
+	# Done, exit.
+	do_exit($conf, $log, 0);
+}
+
+# This handles the actual actions.
+sub process_action
+{
+	my ($conf, $log)=@_;
+	record($conf, $log, "In the 'process_action' function.\n") if $conf->{'system'}{debug};
+	
+	my $exit_code=0;
+	
+	# Make this more readable.
+	my $action=$conf->{snmp}{action};
+	my $node=$conf->{snmp}{node};
+	record($conf, $log, "action: [$action], port: [$node]\n") if $conf->{'system'}{debug};
+	
+	# The following actions require a port. Error if I don't have one.
+	if ($conf->{snmp}{node} == 0)
+	{
+		# These are the incompatible calls.
+		if (($action eq "on") || ($action eq "off") || ($action eq "reboot") || ($action eq "status"))
+		{
+			record($conf, $log, "\nERROR! Action request: [$action] requires a node's port number!\n", 1) if $conf->{'system'}{debug};
+			record($conf, $log, "ERROR: I got: [$conf->{snmp}{node}] which does not seem to be valid.\n\n", 1);
+			do_exit($conf, $log, 1);
+		}
+	}
+	
+	# Make sure my call order is clear.
+	if ($action eq "on")
+	{
+		# Unfence the node.
+		if (get_state($conf, $log, $conf->{snmp}{node}) eq "on")
+		{
+			# MADI: Turn on the port.
+			record($conf, $log, "SUCCESS: Outlet: [$conf->{snmp}{node}] was already 'on'.\n");
+			do_exit($conf, $log, 0);
+		}
+		else
+		{
+			# Call the PDU.
+			my $exit_code=set_state_on($conf, $log, $conf->{snmp}{node});
+			do_exit($conf, $log, $exit_code);
+		}
+	}
+	elsif ($action eq "off")
+	{
+		# Fence the node.
+		if (get_state($conf, $log, $conf->{snmp}{node}) eq "off")
+		{
+			record($conf, $log, "SUCCESS: Outlet: [$conf->{snmp}{node}] was already 'off'.\n");
+			do_exit($conf, $log, 0);
+		}
+		else
+		{
+			# Call the PDU.
+			my $exit_code=set_state_off($conf, $log, $conf->{snmp}{node});
+			do_exit($conf, $log, $exit_code);
+		}
+	}
+	elsif ($action eq "reboot")
+	{
+		# I don't do this gracefully because the API says this should
+		# be an 'off' -> 'on' process, and 'off' is fence...
+		my $success=1;	# Fail until proved otherwise
+		my $state=get_state($conf, $log, $conf->{snmp}{node});
+		
+		# If the port is off already, succeed and proceed to boot.
+		if ($state eq "on")
+		{
+			# Fence.
+			$success=set_state_off($conf, $log, $conf->{snmp}{node});
+		}
+		else
+		{
+			# Already off. Thus, we win the game.
+			record($conf, $log, "SUCCESS: Outlet: [$conf->{snmp}{node}] was already 'off'. Will now attempt to enable.\n");
+			$success=0;
+		}
+		
+		# If the 'off' was achieved, go for bonus points and re-enable 
+		# the outlet.
+		if ($success == 0)
+		{
+			# I'm not concerned about the exit code here.
+			set_state_on($conf, $log, $conf->{snmp}{node});
+		}
+		do_exit($conf, $log, $success);
+	}
+	elsif ($action eq "status")
+	{
+		# This needs to return;
+		# 0 = PDU is accessible and outlet is on.
+		# 1 = PDU is not accessible.  (this exit code happens if
+		#     connect_to_rt() failes)
+		# 2 = PDU is accessible and outlet is off.
+		if (get_state($conf, $log, $conf->{snmp}{node}) eq "off")
+		{
+			record($conf, $log, "Status: OFF\n");
+			do_exit($conf, $log, 2);
+		}
+		else
+		{
+			record($conf, $log, "Status: ON\n");
+			do_exit($conf, $log, 0);
+		}
+	}
+	### ACTIONS BELOW HERE ARE OUTSIDE OF THE FenceAgentAPI!
+	elsif ($action eq "on_all")
+	{
+		# Enable all outlets that are off.
+		my $success=0;
+		foreach my $node (1..$conf->{device}{ports})
+		{
+			if (get_state($conf, $log, $conf->{snmp}{node}) eq "off")
+			{
+				# Failure is not fatal, but a failure should be
+				# result in a failure exit code.
+				my $exit_code=set_state_on($conf, $log, $conf->{snmp}{node});
+				$success=1 if $exit_code==1;
+			}
+		}
+		do_exit($conf, $log, $exit_code);
+	}
+	elsif ($action eq "off_all")
+	{
+		# Disable all outlets that are on.
+		my $success=0;
+		foreach my $node (1..$conf->{device}{ports})
+		{
+			if (get_state($conf, $log, $conf->{snmp}{node}) eq "on")
+			{
+				# Failure is not fatal, but a failure should be
+				# result in a failure exit code.
+				my $exit_code=set_state_off($conf, $log, $conf->{snmp}{node});
+				$success=1 if $exit_code==1;
+			}
+		}
+		do_exit($conf, $log, $exit_code);
+	}
+	else
+	{
+		record($conf, $log, "ERROR: Unknown action request: [$action]!\n", 1);
+		do_exit($conf, $log, 1);
+	}
+	return ($exit_code);
+}
+
+# Read in command line arguments
+sub read_cla
+{
+	my ($conf, $log, $bad)=@_;
+	
+	# Loop through the passed arguments, if any.
+	record($conf, $log, "Got args:\n") if $conf->{'system'}{debug};
+	my $set_next="";
+	foreach my $arg (@ARGV)
+	{
+		record($conf, $log, "[$arg]\n") if $conf->{'system'}{debug};
+		$conf->{'system'}{got_cla}=1;
+		
+		# If 'set_next' has a value, push this argument into the 'conf'
+		# hash.
+		if ($set_next)
+		{
+			# Record the values.
+			if ($set_next eq "total_ports")
+			{
+				$conf->{snmp}{$set_next}=$arg;
+				record($conf, $log, "Setting: 'device::$set_next': [$conf->{device}{$set_next}]\n") if $conf->{'system'}{debug};
+			}
+			else
+			{
+				$conf->{snmp}{$set_next}=$arg;
+				record($conf, $log, "Setting: 'snmp::$set_next': [$conf->{snmp}{$set_next}]\n") if $conf->{'system'}{debug};
+			}
+			
+			# Clear it now for the next go-round.
+			$set_next="";
+			next;
+		}
+		if ($arg=~/-h/)
+		{
+			# Print the help message and then exit.
+			help($conf, $log);
+		}
+		elsif ($arg=~/--version/)
+		{
+			# Print the version information and then exit.
+			$conf->{'system'}{version}=1;
+			record($conf,$log,"Setting version\n") if $conf->{'system'}{debug};
+		}
+		elsif ($arg=~/-v/)
+		{
+			# Print the version information and then exit.
+			$conf->{'system'}{verbose}=1;
+			record($conf,$log,"verbose output enabled\n") if $conf->{'system'}{debug};
+		}
+		elsif ($arg=~/-q/)
+		{
+			# Suppress all messages, including critical messages, from STDOUT.
+			$conf->{'system'}{quiet}=1;
+		}
+		elsif ($arg=~/-d/)
+		{
+			# Enable debug mode.
+			$conf->{'system'}{debug}=1;
+		}
+		elsif ($arg=~/^-/)
+		{
+			$arg=~s/^-//;
+			
+			### These are the switches set by Red Hat.
+			if ($arg eq "a")
+			{
+				# This is the IP address or hostname of the
+				# Raritan to call.
+				$set_next="ipaddr";
+				record($conf, $log, "Next argument will be stored in: [$set_next]\n") if $conf->{'system'}{debug};
+			}
+			elsif ($arg eq "l")
+			{
+				# This is the login name.
+				$set_next="login";
+				record($conf, $log, "Next argument will be stored in: [$set_next]\n") if $conf->{'system'}{debug};
+			}
+			elsif ($arg eq "c")
+			{
+				# This is the SNMP community.
+				$set_next="community";
+				record($conf, $log, "Next argument will be stored in: [$set_next]\n") if $conf->{'system'}{debug};
+			}
+			elsif ($arg eq "p")
+			{
+				# This is the password. If it starts with '/'
+				# it is interpreted to be a file containing the
+				# password which will be read in and it's
+				# contents will replace# this value.
+				$set_next="password";
+				record($conf, $log, "Next argument will be stored in: [$set_next]\n") if $conf->{'system'}{debug};
+			}
+			elsif ($arg eq "n")
+			{
+				# This is the node to work on.
+				$set_next="node";
+				record($conf, $log, "Next argument will be stored in: [$set_next]\n") if $conf->{'system'}{debug};
+			}
+			elsif ($arg eq "o")
+			{
+				# This is the action to take.
+				$set_next="action";
+				record($conf, $log, "Next argument will be stored in: [$set_next]\n") if $conf->{'system'}{debug};
+			}
+			elsif ($arg eq "S")
+			{
+				# This is the script to run to retrieve the
+				# password when it is not stored in
+				# 'cluster.conf'. This script should echo/print
+				# the password to STDOUT.
+				$set_next="password_script";
+				record($conf, $log, "Next argument will be stored in: [$set_next]\n") if $conf->{'system'}{debug};
+			}
+			### These are not defined by Red Hat.
+			elsif ($arg eq "t")
+			{
+				# This sets the total number of outlets on the
+				# PDU.
+				$set_next="total_ports";
+				record($conf, $log, "Next argument will be stored in: [$set_next]\n") if $conf->{'system'}{debug};
+			}
+		}
+		else
+		{
+			### MADI: I might want to pick up arguments via multiple lines.
+			# Bad argument.
+			record($conf, $log, "\nERROR: Argument: [$arg] is not valid!\n");
+			record($conf, $log, "ERROR: Please run: [man fence_na] to see a list of valid arguments.\n\n");
+			$bad=1;
+		}
+	}
+}
+
+# Read arguments from STDIN. This is adapted from the 'fence_brocade' agent.
+sub read_stdin
+{
+	my ($conf, $log, $bad)=@_;
+	
+	return (0) if $conf->{'system'}{got_cla};
+	
+	my $option;
+	my $line_count=0;
+	while(defined (my $option=<>))
+	{
+		# Get rid of newlines.
+		chomp $option;
+		
+		# Record the line for now, but comment this out before release.
+		record($conf, $log, "Processing option line: [$option]\n") if $conf->{'system'}{debug};
+		
+		# strip leading and trailing whitespace
+		$option=~s/^\s*//;
+		$option=~s/\s*$//;
+		
+		# skip comments
+		next if ($option=~ /^#/);
+		
+		# Increment my option line count.
+		$line_count++;
+		
+		# Go to the next line if the option line is empty.
+		next if not $option;
+		
+		# Split the option up into the name and the value.
+		my ($name,$value)=split /\s*=\s*/, $option;
+		
+		# Record the line for now, but comment this out before release.
+		record($conf, $log, "Name: [$name], value: [$value].\n") if $conf->{'system'}{debug};
+		
+		# Set my variables depending on the veriable name.
+		if ($name eq "agent")
+		{
+			# This is only used by 'fenced', but I record it for
+			# potential debugging.
+			$conf->{snmp}{agent}=$value;
+		}
+		elsif ($name eq "fm")
+		{
+			# This is a deprecated argument that should no longer
+			# be used. Now 'port' should be used.
+			if (not $conf->{snmp}{node})
+			{
+				# Port isn't set yet, use this value which may
+				# be replaced if 'port' is set later.
+				(undef, $value) = split /\s+/,$value;
+				$conf->{snmp}{node}=$value;
+				record($conf, $log, "Warning! The argument 'fm' is deprecated, use 'port' instead.\n", 1);
+				record($conf, $log, "Warning! Value: [$value] set for 'port'\n", 1);
+			}
+			else
+			{
+				# Port was already set, so simply ignore this.
+				record($conf, $log, "Warning! The argument 'fm' is deprecated, use 'port' instead.\n", 1);
+				record($conf, $log, "Warning! Value: [$value] ignored.\n", 1);
+			}
+		}
+		elsif ($name eq "ipaddr") 
+		{
+			# Record the IP Address or name of the Raritan to
+			# use.
+			$conf->{snmp}{ipaddr}=$value;
+		} 
+		elsif ($name eq "community") 
+		{
+			# Record the SNMP community.
+			$conf->{snmp}{'community'}=$value;
+		} 
+		elsif ($name eq "login")
+		{
+			# Record the login name that was passed.
+			$conf->{snmp}{login}=$value;
+		} 
+		elsif ($name eq "name")
+		{
+			# Depricated argument used formerly for login name.
+			if (not $conf->{snmp}{login})
+			{
+				# Login isn't set yet, use this value which may
+				# be replaced if 'login' is seen later.
+				$conf->{snmp}{login}=$value;
+				record($conf, $log, "Warning! The argument 'name' is deprecated, use 'login' instead.\n", 1);
+				record($conf, $log, "Warning! Value: [$value] set for 'login'.\n", 1);
+			}
+			else
+			{
+				# I've already seen the 'login' value so I will
+				# ignore this value.
+				record($conf, $log, "Warning! The argument 'name' is deprecated, use 'login' instead.\n", 1);
+				record($conf, $log, "Warning! Value: [$value] ignored.\n", 1);
+			}
+		}
+		elsif (($name eq "action") or ($name eq "option"))
+		{
+			# 'option' is deprecated.
+			record($conf, $log, "Please use 'action', not 'option', as the later is deprecated.\n", 1) if $name eq "option";
+			$conf->{snmp}{action}=$value;
+		}
+		elsif ($name eq "password")
+		{
+			# This is the login password.
+			$conf->{snmp}{password}=$value;
+		} 
+		elsif ($name eq "password_script")
+		{
+			# This is the path to the script that will return the
+			# password to the agent. At this time, this is not
+			# implemented.
+			$conf->{snmp}{password_script}=$value;
+		}
+		elsif ($name eq "port")
+		{
+			# This sets the port number to act on.
+			$conf->{snmp}{node}=$value;
+		}
+		elsif ($name eq "nodename")
+		{
+			# This is passed by 'fenced' via 'cluster.conf' as of
+			# cluster version 3, but it's not yet documented.
+			$conf->{'system'}{nodename}=$value;
+		}
+		elsif ($name eq "verbose")
+		{
+			# This is passed by 'fenced' via 'cluster.conf' as a
+			# custom argument to supress output to STDOUT.
+			$conf->{'system'}{verbose}=1;
+		}
+		elsif ($name eq "total_ports")
+		{
+			# This is maximum number of outlets on this PDU.
+			$conf->{device}{ports}=1;
+		}
+		else
+		{
+			record($conf, $log, "\nERROR: Illegal name in option: [$option] at line: [$line_count]\n\n", 1);
+			# 'rohara' from #linux-cluster suggested it's better to
+			# simply ignore unknown input, as that is the behaviour
+			# the fenced authors expect.
+			#$bad=1;
+		}
+	}
+	return ($bad);
+}
+
+# This function simply prints messages to both the log and to stdout.
+sub record
+{
+	my ($conf, $log, $msg, $critical)=@_;
+	$critical=0 if not $critical;
+	
+	# The log file gets everything.
+	print $log $msg;
+	print $msg if $conf->{'system'}{verbose} or not $conf->{'system'}{quiet};
+	
+	# Critical messages can only be surpressed by 'quiet'.
+	print $msg if (($critical) && (not $conf->{'system'}{quiet}));
+	
+	return(0);
+}
+
+# When asked to 'monitor' or 'list', show a CSV of all nodes and their aliases,
+# when found in the config file.
+sub show_list
+{
+	my ($conf, $log)=@_;
+	record($conf, $log, "In 'show_list' function.\n") if $conf->{'system'}{debug};
+	
+	# Get an up to date list of the ports.
+	foreach my $node (1..$conf->{device}{ports})
+	{
+		my $state=get_state($conf, $log, $node);
+		record($conf, $log, "$node,$state\n", 1);
+	}
+	
+	do_exit($conf, $log, 0);
+}
+
+# This prints the version information of this fence agent and of any configured
+# fence devices.
+sub version
+{
+	my ($conf, $log)=@_;
+	
+	# Print the Fence Agent version first.
+	record($conf, $log, "Fence Agent ver. $conf->{'system'}{agent_version}\n", 1);
+	
+	# ToDo: Query the PDU for details.
+	record($conf, $log, "Raritan PDU details not currently recorded.\n", 1);
+	
+	do_exit($conf, $log, 0);
+}
+
+# This returns the current date and time.
+sub get_date_time
+{
+	my ($conf)=@_;
+	
+	# Get the current date and time,
+	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+	
+	# Format it to 'YYYY-MM-DD HH:MM:SS'.
+	my $now=(1900+$year)."-".sprintf("%02d", ($mon+1))."-".sprintf("%02d", $mday)." ".sprintf("%02d", $hour).":".sprintf("%02d", $min).":".sprintf("%02d", $sec);
+
+	return($now);
+}
+
+# Catch SIG, move zig!
+sub _catch_sig
+{
+	my $signame = shift;
+	
+	record($conf, $log, "fence_raritan_snmp process with PID $$ Exiting on SIG${signame}.\n", 1);
+	do_exit($conf, $log, 1);
+}
+

@@ -109,6 +109,7 @@
 		<key name="brand_0018">Raritan</key>
 		<key name="brand_0019">ScanCore</key>
 		<key name="brand_0020"><![CDATA[<i>Striker</i>]]></key>
+		<key name="brand_0021">APC (Alteeve Variant)</key>
 		
 		<!-- Text messages used in config files and such. -->
 		<key name="text_0001">#!free!#</key>

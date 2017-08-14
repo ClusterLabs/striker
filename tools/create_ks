@@ -361,11 +361,16 @@ curl http://${striker_bcn}.${source}/$os_dir/x86_64/img/Striker/striker-master/t
 chown root:root /sbin/striker/list-ips
 chmod 755 /sbin/striker/list-ips
 
-# Download 'fence_raritan_snmp' from the Striker we're installing from.
+# Download 'fence_raritan_snmp' and 'fence_apc_alteeve' from the Striker we're installing from.
 echo \"Downloading 'fence_raritan_snmp'.\"
 curl http://${striker_bcn}.${source}/$os_dir/x86_64/img/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
 chown root:root /usr/sbin/fence_raritan_snmp
 chmod 755 /usr/sbin/fence_raritan_snmp
+
+echo \"Downloading 'fence_apc_alteeve'.\"
+curl http://${striker_bcn}.${source}/$os_dir/x86_64/img/Tools/fence/fence_apc_alteeve > /usr/sbin/fence_apc_alteeve
+chown root:root /usr/sbin/fence_apc_alteeve
+chmod 755 /usr/sbin/fence_apc_alteeve
 
 # Download 'anvil-map-network' from the Striker we're installing from.
 echo \"Downloading 'anvil-map-network'.\"
@@ -534,9 +539,12 @@ cp /mnt/source/Striker/striker-master/tools/list-ips /mnt/sysimage/sbin/striker/
 chown root:root /sbin/striker/list-ips
 chmod 755 /sbin/striker/list-ips
 
-# Copy the raritan fence agent into place.
+# Copy the raritan and alteeve-variant APC fence agents into place.
 echo 'Copying fence_raritan_snmp into /usr/sbin/'
 cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
+
+echo 'Copying fence_apc_alteeve into /usr/sbin/'
+cp /mnt/source/Tools/fence/fence_apc_alteeve /mnt/sysimage/usr/sbin/
 
 # Copy the node and dashboard KSes into place
 echo 'Copying the KS scripts into place.'

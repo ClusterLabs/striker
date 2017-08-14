@@ -16537,18 +16537,53 @@ sub show_summary_manifest
 	}});
 	
 	### PDUs are, surprise, a little more complicated.
-	my $say_apc        = $an->String->get({key => "brand_0017"});
-	my $say_raritan    = $an->String->get({key => "brand_0018"});
+	my $say_apc_snmp    = $an->String->get({key => "brand_0017"});
+	my $say_raritan     = $an->String->get({key => "brand_0018"});
+	my $say_apc_alteeve = $an->String->get({key => "brand_0021"});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "cgi::anvil_pdu1_agent", value1 => $an->data->{cgi}{anvil_pdu1_agent},
 		name2 => "cgi::anvil_pdu2_agent", value2 => $an->data->{cgi}{anvil_pdu2_agent},
 		name3 => "cgi::anvil_pdu3_agent", value3 => $an->data->{cgi}{anvil_pdu3_agent},
 		name4 => "cgi::anvil_pdu4_agent", value4 => $an->data->{cgi}{anvil_pdu4_agent},
 	}, file => $THIS_FILE, line => __LINE__});
-	my $say_pdu1_brand = $an->data->{cgi}{anvil_pdu1_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
-	my $say_pdu2_brand = $an->data->{cgi}{anvil_pdu2_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
-	my $say_pdu3_brand = $an->data->{cgi}{anvil_pdu3_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
-	my $say_pdu4_brand = $an->data->{cgi}{anvil_pdu4_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
+	
+	# Which agent?
+	my $say_pdu1_brand = $say_apc_snmp;
+	if ($an->data->{cgi}{anvil_pdu1_agent} eq "fence_raritan_snmp")
+	{
+		 $say_pdu1_brand = $say_raritan;
+	}
+	elsif ($an->data->{cgi}{anvil_pdu1_agent} eq "fence_apc_alteeve")
+	{
+		 $say_pdu1_brand = $say_apc_snmp;
+	}
+	my $say_pdu2_brand = $say_apc_snmp;
+	if ($an->data->{cgi}{anvil_pdu2_agent} eq "fence_raritan_snmp")
+	{
+		 $say_pdu2_brand = $say_raritan;
+	}
+	elsif ($an->data->{cgi}{anvil_pdu2_agent} eq "fence_apc_alteeve")
+	{
+		 $say_pdu2_brand = $say_apc_snmp;
+	}
+	my $say_pdu3_brand = $say_apc_snmp;
+	if ($an->data->{cgi}{anvil_pdu3_agent} eq "fence_raritan_snmp")
+	{
+		 $say_pdu3_brand = $say_raritan;
+	}
+	elsif ($an->data->{cgi}{anvil_pdu3_agent} eq "fence_apc_alteeve")
+	{
+		 $say_pdu3_brand = $say_apc_snmp;
+	}
+	my $say_pdu4_brand = $say_apc_snmp;
+	if ($an->data->{cgi}{anvil_pdu4_agent} eq "fence_raritan_snmp")
+	{
+		 $say_pdu4_brand = $say_raritan;
+	}
+	elsif ($an->data->{cgi}{anvil_pdu4_agent} eq "fence_apc_alteeve")
+	{
+		 $say_pdu4_brand = $say_apc_snmp;
+	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "say_pdu1_brand", value1 => $say_pdu1_brand,
 		name2 => "say_pdu2_brand", value2 => $say_pdu2_brand,

@@ -4277,8 +4277,9 @@ sub manifests_menu
 		}
 		
 		# Ask the user which model of PDU they're using.
-		my $say_apc     = $an->String->get({key => "brand_0017"});
-		my $say_raritan = $an->String->get({key => "brand_0018"});
+		my $say_apc_snmp    = $an->String->get({key => "brand_0017"});
+		my $say_raritan     = $an->String->get({key => "brand_0018"});
+		my $say_apc_alteeve = $an->String->get({key => "brand_0021"});
 		
 		# Build the two or four PDU form entries.
 		foreach my $i (1..$an->data->{sys}{install_manifest}{pdu_count})
@@ -4304,7 +4305,7 @@ sub manifests_menu
 			# Build the select.
 			my $pdu_model = $an->Web->build_select({
 					name     => $pdu_agent_key, 
-					options  => ["fence_apc_snmp#!#$say_apc", "fence_raritan_snmp#!#$say_raritan"], 
+					options  => ["fence_apc_snmp#!#$say_apc_snmp", "fence_apc_alteeve#!#$say_apc_alteeve", "fence_raritan_snmp#!#$say_raritan"], 
 					blank    => 0,
 					selected => $an->data->{cgi}{$pdu_agent_key},
 					width    => 220,
