@@ -638,7 +638,7 @@ chown root:root /usr/sbin/fence_raritan_snmp
 chmod 755 /usr/sbin/fence_raritan_snmp
 
 echo \"Downloading 'fence_apc_alteeve'.\"
-curl http://${striker_bcn}.${source}/$os_dir/x86_64/img/Tools/fence/fence_apc_alteeve > /usr/sbin/fence_apc_alteeve
+curl http://$conf->{sys}{ks}{striker_bcn}.${source}/$os_dir/x86_64/img/Tools/fence/fence_apc_alteeve > /usr/sbin/fence_apc_alteeve
 chown root:root /usr/sbin/fence_apc_alteeve
 chmod 755 /usr/sbin/fence_apc_alteeve
 
@@ -1147,6 +1147,10 @@ fi
 		}
 
 		$ks_body .= "
+### Dashboards with NVMe drives will use '/dev/nvme0n1'
+if grep -q nvme0n1 /proc/partitions; then
+	DRIVE=\"nvme0n1\"
+fi
 
 ### Dashboards with NVMe drives will use '/dev/nvme0n1'
 if grep -q nvme0n1 /proc/partitions; then
@@ -1632,7 +1636,6 @@ sub generate_kickstart_files
 			}
 		}
 	}
-	
 	
 	return(0);
 }
