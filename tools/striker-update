@@ -89,6 +89,8 @@ my $an = AN::Tools->new({
 			'anvil-safe-start'	=>	"/sbin/striker/anvil-safe-start",
 			bzip2			=>	"/usr/bin/bzip2",
 			createrepo		=>	"/usr/bin/createrepo",
+			'chown'			=>	"/bin/chown",
+			'chmod'			=>	"/bin/chmod",
 			curl			=>	"/usr/bin/curl",
 			current_dir		=>	$ENV{PWD},
 			echo			=>	"/bin/echo",
@@ -163,6 +165,15 @@ my $an = AN::Tools->new({
 			reboot_timeout		=>	600,
 			striker_zip_file	=>	"striker.zip",
 			update			=>	1,
+		},
+		permissions		=>	{
+			striker_cache		=>	{
+				path			=>	"/var/www/home/cache",
+				owner			=>	"apache",
+				group			=>	"apache",
+				mode			=>	"660",
+				recursive		=>	1,
+			},
 		},
 	},
 });
@@ -2686,6 +2697,38 @@ done
 		}
 	}
 	print "- Done.\n\n";
+	
+	# Make sure some permissions are set properly locally.
+	if ($target eq "local")
+	{
+		foreach my $target (sort {$a cmp $b} keys %{$an->data->{permissions}})
+		{
+			my $path      = $an->data->{permissions}{$target}{path};
+			my $owner     = $an->data->{permissions}{$target}{owner};
+			my $group     = $an->data->{permissions}{$target}{group};
+			my $mode      = $an->data->{permissions}{$target}{mode};
+			my $recursive = $an->data->{permissions}{$target}{recursive};
+			
+			my $shell_call = $an->data->{path}{'chown'}." ".$owner.":".$group." ".$path." && ".$an->data->{path}{'chmod'}." ".$path;
+			if ($recursive)
+			{
+				$shell_call = $an->data->{path}{'chown'}." -R ".$owner.":".$group." ".$path." && ".$an->data->{path}{'chmod'}." -R ".$path;
+			}
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+		}
+	}
 	
 	my $rebooted = 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
