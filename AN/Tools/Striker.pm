@@ -12815,11 +12815,11 @@ sub _write_node_cache
 			name1 => "cache_file", value1 => $cache_file,
 		}, file => $THIS_FILE, line => __LINE__});
 		my $shell_call = "$cache_file";
-		open (my $file_handle, ">", "$shell_call") or error($an, $an->String->get({key => "message_0050", variables => { 
-				cache_file	=>	$cache_file,
-				uid		=>	$<,
-				error		=>	$!,
-			}}));
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "message_0050", message_variables => { 
+				cache_file => $cache_file,
+				uid        => $<,
+				error      => $!,
+		}, code => 2, file => $THIS_FILE, line => __LINE__});
 		foreach my $line (@lines)
 		{
 			print $file_handle $line;
