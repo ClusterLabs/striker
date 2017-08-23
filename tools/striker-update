@@ -865,11 +865,17 @@ CREATE TRIGGER trigger_hosts
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
 				}
+				elsif ($bad_next_line)
+				{
+					# The next line was fine.
+					$bad_next_line = "";
+				}
 			}
 			
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "bad", value1 => $bad, 
 			}, file => $THIS_FILE, line => __LINE__});
+			die if $bad;
 			if ($bad)
 			{
 				print "[ Warning ] - This database has the bugged 'history_storcli_physical_drives()' function.\n";
