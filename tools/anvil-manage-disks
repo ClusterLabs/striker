@@ -203,6 +203,125 @@ sub do_grow
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_grow" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Do we have an LV?
+	if ((not exists $an->data->{switches}{lv}) or (not $an->data->{switches}{lv}))
+	{
+		print $an->String->get({key => "amd_error_0016"})."\n";
+		$an->nice_exit({exit_code => 16});
+	}
+	
+	# Do we have a size?
+	if ((not exists $an->data->{switches}{size}) or (not $an->data->{switches}{size}))
+	{
+		print $an->String->get({key => "amd_error_0017"})."\n";
+		$an->nice_exit({exit_code => 17});
+	}
+	
+	# Setup some variables for easier use.
+	my $server = $an->data->{switches}{server};
+	my $lv     = $an->data->{switches}{lv};
+	
+	# Make sure the requested LV is in the server currently.
+	verify_lv_is_on_server($an);
+	
+	# What VG is this LV on?
+	my $vg              =  $an->data->{gathered}{lvm}{lv}{$lv}{on_vg};
+	my $lv_current_size =  $an->data->{gathered}{lvm}{lv}{$lv}{total_size};
+	   $lv_current_size =~ s/ Bytes//i;
+	my $vg_size         =  $an->data->{gathered}{lvm}{vg}{$vg}{size};
+	   $vg_size         =~ s/ Bytes//i;
+	my $vg_free_space   =  $an->data->{gathered}{lvm}{vg}{$vg}{size};
+	   $vg_free_space   =~ s/ Bytes//i;
+	my $requested_size  =  $an->Readable->hr_to_bytes({size => $an->data->{switches}{size}});
+	   $requested_size =~ s/ Bytes//i;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "vg",              value1 => $vg, 
+		name2 => "lv_current_size", value2 => $an->Readable->comma($lv_current_size), 
+		name3 => "vg_size",         value3 => $an->Readable->comma($vg_size), 
+		name4 => "vg_free_space",   value4 => $an->Readable->comma($vg_free_space), 
+		name5 => "requested_size",  value5 => $an->Readable->comma($requested_size), 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Is the requested size sane?
+	if ($requested_size !~ /^\d+$/)
+	{
+		print $an->String->get({key => "amd_error_0018", variables => { size => $an->data->{switches}{size} }})."\n";
+		$an->nice_exit({exit_code => 18});
+	}
+	
+	# Excellent. How much free space is left?
+	my $left_over = $vg_free_space - $requested_size;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "left_over", value1 => $an->Readable->comma($left_over), 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Did they ask for too much?
+	if (($left_over <= 0) or (not $left_over))
+	{
+		# Yup...
+		print $an->String->get({key => "amd_error_0008", variables => {say_left_over => $an->Readable->bytes_to_hr({'bytes' => $left_over}), left_over => $an->Readable->comma($left_over)}})."\n";
+		print_known_vgs($an);
+		$an->nice_exit({exit_code => 8});
+	}
+	
+	# OK, we're ready to ask them if they want to proceed.
+	my $say_lv_size   = $an->Readable->bytes_to_hr({'bytes' => $lv_current_size});
+	my $new_lv_size   = $an->Readable->bytes_to_hr({'bytes' => ($lv_current_size + $requested_size)});
+	my $say_requested = $an->Readable->bytes_to_hr({'bytes' => $requested_size});
+	my $say_vg_size   = $an->Readable->bytes_to_hr({'bytes' => $vg_size});
+	my $say_left_over = $an->Readable->bytes_to_hr({'bytes' => $left_over});
+	print $an->String->get({key => "amd_message_0022", variables => {
+		server      => $an->data->{switches}{server},
+		lv          => $lv, 
+		vg          => $vg,
+		requested   => $say_requested,
+		lv_size     => $say_lv_size, 
+		new_lv_size => $new_lv_size, 
+		vg_size     => $say_vg_size,
+		left_over   => $say_left_over, 
+	}});
+	ask_to_proceed($an);
+	
+	# There is no need to modify the server, we're directly modifying the existing LV.
+	print $an->String->get({key => "amd_message_0023", variables => { lv_path => $lv }})."\n";
+	my $grown      = 0;
+	my $error      = "";
+	my $shell_call = $an->data->{path}{lvextend}." -L +".$an->data->{switches}{size}." ".$lv;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		# There should never be any output, but just in case...
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$error .= $line."\n";
+		
+		if ($line =~ /success/i)
+		{
+			$grown = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "grown", value1 => $grown, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	if ($grown)
+	{
+		print $an->String->get({key => "amd_message_0024"})."\n";
+	}
+	else
+	{
+		print $an->String->get({key => "amd_error_0019", variables => { error => $error }})."\n";
+		$an->nice_exit({exit_code => 19});
+	}
+	
 	return(0);
 }
 
@@ -219,42 +338,12 @@ sub do_remove
 		$an->nice_exit({exit_code => 13});
 	}
 	
+	# Setup some variables for easier use.
+	my $server = $an->data->{switches}{server};
+	my $lv     = $an->data->{switches}{lv};
+	
 	# Make sure the requested LV is in the server currently.
-	my $server    = $an->data->{switches}{server};
-	my $lv        = $an->data->{switches}{lv};
-	my $lv_exists = 0;
-	my $xml       = $an->Get->server_xml({server => $an->data->{switches}{server}});
-	foreach my $line (split/\n/, $xml)
-	{
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		next if not $line;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /<source dev='(\/dev\/.*?)'/)
-		{
-			my $this_lv = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "this_lv", value1 => $this_lv, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($this_lv eq $lv)
-			{
-				$lv_exists = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "lv_exists", value1 => $lv_exists, 
-				}, file => $THIS_FILE, line => __LINE__});
-				last;
-			}
-		}
-	}
-	if (not $lv_exists)
-	{
-		# Wrong LV.
-		print $an->String->get({key => "amd_error_0014", variables => { lv => $lv }})."\n";
-		$an->nice_exit({exit_code => 14});
-	}
+	verify_lv_is_on_server($an);
 
 	# OK, looks like we're good to go. 
 	my $size     =  $an->data->{gathered}{lvm}{lv}{$lv}{total_size};
@@ -403,16 +492,25 @@ sub do_add
 		# Does the requested VG exist?
 		if (exists $an->data->{gathered}{lvm}{vg}{$vg})
 		{
+			# Is the requested size reasonable?
+			$requested_size =  $an->Readable->hr_to_bytes({size => $size});
+			$requested_size =~ s/ Bytes//i;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "requested_size", value1 => $an->Readable->comma($requested_size), 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($requested_size !~ /^\d+$/)
+			{
+				print $an->String->get({key => "amd_error_0018", variables => { size => $an->data->{switches}{size} }})."\n";
+				$an->nice_exit({exit_code => 18});
+			}
+			
 			# Excellent. How much free space is left?
-			   $requested_size =  $an->Readable->hr_to_bytes({size => $size});
-			   $requested_size =~ s/ Bytes//i;
 			my $free_space     =  $an->data->{gathered}{lvm}{vg}{$vg}{free_space};
 			   $free_space     =~ s/ Bytes//i;
 			   $left_over      =  $free_space - $requested_size;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "requested_size", value1 => $an->Readable->comma($requested_size), 
-				name2 => "free_space",     value2 => $an->Readable->comma($free_space), 
-				name3 => "left_over",      value3 => $an->Readable->comma($left_over), 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "free_space", value1 => $an->Readable->comma($free_space), 
+				name2 => "left_over",  value2 => $an->Readable->comma($left_over), 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Did they ask for too much?
@@ -595,7 +693,7 @@ sub do_add
 		
 		# Verify
 		my $created    = 0;
-			$shell_call = $an->data->{path}{lvscan};
+		   $shell_call = $an->data->{path}{lvscan};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -693,6 +791,51 @@ sub do_add
 	if ($an->data->{gathered}{clustat}{server}{$server}{host} eq "none")
 	{
 		undefine_server($an);
+	}
+	
+	return(0);
+}
+
+# This checks to see if the requested LV is on the requested server.
+sub verify_lv_is_on_server
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_remove" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $server    = $an->data->{switches}{server};
+	my $lv        = $an->data->{switches}{lv};
+	my $lv_exists = 0;
+	my $xml       = $an->Get->server_xml({server => $an->data->{switches}{server}});
+	foreach my $line (split/\n/, $xml)
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /<source dev='(\/dev\/.*?)'/)
+		{
+			my $this_lv = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_lv", value1 => $this_lv, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($this_lv eq $lv)
+			{
+				$lv_exists = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "lv_exists", value1 => $lv_exists, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+	}
+	if (not $lv_exists)
+	{
+		# Wrong LV.
+		print $an->String->get({key => "amd_error_0014", variables => { lv => $lv }})."\n";
+		$an->nice_exit({exit_code => 14});
 	}
 	
 	return(0);

@@ -3964,6 +3964,7 @@ of the size: [#!variable!say_size!#], which will leave: [#!variable!say_free!#] 
 		<key name="amd_message_0020"><![CDATA[
 I am about to remove the disk (LV): [#!variable!lv!#] from the [#!variable!server!#].
 This LV is: [#!variable!say_size!# (#!variable!size!# Bytes)] big.
+
 NOTE: This LV will *NOT* be deleted. If you want to remove it permanently, 
       after it is detached successfully, run:
       lvremove #!variable!lv!#
@@ -3974,6 +3975,19 @@ I am about to attach the existing disk (LV): [#!variable!lv!#] to the [#!variabl
 This LV is: [#!variable!say_size!# (#!variable!size!# Bytes)] big.
 - Proceed? [y/N] 
 		]]></key>
+		<key name="amd_message_0022"><![CDATA[
+I am about to modify the server: [#!variable!server!#] by growing the logical volume: [#!variable!lv!#].
+I will add: [#!variable!requested!#], growing it from from: [#!variable!lv_size!#] to: [#!variable!new_lv_size!#].
+This is on the volume group: [#!variable!vg!#], which will have: [#!variable!left_over!#] free when done.
+
+NOTE: Depending on your operating system, you may not see the new space immediately. 
+      Consult your operating system documentation on how to see new disk space added
+      to a system. On many older OSes, a reboot will be necessary. If the grown disk
+      stores the OS's file, additional steps may be needed to grow the file system.
+- Proceed? [y/N] 
+		]]></key>
+		<key name="amd_message_0023">Extending: [#!variable!lv_path!#] now...</key>
+		<key name="amd_message_0024">The new space has been added successfully!</key>
 		
 		<!-- errors -->
 		<key name="amd_error_0001"><![CDATA[No server name was passed. Please specify with '--server <name>'.]]></key>
@@ -4008,6 +4022,15 @@ The requested LV: [#!variable!lv!#] does not appear to be attached to this serve
 Try '--show' to see a list of connected drives.
 		</key>
 		<key name="amd_error_0015">
+The drive failed to detach to the server. The error was:
+====
+#!variable!error!#
+====
+		</key>
+		<key name="amd_error_0016">No logical volume specified to grow.</key>
+		<key name="amd_error_0017">No size given to add the the logical volume.</key>
+		<key name="amd_error_0018">The requested size: [#!variables!size!#] appears to be invalid. Unable to convert it to a byte size.</key>
+		<key name="amd_error_0019">
 The drive failed to detach to the server. The error was:
 ====
 #!variable!error!#

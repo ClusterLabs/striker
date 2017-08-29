@@ -1151,6 +1151,7 @@ sub _set_paths
 	$an->data->{path}{lvchange}               = "/sbin/lvchange";
 	$an->data->{path}{lvcreate}               = "/sbin/lvcreate";
 	$an->data->{path}{lvdisplay}              = "/sbin/lvdisplay";
+	$an->data->{path}{lvextend}               = "/sbin/lvextend";
 	$an->data->{path}{lvremove}               = "/sbin/lvremove";
 	$an->data->{path}{lvs}                    = "/sbin/lvs";
 	$an->data->{path}{lvscan}                 = "/sbin/lvscan";
