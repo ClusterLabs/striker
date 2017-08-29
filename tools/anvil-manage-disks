@@ -1,0 +1,914 @@
+#!/usr/bin/perl
+# 
+# This tool handles inserting/ejecting ISOs into a server's optical drives, adding/removing logical volumes 
+# to/from a disk and growing a logical volumn size.
+# 
+# Return Codes:
+# 0  = OK
+# 1  = 
+# 
+
+use strict;
+use warnings;
+use AN::Tools;
+use Data::Dumper;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $program_name        =  $0;
+my $THIS_FILE           =  ($program_name =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($program_name =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $time = time;
+
+my $an = AN::Tools->new({
+	data		=> {
+		server		=>	"",
+		source		=>	"",
+		task		=>	"",
+	},
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+$an->Log->db_transactions(1) if $an->data->{$THIS_FILE}{log_db_transactions};
+$an->Readable->base2(1);
+
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or 
+    ($an->data->{switches}{help}))
+{
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+
+# Basic Sanity checks...
+if (not $an->data->{switches}{server})
+{
+	print $an->String->get({key => "amd_error_0001"})."\n";
+	$an->nice_exit({exit_code => 1});
+}
+if (not $an->data->{switches}{task})
+{
+	print $an->String->get({key => "amd_error_0002"})."\n";
+	$an->nice_exit({exit_code => 2});
+}
+if (not -e $an->data->{path}{cluster_conf})
+{
+	print $an->String->get({key => "amd_error_0003"})."\n";
+	$an->nice_exit({exit_code => 3});
+}
+
+# Collect information on this system
+gather_data($an);
+
+# Is this server running on this node?
+my $server = $an->data->{switches}{server};
+if ($an->data->{gathered}{clustat}{server}{$server}{host} eq "none")
+{
+	# The server is off so we'll directly edit the XML.
+	
+}
+elsif ($an->data->{gathered}{clustat}{server}{$server}{host} ne $an->hostname)
+{
+	# The server isn't running here.
+	print $an->String->get({key => "amd_error_0004", variables => {host => $an->data->{gathered}{clustat}{server}{$server}{host}}})."\n";
+	$an->nice_exit({exit_code => 4});
+}
+
+# Now, what task?
+if ($an->data->{switches}{task} eq "add")
+{
+	do_add($an);
+}
+elsif ($an->data->{switches}{task} eq "remove")
+{
+	do_remove($an);
+}
+elsif ($an->data->{switches}{task} eq "grow")
+{
+	do_grow($an);
+}
+elsif ($an->data->{switches}{task} eq "show")
+{
+	do_show($an);
+}
+
+# Done!
+print $an->String->get({key => "amd_message_0014"})."\n";
+$an->nice_exit({exit_code => 0});
+
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This lists the available volume groups and the LVs currently attached to the server, along with their 
+# sizes.
+sub do_show
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_show" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# First, show the current VGs
+	print $an->String->get({key => "amd_message_0015"})."\n";
+	print_known_vgs($an);
+	
+	my $server = $an->data->{switches}{server};
+	print "\n".$an->String->get({key => "amd_message_0016", variables => { server => $server }})."\n";
+	
+	# Get the config.
+	my $this_target = "";
+	my $this_lv     = "";
+	my $in_block    = 0;
+	my $xml         = $an->Get->server_xml({server => $an->data->{switches}{server}});
+	foreach my $line (split/\n/, $xml)
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /<disk type='block' device='disk'>/)
+		{
+			$in_block = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_block", value1 => $in_block, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		next if not $in_block;
+		
+		if ($line =~ /<\/disk>/)
+		{
+			my $size     =  $an->data->{gathered}{lvm}{lv}{$this_lv}{total_size};
+			   $size     =~ s/ Bytes//i;
+			my $say_size =  $an->Readable->bytes_to_hr({'bytes' => $size});
+			print $an->String->get({key => "amd_message_0017", variables => { 
+				lv       => $this_lv, 
+				target   => $this_target, 
+				size     => $an->Readable->comma($size),
+				say_size => $say_size, 
+			}})."\n";
+			
+			$in_block    = 0;
+			$this_target = "";
+			$this_lv     = "";
+			next;
+		}
+		
+		if ($line =~ /<target dev='(vd.*?)'/)
+		{
+			$this_target = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_target", value1 => $this_target, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /<source dev='(\/dev\/.*?)'/)
+		{
+			$this_lv = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_lv", value1 => $this_lv, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+# This performs the growth of an LV to a server.
+sub do_grow
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_grow" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+# This performs the removal of an LV to a server.
+sub do_remove
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_remove" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If I don't have an LV, exit.
+	if ((not exists $an->data->{switches}{lv}) or (not $an->data->{switches}{lv}))
+	{
+		print $an->String->get({key => "amd_error_0013"})."\n";
+		$an->nice_exit({exit_code => 13});
+	}
+	
+	# Make sure the requested LV is in the server currently.
+	my $server    = $an->data->{switches}{server};
+	my $lv        = $an->data->{switches}{lv};
+	my $lv_exists = 0;
+	my $xml       = $an->Get->server_xml({server => $an->data->{switches}{server}});
+	foreach my $line (split/\n/, $xml)
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /<source dev='(\/dev\/.*?)'/)
+		{
+			my $this_lv = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_lv", value1 => $this_lv, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($this_lv eq $lv)
+			{
+				$lv_exists = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "lv_exists", value1 => $lv_exists, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+	}
+	if (not $lv_exists)
+	{
+		# Wrong LV.
+		print $an->String->get({key => "amd_error_0014", variables => { lv => $lv }})."\n";
+		$an->nice_exit({exit_code => 14});
+	}
+
+	# OK, looks like we're good to go. 
+	my $size     =  $an->data->{gathered}{lvm}{lv}{$lv}{total_size};
+	   $size     =~ s/ Bytes//i;
+	my $say_size =  $an->Readable->bytes_to_hr({'bytes' => $size});
+	print $an->String->get({key => "amd_message_0020", variables => {
+		server   => $an->data->{switches}{server},
+		lv       => $lv, 
+		size     => $an->Readable->comma($size),
+		say_size => $say_size, 
+	}});
+	ask_to_proceed($an);
+	
+	# We're ready.
+	print $an->String->get({key => "amd_message_0018", variables => { lv => $lv, server => $server}})."\n";
+	
+	# If the server isn't running, temporarily define it.
+	if ($an->data->{gathered}{clustat}{server}{$server}{host} eq "none")
+	{
+		# The server is off so we'll define the server temporarily.
+		define_server($an)
+	}
+	
+	# Remove the LV.
+	my $error      = "";
+	my $detached   = 1;
+	my $shell_call = $an->data->{path}{virsh}." detach-disk ".$server." ".$lv." ";
+	if ($an->data->{gathered}{clustat}{server}{$server}{host} eq "none")
+	{
+		$shell_call .= "--config";
+	}
+	else
+	{
+		$shell_call .= "--live";
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		# There should never be any output, but just in case...
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# This is used to tell the user what went wrong, if we don't see 'success'.
+		$error .= $line."\n";
+		
+		if ($line =~ /success/)
+		{
+			$detached = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "detached", value1 => $detached, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "detached", value1 => $detached, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $detached)
+	{
+		print $an->String->get({key => "amd_error_0015", variables => { error => $error }})."\n";
+		$an->nice_exit({exit_code => 15});
+	}
+	print $an->String->get({key => "amd_message_0019"})."\n";
+	
+	# Update the definition file.
+	update_definition($an);
+	
+	# Undefine the server, if needed. I don't worry too much about this because if something goes wrong,
+	# ScanCore will undefine it the next time scan-server runs.
+	if ($an->data->{gathered}{clustat}{server}{$server}{host} eq "none")
+	{
+		undefine_server($an);
+	}
+	
+	return(0);
+}
+
+# This performs the addition of an LV to a server.
+sub do_add
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_add" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If the LV was passed, make sure it exists.
+	my $lv   = $an->data->{switches}{lv}   ? $an->data->{switches}{lv}   : "";
+	my $vg   = $an->data->{switches}{vg}   ? $an->data->{switches}{vg}   : "";
+	my $size = $an->data->{switches}{size} ? $an->data->{switches}{size} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "lv",   value1 => $lv, 
+		name2 => "vg",   value2 => $vg, 
+		name3 => "size", value3 => $size, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If the user didn't specify an LV, make sure the requested size is ok.
+	my $create_lv      = 0;
+	my $requested_size = 0;
+	my $left_over      = 0;
+	my $lv_name        = "";
+	if (not $lv)
+	{
+		# Do we have a size?
+		$create_lv = 1;
+		if (not $size)
+		{
+			# Nope.
+			print $an->String->get({key => "amd_error_0005"})."\n";
+			print_known_vgs($an);
+			$an->nice_exit({exit_code => 5});
+		}
+		
+		# Do we have enough a VG?
+		if (not $vg)
+		{
+			# If there is only one VG, select it.
+			my $vg_count = keys %{$an->data->{gathered}{lvm}{vg}};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "vg_count", value1 => $vg_count, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($vg_count == 1)
+			{
+				foreach my $this_vg (sort {$a cmp $b} keys %{$an->data->{gathered}{lvm}{vg}})
+				{
+					$vg = $this_vg;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "vg", value1 => $vg, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# Don't know which VG to use
+				print $an->String->get({key => "amd_error_0006", variables => {count => $vg_count}})."\n";
+				print_known_vgs($an);
+				$an->nice_exit({exit_code => 6});
+			}
+		}
+		
+		# Does the requested VG exist?
+		if (exists $an->data->{gathered}{lvm}{vg}{$vg})
+		{
+			# Excellent. How much free space is left?
+			   $requested_size =  $an->Readable->hr_to_bytes({size => $size});
+			   $requested_size =~ s/ Bytes//i;
+			my $free_space     =  $an->data->{gathered}{lvm}{vg}{$vg}{free_space};
+			   $free_space     =~ s/ Bytes//i;
+			   $left_over      =  $free_space - $requested_size;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "requested_size", value1 => $an->Readable->comma($requested_size), 
+				name2 => "free_space",     value2 => $an->Readable->comma($free_space), 
+				name3 => "left_over",      value3 => $an->Readable->comma($left_over), 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Did they ask for too much?
+			if (($left_over <= 0) or (not $left_over))
+			{
+				# Yup...
+				print $an->String->get({key => "amd_error_0008", variables => {say_left_over => $an->Readable->bytes_to_hr({'bytes' => $left_over}), left_over => $an->Readable->comma($left_over)}})."\n";
+				print_known_vgs($an);
+				$an->nice_exit({exit_code => 8});
+			}
+		}
+		else
+		{
+			# The VG doesn't exist
+			print $an->String->get({key => "amd_error_0007", variables => {vg => $vg}})."\n";
+			print_known_vgs($an);
+			$an->nice_exit({exit_code => 7});
+		}
+		
+		# How many LVs exist for the VM?
+		my $suffix  = 0;
+		my $lv_path = "";
+		my $loops   = 0;
+		while (not $lv_path)
+		{
+			my $this_lv = "/dev/".$vg."/".$an->data->{switches}{server}."_".$suffix;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_lv", value1 => $this_lv, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (-e $this_lv)
+			{
+				$suffix++;
+				$loops++;
+				
+				if ($loops > 100)
+				{
+					# Unable to find an LV path to use.
+					print $an->String->get({key => "amd_error_0009"})."\n";
+					$an->nice_exit({exit_code => 9});
+				}
+			}
+			else
+			{
+				# Found the path to use.
+				$lv_name = $an->data->{switches}{server}."_".$suffix;
+				$lv_path = $this_lv;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "lv_name", value1 => $lv_name, 
+					name2 => "this_lv", value2 => $this_lv, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Store the new LV's path 
+		$lv = $lv_path;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "lv", value1 => $lv, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+
+	# Ready to proceed, if the user is OK with it.
+	if ($create_lv)
+	{
+		# Ask, telling the user an LV will be created.
+		print $an->String->get({key => "amd_message_0003", variables => {
+			server   => $an->data->{switches}{server},
+			vg       => $vg, 
+			say_size => $an->Readable->bytes_to_hr({'bytes' => $requested_size}),
+			say_free => $an->Readable->bytes_to_hr({'bytes' => $left_over}),
+		}});
+	}
+	else
+	{
+		# Ask to attach an existing LV.
+		my $size     =  $an->data->{gathered}{lvm}{lv}{$lv}{total_size};
+		   $size     =~ s/ Bytes//i;
+		my $say_size =  $an->Readable->bytes_to_hr({'bytes' => $size});
+		print $an->String->get({key => "amd_message_0021", variables => {
+			server   => $an->data->{switches}{server},
+			lv       => $lv, 
+			size     => $an->Readable->comma($size),
+			say_size => $say_size, 
+		}});
+	}
+	ask_to_proceed($an);
+	
+	# We'll need to know what the next free vdX is.
+	my $targets  = {};
+	my $in_block = 0;
+	my $xml      = $an->Get->server_xml({server => $an->data->{switches}{server}});
+	foreach my $line (split/\n/, $xml)
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /<disk type='block' device='disk'>/)
+		{
+			$in_block = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_block", value1 => $in_block, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		next if not $in_block;
+		
+		if ($line =~ /<\/disk>/)
+		{
+			$in_block = 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_block", value1 => $in_block, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		if ($line =~ /<target dev='(vd.*?)'/)
+		{
+			my $target             = $1;
+				$targets->{$target} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "targets->$target", value1 => $targets->{$target}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+		}
+	}
+	
+	# Find the next free target.
+	my $target = "";
+	my $drive  = "a";
+	for (0..24)
+	{
+		my $this_target = "vd".$drive;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "this_target", value1 => $this_target, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $targets->{$this_target})
+		{
+			$target = $this_target;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+		$drive++;
+	}
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $target)
+	{
+		print $an->String->get({key => "amd_error_0011"})."\n";
+		$an->nice_exit({exit_code => 11});
+	}
+	print $an->String->get({key => "amd_message_0010", variables => { target => $target }})."\n";
+	
+	# Create the LV, if needed.
+	if ($create_lv)
+	{
+		# Create the LV
+		print $an->String->get({key => "amd_message_0007", variables => { lv_path => $lv }})."\n";
+		my $shell_call = $an->data->{path}{lvcreate}." -L ".$size." -n ".$lv_name." ".$vg;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			# There should never be any output, but just in case...
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# Verify
+		my $created    = 0;
+			$shell_call = $an->data->{path}{lvscan};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			# There should never be any output, but just in case...
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /$lv/)
+			{
+				$created = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "created", value1 => $created, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		close $file_handle;
+		
+		# Verify
+		if ($created)
+		{
+			print $an->String->get({key => "amd_message_0008"})."\n";
+		}
+		else
+		{
+			# Failed to create the LV.
+			print $an->String->get({key => "amd_error_0010"})."\n";
+			$an->nice_exit({exit_code => 10});
+		}
+	}
+	
+	# Attach! If the server is off, define it, then add it, then undefine it again.
+	if ($an->data->{gathered}{clustat}{server}{$server}{host} eq "none")
+	{
+		# The server is off so we'll define the server temporarily.
+		define_server($an)
+	}
+	
+	# Now add it.
+	my $attached   = 0;
+	my $error      = "";
+	my $shell_call = $an->data->{path}{virsh}." attach-disk ".$server." ".$lv." ".$target." --cache writethrough --sourcetype block ";
+	if ($an->data->{gathered}{clustat}{server}{$server}{host} eq "none")
+	{
+		$shell_call .= "--config";
+	}
+	else
+	{
+		$shell_call .= "--live";
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		# There should never be any output, but just in case...
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# This is used to tell the user what went wrong, if we don't see 'success'.
+		$error .= $line."\n";
+		
+		if ($line =~ /success/)
+		{
+			$attached = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "attached", value1 => $attached, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "attached", value1 => $attached, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $attached)
+	{
+		print $an->String->get({key => "amd_error_0012", variables => { error => $error }})."\n";
+		$an->nice_exit({exit_code => 12});
+	}
+	
+	# Update the definition file
+	update_definition($an);
+	
+	# Undefine the server, if needed. I don't worry too much about this because if 
+	# something goes wrong, ScanCore will undefine it the next time scan-server runs.
+	if ($an->data->{gathered}{clustat}{server}{$server}{host} eq "none")
+	{
+		undefine_server($an);
+	}
+	
+	return(0);
+}
+
+# This backs up the configuration file and then updates it.
+sub update_definition
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_definition" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $definition_file = $an->data->{path}{shared_definitions}."/".$an->data->{switches}{server}.".xml";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "definition_file", value1 => $definition_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Create a backup of the definition file.
+	my ($backup_file) = $an->Striker->_archive_file({file => $definition_file, quiet => 1});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "backup_file", value1 => $backup_file,
+	}, file => $THIS_FILE, line => __LINE__});
+	print $an->String->get({key => "amd_message_0011", variables => { backup => $backup_file }})."\n";
+	
+	# Dump the new config
+	print $an->String->get({key => "amd_message_0012", variables => { definition_file => $definition_file }})."\n";
+	my $shell_call = $an->data->{path}{virsh}." dumpxml ".$server." > ".$definition_file;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		# There should never be any output, but just in case...
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This undefines the server.
+sub undefine_server
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "undefine_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	print $an->String->get({key => "amd_message_0013"})."\n";
+	
+	my $created    = 0;
+	my $shell_call = $an->data->{path}{virsh}." undefine ".$server;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		# There should never be any output, but just in case...
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This defines the server.
+sub define_server
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "define_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	print $an->String->get({key => "amd_message_0009"})."\n";
+	
+	my $definition_file = $an->data->{path}{shared_definitions}."/".$an->data->{switches}{server}.".xml";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "definition_file", value1 => $definition_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $created    = 0;
+	my $shell_call = $an->data->{path}{virsh}." define ".$definition_file;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		# There should never be any output, but just in case...
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This asks the user to proceed and exits the program if not confirmed.
+sub ask_to_proceed
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ask_to_proceed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+
+	if ($an->data->{switches}{y})
+	{
+		print "\n".$an->String->get({key => "amd_message_0004"})."\n";
+	}
+	else
+	{
+		# Wait for the user to confirm.
+		my $answer = <STDIN>;
+		chomp($answer);
+		$answer = "" if not $answer;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "answer", value1 => $answer, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (lc($answer) =~ /^y/)
+		{
+			# Proceed!
+			print $an->String->get({key => "amd_message_0005"})."\n\n";
+		}
+		else
+		{
+			# Abort.
+			print $an->String->get({key => "amd_message_0006"})."\n";
+			$an->nice_exit({exit_code => 0});
+		}
+	}
+	
+	return(0);
+}
+
+# This prints a list of known VGs.
+sub print_known_vgs
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	foreach my $this_vg (sort {$a cmp $b} keys %{$an->data->{gathered}{lvm}{vg}})
+	{
+		my $size       =  $an->data->{gathered}{lvm}{vg}{$this_vg}{size};
+			$size       =~ s/ Bytes//i;
+		my $free_space = $an->data->{gathered}{lvm}{vg}{$this_vg}{free_space};
+			$free_space =~ s/ Bytes//i;
+		my $say_size   =  $an->Readable->bytes_to_hr({'bytes' => $size});
+		my $say_free   =  $an->Readable->bytes_to_hr({'bytes' => $free_space});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "size",       value1 => $size, 
+			name2 => "free_space", value2 => $free_space, 
+			name3 => "say_size",   value3 => $say_size, 
+			name4 => "say_free",   value4 => $say_free, 
+		}, file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "amd_message_0002", variables => {
+			vg       => $this_vg,
+			size     => $an->Readable->comma($size),
+			say_size => $say_size, 
+			free     => $an->Readable->comma($free_space),
+			say_free => $say_free,
+		}})."\n";
+	}
+	
+	return(0);
+}
+
+# This calls 'anvil-report-state' to gather information about the node.
+sub gather_data
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = $an->data->{path}{'anvil-report-state'}." --fast";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /(.*?) = \[(.*?)\]/)
+		{
+			my $variable = "gathered::".$1;
+			my $value    = $2;
+			$an->_make_hash_reference($an->data, $variable, $value);
+		}
+	}
+	close $file_handle;
+	
+	#print Dumper $an->data->{gathered};
+	
+	return(0);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $an->String->get({key => "amd_message_0001"})."\n";
+	close $file_handle;
+	
+	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");
+
+	return(0);
+}

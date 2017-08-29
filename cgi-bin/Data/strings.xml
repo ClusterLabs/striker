@@ -3869,6 +3869,151 @@ SUPPORT
 		<key name="atpostm_warning_0001"><![CDATA[The 'anvil-test-post-migration' script was invoked without '--server <name>'.]]></key>
 		<key name="atpostm_warning_0002"><![CDATA[The 'anvil-test-post-migration' script was called for the server: [#!variable!server!#] which does not appear to exist in this #!string!brand_0004!#.]]></key>
 		<key name="atpostm_warning_0003"><![CDATA[The 'anvil-test-post-migration' script was called for the server: [#!variable!server!#] which appears to not be running.]]></key>
+		
+		
+		<!-- Anvil! Manage Disks -->
+		<key name="amd_message_0001"><![CDATA[
+ -=] Anvil! Manage Disks
+
+DESCRIPTION
+
+This program is designed to make it easy to manage physical disks in a server.
+It can add, remove or grow the logical volumes that back the virtual disks in a
+server.
+
+
+SWITCHES
+
+ -h, -?, --help
+
+	Show this dialogue and exit.
+
+ --lv <full_path>
+
+	This is the full path of the source device (logical volume) being 
+	added, removed or grown. 
+
+ --size <number>
+	 
+	 This is the size of a new disk to add, or the amount of space to add
+	 to an existing disk. This switch is only useful with the 'add' and 
+	 'grow' tasks.
+	 
+	 Note that the size will be in GiB. If you want to specify a different
+	 size unit, add the suffix to the digit without a space. For example,
+	 '--size 500M' or '--size 500MiB' will be '500 MiB', or you can force a
+	 base-10 size with '--size 500MB' will be 500 MB.
+	 
+ --server <name>
+	 
+	 This is the name of the server to work on.
+
+ --task <task>
+	 
+	 This is the task to perform. Valid tasks are;
+	 
+	 * add:    Add a disk (logical volume) to the server. If the LV already
+	           exists, it will be added as-is. If no source is given, a new
+	           disk of the requested '--size' will be created and added.
+	           
+	 * grow:   This will grow the '--lv' LV to add the requested 
+	           '--size'.
+	           
+	 * remove: This will remove the '--lv' LV from the server. 
+	           
+	 * show:   This will list the currently attached LVs and their sizes
+	           for the given server, as well as any volume groups available
+	           and their size / free space.
+
+ --vg <name>
+	 
+	 If two or more volume groups exist, and you want to add a new disk 
+	 that does not yet exist, this switch tells the program what VG to use
+	 when it creates the disk. This is required in such cases.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		<key name="amd_message_0002"><![CDATA[- Name: [#!variable!vg!#], Size: [#!variable!say_size!# (#!variable!size!# Bytes)], Free space: [#!variable!say_free!# (#!variable!free!# Bytes)].]]></key>
+		<key name="amd_message_0003"><![CDATA[
+I am about to add a new disk to: [#!variable!server!#] on volume group: [#!variable!vg!#]
+of the size: [#!variable!say_size!#], which will leave: [#!variable!say_free!#] space left for future use.
+- Proceed? [y/N] 
+		]]></key>
+		<key name="amd_message_0004">The '-y' switch was used, proceeding automatically.</key>
+		<key name="amd_message_0005">Thank you, proceeding now.</key>
+		<key name="amd_message_0006">Aborting.</key>
+		<key name="amd_message_0007">Creating: [#!variable!lv_path!#] now...</key>
+		<key name="amd_message_0008">- Success!</key>
+		<key name="amd_message_0009">Temporarily defining the server.</key>
+		<key name="amd_message_0010">The new drive will be attached to the target: [#!variable!target!#].</key>
+		<key name="amd_message_0011">Created the backup of the definition file: [#!variable!backup!#].</key>
+		<key name="amd_message_0012">Updating the server's definition file: [#!variable!definition_file!#].</key>
+		<key name="amd_message_0013">Removing the temporariry definition.</key>
+		<key name="amd_message_0014">Done!</key>
+		<key name="amd_message_0015">Existing volume groups:</key>
+		<key name="amd_message_0016">logical volumes (disks) under the server: [#!variable!server!#]:</key>
+		<key name="amd_message_0017"><![CDATA[- Device: [#!variable!lv!#], Target device: [#!variable!target!#], Size: [#!variable!say_size!# (#!variable!size!# Bytes)].]]></key>
+		<key name="amd_message_0018">Detaching: [#!variable!lv!#] from: [#!variable!server!#].</key>
+		<key name="amd_message_0019">Detached successfully.</key>
+		<key name="amd_message_0020"><![CDATA[
+I am about to remove the disk (LV): [#!variable!lv!#] from the [#!variable!server!#].
+This LV is: [#!variable!say_size!# (#!variable!size!# Bytes)] big.
+NOTE: This LV will *NOT* be deleted. If you want to remove it permanently, 
+      after it is detached successfully, run:
+      lvremove #!variable!lv!#
+- Proceed? [y/N] 
+		]]></key>
+		<key name="amd_message_0021"><![CDATA[
+I am about to attach the existing disk (LV): [#!variable!lv!#] to the [#!variable!server!#].
+This LV is: [#!variable!say_size!# (#!variable!size!# Bytes)] big.
+- Proceed? [y/N] 
+		]]></key>
+		
+		<!-- errors -->
+		<key name="amd_error_0001"><![CDATA[No server name was passed. Please specify with '--server <name>'.]]></key>
+		<key name="amd_error_0002"><![CDATA[No '--task' specified. See '-h' for usage information.]]></key>
+		<key name="amd_error_0003"><![CDATA[This tool must be run on an Anvil! node.]]></key>
+		<key name="amd_error_0004"><![CDATA[The server is not running on this node. Please run this tool on the current host: [#!variable!host!#].]]></key>
+		<key name="amd_error_0005"><![CDATA[Unable to add a disk when neither '--vg X' or '--size X' are specified. The available VGs are]]></key>
+		<key name="amd_error_0006"><![CDATA[Unable to add a disk because '--vg X' wasn't specified and there are: [#!variable!count!#] VGs. The available VGs are:]]></key>
+		<key name="amd_error_0007"><![CDATA[The requested volume group: [#!variable!vg!#] doesn't appear to exist. The available VGs are:]]></key>
+		<key name="amd_error_0008"><![CDATA[The requested size is more than is available. You difference was: [#!variable!say_left_over!# (#!variable!say_left_over!# bytes)]. The available VGs are:]]></key>
+		<key name="amd_error_0009"><![CDATA[
+There was a problem trying to find a free logical volume name for the new LV. 
+Please contact support or run again with '-vvv' and then check the 
+/var/log/striker.log file for possible clues as to what went wrong.]]>
+		</key>
+		<key name="amd_error_0010">
+- Failed!
+It would appear the attempt to create the new disk failed for some reason.
+Please contact support or run again with '-vvv' and then check the 
+/var/log/striker.log file for possible clues as to what went wrong
+		</key>
+		<key name="amd_error_0011"><![CDATA[We were unable to find a target device (vdX). This can happen if the server has 26 drives already.]]></key>
+		<key name="amd_error_0012">
+The new drive failed to attach to the server. The error was:
+====
+#!variable!error!#
+====
+		</key>
+		<key name="amd_error_0013">No logical volume specified to remove.</key>
+		<key name="amd_error_0014">
+The requested LV: [#!variable!lv!#] does not appear to be attached to this server. 
+Try '--show' to see a list of connected drives.
+		</key>
+		<key name="amd_error_0015">
+The drive failed to detach to the server. The error was:
+====
+#!variable!error!#
+====
+		</key>
+		
 	</lang>
 
 	<!-- Japanese -->

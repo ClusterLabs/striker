@@ -470,7 +470,19 @@ sub comma
 	
 	# Strip out any existing commas.
 	$number =~ s/,//g;
-	$number =~ s/^\+//g;
+	
+	# Record and remove the sign, if present.
+	my $sign = "";
+	if ($number =~ /^\+/)
+	{
+		$number =~ s/^\+//g;
+		$sign   =  "+";
+	}
+	elsif ($number =~ /^\-/)
+	{
+		$number =~ s/^\-//g;
+		$sign   =  "-";
+	}
 	
 	# Split on the left-most period.
 	#print "$THIS_FILE ".__LINE__."; number: [$number]\n";
@@ -494,6 +506,10 @@ sub comma
 	$whole = $_;
 	
 	my $return = $decimal ? "$whole.$decimal" : $whole;
+	if ($sign)
+	{
+		$return = $sign.$return;
+	}
 	
 	return ($return);
 }
