@@ -224,6 +224,12 @@ if (($< != 0) && ($> != 0))
 	exit(2);
 }
 
+# Make '--no-os-updates' work
+if ($an->data->{switches}{'no-os-updates'})
+{
+	$an->data->{switches}{'no-os-update'} = 1;
+}
+
 # Am I to go offline?
 if ($an->data->{switches}{offline})
 {
@@ -349,6 +355,10 @@ if ($show_anvil_warning)
 		print "# will cause the server to be rebooted.\n";
 		print "###############################################################################\n\n";
 	}
+}
+elsif ($an->data->{switches}{'no-os-update'})
+{
+	print "NOTE: No OS updates will be applied, only Striker and ScanCore will be updated.\n\n";
 }
 
 print "##] NOTE [#####################################################################\n";
@@ -3932,6 +3942,12 @@ sub download_os_updates
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "download_os_updates" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	if ($an->data->{switches}{'no-os-update'})
+	{
+		print "- OS Updates disabled, skipping.\n";
+		return(0);
+	}
 	
 	my $shell_call = $an->data->{path}{yum}." -y update --downloadonly";
 	if ($an->data->{switches}{offline})
