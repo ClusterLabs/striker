@@ -1,0 +1,76 @@
+
+#!/bin/bash
+# This is a dirty little program to recompile the Siig (ASIX-based) USB3 to Gbit
+# ehternet adapter often used with NUC-based Striker dashboards when the kernel
+# version changes. It will be replaced by a proper program later (hopefully).
+
+DATADIR="/etc/striker";
+DATAFILE="/etc/striker/last_kernel";
+ASIXDRIVER="/var/www/html/centos6/x86_64/img/Tools/ASIX/AX88179_178A_LINUX_DRIVER_v1.14.4_SOURCE.zip";
+ASIXDIRECTORY="/tmp/AX88179_178A_LINUX_DRIVER_v1.14.4_SOURCE/";
+RECOMPILE=0;
+THISFILE=$(basename "$0");
+
+logger -t $THISFILE "Checking if the ASIX driver needs to be recompiled..."
+if [ -e "$DATADIR" ];
+then
+    logger -t $THISFILE "Data directory exists, proceeding to check kernel version."
+    if [ -e "$DATAFILE" ];
+    then
+        logger -t $THISFILE "Data file exists, comparing kernel version."
+        OLDVERSION=$(cat $DATAFILE)
+        CURRENTVERSION=$(uname -r)
+        logger -t $THISFILE "Old version was: [$OLDVERSION], new version is: [$CURRENTVERSION]."
+        if [ $OLDVERSION == $CURRENTVERSION ];
+        then
+            logger -t $THISFILE "Kernel version is the same. No need to recompile."
+        else
+            logger -t $THISFILE "Kernel version is different, recompiling."
+            RECOMPILE=1;
+        fi
+    else
+        logger -t $THISFILE "Data file does not exist. Will create it and recompile."
+        RECOMPILE=1;
+        uname -r > $DATAFILE
+    fi
+else
+    logger -t $THISFILE "Data directorty: [$DATADIR] doesn't exist, not checking drivers."
+fi
+
+if [ $RECOMPILE -eq "1" ];
+then
+    logger -t $THISFILE "Recompiling now..."
+    ASIXFOUND=$(lsusb | grep -q AX881; echo $?)
+    if [ $ASIXFOUND -ne "0" ];
+    then
+        # Some models report 'D-Link', so check that
+        ASIXFOUND=$(lsusb | grep -q '2001:4a00'; echo $?)
+    fi
+    if [ $ASIXFOUND -eq "0" ];
+    then
+        logger -t $THISFILE "ASIX adapter found."
+        if [ -e $ASIXDRIVER ];
+        then
+            logger -t $THISFILE "Driver found, extracting."
+            unzip -f $ASIXDRIVER -d /tmp/ >> /var/log/messages
+            if [ -e "${ASIXDIRECTORY}/Makefile" ];
+            then
+                logger -t $THISFILE "Drivers extracted, compiling now."
+                make --directory=$ASIXDIRECTORY >> /var/log/messages
+                make install --directory=$ASIXDIRECTORY >> /var/log/messages
+                modprobe ax88179_178a >> /var/log/messages
+                logger -t $THISFILE "Restarting the network now."
+                /etc/init.d/network restart >> /var/log/messages
+                logger -t $THISFILE "Updating the last seen kernel version"
+                uname -r > $DATAFILE
+                logger -t $THISFILE "Done!"
+            else
+                logger -t $THISFILE "Failed to extract the drivers. Unable to proceed."
+            fi
+        else
+            logger -t $THISFILE "Driver not found. Expected it to be in: [$ASIXDRIVER]. Unable to proceed."
+        fi
+    else
+        logger -t $THISFILE "ASIX adapter not found."
+    fi
+fi
