@@ -176,8 +176,8 @@
 		<key name="explain_0032">More is not always better. When in doubt, start with 2 to 4. You can change this easily later.</key>
 		<key name="explain_0033">Please use only one node's storage pool.</key>
 		<key name="explain_0034"><![CDATA[Enter a fixed size or a percentage of remaining free space to use for this server.]]></key>
-		<key name="explain_0035">#!free!#</key>
-		<key name="explain_0036">#!free!#</key>
+		<key name="explain_0035">This is the user names used to log in to you IPMI interface.</key>
+		<key name="explain_0036"><![CDATA[If you need to use "Lanplus" to talk to the node's IPMI interface, change this to '#!string!state_0038!#'. This is often needed for HP Proliant nodes.]]></key>
 		<key name="explain_0037">#!free!#</key>
 		<key name="explain_0038">#!free!#</key>
 		<key name="explain_0039">#!free!#</key>
@@ -386,6 +386,8 @@
 		<key name="explain_0242"><![CDATA[Any pending or active downloads will be shown below.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
+		<key name="terse_0035"><![CDATA[IPMI user name.]]></key>
+		<key name="terse_0036"><![CDATA[Use Lanplus (needed on most HP nodes).]]></key>
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
 		<key name="terse_0062"><![CDATA[Used to set hostnames.]]></key>
 		<key name="terse_0063"><![CDATA[Used to set default IPs and hostnames.]]></key>
@@ -480,9 +482,9 @@
 		<key name="select_0014">LVM</key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
-		<key name="row_0001">#!free!#</key>
+		<key name="row_0001">IPMI User</key>
 		<key name="row_0002">Notes</key>
-		<key name="row_0003">#!free!#</key>
+		<key name="row_0003">IPMI via Lanplus</key>
 		<key name="row_0004">#!free!#</key>
 		<key name="row_0005">#!string!brand_0003!# Name</key>
 		<key name="row_0006">#!free!#</key>
@@ -1008,7 +1010,7 @@
 		<key name="state_0035">Installed</key>
 		<key name="state_0036">Not Installed</key>
 		<key name="state_0037">Unable to proceed</key>
-		<key name="state_0038">#!free!#</key>
+		<key name="state_0038">Enabled</key>
 		<key name="state_0039">#!free!#</key>
 		<key name="state_0040">#!free!#</key>
 		<key name="state_0041">#!free!#</key>

@@ -8200,7 +8200,7 @@ sub _header
 	
 	# Who called us?
 	my $caller = $parameter->{'caller'} ? $parameter->{'caller'} : "striker";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "caller", value1 => $caller,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -8209,7 +8209,7 @@ sub _header
 	my $anvil_uuid = "";
 	my $node1_name = "";
 	my $node2_name = "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{cgi}{anvil_uuid}) && ($caller ne "configure"))

@@ -2888,7 +2888,7 @@ AND
 sub manifests_menu
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "manifests_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "manifests_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This isn't using the one-page display yet. Before we call this, we want to setup the refresh and 
 	# back links.
@@ -2899,7 +2899,7 @@ sub manifests_menu
 	my $error_fields   = [];
 	my $refresh_link   = $an->data->{sys}{cgi_string};
 	my $show_form      = 1;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "cgi::delete",        value1 => $an->data->{cgi}{'delete'},
 		name2 => "cgi::manifest_uuid", value2 => $an->data->{cgi}{manifest_uuid},
 		name3 => "refresh_link",       value3 => $refresh_link,
@@ -2907,7 +2907,7 @@ sub manifests_menu
 	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{manifest_uuid}))
 	{
 		# Has the user confirmed?
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::confirm", value1 => $an->data->{cgi}{confirm},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{confirm})
@@ -2932,7 +2932,7 @@ sub manifests_menu
 		$refresh_link =~ s/&&+/&/;
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::do", value1 => $an->data->{cgi}{'do'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->data->{form}{anvil_prefix_star}                    = "";
@@ -2983,6 +2983,7 @@ sub manifests_menu
 	$an->data->{form}{anvil_node1_name_star}                = "";
 	$an->data->{form}{anvil_node1_bcn_ip_star}              = "";
 	$an->data->{form}{anvil_node1_ipmi_ip_star}             = "";
+	$an->data->{form}{anvil_node1_ipmi_user_star}           = "";
 	$an->data->{form}{anvil_node1_sn_ip_star}               = "";
 	$an->data->{form}{anvil_node1_ifn_ip_star}              = "";
 	$an->data->{form}{anvil_node1_pdu1_outlet_star}         = "";
@@ -2992,6 +2993,7 @@ sub manifests_menu
 	$an->data->{form}{anvil_node2_name_star}                = "";
 	$an->data->{form}{anvil_node2_bcn_ip_star}              = "";
 	$an->data->{form}{anvil_node2_ipmi_ip_star}             = "";
+	$an->data->{form}{anvil_node2_ipmi_user_star}           = "";
 	$an->data->{form}{anvil_node2_sn_ip_star}               = "";
 	$an->data->{form}{anvil_node2_ifn_ip_star}              = "";
 	$an->data->{form}{anvil_node2_pdu1_outlet_star}         = "";
@@ -3021,18 +3023,18 @@ sub manifests_menu
 	$an->data->{form}{'anvil_drbd_disk_c-fill-target_star'} = "";
 
 	# If the 'raw' was passed, present a form with the XML definition shown raw.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::raw", value1 => $an->data->{cgi}{raw},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{cgi}{raw})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::save", value1 => $an->data->{cgi}{save},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{save})
 		{
 			my $manifest_uuid = $an->ScanCore->save_install_manifest();
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "manifest_uuid", value1 => $manifest_uuid,
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3045,19 +3047,19 @@ sub manifests_menu
 		{
 			   $show_form = 0;
 			my $return    = $an->ScanCore->get_manifests();
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return", value1 => $return,
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $hash_ref (@{$return})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "hash_ref->manifest_uuid", value1 => $hash_ref->{manifest_uuid}, 
 					name2 => "cgi::manifest_uuid",      value2 => $an->data->{cgi}{manifest_uuid}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($hash_ref->{manifest_uuid} eq $an->data->{cgi}{manifest_uuid})
 				{
 					$an->data->{cgi}{manifest_data} = $hash_ref->{manifest_data};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "cgi::manifest_data", value1 => $an->data->{cgi}{manifest_uuid}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
@@ -3071,7 +3073,7 @@ sub manifests_menu
 	}
 	
 	# Generate a new one, if requested.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::generate", value1 => $an->data->{cgi}{generate},
 		name2 => "cgi::run",      value2 => $an->data->{cgi}{run},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3079,20 +3081,20 @@ sub manifests_menu
 	{
 		# Sanity check the user's answers and, if OK, returns 0. Any problem detected returns 1.
 		my $errors = $an->InstallManifest->sanity_check_manifest_answers();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "errors", value1 => $errors,
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $errors)
 		{
 			# No errors, save the manifest and create the download link.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cgi::confirm", value1 => $an->data->{cgi}{confirm},
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{cgi}{confirm})
 			{
 				$show_form = 0;
 				$an->InstallManifest->show_summary_manifest();
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "show_form", value1 => $show_form,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3100,7 +3102,7 @@ sub manifests_menu
 			{
 				# The form will redisplay after this.
 				my $manifest_uuid = $an->ScanCore->save_install_manifest();
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "manifest_uuid", value1 => $manifest_uuid,
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -3118,14 +3120,14 @@ sub manifests_menu
 	elsif ($an->data->{cgi}{run})
 	{
 		# Read in the install manifest.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "cgi::manifest_uuid", value1 => $an->data->{cgi}{manifest_uuid},
 			name2 => "cgi::anvil_name",    value2 => $an->data->{cgi}{anvil_name},
 		}, file => $THIS_FILE, line => __LINE__});
 		my $return     = $an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
 		my $anvil_name = $an->data->{cgi}{anvil_name};
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::confirm", value1 => $an->data->{cgi}{confirm},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{confirm})
@@ -3133,7 +3135,7 @@ sub manifests_menu
 			# Do it.
 			   $show_form     = 0;
 			my ($return_code) = $an->InstallManifest->run_new_install_manifest();
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "show_form",   value1 => $show_form,
 				name2 => "return_code", value2 => $return_code,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3208,14 +3210,14 @@ sub manifests_menu
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "show_form", value1 => $show_form,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($show_form)
 	{
 		# Show the existing install manifest files.
 		$an->InstallManifest->show_existing_install_manifests();
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::manifest_uuid", value1 => $an->data->{cgi}{manifest_uuid},
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3234,14 +3236,14 @@ sub manifests_menu
 		}
 		
 		# Set some default values if 'save' isn't set.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "cgi::load",     value1 => $an->data->{cgi}{load},
 			name2 => "cgi::generate", value2 => $an->data->{cgi}{generate},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{load})
 		{
 			$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 				name1  => "cgi::anvil_node1_bcn_link1_mac", value1  => $an->data->{cgi}{anvil_node1_bcn_link1_mac},
 				name2  => "cgi::anvil_node1_bcn_link2_mac", value2  => $an->data->{cgi}{anvil_node1_bcn_link2_mac},
 				name3  => "cgi::anvil_node1_sn_link1_mac",  value3  => $an->data->{cgi}{anvil_node1_sn_link1_mac},
@@ -3260,7 +3262,7 @@ sub manifests_menu
 		{
 			# This function uses sys::install_manifest::default::x if set.
 			my ($default_prefix, $default_domain) = $an->Striker->_get_striker_prefix_and_domain();
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "default_prefix", value1 => $default_prefix,
 				name2 => "default_domain", value2 => $default_domain,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3339,6 +3341,9 @@ sub manifests_menu
 			if (not $an->data->{cgi}{anvil_node1_name})         { $an->data->{cgi}{anvil_node1_name}         = $an->data->{sys}{install_manifest}{'default'}{node1_name}; }
 			if (not $an->data->{cgi}{anvil_node1_bcn_ip})       { $an->data->{cgi}{anvil_node1_bcn_ip}       = $an->data->{sys}{install_manifest}{'default'}{node1_bcn_ip}; }
 			if (not $an->data->{cgi}{anvil_node1_ipmi_ip})      { $an->data->{cgi}{anvil_node1_ipmi_ip}      = $an->data->{sys}{install_manifest}{'default'}{node1_ipmi_ip}; }
+			if (not $an->data->{cgi}{anvil_node1_ipmi_user})    { $an->data->{cgi}{anvil_node1_ipmi_user}    = $an->data->{sys}{install_manifest}{'default'}{node1_ipmi_user}; }
+			if (not $an->data->{cgi}{anvil_node1_ipmi_lanplus}) { $an->data->{cgi}{anvil_node1_ipmi_lanplus} = $an->data->{sys}{install_manifest}{'default'}{node1_ipmi_lanplus}; }
+			if (not $an->data->{cgi}{anvil_node1_ipmi_privlvl}) { $an->data->{cgi}{anvil_node1_ipmi_privlvl} = $an->data->{sys}{install_manifest}{'default'}{node1_ipmi_privlvl}; }
 			if (not $an->data->{cgi}{anvil_node1_sn_ip})        { $an->data->{cgi}{anvil_node1_sn_ip}        = $an->data->{sys}{install_manifest}{'default'}{node1_sn_ip}; }
 			if (not $an->data->{cgi}{anvil_node1_ifn_ip})       { $an->data->{cgi}{anvil_node1_ifn_ip}       = $an->data->{sys}{install_manifest}{'default'}{node1_ifn_ip}; }
 			if (not $an->data->{cgi}{anvil_node1_pdu1_outlet})  { $an->data->{cgi}{anvil_node1_pdu1_outlet}  = $an->data->{sys}{install_manifest}{'default'}{node1_pdu1_outlet}; }
@@ -3350,6 +3355,9 @@ sub manifests_menu
 			if (not $an->data->{cgi}{anvil_node2_name})         { $an->data->{cgi}{anvil_node2_name}         = $an->data->{sys}{install_manifest}{'default'}{node2_name}; }
 			if (not $an->data->{cgi}{anvil_node2_bcn_ip})       { $an->data->{cgi}{anvil_node2_bcn_ip}       = $an->data->{sys}{install_manifest}{'default'}{node2_bcn_ip}; }
 			if (not $an->data->{cgi}{anvil_node2_ipmi_ip})      { $an->data->{cgi}{anvil_node2_ipmi_ip}      = $an->data->{sys}{install_manifest}{'default'}{node2_ipmi_ip}; }
+			if (not $an->data->{cgi}{anvil_node2_ipmi_user})    { $an->data->{cgi}{anvil_node2_ipmi_user}    = $an->data->{sys}{install_manifest}{'default'}{node2_ipmi_user}; }
+			if (not $an->data->{cgi}{anvil_node2_ipmi_lanplus}) { $an->data->{cgi}{anvil_node2_ipmi_lanplus} = $an->data->{sys}{install_manifest}{'default'}{node2_ipmi_lanplus}; }
+			if (not $an->data->{cgi}{anvil_node2_ipmi_privlvl}) { $an->data->{cgi}{anvil_node2_ipmi_privlvl} = $an->data->{sys}{install_manifest}{'default'}{node2_ipmi_privlvl}; }
 			if (not $an->data->{cgi}{anvil_node2_sn_ip})        { $an->data->{cgi}{anvil_node2_sn_ip}        = $an->data->{sys}{install_manifest}{'default'}{node2_sn_ip}; }
 			if (not $an->data->{cgi}{anvil_node2_ifn_ip})       { $an->data->{cgi}{anvil_node2_ifn_ip}       = $an->data->{sys}{install_manifest}{'default'}{node2_ifn_ip}; }
 			if (not $an->data->{cgi}{anvil_node2_pdu1_outlet})  { $an->data->{cgi}{anvil_node2_pdu1_outlet}  = $an->data->{sys}{install_manifest}{'default'}{node2_pdu1_outlet}; }
@@ -3362,7 +3370,7 @@ sub manifests_menu
 		print $an->Web->template({file => "config.html", template => "install-manifest-form-header", replace => { form_file => "/cgi-bin/configure" }});
 		
 		# Record the manifest_uuid, if set.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::manifest_uuid", value1 => $an->data->{cgi}{manifest_uuid},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{manifest_uuid})
@@ -3375,7 +3383,7 @@ sub manifests_menu
 		}
 		
 		# Anvil! prefix
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::install_manifest::show::prefix_field", value1 => $an->data->{sys}{install_manifest}{show}{prefix_field},
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $an->data->{sys}{install_manifest}{show}{prefix_field})
@@ -3401,7 +3409,7 @@ sub manifests_menu
 		}
 		
 		# Anvil! sequence
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::install_manifest::show::sequence_field", value1 => $an->data->{sys}{install_manifest}{show}{sequence_field},
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $an->data->{sys}{install_manifest}{show}{sequence_field})
@@ -3427,7 +3435,7 @@ sub manifests_menu
 		}
 		
 		# Anvil! domain name
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::install_manifest::show::domain_field", value1 => $an->data->{sys}{install_manifest}{show}{domain_field},
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $an->data->{sys}{install_manifest}{show}{domain_field})
@@ -3456,7 +3464,7 @@ sub manifests_menu
 		}
 		
 		# Anvil! password - Skip if set and hidden.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "sys::install_manifest::default::password",    value1 => $an->data->{sys}{install_manifest}{'default'}{password},
 			name2 => "sys::install_manifest::show::password_field", value2 => $an->data->{sys}{install_manifest}{show}{password_field},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3483,7 +3491,7 @@ sub manifests_menu
 		}
 		
 		# Anvil! BCN Network definition
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "sys::install_manifest::default::bcn_network",     value1 => $an->data->{sys}{install_manifest}{'default'}{bcn_network},
 			name2 => "sys::install_manifest::default::bcn_subnet",      value2 => $an->data->{sys}{install_manifest}{'default'}{bcn_subnet},
 			name3 => "sys::install_manifest::show::bcn_network_fields", value3 => $an->data->{sys}{install_manifest}{show}{bcn_network_fields},
@@ -3530,7 +3538,7 @@ sub manifests_menu
 		}
 		
 		# Anvil! SN Network definition
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "sys::install_manifest::default::sn_network",     value1 => $an->data->{sys}{install_manifest}{'default'}{sn_network},
 			name2 => "sys::install_manifest::default::sn_subnet",      value2 => $an->data->{sys}{install_manifest}{'default'}{sn_subnet},
 			name3 => "sys::install_manifest::show::sn_network_fields", value3 => $an->data->{sys}{install_manifest}{show}{sn_network_fields},
@@ -3577,7 +3585,7 @@ sub manifests_menu
 		}
 		
 		# Anvil! IFN Network definition
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "sys::install_manifest::default::ifn_network",     value1 => $an->data->{sys}{install_manifest}{'default'}{ifn_network},
 			name2 => "sys::install_manifest::default::ifn_subnet",      value2 => $an->data->{sys}{install_manifest}{'default'}{ifn_subnet},
 			name3 => "sys::install_manifest::show::ifn_network_fields", value3 => $an->data->{sys}{install_manifest}{show}{ifn_network_fields},
@@ -3624,7 +3632,7 @@ sub manifests_menu
 		}
 		
 		# Anvil! Media Library size
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "sys::install_manifest::default::library_size", value1 => $an->data->{sys}{install_manifest}{'default'}{library_size},
 			name2 => "sys::install_manifest::default::library_unit", value2 => $an->data->{sys}{install_manifest}{'default'}{library_unit},
 			name3 => "sys::install_manifest::show::library_fields",  value3 => $an->data->{sys}{install_manifest}{show}{library_fields},
@@ -3798,7 +3806,7 @@ sub manifests_menu
 		}});
 		
 		# Store defined MAC addresses
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node1_bcn_link1_mac", value1 => $an->data->{cgi}{anvil_node1_bcn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node1_bcn_link1_mac})
@@ -3810,7 +3818,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node1_bcn_link2_mac", value1 => $an->data->{cgi}{anvil_node1_bcn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node1_bcn_link2_mac})
@@ -3822,7 +3830,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node1_sn_link1_mac", value1 => $an->data->{cgi}{anvil_node1_sn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node1_sn_link1_mac})
@@ -3834,7 +3842,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node1_sn_link2_mac", value1 => $an->data->{cgi}{anvil_node1_sn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node1_sn_link2_mac})
@@ -3846,7 +3854,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node1_ifn_link1_mac", value1 => $an->data->{cgi}{anvil_node1_ifn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node1_ifn_link1_mac})
@@ -3858,7 +3866,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node1_ifn_link2_mac", value1 => $an->data->{cgi}{anvil_node1_ifn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node1_ifn_link2_mac})
@@ -3870,7 +3878,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node2_bcn_link1_mac", value1 => $an->data->{cgi}{anvil_node2_bcn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node2_bcn_link1_mac})
@@ -3882,7 +3890,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node2_bcn_link2_mac", value1 => $an->data->{cgi}{anvil_node2_bcn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node2_bcn_link2_mac})
@@ -3894,7 +3902,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node2_sn_link1_mac", value1 => $an->data->{cgi}{anvil_node2_sn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node2_sn_link1_mac})
@@ -3906,7 +3914,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node2_sn_link2_mac", value1 => $an->data->{cgi}{anvil_node2_sn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node2_sn_link2_mac})
@@ -3918,7 +3926,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node2_ifn_link1_mac", value1 => $an->data->{cgi}{anvil_node2_ifn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node2_ifn_link1_mac})
@@ -3930,7 +3938,7 @@ sub manifests_menu
 			}});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_node2_ifn_link2_mac", value1 => $an->data->{cgi}{anvil_node2_ifn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{anvil_node2_ifn_link2_mac})
@@ -3943,7 +3951,7 @@ sub manifests_menu
 		}
 		
 		# Anvil! (cman cluster) Name
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "sys::install_manifest::default::name",    value1 => $an->data->{sys}{install_manifest}{'default'}{name},
 			name2 => "sys::install_manifest::show::name_field", value2 => $an->data->{sys}{install_manifest}{show}{name_field},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3977,7 +3985,7 @@ sub manifests_menu
 		}});
 		
 		# Anvil! IFN Gateway
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::install_manifest::show::ifn_network_fields", value1 => $an->data->{sys}{install_manifest}{show}{ifn_network_fields},
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $an->data->{sys}{install_manifest}{show}{ifn_network_fields})
@@ -4003,7 +4011,7 @@ sub manifests_menu
 		}
 		
 		# DNS
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::install_manifest::show::dns_fields", value1 => $an->data->{sys}{install_manifest}{show}{dns_fields},
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $an->data->{sys}{install_manifest}{show}{dns_fields})
@@ -4050,7 +4058,7 @@ sub manifests_menu
 		}
 		
 		# NTP
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::install_manifest::show::ntp_fields", value1 => $an->data->{sys}{install_manifest}{show}{ntp_fields},
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $an->data->{sys}{install_manifest}{show}{ntp_fields})
@@ -4308,7 +4316,7 @@ sub manifests_menu
 					options  => ["fence_apc_snmp#!#$say_apc_snmp", "fence_apc_alteeve#!#$say_apc_alteeve", "fence_raritan_snmp#!#$say_raritan"], 
 					blank    => 0,
 					selected => $an->data->{cgi}{$pdu_agent_key},
-					width    => 220,
+					width    => 230,
 				});
 			
 			if ($i == 1)
@@ -4529,12 +4537,14 @@ sub manifests_menu
 			my $title = $an->String->get({key => "title_0152", variables => { node_number => $j }});
 			print $an->Web->template({file => "config.html", template => "install-manifest-form-nodes-header", replace => { title => $title }});
 			
-			my $name_key        = "anvil_node${j}_name";
-			my $explain_name    = "";
-			my $explain_bcn_ip  = $an->data->{sys}{expert_ui} ? "#!string!terse_0070!#" : "#!string!explain_0070!#";
-			my $explain_ipmi_ip = $an->data->{sys}{expert_ui} ? "#!string!terse_0073!#" : "#!string!explain_0073!#";
-			my $explain_sn_ip   = $an->data->{sys}{expert_ui} ? "#!string!terse_0071!#" : "#!string!explain_0071!#";
-			my $explain_ifn_ip  = $an->data->{sys}{expert_ui} ? "#!string!terse_0072!#" : "#!string!explain_0072!#";
+			my $name_key             = "anvil_node${j}_name";
+			my $explain_name         = "";
+			my $explain_bcn_ip       = $an->data->{sys}{expert_ui} ? "#!string!terse_0070!#" : "#!string!explain_0070!#";
+			my $explain_ipmi_ip      = $an->data->{sys}{expert_ui} ? "#!string!terse_0073!#" : "#!string!explain_0073!#";
+			my $explain_ipmi_user    = $an->data->{sys}{expert_ui} ? "#!string!terse_0035!#" : "#!string!explain_0035!#";
+			my $explain_ipmi_lanplus = $an->data->{sys}{expert_ui} ? "#!string!terse_0036!#" : "#!string!explain_0036!#";
+			my $explain_sn_ip        = $an->data->{sys}{expert_ui} ? "#!string!terse_0071!#" : "#!string!explain_0071!#";
+			my $explain_ifn_ip       = $an->data->{sys}{expert_ui} ? "#!string!terse_0072!#" : "#!string!explain_0072!#";
 			if ($j == 1)
 			{
 				$explain_name = $an->data->{sys}{expert_ui} ? "#!string!terse_0068!#" : "#!string!explain_0068!#";
@@ -4603,7 +4613,7 @@ sub manifests_menu
 			my $anvil_node_ipmi_ip_star_key = "anvil_node${j}_ipmi_ip_star";
 			my $default_node_ipmi_ip_key    = "node${j}_ipmi_ip";
 			if (($an->data->{sys}{install_manifest}{'default'}{$default_node_ipmi_ip_key}) && 
-			    (not $an->data->{sys}{install_manifest}{show}{nodes_ipmi_field}))
+			    (not $an->data->{sys}{install_manifest}{show}{nodes_ipmi_ip_field}))
 			{
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	$anvil_node_ipmi_ip_key,
@@ -4622,6 +4632,66 @@ sub manifests_menu
 					value		=>	$an->data->{cgi}{$anvil_node_ipmi_ip_key},
 					star		=>	$an->data->{form}{$anvil_node_ipmi_ip_star_key},
 					more_info	=>	$anvil_node_ipmi_ip_more_info,
+				}});
+			}
+			
+			# Node's IPMI user
+			my $anvil_node_ipmi_user_key      = "anvil_node${j}_ipmi_user";
+			my $anvil_node_ipmi_user_star_key = "anvil_node${j}_ipmi_user_star";
+			my $default_node_ipmi_user_key    = "node${j}_ipmi_user";
+			if (($an->data->{sys}{install_manifest}{'default'}{$default_node_ipmi_user_key}) && 
+			    (not $an->data->{sys}{install_manifest}{show}{nodes_ipmi_user_field}))
+			{
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
+					name		=>	$anvil_node_ipmi_user_key,
+					id		=>	$anvil_node_ipmi_user_key,
+					value		=>	$an->data->{cgi}{$anvil_node_ipmi_user_key},
+				}});
+			}
+			else
+			{
+				my $anvil_node_ipmi_user_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.com/w/AN!Cluster_Tutorial_2#Find_the_IPMI_User_ID" }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
+					row		=>	"#!string!row_0001!#",
+					explain		=>	$explain_ipmi_user,
+					name		=>	$anvil_node_ipmi_user_key,
+					id		=>	$anvil_node_ipmi_user_key,
+					value		=>	$an->data->{cgi}{$anvil_node_ipmi_user_key},
+					star		=>	$an->data->{form}{$anvil_node_ipmi_user_star_key},
+					more_info	=>	$anvil_node_ipmi_user_more_info,
+				}});
+			}
+			
+			# Node's IPMI lanplus select
+			my $anvil_node_ipmi_lanplus_key   = "anvil_node${j}_ipmi_lanplus";
+			my $default_node_ipmi_lanplus_key = "node${j}_ipmi_lanplus";
+			if (($an->data->{sys}{install_manifest}{'default'}{$default_node_ipmi_lanplus_key}) && 
+			    (not $an->data->{sys}{install_manifest}{show}{nodes_ipmi_lanplus_field}))
+			{
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
+					name		=>	$anvil_node_ipmi_lanplus_key,
+					id		=>	$anvil_node_ipmi_lanplus_key,
+					value		=>	$an->data->{cgi}{$anvil_node_ipmi_lanplus_key},
+				}});
+			}
+			else
+			{
+				# Show the select box
+				my $node_lanplus = $an->Web->build_select({
+						name     => $anvil_node_ipmi_lanplus_key, 
+						options  => ["true#!##!string!state_0038!#", "false#!##!string!state_0102!#"], 
+						blank    => 0,
+						selected => $an->data->{cgi}{$anvil_node_ipmi_lanplus_key},
+						width    => 230,
+					});
+				
+				my $anvil_node_ipmi_lanplus_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://linux.die.net/man/1/ipmitool" }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-select-entry", replace => { 
+					row		=>	"#!string!row_0003!#",
+					explain		=>	$explain_ipmi_lanplus,
+					'select'	=>	$node_lanplus,
+					star		=>	"",
+					more_info	=>	$anvil_node_ipmi_lanplus_more_info,
 				}});
 			}
 			

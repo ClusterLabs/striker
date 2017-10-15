@@ -791,11 +791,17 @@ sub _set_defaults
 	$an->data->{sys}{install_manifest}{'default'}{node1_bcn_ip}                    = "";
 	$an->data->{sys}{install_manifest}{'default'}{node1_ifn_ip}                    = "";
 	$an->data->{sys}{install_manifest}{'default'}{node1_ipmi_ip}                   = "";
+	$an->data->{sys}{install_manifest}{'default'}{node1_ipmi_user}                 = "admin";
+	$an->data->{sys}{install_manifest}{'default'}{node1_ipmi_lanplus}              = 0;
+	$an->data->{sys}{install_manifest}{'default'}{node1_ipmi_privlvl}              = "USER";
 	$an->data->{sys}{install_manifest}{'default'}{node1_name}                      = "";
 	$an->data->{sys}{install_manifest}{'default'}{node1_sn_ip}                     = "";
 	$an->data->{sys}{install_manifest}{'default'}{node2_bcn_ip}                    = "";
 	$an->data->{sys}{install_manifest}{'default'}{node2_ifn_ip}                    = "";
 	$an->data->{sys}{install_manifest}{'default'}{node2_ipmi_ip}                   = "";
+	$an->data->{sys}{install_manifest}{'default'}{node2_ipmi_user}                 = "admin";
+	$an->data->{sys}{install_manifest}{'default'}{node2_ipmi_lanplus}              = 0;
+	$an->data->{sys}{install_manifest}{'default'}{node2_ipmi_privlvl}              = "USER";
 	$an->data->{sys}{install_manifest}{'default'}{node2_name}                      = "";
 	$an->data->{sys}{install_manifest}{'default'}{node2_sn_ip}                     = "";
 	$an->data->{sys}{install_manifest}{'default'}{node1_pdu1_outlet}               = "";
@@ -885,6 +891,8 @@ sub _set_defaults
 	$an->data->{sys}{install_manifest}{show}{nodes_name_field}                     = 1;
 	$an->data->{sys}{install_manifest}{show}{nodes_bcn_field}                      = 1;
 	$an->data->{sys}{install_manifest}{show}{nodes_ipmi_field}                     = 1;
+	$an->data->{sys}{install_manifest}{show}{nodes_ipmi_user_field}                = 1;
+	$an->data->{sys}{install_manifest}{show}{nodes_ipmi_lanplus_field}             = 1;
 	$an->data->{sys}{install_manifest}{show}{nodes_sn_field}                       = 1;
 	$an->data->{sys}{install_manifest}{show}{nodes_ifn_field}                      = 1;
 	$an->data->{sys}{install_manifest}{show}{nodes_pdu_fields}                     = 1;
@@ -1049,7 +1057,7 @@ sub _set_defaults
 	$an->data->{sys}{username}                             = getpwuid( $< );
 	# If a user wants to use spice + qxl for video in VMs, set this to '1'. NOTE: This disables web-based VNC!
 	$an->data->{sys}{use_spice_graphics}                   = 1;
-	$an->data->{sys}{version}                              = "2.0.3";
+	$an->data->{sys}{version}                              = "2.0.4";
 	# Adds: [--disablerepo='*' --enablerepo='striker*'] if
 	# no internet connection found.
 	$an->data->{sys}{yum_switches}                         = "-y";

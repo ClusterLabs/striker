@@ -14408,7 +14408,9 @@ sub sanity_check_manifest_answers
 	$an->data->{cgi}{anvil_striker2_bcn_ip} = "" if $an->data->{cgi}{anvil_striker2_bcn_ip} eq "--";
 	$an->data->{cgi}{anvil_striker2_ifn_ip} = "" if $an->data->{cgi}{anvil_striker2_ifn_ip} eq "--";
 	$an->data->{cgi}{anvil_node1_ipmi_ip}   = "" if $an->data->{cgi}{anvil_node1_ipmi_ip}   eq "--";
+	$an->data->{cgi}{anvil_node1_ipmi_user} = "" if $an->data->{cgi}{anvil_node1_ipmi_user} eq "--";
 	$an->data->{cgi}{anvil_node2_ipmi_ip}   = "" if $an->data->{cgi}{anvil_node2_ipmi_ip}   eq "--";
+	$an->data->{cgi}{anvil_node2_ipmi_user} = "" if $an->data->{cgi}{anvil_node2_ipmi_user} eq "--";
 	$an->data->{cgi}{anvil_open_vnc_ports}  = "" if $an->data->{cgi}{anvil_open_vnc_ports}  eq "--";
 	
 	## Check the common IFN values.
@@ -14980,6 +14982,15 @@ sub sanity_check_manifest_answers
 		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
+	# IPMI user has to be set.
+	if (not $an->data->{cgi}{anvil_node1_ipmi_user})
+	{
+		# Not allowed to be blank.
+		$an->data->{form}{anvil_node1_ipmi_user_star} = "#!string!symbol_0012!#";
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0001!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
+		$problem = 1;
+	}
 	# SN IP address
 	if (not $an->data->{cgi}{anvil_node1_sn_ip})
 	{
@@ -15089,6 +15100,15 @@ sub sanity_check_manifest_answers
 				field	=>	"#!string!row_0168!#", 
 				node	=>	"#!string!title_0157!#",
 			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
+		$problem = 1;
+	}
+	# IPMI user has to be set.
+	if (not $an->data->{cgi}{anvil_node2_ipmi_user})
+	{
+		# Not allowed to be blank.
+		$an->data->{form}{anvil_node2_ipmi_user_star} = "#!string!symbol_0012!#";
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0001!#" }});
 		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
@@ -16323,7 +16343,7 @@ sub show_existing_install_manifests
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "show_existing_install_manifests" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_existing_install_manifests" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $header_printed = 0;
 	my $return         = $an->ScanCore->get_manifests();
@@ -16348,7 +16368,7 @@ sub show_existing_install_manifests
 		my $anvil_name =  $an->data->{cgi}{anvil_name};
 		my $edit_date  =  $modified_date;
 		   $edit_date  =~ s/(:\d\d)\..*/$1/;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "anvil_name", value1 => $anvil_name,
 			name2 => "edit_date",  value2 => $edit_date,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -16388,7 +16408,7 @@ sub show_summary_manifest
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "show_summary_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_summary_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Show the manifest form.
 	my $say_repos =  $an->data->{cgi}{anvil_repositories};
@@ -16428,6 +16448,20 @@ sub show_summary_manifest
 		row		=>	"#!string!row_0168!#",
 		column1		=>	$an->data->{cgi}{anvil_node1_ipmi_ip},
 		column2		=>	$an->data->{cgi}{anvil_node2_ipmi_ip},
+	}});
+	
+	# Node IPMI User
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
+		row		=>	"#!string!row_0001!#",
+		column1		=>	$an->data->{cgi}{anvil_node1_ipmi_user},
+		column2		=>	$an->data->{cgi}{anvil_node2_ipmi_user},
+	}});
+	
+	# Node IPMI Lanplus
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
+		row		=>	"#!string!row_0003!#",
+		column1		=>	$an->data->{cgi}{anvil_node1_ipmi_lanplus} eq "true" ? "#!string!state_0038!#" : "#!string!state_0102!#",
+		column2		=>	$an->data->{cgi}{anvil_node2_ipmi_lanplus} eq "true" ? "#!string!state_0038!#" : "#!string!state_0102!#",
 	}});
 	
 	# Node SN IPs
@@ -16749,6 +16783,8 @@ sub show_summary_manifest
 		anvil_node1_bcn_link1_mac	=>	$an->data->{cgi}{anvil_node1_bcn_link1_mac},
 		anvil_node1_bcn_link2_mac	=>	$an->data->{cgi}{anvil_node1_bcn_link2_mac},
 		anvil_node1_ipmi_ip		=>	$an->data->{cgi}{anvil_node1_ipmi_ip},
+		anvil_node1_ipmi_user		=>	$an->data->{cgi}{anvil_node1_ipmi_user},
+		anvil_node1_ipmi_lanplus	=>	$an->data->{cgi}{anvil_node1_ipmi_lanplus},
 		anvil_node1_sn_ip		=>	$an->data->{cgi}{anvil_node1_sn_ip},
 		anvil_node1_sn_link1_mac	=>	$an->data->{cgi}{anvil_node1_sn_link1_mac},
 		anvil_node1_sn_link2_mac	=>	$an->data->{cgi}{anvil_node1_sn_link2_mac},
@@ -16764,6 +16800,8 @@ sub show_summary_manifest
 		anvil_node2_bcn_link1_mac	=>	$an->data->{cgi}{anvil_node2_bcn_link1_mac},
 		anvil_node2_bcn_link2_mac	=>	$an->data->{cgi}{anvil_node2_bcn_link2_mac},
 		anvil_node2_ipmi_ip		=>	$an->data->{cgi}{anvil_node2_ipmi_ip},
+		anvil_node2_ipmi_user		=>	$an->data->{cgi}{anvil_node2_ipmi_user},
+		anvil_node2_ipmi_lanplus	=>	$an->data->{cgi}{anvil_node2_ipmi_lanplus},
 		anvil_node2_sn_ip		=>	$an->data->{cgi}{anvil_node2_sn_ip},
 		anvil_node2_sn_link1_mac	=>	$an->data->{cgi}{anvil_node2_sn_link1_mac},
 		anvil_node2_sn_link2_mac	=>	$an->data->{cgi}{anvil_node2_sn_link2_mac},
@@ -16831,7 +16869,7 @@ sub summarize_build_plan
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "summarize_build_plan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "summarize_build_plan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1                = $an->data->{sys}{anvil}{node1}{name};
 	my $node2                = $an->data->{sys}{anvil}{node2}{name};

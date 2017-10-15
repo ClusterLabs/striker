@@ -206,7 +206,7 @@ sub check_all_cgi
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_all_cgi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_all_cgi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cgi = [
 		"adapter",
@@ -249,9 +249,11 @@ sub check_all_cgi
 		"anvil_node1_ifn_link2_mac",
 		"anvil_node1_ipmi_gateway",
 		"anvil_node1_ipmi_ip",
+		"anvil_node1_ipmi_user",
+		"anvil_node1_ipmi_lanplus",
+		"anvil_node1_ipmi_privlvl",
 		"anvil_node1_ipmi_netmask",
 		"anvil_node1_ipmi_password",
-		"anvil_node1_ipmi_user",
 		"anvil_node1_name",
 		"anvil_node1_pdu1_outlet",
 		"anvil_node1_pdu2_outlet",
@@ -273,6 +275,8 @@ sub check_all_cgi
 		"anvil_node2_ipmi_netmask",
 		"anvil_node2_ipmi_password",
 		"anvil_node2_ipmi_user",
+		"anvil_node2_ipmi_lanplus",
+		"anvil_node2_ipmi_privlvl",
 		"anvil_node2_name",
 		"anvil_node2_pdu1_outlet",
 		"anvil_node2_pdu2_outlet",
@@ -533,7 +537,7 @@ sub get_cgi
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_cgi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_cgi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure we have an array reference of variables to read.
 	my $variables = ref($parameter->{variables}) eq "ARRAY" ? $parameter->{variables} : "";
@@ -682,9 +686,15 @@ sub get_cgi
 			}
 			$say_variable .= " ";
 		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::$say_variable", value1 => $an->data->{cgi}{$variable},
-		}, file => $THIS_FILE, line => __LINE__});
+		
+		# THis prevents the same CGI being logged when this method is run a second time.
+		if (not exists $an->data->{cgi_seen}{$variable})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::$say_variable", value1 => $an->data->{cgi}{$variable},
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{cgi_seen}{$variable} = 1;
+		}
 	}
 	
 	return(0);

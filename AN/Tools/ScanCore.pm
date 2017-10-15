@@ -4934,14 +4934,16 @@ sub parse_install_manifest
 							name3 => "b->$key", value3 => $b->{$key}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
-					my $reference       = $b->{reference};
-					my $name            = $b->{name};
-					my $ip              = $b->{ip};
-					my $gateway         = $b->{gateway};
-					my $netmask         = $b->{netmask};
-					my $user            = $b->{user};
-					my $password        = $b->{password};
-					my $password_script = $b->{password_script};
+					my $reference       =         $b->{reference};
+					my $name            =         $b->{name};
+					my $ip              =         $b->{ip};
+					my $gateway         =         $b->{gateway};
+					my $netmask         =         $b->{netmask};
+					my $user            =         $b->{user};
+					my $lanplus         = defined $b->{lanplus} ? $b->{lanplus} : "";
+					my $privlvl         = defined $b->{privlvl} ? $b->{privlvl} : "";
+					my $password        =         $b->{password};
+					my $password_script =         $b->{password_script};
 					
 					# If the password is more than 16 characters long, truncate it so 
 					# that nodes with IPMI v1.5 don't spazz out.
@@ -4963,15 +4965,19 @@ sub parse_install_manifest
 					$an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{gateway}         = $gateway         ? $gateway         : "";
 					$an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{netmask}         = $netmask         ? $netmask         : "";
 					$an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{user}            = $user            ? $user            : "";
+					$an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{lanplus}         = $lanplus         ? $lanplus         : "";
+					$an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{privlvl}         = $privlvl         ? $privlvl         : "";
 					$an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{password}        = $password        ? $password        : "";
 					$an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{password_script} = $password_script ? $password_script : "";
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 						name1 => "install_manifest::${uuid}::node::${node}::ipmi::${reference}::name",            value1 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{name},
 						name2 => "install_manifest::${uuid}::node::${node}::ipmi::${reference}::ip",              value2 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{ip},
 						name3 => "install_manifest::${uuid}::node::${node}::ipmi::${reference}::netmask",         value3 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{netmask}, 
 						name4 => "install_manifest::${uuid}::node::${node}::ipmi::${reference}::gateway",         value4 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{gateway},
 						name5 => "install_manifest::${uuid}::node::${node}::ipmi::${reference}::user",            value5 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{user},
-						name6 => "install_manifest::${uuid}::node::${node}::ipmi::${reference}::password_script", value6 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{password_script},
+						name6 => "install_manifest::${uuid}::node::${node}::ipmi::${reference}::lanplus",         value6 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{lanplus},
+						name7 => "install_manifest::${uuid}::node::${node}::ipmi::${reference}::privlvl",         value7 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{privlvl},
+						name8 => "install_manifest::${uuid}::node::${node}::ipmi::${reference}::password_script", value8 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{password_script},
 					}, file => $THIS_FILE, line => __LINE__});
 					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 						name1 => "install_manifest::${uuid}::node::${node}::ipmi::${reference}::password", value1 => $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{password},
@@ -5360,33 +5366,39 @@ sub parse_install_manifest
 			{
 				foreach my $c (@{$a->{$b}->[0]->{ipmi}})
 				{
-					my $reference       = $c->{reference};
-					my $name            = $c->{name};
-					my $ip              = $c->{ip};
-					my $netmask         = $c->{netmask};
-					my $gateway         = $c->{gateway};
-					my $user            = $c->{user};
-					my $password        = $c->{password};
-					my $password_script = $c->{password_script};
-					my $agent           = $c->{agent};
+					my $reference       =         $c->{reference};
+					my $name            =         $c->{name};
+					my $ip              =         $c->{ip};
+					my $netmask         =         $c->{netmask};
+					my $gateway         =         $c->{gateway};
+					my $user            =         $c->{user};
+					my $password        =         $c->{password};
+					my $password_script =         $c->{password_script};
+					my $agent           =         $c->{agent};
+					my $lanplus         = defined $c->{lanplus} ? $c->{lanplus} : "";
+					my $privlvl         = defined $c->{privlvl} ? $c->{privlvl} : "";
 					
 					$an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{name}            = $name            ? $name            : "";
 					$an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{ip}              = $ip              ? $ip              : "";
 					$an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{netmask}         = $netmask         ? $netmask         : "";
 					$an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{gateway}         = $gateway         ? $gateway         : "";
 					$an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{user}            = $user            ? $user            : "";
+					$an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{lanplus}         = $lanplus         ? $lanplus         : "";
+					$an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{privlvl}         = $privlvl         ? $privlvl         : "";
 					$an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{password}        = $password        ? $password        : "";
 					$an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{password_script} = $password_script ? $password_script : "";
 					$an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{agent}           = $agent           ? $agent           : "fence_ipmilan";
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-						name1 => "install_manifest::${uuid}::common::ipmi::${reference}::name",             value1 => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{name},
-						name2 => "install_manifest::${uuid}::common::ipmi::${reference}::ip",               value2 => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{ip},
-						name3 => "install_manifest::${uuid}::common::ipmi::${reference}::netmask",          value3 => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{netmask},
-						name4 => "install_manifest::${uuid}::common::ipmi::${reference}::gateway",          value4 => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{gateway},
-						name5 => "install_manifest::${uuid}::common::ipmi::${reference}::user",             value5 => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{user},
-						name6 => "install_manifest::${uuid}::common::ipmi::${reference}::password_script",  value6 => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{password_script},
-						name7 => "install_manifest::${uuid}::common::ipmi::${reference}::agent",            value7 => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{agent},
-						name8 => "length(install_manifest::${uuid}::common::ipmi::${reference}::password)", value8 => length($an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{password}),
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+						name1  => "install_manifest::${uuid}::common::ipmi::${reference}::name",             value1  => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{name},
+						name2  => "install_manifest::${uuid}::common::ipmi::${reference}::ip",               value2  => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{ip},
+						name3  => "install_manifest::${uuid}::common::ipmi::${reference}::netmask",          value3  => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{netmask},
+						name4  => "install_manifest::${uuid}::common::ipmi::${reference}::gateway",          value4  => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{gateway},
+						name5  => "install_manifest::${uuid}::common::ipmi::${reference}::user",             value5  => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{user},
+						name6  => "install_manifest::${uuid}::common::ipmi::${reference}::lanplus",          value6  => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{lanplus},
+						name7  => "install_manifest::${uuid}::common::ipmi::${reference}::privlvl",          value7  => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{privlvl},
+						name8  => "install_manifest::${uuid}::common::ipmi::${reference}::password_script",  value8  => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{password_script},
+						name9  => "install_manifest::${uuid}::common::ipmi::${reference}::agent",            value9  => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{agent},
+						name10 => "length(install_manifest::${uuid}::common::ipmi::${reference}::password)", value10 => length($an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{password}),
 					}, file => $THIS_FILE, line => __LINE__});
 					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 						name1 => "install_manifest::${uuid}::common::ipmi::${reference}::password", value1 => $an->data->{install_manifest}{$uuid}{common}{ipmi}{$reference}{password},
@@ -5733,17 +5745,17 @@ sub parse_install_manifest
 		my $ifn_link1_mac_key = "anvil_node".$i."_ifn_link1_mac";
 		my $ifn_link2_mac_key = "anvil_node".$i."_ifn_link2_mac";
 		my $uuid_key          = "anvil_node".$i."_uuid";
-		
 		my $ipmi_ip_key       = "anvil_node".$i."_ipmi_ip";
 		my $ipmi_netmask_key  = "anvil_node".$i."_ipmi_netmask",
 		my $ipmi_gateway_key  = "anvil_node".$i."_ipmi_gateway",
 		my $ipmi_password_key = "anvil_node".$i."_ipmi_password",
 		my $ipmi_user_key     = "anvil_node".$i."_ipmi_user",
+		my $ipmi_lanplus_key  = "anvil_node".$i."_ipmi_lanplus",
+		my $ipmi_privlvl_key  = "anvil_node".$i."_ipmi_privlvl",
 		my $pdu1_key          = "anvil_node".$i."_pdu1_outlet";
 		my $pdu2_key          = "anvil_node".$i."_pdu2_outlet";
 		my $pdu3_key          = "anvil_node".$i."_pdu3_outlet";
 		my $pdu4_key          = "anvil_node".$i."_pdu4_outlet";
-		
 		my $default_ipmi_pw   =  $an->data->{cgi}{anvil_password};
 		
 		# Find the IPMI, PDU and KVM reference names
@@ -5829,25 +5841,29 @@ sub parse_install_manifest
 		$an->data->{cgi}{$ipmi_gateway_key}  = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{gateway}  ? $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{gateway}  : "";
 		$an->data->{cgi}{$ipmi_password_key} = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{password} ? $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{password} : $default_ipmi_pw;
 		$an->data->{cgi}{$ipmi_user_key}     = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{user}     ? $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{user}     : "admin";
+		$an->data->{cgi}{$ipmi_lanplus_key}  = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{lanplus}  ? $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{lanplus}  : "";
+		$an->data->{cgi}{$ipmi_privlvl_key}  = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{privlvl}  ? $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$ipmi_reference}{privlvl}  : "USER";
 		$an->data->{cgi}{$pdu1_key}          = $an->data->{install_manifest}{$uuid}{node}{$node}{pdu}{$pdu1_reference}{port};
 		$an->data->{cgi}{$pdu2_key}          = $an->data->{install_manifest}{$uuid}{node}{$node}{pdu}{$pdu2_reference}{port};
 		$an->data->{cgi}{$pdu3_key}          = $an->data->{install_manifest}{$uuid}{node}{$node}{pdu}{$pdu3_reference}{port};
 		$an->data->{cgi}{$pdu4_key}          = $an->data->{install_manifest}{$uuid}{node}{$node}{pdu}{$pdu4_reference}{port};
 		$an->data->{cgi}{$uuid_key}          = $an->data->{install_manifest}{$uuid}{node}{$node}{uuid}                            ? $an->data->{install_manifest}{$uuid}{node}{$node}{uuid}                            : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
 			name1  => "cgi::$name_key",          value1  => $an->data->{cgi}{$name_key},
 			name2  => "cgi::$bcn_ip_key",        value2  => $an->data->{cgi}{$bcn_ip_key},
 			name3  => "cgi::$ipmi_ip_key",       value3  => $an->data->{cgi}{$ipmi_ip_key},
 			name4  => "cgi::$ipmi_netmask_key",  value4  => $an->data->{cgi}{$ipmi_netmask_key},
 			name5  => "cgi::$ipmi_gateway_key",  value5  => $an->data->{cgi}{$ipmi_gateway_key},
 			name6  => "cgi::$ipmi_user_key",     value6  => $an->data->{cgi}{$ipmi_user_key},
-			name7  => "cgi::$sn_ip_key",         value7  => $an->data->{cgi}{$sn_ip_key},
-			name8  => "cgi::$ifn_ip_key",        value8  => $an->data->{cgi}{$ifn_ip_key},
-			name9  => "cgi::$pdu1_key",          value9  => $an->data->{cgi}{$pdu1_key},
-			name10 => "cgi::$pdu2_key",          value10 => $an->data->{cgi}{$pdu2_key},
-			name11 => "cgi::$pdu3_key",          value11 => $an->data->{cgi}{$pdu3_key},
-			name12 => "cgi::$pdu4_key",          value12 => $an->data->{cgi}{$pdu4_key},
-			name13 => "cgi::$uuid_key",          value13 => $an->data->{cgi}{$uuid_key},
+			name7  => "cgi::$ipmi_lanplus_key",  value7  => $an->data->{cgi}{$ipmi_lanplus_key},
+			name8  => "cgi::$ipmi_privlvl_key",  value8  => $an->data->{cgi}{$ipmi_privlvl_key},
+			name9  => "cgi::$sn_ip_key",         value9  => $an->data->{cgi}{$sn_ip_key},
+			name10 => "cgi::$ifn_ip_key",        value10 => $an->data->{cgi}{$ifn_ip_key},
+			name11 => "cgi::$pdu1_key",          value11 => $an->data->{cgi}{$pdu1_key},
+			name12 => "cgi::$pdu2_key",          value12 => $an->data->{cgi}{$pdu2_key},
+			name13 => "cgi::$pdu3_key",          value13 => $an->data->{cgi}{$pdu3_key},
+			name14 => "cgi::$pdu4_key",          value14 => $an->data->{cgi}{$pdu4_key},
+			name15 => "cgi::$uuid_key",          value15 => $an->data->{cgi}{$uuid_key},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::$ipmi_password_key", value1 => $an->data->{cgi}{$ipmi_password_key},
@@ -5960,8 +5976,21 @@ sub parse_install_manifest
 					my $name            = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{name};
 					my $ip              = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{ip};
 					my $user            = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{user};
+					my $lanplus         = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{lanplus};
+					my $privlvl         = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{privlvl};
 					my $password        = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{password};
 					my $password_script = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{password_script};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+						name1 => "name",            value1 => $name,
+						name2 => "ip",              value2 => $ip,
+						name3 => "user",            value3 => $user,
+						name4 => "lanplus",         value4 => $lanplus,
+						name5 => "privlvl",         value5 => $privlvl,
+						name6 => "password_script", value6 => $password_script,
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+						name1 => "password", value1 => $password,
+					}, file => $THIS_FILE, line => __LINE__});
 					if ((not $name) && ($ip))
 					{
 						$name = $ip;
@@ -5970,6 +5999,11 @@ sub parse_install_manifest
 					my $string =  "<device name=\"$reference\"";
 					   $string .= " ipaddr=\"$name\"" if $name;
 					   $string .= " login=\"$user\""  if $user;
+					if (($lanplus eq "true") or ($lanplus eq "1"))
+					{
+						# Add lanplus and privlvl
+						$string .= " lanplus=\"1\" privlvl=\"$privlvl\"";
+					}
 					# One or the other, not both.
 					if ($password)
 					{
@@ -5987,7 +6021,8 @@ sub parse_install_manifest
 					$string .= " action=\"reboot\" />";
 					$string =~ s/\s+/ /g;
 					$an->data->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
-					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+					
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "fence::node::${node}::order::${i}::method::${method}::device::${j}::string", value1 => $an->data->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string},
 					}, file => $THIS_FILE, line => __LINE__});
 					$j++;
@@ -6346,11 +6381,15 @@ sub save_install_manifest
 		my ($now_date, $now_time) = $an->Get->date_and_time();
 		my $date                  = "$now_date, $now_time";
 		
-		# Note yet supported but will be later.
+		# Not yet supported but will be later.
 		$an->data->{cgi}{anvil_node1_ipmi_password} = $an->data->{cgi}{anvil_node1_ipmi_password} ? $an->data->{cgi}{anvil_node1_ipmi_password} : $an->data->{cgi}{anvil_password};
 		$an->data->{cgi}{anvil_node1_ipmi_user}     = $an->data->{cgi}{anvil_node1_ipmi_user}     ? $an->data->{cgi}{anvil_node1_ipmi_user}     : "admin";
+		$an->data->{cgi}{anvil_node1_ipmi_lanplus}  = $an->data->{cgi}{anvil_node1_ipmi_lanplus}  ? $an->data->{cgi}{anvil_node1_ipmi_lanplus}  : "false";
+		$an->data->{cgi}{anvil_node1_ipmi_privlvl}  = $an->data->{cgi}{anvil_node1_ipmi_privlvl}  ? $an->data->{cgi}{anvil_node1_ipmi_privlvl}  : "USER";
 		$an->data->{cgi}{anvil_node2_ipmi_password} = $an->data->{cgi}{anvil_node2_ipmi_password} ? $an->data->{cgi}{anvil_node2_ipmi_password} : $an->data->{cgi}{anvil_password};
 		$an->data->{cgi}{anvil_node2_ipmi_user}     = $an->data->{cgi}{anvil_node2_ipmi_user}     ? $an->data->{cgi}{anvil_node2_ipmi_user}     : "admin";
+		$an->data->{cgi}{anvil_node2_ipmi_lanplus}  = $an->data->{cgi}{anvil_node2_ipmi_lanplus}  ? $an->data->{cgi}{anvil_node2_ipmi_lanplus}  : "false";
+		$an->data->{cgi}{anvil_node2_ipmi_privlvl}  = $an->data->{cgi}{anvil_node2_ipmi_privlvl}  ? $an->data->{cgi}{anvil_node2_ipmi_privlvl}  : "USER";
 		
 		# Generate UUIDs if needed.
 		$an->data->{cgi}{anvil_node1_uuid}          = $an->Get->uuid() if not $an->data->{cgi}{anvil_node1_uuid};
@@ -6434,7 +6473,7 @@ Striker Version: ".$an->data->{sys}{version}."
 			<ifn ip=\"".$an->data->{cgi}{anvil_node1_ifn_ip}."\" />
 		</network>
 		<ipmi>
-			<on reference=\"ipmi_n01\" ip=\"".$an->data->{cgi}{anvil_node1_ipmi_ip}."\" netmask=\"$node1_ipmi_netmask\" user=\"".$an->data->{cgi}{anvil_node1_ipmi_user}."\" password=\"".$an->data->{cgi}{anvil_node1_ipmi_password}."\" gateway=\"\" />
+			<on reference=\"ipmi_n01\" ip=\"".$an->data->{cgi}{anvil_node1_ipmi_ip}."\" netmask=\"$node1_ipmi_netmask\" user=\"".$an->data->{cgi}{anvil_node1_ipmi_user}."\" password=\"".$an->data->{cgi}{anvil_node1_ipmi_password}."\" gateway=\"\" lanplus=\"".$an->data->{cgi}{anvil_node1_ipmi_lanplus}."\" privlvl=\"".$an->data->{cgi}{anvil_node1_ipmi_privlvl}."\" />
 		</ipmi>
 		<pdu>
 			<on reference=\"pdu01\" port=\"".$an->data->{cgi}{anvil_node1_pdu1_outlet}."\" />
@@ -6462,7 +6501,7 @@ Striker Version: ".$an->data->{sys}{version}."
 			<ifn ip=\"".$an->data->{cgi}{anvil_node2_ifn_ip}."\" />
 		</network>
 		<ipmi>
-			<on reference=\"ipmi_n02\" ip=\"".$an->data->{cgi}{anvil_node2_ipmi_ip}."\" netmask=\"$node2_ipmi_netmask\" user=\"".$an->data->{cgi}{anvil_node2_ipmi_user}."\" password=\"".$an->data->{cgi}{anvil_node2_ipmi_password}."\" gateway=\"\" />
+			<on reference=\"ipmi_n02\" ip=\"".$an->data->{cgi}{anvil_node2_ipmi_ip}."\" netmask=\"$node2_ipmi_netmask\" user=\"".$an->data->{cgi}{anvil_node2_ipmi_user}."\" password=\"".$an->data->{cgi}{anvil_node2_ipmi_password}."\" gateway=\"\" lanplus=\"".$an->data->{cgi}{anvil_node2_ipmi_lanplus}."\" privlvl=\"".$an->data->{cgi}{anvil_node2_ipmi_privlvl}."\" />
 		</ipmi>
 		<pdu>
 			<on reference=\"pdu01\" port=\"".$an->data->{cgi}{anvil_node2_pdu1_outlet}."\" />
