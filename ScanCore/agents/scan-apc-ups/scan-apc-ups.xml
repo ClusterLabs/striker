@@ -314,7 +314,7 @@ Warning: The UPS watchdog feature is enabled! If the UPS was counting down
 		<key name="scan_apc_ups_health_0000">Communication with the UPS has been lost.</key>
 		<key name="scan_apc_ups_health_0001">The UPS's health is in an unknown state.</key>
 		<key name="scan_apc_ups_health_0002">The UPS is operating normally.</key>
-		<key name="scan_apc_ups_health_0003">The UPS is running on its batteries. It is likely that the input power feeding the UPS has failed.</key>
+		<key name="scan_apc_ups_health_0003">The UPS is running on its batteries. It is likely that the input power feeding the UPS has failed. Check for an input voltage alert.</key>
 		<key name="scan_apc_ups_health_0004">The UPS is compensating for low input power.</key>
 		<key name="scan_apc_ups_health_0005">The UPS is in a timed sleep. It will power back on when the timer has expired.</key>
 		<key name="scan_apc_ups_health_0006">The UPS is in bypass-mode and was placed in this mode by software. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.</key>
@@ -332,6 +332,10 @@ Warning: The UPS watchdog feature is enabled! If the UPS was counting down
 		<key name="scan_apc_ups_health_0018">The UPS is in power saving mode. The front panel display will be off but the UPS is operating normally.</key>
 		<key name="scan_apc_ups_health_0019">The UPS is in SPoT (Self Power Test) operating mode.</key> <!-- http://www.apcmedia.com/salestools/COCR-9TZK8N/COCR-9TZK8N_R0_EN.pdf -->
 		<key name="scan_apc_ups_health_0020">The UPS is in ECOnversion mode. The UPS is providing power to the downstream devices via the bypass. The UPS's inverter is operational and ready to take over the output load if an input fault occurs.</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
+		<!-- These are fake levels used in our own logic -->
+		<key name="scan_apc_ups_health_0030">The UPS is running on its batteries. The input voltage has risen too high, so the UPS has switched to batteries to trim the output voltage.</key>
+		<key name="scan_apc_ups_health_0031">The UPS is running on its batteries. The input voltage has dropped too low, so the UPS has switched to batteries to boost the output voltage.</key>
+		<key name="scan_apc_ups_health_0030">The UPS is running on its batteries. The input voltage is nominal, though, so this is most likely just a self test and not a cause for concern.</key>
 		<!-- This is used to catch invalid returned values. -->
 		<key name="scan_apc_ups_health_0099">The UPS Reported a health value that isn't recognized. It should have reported an integer between 1~20, but: [#!variable!bad_value!#] was received..</key> <!-- http://www.apcmedia.com/salestools/MBPN-9HCLNT/MBPN-9HCLNT_R0_EN.pdf -->
 		
