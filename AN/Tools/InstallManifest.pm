@@ -4841,7 +4841,11 @@ sub configure_scancore_on_node
 	my $return_code = 255;
 	my $message     = "";
 	
-	### First, setup to host UUID.
+	# Delete these so that there isn't data from a previous node's run.
+	$an->data->{used_db_id}   = {};
+	$an->data->{used_db_host} = {};
+	
+	# Setup to host UUID.
 	$host_uuid = $an->Storage->prep_uuid({
 			node      => $node, 
 			target    => $target, 
@@ -5102,12 +5106,54 @@ fi;
 				foreach my $line (split/\n/, $striker_config)
 				{
 					$new_striker_config .= "$line\n";
-					if ($line =~ /#scancore::db::2::password\s+=\s+Initial1/)
+					if ($line =~ /#scancore::db::2::password\s+=\s+/)
 					{
 						# Inject
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "add_striker_1", value1 => $add_striker_1,
 						}, file => $THIS_FILE, line => __LINE__});
+						
+						# NOTE: We need to use the DB passwords.
+						my $striker_1_password = $an->data->{sys}{anvil}{password};
+						my $striker_2_password = $an->data->{sys}{anvil}{password};
+						foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+						{
+							my $host     = $an->data->{scancore}{db}{$id}{host};
+							my $password = $an->data->{scancore}{db}{$id}{password};
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",   value1 => $id,
+								name2 => "host", value2 => $host,
+							}, file => $THIS_FILE, line => __LINE__});
+							$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+								name1 => "password", value1 => $password,
+							}, file => $THIS_FILE, line => __LINE__});
+							next if not $host;
+							
+							# Convert the hostname to an IP, if it isn't already,
+							# as that is what we use in the nodes.
+							if (not $an->Validate->is_ipv4({ip => $host}))
+							{
+								$host = $an->Get->ip_from_hostname({host_name => $host});
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "host", value1 => $host,
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+							
+							if ($host eq $striker_1_bcn_ip)
+							{
+								$striker_1_password = $password;
+								$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+									name1 => "striker_1_password", value1 => $striker_1_password,
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+							if ($host eq $striker_2_bcn_ip)
+							{
+								$striker_2_password = $password;
+								$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+									name1 => "striker_2_password", value1 => $striker_2_password,
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+						}
 						if ($add_striker_1)
 						{
 							my $db_host = $striker_1_bcn_ip;
@@ -5120,7 +5166,7 @@ fi;
 							$new_striker_config .= "scancore::db::${db_id}::port			=	5432\n";
 							$new_striker_config .= "scancore::db::${db_id}::name			=	".$an->data->{sys}{scancore_database}."\n";
 							$new_striker_config .= "scancore::db::${db_id}::user			=	".$an->data->{sys}{striker_user}."\n";
-							$new_striker_config .= "scancore::db::${db_id}::password		=	".$an->data->{sys}{anvil}{password}."\n\n";
+							$new_striker_config .= "scancore::db::${db_id}::password		=	".$striker_1_password."\n\n";
 						}
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "add_striker_2", value1 => $add_striker_2,
@@ -5137,7 +5183,7 @@ fi;
 							$new_striker_config .= "scancore::db::${db_id}::port			=	5432\n";
 							$new_striker_config .= "scancore::db::${db_id}::name			=	".$an->data->{sys}{scancore_database}."\n";
 							$new_striker_config .= "scancore::db::${db_id}::user			=	".$an->data->{sys}{striker_user}."\n";
-							$new_striker_config .= "scancore::db::${db_id}::password		=	".$an->data->{sys}{anvil}{password}."\n\n";
+							$new_striker_config .= "scancore::db::${db_id}::password		=	".$striker_2_password."\n\n";
 						}
 					}
 				}
