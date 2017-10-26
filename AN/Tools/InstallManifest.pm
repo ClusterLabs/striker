@@ -13820,6 +13820,7 @@ sub run_new_install_manifest
 		'cyrus-sasl'			=>	0,
 		'cyrus-sasl-plain'		=>	0,
 		dmidecode			=>	0,
+		dos2unix			=>	0,
 		'drbd84-utils'			=>	0,
 		expect				=>	0,
 		'fence-agents'			=>	0,

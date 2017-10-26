@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This strings file is for the HPE RAID controller Scan Agent using the HP Array Configuration Utility CLI 
+tool. Please be careful not to use names used by the main Striker strings file. Do this by prefixing all 
+strings with 'scan_hpacucli_'.
+-->
+<strings>
+	<!-- Canadian English -->
+	<name>scan-apc-ups.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA</langs>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the hpacucli Scan Agent.</key>
+		
+		<!-- Strings that can change by rebranding -->
+		<key name="scan_hpacucli_brand_0001">HP Enterprise RAID controller scan agent using the 'hpacucli' tool</key>
+		
+		<!-- Storcli Agent-specific messages -->
+		<key name="scan_hpacucli_message_0001">Starting #!string!scan_hpacucli_brand_0001!#:</key>
+		<key name="scan_hpacucli_message_0002"><![CDATA[
+ -=] Broadcom (LSI/Avago) RAID Controller Scan Agent
+
+DESCRIPTION
+
+This program is a "scan agent" for the ScanCore alert, monitoring and recovery
+tool for the Anvil! Intelligent Availability™ platform.
+
+It monitors health of HPE-type RAID controllers using the HP Array 
+Configuration Utility CLI 'hpacucli' command line tool. 
+
+On Anvil! nodes, the thermal information returned by the controller, BBU/FBU 
+and individual physical drives will be used by ScanCore to help determine when
+a node is getting dangerously hot. This information (along with thermal sensor
+data from other scan agents) will be used to decide when a node needs to be 
+powered down to avoid a dangerous over-temperature excursion.
+
+
+SWITCHES
+
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+ --prep-db
+
+	If passed, the schema will be loaded into the database (if not 
+	already), even if no controllers are found. Note: This won't work if 
+	the agent has been manually disabled via 'scan-hpacucli::disable'.
+
+                  
+SUPPORT
+
+https://alteeve.com/w/Support
+
+							      Alteeve's Niche!
+		]]></key>
+		
+		<!-- Errors -->
+		<key name="scan_hpacucli_error_0001">The 'hpacucli' program was not found at: [#!variable!path!#], exiting.</key>
+		<key name="scan_hpacucli_error_0002">The 'hpacucli' program was found at: [#!variable!path!#], but it is not executable. exiting.</key>
+		<key name="scan_hpacucli_error_0003">No HPE-type RAID controllers were found, exiting.</key>
+		<key name="scan_hpacucli_error_0004">Failed to find the serial number for the adapter: [#!variable!adapter!#]. Please check the output of '#!data!path::hpacucli!# #!data!sys::arguments::controller_info!#' and look for the 'Serial Number = X' string. Exiting.</key>
+		<key name="scan_hpacucli_error_0005">The attempt to generate the XML diagnostics file: [#!variable!file!#].</key>
+		
+		<!-- Log strings -->
+		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>
+	</lang>
+</strings>

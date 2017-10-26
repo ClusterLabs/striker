@@ -13,6 +13,7 @@ my $THIS_FILE = "Convert.pm";
 # convert_format_mmddyy_to_yymmdd
 # convert_to_celsius
 # convert_to_fahrenheit
+# hex_to_decimal
 
 #############################################################################################################
 # House keeping methods                                                                                     #
@@ -134,6 +135,25 @@ sub convert_to_fahrenheit
 	return($new_temperature);
 }
 
+# This converts a hexidecimal value to a decimal value.
+sub hex_to_decimal
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => { function => "hex_to_decimal" }, file => $THIS_FILE, line => __LINE__});
+	
+	my $hex = $parameter->{hex};
+	return("#!null!#") if not defined $hex;
+	
+	my $decimal = hex($hex);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "hex",     value1 => $hex, 
+		name2 => "decimal", value2 => $decimal, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($decimal);
+}
 
 #############################################################################################################
 # Internal methods                                                                                          #

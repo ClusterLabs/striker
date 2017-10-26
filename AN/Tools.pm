@@ -1145,6 +1145,7 @@ sub _set_paths
 	$an->data->{path}{gethostip}              = "/usr/bin/gethostip";
 	$an->data->{path}{gfs2_tool}              = "/usr/sbin/gfs2_tool";
 	$an->data->{path}{hostname}               = "/bin/hostname";
+	$an->data->{path}{hpacucli}               = "/usr/sbin/hpacucli",
 	$an->data->{path}{htpasswd}               = "/usr/bin/htpasswd";
 	$an->data->{path}{ifconfig}               = "/sbin/ifconfig";
 	$an->data->{path}{ip}                     = "/sbin/ip";
