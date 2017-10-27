@@ -249,7 +249,7 @@ $an->nice_exit({exit_code => 0});
 sub get_controller_info
 {
 	my ($an, $controller) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_controller_info" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_controller_info" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "controller", value1 => $controller, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -262,7 +262,7 @@ sub get_controller_info
 	my $box                 = "";
 	my $bay                 = "";
 	my $shell_call          = $an->data->{path}{hpacucli}." controller slot=".$controller." show config detail";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -272,15 +272,23 @@ sub get_controller_info
 		my $line =  $an->String->clean_spaces({string => $_});
 		   $line =~ s/\r//;
 		next if not $line;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /Serial Number: (.*?)$/)
+
+		if (($line =~ /Serial Number: (.*?)$/) && (not $port) && (not $box) && (not $bay))
 		{
 			$serial_number = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "serial_number", value1 => $serial_number, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Make a reference between the slot and SN
+			$an->data->{controller}{metadata}{sn_to_slot}{$serial_number} = $controller;
+			$an->data->{controller}{metadata}{slot_to_sn}{$controller}    = $serial_number;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "controller::metadata::sn_to_slot::${serial_number}", value1 => $an->data->{controller}{metadata}{sn_to_slot}{$serial_number}, 
+				name2 => "controller::metadata::slot_to_sn::${controller}",    value2 => $an->data->{controller}{metadata}{slot_to_sn}{$controller}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -289,17 +297,26 @@ sub get_controller_info
 		if ($line =~ /Cache Serial Number: (.*?)$/i)
 		{
 			$cache_serial_number = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cache_serial_number", value1 => $cache_serial_number, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
 		
-		if ($line =~ /Array: (.*?)/i)
+		if ($line =~ /Array: (.*?)$/i)
 		{
 			$array = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "array", value1 => $array, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		if ($line =~ /Logical Drive: (.*?)$/i)
+		{
+			$logical_drive = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "logical_drive", value1 => $logical_drive, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -309,7 +326,7 @@ sub get_controller_info
 			$port = $1;
 			$box  = $2;
 			$bay  = $3;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "port", value1 => $port, 
 				name2 => "box",  value2 => $box, 
 				name3 => "bay",  value3 => $bay, 
@@ -317,14 +334,14 @@ sub get_controller_info
 			next;
 		}
 		
-		if (lc($line) eq "unassaigned")
+		if (lc($line) eq "unassigned")
 		{
-			$array         = "9999";
+			$array         = "ZZZZ";
 			$logical_drive = "9999";
 			$port          = "";
 			$box           = "";
 			$bay           = "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "array",         value1 => $array, 
 				name2 => "logical_drive", value2 => $logical_drive, 
 				name3 => "port",          value3 => $port, 
@@ -339,12 +356,12 @@ sub get_controller_info
 		next if $line =~ /^$/i;
 		next if $line =~ /^$/i;
 		
-		my $type = "variable";
+		my $type = "detail";
 		if ($line =~ /^(.*?): (.*)$/)
 		{
 			my $variable = $1;
 			my $value    = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "variable", value1 => $variable, 
 				name2 => "value",    value2 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -355,7 +372,7 @@ sub get_controller_info
 				$variable =~ s/ \(C\)$//i;
 				$variable =  $an->String->clean_spaces({string => $variable});
 				$type     =  "temperature";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
 					name3 => "type",     value3 => $type, 
@@ -368,7 +385,7 @@ sub get_controller_info
 				$variable =  $an->String->clean_spaces({string => $variable});
 				$value    =  $an->Convert->convert_to_celsius({temperature => $value});
 				$type     =  "temperature";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "variable", value1 => $variable, 
 					name2 => "value",    value2 => $value, 
 					name3 => "type",     value3 => $type, 
@@ -376,7 +393,7 @@ sub get_controller_info
 			}
 			
 			# Save it.
-			if (exists $an->data->{controller}{serial_number}{$serial_number}{$type}{$variable})
+			if (exists $an->data->{controller}{$serial_number}{$type}{$variable})
 			{
 				# Conflict! This is a dirty way to keep them separate
 				$variable .= " 2";
@@ -387,17 +404,44 @@ sub get_controller_info
 			# What am I saving?
 			if (($port) && ($box) && ($bay))
 			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				# Physical drive info
 				$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{$type}{$variable} = $value;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "controller::${serial_number}::array::${array}::logical_drive::${logical_drive}::physical_drive::port::${port}::box::${box}::bay::${bay}::${type}::$variable", value1 => $an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{$type}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Map the SN to it's current location.
+				if ($line =~ /Serial Number: (.*?)$/)
+				{
+					   $pd_serial_number = $1;
+					my $location         = $port.":".$box.":".$bay;
+					$an->data->{physical_drive}{by_serial_number}{$serial_number} = {
+						array         => $array,
+						logical_drive => $logical_drive,
+						port          => $port,
+						box           => $box,
+						bay           => $bay,
+					};
+					$an->data->{physical_drive}{by_location}{$location} = $pd_serial_number;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+						name1 => "physical_drive::by_serial_number::${serial_number}::array",         value1 => $an->data->{physical_drive}{by_serial_number}{$serial_number}{array}, 
+						name2 => "physical_drive::by_serial_number::${serial_number}::logical_drive", value2 => $an->data->{physical_drive}{by_serial_number}{$serial_number}{logical_drive}, 
+						name3 => "physical_drive::by_serial_number::${serial_number}::port",          value3 => $an->data->{physical_drive}{by_serial_number}{$serial_number}{port}, 
+						name4 => "physical_drive::by_serial_number::${serial_number}::box",           value4 => $an->data->{physical_drive}{by_serial_number}{$serial_number}{box}, 
+						name5 => "physical_drive::by_serial_number::${serial_number}::bay",           value5 => $an->data->{physical_drive}{by_serial_number}{$serial_number}{bay}, 
+						name6 => "physical_drive::by_location::$location",                            value6 => $an->data->{physical_drive}{by_location}{$location}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 			elsif ($logical_drive)
 			{
 				# Logical drive
 				$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{$type}{$variable} = $value;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "controller::${serial_number}::array::${array}::logical_drive::${logical_drive}::data::${type}::$variable", value1 => $an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{$type}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -405,16 +449,16 @@ sub get_controller_info
 			{
 				# Array
 				$an->data->{controller}{$serial_number}{array}{$array}{data}{$type}{$variable} = $value;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "controller::${serial_number}::array::${array}::data::${type}::$variable", value1 => $an->data->{controller}{$serial_number}{array}{$array}{data}{$type}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				# Controller data
-				$an->data->{controller}{$serial_number}{array}{$array}{data}{$type}{$variable} = $value;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "controller::${serial_number}::array::${array}::data::${type}::$variable", value1 => $an->data->{controller}{$serial_number}{array}{$array}{data}{$type}{$variable}, 
+				$an->data->{controller}{$serial_number}{data}{$type}{$variable} = $value;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "controller::${serial_number}::data::${type}::$variable", value1 => $an->data->{controller}{$serial_number}{data}{$type}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -429,7 +473,7 @@ sub get_controller_info
 		$an->nice_exit({exit_code => 6});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "serial_number", value1 => $serial_number,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($serial_number);
@@ -439,7 +483,7 @@ sub get_controller_info
 sub get_diagnostics
 {
 	my ($an, $controller) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_diagnostics" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_diagnostics" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "controller", value1 => $controller, 
 	}, file => $THIS_FILE, line => __LINE__});
 
@@ -480,18 +524,15 @@ sub get_diagnostics
 	if ($an->data->{sys}{process_diagnostics})
 	{
 		# Yup! We use hpacucli's diagnostics to gather all data.
-		my $zip_file   = "scan-hpacucli_diagnostics-".time.".zip";
-		my $xml_file   = "scan-hpacucli_diagnostics-".time.".xml";
 # 		my $shell_call = "
 # cd /tmp/
-# ".$an->data->{path}{hpacucli}." controller all diag file=/tmp/$zip_file
-# ".$an->data->{path}{'unzip'}." -o /tmp/$zip_file -d /tmp/
+# ".$an->data->{path}{hpacucli}." controller slot=$controller diag file=/tmp/ADUReport.zip
+# ".$an->data->{path}{'unzip'}." -o /tmp/ADUReport.zip -d /tmp/
 # if [ -e '/tmp/ADUReport.xml' ];
 # then
-#     ".$an->data->{path}{mv}." /tmp/ADUReport.xml /tmp/$xml_file
-#     ".$an->data->{path}{rm}." -f /tmp/$zip_file
+#     ".$an->data->{path}{rm}." -f /tmp/ADUReport.zip
 #     ".$an->data->{path}{rm}." -f /tmp/ADUReport.htm
-#     ".$an->data->{path}{rm}." -f /tmp/ADUReport.txt
+#     ".$an->data->{path}{rm}." -f /tmp/ADUReport.xml
 #     ".$an->data->{path}{rm}." -f /tmp/report.checksum
 # fi
 # ";
@@ -510,76 +551,206 @@ sub get_diagnostics
 # 		close $file_handle;
 		
 		# Did it work?
-		if (not -r "/tmp/ADUReport.xml")
+		if (not -r "/tmp/ADUReport.txt")
 		{
 			# Something went wrong.
-			print $an->String->get({key => "scan_hpacucli_error_0001", variables => { path => "/tmp/$xml_file" }})."\n";
-			$an->Log->entry({log_level => 0, message_key => "scan_hpacucli_error_0001", message_variables => { file => "/tmp/$xml_file" }, file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "scan_hpacucli_error_0005", variables => { path => "/tmp/ADUReport.txt" }})."\n";
+			$an->Log->entry({log_level => 0, message_key => "scan_hpacucli_error_0005", message_variables => { file => "/tmp/ADUReport.txt" }, file => $THIS_FILE, line => __LINE__});
 			$an->nice_exit({exit_code => 4});
 		}
 		
+		# Get this controller's serial number
+		my $serial_number = $an->data->{controller}{metadata}{slot_to_sn}{$controller};
+		print $THIS_FILE." ".__LINE__."; controller serial number: [$serial_number]\n";
+		
 		# Parse!
-		my $xml  = XML::Simple->new();
-		my $data = $xml->XMLin("/tmp/ADUReport.xml", KeyAttr => {MetaProperty => 'id', Device => 'id', MetaPropertyStructure => 'id'}, ForceArray => 1);
-		#unlink "/tmp/$xml_file";
-		
-		use Data::Dumper;
-		#print Dumper $data;
-		my $hpacucli_version   = $data->{MetaProperty}->{'ACU-CLI Version'}->{value};
-		my $diagnostic_version = $data->{MetaProperty}->{'Diagnostic Module Version'}->{value};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "hpacucli_version",   value1 => $hpacucli_version, 
-			name2 => "diagnostic_version", value2 => $diagnostic_version, 
+		my $in_cache_config_status = 0;
+		my $in_physical_drive      = 0;
+		my $pd_serial_number       = "";
+		my $port                   = "";
+		my $box                    = "";
+		my $bay                    = "";
+		my $skip_blank_line        = 0;
+		#$shell_call = "/tmp/ADUReport.txt";
+		my $shell_call = "/tmp/ADUReport.txt";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $controller_serial_number  = "";
-		my $controller_marketing_name = "";
-		my $controller_device_type    = "";
-		foreach my $key1 (sort {$a cmp $b} keys %{$data->{Device}})
+		#open ($file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
+		while (<$file_handle>)
 		{
-			# This should be 'AC:<serial_number>'
-			#print $THIS_FILE." ".__LINE__."; key1: [$key1]\n";
-			next if $key1 !~ /^AC:/;
-			$controller_serial_number  = ($key1 =~ /^AC:(.*?)$/)[0];
-			$controller_marketing_name = $data->{Device}->{$key1}->{marketingName};
-			$controller_device_type    = $data->{Device}->{$key1}->{deviceType};
+			chomp;
+			my $line = $an->String->clean_spaces({string => $_});
+			if (not $line)
+			{
+				if ($skip_blank_line)
+				{
+					next;
+				}
+				$in_cache_config_status = 0;
+				$in_physical_drive      = 0;
+				$pd_serial_number       = "";
+				$port                   = "";
+				$box                    = "";
+				$bay                    = "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+					name1 => "in_cache_config_status", value1 => $in_cache_config_status, 
+					name2 => "in_physical_drive",      value2 => $in_physical_drive, 
+					name3 => "pd_serial_number",       value3 => $pd_serial_number, 
+					name4 => "port",                   value4 => $port, 
+					name5 => "box",                    value5 => $box, 
+					name6 => "bay",                    value6 => $bay, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line
+			}, file => $THIS_FILE, line => __LINE__});
 			
-			print $THIS_FILE." ".__LINE__."; controller_serial_number: [$controller_serial_number]\n";
+			$skip_blank_line = 0;
 			
-			print Dumper $data->{Device}->{$key1}->{Device};
-# 			foreach my $key2 (sort {$a cmp $b} keys %{$data->{Device}->{$key1}->{Device}})
-# 			{
-# 				print $THIS_FILE." ".__LINE__."; - key2: [$key2] -> [".$data->{Device}->{$key1}->{Device}->{$key2}."]\n";
-# 				if ($key2 =~ /AC:$controller_serial_number,A:(\d+)$/)
-# 				{
-# 					my $array_number = $1;
-# 					print Dumper $data->{Device}->{$key1}->{Device}->{$key2};
-# 				}
-# 				else
-# 				{
-# 					#print "========\n"; print Dumper $data->{Device}->{$key1}->{Device}->{$key2};
-# 					foreach my $key3 (sort {$a cmp $b} keys %{$data->{Device}->{$key1}->{Device}->{$key2}})
-# 					{
-# 						# NOTE: We ignore the details of the Errors key because we'll alarm on 
-# 						#       counters and we're not sure what Errors looks like yet anyway.
-# 						next if $key3 eq "Errors";
-# 						print $THIS_FILE." ".__LINE__."; --- key3: [$key3] -> [".$data->{Device}->{$key1}->{Device}->{$key2}->{$key3}."]\n";
-# 					}
-# 				}
-# 			}
+			if ($line =~ /: Cache Config Status$/i)
+			{
+				$in_cache_config_status = 1;
+				$skip_blank_line        = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_cache_config_status", value1 => $in_cache_config_status, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
 			
-			die $THIS_FILE." ".__LINE__."; testing...\n";
+			if ($line =~ /: Physical Drive \(.*?\) (.*?):(.*?):(.*?) : Monitor and Performance Statistics \(Since Factory\)/)
+			{
+				$port             = $1;
+				$box              = $2;
+				$bay              = $3;
+				$skip_blank_line  = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "port", value1 => $port, 
+					name2 => "box",  value2 => $box, 
+					name3 => "bay",  value3 => $bay, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
-# 			foreach my $hash_ref1 (@{$data->{Device}->{$key1}->{MetaStructure}})
-# 			{
-# 				foreach my $key2 (sort {$a cmp $b} keys %{$hash_ref1})
-# 				{
-# 					print $THIS_FILE." ".__LINE__."; key2: [$key2] -> [".$hash_ref1->{$key2}."]\n";
-# 				}
-# 			}
+			if ($in_cache_config_status)
+			{
+				if ($line =~ /Parity Read Errors (\d+) \(/)
+				{
+					$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_read_errors} = $1;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "controller::${serial_number}::diagnostics::cache::parity_read_errors", value1 => $an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_read_errors}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Cache parity read errors: [".$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_read_errors}."]\n";
+				}
+				if ($line =~ /Parity Write Errors (\d+) \(/)
+				{
+					$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_write_errors} = $1;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "controller::${serial_number}::diagnostics::cache::parity_write_errors", value1 => $an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_write_errors}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Cache parity write errors: [".$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_write_errors}."]\n";
+				}
+			}
+			
+			if (($port) && ($box) && ($bay))
+			{
+				my $location         = $port.":".$box.":".$bay;
+				   $pd_serial_number = $an->data->{physical_drive}{by_location}{$location};
+
+				if ($line =~ /Read Errors Hard (0x.*?)$/)
+				{
+					my $hex = $1;
+					$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_hard} = $an->Convert->hex_to_decimal({hex => $hex});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "hex",                                                                value1 => $hex, 
+						name2 => "physical_drive::${pd_serial_number}::diagnostics::read_errors_hard", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_hard}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Physical drive: [$pd_serial_number] (in: [$location]), read_errors_hard: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_hard}." ($hex)]\n";
+				}
+				if ($line =~ /Read Errors Retry Recovered (0x.*?)$/)
+				{
+					my $hex = $1;
+					$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_retry_recovered} = $an->Convert->hex_to_decimal({hex => $hex});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "hex",                                                                           value1 => $hex, 
+						name2 => "physical_drive::${pd_serial_number}::diagnostics::read_errors_retry_recovered", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_retry_recovered}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Physical drive: [$pd_serial_number] (in: [$location]), read_errors_retry_recovered: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_retry_recovered}." ($hex)]\n";
+				}
+				if ($line =~ /Read Errors ECC Corrected (0x.*?)$/)
+				{
+					my $hex = $1;
+					$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_ecc_corrected} = $an->Convert->hex_to_decimal({hex => $hex});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "hex",                                                                         value1 => $hex, 
+						name2 => "physical_drive::${pd_serial_number}::diagnostics::read_errors_ecc_corrected", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_ecc_corrected}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Physical drive: [$pd_serial_number] (in: [$location]), read_errors_ecc_corrected: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_ecc_corrected}." ($hex)]\n";
+				}
+				if ($line =~ /Write Errors Hard (0x.*?)$/)
+				{
+					my $hex = $1;
+					$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_hard} = $an->Convert->hex_to_decimal({hex => $hex});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "hex",                                                                 value1 => $hex, 
+						name2 => "physical_drive::${pd_serial_number}::diagnostics::write_errors_hard", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_hard}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Physical drive: [$pd_serial_number] (in: [$location]), write_errors_hard: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_hard}." ($hex)]\n";
+				}
+				if ($line =~ /Write Errors Retry Recovered (0x.*?)$/)
+				{
+					my $hex = $1;
+					$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_retry_recovered} = $an->Convert->hex_to_decimal({hex => $hex});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "hex",                                                                            value1 => $hex, 
+						name2 => "physical_drive::${pd_serial_number}::diagnostics::write_errors_retry_recovered", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_retry_recovered}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Physical drive: [$pd_serial_number] (in: [$location]), write_errors_retry_recovered: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_retry_recovered}." ($hex)]\n";
+				}
+				if ($line =~ /Format Errors (0x.*?)$/)
+				{
+					my $hex = $1;
+					$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{format_errors} = $an->Convert->hex_to_decimal({hex => $hex});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "hex",                                                             value1 => $hex, 
+						name2 => "physical_drive::${pd_serial_number}::diagnostics::format_errors", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{format_errors}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Physical drive: [$pd_serial_number] (in: [$location]), format_errors: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{format_errors}." ($hex)]\n";
+				}
+				if ($line =~ /Write Errors After Remap (0x.*?)$/)
+				{
+					my $hex = $1;
+					$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_after_remap} = $an->Convert->hex_to_decimal({hex => $hex});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "hex",                                                                        value1 => $hex, 
+						name2 => "physical_drive::${pd_serial_number}::diagnostics::write_errors_after_remap", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_after_remap}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Physical drive: [$pd_serial_number] (in: [$location]), write_errors_after_remap: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_after_remap}." ($hex)]\n";
+				}
+				if ($line =~ /Hardware Errors (0x.*?)$/)
+				{
+					my $hex = $1;
+					$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{hardware_errors} = $an->Convert->hex_to_decimal({hex => $hex});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "hex",                                                               value1 => $hex, 
+						name2 => "physical_drive::${pd_serial_number}::diagnostics::hardware_errors", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{hardware_errors}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Physical drive: [$pd_serial_number] (in: [$location]), hardware_errors: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{hardware_errors}." ($hex)]\n";
+				}
+				if ($line =~ /Predictive Failure Errors (0x.*?)$/)
+				{
+					my $hex = $1;
+					$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{predictive_failure_errors} = $an->Convert->hex_to_decimal({hex => $hex});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "hex",                                                                         value1 => $hex, 
+						name2 => "physical_drive::${pd_serial_number}::diagnostics::predictive_failure_errors", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{predictive_failure_errors}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					#print "Physical drive: [$pd_serial_number] (in: [$location]), predictive_failure_errors: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{predictive_failure_errors}." ($hex)]\n";
+				}
+			}
 		}
-		
-		die $THIS_FILE." ".__LINE__."; testing...\n";
+		close $file_handle;
 	}
 	
 	return(0);
@@ -594,8 +765,9 @@ sub gather_data
 	### TODO: This assumes the controllers go 0, 1, ... n. If this is wrong, we'll need to call 
 	###       'hpacucli controller all show' and parse the output as our outer loop.
 	# Loops through reach found controller.
-	foreach my $controller (0..$an->data->{sys}{controller_count})
+	foreach my $count (1..$an->data->{sys}{controller_count})
 	{
+		my $controller = $count - 1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "controller", value1 => $controller, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -603,40 +775,113 @@ sub gather_data
 		# Read in controller data.
 		my $serial_number = get_controller_info($an, $controller);
 		
-		die $THIS_FILE." ".__LINE__."; testing...\n";
+		get_diagnostics($an, $controller);
+	}
 
-# 		controller slot=0 array all show detail
-# 		controller slot=0 logicaldrive show detail
-# 		controller slot=0 physicaldrive all show detail
-# 		controller slot=0 ssdphysicaldrive all show detail
-
+	# This is to collected data from every sweep.
+	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}})
+	{
+		# Controller data;
+		next if $serial_number eq "metadata";
+		print "Controller: [$serial_number]\n";
 		
-		#get_diagnostics($an, $controller);
+		# Temperature;
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{data}{temperature}})
+		{
+			print "- Temperature; $variable: [".$an->data->{controller}{$serial_number}{data}{temperature}{$variable}." °C]\n";
+		}
+		# Data
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{data}{detail}})
+		{
+			print "- Data; $variable: [".$an->data->{controller}{$serial_number}{data}{detail}{$variable}."]\n";
+		}
 		
-# 		# We use dummy VDs and DGs to store drives not allocated to either yet. The drives will 
-# 		# reference their parent controller, but the VDs and DGs won't. To deal with this, we need to
-# 		# allocate the pseudo DG and VG to something, so we'll use the first controller's SN that we
-# 		# see.
-# 		if ($controller eq "1")
-# 		{
-# 			my $hpacucli_virtual_drive_id_string = $serial_number."-vd9999";
-# 			$an->data->{virtual_drive}{$hpacucli_virtual_drive_id_string}{variable}{on_controller} = $serial_number;
-# 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-# 				name1 => "virtual_drive::${hpacucli_virtual_drive_id_string}::variable::on_controller", value1 => $an->data->{virtual_drive}{$hpacucli_virtual_drive_id_string}{variable}{on_controller}, 
-# 			}, file => $THIS_FILE, line => __LINE__});
-# 		}
-# 		
-# 		# Read in cachevault (FBU) data (if it exists).
-# 		get_cachevault_data($an, $controller, $serial_number);
-# 		
-# 		# Read in BBU data (if it exists).
-# 		get_bbu_data($an, $controller, $serial_number);
-# 		
-# 		# Read in virtual drive information.
-# 		get_virtual_drive_data($an, $controller, $serial_number);
-# 		
-# 		# Read in the physical disk information.
-# 		get_physical_disk_data($an, $controller, $serial_number);
+		# Is this a diagnostics run?
+		if ($an->data->{sys}{process_diagnostics})
+		{
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{'diagnostics'}{cache}})
+			{
+				print "- Diagnostics; Cache - $variable: [".$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{$variable}."]\n";
+			}
+		}
+		
+		# Array
+		foreach my $array (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}})
+		{
+			print "- Array: [$array]\n";
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{data}{temperature}})
+			{
+				print "  - Temperature; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{data}{temperature}{$variable}." °C]\n";
+			}
+			# Data
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{data}{detail}})
+			{
+				print "  - Data; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{data}{detail}{$variable}."]\n";
+			}
+			
+			# Logical Drive
+			foreach my $logical_drive (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}})
+			{
+				print " - Logical Drive: [$logical_drive]\n";
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{temperature}})
+				{
+					print "   - Temperature; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{temperature}{$variable}." °C]\n";
+				}
+				# Data
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}})
+				{
+					print "   - Data; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
+				}
+				
+				# Physical Disks.
+				foreach my $port (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}})
+				{
+					foreach my $box (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}})
+					{
+						foreach my $bay (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}})
+						{
+							my $pd_serial_number = $an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{serial_number};
+							print "  - Physical Drive: [$port:$box:$bay], sn: [$pd_serial_number]\n";
+							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}})
+							{
+								print "    - Temperature; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}{$variable}." °C]\n";
+							}
+							# Data
+							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}})
+							{
+								next if $variable eq "serial_number";
+								next if $variable eq "port";
+								next if $variable eq "box";
+								next if $variable eq "bay";
+								print "    - Data; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+							}
+							
+							# If this was a diagnostics run, check for error counters
+							if ($an->data->{sys}{process_diagnostics})
+							{
+								if (exists $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_hard})
+								{
+									# We got the data
+									foreach my $variable (sort {$a cmp $b} keys %{$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}})
+									{
+										# Store this in the main hash.
+										$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable} = $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{$variable};
+										print "    - Diagnostics; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable}."]\n";
+									}
+								}
+								else
+								{
+									# No data for this drive. It might be
+									# a 3rd party drive. We'll warn the 
+									# user that we can't predict failure.
+									print "    - !! Warning !! - Diagnostics not available for the drive: [$pd_serial_number] in port: [$port], box: [$box], bay: [$bay]. Unable to predict failures! Is this a third-party drive?\n";
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	return(0);
@@ -646,7 +891,7 @@ sub gather_data
 sub process_variable_name
 {
 	my ($an, $variable) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_variable_name" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_variable_name" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "variable", value1 => $variable, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -661,8 +906,9 @@ sub process_variable_name
 	$variable =~ s/_+$//g;
 	$variable =~ s/(\w)\(/$1_\(/;
 	$variable =~ s/\((.*?)\)/-_$1/g;
+	$variable =~ s/_+/_/g;
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "variable", value1 => $variable, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($variable);
@@ -714,7 +960,7 @@ sub find_hp_controllers
 			my $controller_number        = $1;
 			my $controller_serial_number = $2;
 			   $controller_count++;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "controller_number",        value1 => $controller_number, 
 				name2 => "controller_serial_number", value2 => $controller_serial_number, 
 				name3 => "controller_count",         value3 => $controller_count, 
@@ -727,7 +973,7 @@ sub find_hp_controllers
 	if ($controller_count > 0)
 	{
 		$an->data->{sys}{controller_count} = $controller_count;
-		$an->Log->entry({log_level => 2, message_key => "scan_hpacucli_log_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "scan_hpacucli_log_0001", message_variables => {
 			count => $an->data->{sys}{controller_count}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -746,17 +992,17 @@ sub find_hp_controllers
 sub prep_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Loop through the databases...
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='hpacucli_controllers' AND schemaname='public';";
 		#                     The actual query -----------------.                                                .------- Row 0
 		#                        Query this DB --.              |                                                |    .-- Columns 0
 		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -783,7 +1029,7 @@ sub prep_databases
 		else
 		{
 			# Table exists, schema load is not needed.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	

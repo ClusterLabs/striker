@@ -62,7 +62,7 @@ https://alteeve.com/w/Support
 		<key name="scan_hpacucli_error_0002">The 'hpacucli' program was found at: [#!variable!path!#], but it is not executable. exiting.</key>
 		<key name="scan_hpacucli_error_0003">No HPE-type RAID controllers were found, exiting.</key>
 		<key name="scan_hpacucli_error_0004">Failed to find the serial number for the adapter: [#!variable!adapter!#]. Please check the output of '#!data!path::hpacucli!# #!data!sys::arguments::controller_info!#' and look for the 'Serial Number = X' string. Exiting.</key>
-		<key name="scan_hpacucli_error_0005">The attempt to generate the XML diagnostics file: [#!variable!file!#].</key>
+		<key name="scan_hpacucli_error_0005">The attempt to generate the XML diagnostics file: [#!variable!file!#] appears to have failed.</key>
 		
 		<!-- Log strings -->
 		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>

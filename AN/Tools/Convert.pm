@@ -141,13 +141,13 @@ sub hex_to_decimal
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => { function => "hex_to_decimal" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "hex_to_decimal" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $hex = $parameter->{hex};
 	return("#!null!#") if not defined $hex;
 	
 	my $decimal = hex($hex);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "hex",     value1 => $hex, 
 		name2 => "decimal", value2 => $decimal, 
 	}, file => $THIS_FILE, line => __LINE__});
