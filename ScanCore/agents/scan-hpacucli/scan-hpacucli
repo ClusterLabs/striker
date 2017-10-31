@@ -233,6 +233,303 @@ prep_databases($an);
 # If we're still alive, start gathering data.
 gather_data($an);
 
+# Archive, if needed.
+archive_if_needed($an);
+
+# Look to see if any databases need to be updated.
+update_db($an);
+
+
+
+# This will archive stuff in the 'history' schema, if needed.
+sub archive_if_needed
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If the 'trigger' is '0', archiving is disabled.
+	if (not $an->data->{scancore}{archive}{trigger})
+	{
+		return(1);
+	}
+	
+	### NOTE: If a ScanCore db server was offline when an archive ran, when it returns, it's records will
+	###       sync back, triggering a sooner-than-expected subsequent archive. This shouldn't happen 
+	###       often, and the complexity of tracking archive dates is such that we'll not try to account
+	###       for these cases. 
+	### TODO: What we can do later is, when we write the restore stuff, build in a dedupe function.
+	
+	### Process:
+	# 1. Count the records in history for each table, restricting the results to those from this host 
+	#    (save for special tables like 'server') and if the number of records is greater than 
+	#    'scancore::archive::trigger', start an archive.
+	# 2. Set/update the 'archive_date' state.
+	# 3. Lock the database.
+	# 4. Select 'modified_date' from history.foo, offset by 
+	#    ('scancore::archive::trigger' - 'scancore::archive::count').
+	# 5. Make sure the 'scancore::archive::directory' exists, creating it if needed.
+	# 6. Select all records older that the 'modified_date', write them to a file and then DELETE those
+	#    records from the database.
+	
+	# Update the archive path, if set by a user. Also verify that there are sane archive values.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
+		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
+		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
+		name4 => "scancore::archive::count",     value4 => $an->data->{scancore}{archive}{count}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
+	{
+		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{trigger} = 100000;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{count} = 50000;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	if (not -e $an->data->{path}{scancore_archive})
+	{
+		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# Did it work?
+		if (not -e $an->data->{path}{scancore_archive})
+		{
+			# Nope. :(
+			$an->Alert->warning({message_key => "scancore_warning_0030", message_variables => { directory => $an->data->{path}{scancore_archive} }, quiet => 1, file => $THIS_FILE, line => __LINE__});
+			return(1);
+		}
+	}
+	
+	# All of the changes happen in the variables table. This is set up like ScanCore and other agents in
+	# case we find it necessary to add additional tables later.
+	$an->data->{archive}{table} = {
+		hpacucli_controllers	=>	{
+			archive_date		=>	"",
+			host_column		=>	"hpacucli_controller_host_uuid",
+			offset			=>	0,
+		},
+		hpacucli_cache_modules	=>	{
+			archive_date		=>	"",
+			host_column		=>	"hpacucli_cache_module_host_uuid",
+			offset			=>	0,
+		},
+		hpacucli_arrays		=>	{
+			archive_date		=>	"",
+			host_column		=>	"hpacucli_array_host_uuid",
+			offset			=>	0,
+		},
+		hpacucli_logical_drives	=>	{
+			archive_date		=>	"",
+			host_column		=>	"hpacucli_logical_drive_host_uuid",
+			offset			=>	0,
+		},
+		hpacucli_physical_drives =>	{
+			archive_date		=>	"",
+			host_column		=>	"hpacucli_physical_drive_host_uuid",
+			offset			=>	0,
+		},
+		hpacucli_variables	=>	{
+			archive_date		=>	"",
+			host_column		=>	"hpacucli_variable_host_uuid",
+			offset			=>	0,
+		},
+	};
+	my $archive_needed = 0;
+	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "table", value1 => $table, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    history.$table 
+WHERE 
+    ".$an->data->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		   $records = 0 if not defined $records;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "records", value1 => $records, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($records > $an->data->{scancore}{archive}{trigger})
+		{
+			   $archive_needed                             = 1;
+			my $records_to_save                            = ($an->data->{scancore}{archive}{trigger} - $an->data->{scancore}{archive}{count});
+			my $offset                                     = $records - $records_to_save;
+			   $an->data->{archive}{table}{$table}{offset} = $offset;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "archive_needed",                   value1 => $archive_needed, 
+				name2 => "records_to_save",                  value2 => $records_to_save, 
+				name3 => "archive::table::${table}::offset", value3 => $an->data->{archive}{table}{$table}{offset}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I have something to archive, do so now.
+	if ($archive_needed)
+	{
+		# This will store the files to compress after we release the locks.
+		my $compress = [];
+		
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
+		# Now loop through the table(s) that need to be archived.
+		foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
+		{
+			next if not $an->data->{archive}{table}{$table}{offset};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "table", value1 => $table, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Now to do the archive.
+			if ($table eq "hpacucli_controllers")
+			{
+				### NOTE: Not tested yet
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["hpacucli_controller_uuid" "hpacucli_controller_host_uuid", "hpacucli_controller_serial_number", "hpacucli_controller_model", "hpacucli_controller_status", "hpacucli_controller_last_diagnostics", "hpacucli_controller_cache_present", "hpacucli_controller_drive_write_cache", "hpacucli_controller_firmware_version", "hpacucli_controller_unsafe_writeback_cache", "hpacucli_controller_temperature"],
+				});
+			}
+			elsif ($table eq "hpacucli_cache_modules")
+			{
+				### NOTE: Not tested yet
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["hpacucli_cache_module_uuid", "hpacucli_cache_module_host_uuid", "hpacucli_cache_module_controller_uuid", "hpacucli_cache_module_serial_number", "hpacucli_cache_module_status", "hpacucli_cache_module_type", "hpacucli_cache_module_size"],
+				});
+			}
+			elsif ($table eq "hpacucli_arrays")
+			{
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["hpacucli_array_uuid", "hpacucli_array_host_uuid", "hpacucli_array_controller_uuid", "hpacucli_array_name", "hpacucli_array_type", "hpacucli_array_status", "hpacucli_array_unused_space"],
+				});
+			}
+			elsif ($table eq "hpacucli_physical_drives")
+			{
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["hpacucli_physical_drive_uuid", "hpacucli_physical_drive_host_uuid", "hpacucli_physical_drive_controller_uuid", "hpacucli_physical_drive_serial_number", "hpacucli_physical_drive_model", "hpacucli_physical_drive_temperature", "hpacucli_physical_drive_interface", "hpacucli_physical_drive_status", "hpacucli_physical_drive_size", "hpacucli_physical_drive_type", "hpacucli_physical_drive_rpm"],
+				});
+			}
+			elsif ($table eq "hpacucli_variables")
+			{
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["hpacucli_variable_uuid", "hpacucli_variable_host_uuid", "hpacucli_variable_source_table", "hpacucli_variable_source_uuid", "hpacucli_variable_is_temperature", "hpacucli_variable_name", "hpacucli_variable_value"],
+				});
+			}
+			elsif ($table eq "hpacucli_logical_drives")
+			{
+				### NOTE: Not tested yet
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["hpacucli_logical_drive_uuid", "hpacucli_logical_drive_host_uuid", "hpacucli_logical_drive_controller_uuid", "hpacucli_logical_drive_array_uuid", "hpacucli_logical_drive_name", "hpacucli_logical_drive_caching", "hpacucli_logical_drive_os_device_name", "hpacucli_logical_drive_type", "hpacucli_logical_drive_raid_level", "hpacucli_logical_drive_size", "hpacucli_logical_drive_strip_size", "hpacucli_logical_drive_stripe_size", "hpacucli_logical_drive_status", "hpacucli_logical_drive_wwn"],
+				});
+			}
+		}
+		
+		### TODO: Make this less of a hackish mc-hackington...
+		# VACUUM FULL, if the database is on this machine. I need to do this from the command line 
+		# because the user we connect as isn't allowed to do it. We'll also only vacuum our DB.
+		my $db_name = "";
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "id",                        value1 => $id, 
+				name2 => "scancore::db::${id}::host", value2 => $an->data->{scancore}{db}{$id}{host}, 
+				name3 => "hostname",                  value3 => $an->hostname, 
+				name4 => "short_hostname",            value4 => $an->short_hostname, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($an->data->{scancore}{db}{$id}{host} eq $an->hostname) or ($an->data->{scancore}{db}{$id}{host} eq $an->short_hostname))
+			{
+				$db_name = $an->data->{scancore}{db}{$id}{name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "db_name",                   value1 => $db_name, 
+					name2 => "scancore::db::${id}::name", value2 => $an->data->{scancore}{db}{$id}{name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+		if ($db_name)
+		{
+			my $start      = time;
+			my $shell_call = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." $db_name -c 'VACUUM FULL;'\"";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "start",      value1 => $start, 
+				name2 => "shell_call", value2 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			my $finished = time - $start;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "finished", value1 => $finished, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
+	}
+	
+	return(0);
+}
+
 
 
 
@@ -253,6 +550,7 @@ sub get_controller_info
 		name1 => "controller", value1 => $controller, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $model_name          = "";
 	my $serial_number       = "";
 	my $cache_serial_number = "";
 	my $pd_serial_number    = "";
@@ -275,6 +573,14 @@ sub get_controller_info
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ((not $serial_number) && ($line =~ /^(.*?) in Slot $controller /))
+		{
+			$model_name = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "model_name", value1 => $model_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 
 		if (($line =~ /Serial Number: (.*?)$/) && (not $port) && (not $box) && (not $bay))
 		{
@@ -282,6 +588,15 @@ sub get_controller_info
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "serial_number", value1 => $serial_number, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record the model number
+			if ($model_name)
+			{
+				$an->data->{controller}{$serial_number}{data}{detail}{model_name} = $model_name;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "controller::${serial_number}::data::detail::model_name", value1 => $an->data->{controller}{$serial_number}{data}{detail}{model_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
 			# Make a reference between the slot and SN
 			$an->data->{controller}{metadata}{sn_to_slot}{$serial_number} = $controller;
@@ -296,9 +611,9 @@ sub get_controller_info
 		
 		if ($line =~ /Cache Serial Number: (.*?)$/i)
 		{
-			$cache_serial_number = $1;
+			$an->data->{controller}{$serial_number}{data}{detail}{cache_serial_number} = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "cache_serial_number", value1 => $cache_serial_number, 
+				name1 => "controller::${serial_number}::data::detail::cache_serial_number", value1 => $an->data->{controller}{$serial_number}{data}{detail}{cache_serial_number}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}

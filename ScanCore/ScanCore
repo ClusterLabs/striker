@@ -277,6 +277,10 @@ if (not $connections)
 # If another instance is running, we'll exit or wait, unless we're being --force'd
 avoid_duplicate_run($an) if not $an->data->{switches}{force};
 
+# Make sure this node is in the database and the host name is up to date.
+add_hostname_to_databases($an);
+check_hostname_for_changes($an);
+
 # Before we can process or sync alerts, we need to make sure we've read in the strings files for any
 # agents that have registered alerts (pending or historical).
 load_agent_strings($an);
@@ -289,10 +293,6 @@ update_db($an);
 
 # Update our view of the anvil we're a part of
 update_anvil_data($an);
-
-# Make sure this node is in the database and the host name is up to date.
-add_hostname_to_databases($an);
-check_hostname_for_changes($an);
 
 # Tell the user we've started.
 $an->Alert->register_alert({
