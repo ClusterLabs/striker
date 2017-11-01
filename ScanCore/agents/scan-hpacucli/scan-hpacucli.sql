@@ -53,7 +53,7 @@ CREATE TABLE hpacucli_controllers (
 	hpacucli_controller_drive_write_cache		text				not null,	-- "enabled" or "disabled"
 	hpacucli_controller_firmware_version		text,
 	hpacucli_controller_unsafe_writeback_cache	text,						-- "enabled" or "disabled"
-	hpacucli_controller_temperature			numeric,
+	hpacucli_controller_temperature			numeric				not null,
 	modified_date					timestamp with time zone	not null,
 	
 	FOREIGN KEY(hpacucli_controller_host_uuid) REFERENCES hosts(host_uuid)
@@ -140,7 +140,7 @@ CREATE TABLE hpacucli_cache_modules (
 	hpacucli_cache_module_size			numeric				not null,	-- In bytes
 	modified_date					timestamp with time zone	not null,
 	
-	FOREIGN KEY(hpacucli_cache_module_host_uuid)                REFERENCES hosts(host_uuid),
+	FOREIGN KEY(hpacucli_cache_module_host_uuid)       REFERENCES hosts(host_uuid),
 	FOREIGN KEY(hpacucli_cache_module_controller_uuid) REFERENCES hpacucli_controllers(hpacucli_controller_uuid)
 );
 ALTER TABLE hpacucli_cache_modules OWNER TO #!variable!user!#;
@@ -211,7 +211,7 @@ CREATE TABLE hpacucli_arrays (
 	hpacucli_array_unused_space			numeric				not null,	-- In bytes
 	modified_date					timestamp with time zone	not null,
 	
-	FOREIGN KEY(hpacucli_array_host_uuid)                REFERENCES hosts(host_uuid),
+	FOREIGN KEY(hpacucli_array_host_uuid)       REFERENCES hosts(host_uuid),
 	FOREIGN KEY(hpacucli_array_controller_uuid) REFERENCES hpacucli_controllers(hpacucli_controller_uuid)
 );
 ALTER TABLE hpacucli_arrays OWNER TO #!variable!user!#;
@@ -287,7 +287,6 @@ CREATE TRIGGER trigger_hpacucli_arrays
 CREATE TABLE hpacucli_logical_drives (
 	hpacucli_logical_drive_uuid			uuid				primary key,
 	hpacucli_logical_drive_host_uuid		uuid				not null,
-	hpacucli_logical_drive_controller_uuid		uuid				not null,	-- The controller this logical drive is connected to
 	hpacucli_logical_drive_array_uuid		uuid				not null,	-- The array this logical_drive is connected to
 	hpacucli_logical_drive_name			text				not null,
 	hpacucli_logical_drive_caching			text				not null,
@@ -301,8 +300,8 @@ CREATE TABLE hpacucli_logical_drives (
 	hpacucli_logical_drive_wwn			text				not null,	-- "unique_identifier"
 	modified_date					timestamp with time zone	not null,
 	
-	FOREIGN KEY(hpacucli_logical_drive_host_uuid)                REFERENCES hosts(host_uuid),
-	FOREIGN KEY(hpacucli_logical_drive_controller_uuid) REFERENCES hpacucli_controllers(hpacucli_controller_uuid)
+	FOREIGN KEY(hpacucli_logical_drive_host_uuid)  REFERENCES hosts(host_uuid),
+	FOREIGN KEY(hpacucli_logical_drive_array_uuid) REFERENCES hpacucli_arrays(hpacucli_array_uuid)
 );
 ALTER TABLE hpacucli_logical_drives OWNER TO #!variable!user!#;
 
@@ -310,7 +309,6 @@ CREATE TABLE history.hpacucli_logical_drives (
 	history_id					bigserial,
 	hpacucli_logical_drive_uuid			uuid,
 	hpacucli_logical_drive_host_uuid		uuid,
-	hpacucli_logical_drive_controller_uuid		uuid,
 	hpacucli_logical_drive_array_uuid		uuid,
 	hpacucli_logical_drive_name			text,
 	hpacucli_logical_drive_caching			text,
@@ -335,7 +333,6 @@ BEGIN
 	INSERT INTO history.hpacucli_logical_drives
 		(hpacucli_logical_drive_uuid, 
 		 hpacucli_logical_drive_host_uuid, 
-		 hpacucli_logical_drive_controller_uuid, 
 		 hpacucli_logical_drive_array_uuid,
 		 hpacucli_logical_drive_name,
 		 hpacucli_logical_drive_caching,
@@ -351,7 +348,6 @@ BEGIN
 	VALUES 
 		(history_hpacucli_logical_drives.hpacucli_logical_drive_uuid,
 		 history_hpacucli_logical_drives.hpacucli_logical_drive_host_uuid,
-		 history_hpacucli_logical_drives.hpacucli_logical_drive_controller_uuid, 
 		 history_hpacucli_logical_drives.hpacucli_logical_drive_array_uuid,
 		 history_hpacucli_logical_drives.hpacucli_logical_drive_name,
 		 history_hpacucli_logical_drives.hpacucli_logical_drive_caching,
@@ -397,7 +393,7 @@ CREATE TRIGGER trigger_hpacucli_logical_drives
 CREATE TABLE hpacucli_physical_drives (
 	hpacucli_physical_drive_uuid			uuid				primary key,
 	hpacucli_physical_drive_host_uuid		uuid				not null,
-	hpacucli_physical_drive_controller_uuid		uuid				not null,	-- The controller this physical_drive is connected to
+	hpacucli_physical_drive_logical_drive_uuid	uuid				not null,
 	hpacucli_physical_drive_serial_number		text				not null,
 	hpacucli_physical_drive_model			text				not null,
 	hpacucli_physical_drive_temperature		numeric				not null,	-- In celcius, we'll use "maximum_temperature" for alerts
@@ -408,8 +404,8 @@ CREATE TABLE hpacucli_physical_drives (
 	hpacucli_physical_drive_rpm			numeric				not null,	-- '0' for SSDs.
 	modified_date					timestamp with time zone	not null,
 	
-	FOREIGN KEY(hpacucli_physical_drive_host_uuid)                REFERENCES hosts(host_uuid),
-	FOREIGN KEY(hpacucli_physical_drive_controller_uuid) REFERENCES hpacucli_controllers(hpacucli_controller_uuid)
+	FOREIGN KEY(hpacucli_physical_drive_host_uuid)          REFERENCES hosts(host_uuid),
+	FOREIGN KEY(hpacucli_physical_drive_logical_drive_uuid) REFERENCES hpacucli_logical_drives(hpacucli_logical_drive_uuid)
 );
 ALTER TABLE hpacucli_physical_drives OWNER TO #!variable!user!#;
 
@@ -417,7 +413,7 @@ CREATE TABLE history.hpacucli_physical_drives (
 	history_id					bigserial,
 	hpacucli_physical_drive_uuid			uuid,
 	hpacucli_physical_drive_host_uuid		uuid,
-	hpacucli_physical_drive_controller_uuid		uuid,
+	hpacucli_physical_drive_logical_drive_uuid	uuid,
 	hpacucli_physical_drive_serial_number		text,
 	hpacucli_physical_drive_model			text,
 	hpacucli_physical_drive_temperature		numeric,
@@ -439,7 +435,7 @@ BEGIN
 	INSERT INTO history.hpacucli_physical_drives
 		(hpacucli_physical_drive_uuid, 
 		 hpacucli_physical_drive_host_uuid, 
-		 hpacucli_physical_drive_controller_uuid, 
+		 hpacucli_physical_drive_logical_drive_uuid, 
 		 hpacucli_physical_drive_serial_number,
 		 hpacucli_physical_drive_model,
 		 hpacucli_physical_drive_temperature,
@@ -452,7 +448,7 @@ BEGIN
 	VALUES 
 		(history_hpacucli_physical_drives.hpacucli_physical_drive_uuid,
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_host_uuid,
-		 history_hpacucli_physical_drives.hpacucli_physical_drive_controller_uuid, 
+		 history_hpacucli_physical_drives.hpacucli_physical_drive_logical_drive_uuid, 
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_serial_number,
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_model,
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_temperature,

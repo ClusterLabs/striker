@@ -12,7 +12,11 @@
 # 1  - hpacucli not installed
 # 2  - hpacucli is installed but it is not executable.
 # 3  - No HPE type controllers found.
-# 4  - 
+# 4  - Controller numeric value is invalid.
+# 5  - Cache module numeric value is invalid.
+# 6  - Array numeric value is invalid.
+# 7  - Logical drive numeric value is invalid.
+# 8  - Physical drive numeric value is invalid.
 # 
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
@@ -239,13 +243,2004 @@ archive_if_needed($an);
 # Look to see if any databases need to be updated.
 update_db($an);
 
+# Figure out, other than temperatures, what should be added to or removed from health.
+pre_process_health($an);
 
+
+
+
+
+
+
+# Clean up and go away.
+$an->nice_exit({exit_code => 0});
+
+
+#############################################################################################################
+# Function below                                                                                            #
+#############################################################################################################
+
+# This looks for anything other than temperature sensors that will feed into the health of the node.
+sub pre_process_health
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "pre_process_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Is the array degraded or partially degraded?
+=cut
+	foreach my $id_string (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
+	{
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$id_string}{drive_group}})
+		{
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "virtual_drive::${id_string}::drive_group::${drive_group}::variable::$variable", value1 => $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $value = $an->data->{virtual_drive}{$id_string}{drive_group}{$drive_group}{variable}{$variable};
+				if ($value eq "Partially Degraded")
+				{
+					# Partially degraded array
+					my $health_source_name                           = "drive_group:".$id_string,"-".$drive_group.":".$variable;
+					   $an->data->{health}{new}{$health_source_name} = 5;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($value eq "Degraded")
+				{
+					# Degraded array
+					my $health_source_name                           = "drive_group:".$id_string,"-".$drive_group.":".$variable;
+					   $an->data->{health}{new}{$health_source_name} = 10;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+	}
+	
+	# Controllers.
+	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
+	{
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}{$serial_number}{variable}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "controller::serial_number::${serial_number}::variable::$variable", value1 => $an->data->{controller}{serial_number}{$serial_number}{variable}{$variable}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $value = $an->data->{controller}{serial_number}{$serial_number}{variable}{$variable};
+			if (($variable eq "alarm_state") && (lc($value) ne "missing") && (lc($value) ne "off"))
+			{
+				my $health_source_name                           = "controller:".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif (($variable eq "memory_correctable_errors") && ($value ne "0"))
+			{
+				# TODO: I might want to scale this where 1~X = 1, Y~Z = 3, etc
+				my $health_source_name                           = "controller:".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif (($variable eq "memory_uncorrectable_errors") && ($value ne "0"))
+			{
+				# TODO: I might want to scale this where 1~X = 5, Y~Z = 10, etc
+				my $health_source_name                           = "controller:".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 5;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif (($variable eq "controller_status") && (lc($value) ne "optimal"))
+			{
+				# 'Needs Attention' when array degrades
+				my $health_source_name                           = "controller:".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 5;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Physical Drives.
+	foreach my $hpacucli_virtual_drive_id_string (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
+	{
+		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$hpacucli_virtual_drive_id_string}{drive_group}})
+		{
+			foreach my $enclosure_id (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$hpacucli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}})
+			{
+				foreach my $slot_number (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$hpacucli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}})
+				{
+					foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$hpacucli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
+					{
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "virtual_drive::${hpacucli_virtual_drive_id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$hpacucli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						my $value = $an->data->{virtual_drive}{$hpacucli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
+						if (($variable eq "media_error_count") && ($value ne "0"))
+						{
+							# TODO: I might want to scale this where 1~X = 1, Y~Z = 3, etc
+							my $health_source_name                           = "drive:".$variable;
+							   $an->data->{health}{new}{$health_source_name} = 1;
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+								name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif (($variable eq "other_error_count") && ($value ne "0"))
+						{
+							# TODO: I might want to scale this where 1~X = 1, Y~Z = 3, etc
+							my $health_source_name                           = "drive:".$variable;
+							   $an->data->{health}{new}{$health_source_name} = 1;
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+								name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						elsif (($variable eq "predictive_failure_count") && ($value ne "0"))
+						{
+							# TODO: I might want to scale this where 1~X = 3, Y~Z = 3, etc
+							my $health_source_name                           = "drive:".$variable;
+							   $an->data->{health}{new}{$health_source_name} = 3;
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+								name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	# Cachevaults.
+	foreach my $cachevault_serial_number (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}})
+	{
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "cachevault::serial_number::${cachevault_serial_number}::variable::$variable", value1 => $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $value = $an->data->{cachevault}{serial_number}{$cachevault_serial_number}{variable}{$variable};
+			if (($variable eq "replacement_required") && (lc($value) eq "yes"))
+			{
+				my $health_source_name                           = "cachevault:".$cachevault_serial_number.":".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 5;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# BBUs
+	foreach my $bbu_serial_number (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}})
+	{
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "bbu::serial_number::${bbu_serial_number}::variable::$variable", value1 => $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable},
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $value = $an->data->{bbu}{serial_number}{$bbu_serial_number}{variable}{$variable};
+			if (($variable eq "replacement_required") && (lc($value) eq "yes"))
+			{
+				my $health_source_name                           = "bbu:".$bbu_serial_number.":".$variable;
+				   $an->data->{health}{new}{$health_source_name} = 5;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "health::new::$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+=cut
+
+	return(0);
+}
+
+# This looks at each DB's 'updated' table to see if any are behind. If any are, it will update the tables 
+# based on the time the last entry was made for a given host.
+sub update_db
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{db_resync_needed})
+	{
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
+		# Update Controllers and the various dangly bits hanging off them.
+		update_db_controllers($an);
+		update_db_cache_modules($an);
+		update_db_arrays($an);
+		update_db_logical_drives($an);
+		update_db_physical_drives($an);
+		update_db_variables($an);
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
+	}
+	
+	return(0);
+}
+
+# Update the 'hpacucli_variables' table.
+sub update_db_variables
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_variables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'hpacucli_variables' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    hpacucli_variable_uuid, 
+    hpacucli_variable_source_table, 
+    hpacucli_variable_source_uuid, 
+    hpacucli_variable_is_temperature, 
+    hpacucli_variable_name, 
+    hpacucli_variable_value, 
+    modified_date 
+FROM 
+    history.hpacucli_variables
+WHERE
+    hpacucli_variable_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $hpacucli_variable_uuid            = $row->[0]; 
+			my $hpacucli_variable_source_table    = $row->[1]; 
+			my $hpacucli_variable_source_uuid     = $row->[2]; 
+			my $hpacucli_variable_is_temperature  = $row->[3]; 
+			my $hpacucli_variable_name            = $row->[4]; 
+			my $hpacucli_variable_value           = defined $row->[5] ? $row->[5] : ""; 
+			my $modified_date                     = $row->[6];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "hpacucli_variable_uuid",           value1 => $hpacucli_variable_uuid, 
+				name2 => "hpacucli_variable_source_table",   value2 => $hpacucli_variable_source_table, 
+				name3 => "hpacucli_variable_source_uuid",    value3 => $hpacucli_variable_source_uuid, 
+				name4 => "hpacucli_variable_is_temperature", value4 => $hpacucli_variable_is_temperature, 
+				name5 => "hpacucli_variable_name",           value5 => $hpacucli_variable_name, 
+				name6 => "hpacucli_variable_value",          value6 => $hpacucli_variable_value, 
+				name7 => "modified_date",                    value7 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}{$hpacucli_variable_uuid} = {
+				hpacucli_variable_source_table		=>	$hpacucli_variable_source_table, 
+				hpacucli_variable_source_uuid		=>	$hpacucli_variable_source_uuid, 
+				hpacucli_variable_is_temperature	=>	$hpacucli_variable_is_temperature, 
+				hpacucli_variable_name			=>	$hpacucli_variable_name, 
+				hpacucli_variable_value			=>	$hpacucli_variable_value, 
+			};
+			$an->data->{db_data}{$id}{hpacucli_variables}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{hpacucli_variables}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}{$hpacucli_variable_uuid} = {
+				hpacucli_variable_source_table		=>	$hpacucli_variable_source_table, 
+				hpacucli_variable_source_uuid		=>	$hpacucli_variable_source_uuid, 
+				hpacucli_variable_is_temperature	=>	$hpacucli_variable_is_temperature, 
+				hpacucli_variable_name			=>	$hpacucli_variable_name, 
+				hpacucli_variable_value			=>	$hpacucli_variable_value, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hpacucli_variables}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $hpacucli_variable_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}})
+		{
+			my $hpacucli_variable_source_table   = $an->data->{db_data}{unified}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{hpacucli_variable_source_table};
+			my $hpacucli_variable_source_uuid    = $an->data->{db_data}{unified}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{hpacucli_variable_source_uuid};
+			my $hpacucli_variable_is_temperature = $an->data->{db_data}{unified}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{hpacucli_variable_is_temperature};
+			my $hpacucli_variable_name           = $an->data->{db_data}{unified}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{hpacucli_variable_name};
+			my $hpacucli_variable_value          = $an->data->{db_data}{unified}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{hpacucli_variable_value};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "hpacucli_variable_uuid",           value1 => $hpacucli_variable_uuid, 
+				name2 => "hpacucli_variable_source_table",   value2 => $hpacucli_variable_source_table, 
+				name3 => "hpacucli_variable_source_uuid",    value3 => $hpacucli_variable_source_uuid, 
+				name4 => "hpacucli_variable_is_temperature", value4 => $hpacucli_variable_is_temperature, 
+				name5 => "hpacucli_variable_name",           value5 => $hpacucli_variable_name, 
+				name6 => "hpacucli_variable_value",          value6 => $hpacucli_variable_value, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'hpacucli_variable_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::hpacucli_variables::hpacucli_variable_uuid::${hpacucli_variable_uuid}::seen", value1 => $an->data->{db_data}{$id}{hpacucli_variables}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{hpacucli_variables}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{hpacucli_variables}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::hpacucli_variables::hpacucli_variable_uuid::${hpacucli_variable_uuid}::exists", value1 => $an->data->{db_data}{$id}{hpacucli_variables}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{hpacucli_variables}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::hpacucli_variables::modified_date::${modified_date}::hpacucli_variable_uuid::${hpacucli_variable_uuid}", value1 => $an->data->{db_data}{$id}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}{$hpacucli_variable_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}{$hpacucli_variable_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# hpacucli_variable_uuid from this host.
+							my $query = "
+UPDATE 
+    public.hpacucli_variables
+SET
+    hpacucli_variable_source_table   = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_source_table).", 
+    hpacucli_variable_source_uuid    = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_source_uuid).", 
+    hpacucli_variable_is_temperature = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_is_temperature).", 
+    hpacucli_variable_name           = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_name).", 
+    hpacucli_variable_value          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_value).", 
+    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    hpacucli_variable_uuid           = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.hpacucli_variables
+(
+    hpacucli_variable_uuid, 
+    hpacucli_variable_host_uuid, 
+    hpacucli_variable_source_table, 
+    hpacucli_variable_source_uuid, 
+    hpacucli_variable_is_temperature, 
+    hpacucli_variable_name, 
+    hpacucli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_source_table).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_source_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_is_temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'hpacucli_variable_uuid' before, so it is just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{hpacucli_variables}{modified_date}{$modified_date}{hpacucli_variable_uuid}{$hpacucli_variable_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.hpacucli_variables
+(
+    hpacucli_variable_uuid, 
+    hpacucli_variable_host_uuid, 
+    hpacucli_variable_source_table, 
+    hpacucli_variable_source_uuid, 
+    hpacucli_variable_is_temperature, 
+    hpacucli_variable_name, 
+    hpacucli_variable_value, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_source_table).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_source_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_is_temperature).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_variable_value).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen hpacucli_variable_uuid?
+			} # foreach my $id 
+		} # foreach my $hpacucli_variable_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'hpacucli_physical_drives' table.
+sub update_db_physical_drives
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_physical_drives" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'hpacucli_physical_drives' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    hpacucli_physical_drive_uuid, 
+    hpacucli_physical_drive_logical_drive_uuid, 
+    hpacucli_physical_drive_serial_number,
+    hpacucli_physical_drive_model,
+    hpacucli_physical_drive_temperature,
+    hpacucli_physical_drive_interface,
+    hpacucli_physical_drive_status,
+    hpacucli_physical_drive_size,
+    hpacucli_physical_drive_type,
+    hpacucli_physical_drive_rpm,
+    modified_date 
+FROM 
+    history.hpacucli_physical_drives
+WHERE
+    hpacucli_physical_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $hpacucli_physical_drive_uuid               = $row->[0]; 
+			my $hpacucli_physical_drive_logical_drive_uuid = $row->[1];
+			my $hpacucli_physical_drive_serial_number      = $row->[2];
+			my $hpacucli_physical_drive_model              = $row->[3];
+			my $hpacucli_physical_drive_temperature        = $row->[4];
+			my $hpacucli_physical_drive_interface          = $row->[5];
+			my $hpacucli_physical_drive_status             = $row->[6];
+			my $hpacucli_physical_drive_size               = $row->[7];
+			my $hpacucli_physical_drive_type               = $row->[8];
+			my $hpacucli_physical_drive_rpm                = $row->[9];
+			my $modified_date                              = $row->[10];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+				name1  => "hpacucli_physical_drive_uuid",               value1  => $hpacucli_physical_drive_uuid, 
+				name2  => "hpacucli_physical_drive_logical_drive_uuid", value2  => $hpacucli_physical_drive_logical_drive_uuid, 
+				name3  => "hpacucli_physical_drive_serial_number",      value3  => $hpacucli_physical_drive_serial_number, 
+				name4  => "hpacucli_physical_drive_model",              value4  => $hpacucli_physical_drive_model, 
+				name5  => "hpacucli_physical_drive_temperature",        value5  => $hpacucli_physical_drive_temperature, 
+				name6  => "hpacucli_physical_drive_interface",          value6  => $hpacucli_physical_drive_interface, 
+				name7  => "hpacucli_physical_drive_status",             value7  => $hpacucli_physical_drive_status, 
+				name8  => "hpacucli_physical_drive_size",               value8  => $hpacucli_physical_drive_size, 
+				name9  => "hpacucli_physical_drive_type",               value9  => $hpacucli_physical_drive_type, 
+				name10 => "hpacucli_physical_drive_rpm",                value10 => $hpacucli_physical_drive_rpm, 
+				name11 => "modified_date",                              value11 => $modified_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid} = {
+				hpacucli_physical_drive_logical_drive_uuid	=>	$hpacucli_physical_drive_logical_drive_uuid, 
+				hpacucli_physical_drive_serial_number		=>	$hpacucli_physical_drive_serial_number, 
+				hpacucli_physical_drive_model			=>	$hpacucli_physical_drive_model, 
+				hpacucli_physical_drive_temperature		=>	$hpacucli_physical_drive_temperature, 
+				hpacucli_physical_drive_interface		=>	$hpacucli_physical_drive_interface, 
+				hpacucli_physical_drive_status			=>	$hpacucli_physical_drive_status, 
+				hpacucli_physical_drive_size			=>	$hpacucli_physical_drive_size, 
+				hpacucli_physical_drive_type			=>	$hpacucli_physical_drive_type, 
+				hpacucli_physical_drive_rpm			=>	$hpacucli_physical_drive_rpm, 
+			};
+			$an->data->{db_data}{$id}{hpacucli_physical_drives}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{hpacucli_physical_drives}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid} = {
+				hpacucli_physical_drive_logical_drive_uuid	=>	$hpacucli_physical_drive_logical_drive_uuid, 
+				hpacucli_physical_drive_serial_number		=>	$hpacucli_physical_drive_serial_number, 
+				hpacucli_physical_drive_model			=>	$hpacucli_physical_drive_model, 
+				hpacucli_physical_drive_temperature		=>	$hpacucli_physical_drive_temperature, 
+				hpacucli_physical_drive_interface		=>	$hpacucli_physical_drive_interface, 
+				hpacucli_physical_drive_status			=>	$hpacucli_physical_drive_status, 
+				hpacucli_physical_drive_size			=>	$hpacucli_physical_drive_size, 
+				hpacucli_physical_drive_type			=>	$hpacucli_physical_drive_type, 
+				hpacucli_physical_drive_rpm			=>	$hpacucli_physical_drive_rpm, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $hpacucli_physical_drive_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}})
+		{
+			my $hpacucli_physical_drive_logical_drive_uuid = $an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_logical_drive_uuid};
+			my $hpacucli_physical_drive_serial_number      = $an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_serial_number};
+			my $hpacucli_physical_drive_model              = $an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_model};
+			my $hpacucli_physical_drive_temperature        = $an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_temperature};
+			my $hpacucli_physical_drive_interface          = $an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_interface};
+			my $hpacucli_physical_drive_status             = $an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_status};
+			my $hpacucli_physical_drive_size               = $an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_size};
+			my $hpacucli_physical_drive_type               = $an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_type};
+			my $hpacucli_physical_drive_rpm                = $an->data->{db_data}{unified}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_rpm};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+				name1  => "hpacucli_physical_drive_uuid",               value1  => $hpacucli_physical_drive_uuid, 
+				name2  => "hpacucli_physical_drive_logical_drive_uuid", value2  => $hpacucli_physical_drive_logical_drive_uuid, 
+				name3  => "hpacucli_physical_drive_serial_number",      value3  => $hpacucli_physical_drive_serial_number, 
+				name4  => "hpacucli_physical_drive_model",              value4  => $hpacucli_physical_drive_model, 
+				name5  => "hpacucli_physical_drive_temperature",        value5  => $hpacucli_physical_drive_temperature, 
+				name6  => "hpacucli_physical_drive_interface",          value6  => $hpacucli_physical_drive_interface, 
+				name7  => "hpacucli_physical_drive_status",             value7  => $hpacucli_physical_drive_status, 
+				name8  => "hpacucli_physical_drive_size",               value8  => $hpacucli_physical_drive_size, 
+				name9  => "hpacucli_physical_drive_type",               value9  => $hpacucli_physical_drive_type, 
+				name10 => "hpacucli_physical_drive_rpm",                value10 => $hpacucli_physical_drive_rpm, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We need to sanity check the three numeric strings because calling 'quote' directly
+			# will wrap the numeric values in single quotes which violates 'numeric' forms.
+			my $quoted_hpacucli_physical_drive_temperature =  $an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_temperature);
+			my $quoted_hpacucli_physical_drive_size        =  $an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_size);
+			my $quoted_hpacucli_physical_drive_rpm         =  $an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_rpm);
+			   $quoted_hpacucli_physical_drive_temperature =~ s/^'(.*?)'$/$1/;
+			   $quoted_hpacucli_physical_drive_size        =~ s/^'(.*?)'$/$1/;
+			   $quoted_hpacucli_physical_drive_rpm         =~ s/^'(.*?)'$/$1/;
+			if ((($quoted_hpacucli_physical_drive_temperature) && ($quoted_hpacucli_physical_drive_temperature =~ /\D/)) or 
+			    (($quoted_hpacucli_physical_drive_size)        && ($quoted_hpacucli_physical_drive_size =~ /\D/))        or 
+			    (($quoted_hpacucli_physical_drive_rpm)         && ($quoted_hpacucli_physical_drive_rpm =~ /\D/)))
+			{
+				$an->Alert->error({title_key => "an_0003", message_key => "scan_hpacucli_error_0010", message_variables => { 
+					temperature => $quoted_hpacucli_physical_drive_temperature,
+					size        => $quoted_hpacucli_physical_drive_size,
+					rpm         => $quoted_hpacucli_physical_drive_rpm,
+				}, code => 8, file => $THIS_FILE, line => __LINE__});
+				$an->nice_exit({exit_code => 8});
+			}
+			$quoted_hpacucli_physical_drive_temperature = "NULL" if $quoted_hpacucli_physical_drive_temperature eq "";
+			$quoted_hpacucli_physical_drive_size        = "NULL" if $quoted_hpacucli_physical_drive_size        eq "";
+			$quoted_hpacucli_physical_drive_rpm         = "NULL" if $quoted_hpacucli_physical_drive_rpm         eq "";
+			
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'hpacucli_physical_drive_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::hpacucli_physical_drives::hpacucli_physical_drive_uuid::${hpacucli_physical_drive_uuid}::seen", value1 => $an->data->{db_data}{$id}{hpacucli_physical_drives}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{hpacucli_physical_drives}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{hpacucli_physical_drives}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::hpacucli_physical_drives::hpacucli_physical_drive_uuid::${hpacucli_physical_drive_uuid}::exists", value1 => $an->data->{db_data}{$id}{hpacucli_physical_drives}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{hpacucli_physical_drives}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::hpacucli_physical_drives::modified_date::${modified_date}::hpacucli_physical_drive_uuid::${hpacucli_physical_drive_uuid}", value1 => $an->data->{db_data}{$id}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# hpacucli_physical_drive_uuid from this host.
+							my $query = "
+UPDATE 
+    public.hpacucli_physical_drives
+SET
+    hpacucli_physical_drive_logical_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_logical_drive_uuid).", 
+    hpacucli_physical_drive_serial_number      = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_serial_number).", 
+    hpacucli_physical_drive_model              = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_model).", 
+    hpacucli_physical_drive_temperature        = $quoted_hpacucli_physical_drive_temperature, 
+    hpacucli_physical_drive_interface          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_interface).", 
+    hpacucli_physical_drive_status             = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_status).", 
+    hpacucli_physical_drive_size               = $quoted_hpacucli_physical_drive_size, 
+    hpacucli_physical_drive_type               = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_type).", 
+    hpacucli_physical_drive_rpm                = $quoted_hpacucli_physical_drive_rpm, 
+    modified_date                              = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    hpacucli_physical_drive_uuid               = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.hpacucli_physical_drives
+(
+    hpacucli_physical_drive_uuid, 
+    hpacucli_physical_drive_host_uuid, 
+    hpacucli_physical_drive_logical_drive_uuid, 
+    hpacucli_physical_drive_serial_number, 
+    hpacucli_physical_drive_model, 
+    hpacucli_physical_drive_temperature, 
+    hpacucli_physical_drive_interface, 
+    hpacucli_physical_drive_status, 
+    hpacucli_physical_drive_size, 
+    hpacucli_physical_drive_type, 
+    hpacucli_physical_drive_rpm, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_logical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_model).", 
+    $quoted_hpacucli_physical_drive_temperature, 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_interface).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_status).", 
+    $quoted_hpacucli_physical_drive_size, 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_type).", 
+    $quoted_hpacucli_physical_drive_rpm, 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'hpacucli_physical_drive_uuid' before, so it is just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{hpacucli_physical_drives}{modified_date}{$modified_date}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.hpacucli_physical_drives
+(
+    hpacucli_physical_drive_uuid, 
+    hpacucli_physical_drive_host_uuid, 
+    hpacucli_physical_drive_logical_drive_uuid, 
+    hpacucli_physical_drive_serial_number, 
+    hpacucli_physical_drive_model, 
+    hpacucli_physical_drive_temperature, 
+    hpacucli_physical_drive_interface, 
+    hpacucli_physical_drive_status, 
+    hpacucli_physical_drive_size, 
+    hpacucli_physical_drive_type, 
+    hpacucli_physical_drive_rpm, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_logical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_model).", 
+    $quoted_hpacucli_physical_drive_temperature, 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_interface).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_status).", 
+    $quoted_hpacucli_physical_drive_size, 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_physical_drive_type).", 
+    $quoted_hpacucli_physical_drive_rpm, 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen hpacucli_physical_drive_uuid?
+			} # foreach my $id 
+		} # foreach my $hpacucli_physical_drive_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'hpacucli_logical_drives' table.
+sub update_db_logical_drives
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_logical_drives" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'hpacucli_logical_drives' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		 
+		# Read in the history schema
+		my $query = "
+SELECT 
+    hpacucli_logical_drive_uuid, 
+    hpacucli_logical_drive_array_uuid,
+    hpacucli_logical_drive_name,
+    hpacucli_logical_drive_caching,
+    hpacucli_logical_drive_os_device_name,
+    hpacucli_logical_drive_type,
+    hpacucli_logical_drive_raid_level,
+    hpacucli_logical_drive_size,
+    hpacucli_logical_drive_strip_size,
+    hpacucli_logical_drive_stripe_size,
+    hpacucli_logical_drive_status,
+    hpacucli_logical_drive_wwn,
+    modified_date 
+FROM 
+    history.hpacucli_logical_drives
+WHERE
+    hpacucli_logical_drive_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $hpacucli_logical_drive_uuid            = $row->[0]; 
+			my $hpacucli_logical_drive_array_uuid      = $row->[1];
+			my $hpacucli_logical_drive_name            = $row->[2];
+			my $hpacucli_logical_drive_caching         = $row->[3];
+			my $hpacucli_logical_drive_os_device_name  = $row->[4];
+			my $hpacucli_logical_drive_type            = $row->[5];
+			my $hpacucli_logical_drive_raid_level      = $row->[6];
+			my $hpacucli_logical_drive_size            = $row->[7];
+			my $hpacucli_logical_drive_strip_size      = $row->[8];
+			my $hpacucli_logical_drive_stripe_size     = $row->[9];
+			my $hpacucli_logical_drive_status          = $row->[10];
+			my $hpacucli_logical_drive_wwn             = $row->[11];
+			my $modified_date                          = $row->[12];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+				name1  => "hpacucli_logical_drive_uuid",           value1  => $hpacucli_logical_drive_uuid, 
+				name2  => "hpacucli_logical_drive_array_uuid",     value2  => $hpacucli_logical_drive_array_uuid, 
+				name3  => "hpacucli_logical_drive_name",           value3  => $hpacucli_logical_drive_name, 
+				name4  => "hpacucli_logical_drive_caching",        value4  => $hpacucli_logical_drive_caching, 
+				name5  => "hpacucli_logical_drive_os_device_name", value5  => $hpacucli_logical_drive_os_device_name, 
+				name6  => "hpacucli_logical_drive_type",           value6  => $hpacucli_logical_drive_type, 
+				name7  => "hpacucli_logical_drive_raid_level",     value7  => $hpacucli_logical_drive_raid_level, 
+				name8  => "hpacucli_logical_drive_size",           value8  => $hpacucli_logical_drive_size, 
+				name9  => "hpacucli_logical_drive_strip_size",     value9  => $hpacucli_logical_drive_strip_size, 
+				name11 => "hpacucli_logical_drive_stripe_size",    value11 => $hpacucli_logical_drive_stripe_size, 
+				name12 => "hpacucli_logical_drive_status",         value12 => $hpacucli_logical_drive_status, 
+				name13 => "hpacucli_logical_drive_wwn",            value13 => $hpacucli_logical_drive_wwn, 
+				name14 => "modified_date",                         value14 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid} = {
+				hpacucli_logical_drive_array_uuid	=>	$hpacucli_logical_drive_array_uuid, 
+				hpacucli_logical_drive_name		=>	$hpacucli_logical_drive_name, 
+				hpacucli_logical_drive_caching		=>	$hpacucli_logical_drive_caching, 
+				hpacucli_logical_drive_os_device_name	=>	$hpacucli_logical_drive_os_device_name, 
+				hpacucli_logical_drive_type		=>	$hpacucli_logical_drive_type, 
+				hpacucli_logical_drive_raid_level	=>	$hpacucli_logical_drive_raid_level, 
+				hpacucli_logical_drive_size		=>	$hpacucli_logical_drive_size, 
+				hpacucli_logical_drive_strip_size	=>	$hpacucli_logical_drive_strip_size, 
+				hpacucli_logical_drive_stripe_size	=>	$hpacucli_logical_drive_stripe_size, 
+				hpacucli_logical_drive_status		=>	$hpacucli_logical_drive_status, 
+				hpacucli_logical_drive_wwn		=>	$hpacucli_logical_drive_wwn, 
+			};
+			$an->data->{db_data}{$id}{hpacucli_logical_drives}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{hpacucli_logical_drives}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid} = {
+				hpacucli_logical_drive_array_uuid	=>	$hpacucli_logical_drive_array_uuid, 
+				hpacucli_logical_drive_name		=>	$hpacucli_logical_drive_name, 
+				hpacucli_logical_drive_caching		=>	$hpacucli_logical_drive_caching, 
+				hpacucli_logical_drive_os_device_name	=>	$hpacucli_logical_drive_os_device_name, 
+				hpacucli_logical_drive_type		=>	$hpacucli_logical_drive_type, 
+				hpacucli_logical_drive_raid_level	=>	$hpacucli_logical_drive_raid_level, 
+				hpacucli_logical_drive_size		=>	$hpacucli_logical_drive_size, 
+				hpacucli_logical_drive_strip_size	=>	$hpacucli_logical_drive_strip_size, 
+				hpacucli_logical_drive_stripe_size	=>	$hpacucli_logical_drive_stripe_size, 
+				hpacucli_logical_drive_status		=>	$hpacucli_logical_drive_status, 
+				hpacucli_logical_drive_wwn		=>	$hpacucli_logical_drive_wwn, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $hpacucli_logical_drive_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}})
+		{
+			my $hpacucli_logical_drive_array_uuid     = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_array_uuid};
+			my $hpacucli_logical_drive_name           = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_name};
+			my $hpacucli_logical_drive_caching        = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_caching};
+			my $hpacucli_logical_drive_os_device_name = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_os_device_name};
+			my $hpacucli_logical_drive_type           = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_type};
+			my $hpacucli_logical_drive_raid_level     = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_raid_level};
+			my $hpacucli_logical_drive_size           = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_size};
+			my $hpacucli_logical_drive_strip_size     = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_strip_size};
+			my $hpacucli_logical_drive_stripe_size    = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_stripe_size};
+			my $hpacucli_logical_drive_status         = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_status};
+			my $hpacucli_logical_drive_wwn            = $an->data->{db_data}{unified}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{hpacucli_logical_drive_wwn};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+				name1  => "hpacucli_logical_drive_uuid",            value1  => $hpacucli_logical_drive_uuid, 
+				name2  => "hpacucli_logical_drive_array_uuid",      value2  => $hpacucli_logical_drive_array_uuid, 
+				name3  => "hpacucli_logical_drive_name",            value3  => $hpacucli_logical_drive_name, 
+				name4  => "hpacucli_logical_drive_caching",         value4  => $hpacucli_logical_drive_caching, 
+				name5  => "hpacucli_logical_drive_os_device_name",  value5  => $hpacucli_logical_drive_os_device_name, 
+				name6  => "hpacucli_logical_drive_type",            value6  => $hpacucli_logical_drive_type, 
+				name7  => "hpacucli_logical_drive_raid_level",      value7  => $hpacucli_logical_drive_raid_level, 
+				name8  => "hpacucli_logical_drive_size",            value8  => $hpacucli_logical_drive_size, 
+				name9  => "hpacucli_logical_drive_strip_size",      value9  => $hpacucli_logical_drive_strip_size, 
+				name10 => "hpacucli_logical_drive_stripe_size",     value10 => $hpacucli_logical_drive_stripe_size, 
+				name11 => "hpacucli_logical_drive_status",          value11 => $hpacucli_logical_drive_status, 
+				name12 => "hpacucli_logical_drive_wwn",             value12 => $hpacucli_logical_drive_wwn, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We need to sanity check the three numeric strings because calling 'quote' directly
+			# will wrap the numeric values in single quotes which violates 'numeric' forms.
+			my $quoted_hpacucli_logical_drive_size        =  $an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_size);
+			my $quoted_hpacucli_logical_drive_strip_size  =  $an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_strip_size);
+			my $quoted_hpacucli_logical_drive_stripe_size =  $an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_stripe_size);
+			   $quoted_hpacucli_logical_drive_size        =~ s/^'(.*?)'$/$1/;
+			   $quoted_hpacucli_logical_drive_strip_size  =~ s/^'(.*?)'$/$1/;
+			   $quoted_hpacucli_logical_drive_stripe_size =~ s/^'(.*?)'$/$1/;
+			if ((($quoted_hpacucli_logical_drive_size)        && ($quoted_hpacucli_logical_drive_size =~ /\D/))       or 
+			    (($quoted_hpacucli_logical_drive_strip_size)  && ($quoted_hpacucli_logical_drive_strip_size =~ /\D/)) or 
+			    (($quoted_hpacucli_logical_drive_stripe_size) && ($quoted_hpacucli_logical_drive_stripe_size =~ /\D/)))
+			{
+				$an->Alert->error({title_key => "an_0003", message_key => "scan_hpacucli_error_0009", message_variables => { 
+					logical_drive_size => $quoted_hpacucli_logical_drive_size,
+					strip_size         => $quoted_hpacucli_logical_drive_strip_size,
+					stripe_size        => $quoted_hpacucli_logical_drive_stripe_size,
+				}, code => 7, file => $THIS_FILE, line => __LINE__});
+				$an->nice_exit({exit_code => 7});
+			}
+			$quoted_hpacucli_logical_drive_size        = "NULL" if $quoted_hpacucli_logical_drive_size        eq "";
+			$quoted_hpacucli_logical_drive_strip_size  = "NULL" if $quoted_hpacucli_logical_drive_strip_size  eq "";
+			$quoted_hpacucli_logical_drive_stripe_size = "NULL" if $quoted_hpacucli_logical_drive_stripe_size eq "";
+			
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'hpacucli_logical_drive_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::hpacucli_logical_drives::hpacucli_logical_drive_uuid::${hpacucli_logical_drive_uuid}::seen", value1 => $an->data->{db_data}{$id}{hpacucli_logical_drives}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{hpacucli_logical_drives}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{hpacucli_logical_drives}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::hpacucli_logical_drives::hpacucli_logical_drive_uuid::${hpacucli_logical_drive_uuid}::exists", value1 => $an->data->{db_data}{$id}{hpacucli_logical_drives}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{hpacucli_logical_drives}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::hpacucli_logical_drives::modified_date::${modified_date}::hpacucli_logical_drive_uuid::${hpacucli_logical_drive_uuid}", value1 => $an->data->{db_data}{$id}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# hpacucli_logical_drive_uuid from this host.
+							my $query = "
+UPDATE 
+    public.hpacucli_logical_drives
+SET
+    hpacucli_logical_drive_array_uuid     = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_array_uuid).", 
+    hpacucli_logical_drive_name           = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_name).", 
+    hpacucli_logical_drive_caching        = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_caching).", 
+    hpacucli_logical_drive_os_device_name = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_os_device_name).", 
+    hpacucli_logical_drive_type           = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_type).", 
+    hpacucli_logical_drive_raid_level     = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_raid_level).", 
+    hpacucli_logical_drive_size           = $quoted_hpacucli_logical_drive_size, 
+    hpacucli_logical_drive_strip_size     = $quoted_hpacucli_logical_drive_strip_size, 
+    hpacucli_logical_drive_stripe_size    = $quoted_hpacucli_logical_drive_stripe_size, 
+    hpacucli_logical_drive_status         = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_status).", 
+    hpacucli_logical_drive_wwn            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_wwn).", 
+    modified_date                         = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    hpacucli_logical_drive_uuid           = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.hpacucli_logical_drives
+(
+    hpacucli_logical_drive_uuid, 
+    hpacucli_logical_drive_host_uuid, 
+    hpacucli_logical_drive_array_uuid, 
+    hpacucli_logical_drive_name, 
+    hpacucli_logical_drive_caching, 
+    hpacucli_logical_drive_os_device_name, 
+    hpacucli_logical_drive_type, 
+    hpacucli_logical_drive_raid_level, 
+    hpacucli_logical_drive_size, 
+    hpacucli_logical_drive_strip_size, 
+    hpacucli_logical_drive_stripe_size, 
+    hpacucli_logical_drive_status, 
+    hpacucli_logical_drive_wwn, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_array_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_caching).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_os_device_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_raid_level).", 
+    $quoted_hpacucli_logical_drive_size, 
+    $quoted_hpacucli_logical_drive_strip_size, 
+    $quoted_hpacucli_logical_drive_stripe_size, 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_wwn).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'hpacucli_logical_drive_uuid' before, so it is just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{hpacucli_logical_drives}{modified_date}{$modified_date}{hpacucli_logical_drive_uuid}{$hpacucli_logical_drive_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.hpacucli_logical_drives
+(
+    hpacucli_logical_drive_uuid, 
+    hpacucli_logical_drive_host_uuid, 
+    hpacucli_logical_drive_array_uuid, 
+    hpacucli_logical_drive_name, 
+    hpacucli_logical_drive_caching, 
+    hpacucli_logical_drive_os_device_name, 
+    hpacucli_logical_drive_type, 
+    hpacucli_logical_drive_raid_level, 
+    hpacucli_logical_drive_size, 
+    hpacucli_logical_drive_strip_size, 
+    hpacucli_logical_drive_stripe_size, 
+    hpacucli_logical_drive_status, 
+    hpacucli_logical_drive_wwn, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_array_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_caching).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_os_device_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_raid_level).", 
+    $quoted_hpacucli_logical_drive_size, 
+    $quoted_hpacucli_logical_drive_strip_size, 
+    $quoted_hpacucli_logical_drive_stripe_size, 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_logical_drive_wwn).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen hpacucli_logical_drive_uuid?
+			} # foreach my $id 
+		} # foreach my $hpacucli_logical_drive_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'hpacucli_arrays' table.
+sub update_db_arrays
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_arrays" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'hpacucli_arrays' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    hpacucli_array_uuid, 
+    hpacucli_array_controller_uuid, 
+    hpacucli_array_name, 
+    hpacucli_array_type, 
+    hpacucli_array_status, 
+    hpacucli_array_unused_space, 
+    modified_date 
+FROM 
+    history.hpacucli_arrays
+WHERE
+    hpacucli_array_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $hpacucli_array_uuid            = $row->[0];
+			my $hpacucli_array_controller_uuid = $row->[1];
+			my $hpacucli_array_name            = $row->[2];
+			my $hpacucli_array_type            = $row->[3];
+			my $hpacucli_array_status          = $row->[4];
+			my $hpacucli_array_unused_space    = $row->[5];
+			my $modified_date                  = $row->[6];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "hpacucli_array_uuid",            value1 => $hpacucli_array_uuid, 
+				name2 => "hpacucli_array_controller_uuid", value2 => $hpacucli_array_controller_uuid, 
+				name3 => "hpacucli_array_name",            value3 => $hpacucli_array_name, 
+				name4 => "hpacucli_array_type",            value4 => $hpacucli_array_type, 
+				name5 => "hpacucli_array_status",          value5 => $hpacucli_array_status, 
+				name6 => "hpacucli_array_unused_space",    value6 => $hpacucli_array_unused_space, 
+				name7 => "modified_date",                  value7 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid} = {
+				hpacucli_array_controller_uuid	=>	$hpacucli_array_controller_uuid, 
+				hpacucli_array_name		=>	$hpacucli_array_name, 
+				hpacucli_array_type		=>	$hpacucli_array_type, 
+				hpacucli_array_status		=>	$hpacucli_array_status, 
+				hpacucli_array_unused_space	=>	$hpacucli_array_unused_space, 
+			};
+			$an->data->{db_data}{$id}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid} = {
+				hpacucli_array_controller_uuid	=>	$hpacucli_array_controller_uuid, 
+				hpacucli_array_name		=>	$hpacucli_array_name, 
+				hpacucli_array_type		=>	$hpacucli_array_type, 
+				hpacucli_array_status		=>	$hpacucli_array_status, 
+				hpacucli_array_unused_space	=>	$hpacucli_array_unused_space, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $hpacucli_array_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}})
+		{
+			my $hpacucli_array_controller_uuid = $an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_controller_uuid};
+			my $hpacucli_array_name            = $an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_name};
+			my $hpacucli_array_type            = $an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_type};
+			my $hpacucli_array_status          = $an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_status};
+			my $hpacucli_array_unused_space    = $an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_unused_space};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "hpacucli_array_uuid",            value1 => $hpacucli_array_uuid, 
+				name2 => "hpacucli_array_controller_uuid", value2 => $hpacucli_array_controller_uuid, 
+				name3 => "hpacucli_array_name",            value3 => $hpacucli_array_name, 
+				name4 => "hpacucli_array_type",            value4 => $hpacucli_array_type, 
+				name5 => "hpacucli_array_status",          value5 => $hpacucli_array_status, 
+				name6 => "hpacucli_array_unused_space",    value6 => $hpacucli_array_unused_space, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We need to sanity check the three numeric strings because calling 'quote' directly
+			# will wrap the numeric values in single quotes which violates 'numeric' forms.
+			my $quoted_hpacucli_array_unused_space =  $an->data->{sys}{use_db_fh}->quote($hpacucli_array_unused_space);
+			   $quoted_hpacucli_array_unused_space =~ s/^'(.*?)'$/$1/;
+			if ((($quoted_hpacucli_array_unused_space) && ($quoted_hpacucli_array_unused_space =~ /\D/)))
+			{
+				$an->Alert->error({title_key => "an_0003", message_key => "scan_hpacucli_error_0008", message_variables => { 
+					unused_space => $quoted_hpacucli_array_unused_space,
+				}, code => 6, file => $THIS_FILE, line => __LINE__});
+				$an->nice_exit({exit_code => 6});
+			}
+			$quoted_hpacucli_array_unused_space = "NULL" if $quoted_hpacucli_array_unused_space eq "";
+			
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'hpacucli_array_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::seen", value1 => $an->data->{db_data}{$id}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::exists", value1 => $an->data->{db_data}{$id}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::hpacucli_arrays::modified_date::${modified_date}::hpacucli_array_uuid::${hpacucli_array_uuid}", value1 => $an->data->{db_data}{$id}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# hpacucli_array_uuid from this host.
+							my $query = "
+UPDATE 
+    public.hpacucli_arrays
+SET
+    hpacucli_array_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_controller_uuid).", 
+    hpacucli_array_name            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_name).", 
+    hpacucli_array_type            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_type).", 
+    hpacucli_array_status          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_status).", 
+    hpacucli_array_unused_space    = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_unused_space).", 
+    modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    hpacucli_array_uuid            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.hpacucli_arrays
+(
+    hpacucli_array_uuid, 
+    hpacucli_array_host_uuid, 
+    hpacucli_array_controller_uuid, 
+    hpacucli_array_name, 
+    hpacucli_array_type, 
+    hpacucli_array_status, 
+    hpacucli_array_unused_space, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_unused_space).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'hpacucli_array_uuid' before, so it is just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.hpacucli_arrays
+(
+    hpacucli_array_uuid, 
+    hpacucli_array_host_uuid, 
+    hpacucli_array_controller_uuid, 
+    hpacucli_array_name, 
+    hpacucli_array_type, 
+    hpacucli_array_status, 
+    hpacucli_array_unused_space, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_unused_space).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen hpacucli_array_uuid?
+			} # foreach my $id 
+		} # foreach my $hpacucli_array_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'hpacucli_cache_modules' table.
+sub update_db_cache_modules
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_cache_modules" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'hpacucli_cache_modules' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    hpacucli_cache_module_uuid, 
+    hpacucli_cache_module_controller_uuid, 
+    hpacucli_cache_module_serial_number, 
+    hpacucli_cache_module_status, 
+    hpacucli_cache_module_type, 
+    hpacucli_cache_module_size, 
+    modified_date 
+FROM 
+    history.hpacucli_cache_modules
+WHERE
+    hpacucli_cache_module_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $hpacucli_cache_module_uuid               = $row->[0];
+			my $hpacucli_cache_module_controller_uuid    = $row->[1];
+			my $hpacucli_cache_module_serial_number      = $row->[2];
+			my $hpacucli_cache_module_status             = $row->[3];
+			my $hpacucli_cache_module_type               = $row->[4];
+			my $hpacucli_cache_module_size               = $row->[5];
+			my $modified_date                            = $row->[6];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "hpacucli_cache_module_uuid",            value1 => $hpacucli_cache_module_uuid, 
+				name2 => "hpacucli_cache_module_controller_uuid", value2 => $hpacucli_cache_module_controller_uuid, 
+				name3 => "hpacucli_cache_module_serial_number",   value3 => $hpacucli_cache_module_serial_number, 
+				name4 => "hpacucli_cache_module_status",          value4 => $hpacucli_cache_module_status, 
+				name5 => "hpacucli_cache_module_type",            value5 => $hpacucli_cache_module_type, 
+				name6 => "hpacucli_cache_module_size",            value6 => $hpacucli_cache_module_size, 
+				name7 => "modified_date",                         value7 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid} = {
+				hpacucli_cache_module_controller_uuid	=>	$hpacucli_cache_module_controller_uuid, 
+				hpacucli_cache_module_serial_number	=>	$hpacucli_cache_module_serial_number, 
+				hpacucli_cache_module_status		=>	$hpacucli_cache_module_status, 
+				hpacucli_cache_module_type		=>	$hpacucli_cache_module_type, 
+				hpacucli_cache_module_size		=>	$hpacucli_cache_module_size, 
+			};
+			$an->data->{db_data}{$id}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid} = {
+				hpacucli_cache_module_controller_uuid	=>	$hpacucli_cache_module_controller_uuid, 
+				hpacucli_cache_module_serial_number	=>	$hpacucli_cache_module_serial_number, 
+				hpacucli_cache_module_status		=>	$hpacucli_cache_module_status, 
+				hpacucli_cache_module_type		=>	$hpacucli_cache_module_type, 
+				hpacucli_cache_module_size		=>	$hpacucli_cache_module_size, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hpacucli_cache_modules}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $hpacucli_cache_module_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}})
+		{
+			my $hpacucli_cache_module_controller_uuid = $an->data->{db_data}{unified}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_controller_uuid};
+			my $hpacucli_cache_module_serial_number   = $an->data->{db_data}{unified}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_serial_number};
+			my $hpacucli_cache_module_status          = $an->data->{db_data}{unified}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_status};
+			my $hpacucli_cache_module_type            = $an->data->{db_data}{unified}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_type};
+			my $hpacucli_cache_module_size            = $an->data->{db_data}{unified}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_manufacture_date};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "hpacucli_cache_module_uuid",            value1 => $hpacucli_cache_module_uuid, 
+				name2 => "hpacucli_cache_module_controller_uuid", value2 => $hpacucli_cache_module_controller_uuid, 
+				name3 => "hpacucli_cache_module_serial_number",   value3 => $hpacucli_cache_module_serial_number, 
+				name4 => "hpacucli_cache_module_status",          value4 => $hpacucli_cache_module_status, 
+				name5 => "hpacucli_cache_module_type",            value5 => $hpacucli_cache_module_type, 
+				name6 => "hpacucli_cache_module_size",            value6 => $hpacucli_cache_module_size, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We need to sanity check the three numeric strings because calling 'quote' directly
+			# will wrap the numeric values in single quotes which violates 'numeric' forms.
+			my $quoted_hpacucli_cache_module_size =  $an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_size);
+			   $hpacucli_cache_module_size        =~ s/^'(.*?)'$/$1/;
+			if ((($quoted_hpacucli_cache_module_size) && ($quoted_hpacucli_cache_module_size =~ /\D/)))
+			{
+				$an->Alert->error({title_key => "an_0003", message_key => "scan_hpacucli_error_0007", message_variables => { 
+					size => $quoted_hpacucli_cache_module_size,
+				}, code => 5, file => $THIS_FILE, line => __LINE__});
+				$an->nice_exit({exit_code => 5});
+			}
+			$quoted_hpacucli_cache_module_size = "NULL" if $quoted_hpacucli_cache_module_size eq "";
+			
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'hpacucli_cache_module_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::hpacucli_cache_modules::hpacucli_cache_module_uuid::${hpacucli_cache_module_uuid}::seen", value1 => $an->data->{db_data}{$id}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::hpacucli_cache_modules::hpacucli_cache_module_uuid::${hpacucli_cache_module_uuid}::exists", value1 => $an->data->{db_data}{$id}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::hpacucli_cache_modules::modified_date::${modified_date}::hpacucli_cache_module_uuid::${hpacucli_cache_module_uuid}", value1 => $an->data->{db_data}{$id}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid})
+						{
+							# No, so UPDATE it. Note that I don't need to worry
+							# about the host_uuid because we've only got 
+							# hpacucli_cache_module_uuid from this host.
+							my $query = "
+UPDATE 
+    public.hpacucli_cache_modules
+SET
+    hpacucli_cache_module_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_controller_uuid).", 
+    hpacucli_cache_module_serial_number   = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_serial_number).", 
+    hpacucli_cache_module_status          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_status).", 
+    hpacucli_cache_module_type            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_type).", 
+    hpacucli_cache_module_size            = $quoted_hpacucli_cache_module_size, 
+    modified_date                         = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    hpacucli_cache_module_uuid            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.hpacucli_cache_modules
+(
+    hpacucli_cache_module_uuid, 
+    hpacucli_cache_module_host_uuid, 
+    hpacucli_cache_module_controller_uuid, 
+    hpacucli_cache_module_serial_number, 
+    hpacucli_cache_module_status, 
+    hpacucli_cache_module_type, 
+    hpacucli_cache_module_size, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_type).", 
+    $quoted_hpacucli_cache_module_size, 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'hpacucli_cache_module_uuid' before, so it is just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{hpacucli_cache_modules}{modified_date}{$modified_date}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.hpacucli_cache_modules
+(
+    hpacucli_cache_module_uuid, 
+    hpacucli_cache_module_host_uuid, 
+    hpacucli_cache_module_controller_uuid, 
+    hpacucli_cache_module_serial_number, 
+    hpacucli_cache_module_status, 
+    hpacucli_cache_module_type, 
+    hpacucli_cache_module_size, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_type).", 
+    $quoted_hpacucli_cache_module_size, 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen hpacucli_cache_module_uuid?
+			} # foreach my $id 
+		} # foreach my $hpacucli_cache_module_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'hpacucli_controllers' table.
+sub update_db_controllers
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'hpacucli_controllers' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    hpacucli_controller_uuid, 
+    hpacucli_controller_serial_number, 
+    hpacucli_controller_model, 
+    hpacucli_controller_status,
+    hpacucli_controller_last_diagnostics, 
+    hpacucli_controller_cache_present,
+    hpacucli_controller_drive_write_cache,
+    hpacucli_controller_firmware_version,
+    hpacucli_controller_unsafe_writeback_cache,
+    hpacucli_controller_temperature,
+    modified_date 
+FROM 
+    history.hpacucli_controllers
+WHERE
+    hpacucli_controller_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $hpacucli_controller_uuid                   =         $row->[0]; 
+			my $hpacucli_controller_serial_number          =         $row->[1]; 
+			my $hpacucli_controller_model                  =         $row->[2]; 
+			my $hpacucli_controller_status                 =         $row->[3];
+			my $hpacucli_controller_last_diagnostics       = defined $row->[4] ? $row->[4] : 'NULL';
+			my $hpacucli_controller_cache_present          =         $row->[5];
+			my $hpacucli_controller_drive_write_cache      =         $row->[6];
+			my $hpacucli_controller_firmware_version       = defined $row->[7] ? $row->[7] : 'NULL';
+			my $hpacucli_controller_unsafe_writeback_cache = defined $row->[8] ? $row->[8] : 'NULL';
+			my $hpacucli_controller_temperature            =         $row->[9];
+			my $modified_date                              =         $row->[10];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+				name1  => "hpacucli_controller_uuid",                   value1  => $hpacucli_controller_uuid, 
+				name2  => "hpacucli_controller_serial_number",          value2  => $hpacucli_controller_serial_number, 
+				name3  => "hpacucli_controller_model",                  value3  => $hpacucli_controller_model, 
+				name4  => "hpacucli_controller_status",                 value4  => $hpacucli_controller_status, 
+				name5  => "hpacucli_controller_last_diagnostics",       value5  => $hpacucli_controller_last_diagnostics, 
+				name6  => "hpacucli_controller_cache_present",          value6  => $hpacucli_controller_cache_present, 
+				name7  => "hpacucli_controller_drive_write_cache",      value7  => $hpacucli_controller_drive_write_cache, 
+				name8  => "hpacucli_controller_firmware_version",       value8  => $hpacucli_controller_firmware_version, 
+				name9  => "hpacucli_controller_unsafe_writeback_cache", value9  => $hpacucli_controller_unsafe_writeback_cache, 
+				name10 => "hpacucli_controller_temperature",            value10 => $hpacucli_controller_temperature, 
+				name11 => "modified_date",                              value11 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid} = {
+				hpacucli_controller_serial_number	=>	$hpacucli_controller_serial_number, 
+				hpacucli_controller_model		=>	$hpacucli_controller_model, 
+				hpacucli_controller_status		=>	$hpacucli_controller_status, 
+				hpacucli_controller_last_diagnostics	=>	$hpacucli_controller_last_diagnostics, 
+				hpacucli_controller_cache_present	=>	$hpacucli_controller_cache_present, 
+				hpacucli_controller_drive_write_cache	=>	$hpacucli_controller_drive_write_cache, 
+				hpacucli_controller_firmware_version	=>	$hpacucli_controller_firmware_version, 
+				hpacucli_controller_unsafe_writeback_cache =>	$hpacucli_controller_unsafe_writeback_cache, 
+				hpacucli_controller_temperature		=>	$hpacucli_controller_temperature, 
+			};
+			$an->data->{db_data}{$id}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid} = {
+				hpacucli_controller_serial_number	=>	$hpacucli_controller_serial_number, 
+				hpacucli_controller_model		=>	$hpacucli_controller_model, 
+				hpacucli_controller_status		=>	$hpacucli_controller_status, 
+				hpacucli_controller_last_diagnostics	=>	$hpacucli_controller_last_diagnostics, 
+				hpacucli_controller_cache_present	=>	$hpacucli_controller_cache_present, 
+				hpacucli_controller_drive_write_cache	=>	$hpacucli_controller_drive_write_cache, 
+				hpacucli_controller_firmware_version	=>	$hpacucli_controller_firmware_version, 
+				hpacucli_controller_unsafe_writeback_cache =>	$hpacucli_controller_unsafe_writeback_cache, 
+				hpacucli_controller_temperature		=>	$hpacucli_controller_temperature, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $hpacucli_controller_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}})
+		{
+			my $hpacucli_controller_serial_number          = $an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_serial_number};
+			my $hpacucli_controller_model                  = $an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_model};
+			my $hpacucli_controller_status                 = $an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_status};
+			my $hpacucli_controller_last_diagnostics       = $an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_last_diagnostics};
+			my $hpacucli_controller_cache_present          = $an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_cache_present};
+			my $hpacucli_controller_drive_write_cache      = $an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_drive_write_cache};
+			my $hpacucli_controller_firmware_version       = $an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_firmware_version};
+			my $hpacucli_controller_unsafe_writeback_cache = $an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_unsafe_writeback_cache};
+			my $hpacucli_controller_temperature            = $an->data->{db_data}{unified}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_temperature};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1  => "hpacucli_controller_uuid",                   value1  => $hpacucli_controller_uuid, 
+				name2  => "hpacucli_controller_serial_number",          value2  => $hpacucli_controller_serial_number, 
+				name3  => "hpacucli_controller_model",                  value3  => $hpacucli_controller_model, 
+				name4  => "hpacucli_controller_status",                 value4  => $hpacucli_controller_status, 
+				name5  => "hpacucli_controller_last_diagnostics",       value5  => $hpacucli_controller_last_diagnostics, 
+				name6  => "hpacucli_controller_cache_present",          value6  => $hpacucli_controller_cache_present, 
+				name7  => "hpacucli_controller_drive_write_cache",      value7  => $hpacucli_controller_drive_write_cache, 
+				name8  => "hpacucli_controller_firmware_version",       value8  => $hpacucli_controller_firmware_version, 
+				name9  => "hpacucli_controller_unsafe_writeback_cache", value9  => $hpacucli_controller_unsafe_writeback_cache, 
+				name10 => "hpacucli_controller_temperature",            value10 => $hpacucli_controller_temperature, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We need to sanity check the three numeric strings because calling 'quote' directly
+			# will wrap the numeric values in single quotes which violates 'numeric' forms.
+			my $quoted_hpacucli_controller_last_diagnostics =  $an->data->{sys}{use_db_fh}->quote($hpacucli_controller_last_diagnostics);
+			my $quoted_hpacucli_controller_temperature      =  $an->data->{sys}{use_db_fh}->quote($hpacucli_controller_temperature);
+			   $quoted_hpacucli_controller_last_diagnostics =~ s/^'(.*?)'$/$1/;
+			   $quoted_hpacucli_controller_temperature      =~ s/^'(.*?)'$/$1/;
+			if ((($quoted_hpacucli_controller_last_diagnostics)        && ($quoted_hpacucli_controller_last_diagnostics =~ /\D/))       or 
+			    (($quoted_hpacucli_controller_temperature) && ($quoted_hpacucli_controller_temperature =~ /\D/)))
+			{
+				$an->Alert->error({title_key => "an_0003", message_key => "scan_hpacucli_error_0006", message_variables => { 
+					last_diagnostics => $quoted_hpacucli_controller_last_diagnostics,
+					temperature      => $quoted_hpacucli_controller_temperature,
+				}, code => 4, file => $THIS_FILE, line => __LINE__});
+				$an->nice_exit({exit_code => 4});
+			}
+			$quoted_hpacucli_controller_last_diagnostics = "NULL" if $quoted_hpacucli_controller_last_diagnostics eq "";
+			$quoted_hpacucli_controller_temperature      = "NULL" if $quoted_hpacucli_controller_temperature      eq "";
+			
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'hpacucli_controller_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::hpacucli_controllers::hpacucli_controller_uuid::${hpacucli_controller_uuid}::seen", value1 => $an->data->{db_data}{$id}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::hpacucli_controllers::hpacucli_controller_uuid::${hpacucli_controller_uuid}::exists", value1 => $an->data->{db_data}{$id}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::hpacucli_controllers::modified_date::${modified_date}::hpacucli_controller_uuid::${hpacucli_controller_uuid}", value1 => $an->data->{db_data}{$id}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.hpacucli_controllers
+SET
+    hpacucli_controller_serial_number          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_serial_number).", 
+    hpacucli_controller_model                  = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_model).", 
+    hpacucli_controller_status                 = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_status).", 
+    hpacucli_controller_last_diagnostics       = $quoted_hpacucli_controller_last_diagnostics, 
+    hpacucli_controller_cache_present          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_cache_present).", 
+    hpacucli_controller_drive_write_cache      = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_drive_write_cache).", 
+    hpacucli_controller_firmware_version       = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_firmware_version).", 
+    hpacucli_controller_unsafe_writeback_cache = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_unsafe_writeback_cache).", 
+    hpacucli_controller_temperature            = $quoted_hpacucli_controller_temperature, 
+    modified_date                              = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    hpacucli_controller_host_uuid              = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    hpacucli_controller_uuid                   = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.hpacucli_controllers
+(
+    hpacucli_controller_host_uuid, 
+    hpacucli_controller_uuid, 
+    hpacucli_controller_serial_number, 
+    hpacucli_controller_model, 
+    hpacucli_controller_status,
+    hpacucli_controller_last_diagnostics, 
+    hpacucli_controller_cache_present,
+    hpacucli_controller_drive_write_cache,
+    hpacucli_controller_firmware_version,
+    hpacucli_controller_unsafe_writeback_cache,
+    hpacucli_controller_temperature,
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_status).", 
+    $quoted_hpacucli_controller_last_diagnostics, 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_cache_present).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_drive_write_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_firmware_version).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_unsafe_writeback_cache).", 
+    $quoted_hpacucli_controller_temperature, 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'hpacucli_controller_uuid' before, so it is just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{hpacucli_controllers}{modified_date}{$modified_date}{hpacucli_controller_uuid}{$hpacucli_controller_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.hpacucli_controllers
+(
+    hpacucli_controller_host_uuid, 
+    hpacucli_controller_uuid, 
+    hpacucli_controller_serial_number, 
+    hpacucli_controller_model, 
+    hpacucli_controller_status,
+    hpacucli_controller_last_diagnostics, 
+    hpacucli_controller_cache_present,
+    hpacucli_controller_drive_write_cache,
+    hpacucli_controller_firmware_version,
+    hpacucli_controller_unsafe_writeback_cache,
+    hpacucli_controller_temperature,
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).",
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_status).", 
+    $quoted_hpacucli_controller_last_diagnostics, 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_cache_present).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_drive_write_cache).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_firmware_version).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_unsafe_writeback_cache).", 
+    $quoted_hpacucli_controller_temperature, 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen hpacucli_controller_uuid?
+			} # foreach my $id 
+		} # foreach my $hpacucli_controller_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
 
 # This will archive stuff in the 'history' schema, if needed.
 sub archive_if_needed
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the 'trigger' is '0', archiving is disabled.
 	if (not $an->data->{scancore}{archive}{trigger})
@@ -272,7 +2267,7 @@ sub archive_if_needed
 	#    records from the database.
 	
 	# Update the archive path, if set by a user. Also verify that there are sane archive values.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
 		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
 		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
@@ -281,21 +2276,21 @@ sub archive_if_needed
 	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
 	{
 		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{trigger} = 100000;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
 	{
 		$an->data->{scancore}{archive}{count} = 50000;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -303,7 +2298,7 @@ sub archive_if_needed
 	if (not -e $an->data->{path}{scancore_archive})
 	{
 		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -311,7 +2306,7 @@ sub archive_if_needed
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -363,7 +2358,7 @@ sub archive_if_needed
 	my $archive_needed = 0;
 	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "table", value1 => $table, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -375,13 +2370,13 @@ FROM
 WHERE 
     ".$an->data->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $records = 0 if not defined $records;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "records", value1 => $records, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -424,7 +2419,7 @@ WHERE
 					table        => $table, 
 					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
-					columns      => ["hpacucli_controller_uuid" "hpacucli_controller_host_uuid", "hpacucli_controller_serial_number", "hpacucli_controller_model", "hpacucli_controller_status", "hpacucli_controller_last_diagnostics", "hpacucli_controller_cache_present", "hpacucli_controller_drive_write_cache", "hpacucli_controller_firmware_version", "hpacucli_controller_unsafe_writeback_cache", "hpacucli_controller_temperature"],
+					columns      => ["hpacucli_controller_uuid", "hpacucli_controller_host_uuid", "hpacucli_controller_serial_number", "hpacucli_controller_model", "hpacucli_controller_status", "hpacucli_controller_last_diagnostics", "hpacucli_controller_cache_present", "hpacucli_controller_drive_write_cache", "hpacucli_controller_firmware_version", "hpacucli_controller_unsafe_writeback_cache", "hpacucli_controller_temperature"],
 				});
 			}
 			elsif ($table eq "hpacucli_cache_modules")
@@ -452,7 +2447,7 @@ WHERE
 					table        => $table, 
 					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
-					columns      => ["hpacucli_physical_drive_uuid", "hpacucli_physical_drive_host_uuid", "hpacucli_physical_drive_controller_uuid", "hpacucli_physical_drive_serial_number", "hpacucli_physical_drive_model", "hpacucli_physical_drive_temperature", "hpacucli_physical_drive_interface", "hpacucli_physical_drive_status", "hpacucli_physical_drive_size", "hpacucli_physical_drive_type", "hpacucli_physical_drive_rpm"],
+					columns      => ["hpacucli_physical_drive_uuid", "hpacucli_physical_drive_host_uuid", "hpacucli_physical_drive_logical_drive_uuid", "hpacucli_physical_drive_serial_number", "hpacucli_physical_drive_model", "hpacucli_physical_drive_temperature", "hpacucli_physical_drive_interface", "hpacucli_physical_drive_status", "hpacucli_physical_drive_size", "hpacucli_physical_drive_type", "hpacucli_physical_drive_rpm"],
 				});
 			}
 			elsif ($table eq "hpacucli_variables")
@@ -471,7 +2466,7 @@ WHERE
 					table        => $table, 
 					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
-					columns      => ["hpacucli_logical_drive_uuid", "hpacucli_logical_drive_host_uuid", "hpacucli_logical_drive_controller_uuid", "hpacucli_logical_drive_array_uuid", "hpacucli_logical_drive_name", "hpacucli_logical_drive_caching", "hpacucli_logical_drive_os_device_name", "hpacucli_logical_drive_type", "hpacucli_logical_drive_raid_level", "hpacucli_logical_drive_size", "hpacucli_logical_drive_strip_size", "hpacucli_logical_drive_stripe_size", "hpacucli_logical_drive_status", "hpacucli_logical_drive_wwn"],
+					columns      => ["hpacucli_logical_drive_uuid", "hpacucli_logical_drive_host_uuid", "hpacucli_logical_drive_array_uuid", "hpacucli_logical_drive_name", "hpacucli_logical_drive_caching", "hpacucli_logical_drive_os_device_name", "hpacucli_logical_drive_type", "hpacucli_logical_drive_raid_level", "hpacucli_logical_drive_size", "hpacucli_logical_drive_strip_size", "hpacucli_logical_drive_stripe_size", "hpacucli_logical_drive_status", "hpacucli_logical_drive_wwn"],
 				});
 			}
 		}
@@ -529,18 +2524,6 @@ WHERE
 	
 	return(0);
 }
-
-
-
-
-
-# Clean up and go away.
-$an->nice_exit({exit_code => 0});
-
-
-#############################################################################################################
-# Function below                                                                                            #
-#############################################################################################################
 
 # This gets the basic information about the controller.
 sub get_controller_info
