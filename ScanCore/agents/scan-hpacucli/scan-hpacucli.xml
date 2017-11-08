@@ -56,6 +56,9 @@ https://alteeve.com/w/Support
 
 							      Alteeve's Niche!
 		]]></key>
+	
+		<!-- Warnings -->
+		<key name="scan_hpacucli_warning_0001">Diagnostics not available for the drive: [#!variable!serial_number!#] in port: [#!variable!port!#], box: [#!variable!box!#], bay: [#!variable!bay!#]. Unable to predict failures! Is this a third-party drive?</key>
 		
 		<!-- Errors -->
 		<key name="scan_hpacucli_error_0001">The 'hpacucli' program was not found at: [#!variable!path!#], exiting.</key>

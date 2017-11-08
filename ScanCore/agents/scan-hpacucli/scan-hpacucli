@@ -267,7 +267,6 @@ sub pre_process_health
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "pre_process_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Is the array degraded or partially degraded?
-=cut
 	foreach my $id_string (sort {$a cmp $b} keys %{$an->data->{virtual_drive}})
 	{
 		foreach my $drive_group (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$id_string}{drive_group}})
@@ -301,6 +300,7 @@ sub pre_process_health
 		}
 	}
 	
+=cut
 	# Controllers.
 	foreach my $serial_number (sort {$a cmp $b} keys %{$an->data->{controller}{serial_number}})
 	{
@@ -2542,6 +2542,7 @@ sub get_controller_info
 	my $port                = "";
 	my $box                 = "";
 	my $bay                 = "";
+	my $in_array            = 0;
 	my $shell_call          = $an->data->{path}{hpacucli}." controller slot=".$controller." show config detail";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
@@ -2603,9 +2604,11 @@ sub get_controller_info
 		
 		if ($line =~ /Array: (.*?)$/i)
 		{
-			$array = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "array", value1 => $array, 
+			$array    = $1;
+			$in_array = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "array",    value1 => $array, 
+				name2 => "in_array", value2 => $in_array, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -2613,8 +2616,10 @@ sub get_controller_info
 		if ($line =~ /Logical Drive: (.*?)$/i)
 		{
 			$logical_drive = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$in_array      = 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "logical_drive", value1 => $logical_drive, 
+				name2 => "in_array",      value2 => $in_array, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -2651,8 +2656,6 @@ sub get_controller_info
 		
 		# Lines I don't care about
 		next if $line =~ /^Slot: $controller$/i;
-		next if $line =~ /^$/i;
-		next if $line =~ /^$/i;
 		
 		my $type = "detail";
 		if ($line =~ /^(.*?): (.*)$/)
@@ -2760,6 +2763,24 @@ sub get_controller_info
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
+		elsif ($in_array)
+		{
+			# Messages about a degraded array can be here.
+			# ie: "One of the drives on this array have failed or has been removed."
+			if ($line =~ /this array have failed/)
+			{
+				# We'll concatonate in case there are multiple errors.
+				if (not exists $an->data->{controller}{$serial_number}{array}{$array}{data}{detail}{error_message})
+				{
+					$an->data->{controller}{$serial_number}{array}{$array}{data}{detail}{error_message} = "";
+				}
+				$an->data->{controller}{$serial_number}{array}{$array}{data}{detail}{error_message} .= $line."\n";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "controller::${serial_number}::array::${array}::data::detail::error_message", value1 => $an->data->{controller}{$serial_number}{array}{$array}{data}{detail}{error_message}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+
 	}
 	close $file_handle;
 	
@@ -2939,7 +2960,7 @@ sub get_diagnostics
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "controller::${serial_number}::diagnostics::cache::parity_read_errors", value1 => $an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_read_errors}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Cache parity read errors: [".$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_read_errors}."]\n";
+					#print $THIS_FILE." ".__LINE__."; Cache parity read errors: [".$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_read_errors}."]\n";
 				}
 				if ($line =~ /Parity Write Errors (\d+) \(/)
 				{
@@ -2947,7 +2968,7 @@ sub get_diagnostics
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "controller::${serial_number}::diagnostics::cache::parity_write_errors", value1 => $an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_write_errors}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Cache parity write errors: [".$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_write_errors}."]\n";
+					#print $THIS_FILE." ".__LINE__."; Cache parity write errors: [".$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{parity_write_errors}."]\n";
 				}
 			}
 			
@@ -2964,7 +2985,7 @@ sub get_diagnostics
 						name1 => "hex",                                                                value1 => $hex, 
 						name2 => "physical_drive::${pd_serial_number}::diagnostics::read_errors_hard", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_hard}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Physical drive: [$pd_serial_number] (in: [$location]), read_errors_hard: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_hard}." ($hex)]\n";
+					#print $THIS_FILE." ".__LINE__."; Physical drive: [$pd_serial_number] (in: [$location]), read_errors_hard: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_hard}." ($hex)]\n";
 				}
 				if ($line =~ /Read Errors Retry Recovered (0x.*?)$/)
 				{
@@ -2974,7 +2995,7 @@ sub get_diagnostics
 						name1 => "hex",                                                                           value1 => $hex, 
 						name2 => "physical_drive::${pd_serial_number}::diagnostics::read_errors_retry_recovered", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_retry_recovered}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Physical drive: [$pd_serial_number] (in: [$location]), read_errors_retry_recovered: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_retry_recovered}." ($hex)]\n";
+					#print $THIS_FILE." ".__LINE__."; Physical drive: [$pd_serial_number] (in: [$location]), read_errors_retry_recovered: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_retry_recovered}." ($hex)]\n";
 				}
 				if ($line =~ /Read Errors ECC Corrected (0x.*?)$/)
 				{
@@ -2984,7 +3005,7 @@ sub get_diagnostics
 						name1 => "hex",                                                                         value1 => $hex, 
 						name2 => "physical_drive::${pd_serial_number}::diagnostics::read_errors_ecc_corrected", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_ecc_corrected}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Physical drive: [$pd_serial_number] (in: [$location]), read_errors_ecc_corrected: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_ecc_corrected}." ($hex)]\n";
+					#print $THIS_FILE." ".__LINE__."; Physical drive: [$pd_serial_number] (in: [$location]), read_errors_ecc_corrected: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{read_errors_ecc_corrected}." ($hex)]\n";
 				}
 				if ($line =~ /Write Errors Hard (0x.*?)$/)
 				{
@@ -2994,7 +3015,7 @@ sub get_diagnostics
 						name1 => "hex",                                                                 value1 => $hex, 
 						name2 => "physical_drive::${pd_serial_number}::diagnostics::write_errors_hard", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_hard}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Physical drive: [$pd_serial_number] (in: [$location]), write_errors_hard: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_hard}." ($hex)]\n";
+					#print $THIS_FILE." ".__LINE__."; Physical drive: [$pd_serial_number] (in: [$location]), write_errors_hard: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_hard}." ($hex)]\n";
 				}
 				if ($line =~ /Write Errors Retry Recovered (0x.*?)$/)
 				{
@@ -3004,7 +3025,7 @@ sub get_diagnostics
 						name1 => "hex",                                                                            value1 => $hex, 
 						name2 => "physical_drive::${pd_serial_number}::diagnostics::write_errors_retry_recovered", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_retry_recovered}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Physical drive: [$pd_serial_number] (in: [$location]), write_errors_retry_recovered: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_retry_recovered}." ($hex)]\n";
+					#print $THIS_FILE." ".__LINE__."; Physical drive: [$pd_serial_number] (in: [$location]), write_errors_retry_recovered: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_retry_recovered}." ($hex)]\n";
 				}
 				if ($line =~ /Format Errors (0x.*?)$/)
 				{
@@ -3014,7 +3035,7 @@ sub get_diagnostics
 						name1 => "hex",                                                             value1 => $hex, 
 						name2 => "physical_drive::${pd_serial_number}::diagnostics::format_errors", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{format_errors}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Physical drive: [$pd_serial_number] (in: [$location]), format_errors: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{format_errors}." ($hex)]\n";
+					#print $THIS_FILE." ".__LINE__."; Physical drive: [$pd_serial_number] (in: [$location]), format_errors: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{format_errors}." ($hex)]\n";
 				}
 				if ($line =~ /Write Errors After Remap (0x.*?)$/)
 				{
@@ -3024,7 +3045,7 @@ sub get_diagnostics
 						name1 => "hex",                                                                        value1 => $hex, 
 						name2 => "physical_drive::${pd_serial_number}::diagnostics::write_errors_after_remap", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_after_remap}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Physical drive: [$pd_serial_number] (in: [$location]), write_errors_after_remap: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_after_remap}." ($hex)]\n";
+					#print $THIS_FILE." ".__LINE__."; Physical drive: [$pd_serial_number] (in: [$location]), write_errors_after_remap: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{write_errors_after_remap}." ($hex)]\n";
 				}
 				if ($line =~ /Hardware Errors (0x.*?)$/)
 				{
@@ -3034,7 +3055,7 @@ sub get_diagnostics
 						name1 => "hex",                                                               value1 => $hex, 
 						name2 => "physical_drive::${pd_serial_number}::diagnostics::hardware_errors", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{hardware_errors}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Physical drive: [$pd_serial_number] (in: [$location]), hardware_errors: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{hardware_errors}." ($hex)]\n";
+					#print $THIS_FILE." ".__LINE__."; Physical drive: [$pd_serial_number] (in: [$location]), hardware_errors: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{hardware_errors}." ($hex)]\n";
 				}
 				if ($line =~ /Predictive Failure Errors (0x.*?)$/)
 				{
@@ -3044,7 +3065,7 @@ sub get_diagnostics
 						name1 => "hex",                                                                         value1 => $hex, 
 						name2 => "physical_drive::${pd_serial_number}::diagnostics::predictive_failure_errors", value2 => $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{predictive_failure_errors}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					#print "Physical drive: [$pd_serial_number] (in: [$location]), predictive_failure_errors: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{predictive_failure_errors}." ($hex)]\n";
+					#print $THIS_FILE." ".__LINE__."; Physical drive: [$pd_serial_number] (in: [$location]), predictive_failure_errors: [".$an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{predictive_failure_errors}." ($hex)]\n";
 				}
 			}
 		}
@@ -3081,17 +3102,17 @@ sub gather_data
 	{
 		# Controller data;
 		next if $serial_number eq "metadata";
-		print "Controller: [$serial_number]\n";
+		print $THIS_FILE." ".__LINE__."; Controller: [$serial_number]\n";
 		
 		# Temperature;
 		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{data}{temperature}})
 		{
-			print "- Temperature; $variable: [".$an->data->{controller}{$serial_number}{data}{temperature}{$variable}." °C]\n";
+			print $THIS_FILE." ".__LINE__."; - Temperature; $variable: [".$an->data->{controller}{$serial_number}{data}{temperature}{$variable}." °C]\n";
 		}
 		# Data
 		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{data}{detail}})
 		{
-			print "- Data; $variable: [".$an->data->{controller}{$serial_number}{data}{detail}{$variable}."]\n";
+			print $THIS_FILE." ".__LINE__."; - Data; $variable: [".$an->data->{controller}{$serial_number}{data}{detail}{$variable}."]\n";
 		}
 		
 		# Is this a diagnostics run?
@@ -3099,36 +3120,62 @@ sub gather_data
 		{
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{'diagnostics'}{cache}})
 			{
-				print "- Diagnostics; Cache - $variable: [".$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{$variable}."]\n";
+				print $THIS_FILE." ".__LINE__."; - Diagnostics; Cache - $variable: [".$an->data->{controller}{$serial_number}{'diagnostics'}{cache}{$variable}."]\n";
 			}
 		}
 		
 		# Array
 		foreach my $array (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}})
 		{
-			print "- Array: [$array]\n";
+			print $THIS_FILE." ".__LINE__."; - Array: [$array]\n";
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{data}{temperature}})
 			{
-				print "  - Temperature; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{data}{temperature}{$variable}." °C]\n";
+				print $THIS_FILE." ".__LINE__.";   - Temperature; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{data}{temperature}{$variable}." °C]\n";
 			}
 			# Data
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{data}{detail}})
 			{
-				print "  - Data; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{data}{detail}{$variable}."]\n";
+				if ($variable eq "error_message")
+				{
+					print $THIS_FILE." ".__LINE__.";   - !! Warning !! - Error message: [".$an->data->{controller}{$serial_number}{array}{$array}{data}{detail}{$variable}."]\n";
+				}
+				elsif (($variable eq "status") && (lc($an->data->{controller}{$serial_number}{array}{$array}{data}{detail}{$variable}) ne "ok"))
+				{
+					# Array transitions (OK -> Eject -> Plug back in)
+					#scan-hpacucli 3117;   - Data; status: [OK]
+					#scan-hpacucli 3117;   - Data; status: [Failed Physical Drive]
+					#scan-hpacucli 3148;   - Data; status: [OK]
+					print $THIS_FILE." ".__LINE__.";   - !! Warning !! - Array status problem: [".$an->data->{controller}{$serial_number}{array}{$array}{data}{detail}{$variable}."]\n";
+				}
+				else
+				{
+					print $THIS_FILE." ".__LINE__.";   - Data; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{data}{detail}{$variable}."]\n";
+				}
 			}
 			
 			# Logical Drive
 			foreach my $logical_drive (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}})
 			{
-				print " - Logical Drive: [$logical_drive]\n";
+				print $THIS_FILE." ".__LINE__.";  - Logical Drive: [$logical_drive]\n";
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{temperature}})
 				{
-					print "   - Temperature; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{temperature}{$variable}." °C]\n";
+					print $THIS_FILE." ".__LINE__.";    - Temperature; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{temperature}{$variable}." °C]\n";
 				}
 				# Data
 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}})
 				{
-					print "   - Data; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
+					if (($variable eq "status") && (lc($an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}) ne "ok"))
+					{
+						# NOTE: Auto-restored a drive that was re-inserted
+						# Example messages; "Interim Recovery Mode"
+						#                   "Recovering, 0% complete"
+						# LD transitions (OK -> Eject -> Plug back in)
+						print $THIS_FILE." ".__LINE__.";    - !! Warning!! - Logical disk status problem: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
+					}
+					else
+					{
+						print $THIS_FILE." ".__LINE__.";    - Data; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
+					}
 				}
 				
 				# Physical Disks.
@@ -3139,10 +3186,10 @@ sub gather_data
 						foreach my $bay (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}})
 						{
 							my $pd_serial_number = $an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{serial_number};
-							print "  - Physical Drive: [$port:$box:$bay], sn: [$pd_serial_number]\n";
+							print $THIS_FILE." ".__LINE__.";   - Physical Drive: [$port:$box:$bay], sn: [$pd_serial_number]\n";
 							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}})
 							{
-								print "    - Temperature; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}{$variable}." °C]\n";
+								print $THIS_FILE." ".__LINE__.";     - Temperature; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}{$variable}." °C]\n";
 							}
 							# Data
 							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}})
@@ -3151,7 +3198,23 @@ sub gather_data
 								next if $variable eq "port";
 								next if $variable eq "box";
 								next if $variable eq "bay";
-								print "    - Data; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+								
+								# Note: A failed drive will show nothing in diagnostics
+								if ($variable eq "last_failure_reason")
+								{
+									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Physical drive error: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+								}
+								elsif (($variable eq "status") && (lc($an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}) ne "ok"))
+								{
+									# ie "Failed"
+									#    "Rebuilding"
+									# Transitions (OK -> Failed -> Rebuilding)
+									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Physical drive status problem: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+								}
+								else
+								{
+									print $THIS_FILE." ".__LINE__.";     - Data; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+								}
 							}
 							
 							# If this was a diagnostics run, check for error counters
@@ -3164,7 +3227,7 @@ sub gather_data
 									{
 										# Store this in the main hash.
 										$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable} = $an->data->{physical_drive}{$pd_serial_number}{'diagnostics'}{$variable};
-										print "    - Diagnostics; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable}."]\n";
+										print $THIS_FILE." ".__LINE__.";     - Diagnostics; $variable: [".$an->data->{controller}{$serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable}."]\n";
 									}
 								}
 								else
@@ -3172,7 +3235,31 @@ sub gather_data
 									# No data for this drive. It might be
 									# a 3rd party drive. We'll warn the 
 									# user that we can't predict failure.
-									print "    - !! Warning !! - Diagnostics not available for the drive: [$pd_serial_number] in port: [$port], box: [$box], bay: [$bay]. Unable to predict failures! Is this a third-party drive?\n";
+									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Diagnostics not available for the drive: [$pd_serial_number] in port: [$port], box: [$box], bay: [$bay]. Unable to predict failures! Is this a third-party drive?\n";
+									my $set = $an->Alert->check_alert_sent({
+										type			=>	"warning",
+										alert_sent_by		=>	$THIS_FILE,
+										alert_record_locator	=>	$pd_serial_number,
+										alert_name		=>	"no_diagnostics",
+										modified_date		=>	$an->data->{sys}{db_timestamp},
+									});
+									if ($set)
+									{
+										# Warn the user that we can't
+										# predict this drive's death.
+										$an->Alert->register_alert({
+											alert_level		=>	"warning", 
+											alert_agent_name	=>	$THIS_FILE,
+											alert_title_key		=>	"an_alert_title_0004",
+											alert_message_key	=>	"scan_hpacucli_warning_0001",
+											alert_message_variables	=>	{
+												serial_number		=>	$pd_serial_number,
+												port			=>	$port,
+												box			=>	$box, 
+												bay			=>	$bay,
+											},
+										});
+									}
 								}
 							}
 						}
