@@ -440,7 +440,7 @@ BEGIN
 		 hpacucli_physical_drive_model,
 		 hpacucli_physical_drive_temperature,
 		 hpacucli_physical_drive_interface,
-	 	 hpacucli_physical_drive_status,
+		 hpacucli_physical_drive_status,
 		 hpacucli_physical_drive_size,
 		 hpacucli_physical_drive_type,
 		 hpacucli_physical_drive_rpm,
