@@ -53,7 +53,6 @@ CREATE TABLE hpacucli_controllers (
 	hpacucli_controller_drive_write_cache		text				not null,	-- "enabled" or "disabled"
 	hpacucli_controller_firmware_version		text,
 	hpacucli_controller_unsafe_writeback_cache	text,						-- "enabled" or "disabled"
-	hpacucli_controller_temperature			numeric				not null,
 	modified_date					timestamp with time zone	not null,
 	
 	FOREIGN KEY(hpacucli_controller_host_uuid) REFERENCES hosts(host_uuid)
@@ -72,7 +71,6 @@ CREATE TABLE history.hpacucli_controllers (
 	hpacucli_controller_drive_write_cache		text,
 	hpacucli_controller_firmware_version		text,
 	hpacucli_controller_unsafe_writeback_cache	text,
-	hpacucli_controller_temperature			numeric,
 	modified_date					timestamp with time zone
 );
 ALTER TABLE history.hpacucli_controllers OWNER TO #!variable!user!#;
@@ -94,7 +92,6 @@ BEGIN
 		 hpacucli_controller_drive_write_cache,
 		 hpacucli_controller_firmware_version,
 		 hpacucli_controller_unsafe_writeback_cache,
-		 hpacucli_controller_temperature,
 		 modified_date)
 	VALUES 
 		(history_hpacucli_controllers.hpacucli_controller_uuid,
@@ -107,7 +104,6 @@ BEGIN
 		 history_hpacucli_controllers.hpacucli_controller_drive_write_cache,
 		 history_hpacucli_controllers.hpacucli_controller_firmware_version,
 		 history_hpacucli_controllers.hpacucli_controller_unsafe_writeback_cache,
-		 history_hpacucli_controllers.hpacucli_controller_temperature, 
 		 history_hpacucli_controllers.modified_date);
 	RETURN NULL;
 END;
@@ -396,7 +392,6 @@ CREATE TABLE hpacucli_physical_drives (
 	hpacucli_physical_drive_logical_drive_uuid	uuid				not null,
 	hpacucli_physical_drive_serial_number		text				not null,
 	hpacucli_physical_drive_model			text				not null,
-	hpacucli_physical_drive_temperature		numeric				not null,	-- In celcius, we'll use "maximum_temperature" for alerts
 	hpacucli_physical_drive_interface		text				not null,
 	hpacucli_physical_drive_status			text				not null,
 	hpacucli_physical_drive_size			numeric				not null,	-- In bytes
@@ -416,7 +411,6 @@ CREATE TABLE history.hpacucli_physical_drives (
 	hpacucli_physical_drive_logical_drive_uuid	uuid,
 	hpacucli_physical_drive_serial_number		text,
 	hpacucli_physical_drive_model			text,
-	hpacucli_physical_drive_temperature		numeric,
 	hpacucli_physical_drive_interface		text,
 	hpacucli_physical_drive_status			text,
 	hpacucli_physical_drive_size			numeric,
@@ -438,7 +432,6 @@ BEGIN
 		 hpacucli_physical_drive_logical_drive_uuid, 
 		 hpacucli_physical_drive_serial_number,
 		 hpacucli_physical_drive_model,
-		 hpacucli_physical_drive_temperature,
 		 hpacucli_physical_drive_interface,
 		 hpacucli_physical_drive_status,
 		 hpacucli_physical_drive_size,
@@ -451,7 +444,6 @@ BEGIN
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_logical_drive_uuid, 
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_serial_number,
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_model,
-		 history_hpacucli_physical_drives.hpacucli_physical_drive_temperature,
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_interface,
 	 	 history_hpacucli_physical_drives.hpacucli_physical_drive_status,
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_size,
@@ -483,29 +475,29 @@ CREATE TRIGGER trigger_hpacucli_physical_drives
 -- This stores various variables found for a given controller but not explicitely checked for (or that 
 -- change frequently).
 CREATE TABLE hpacucli_variables (
-	hpacucli_variable_uuid		uuid				primary key,
-	hpacucli_variable_host_uuid	uuid				not null,
-	hpacucli_variable_source_table	text				not null,
-	hpacucli_variable_source_uuid	uuid				not null,
+	hpacucli_variable_uuid			uuid				primary key,
+	hpacucli_variable_host_uuid		uuid				not null,
+	hpacucli_variable_source_table		text				not null,
+	hpacucli_variable_source_uuid		uuid				not null,
 	hpacucli_variable_is_temperature	boolean				not null	default FALSE,
-	hpacucli_variable_name		text				not null,
-	hpacucli_variable_value		text,
-	modified_date					timestamp with time zone	not null,
+	hpacucli_variable_name			text				not null,
+	hpacucli_variable_value			text,
+	modified_date				timestamp with time zone	not null,
 	
 	FOREIGN KEY(hpacucli_variable_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE hpacucli_variables OWNER TO #!variable!user!#;
 
 CREATE TABLE history.hpacucli_variables (
-	history_id			bigserial,
-	hpacucli_variable_uuid		uuid,
-	hpacucli_variable_host_uuid	uuid,
-	hpacucli_variable_source_table	text,
-	hpacucli_variable_source_uuid	uuid,
+	history_id				bigserial,
+	hpacucli_variable_uuid			uuid,
+	hpacucli_variable_host_uuid		uuid,
+	hpacucli_variable_source_table		text,
+	hpacucli_variable_source_uuid		uuid,
 	hpacucli_variable_is_temperature	boolean,
-	hpacucli_variable_name		text,
-	hpacucli_variable_value		text,
-	modified_date					timestamp with time zone
+	hpacucli_variable_name			text,
+	hpacucli_variable_value			text,
+	modified_date				timestamp with time zone
 );
 ALTER TABLE history.hpacucli_variables OWNER TO #!variable!user!#;
 

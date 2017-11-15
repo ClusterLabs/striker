@@ -27,7 +27,7 @@ main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'
 - Alarm State: . [#!variable!alarm_state!#]
 
 Other detected variables:
-</key>
+		</key>
 		<key name="scan_storcli_note_0002">- #!variable!name!#: [#!variable!value!#]</key>
 		<key name="scan_storcli_note_0003">A new Broadcom (AVAGO/LSI) Storage controller Battery Backup Unit (BBU) has been found.
 - On Controller: .... [#!variable!on_controller!#]
@@ -156,27 +156,27 @@ The temperature of the physical drive: [#!variable!serial_number!#] has dropped 
 - #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
 		</key>
 		<key name="scan_storcli_note_0022">
-The temperature of the RAID controller: [#!variable!serial_number!#] is above the critical temperature of: [#!variable!high_critical_temperature!# °C]!:
+The temperature of the RAID controller: [#!variable!serial_number!#] is above the high critical temperature of: [#!variable!high_critical_temperature!# °C]!:
 - #!variable!name!#: [#!variable!value!# °C]
 		</key>
 		<key name="scan_storcli_note_0023">
-The temperature of the RAID controller: [#!variable!serial_number!#] is above the warning temperature of: [#!variable!high_warning_temperature!# °C]. It will go critical at: [#!variable!high_critical_temperature!# °C]!:
+The temperature of the RAID controller: [#!variable!serial_number!#] is above the high warning temperature of: [#!variable!high_warning_temperature!# °C]. It will go critical at: [#!variable!high_critical_temperature!# °C]!:
 - #!variable!name!#: [#!variable!value!# °C]
 		</key>
 		<key name="scan_storcli_note_0024">
-The temperature of the RAID controller: [#!variable!serial_number!#] is below the critical temperature of: [#!variable!low_critical_temperature!# °C]!:
+The temperature of the RAID controller: [#!variable!serial_number!#] is below the low critical temperature of: [#!variable!low_critical_temperature!# °C]!:
 - #!variable!name!#: [#!variable!value!# °C]
 		</key>
 		<key name="scan_storcli_note_0025">
-The temperature of the RAID controller: [#!variable!serial_number!#] is below the warning temperature of: [#!variable!low_warning_temperature!# °C]. It will go critical at: [#!variable!low_critical_temperature!# °C]!:
+The temperature of the RAID controller: [#!variable!serial_number!#] is below the low warning temperature of: [#!variable!low_warning_temperature!# °C]. It will go critical at: [#!variable!low_critical_temperature!# °C]!:
 - #!variable!name!#: [#!variable!value!# °C]
 		</key>
 		<key name="scan_storcli_note_0026">
-The temperature of the RAID controller: [#!variable!serial_number!#] has risen above the critical temperature of: [#!variable!high_critical_temperature!# °C]!:
+The temperature of the RAID controller: [#!variable!serial_number!#] has risen above the high critical temperature of: [#!variable!high_critical_temperature!# °C]!:
 - #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
 		</key>
 		<key name="scan_storcli_note_0027">
-The temperature of the RAID controller: [#!variable!serial_number!#] has risen above the warning temperature of: [#!variable!high_warning_temperature!# °C]. It will go critical at: [#!variable!high_critical_temperature!# °C]!:
+The temperature of the RAID controller: [#!variable!serial_number!#] has risen above the high warning temperature of: [#!variable!high_warning_temperature!# °C]. It will go critical at: [#!variable!high_critical_temperature!# °C]!:
 - #!variable!name!#: [#!variable!old_value!# °C] -> [#!variable!new_value!# °C]
 		</key>
 		<key name="scan_storcli_note_0028">

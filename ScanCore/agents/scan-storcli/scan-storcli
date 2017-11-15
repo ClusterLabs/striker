@@ -1476,7 +1476,7 @@ sub process_drive_groups
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
 				alert_agent_name	=>	$THIS_FILE,
-				alert_sort		=>	$an->data->{sys}{alert_sort},	
+				alert_sort		=>	$an->data->{sys}{alert_sort}, 
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"scan_storcli_note_0005",
 				alert_message_variables	=>	{
@@ -6738,9 +6738,9 @@ INSERT INTO
 						my $temperature_is    = "nominal";
 						if ($value > $high_critical)
 						{
-							# Crossed the critical threshold. This should
-							# always be unset because it is a new
-							# variable, but check anyway.
+							# Crossed the high critical threshold. This should
+							# always be unset because it is a new variable, but 
+							# check anyway.
 							my $set = $an->Alert->check_alert_sent({
 								type			=>	"warning",	# This is not the alert level, 'warning' == trouble, 'clear' == ok now.
 								alert_sent_by		=>	$THIS_FILE,
@@ -6750,8 +6750,6 @@ INSERT INTO
 							});
 							if ($set)
 							{
-								# This is the first time we rose above the 
-								# critical threshold.
 								$alert_level = "critical";
 								$title_key   = "an_alert_title_0005";
 								$message_key = "scan_storcli_note_0022";
@@ -6759,9 +6757,9 @@ INSERT INTO
 						}
 						elsif ($value > $high_warning)
 						{
-							# Crossed the warning threshold. This should always 
-							# be unset because it is a new variable, but check 
-							# anyway.
+							# Crossed the high warning threshold. This should 
+							# always be unset because it is a new variable, but 
+							# check anyway.
 							my $set = $an->Alert->check_alert_sent({
 								type			=>	"warning",
 								alert_sent_by		=>	$THIS_FILE,
@@ -6771,8 +6769,6 @@ INSERT INTO
 							});
 							if ($set)
 							{
-								# This is the first time we rose above the 
-								# critical threshold.
 								$alert_level = "warning";
 								$title_key   = "an_alert_title_0004";
 								$message_key = "scan_storcli_note_0023";
@@ -6780,9 +6776,9 @@ INSERT INTO
 						}
 						elsif ($value < $low_critical)
 						{
-							# Dropped below the critical threshold. This should 
-							# always be unset because it is a new variable, but 
-							# check anyway.
+							# Dropped below the low critical threshold. This 
+							# should always be unset because it is a new 
+							# variable, but check anyway.
 							my $set = $an->Alert->check_alert_sent({
 								type			=>	"warning",
 								alert_sent_by		=>	$THIS_FILE,
@@ -6792,8 +6788,6 @@ INSERT INTO
 							});
 							if ($set)
 							{
-								# This is the first time we rose above the 
-								# critical threshold.
 								$alert_level = "critical";
 								$title_key   = "an_alert_title_0005";
 								$message_key = "scan_storcli_note_0024";
@@ -6801,9 +6795,9 @@ INSERT INTO
 						}
 						elsif ($value < $low_warning)
 						{
-							# Crossed the warning threshold. This should always 
-							# be unset because it is a new variable, but check 
-							# anyway.
+							# Dropped below the low warning threshold. This 
+							# should always be unset because it is a new 
+							# variable, but check anyway.
 							my $set = $an->Alert->check_alert_sent({
 								type			=>	"warning",
 								alert_sent_by		=>	$THIS_FILE,
