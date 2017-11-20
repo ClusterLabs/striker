@@ -1182,6 +1182,10 @@ The 'AN::Tools::Get' module's 'node_upses()' method was called without an Anvil!
 
 The 'AN::Tools::Get' module's 'node_upses()' method was called without an node name being passed.
 
+=head2 C<243>
+
+The 'AN::Tools::Get' module's 'hostname_from_uuid()' method was called without either a host or node UUID being passed.
+
 
 
 =head2 C<999>

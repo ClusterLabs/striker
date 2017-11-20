@@ -20,6 +20,7 @@ my $THIS_FILE = "Get.pm";
 # dr_job_data
 # dr_target_data
 # drbd_data
+# hostname_from_uuid
 # install_target_state
 # ip
 # ip_from_hostname
@@ -1323,7 +1324,67 @@ sub drbd_data
 	return($return);
 }
 
-### TODO: Make this work on local and remote calls.
+# This returns a hostname given a host or node UUID.
+sub hostname_from_uuid
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "install_target_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $hostname  = "";
+	my $host_uuid = $parameter->{host_uuid ? $parameter->{host_uuid} : "";
+	my $node_uuid = $parameter->{node_uuid ? $parameter->{node_uuid} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "host_uuid", value1 => $host_uuid,
+		name2 => "node_uuid", value2 => $node_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure we have a UUID.
+	if ((not $host_uuid) && (not $node_uuid))
+	{
+		$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0243", code => 243, file => $THIS_FILE, line => __LINE__});
+		return("");
+	}
+	
+	# Am I looking up a host or a node?
+	my $query = "";
+	if ($host_uuid)
+	{
+		$query = "
+SELECT 
+    host_name 
+FROM 
+    hosts 
+WHERE 
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)." 
+;";
+	}
+	else
+	{
+		$query = "
+SELECT 
+    a.host_name
+FROM 
+    hosts a, nodes b 
+WHERE 
+    a.host_uuid = b.node_host_uuid
+AND 
+    b.node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)." 
+";
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $hostname = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	$hostname = "" if not defined $hostname;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "hostname", value1 => $hostname, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($hostname);
+}
+
 # This checks to see if the 'install target' feature is enabled or disabled.
 sub install_target_state
 {

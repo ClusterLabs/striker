@@ -996,6 +996,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0240"><![CDATA[The 'AN::Tools::Get' module's 'node_pdus()' method was called without a node name being passed.]]></key>
 		<key name="error_message_0241"><![CDATA[The 'AN::Tools::Get' module's 'node_upses()' method was called without an Anvil! UUID being passed.]]></key>
 		<key name="error_message_0242"><![CDATA[The 'AN::Tools::Get' module's 'node_upses()' method was called without a node name being passed.]]></key>
+		<key name="error_message_0243"><![CDATA[The 'AN::Tools::Get' module's 'hostname_from_uuid()' method was called without either a host or node UUID being passed.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

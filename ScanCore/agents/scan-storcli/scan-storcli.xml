@@ -407,7 +407,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 - Drives Per Span: .. [#!variable!old_drives_per_span!#] -> [#!variable!new_drives_per_span!#]
 - Span Depth: ....... [#!variable!old_span_depth!#] -> [#!variable!new_span_depth!#]
 - SCSI NAA ID: ...... [#!variable!old_scsi_naa_id!#] -> [#!variable!new_scsi_naa_id!#]
-</key>
+		</key>
 		<key name="scan_storcli_warning_0019">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0020">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0021">- The Virtual Drive: [#!variable!id_string!#]: '#!variable!name!#' has vanished!</key>
@@ -426,7 +426,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 - CacheCade: ................. [#!variable!old_cachecade!#] -> [#!variable!new_cachecade!#]
 - Scheduled Consistency Check: [#!variable!old_scheduled_cc!#] -> [#!variable!new_scheduled_cc!#]
 - Raw Cache String: .......... [#!variable!old_cache!#] -> [#!variable!new_cache!#]
-</key>
+		</key>
 		<key name="scan_storcli_warning_0025">The RAID controller's Drive Group (DG) has returned:
 - ID String: ................. [#!variable!old_id_string!#] -> [#!variable!new_id_string!#]
 - Access: .................... [#!variable!old_access!#] -> [#!variable!new_access!#]
@@ -440,7 +440,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 - CacheCade: ................. [#!variable!old_cachecade!#] -> [#!variable!new_cachecade!#]
 - Scheduled Consistency Check: [#!variable!old_scheduled_cc!#] -> [#!variable!new_scheduled_cc!#]
 - Raw Cache String: .......... [#!variable!old_cache!#] -> [#!variable!new_cache!#]
-</key>
+		</key>
 		<key name="scan_storcli_warning_0026">- The Drive Group: [#!variable!id_string!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0027">- The Drive Group: [#!variable!id_string!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0028">- The Drive Group: [#!variable!id_string!#]: '#!variable!name!#' has vanished!</key>
@@ -456,7 +456,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 - Capacity: ............ [#!variable!old_size!#] -> [#!variable!new_size!#]
 - Sector Size: ......... [#!variable!old_sector_size!#] -> [#!variable!new_sector_size!#]
 - Self-Encrypting Drive? [#!variable!old_self_encrypting_drive!#] -> [#!variable!new_self_encrypting_drive!#]
-</key>
+		</key>
 		<key name="scan_storcli_warning_0030">The Physical Drive (PD) has returned:
 - On Controller: ....... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
 - Virtual Drive: ....... [#!variable!old_virtual_drive!#] -> [#!variable!new_virtual_drive!#]
@@ -469,7 +469,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 - Capacity: ............ [#!variable!old_size!#] -> [#!variable!new_size!#]
 - Sector Size: ......... [#!variable!old_sector_size!#] -> [#!variable!new_sector_size!#]
 - Self-Encrypting Drive? [#!variable!old_self_encrypting_drive!#] -> [#!variable!new_self_encrypting_drive!#]
-</key>
+		</key>
 		<key name="scan_storcli_warning_0031">- The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0032">- The Physical Drive (PD): [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0033">- A new variable was found on the Physical Drive (PD): [#!variable!serial_number!#] = [#!variable!value!#]</key>
@@ -484,7 +484,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 - Design Capacity: .. [#!variable!old_design_capacity!#] -> [#!variable!new_design_capacity!#]
 - Manufacture Date: . [#!variable!old_manufacture_date!#] -> [#!variable!new_manufacture_date!#] (yyyy/mm/dd)
 - Replacement Needed? [#!variable!old_replacement_needed!#] -> [#!variable!new_replacement_needed!#]
-</key>
+		</key>
 		<key name="scan_storcli_warning_0037">The RAID controller's Cachevault (FBU) has returned:
 - On Controller: .... [#!variable!old_on_controller!#] -> [#!variable!new_on_controller!#]
 - Model: ............ [#!variable!old_model!#] -> [#!variable!new_model!#]
@@ -494,7 +494,7 @@ The temperature of the Battery Backup Unit (BBU): [#!variable!serial_number!#] h
 - Design Capacity: .. [#!variable!old_design_capacity!#] -> [#!variable!new_design_capacity!#]
 - Manufacture Date: . [#!variable!old_manufacture_date!#] -> [#!variable!new_manufacture_date!#] (yyyy/mm/dd)
 - Replacement Needed? [#!variable!old_replacement_needed!#] -> [#!variable!new_replacement_needed!#]
-</key>
+		</key>
 		<key name="scan_storcli_warning_0038">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' changed: [#!variable!old_value!#] -> [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0039">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
 		<key name="scan_storcli_warning_0040">- The Cachevault (FBU): [#!variable!serial_number!#]: '#!variable!name!#' has vanished!</key>

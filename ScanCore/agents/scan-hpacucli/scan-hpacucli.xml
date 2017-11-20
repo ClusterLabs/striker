@@ -59,6 +59,41 @@ https://alteeve.com/w/Support
 	
 		<!-- Warnings -->
 		<key name="scan_hpacucli_warning_0001">Diagnostics not available for the drive: [#!variable!serial_number!#] in port: [#!variable!port!#], box: [#!variable!box!#], bay: [#!variable!bay!#]. Unable to predict failures! Is this a third-party drive?</key>
+		<key name="scan_hpacucli_warning_0002">The RAID controller's properties have changed:
+- Model: ................. [#!variable!old_model!#] -> [#!variable!new_model!#]
+- Serial Number: ......... [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+- Status: ................ [#!variable!old_status!#] -> [#!variable!new_status!#]
+- Status: ................ [#!variable!old_alarm_state!#] -> [#!variable!new_alarm_state!#]
+- Cache Present: ......... [#!variable!old_cache_present!#] -> [#!variable!new_cache_present!#]
+- Drive Write Cache: ..... [#!variable!old_drive_write_cache!#] -> [#!variable!new_drive_write_cache!#]
+- Firmware Version: ...... [#!variable!old_firmware_version!#] -> [#!variable!new_firmware_version!#]
+- Unsafe Write-Back Cache: [#!variable!old_unsafe_writeback_cache!#] -> [#!variable!new_unsafe_writeback_cache!#]
+		</key>
+		<key name="scan_hpacucli_warning_0003">The RAID controller has returned:
+- Model: ................. [#!variable!new_model!#]
+- Serial Number: ......... [#!variable!new_serial_number!#]
+- Status: ................ [#!variable!new_status!#]
+- Status: ................ [#!variable!new_alarm_state!#]
+- Cache Present: ......... [#!variable!new_cache_present!#]
+- Drive Write Cache: ..... [#!variable!new_drive_write_cache!#]
+- Firmware Version: ...... [#!variable!new_firmware_version!#]
+- Unsafe Write-Back Cache: [#!variable!new_unsafe_writeback_cache!#]
+		</key>
+		<key name="scan_hpacucli_warning_0004">The RAID controller's cache module has changed:
+- Host: .................. [#!variable!say_old_host!#] -> [#!variable!say_new_host!#]
+- Serial Number: ......... [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+- Controller: ............ [#!variable!old_controller_serial_number!#] -> [#!variable!new_controller_serial_number!#]
+- Status: ................ [#!variable!old_status!#] -> [#!variable!new_status!#]
+- Type: .................. [#!variable!old_type!#] -> [#!variable!new_type!#]
+- Size: .................. [#!variable!say_old_size!#] -> [#!variable!say_new_size!#]
+		<key name="scan_hpacucli_warning_0005">The RAID controller's cache module has returned:
+- Host: .................. [#!variable!say_new_host!#]
+- Serial Number: ......... [#!variable!new_serial_number!#]
+- Controller: ............ [#!variable!new_controller_serial_number!#]
+- Status: ................ [#!variable!new_status!#]
+- Type: .................. [#!variable!new_type!#]
+- Size: .................. [#!variable!say_new_size!#]
+		</key>
 		
 		<!-- Errors -->
 		<key name="scan_hpacucli_error_0001">The 'hpacucli' program was not found at: [#!variable!path!#], exiting.</key>
