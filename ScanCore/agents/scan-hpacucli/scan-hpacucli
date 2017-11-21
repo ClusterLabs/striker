@@ -585,14 +585,14 @@ INSERT INTO
 				# however, the status is now 'ok', then we'll clear the alert.
 				my $title_key   = "an_alert_title_0004";
 				my $message_key = "scan_hpacucli_warning_0002";
-				if ($new_alarm_state ne $old_alarm_state)
+				if ($new_hpacucli_controller_status ne $old_hpacucli_controller_status)
 				{
-					if (($new_status ne $old_status) && ($old_status eq "VANISHED"))
+					if (($new_hpacucli_controller_status ne $old_hpacucli_controller_status) && ($old_hpacucli_controller_status eq "VANISHED"))
 					{
 						# Controller has returned.
 						$message_key = "scan_hpacucli_warning_0003";
 					}
-					if (($new_status ne $old_status) && $new_status =~ /ok/i))
+					if (($new_hpacucli_controller_status ne $old_hpacucli_controller_status) && ($new_hpacucli_controller_status =~ /ok/i))
 					{
 						# Clear the alert, the controller is OK again.
 						$title_key = "an_alert_title_0006";
@@ -626,16 +626,15 @@ INSERT INTO
 UPDATE 
     hpacucli_controllers
 SET 
+    hpacucli_controller_host_uuid              = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     hpacucli_controller_serial_number          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_serial_number).", 
     hpacucli_controller_model                  = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_model).", 
-    hpacucli_controller_status                 = ".$an->data->{sys}{use_db_fh}->quote($new_status).", 
+    hpacucli_controller_status                 = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_status).", 
     hpacucli_controller_cache_present          = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_cache_present).", 
     hpacucli_controller_drive_write_cache      = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_drive_write_cache).", 
     hpacucli_controller_firmware_version       = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_firmware_version).", 
     hpacucli_controller_unsafe_writeback_cache = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_unsafe_writeback_cache).", 
     modified_date                              = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-WHERE 
-    hpacucli_controller_host_uuid              = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     hpacucli_controller_uuid                   = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_uuid)." 
 ;";
@@ -653,7 +652,7 @@ AND
 		my $cache_is_new               = 0;
 		if ($new_hpacucli_cache_module_serial_number)
 		{
-			if ($an->data->{'scan-hpacucli'}{controllers}{by_serial}{$new_hpacucli_cache_module_serial_number})
+			if ($an->data->{'scan-hpacucli'}{cache_modules}{by_serial}{$new_hpacucli_cache_module_serial_number})
 			{
 				# Yup!
 				$hpacucli_cache_module_uuid = $an->data->{'scan-hpacucli'}{cache_modules}{by_serial}{$new_hpacucli_cache_module_serial_number};
@@ -738,38 +737,25 @@ INSERT INTO
 			{
 				# Exists already, look for changes. The serial number should never change, 
 				# buuuut...
-				my $old_hpacucli_cache_module_host_uuid       = $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_host_uuid};
 				my $old_hpacucli_cache_module_controller_uuid = $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_controller_uuid};
 				my $old_hpacucli_cache_module_serial_number   = $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_serial_number};
 				my $old_hpacucli_cache_module_status          = $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_status};
 				my $old_hpacucli_cache_module_type            = $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_type};
 				my $old_hpacucli_cache_module_size            = $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_size};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
-					name1 => "old_hpacucli_cache_module_host_uuid",       value1 => $old_hpacucli_cache_module_host_uuid,
-					name2 => "old_hpacucli_cache_module_controller_uuid", value2 => $old_hpacucli_cache_module_controller_uuid,
-					name3 => "old_hpacucli_cache_module_serial_number",   value3 => $old_hpacucli_cache_module_serial_number,
-					name4 => "old_hpacucli_cache_module_status",          value4 => $old_hpacucli_cache_module_status,
-					name5 => "old_hpacucli_cache_module_type",            value5 => $old_hpacucli_cache_module_type,
-					name6 => "old_hpacucli_cache_module_size",            value6 => $old_hpacucli_cache_module_size,
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+					name1 => "old_hpacucli_cache_module_controller_uuid", value1 => $old_hpacucli_cache_module_controller_uuid,
+					name2 => "old_hpacucli_cache_module_serial_number",   value2 => $old_hpacucli_cache_module_serial_number,
+					name3 => "old_hpacucli_cache_module_status",          value3 => $old_hpacucli_cache_module_status,
+					name4 => "old_hpacucli_cache_module_type",            value4 => $old_hpacucli_cache_module_type,
+					name5 => "old_hpacucli_cache_module_size",            value5 => $old_hpacucli_cache_module_size,
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				# Get the host names based on the host UUID:
-				my $say_new_host       = $an->Get->hostname_from_uuid({host_uuid => $new_hpacucli_cache_module_host_uuid});
-				my $say_old_host       = $an->Get->hostname_from_uuid({host_uuid => $old_hpacucli_cache_module_host_uuid});
-				my $say_old_controller = $an->data->{'scan-hpacucli'}{controllers}{by_uuid}{$old_hpacucli_cache_module_controller_uuid};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-					name1 => "say_new_host",                      value1 => $say_new_host,
-					name2 => "say_old_host",                      value2 => $say_old_host,
-					name3 => "hpacucli_controller_serial_number", value3 => $hpacucli_controller_serial_number,
-					name4 => "say_old_controller",                value4 => $say_old_controller,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				if (($new_hpacucli_cache_module_host_uuid       ne $old_hpacucli_cache_module_host_uuid)       or 
-				    ($new_hpacucli_cache_module_controller_uuid ne $old_hpacucli_cache_module_controller_uuid) or 
-				    ($new_hpacucli_cache_module_serial_number   ne $old_hpacucli_cache_module_serial_number)   or 
-				    ($new_hpacucli_cache_module_status          ne $old_hpacucli_cache_module_status)          or 
-				    ($new_hpacucli_cache_module_type            ne $old_hpacucli_cache_module_type)            or 
-				    ($new_hpacucli_cache_module_size            ne $old_hpacucli_cache_module_size))
+				if (($an->data->{sys}{host_uuid}              ne $old_hpacucli_cache_module_host_uuid)       or 
+				    ($hpacucli_controller_uuid                ne $old_hpacucli_cache_module_controller_uuid) or 
+				    ($new_hpacucli_cache_module_serial_number ne $old_hpacucli_cache_module_serial_number)   or 
+				    ($new_hpacucli_cache_module_status        ne $old_hpacucli_cache_module_status)          or 
+				    ($new_hpacucli_cache_module_type          ne $old_hpacucli_cache_module_type)            or 
+				    ($new_hpacucli_cache_module_size          ne $old_hpacucli_cache_module_size))
 				{
 					# Something has changed, but what? Any change is likely bad, so we 
 					# default to 'warning'.
@@ -777,13 +763,30 @@ INSERT INTO
 					my $message_key = "scan_hpacucli_warning_0004";
 					
 					# Did the status return to 'ok'?
-					if (($old_hpacucli_cache_module_status ne $new_hpacucli_cache_module_status) && ($new_hpacucli_cache_module_status eq "ok"))
+					if (($old_hpacucli_cache_module_status ne $new_hpacucli_cache_module_status) && ($old_hpacucli_cache_module_status eq "VANISHED"))
+					{
+						# The cache module is back
+						$title_key = "an_alert_title_0006";
+						$message_key = "scan_hpacucli_warning_0005";
+					}
+					elsif (($old_hpacucli_cache_module_status ne $new_hpacucli_cache_module_status) && ($new_hpacucli_cache_module_status eq "ok"))
 					{
 						# The status is good now, clear the alert
 						$title_key = "an_alert_title_0006";
 					}
 					
-					# Update the database.
+					# Convert the old controller UUID to a serial number.
+					my $query = "SELECT hpacucli_controller_serial_number FROM hpacucli_controllers WHERE hpacucli_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($old_hpacucli_cache_module_controller_uuid).";";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query, 
+					}, file => $THIS_FILE, line => __LINE__});
+					my $old_controller_serial_number = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+					   $old_controller_serial_number = "--" if not defined $old_controller_serial_number;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "old_controller_serial_number", value1 => $old_controller_serial_number, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Send the alert
 					$an->Alert->register_alert({
 						alert_level		=>	"warning", 
 						alert_agent_name	=>	$THIS_FILE,
@@ -791,27 +794,33 @@ INSERT INTO
 						alert_title_key		=>	$title_key,
 						alert_message_key	=>	$message_key,
 						alert_message_variables	=>	{
-							new_serial_number	=>	$hpacucli_controller_serial_number,
-							old_serial_number	=>	$old_hpacucli_controller_serial_number,
+							old_serial_number		=>	$old_hpacucli_cache_module_serial_number,
+							new_serial_number		=>	$new_hpacucli_cache_module_serial_number,
+							old_controller_serial_number	=>	$old_controller_serial_number,
+							new_controller_serial_number	=>	$hpacucli_controller_serial_number,
+							old_status			=>	$old_hpacucli_cache_module_status,
+							new_status			=>	$old_hpacucli_cache_module_status,
+							old_type			=>	$new_hpacucli_cache_module_type,
+							new_type			=>	$old_hpacucli_cache_module_type,
+							say_old_size			=>	$an->Readable->bytes_to_hr({'bytes' => $old_hpacucli_cache_module_size}),
+							say_new_size			=>	$an->Readable->bytes_to_hr({'bytes' => $new_hpacucli_cache_module_size}),
 						},
 					});
 					
-					my $query = "
+					# Update the database.
+					$query = "
 UPDATE 
-    hpacucli_controllers
+    hpacucli_cache_modules 
 SET 
-    hpacucli_controller_serial_number          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_serial_number).", 
-    hpacucli_controller_model                  = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_model).", 
-    hpacucli_controller_status                 = ".$an->data->{sys}{use_db_fh}->quote($new_status).", 
-    hpacucli_controller_cache_present          = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_cache_present).", 
-    hpacucli_controller_drive_write_cache      = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_drive_write_cache).", 
-    hpacucli_controller_firmware_version       = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_firmware_version).", 
-    hpacucli_controller_unsafe_writeback_cache = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_unsafe_writeback_cache).", 
-    modified_date                              = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    hpacucli_cache_module_host_uuid       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    hpacucli_cache_module_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_uuid).", 
+    hpacucli_cache_module_serial_number   = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_cache_module_serial_number).", 
+    hpacucli_cache_module_status          = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_cache_module_status).", 
+    hpacucli_cache_module_type            = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_cache_module_type).", 
+    hpacucli_cache_module_size            = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_cache_module_size).", 
+    modified_date                         = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    hpacucli_controller_host_uuid              = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    hpacucli_controller_uuid                   = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_uuid)." 
+    hpacucli_cache_module_uuid            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_uuid).", 
 ;";
 					
 					# Now record the query in the array
@@ -1095,36 +1104,36 @@ INSERT INTO
 		my $main_table_changed                    = 0;
 		my $old_hpacucli_controller_serial_number = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_serial_number};
 		my $old_hpacucli_controller_model         = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_model};
-		my $old_alarm_state                       = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_alarm_state};
+		my $old_hpacucli_controller_status                       = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_alarm_state};
 		my $old_hpacucli_cache_module_size        = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_cache_size};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "hpacucli_controller_serial_number",     value1 => $hpacucli_controller_serial_number,
 			name2 => "old_hpacucli_controller_serial_number", value2 => $old_hpacucli_controller_serial_number,
 			name3 => "new_hpacucli_controller_model",         value3 => $new_hpacucli_controller_model,
 			name4 => "old_hpacucli_controller_model",         value4 => $old_hpacucli_controller_model,
-			name5 => "new_alarm_state",   value5 => $new_alarm_state,
-			name6 => "old_alarm_state",   value6 => $old_alarm_state,
+			name5 => "new_alarm_state",   value5 => $new_hpacucli_controller_status,
+			name6 => "old_alarm_state",   value6 => $old_hpacucli_controller_status,
 			name7 => "new_hpacucli_cache_module_size",    value7 => $new_hpacucli_cache_module_size,
 			name8 => "old_hpacucli_cache_module_size",    value8 => $old_hpacucli_cache_module_size,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if (($hpacucli_controller_serial_number   ne $old_hpacucli_controller_serial_number) or 
 			($new_hpacucli_controller_model       ne $old_hpacucli_controller_model)         or 
-			($new_alarm_state ne $old_alarm_state)   or 
+			($new_hpacucli_controller_status ne $old_hpacucli_controller_status)   or 
 			($new_hpacucli_cache_module_size  ne $old_hpacucli_cache_module_size))
 		{
 			# Send a warning level alert because the most likely change is 'alarm_state'.
 			# If, however, the alarm state is now 'off', then we'll clear the alert.
 			my $title_key   = "an_alert_title_0004";
 			my $message_key = "scan_hpacucli_warning_0002";
-			if ($new_alarm_state ne $old_alarm_state)
+			if ($new_hpacucli_controller_status ne $old_hpacucli_controller_status)
 			{
-				if ($old_alarm_state eq "VANISHED")
+				if ($old_hpacucli_controller_status eq "VANISHED")
 				{
 					# Controller has returned.
 					$message_key = "scan_hpacucli_warning_0009";
 				}
-				if ($new_alarm_state =~ /off/i)
+				if ($new_hpacucli_controller_status =~ /off/i)
 				{
 					$title_key = "an_alert_title_0004";
 				}
@@ -1142,8 +1151,8 @@ INSERT INTO
 					old_serial_number	=>	$old_hpacucli_controller_serial_number,
 					new_model_name		=>	$new_hpacucli_controller_model,
 					old_model_name		=>	$old_hpacucli_controller_model,
-					new_alarm_state		=>	$new_alarm_state,
-					old_alarm_state		=>	$old_alarm_state,
+					new_alarm_state		=>	$new_hpacucli_controller_status,
+					old_alarm_state		=>	$old_hpacucli_controller_status,
 					new_cache_size		=>	$new_hpacucli_cache_module_size,
 					old_cache_size		=>	$old_hpacucli_cache_module_size,
 				},
@@ -1156,7 +1165,7 @@ UPDATE
 SET 
     hpacucli_controller_serial_number = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_serial_number).", 
     hpacucli_controller_model         = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_model).", 
-    hpacucli_controller_alarm_state   = ".$an->data->{sys}{use_db_fh}->quote($new_alarm_state).", 
+    hpacucli_controller_alarm_state   = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_controller_status).", 
     hpacucli_controller_cache_size    = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_cache_module_size).", 
     modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
@@ -1865,19 +1874,19 @@ WHERE
 		# Controller vanished!
 		my $old_hpacucli_controller_serial_number = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_serial_number};
 		my $old_hpacucli_controller_model         = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_model};
-		my $old_alarm_state   = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_alarm_state};
+		my $old_hpacucli_controller_status   = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_alarm_state};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "hpacucli_controller_uuid",   value1 => $hpacucli_controller_uuid,
 			name2 => "old_hpacucli_controller_serial_number", value2 => $old_hpacucli_controller_serial_number,
 			name3 => "old_hpacucli_controller_model",         value3 => $old_hpacucli_controller_model,
-			name4 => "old_alarm_state",   value4 => $old_alarm_state,
+			name4 => "old_alarm_state",   value4 => $old_hpacucli_controller_status,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Delete it so that we know it has been processed.
 		delete $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid};
 		
 		# If the old alarm state is already 'VANISHED', ignore it.
-		next if $old_alarm_state eq "VANISHED";
+		next if $old_hpacucli_controller_status eq "VANISHED";
 		
 		# Still here? Alert and UPDATE.
 		### NOTE: For now, we're going to use warning level because controllers should never vanish
@@ -2020,12 +2029,12 @@ FROM
 WHERE
     hpacucli_cache_module_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results, 
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
@@ -2036,7 +2045,7 @@ WHERE
 		my $hpacucli_cache_module_status          = $row->[3];
 		my $hpacucli_cache_module_type            = $row->[4];
 		my $hpacucli_cache_module_size            = $row->[5];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 			name1 => "hpacucli_cache_module_uuid",            value1 => $hpacucli_cache_module_uuid, 
 			name2 => "hpacucli_cache_module_controller_uuid", value2 => $hpacucli_cache_module_controller_uuid, 
 			name3 => "hpacucli_cache_module_serial_number",   value3 => $hpacucli_cache_module_serial_number, 
@@ -2048,7 +2057,7 @@ WHERE
 		# Store the information about this cache_module
 		$an->data->{'scan-hpacucli'}{cache_modules}{by_serial}{$hpacucli_cache_module_serial_number} = $hpacucli_cache_module_uuid;
 		$an->data->{'scan-hpacucli'}{cache_modules}{by_uuid}{$hpacucli_cache_module_uuid}            = $hpacucli_cache_module_serial_number;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "scan-hpacucli::cache_modules::by_serial::${hpacucli_cache_module_serial_number}", value1 => $an->data->{'scan-hpacucli'}{cache_modules}{by_serial}{$hpacucli_cache_module_serial_number}, 
 			name2 => "scan-hpacucli::cache_modules::by_uuid::${hpacucli_cache_module_uuid}",            value2 => $an->data->{'scan-hpacucli'}{cache_modules}{by_uuid}{$hpacucli_cache_module_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2060,7 +2069,7 @@ WHERE
 			hpacucli_cache_module_type            => $hpacucli_cache_module_type, 
 			hpacucli_cache_module_size            => $hpacucli_cache_module_size, 
 		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 			name1 => "sql::hpacucli_cache_modules::hpacucli_cache_module_uuid::${hpacucli_cache_module_uuid}::hpacucli_cache_module_controller_uuid", value1 => $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_controller_uuid}, 
 			name2 => "sql::hpacucli_cache_modules::hpacucli_cache_module_uuid::${hpacucli_cache_module_uuid}::hpacucli_cache_module_serial_number",   value2 => $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_serial_number}, 
 			name3 => "sql::hpacucli_cache_modules::hpacucli_cache_module_uuid::${hpacucli_cache_module_uuid}::hpacucli_cache_module_status",          value3 => $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_status}, 

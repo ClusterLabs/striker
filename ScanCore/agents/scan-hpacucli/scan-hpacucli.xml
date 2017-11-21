@@ -80,14 +80,12 @@ https://alteeve.com/w/Support
 - Unsafe Write-Back Cache: [#!variable!new_unsafe_writeback_cache!#]
 		</key>
 		<key name="scan_hpacucli_warning_0004">The RAID controller's cache module has changed:
-- Host: .................. [#!variable!say_old_host!#] -> [#!variable!say_new_host!#]
 - Serial Number: ......... [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
 - Controller: ............ [#!variable!old_controller_serial_number!#] -> [#!variable!new_controller_serial_number!#]
 - Status: ................ [#!variable!old_status!#] -> [#!variable!new_status!#]
 - Type: .................. [#!variable!old_type!#] -> [#!variable!new_type!#]
 - Size: .................. [#!variable!say_old_size!#] -> [#!variable!say_new_size!#]
 		<key name="scan_hpacucli_warning_0005">The RAID controller's cache module has returned:
-- Host: .................. [#!variable!say_new_host!#]
 - Serial Number: ......... [#!variable!new_serial_number!#]
 - Controller: ............ [#!variable!new_controller_serial_number!#]
 - Status: ................ [#!variable!new_status!#]

@@ -1332,9 +1332,8 @@ sub hostname_from_uuid
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "install_target_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $hostname  = "";
-	my $host_uuid = $parameter->{host_uuid ? $parameter->{host_uuid} : "";
-	my $node_uuid = $parameter->{node_uuid ? $parameter->{node_uuid} : "";
+	my $host_uuid = $parameter->{host_uuid} ? $parameter->{host_uuid} : "";
+	my $node_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "host_uuid", value1 => $host_uuid,
 		name2 => "node_uuid", value2 => $node_uuid,
