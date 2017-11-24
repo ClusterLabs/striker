@@ -126,18 +126,52 @@ https://alteeve.com/w/Support
 		<key name="scan_hpacucli_note_0005">
 The temperature sensor: [#!variable!sensor_name!#] on the controller: [#!variable!serial_number!#] is above the high critical temperature of: [#!variable!high_critical_temperature!#]!:
 - #!variable!name!#: [#!variable!value!#]
+NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
+NOTE:    If enough sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
+WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
 		</key>
 		<key name="scan_hpacucli_note_0006">
 The temperature sensor: [#!variable!sensor_name!#] on the controller: [#!variable!serial_number!#] is above the high warning temperature of: [#!variable!high_warning_temperature!#]. It will go critical at: [#!variable!high_critical_temperature!#]!:
 - #!variable!name!#: [#!variable!value!#]
+NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
+NOTE:    If enough sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
+WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
 		</key>
 		<key name="scan_hpacucli_note_0007">
 The temperature sensor: [#!variable!sensor_name!#] on the controller: [#!variable!serial_number!#] is below the low critical temperature of: [#!variable!low_critical_temperature!#]!:
 - #!variable!name!#: [#!variable!value!#]
+NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
+NOTE:    If enough sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
+WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
 		</key>
 		<key name="scan_hpacucli_note_0008">
 The temperature sensor: [#!variable!sensor_name!#] on the controller: [#!variable!serial_number!#] is below the low warning temperature of: [#!variable!low_warning_temperature!#]. It will go critical at: [#!variable!low_critical_temperature!#]!:
 - #!variable!name!#: [#!variable!value!#]
+NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
+NOTE:    If enough sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
+WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
+		</key>
+		<key name="scan_hpacucli_note_0009">- The variable: [#!variable!name!#] has changed:
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_hpacucli_note_0010">- Controller: [#!variable!serial_number!#]: '#!variable!name!#' has returned: [#!variable!new_value!#]</key>
+		<key name="scan_hpacucli_note_0011">- Controller: [#!variable!serial_number!#]: Temperature sensor: '#!variable!name!#' is no longer critically hot.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_hpacucli_note_0012">- Controller: [#!variable!serial_number!#]: Temperature sensor: '#!variable!name!#' is no longer hot enough to be in a warning state.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_hpacucli_note_0013">- Controller: [#!variable!serial_number!#]: Temperature sensor: '#!variable!name!#' is no longer critically cold.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_hpacucli_note_0014">- Controller: [#!variable!serial_number!#]: Temperature sensor: '#!variable!name!#' is no longer cold enough to be in a warning state.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_hpacucli_note_0015">- Controller: [#!variable!serial_number!#]: Temperature sensor: '#!variable!name!#' has jumped: [#!variable!delta!#] since the last scan.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_hpacucli_note_0016">- Controller: [#!variable!serial_number!#]: Temperature sensor: '#!variable!name!#' has dropped: [#!variable!delta!#] since the last scan.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
 		</key>
 		
 		<!-- Log strings -->
