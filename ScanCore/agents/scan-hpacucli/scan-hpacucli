@@ -571,6 +571,9 @@ INSERT INTO
 				name9 => "old_hpacucli_controller_unsafe_writeback_cache", value9 => $old_hpacucli_controller_unsafe_writeback_cache,
 			}, file => $THIS_FILE, line => __LINE__});
 			
+			# Delete this from the old cache.
+			delete $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid};
+			
 			# NOTE: We don't check if the last diagnostics changed because it will change every 
 			#       10 minutes or so.
 			if (($hpacucli_controller_serial_number              ne $old_hpacucli_controller_serial_number)     or 
@@ -749,6 +752,9 @@ INSERT INTO
 					name4 => "old_hpacucli_cache_module_type",            value4 => $old_hpacucli_cache_module_type,
 					name5 => "old_hpacucli_cache_module_size",            value5 => $old_hpacucli_cache_module_size,
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Delete this so we know we saw it.
+				delete $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid};
 				
 				if (($hpacucli_controller_uuid                ne $old_hpacucli_cache_module_controller_uuid) or 
 				    ($new_hpacucli_cache_module_serial_number ne $old_hpacucli_cache_module_serial_number)   or 
@@ -1590,6 +1596,67 @@ INSERT INTO
 			}
 		}
 	}
+	
+	
+	# Look for removed controllers
+	foreach my $hpacucli_controller_uuid (keys %{$an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}})
+	{
+		# Controller vanished!
+		my $old_hpacucli_controller_serial_number = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_serial_number};
+		my $old_hpacucli_controller_model         = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_model};
+		my $old_hpacucli_controller_status        = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_status};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "hpacucli_controller_uuid",              value1 => $hpacucli_controller_uuid,
+			name2 => "old_hpacucli_controller_serial_number", value2 => $old_hpacucli_controller_serial_number,
+			name3 => "old_hpacucli_controller_model",         value3 => $old_hpacucli_controller_model,
+			name4 => "hpacucli_controller_status",            value4 => $hpacucli_controller_status,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Delete it so that we know it has been processed.
+		delete $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid};
+		
+		# If the old alarm state is already 'VANISHED', ignore it.
+		next if $old_hpacucli_controller_status eq "VANISHED";
+		
+		# Still here? Alert and UPDATE.
+		### NOTE: For now, we're going to use warning level because controllers should never vanish
+		###       unless one failed. If that is the case, the admin already knows, but this will let
+		###       other notification targets know that the change has happened.
+		$an->data->{sys}{alert_sort}++; 
+		$an->Alert->register_alert({
+			alert_level		=>	"warning", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_sort		=>	$an->data->{sys}{alert_sort},
+			alert_header		=>	"TRUE",
+			alert_title_key		=>	"an_alert_title_0004",
+			alert_message_key	=>	"scan_hpacucli_warning_0008",
+			alert_message_variables	=>	{
+				model			=>	$old_hpacucli_controller_model,
+				serial_number		=>	$old_hpacucli_controller_serial_number,
+			},
+		});
+		
+		my $query = "
+UPDATE 
+    hpacucli_controllers
+SET 
+    hpacucli_controller_alarm_state   = 'VANISHED', 
+    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    hpacucli_controller_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    hpacucli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_uuid)." 
+;";
+		# Now record the query in the array
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+	}
+	
+	# Look for removed cache modules
+	
+	# Look for removed variales.
 
 =cut			
 			# Now look for any variables left from the previous scan that we didn't match up (and
@@ -1661,60 +1728,6 @@ WHERE
 	}
 	
 	# See if any controllers vanished.
-	foreach my $hpacucli_controller_uuid (keys %{$an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}})
-	{
-		# Controller vanished!
-		my $old_hpacucli_controller_serial_number = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_serial_number};
-		my $old_hpacucli_controller_model         = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_model};
-		my $old_hpacucli_controller_status   = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_alarm_state};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-			name1 => "hpacucli_controller_uuid",   value1 => $hpacucli_controller_uuid,
-			name2 => "old_hpacucli_controller_serial_number", value2 => $old_hpacucli_controller_serial_number,
-			name3 => "old_hpacucli_controller_model",         value3 => $old_hpacucli_controller_model,
-			name4 => "old_alarm_state",   value4 => $old_hpacucli_controller_status,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Delete it so that we know it has been processed.
-		delete $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid};
-		
-		# If the old alarm state is already 'VANISHED', ignore it.
-		next if $old_hpacucli_controller_status eq "VANISHED";
-		
-		# Still here? Alert and UPDATE.
-		### NOTE: For now, we're going to use warning level because controllers should never vanish
-		###       unless one failed. If that is the case, the admin already knows, but this will let
-		###       other notification targets know that the change has happened.
-		$an->data->{sys}{alert_sort}++; 
-		$an->Alert->register_alert({
-			alert_level		=>	"warning", 
-			alert_agent_name	=>	$THIS_FILE,
-			alert_sort		=>	$an->data->{sys}{alert_sort},
-			alert_header		=>	"TRUE",
-			alert_title_key		=>	"an_alert_title_0004",
-			alert_message_key	=>	"scan_hpacucli_warning_0008",
-			alert_message_variables	=>	{
-				model			=>	$old_hpacucli_controller_model,
-				serial_number		=>	$old_hpacucli_controller_serial_number,
-			},
-		});
-		
-		my $query = "
-UPDATE 
-    hpacucli_controllers
-SET 
-    hpacucli_controller_alarm_state   = 'VANISHED', 
-    modified_date                    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-WHERE 
-    hpacucli_controller_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    hpacucli_controller_uuid          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_uuid)." 
-;";
-		# Now record the query in the array
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$an->data->{sys}{sql}}, $query;
-	}
 =cut
 	
 	# Now commit the changes.
