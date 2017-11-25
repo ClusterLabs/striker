@@ -173,6 +173,10 @@ WARNING: If enough sensors go critical, emergency power off will occure to prote
 		<key name="scan_hpacucli_note_0016">- Controller: [#!variable!serial_number!#]: Temperature sensor: '#!variable!name!#' has dropped: [#!variable!delta!#] since the last scan.
 - [#!variable!old_value!#] -> [#!variable!new_value!#]
 		</key>
+		<key name="scan_hpacucli_note_0017">The HP RAID controller: [#!variable!model!#] with the serial number: [#!variable!serial_number!#] has vanished!</key>
+		<key name="scan_hpacucli_note_0018">The HP RAID cache module with the serial number: [#!variable!serial_number!#] has vanished!</key>
+		<key name="scan_hpacucli_note_0019">The temperature sensor: [#!variable!name!#] on the HP RAID controller with the serial number: [#!variable!serial_number!#] has vanished!</key>
+		<key name="scan_hpacucli_note_0020">The sensor: [#!variable!name!#] on the HP RAID controller with the serial number: [#!variable!serial_number!#] has vanished!</key>
 		
 		<!-- Log strings -->
 		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>
