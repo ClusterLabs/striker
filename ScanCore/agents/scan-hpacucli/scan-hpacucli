@@ -291,7 +291,187 @@ sub find_changes
 	### NOTE: We will loop through each section of data we scanned, deleting records as we process them
 	###       that existed in the DB, and then marking as removed anything left in the databased data not
 	###       seen in this scan.
-	process_controllers($an);	# This will call process_arrays();
+	process_controllers($an);
+	
+	# Now that controllers have been proceesed, we can process drives (and their arrays)
+	process_drives($an);
+	
+	return(0);
+}
+
+# Process drives (and their arrays and logical drives).
+sub process_drives
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Look for new, changed or deleted controllers.
+	$an->data->{sys}{sql} = [];
+	
+	# This is to collected data from every sweep.
+	foreach my $hpacucli_controller_serial_number (sort {$a cmp $b} keys %{$an->data->{controller}})
+	{
+		# Controller data;
+		next if $hpacucli_controller_serial_number eq "metadata";
+		my $hpacucli_controller_uuid = $an->data->{'scan-hpacucli'}{controllers}{by_serial}{$hpacucli_controller_serial_number};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "hpacucli_controller_serial_number", value1 => $hpacucli_controller_serial_number,
+			name2 => "hpacucli_controller_uuid",          value2 => $hpacucli_controller_uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		print $THIS_FILE." ".__LINE__."; Controller: [$hpacucli_controller_serial_number] (UUID: [$hpacucli_controller_uuid])\n";
+		
+		# Array
+		foreach my $hpacucli_array_name (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}})
+		{
+			# Data, there is no temperature
+			my $hpacucli_array_type          = "virtual";
+			my $hpacucli_array_status        = "virtual";
+			my $hpacucli_array_error_message = "";
+			
+			if ($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{array_type})
+			{
+				$hpacucli_array_type = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{array_type};
+			}
+			if ($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{status})
+			{
+				# Array transitions (OK -> Eject -> Plug back in)
+				#scan-hpacucli 3117;   - Data; status: [OK]
+				#scan-hpacucli 3117;   - Data; status: [Failed Physical Drive]
+				#scan-hpacucli 3148;   - Data; status: [OK]
+				$hpacucli_array_status = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{status};
+			}
+			if ($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{error_message})
+			{
+				$hpacucli_array_error_message = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{error_message};
+			}
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "hpacucli_array_name",          value1 => $hpacucli_array_name,
+				name2 => "hpacucli_array_type",          value2 => $hpacucli_array_type,
+				name3 => "hpacucli_array_status",        value3 => $hpacucli_array_status,
+				name4 => "hpacucli_array_error_message", value4 => $hpacucli_array_error_message,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			print $THIS_FILE." ".__LINE__."; - Array: [$hpacucli_array_name]; Type: [$hpacucli_array_type], status: [$hpacucli_array_type], error message: [$hpacucli_array_error_message]\n";
+			die $THIS_FILE." ".__LINE__."; Testing...\n";
+			
+			# Logical Drive
+			foreach my $logical_drive (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}})
+			{
+				print $THIS_FILE." ".__LINE__.";  - Logical Drive: [$logical_drive]\n";
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{temperature}})
+				{
+					print $THIS_FILE." ".__LINE__.";    - Temperature; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{temperature}{$variable}." °C]\n";
+				}
+				# Data
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}})
+				{
+					if (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}{$variable}) ne "ok"))
+					{
+						# NOTE: Auto-restored a drive that was re-inserted
+						# Example messages; "Interim Recovery Mode"
+						#                   "Recovering, 0% complete"
+						# LD transitions (OK -> Eject -> Plug back in)
+						print $THIS_FILE." ".__LINE__.";    - !! Warning!! - Logical disk status problem: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
+					}
+					else
+					{
+						print $THIS_FILE." ".__LINE__.";    - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
+					}
+				}
+				
+				# Physical Disks.
+				foreach my $port (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}})
+				{
+					foreach my $box (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}})
+					{
+						foreach my $bay (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}})
+						{
+							my $hpacucli_physical_drive_serial_number = $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{serial_number};
+							print $THIS_FILE." ".__LINE__.";   - Physical Drive: [$port:$box:$bay], sn: [$hpacucli_physical_drive_serial_number]\n";
+							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}})
+							{
+								print $THIS_FILE." ".__LINE__.";     - Temperature; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}{$variable}." °C]\n";
+							}
+							# Data
+							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}})
+							{
+								next if $variable eq "hpacucli_controller_serial_number";
+								next if $variable eq "port";
+								next if $variable eq "box";
+								next if $variable eq "bay";
+								
+								# Note: A failed drive will show nothing in diagnostics
+								# 'last_failure_reason' goes away when the drice has rebuilt
+								if ($variable eq "last_failure_reason")
+								{
+									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Physical drive error: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+								}
+								elsif (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}) ne "ok"))
+								{
+									# ie "Failed"
+									#    "Rebuilding"
+									# Transitions (OK -> Failed -> Rebuilding)
+									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Physical drive status problem: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+								}
+								else
+								{
+									print $THIS_FILE." ".__LINE__.";     - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+								}
+							}
+							
+							# If this was a diagnostics run, check for error counters
+							if ($an->data->{sys}{process_diagnostics})
+							{
+								if (exists $an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}{read_errors_hard})
+								{
+									# We got the data
+									foreach my $variable (sort {$a cmp $b} keys %{$an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}})
+									{
+										# Store this in the main hash.
+										$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable} = $an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}{$variable};
+										print $THIS_FILE." ".__LINE__.";     - Diagnostics; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable}."]\n";
+									}
+								}
+								else
+								{
+									# No data for this drive. It might be
+									# a 3rd party drive. We'll warn the 
+									# user that we can't predict failure.
+									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Diagnostics not available for the drive: [$hpacucli_physical_drive_serial_number] in port: [$port], box: [$box], bay: [$bay]. Unable to predict failures! Is this a third-party drive?\n";
+									my $set = $an->Alert->check_alert_sent({
+										type			=>	"warning",
+										alert_sent_by		=>	$THIS_FILE,
+										alert_record_locator	=>	$hpacucli_physical_drive_serial_number,
+										alert_name		=>	"no_diagnostics",
+										modified_date		=>	$an->data->{sys}{db_timestamp},
+									});
+									if ($set)
+									{
+										# Warn the user that we can't
+										# predict this drive's death.
+										$an->Alert->register_alert({
+											alert_level		=>	"warning", 
+											alert_agent_name	=>	$THIS_FILE,
+											alert_title_key		=>	"an_alert_title_0004",
+											alert_message_key	=>	"scan_hpacucli_warning_0001",
+											alert_message_variables	=>	{
+												serial_number		=>	$hpacucli_physical_drive_serial_number,
+												port			=>	$port,
+												box			=>	$box, 
+												bay			=>	$bay,
+											},
+										});
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	die $THIS_FILE." ".__LINE__."; testing...\n";
 	
 	return(0);
 }
@@ -300,7 +480,7 @@ sub find_changes
 sub process_controllers
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_controllers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Look for new, changed or deleted controllers.
 	$an->data->{sys}{sql} = [];
@@ -321,7 +501,7 @@ sub process_controllers
 		{
 			# Yup!
 			$hpacucli_controller_uuid = $an->data->{'scan-hpacucli'}{controllers}{by_serial}{$hpacucli_controller_serial_number};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "hpacucli_controller_uuid", value1 => $hpacucli_controller_uuid,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -363,7 +543,7 @@ sub process_controllers
 		
 		foreach my $type ("detail", "temperature")
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}})
@@ -373,7 +553,7 @@ sub process_controllers
 				{
 					# Store and delete the value
 					$new_hpacucli_controller_model = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_hpacucli_controller_model", value1 => $new_hpacucli_controller_model,
 					}, file => $THIS_FILE, line => __LINE__});
 					next;
@@ -383,7 +563,7 @@ sub process_controllers
 					# Store and delete the value
 					$new_hpacucli_controller_status = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
 					$new_hpacucli_controller_status = lc($new_hpacucli_controller_status);
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_hpacucli_controller_status", value1 => $new_hpacucli_controller_status,
 					}, file => $THIS_FILE, line => __LINE__});
 					next;
@@ -393,7 +573,7 @@ sub process_controllers
 					# Store and delete the value
 					$new_hpacucli_controller_cache_present = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
 					$new_hpacucli_controller_cache_present = lc($new_hpacucli_controller_cache_present);
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_hpacucli_controller_cache_present", value1 => $new_hpacucli_controller_cache_present,
 					}, file => $THIS_FILE, line => __LINE__});
 					next;
@@ -403,7 +583,7 @@ sub process_controllers
 					# Store and delete the value
 					$new_hpacucli_controller_drive_write_cache = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
 					$new_hpacucli_controller_drive_write_cache = lc($new_hpacucli_controller_drive_write_cache);
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_hpacucli_controller_drive_write_cache", value1 => $new_hpacucli_controller_drive_write_cache,
 					}, file => $THIS_FILE, line => __LINE__});
 					next;
@@ -412,7 +592,7 @@ sub process_controllers
 				{
 					# Store and delete the value
 					$new_hpacucli_controller_firmware_version = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_hpacucli_controller_firmware_version", value1 => $new_hpacucli_controller_firmware_version,
 					}, file => $THIS_FILE, line => __LINE__});
 					next;
@@ -422,7 +602,7 @@ sub process_controllers
 					# Store and delete the value
 					$new_hpacucli_controller_unsafe_writeback_cache = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
 					$new_hpacucli_controller_unsafe_writeback_cache = lc($new_hpacucli_controller_unsafe_writeback_cache);
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_hpacucli_controller_unsafe_writeback_cache", value1 => $new_hpacucli_controller_unsafe_writeback_cache,
 					}, file => $THIS_FILE, line => __LINE__});
 					next;
@@ -432,7 +612,7 @@ sub process_controllers
 				{
 					# Store and delete the value
 					$new_hpacucli_cache_module_size = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_hpacucli_cache_module_size", value1 => $new_hpacucli_cache_module_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					next;
@@ -441,7 +621,7 @@ sub process_controllers
 				{
 					# Store and delete the value
 					$new_hpacucli_cache_module_serial_number = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_hpacucli_cache_module_serial_number", value1 => $new_hpacucli_cache_module_serial_number,
 					}, file => $THIS_FILE, line => __LINE__});
 					next;
@@ -451,7 +631,7 @@ sub process_controllers
 					# Store and delete the value
 					$new_hpacucli_cache_module_status = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
 					$new_hpacucli_cache_module_status = lc($new_hpacucli_cache_module_status);
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_hpacucli_cache_module_status", value1 => $new_hpacucli_cache_module_status,
 					}, file => $THIS_FILE, line => __LINE__});
 					next;
@@ -461,7 +641,7 @@ sub process_controllers
 					# Store and delete the value
 					$new_hpacucli_cache_module_type = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
 					$new_hpacucli_cache_module_type = lc($new_hpacucli_cache_module_type);
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "new_hpacucli_cache_module_type", value1 => $new_hpacucli_cache_module_type,
 					}, file => $THIS_FILE, line => __LINE__});
 					next;
@@ -559,7 +739,7 @@ INSERT INTO
 			my $old_hpacucli_controller_drive_write_cache      = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_drive_write_cache};
 			my $old_hpacucli_controller_firmware_version       = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_firmware_version};
 			my $old_hpacucli_controller_unsafe_writeback_cache = $an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}{$hpacucli_controller_uuid}{hpacucli_controller_unsafe_writeback_cache};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "hpacucli_controller_serial_number",              value1 => $hpacucli_controller_serial_number,
 				name2 => "old_hpacucli_controller_serial_number",          value2 => $old_hpacucli_controller_serial_number,
 				name3 => "old_hpacucli_controller_model",                  value3 => $old_hpacucli_controller_model,
@@ -659,7 +839,7 @@ AND
 			{
 				# Yup!
 				$hpacucli_cache_module_uuid = $an->data->{'scan-hpacucli'}{cache_modules}{by_serial}{$new_hpacucli_cache_module_serial_number};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "hpacucli_cache_module_uuid", value1 => $hpacucli_cache_module_uuid,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -745,7 +925,7 @@ INSERT INTO
 				my $old_hpacucli_cache_module_status          = $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_status};
 				my $old_hpacucli_cache_module_type            = $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_type};
 				my $old_hpacucli_cache_module_size            = $an->data->{sql}{hpacucli_cache_modules}{hpacucli_cache_module_uuid}{$hpacucli_cache_module_uuid}{hpacucli_cache_module_size};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "old_hpacucli_cache_module_controller_uuid", value1 => $old_hpacucli_cache_module_controller_uuid,
 					name2 => "old_hpacucli_cache_module_serial_number",   value2 => $old_hpacucli_cache_module_serial_number,
 					name3 => "old_hpacucli_cache_module_status",          value3 => $old_hpacucli_cache_module_status,
@@ -854,14 +1034,14 @@ WHERE
 		# We do this after the cache so that the alerts make since when a new controller is found.
 		foreach my $type ("detail", "temperature")
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}})
 			{
 				my $new_variable_value = delete $an->data->{controller}{$hpacucli_controller_serial_number}{data}{$type}{$variable};
 				my $temperature        = $type eq "temperature" ? "TRUE" : "FALSE";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "variable",           value1 => $variable,
 					name2 => "new_variable_value", value2 => $new_variable_value,
 					name3 => "temperature",        value3 => $temperature,
@@ -869,19 +1049,19 @@ WHERE
 				
 				# Now, if the variable doesn't exist, INSERT it. If it does exist, see if it
 				# changed and UPDATE it if so.
-				if (exists $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{'hpacucli_controllers'}{source_uuid}{$hpacucli_controller_uuid}{$type}{$variable}{hpacucli_variable_uuid})
+				if (exists $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{hpacucli_controllers}{source_uuid}{$hpacucli_controller_uuid}{$type}{$variable})
 				{
 					# Look for changes
-					my $old_variable_value = $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{'hpacucli_controllers'}{source_uuid}{$hpacucli_controller_uuid}{$type}{$variable}{hpacucli_variable_value};
-					my $variable_uuid      = $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{'hpacucli_controllers'}{source_uuid}{$hpacucli_controller_uuid}{$type}{$variable}{hpacucli_variable_uuid};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					my $old_variable_value = $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{hpacucli_controllers}{source_uuid}{$hpacucli_controller_uuid}{$type}{$variable}{hpacucli_variable_value};
+					my $variable_uuid      = $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{hpacucli_controllers}{source_uuid}{$hpacucli_controller_uuid}{$type}{$variable}{hpacucli_variable_uuid};
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "new_variable_value", value1 => $new_variable_value,
 						name2 => "old_variable_value", value2 => $old_variable_value,
 						name3 => "variable_uuid",      value3 => $variable_uuid,
 					}, file => $THIS_FILE, line => __LINE__});
-					
+				
 					# Delete it so that we know it has been processed.
-					delete $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{'hpacucli_controllers'}{source_uuid}{$hpacucli_controller_uuid}{$type}{$variable};
+					delete $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{hpacucli_controllers}{source_uuid}{$hpacucli_controller_uuid}{$type}{$variable};
 					
 					# Set defaults
 					my $high_critical       = $an->data->{'scan-hpacucli'}{thresholds}{'default'}{high_critical};
@@ -894,7 +1074,7 @@ WHERE
 					my $clear_high_warning  = $high_warning - $buffer;
 					my $clear_low_critical  = $low_critical - $buffer;
 					my $clear_low_warning   = $low_warning - $buffer;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 						name1  => "high_critical",       value1  => $high_critical, 
 						name2  => "high_warning",        value2  => $high_warning, 
 						name3  => "low_warning",         value3  => $low_warning, 
@@ -911,14 +1091,14 @@ WHERE
 					if ($clear_high_critical < $high_warning)
 					{
 						$clear_high_critical = $high_warning + 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "clear_high_critical", value1 => $clear_high_critical, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					if ($clear_low_critical > $low_warning)
 					{
 						$clear_low_critical = $low_warning - 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "clear_low_critical", value1 => $clear_low_critical, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -950,7 +1130,7 @@ WHERE
 							my $clear_high_warning  = $high_warning - $buffer;
 							my $clear_low_critical  = $low_critical - $buffer;
 							my $clear_low_warning   = $low_warning - $buffer;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 								name1  => "high_critical",       value1  => $high_critical, 
 								name2  => "high_warning",        value2  => $high_warning, 
 								name3  => "low_warning",         value3  => $low_warning, 
@@ -967,14 +1147,14 @@ WHERE
 							if ($clear_high_critical < $high_warning)
 							{
 								$clear_high_critical = $high_warning + 1;
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "clear_high_critical", value1 => $clear_high_critical, 
 								}, file => $THIS_FILE, line => __LINE__});
 							}
 							if ($clear_low_critical > $low_warning)
 							{
 								$clear_low_critical = $low_warning - 1;
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "clear_low_critical", value1 => $clear_low_critical, 
 								}, file => $THIS_FILE, line => __LINE__});
 							}
@@ -992,7 +1172,7 @@ WHERE
 								$clear_high_warning  = $high_warning - $buffer;
 								$clear_low_critical  = $low_critical - $buffer;
 								$clear_low_warning   = $low_warning - $buffer;
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 									name1  => "high_critical",       value1  => $high_critical, 
 									name2  => "high_warning",        value2  => $high_warning, 
 									name3  => "low_warning",         value3  => $low_warning, 
@@ -1009,14 +1189,14 @@ WHERE
 								if ($clear_high_critical < $high_warning)
 								{
 									$clear_high_critical = $high_warning + 1;
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 										name1 => "clear_high_critical", value1 => $clear_high_critical, 
 									}, file => $THIS_FILE, line => __LINE__});
 								}
 								if ($clear_low_critical > $low_warning)
 								{
 									$clear_low_critical = $low_warning - 1;
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 										name1 => "clear_low_critical", value1 => $clear_low_critical, 
 									}, file => $THIS_FILE, line => __LINE__});
 								}
@@ -1037,7 +1217,7 @@ WHERE
 									alert_name		=>	$variable."_high_critical",
 									modified_date		=>	$an->data->{sys}{db_timestamp},
 								});
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "cleared", value1 => $cleared, 
 								}, file => $THIS_FILE, line => __LINE__});
 								if ($cleared)
@@ -1061,7 +1241,7 @@ WHERE
 									alert_name		=>	$variable."_high_warning",
 									modified_date		=>	$an->data->{sys}{db_timestamp},
 								});
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "cleared", value1 => $cleared, 
 								}, file => $THIS_FILE, line => __LINE__});
 								if ($cleared)
@@ -1072,7 +1252,7 @@ WHERE
 									$alert_level = "warning";
 									$title_key   = "an_alert_title_0006";
 									$message_key = "scan_hpacucli_note_0012";
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 										name1 => "alert_level", value1 => $alert_level,
 										name2 => "title_key",   value2 => $title_key,
 										name3 => "message_key", value3 => $message_key,
@@ -1088,7 +1268,7 @@ WHERE
 									alert_name		=>	$variable."_low_critical",
 									modified_date		=>	$an->data->{sys}{db_timestamp},
 								});
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "cleared", value1 => $cleared, 
 								}, file => $THIS_FILE, line => __LINE__});
 								if ($cleared)
@@ -1096,7 +1276,7 @@ WHERE
 									$alert_level = "critical";
 									$title_key   = "an_alert_title_0007";
 									$message_key = "scan_hpacucli_note_0013";
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 										name1 => "alert_level", value1 => $alert_level,
 										name2 => "title_key",   value2 => $title_key,
 										name3 => "message_key", value3 => $message_key,
@@ -1112,7 +1292,7 @@ WHERE
 									alert_name		=>	$variable."_low_warning",
 									modified_date		=>	$an->data->{sys}{db_timestamp},
 								});
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "cleared", value1 => $cleared, 
 								}, file => $THIS_FILE, line => __LINE__});
 								if ($cleared)
@@ -1120,7 +1300,7 @@ WHERE
 									$alert_level = "warning";
 									$title_key   = "an_alert_title_0006";
 									$message_key = "scan_hpacucli_note_0014";
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 										name1 => "alert_level", value1 => $alert_level,
 										name2 => "title_key",   value2 => $title_key,
 										name3 => "message_key", value3 => $message_key,
@@ -1150,7 +1330,7 @@ WHERE
 								}
 								$temperature_state = "critical";
 								$temperature_is    = "high";
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 									name1 => "temperature_state", value1 => $temperature_state, 
 									name2 => "temperature_is",    value2 => $temperature_is, 
 								}, file => $THIS_FILE, line => __LINE__});
@@ -1173,7 +1353,7 @@ WHERE
 								}
 								$temperature_state = "warning";
 								$temperature_is    = "high";
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 									name1 => "temperature_state", value1 => $temperature_state, 
 									name2 => "temperature_is",    value2 => $temperature_is, 
 								}, file => $THIS_FILE, line => __LINE__});
@@ -1196,7 +1376,7 @@ WHERE
 								}
 								$temperature_state = "critical";
 								$temperature_is    = "low";
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 									name1 => "temperature_state", value1 => $temperature_state, 
 									name2 => "temperature_is",    value2 => $temperature_is, 
 								}, file => $THIS_FILE, line => __LINE__});
@@ -1219,7 +1399,7 @@ WHERE
 								}
 								$temperature_state = "warning";
 								$temperature_is    = "low";
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 									name1 => "temperature_state", value1 => $temperature_state, 
 									name2 => "temperature_is",    value2 => $temperature_is, 
 								}, file => $THIS_FILE, line => __LINE__});
@@ -1232,7 +1412,7 @@ WHERE
 								{
 									# Jumped
 									$delta = $new_variable_value - $old_variable_value;
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 										name1 => "delta", value1 => $delta, 
 									}, file => $THIS_FILE, line => __LINE__});
 									if ($delta >= $jump)
@@ -1241,7 +1421,7 @@ WHERE
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0004";
 										$message_key = "scan_hpacucli_note_0015";
-										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+										$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 											name1 => "alert_level", value1 => $alert_level,
 											name2 => "title_key",   value2 => $title_key,
 											name3 => "message_key", value3 => $message_key,
@@ -1252,7 +1432,7 @@ WHERE
 								{
 									# Dropped
 									$delta = $old_variable_value - $new_variable_value;
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 										name1 => "delta", value1 => $delta, 
 									}, file => $THIS_FILE, line => __LINE__});
 									if ($delta >= $jump)
@@ -1261,7 +1441,7 @@ WHERE
 										$alert_level = "warning";
 										$title_key   = "an_alert_title_0004";
 										$message_key = "scan_hpacucli_note_0016";
-										$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+										$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 											name1 => "alert_level", value1 => $alert_level,
 											name2 => "title_key",   value2 => $title_key,
 											name3 => "message_key", value3 => $message_key,
@@ -1273,14 +1453,14 @@ WHERE
 							# Record this for later processing into the 'temperature' 
 							# table.
 							my $sensor_host_key = "controller:$hpacucli_controller_serial_number";
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "sensor_host_key", value1 => $sensor_host_key,
 							}, file => $THIS_FILE, line => __LINE__});
 							
 							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius} = $new_variable_value;
 							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}   = $temperature_state;
 							$an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}      = $temperature_is;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 								name1 => "new::temperature::${variable}::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_celsius}, 
 								name2 => "new::temperature::${variable}::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_state}, 
 								name3 => "new::temperature::${variable}::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{$variable}{$sensor_host_key}{temperature_is}, 
@@ -1591,12 +1771,12 @@ INSERT INTO
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
+die;
 					push @{$an->data->{sys}{sql}}, $query;
 				}
 			}
 		}
 	}
-	
 	
 	# Look for removed controllers
 	foreach my $hpacucli_controller_uuid (keys %{$an->data->{sql}{hpacucli_controllers}{hpacucli_controller_uuid}})
@@ -1724,9 +1904,6 @@ WHERE
 					name3 => "old_hpacucli_variable_value", value3 => $old_hpacucli_variable_value, 
 					name4 => "old_hpacucli_variable_uuid",  value4 => $old_hpacucli_variable_uuid, 
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Delete it so that we know it has been processed.
-				delete $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{hpacucli_controllers}{source_uuid}{$hpacucli_controller_uuid};
 				
 				# If the old alarm state is already 'VANISHED', ignore it.
 				next if $old_hpacucli_variable_value eq "VANISHED";
@@ -1931,7 +2108,7 @@ SELECT
     hpacucli_array_name, 
     hpacucli_array_type, 
     hpacucli_array_status, 
-    hpacucli_array_unused_space 
+    hpacucli_array_error_message 
 FROM 
     hpacucli_arrays
 WHERE
@@ -1947,19 +2124,19 @@ WHERE
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
 	{
-		my $hpacucli_array_uuid             = $row->[0]; 
-		my $hpacucli_array_controller_uuid  = $row->[1];
-		my $hpacucli_array_name             = $row->[2]; 
-		my $hpacucli_array_type             = $row->[3]; 
-		my $hpacucli_array_status           = $row->[4]; 
-		my $hpacucli_array_unused_space     = $row->[5];
+		my $hpacucli_array_uuid             =         $row->[0]; 
+		my $hpacucli_array_controller_uuid  =         $row->[1];
+		my $hpacucli_array_name             =         $row->[2]; 
+		my $hpacucli_array_type             =         $row->[3]; 
+		my $hpacucli_array_status           =         $row->[4]; 
+		my $hpacucli_array_error_message    = defined $row->[5] ? $row->[5] : "";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "hpacucli_array_uuid",            value1 => $hpacucli_array_uuid, 
 			name2 => "hpacucli_array_controller_uuid", value2 => $hpacucli_array_controller_uuid, 
 			name3 => "hpacucli_array_name",            value3 => $hpacucli_array_name, 
 			name4 => "hpacucli_array_type",            value4 => $hpacucli_array_type, 
 			name5 => "hpacucli_array_status",          value5 => $hpacucli_array_status, 
-			name6 => "hpacucli_array_unused_space",    value6 => $hpacucli_array_unused_space, 
+			name6 => "hpacucli_array_error_message",   value6 => $hpacucli_array_error_message, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Store the information about this virtual drive.
@@ -1976,14 +2153,14 @@ WHERE
 			hpacucli_array_name            => $hpacucli_array_name, 
 			hpacucli_array_type            => $hpacucli_array_type, 
 			hpacucli_array_status          => $hpacucli_array_status, 
-			hpacucli_array_unused_space    => $hpacucli_array_unused_space, 
+			hpacucli_array_error_message   => $hpacucli_array_error_message, 
 		};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "sql::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::hpacucli_array_controller_uuid", value1 => $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_controller_uuid}, 
 			name2 => "sql::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::hpacucli_array_name",            value2 => $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_name}, 
 			name3 => "sql::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::hpacucli_array_type",            value3 => $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_type}, 
 			name4 => "sql::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::hpacucli_array_status",          value4 => $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_status}, 
-			name5 => "sql::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::hpacucli_array_unused_space",    value5 => $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_unused_space}, 
+			name5 => "sql::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::hpacucli_array_error_message",   value5 => $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_error_message}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
@@ -2182,7 +2359,7 @@ WHERE
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results, 
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
@@ -2211,10 +2388,14 @@ WHERE
 		};
 		
 		# Entries are so long that we log the one per variable.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sql::hpacucli_variables::hpacucli_variable_uuid::source_table::${hpacucli_variable_source_table}::source_uuid::${hpacucli_variable_source_uuid}::${type}::${hpacucli_variable_name}::hpacucli_variable_uuid",           value1 => $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{$hpacucli_variable_source_table}{source_uuid}{$hpacucli_variable_source_uuid}{$type}{$hpacucli_variable_name}{hpacucli_variable_uuid}, 
-			name2 => "sql::hpacucli_variables::hpacucli_variable_uuid::source_table::${hpacucli_variable_source_table}::source_uuid::${hpacucli_variable_source_uuid}::${type}::${hpacucli_variable_name}::hpacucli_variable_is_temperature", value2 => $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{$hpacucli_variable_source_table}{source_uuid}{$hpacucli_variable_source_uuid}{$type}{$hpacucli_variable_name}{hpacucli_variable_is_temperature}, 
-			name3 => "sql::hpacucli_variables::hpacucli_variable_uuid::source_table::${hpacucli_variable_source_table}::source_uuid::${hpacucli_variable_source_uuid}::${type}::${hpacucli_variable_name}::hpacucli_variable_value",          value3 => $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{$hpacucli_variable_source_table}{source_uuid}{$hpacucli_variable_source_uuid}{$type}{$hpacucli_variable_name}{hpacucli_variable_value}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "sql::hpacucli_variables::hpacucli_variable_uuid::source_table::${hpacucli_variable_source_table}::source_uuid::${hpacucli_variable_source_uuid}::${type}::${hpacucli_variable_name}::hpacucli_variable_is_temperature", value1 => $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{$hpacucli_variable_source_table}{source_uuid}{$hpacucli_variable_source_uuid}{$type}{$hpacucli_variable_name}{hpacucli_variable_is_temperature}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "sql::hpacucli_variables::hpacucli_variable_uuid::source_table::${hpacucli_variable_source_table}::source_uuid::${hpacucli_variable_source_uuid}::${type}::${hpacucli_variable_name}::hpacucli_variable_value",          value1 => $an->data->{sql}{hpacucli_variables}{hpacucli_variable_uuid}{source_table}{$hpacucli_variable_source_table}{source_uuid}{$hpacucli_variable_source_uuid}{$type}{$hpacucli_variable_name}{hpacucli_variable_value}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	undef $results;
@@ -2268,15 +2449,15 @@ sub pre_process_health
 		}
 		
 		# Array
-		foreach my $array (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}})
+		foreach my $hpacucli_array_name (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}})
 		{
 			# Data
-			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}})
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}})
 			{
-				if (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}{$variable}) ne "ok"))
+				if (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{$variable}) ne "ok"))
 				{
 					# Something is wrong with this array
-					my $health_source_name                           = "controller:".$hpacucli_controller_serial_number.":array:".$array.":".$variable;
+					my $health_source_name                           = "controller:".$hpacucli_controller_serial_number.":array:".$hpacucli_array_name.":".$variable;
 					   $an->data->{health}{new}{$health_source_name} = 5;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
@@ -2285,25 +2466,25 @@ sub pre_process_health
 			}
 			
 			# Logical Drive
-			foreach my $logical_drive (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}})
+			foreach my $logical_drive (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}})
 			{
 				# Data
-				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}})
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}})
 				{
-					if (($variable eq "caching") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}) ne "enabled"))
+					if (($variable eq "caching") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}{$variable}) ne "enabled"))
 					{
 						# Not enabled is going to hurt performance.
-						my $health_source_name                           = "controller:".$hpacucli_controller_serial_number.":array:".$array.":logical_drive:".$logical_drive.":".$variable;
+						my $health_source_name                           = "controller:".$hpacucli_controller_serial_number.":array:".$hpacucli_array_name.":logical_drive:".$logical_drive.":".$variable;
 						   $an->data->{health}{new}{$health_source_name} = 1;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
-					elsif (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}) ne "ok"))
+					elsif (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}{$variable}) ne "ok"))
 					{
 						# If the status isn't OK, it's degraded (or rebuilding, but 
 						# still degraded).
-						my $health_source_name                           = "controller:".$hpacucli_controller_serial_number.":array:".$array.":logical_drive:".$logical_drive.":".$variable;
+						my $health_source_name                           = "controller:".$hpacucli_controller_serial_number.":array:".$hpacucli_array_name.":logical_drive:".$logical_drive.":".$variable;
 						   $an->data->{health}{new}{$health_source_name} = 2;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "health::new::controller:$health_source_name", value1 => $an->data->{health}{new}{$health_source_name}, 
@@ -2311,27 +2492,27 @@ sub pre_process_health
 					}
 					else
 					{
-						#print $THIS_FILE." ".__LINE__.";    - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
+						#print $THIS_FILE." ".__LINE__.";    - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
 					}
 				}
 				
 				# Physical Disks.
-				foreach my $port (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}})
+				foreach my $port (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}})
 				{
-					foreach my $box (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}})
+					foreach my $box (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}})
 					{
-						foreach my $bay (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}})
+						foreach my $bay (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}})
 						{
-							my $hpacucli_physical_drive_serial_number = $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{serial_number};
+							my $hpacucli_physical_drive_serial_number = $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{serial_number};
 							# Data
-							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}})
+							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}})
 							{
 								next if $variable eq "serial_number";
 								next if $variable eq "port";
 								next if $variable eq "box";
 								next if $variable eq "bay";
 								
-								if (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}) ne "ok"))
+								if (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}) ne "ok"))
 								{
 									# The drive is failed or is rebuilding. This adds 2.
 									my $health_source_name                           = "controller:".$hpacucli_controller_serial_number.":physical_drive:".$hpacucli_physical_drive_serial_number.":data:".$variable;
@@ -2382,10 +2563,10 @@ sub pre_process_health
 										
 										# Record the diagnostic data 
 										# under the drive's hash.
-										$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable} = $an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}{$variable};
+										$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable} = $an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}{$variable};
 									}
 								}
-								elsif (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{status}) eq "ok")
+								elsif (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{status}) eq "ok")
 								{
 									# No data for this drive. It might be
 									# a 3rd party drive. We'll warn the 
@@ -3378,7 +3559,7 @@ SELECT
     hpacucli_array_name, 
     hpacucli_array_type, 
     hpacucli_array_status, 
-    hpacucli_array_unused_space, 
+    hpacucli_array_error_message, 
     modified_date 
 FROM 
     history.hpacucli_arrays
@@ -3397,20 +3578,20 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $hpacucli_array_uuid            = $row->[0];
-			my $hpacucli_array_controller_uuid = $row->[1];
-			my $hpacucli_array_name            = $row->[2];
-			my $hpacucli_array_type            = $row->[3];
-			my $hpacucli_array_status          = $row->[4];
-			my $hpacucli_array_unused_space    = $row->[5];
-			my $modified_date                  = $row->[6];
+			my $hpacucli_array_uuid            =         $row->[0];
+			my $hpacucli_array_controller_uuid =         $row->[1];
+			my $hpacucli_array_name            =         $row->[2];
+			my $hpacucli_array_type            =         $row->[3];
+			my $hpacucli_array_status          =         $row->[4];
+			my $hpacucli_array_error_message   = defined $row->[5] ? $row->[5] : "";
+			my $modified_date                  =         $row->[6];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 				name1 => "hpacucli_array_uuid",            value1 => $hpacucli_array_uuid, 
 				name2 => "hpacucli_array_controller_uuid", value2 => $hpacucli_array_controller_uuid, 
 				name3 => "hpacucli_array_name",            value3 => $hpacucli_array_name, 
 				name4 => "hpacucli_array_type",            value4 => $hpacucli_array_type, 
 				name5 => "hpacucli_array_status",          value5 => $hpacucli_array_status, 
-				name6 => "hpacucli_array_unused_space",    value6 => $hpacucli_array_unused_space, 
+				name6 => "hpacucli_array_error_message",   value6 => $hpacucli_array_error_message, 
 				name7 => "modified_date",                  value7 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3421,7 +3602,7 @@ WHERE
 				hpacucli_array_name		=>	$hpacucli_array_name, 
 				hpacucli_array_type		=>	$hpacucli_array_type, 
 				hpacucli_array_status		=>	$hpacucli_array_status, 
-				hpacucli_array_unused_space	=>	$hpacucli_array_unused_space, 
+				hpacucli_array_error_message	=>	$hpacucli_array_error_message, 
 			};
 			$an->data->{db_data}{$id}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{'exists'} = 1;
 			$an->data->{db_data}{$id}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{seen}     = 0;
@@ -3430,7 +3611,7 @@ WHERE
 				hpacucli_array_name		=>	$hpacucli_array_name, 
 				hpacucli_array_type		=>	$hpacucli_array_type, 
 				hpacucli_array_status		=>	$hpacucli_array_status, 
-				hpacucli_array_unused_space	=>	$hpacucli_array_unused_space, 
+				hpacucli_array_error_message	=>	$hpacucli_array_error_message, 
 			};
 		}
 	}
@@ -3449,28 +3630,15 @@ WHERE
 			my $hpacucli_array_name            = $an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_name};
 			my $hpacucli_array_type            = $an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_type};
 			my $hpacucli_array_status          = $an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_status};
-			my $hpacucli_array_unused_space    = $an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_unused_space};
+			my $hpacucli_array_error_message   = $an->data->{db_data}{unified}{hpacucli_arrays}{modified_date}{$modified_date}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_error_message};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "hpacucli_array_uuid",            value1 => $hpacucli_array_uuid, 
 				name2 => "hpacucli_array_controller_uuid", value2 => $hpacucli_array_controller_uuid, 
 				name3 => "hpacucli_array_name",            value3 => $hpacucli_array_name, 
 				name4 => "hpacucli_array_type",            value4 => $hpacucli_array_type, 
 				name5 => "hpacucli_array_status",          value5 => $hpacucli_array_status, 
-				name6 => "hpacucli_array_unused_space",    value6 => $hpacucli_array_unused_space, 
+				name6 => "hpacucli_array_error_message",   value6 => $hpacucli_array_error_message, 
 			}, file => $THIS_FILE, line => __LINE__});
-			
-			# We need to sanity check the three numeric strings because calling 'quote' directly
-			# will wrap the numeric values in single quotes which violates 'numeric' forms.
-			my $quoted_hpacucli_array_unused_space =  $an->data->{sys}{use_db_fh}->quote($hpacucli_array_unused_space);
-			   $quoted_hpacucli_array_unused_space =~ s/^'(.*?)'$/$1/;
-			if ((($quoted_hpacucli_array_unused_space) && ($quoted_hpacucli_array_unused_space =~ /\D/)))
-			{
-				$an->Alert->error({title_key => "an_0003", message_key => "scan_hpacucli_error_0008", message_variables => { 
-					unused_space => $quoted_hpacucli_array_unused_space,
-				}, code => 6, file => $THIS_FILE, line => __LINE__});
-				$an->nice_exit({exit_code => 6});
-			}
-			$quoted_hpacucli_array_unused_space = "NULL" if $quoted_hpacucli_array_unused_space eq "";
 			
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -3514,7 +3682,7 @@ SET
     hpacucli_array_name            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_name).", 
     hpacucli_array_type            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_type).", 
     hpacucli_array_status          = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_status).", 
-    hpacucli_array_unused_space    = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_unused_space).", 
+    hpacucli_array_error_message   = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_error_message).", 
     modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     hpacucli_array_uuid            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_uuid)." 
@@ -3540,7 +3708,7 @@ INSERT INTO
     hpacucli_array_name, 
     hpacucli_array_type, 
     hpacucli_array_status, 
-    hpacucli_array_unused_space, 
+    hpacucli_array_error_message, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_uuid).", 
@@ -3549,7 +3717,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_status).", 
-    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_unused_space).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_error_message).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
@@ -3578,7 +3746,7 @@ INSERT INTO
     hpacucli_array_name, 
     hpacucli_array_type, 
     hpacucli_array_status, 
-    hpacucli_array_unused_space, 
+    hpacucli_array_error_message, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_uuid).", 
@@ -3587,7 +3755,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_status).", 
-    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_unused_space).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_error_message).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
@@ -4386,7 +4554,7 @@ WHERE
 					table        => $table, 
 					offset       => $an->data->{archive}{table}{$table}{offset}, 
 					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
-					columns      => ["hpacucli_array_uuid", "hpacucli_array_host_uuid", "hpacucli_array_controller_uuid", "hpacucli_array_name", "hpacucli_array_type", "hpacucli_array_status", "hpacucli_array_unused_space"],
+					columns      => ["hpacucli_array_uuid", "hpacucli_array_host_uuid", "hpacucli_array_controller_uuid", "hpacucli_array_name", "hpacucli_array_type", "hpacucli_array_status", "hpacucli_array_error_message"],
 				});
 			}
 			elsif ($table eq "hpacucli_physical_drives")
@@ -4485,7 +4653,7 @@ sub get_controller_info
 	my $hpacucli_controller_serial_number     = "";
 	my $cache_serial_number                   = "";
 	my $hpacucli_physical_drive_serial_number = "";
-	my $array                                 = "";
+	my $hpacucli_array_name                                 = "";
 	my $logical_drive                         = "";
 	my $port                                  = "";
 	my $box                                   = "";
@@ -4552,11 +4720,11 @@ sub get_controller_info
 		
 		if ($line =~ /Array: (.*?)$/i)
 		{
-			$array    = $1;
-			$in_array = 1;
+			$hpacucli_array_name = $1;
+			$in_array            = 1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "array",    value1 => $array, 
-				name2 => "in_array", value2 => $in_array, 
+				name1 => "hpacucli_array_name", value1 => $hpacucli_array_name, 
+				name2 => "in_array",            value2 => $in_array, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -4587,17 +4755,17 @@ sub get_controller_info
 		
 		if (lc($line) eq "unassigned")
 		{
-			$array         = "ZZZZ";
+			$hpacucli_array_name = "ZZZZ";
 			$logical_drive = "9999";
 			$port          = "";
 			$box           = "";
 			$bay           = "";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name1 => "array",         value1 => $array, 
-				name2 => "logical_drive", value2 => $logical_drive, 
-				name3 => "port",          value3 => $port, 
-				name4 => "box",           value4 => $box, 
-				name5 => "bay",           value5 => $bay, 
+				name1 => "hpacucli_array_name", value1 => $hpacucli_array_name, 
+				name2 => "logical_drive",       value2 => $logical_drive, 
+				name3 => "port",                value3 => $port, 
+				name4 => "box",                 value4 => $box, 
+				name5 => "bay",                 value5 => $bay, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -4677,9 +4845,9 @@ sub get_controller_info
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Physical drive info
-				$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{$type}{$variable} = $value;
+				$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{$type}{$variable} = $value;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "controller::${hpacucli_controller_serial_number}::array::${array}::logical_drive::${logical_drive}::physical_drive::port::${port}::box::${box}::bay::${bay}::${type}::$variable", value1 => $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{$type}{$variable}, 
+					name1 => "controller::${hpacucli_controller_serial_number}::array::${hpacucli_array_name}::logical_drive::${logical_drive}::physical_drive::port::${port}::box::${box}::bay::${bay}::${type}::$variable", value1 => $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{$type}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Map the SN to it's current location.
@@ -4688,7 +4856,7 @@ sub get_controller_info
 					   $hpacucli_physical_drive_serial_number = $1;
 					my $location                              = $port.":".$box.":".$bay;
 					$an->data->{physical_drive}{by_serial_number}{$hpacucli_physical_drive_serial_number} = {
-						array         => $array,
+						array         => $hpacucli_array_name,
 						logical_drive => $logical_drive,
 						port          => $port,
 						box           => $box,
@@ -4708,17 +4876,17 @@ sub get_controller_info
 			elsif ($logical_drive)
 			{
 				# Logical drive
-				$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{$type}{$variable} = $value;
+				$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{$type}{$variable} = $value;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "controller::${hpacucli_controller_serial_number}::array::${array}::logical_drive::${logical_drive}::data::${type}::$variable", value1 => $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{$type}{$variable}, 
+					name1 => "controller::${hpacucli_controller_serial_number}::array::${hpacucli_array_name}::logical_drive::${logical_drive}::data::${type}::$variable", value1 => $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{$type}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($array)
+			elsif ($hpacucli_array_name)
 			{
 				# Array
-				$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{$type}{$variable} = $value;
+				$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{$type}{$variable} = $value;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "controller::${hpacucli_controller_serial_number}::array::${array}::data::${type}::$variable", value1 => $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{$type}{$variable}, 
+					name1 => "controller::${hpacucli_controller_serial_number}::array::${hpacucli_array_name}::data::${type}::$variable", value1 => $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{$type}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
@@ -4737,13 +4905,13 @@ sub get_controller_info
 			if ($line =~ /this array have failed/)
 			{
 				# We'll concatonate in case there are multiple errors.
-				if (not exists $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}{error_message})
+				if (not exists $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{error_message})
 				{
-					$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}{error_message} = "";
+					$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{error_message} = "";
 				}
-				$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}{error_message} .= $line."\n";
+				$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{error_message} .= $line."\n";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "controller::${hpacucli_controller_serial_number}::array::${array}::data::detail::error_message", value1 => $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}{error_message}, 
+					name1 => "controller::${hpacucli_controller_serial_number}::array::${hpacucli_array_name}::data::detail::error_message", value1 => $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{error_message}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -5067,179 +5235,182 @@ sub gather_data
 		get_diagnostics($an, $controller);
 	}
 	
-# 	# This is to collected data from every sweep.
-# 	foreach my $hpacucli_controller_serial_number (sort {$a cmp $b} keys %{$an->data->{controller}})
-# 	{
-# 		# Controller data;
-# 		next if $hpacucli_controller_serial_number eq "metadata";
-# 		print $THIS_FILE." ".__LINE__."; Controller: [$hpacucli_controller_serial_number]\n";
-# 		
-# 		# Temperature;
-# 		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{data}{temperature}})
-# 		{
-# 			print $THIS_FILE." ".__LINE__."; - Temperature; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{data}{temperature}{$variable}." °C]\n";
-# 		}
-# 		# Data
-# 		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{data}{detail}})
-# 		{
-# 			print $THIS_FILE." ".__LINE__."; - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{data}{detail}{$variable}."]\n";
-# 		}
-# 		
-# 		# Is this a diagnostics run?
-# 		if ($an->data->{sys}{process_diagnostics})
-# 		{
-# 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{'diagnostics'}{cache}})
-# 			{
-# 				print $THIS_FILE." ".__LINE__."; - Diagnostics; Cache - $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{'diagnostics'}{cache}{$variable}."]\n";
-# 			}
-# 		}
-# 		
-# 		# Array
-# 		foreach my $array (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}})
-# 		{
-# 			print $THIS_FILE." ".__LINE__."; - Array: [$array]\n";
-# 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{temperature}})
-# 			{
-# 				print $THIS_FILE." ".__LINE__.";   - Temperature; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{temperature}{$variable}." °C]\n";
-# 			}
-# 			# Data
-# 			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}})
-# 			{
-# 				# 'error_message' goes away when the drive is re-added.
-# 				if ($variable eq "error_message")
-# 				{
-# 					print $THIS_FILE." ".__LINE__.";   - !! Warning !! - Error message: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}{$variable}."]\n";
-# 				}
-# 				elsif (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}{$variable}) ne "ok"))
-# 				{
-# 					# Array transitions (OK -> Eject -> Plug back in)
-# 					#scan-hpacucli 3117;   - Data; status: [OK]
-# 					#scan-hpacucli 3117;   - Data; status: [Failed Physical Drive]
-# 					#scan-hpacucli 3148;   - Data; status: [OK]
-# 					print $THIS_FILE." ".__LINE__.";   - !! Warning !! - Array status problem: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}{$variable}."]\n";
-# 				}
-# 				else
-# 				{
-# 					print $THIS_FILE." ".__LINE__.";   - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{data}{detail}{$variable}."]\n";
-# 				}
-# 			}
-# 			
-# 			# Logical Drive
-# 			foreach my $logical_drive (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}})
-# 			{
-# 				print $THIS_FILE." ".__LINE__.";  - Logical Drive: [$logical_drive]\n";
-# 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{temperature}})
-# 				{
-# 					print $THIS_FILE." ".__LINE__.";    - Temperature; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{temperature}{$variable}." °C]\n";
-# 				}
-# 				# Data
-# 				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}})
-# 				{
-# 					if (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}) ne "ok"))
-# 					{
-# 						# NOTE: Auto-restored a drive that was re-inserted
-# 						# Example messages; "Interim Recovery Mode"
-# 						#                   "Recovering, 0% complete"
-# 						# LD transitions (OK -> Eject -> Plug back in)
-# 						print $THIS_FILE." ".__LINE__.";    - !! Warning!! - Logical disk status problem: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
-# 					}
-# 					else
-# 					{
-# 						print $THIS_FILE." ".__LINE__.";    - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
-# 					}
-# 				}
-# 				
-# 				# Physical Disks.
-# 				foreach my $port (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}})
-# 				{
-# 					foreach my $box (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}})
-# 					{
-# 						foreach my $bay (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}})
-# 						{
-# 							my $hpacucli_physical_drive_serial_number = $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{serial_number};
-# 							print $THIS_FILE." ".__LINE__.";   - Physical Drive: [$port:$box:$bay], sn: [$hpacucli_physical_drive_serial_number]\n";
-# 							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}})
-# 							{
-# 								print $THIS_FILE." ".__LINE__.";     - Temperature; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}{$variable}." °C]\n";
-# 							}
-# 							# Data
-# 							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}})
-# 							{
-# 								next if $variable eq "hpacucli_controller_serial_number";
-# 								next if $variable eq "port";
-# 								next if $variable eq "box";
-# 								next if $variable eq "bay";
-# 								
-# 								# Note: A failed drive will show nothing in diagnostics
-# 								# 'last_failure_reason' goes away when the drice has rebuilt
-# 								if ($variable eq "last_failure_reason")
-# 								{
-# 									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Physical drive error: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
-# 								}
-# 								elsif (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}) ne "ok"))
-# 								{
-# 									# ie "Failed"
-# 									#    "Rebuilding"
-# 									# Transitions (OK -> Failed -> Rebuilding)
-# 									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Physical drive status problem: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
-# 								}
-# 								else
-# 								{
-# 									print $THIS_FILE." ".__LINE__.";     - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
-# 								}
-# 							}
-# 							
-# 							# If this was a diagnostics run, check for error counters
-# 							if ($an->data->{sys}{process_diagnostics})
-# 							{
-# 								if (exists $an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}{read_errors_hard})
-# 								{
-# 									# We got the data
-# 									foreach my $variable (sort {$a cmp $b} keys %{$an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}})
-# 									{
-# 										# Store this in the main hash.
-# 										$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable} = $an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}{$variable};
-# 										print $THIS_FILE." ".__LINE__.";     - Diagnostics; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$array}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable}."]\n";
-# 									}
-# 								}
-# 								else
-# 								{
-# 									# No data for this drive. It might be
-# 									# a 3rd party drive. We'll warn the 
-# 									# user that we can't predict failure.
-# 									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Diagnostics not available for the drive: [$hpacucli_physical_drive_serial_number] in port: [$port], box: [$box], bay: [$bay]. Unable to predict failures! Is this a third-party drive?\n";
-# 									my $set = $an->Alert->check_alert_sent({
-# 										type			=>	"warning",
-# 										alert_sent_by		=>	$THIS_FILE,
-# 										alert_record_locator	=>	$hpacucli_physical_drive_serial_number,
-# 										alert_name		=>	"no_diagnostics",
-# 										modified_date		=>	$an->data->{sys}{db_timestamp},
-# 									});
-# 									if ($set)
-# 									{
-# 										# Warn the user that we can't
-# 										# predict this drive's death.
-# 										$an->Alert->register_alert({
-# 											alert_level		=>	"warning", 
-# 											alert_agent_name	=>	$THIS_FILE,
-# 											alert_title_key		=>	"an_alert_title_0004",
-# 											alert_message_key	=>	"scan_hpacucli_warning_0001",
-# 											alert_message_variables	=>	{
-# 												serial_number		=>	$hpacucli_physical_drive_serial_number,
-# 												port			=>	$port,
-# 												box			=>	$box, 
-# 												bay			=>	$bay,
-# 											},
-# 										});
-# 									}
-# 								}
-# 							}
-# 						}
-# 					}
-# 				}
-# 			}
-# 		}
-# 	}
+=cut
+	# This is to collected data from every sweep.
+	foreach my $hpacucli_controller_serial_number (sort {$a cmp $b} keys %{$an->data->{controller}})
+	{
+		# Controller data;
+		next if $hpacucli_controller_serial_number eq "metadata";
+		print $THIS_FILE." ".__LINE__."; Controller: [$hpacucli_controller_serial_number]\n";
+		
+		# Temperature;
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{data}{temperature}})
+		{
+			print $THIS_FILE." ".__LINE__."; - Temperature; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{data}{temperature}{$variable}." °C]\n";
+		}
+		# Data
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{data}{detail}})
+		{
+			print $THIS_FILE." ".__LINE__."; - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{data}{detail}{$variable}."]\n";
+		}
+		
+		# Is this a diagnostics run?
+		if ($an->data->{sys}{process_diagnostics})
+		{
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{'diagnostics'}{cache}})
+			{
+				print $THIS_FILE." ".__LINE__."; - Diagnostics; Cache - $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{'diagnostics'}{cache}{$variable}."]\n";
+			}
+		}
+		
+		# Array
+		foreach my $hpacucli_array_name (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}})
+		{
+			print $THIS_FILE." ".__LINE__."; - Array: [$hpacucli_array_name]\n";
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{temperature}})
+			{
+				print $THIS_FILE." ".__LINE__.";   - Temperature; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{temperature}{$variable}." °C]\n";
+			}
+			# Data
+			foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}})
+			{
+				# 'error_message' goes away when the drive is re-added.
+				if ($variable eq "error_message")
+				{
+					print $THIS_FILE." ".__LINE__.";   - !! Warning !! - Error message: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{$variable}."]\n";
+				}
+				elsif (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{$variable}) ne "ok"))
+				{
+					# Array transitions (OK -> Eject -> Plug back in)
+					#scan-hpacucli 3117;   - Data; status: [OK]
+					#scan-hpacucli 3117;   - Data; status: [Failed Physical Drive]
+					#scan-hpacucli 3148;   - Data; status: [OK]
+					print $THIS_FILE." ".__LINE__.";   - !! Warning !! - Array status problem: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{$variable}."]\n";
+				}
+				else
+				{
+					print $THIS_FILE." ".__LINE__.";   - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{$variable}."]\n";
+				}
+			}
+			
+			# Logical Drive
+			foreach my $logical_drive (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}})
+			{
+				print $THIS_FILE." ".__LINE__.";  - Logical Drive: [$logical_drive]\n";
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{temperature}})
+				{
+					print $THIS_FILE." ".__LINE__.";    - Temperature; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{temperature}{$variable}." °C]\n";
+				}
+				# Data
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}})
+				{
+					if (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}{$variable}) ne "ok"))
+					{
+						# NOTE: Auto-restored a drive that was re-inserted
+						# Example messages; "Interim Recovery Mode"
+						#                   "Recovering, 0% complete"
+						# LD transitions (OK -> Eject -> Plug back in)
+						print $THIS_FILE." ".__LINE__.";    - !! Warning!! - Logical disk status problem: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
+					}
+					else
+					{
+						print $THIS_FILE." ".__LINE__.";    - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{data}{detail}{$variable}."]\n";
+					}
+				}
+				
+				# Physical Disks.
+				foreach my $port (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}})
+				{
+					foreach my $box (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}})
+					{
+						foreach my $bay (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}})
+						{
+							my $hpacucli_physical_drive_serial_number = $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{serial_number};
+							print $THIS_FILE." ".__LINE__.";   - Physical Drive: [$port:$box:$bay], sn: [$hpacucli_physical_drive_serial_number]\n";
+							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}})
+							{
+								print $THIS_FILE." ".__LINE__.";     - Temperature; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}{$variable}." °C]\n";
+							}
+							# Data
+							foreach my $variable (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}})
+							{
+								next if $variable eq "hpacucli_controller_serial_number";
+								next if $variable eq "port";
+								next if $variable eq "box";
+								next if $variable eq "bay";
+								
+								# Note: A failed drive will show nothing in diagnostics
+								# 'last_failure_reason' goes away when the drice has rebuilt
+								if ($variable eq "last_failure_reason")
+								{
+									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Physical drive error: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+								}
+								elsif (($variable eq "status") && (lc($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}) ne "ok"))
+								{
+									# ie "Failed"
+									#    "Rebuilding"
+									# Transitions (OK -> Failed -> Rebuilding)
+									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Physical drive status problem: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+								}
+								else
+								{
+									print $THIS_FILE." ".__LINE__.";     - Data; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{detail}{$variable}."]\n";
+								}
+							}
+							
+							# If this was a diagnostics run, check for error counters
+							if ($an->data->{sys}{process_diagnostics})
+							{
+								if (exists $an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}{read_errors_hard})
+								{
+									# We got the data
+									foreach my $variable (sort {$a cmp $b} keys %{$an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}})
+									{
+										# Store this in the main hash.
+										$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable} = $an->data->{physical_drive}{$hpacucli_physical_drive_serial_number}{'diagnostics'}{$variable};
+										print $THIS_FILE." ".__LINE__.";     - Diagnostics; $variable: [".$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$logical_drive}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{'diagnostics'}{$variable}."]\n";
+									}
+								}
+								else
+								{
+									# No data for this drive. It might be
+									# a 3rd party drive. We'll warn the 
+									# user that we can't predict failure.
+									print $THIS_FILE." ".__LINE__.";     - !! Warning !! - Diagnostics not available for the drive: [$hpacucli_physical_drive_serial_number] in port: [$port], box: [$box], bay: [$bay]. Unable to predict failures! Is this a third-party drive?\n";
+									my $set = $an->Alert->check_alert_sent({
+										type			=>	"warning",
+										alert_sent_by		=>	$THIS_FILE,
+										alert_record_locator	=>	$hpacucli_physical_drive_serial_number,
+										alert_name		=>	"no_diagnostics",
+										modified_date		=>	$an->data->{sys}{db_timestamp},
+									});
+									if ($set)
+									{
+										# Warn the user that we can't
+										# predict this drive's death.
+										$an->Alert->register_alert({
+											alert_level		=>	"warning", 
+											alert_agent_name	=>	$THIS_FILE,
+											alert_title_key		=>	"an_alert_title_0004",
+											alert_message_key	=>	"scan_hpacucli_warning_0001",
+											alert_message_variables	=>	{
+												serial_number		=>	$hpacucli_physical_drive_serial_number,
+												port			=>	$port,
+												box			=>	$box, 
+												bay			=>	$bay,
+											},
+										});
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	die $THIS_FILE." ".__LINE__."; testing...\n";
+=cut
 	
 	return(0);
 }

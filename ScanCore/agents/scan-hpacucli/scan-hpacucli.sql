@@ -204,7 +204,7 @@ CREATE TABLE hpacucli_arrays (
 	hpacucli_array_name				text				not null,
 	hpacucli_array_type				text				not null,
 	hpacucli_array_status				text				not null,
-	hpacucli_array_unused_space			numeric				not null,	-- In bytes
+	hpacucli_array_error_message			text,
 	modified_date					timestamp with time zone	not null,
 	
 	FOREIGN KEY(hpacucli_array_host_uuid)       REFERENCES hosts(host_uuid),
@@ -220,7 +220,7 @@ CREATE TABLE history.hpacucli_arrays (
 	hpacucli_array_name				text,
 	hpacucli_array_type				text,
 	hpacucli_array_status				text,
-	hpacucli_array_unused_space			numeric, 
+	hpacucli_array_error_message			text, 
 	modified_date					timestamp with time zone
 );
 ALTER TABLE history.hpacucli_arrays OWNER TO #!variable!user!#;
@@ -238,7 +238,7 @@ BEGIN
 		 hpacucli_array_name, 
 		 hpacucli_array_type,
 		 hpacucli_array_status, 
-		 hpacucli_array_unused_space, 
+		 hpacucli_array_error_message, 
 		 modified_date)
 	VALUES 
 		(history_hpacucli_arrays.hpacucli_array_uuid,
@@ -247,7 +247,7 @@ BEGIN
 		 history_hpacucli_arrays.hpacucli_array_name, 
 		 history_hpacucli_arrays.hpacucli_array_type,
 		 history_hpacucli_arrays.hpacucli_array_status, 
-		 history_hpacucli_arrays.hpacucli_array_unused_space, 
+		 history_hpacucli_arrays.hpacucli_array_error_message, 
 		 history_hpacucli_arrays.modified_date);
 	RETURN NULL;
 END;
