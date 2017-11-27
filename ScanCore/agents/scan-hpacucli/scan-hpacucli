@@ -325,13 +325,13 @@ sub process_drives
 		foreach my $hpacucli_array_name (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}})
 		{
 			# Data, there is no temperature
-			my $hpacucli_array_type          = "virtual";
-			my $hpacucli_array_status        = "virtual";
-			my $hpacucli_array_error_message = "";
+			my $new_hpacucli_array_type          = "virtual";
+			my $new_hpacucli_array_status        = "virtual";
+			my $new_hpacucli_array_error_message = "";
 			
 			if ($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{array_type})
 			{
-				$hpacucli_array_type = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{array_type};
+				$new_hpacucli_array_type = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{array_type};
 			}
 			if ($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{status})
 			{
@@ -339,23 +339,232 @@ sub process_drives
 				#scan-hpacucli 3117;   - Data; status: [OK]
 				#scan-hpacucli 3117;   - Data; status: [Failed Physical Drive]
 				#scan-hpacucli 3148;   - Data; status: [OK]
-				$hpacucli_array_status = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{status};
+				$new_hpacucli_array_status = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{status};
 			}
 			if ($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{error_message})
 			{
-				$hpacucli_array_error_message = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{error_message};
+				$new_hpacucli_array_error_message = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{data}{detail}{error_message};
 			}
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-				name1 => "hpacucli_array_name",          value1 => $hpacucli_array_name,
-				name2 => "hpacucli_array_type",          value2 => $hpacucli_array_type,
-				name3 => "hpacucli_array_status",        value3 => $hpacucli_array_status,
-				name4 => "hpacucli_array_error_message", value4 => $hpacucli_array_error_message,
+				name1 => "hpacucli_array_name",              value1 => $hpacucli_array_name,
+				name2 => "new_hpacucli_array_type",          value2 => $new_hpacucli_array_type,
+				name3 => "new_hpacucli_array_status",        value3 => $new_hpacucli_array_status,
+				name4 => "new_hpacucli_array_error_message", value4 => $new_hpacucli_array_error_message,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			print $THIS_FILE." ".__LINE__."; - Array: [$hpacucli_array_name]; Type: [$hpacucli_array_type], status: [$hpacucli_array_type], error message: [$hpacucli_array_error_message]\n";
-			die $THIS_FILE." ".__LINE__."; Testing...\n";
+			# Does this array exist already?
+			my $hpacucli_array_uuid = "";
+			if ($an->data->{'scan-hpacucli'}{virtual_drives}{by_name}{$hpacucli_array_name})
+			{
+				# Look for changes.
+				$hpacucli_array_uuid = $an->data->{'scan-hpacucli'}{virtual_drives}{by_name}{$hpacucli_array_name};
+				
+				my $old_hpacucli_array_controller_uuid = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_controller_uuid};
+				my $old_controller_serial_number       = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_controller_uuid};
+				my $old_hpacucli_array_type            = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_type};
+				my $old_hpacucli_array_status          = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_status};
+				my $old_hpacucli_array_error_message   = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_error_message};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+					name1 => "old_hpacucli_array_controller_uuid", value1 => $old_hpacucli_array_controller_uuid,
+					name2 => "old_controller_serial_number",       value2 => $old_controller_serial_number,
+					name3 => "old_hpacucli_array_type",            value3 => $old_hpacucli_array_type,
+					name4 => "old_hpacucli_array_status",          value4 => $old_hpacucli_array_status,
+					name5 => "old_hpacucli_array_error_message",   value5 => $old_hpacucli_array_error_message,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# The virtual array 'ZZZZ' never changes.
+				next if $hpacucli_array_name eq "ZZZZ";
+				
+				print $THIS_FILE." ".__LINE__."; - Existing Array: [$hpacucli_array_name] (UUID: [$hpacucli_array_uuid]); Controller: [$new_controller_serial_number], Type: [$new_hpacucli_array_type], status: [$new_hpacucli_array_status], error message: [$new_hpacucli_array_error_message]\n";
+				print $THIS_FILE." ".__LINE__.";   - Was: Controller: [$old_controller_serial_number], Type: [$old_hpacucli_array_type], status: [$old_hpacucli_array_status], error message: [$old_hpacucli_array_error_message]\n";
+				print $THIS_FILE." ".__LINE__.";   - Now; Controller: [$new_controller_serial_number], Type: [$new_hpacucli_array_type], status: [$new_hpacucli_array_status], error message: [$new_hpacucli_array_error_message]\n";
+				
+				# Has anything changed? Note that we don't check the name as that is how we 
+				# find if it exists already or not.
+				if (($hpacucli_controller_serial_number ne $old_controller_serial_number) or 
+				    ($new_hpacucli_array_type           ne $old_hpacucli_array_type)      or 
+				    ($new_hpacucli_array_status         ne $old_hpacucli_array_status)    or 
+				    ($new_hpacucli_array_error_message  ne $old_hpacucli_array_error_message))
+				{
+					### Something changed.
+					# If the array is not OK, clear alerts.
+					if ($new_hpacucli_array_status ne $old_hpacucli_array_status)
+					{
+						my $title_key   = "an_alert_title_0004";
+						my $message_key = "scan_hpacucli_note_0023";
+						# Went OK?
+						if (lc($new_hpacucli_array_status) eq "ok")
+						{
+							$title_key   = "an_alert_title_0006";
+							$message_key = "scan_hpacucli_note_0024";
+						}
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,	
+							alert_title_key		=>	$title_key,
+							alert_message_key	=>	$message_key,
+							alert_message_variables	=>	{
+								name			=>	$hpacucli_array_name,
+								new_status		=>	$new_hpacucli_array_status,
+								old_status		=>	$old_hpacucli_array_status,
+							},
+						});
+					}
+					
+					# Did the controller change?
+					if ($hpacucli_controller_serial_number ne $old_controller_serial_number)
+					{
+						# yup. This is a notice as the new controller will have 
+						# generated a warning alert.
+						$an->Alert->register_alert({
+							alert_level		=>	"notice", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,	
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_hpacucli_note_0025",
+							alert_message_variables	=>	{
+								name			=>	$hpacucli_array_name,
+								new_serial_number	=>	$hpacucli_controller_serial_number,
+								old_serial_number	=>	$old_controller_serial_number,
+							},
+						});
+					}
+					
+					# Has the error message changed?
+					if ($new_hpacucli_array_error_message ne $old_hpacucli_array_error_message)
+					{
+						# Default is 'changed'
+						my $title_key   = "an_alert_title_0004";
+						my $message_key = "scan_hpacucli_note_0026";
+						if (not $new_hpacucli_array_error_message)
+						{
+							# Cleared
+							$title_key = "an_alert_title_0006";
+							$message_key = "scan_hpacucli_note_0027";
+						}
+						elsif (not $old_hpacucli_array_error_message)
+						{
+							# New error
+							$message_key = "scan_hpacucli_note_0028";
+						}
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,	
+							alert_title_key		=>	$title_key,
+							alert_message_key	=>	$message_key,
+							alert_message_variables	=>	{
+								name			=>	$hpacucli_array_name,
+								new_error_message	=>	$new_hpacucli_array_error_message,
+								old_error_message	=>	$old_hpacucli_array_error_message,
+							},
+						});
+					}
+					
+					# Did the controller change?
+					if ($new_hpacucli_array_type ne $old_hpacucli_array_type)
+					{
+						# yup. This is a warning because it should never change.
+						$an->Alert->register_alert({
+							alert_level		=>	"warning", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_sort		=>	$an->data->{sys}{alert_sort}++,	
+							alert_title_key		=>	"an_alert_title_0004",
+							alert_message_key	=>	"scan_hpacucli_note_0030",
+							alert_message_variables	=>	{
+								name			=>	$hpacucli_array_name,
+								new_type		=>	$new_hpacucli_array_type,
+								old_type		=>	$old_hpacucli_array_type,
+							},
+						});
+					}
+					
+					# UPDATE
+					my $query = "
+UPDATE 
+    hpacucli_arrays
+SET
+    hpacucli_array_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_uuid).", 
+    hpacucli_array_type            = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_array_type).", 
+    hpacucli_array_status          = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_array_status).", 
+    hpacucli_array_error_message   = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_array_error_message).", 
+    modified_date                  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    hpacucli_array_uuid            = ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_uuid)." 
+;";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{sys}{sql}}, $query;
+				}
+			}
+			else
+			{
+				# New.
+				$hpacucli_array_uuid = $an->Get->uuid();
+				print $THIS_FILE." ".__LINE__."; - New Array: [$hpacucli_array_name] (UUID: [$hpacucli_array_uuid]); Type: [$new_hpacucli_array_type], status: [$new_hpacucli_array_status], error message: [$new_hpacucli_array_error_message]\n";
+				
+				# Alert the user if this isn't the virtual array.
+				if ($hpacucli_array_name ne "ZZZZ")
+				{
+					# If the array is OK, it will be a notice.
+					my $alert_level = "notice";
+					my $title_key   = "an_alert_title_0003";
+					my $message_key = "scan_hpacucli_note_0021";
+					if (lc($new_hpacucli_array_status) ne "ok")
+					{
+						$alert_level = "warning";
+						$title_key   = "an_alert_title_0004";
+						$message_key = "scan_hpacucli_note_0022";
+					}
+					$an->Alert->register_alert({
+						alert_level		=>	$alert_level, 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_sort		=>	$an->data->{sys}{alert_sort}++,	
+						alert_title_key		=>	$title_key,
+						alert_message_key	=>	$message_key,
+						alert_message_variables	=>	{
+							name			=>	$hpacucli_array_name,
+							type			=>	$new_hpacucli_array_type,
+							status			=>	$new_hpacucli_array_status,
+							error			=>	$new_hpacucli_array_error_message,
+						},
+					});
+				}
+				
+				my $query = "
+INSERT INTO 
+    hpacucli_arrays
+(
+    hpacucli_array_uuid, 
+    hpacucli_array_host_uuid, 
+    hpacucli_array_controller_uuid, 
+    hpacucli_array_name, 
+    hpacucli_array_type, 
+    hpacucli_array_status, 
+    hpacucli_array_error_message, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_controller_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hpacucli_array_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_array_type).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_array_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_array_error_message).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+				# Now record the query in the array
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+			}
 			
 			# Logical Drive
+=cut
 			foreach my $logical_drive (sort {$a cmp $b} keys %{$an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}})
 			{
 				print $THIS_FILE." ".__LINE__.";  - Logical Drive: [$logical_drive]\n";
@@ -469,6 +678,7 @@ sub process_drives
 					}
 				}
 			}
+=cut
 		}
 	}
 	die $THIS_FILE." ".__LINE__."; testing...\n";
@@ -2114,7 +2324,7 @@ FROM
 WHERE
     hpacucli_array_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2130,7 +2340,7 @@ WHERE
 		my $hpacucli_array_type             =         $row->[3]; 
 		my $hpacucli_array_status           =         $row->[4]; 
 		my $hpacucli_array_error_message    = defined $row->[5] ? $row->[5] : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 			name1 => "hpacucli_array_uuid",            value1 => $hpacucli_array_uuid, 
 			name2 => "hpacucli_array_controller_uuid", value2 => $hpacucli_array_controller_uuid, 
 			name3 => "hpacucli_array_name",            value3 => $hpacucli_array_name, 
@@ -2142,7 +2352,7 @@ WHERE
 		# Store the information about this virtual drive.
 		$an->data->{'scan-hpacucli'}{virtual_drives}{by_name}{$hpacucli_array_name} = $hpacucli_array_uuid;
 		$an->data->{'scan-hpacucli'}{virtual_drives}{by_uuid}{$hpacucli_array_uuid} = $hpacucli_array_name;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "scan-hpacucli::virtual_drives::by_name::${hpacucli_array_name}", value1 => $an->data->{'scan-hpacucli'}{virtual_drives}{by_name}{$hpacucli_array_name}, 
 			name2 => "scan-hpacucli::virtual_drives::by_uuid::${hpacucli_array_uuid}", value2 => $an->data->{'scan-hpacucli'}{virtual_drives}{by_uuid}{$hpacucli_array_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2155,7 +2365,7 @@ WHERE
 			hpacucli_array_status          => $hpacucli_array_status, 
 			hpacucli_array_error_message   => $hpacucli_array_error_message, 
 		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 			name1 => "sql::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::hpacucli_array_controller_uuid", value1 => $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_controller_uuid}, 
 			name2 => "sql::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::hpacucli_array_name",            value2 => $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_name}, 
 			name3 => "sql::hpacucli_arrays::hpacucli_array_uuid::${hpacucli_array_uuid}::hpacucli_array_type",            value3 => $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_type}, 

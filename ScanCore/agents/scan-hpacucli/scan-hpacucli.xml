@@ -177,6 +177,26 @@ WARNING: If enough sensors go critical, emergency power off will occure to prote
 		<key name="scan_hpacucli_note_0018">The HP RAID cache module with the serial number: [#!variable!serial_number!#] has vanished!</key>
 		<key name="scan_hpacucli_note_0019">The temperature sensor: [#!variable!name!#] on the HP RAID controller with the serial number: [#!variable!serial_number!#] has vanished!</key>
 		<key name="scan_hpacucli_note_0020">The sensor: [#!variable!name!#] on the HP RAID controller with the serial number: [#!variable!serial_number!#] has vanished!</key>
+		<key name="scan_hpacucli_note_0021">A new array has been found: [#!variable!name!#]. It is a: [#!variable!type!#] array and it's status is: [#!variable!status!#]!</key>
+		<key name="scan_hpacucli_note_0022">A new array has been found: [#!variable!name!#] and it appears to have a problem. It is a: [#!variable!type!#] array and it's status is: [#!variable!status!#]. The error message is: [#!variable!error!#]!</key>
+		<key name="scan_hpacucli_note_0023">The status of the HP RAID array: [#!variable!name!#] has changed:
+- [#!variable!old_status!#] -> [#!variable!new_status!#]
+		</key>
+		<key name="scan_hpacucli_note_0024">The HP RAID array: [#!variable!name!#] has changed is back to a healthy state.</key>
+		<key name="scan_hpacucli_note_0025">The HP RAID array: [#!variable!name!#] has moved to a new controller.
+- [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+		</key>
+		<key name="scan_hpacucli_note_0026">The error message for the HP RAID array: [#!variable!name!#] has changed:
+- [#!variable!old_error_message!#] -> [#!variable!new_error_message!#]
+		</key>
+		<key name="scan_hpacucli_note_0027">The HP RAID array: [#!variable!name!#] has an error message: [#!variable!new_error_message!#]</key>
+		<key name="scan_hpacucli_note_0028">The HP RAID array: [#!variable!name!#] has cleared the old error message: [#!variable!old_error_message!#]</key>
+		<key name="scan_hpacucli_note_0029">The error message for the HP RAID array: [#!variable!name!#] has changed:
+- [#!variable!old_error_message!#] -> [#!variable!new_error_message!#]
+		</key>
+		<key name="scan_hpacucli_note_0030">The HP RAID array: [#!variable!name!#] type has changed:
+- [#!variable!old_type!#] -> [#!variable!new_type!#]
+		</key>
 		
 		<!-- Log strings -->
 		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>
