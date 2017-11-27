@@ -360,7 +360,7 @@ sub process_drives
 				$hpacucli_array_uuid = $an->data->{'scan-hpacucli'}{virtual_drives}{by_name}{$hpacucli_array_name};
 				
 				my $old_hpacucli_array_controller_uuid = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_controller_uuid};
-				my $old_controller_serial_number       = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_controller_uuid};
+				my $old_controller_serial_number       = $an->data->{'scan-hpacucli'}{controllers}{by_uuid}{$old_hpacucli_array_controller_uuid};
 				my $old_hpacucli_array_type            = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_type};
 				my $old_hpacucli_array_status          = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_status};
 				my $old_hpacucli_array_error_message   = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_error_message};
@@ -372,12 +372,15 @@ sub process_drives
 					name5 => "old_hpacucli_array_error_message",   value5 => $old_hpacucli_array_error_message,
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				# Delete the old one so we know we've seen it.
+				delete $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid};
+				
 				# The virtual array 'ZZZZ' never changes.
 				next if $hpacucli_array_name eq "ZZZZ";
 				
-				print $THIS_FILE." ".__LINE__."; - Existing Array: [$hpacucli_array_name] (UUID: [$hpacucli_array_uuid]); Controller: [$new_controller_serial_number], Type: [$new_hpacucli_array_type], status: [$new_hpacucli_array_status], error message: [$new_hpacucli_array_error_message]\n";
+				print $THIS_FILE." ".__LINE__."; - Existing Array: [$hpacucli_array_name] (UUID: [$hpacucli_array_uuid]); Type: [$new_hpacucli_array_type], status: [$new_hpacucli_array_status], error message: [$new_hpacucli_array_error_message]\n";
 				print $THIS_FILE." ".__LINE__.";   - Was: Controller: [$old_controller_serial_number], Type: [$old_hpacucli_array_type], status: [$old_hpacucli_array_status], error message: [$old_hpacucli_array_error_message]\n";
-				print $THIS_FILE." ".__LINE__.";   - Now; Controller: [$new_controller_serial_number], Type: [$new_hpacucli_array_type], status: [$new_hpacucli_array_status], error message: [$new_hpacucli_array_error_message]\n";
+				print $THIS_FILE." ".__LINE__.";   - Now; Controller: [$hpacucli_controller_serial_number], Type: [$new_hpacucli_array_type], status: [$new_hpacucli_array_status], error message: [$new_hpacucli_array_error_message]\n";
 				
 				# Has anything changed? Note that we don't check the name as that is how we 
 				# find if it exists already or not.
@@ -392,8 +395,13 @@ sub process_drives
 					{
 						my $title_key   = "an_alert_title_0004";
 						my $message_key = "scan_hpacucli_note_0023";
-						# Went OK?
-						if (lc($new_hpacucli_array_status) eq "ok")
+						# Came back or went OK?
+						if ($old_hpacucli_array_status eq "VANISHED")
+						{
+							$title_key   = "an_alert_title_0006";
+							$message_key = "scan_hpacucli_note_0032";
+						}
+						elsif (lc($new_hpacucli_array_status) eq "ok")
 						{
 							$title_key   = "an_alert_title_0006";
 							$message_key = "scan_hpacucli_note_0024";
@@ -406,6 +414,7 @@ sub process_drives
 							alert_message_key	=>	$message_key,
 							alert_message_variables	=>	{
 								name			=>	$hpacucli_array_name,
+								serial_number		=>	$hpacucli_controller_serial_number,
 								new_status		=>	$new_hpacucli_array_status,
 								old_status		=>	$old_hpacucli_array_status,
 							},
@@ -680,7 +689,40 @@ INSERT INTO
 			}
 =cut
 		}
+		
+		# Look for deleted arrays.
+		foreach my $hpacucli_array_uuid (keys %{$an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}})
+		{
+			my $old_hpacucli_array_name            = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_name};
+			my $old_hpacucli_array_controller_uuid = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_controller_uuid};
+			my $old_controller_serial_number       = $an->data->{'scan-hpacucli'}{controllers}{by_uuid}{$old_hpacucli_array_controller_uuid};
+			my $old_hpacucli_array_status          = $an->data->{sql}{hpacucli_arrays}{hpacucli_array_uuid}{$hpacucli_array_uuid}{hpacucli_array_status};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "old_hpacucli_array_name",            value1 => $old_hpacucli_array_name,
+				name2 => "old_hpacucli_array_controller_uuid", value2 => $old_hpacucli_array_controller_uuid,
+				name3 => "old_controller_serial_number",       value3 => $old_controller_serial_number,
+				name4 => "old_hpacucli_array_status",          value4 => $old_hpacucli_array_status,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			next if $old_hpacucli_array_status eq "VANISHED";
+			
+			$an->Alert->register_alert({
+				alert_level		=>	"warning", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_sort		=>	$an->data->{sys}{alert_sort}++,	
+				alert_title_key		=>	"an_alert_title_0004",
+				alert_message_key	=>	"scan_hpacucli_note_0031",
+				alert_message_variables	=>	{
+					name			=>	$old_hpacucli_array_name,
+					serial_number		=>	$old_controller_serial_number,
+				},
+			});
+		}
 	}
+	
+	# Now commit the changes.
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
+	
 	die $THIS_FILE." ".__LINE__."; testing...\n";
 	
 	return(0);

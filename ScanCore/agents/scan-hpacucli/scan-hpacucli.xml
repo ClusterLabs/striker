@@ -197,6 +197,8 @@ WARNING: If enough sensors go critical, emergency power off will occure to prote
 		<key name="scan_hpacucli_note_0030">The HP RAID array: [#!variable!name!#] type has changed:
 - [#!variable!old_type!#] -> [#!variable!new_type!#]
 		</key>
+		<key name="scan_hpacucli_note_0031">The HP RAID array: [#!variable!name!#] on the controller: [#!variable!serial_number!#] has vanished!</key>
+		<key name="scan_hpacucli_note_0032">The HP RAID array: [#!variable!name!#] on the controller: [#!variable!serial_number!#] has returned.</key>
 		
 		<!-- Log strings -->
 		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>
