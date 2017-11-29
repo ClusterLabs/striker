@@ -293,7 +293,6 @@ CREATE TABLE hpacucli_logical_drives (
 	hpacucli_logical_drive_strip_size		numeric				not null,	-- in bytes
 	hpacucli_logical_drive_stripe_size		numeric				not null,	-- in bytes
 	hpacucli_logical_drive_status			text				not null,
-	hpacucli_logical_drive_wwn			text				not null,	-- "unique_identifier"
 	modified_date					timestamp with time zone	not null,
 	
 	FOREIGN KEY(hpacucli_logical_drive_host_uuid)  REFERENCES hosts(host_uuid),
@@ -315,7 +314,6 @@ CREATE TABLE history.hpacucli_logical_drives (
 	hpacucli_logical_drive_strip_size		numeric,
 	hpacucli_logical_drive_stripe_size		numeric,
 	hpacucli_logical_drive_status			text,
-	hpacucli_logical_drive_wwn			text,
 	modified_date					timestamp with time zone
 );
 ALTER TABLE history.hpacucli_logical_drives OWNER TO #!variable!user!#;
@@ -339,7 +337,6 @@ BEGIN
 		 hpacucli_logical_drive_strip_size,
 		 hpacucli_logical_drive_stripe_size,
 		 hpacucli_logical_drive_status,
-		 hpacucli_logical_drive_wwn,
 		 modified_date)
 	VALUES 
 		(history_hpacucli_logical_drives.hpacucli_logical_drive_uuid,
@@ -354,7 +351,6 @@ BEGIN
 		 history_hpacucli_logical_drives.hpacucli_logical_drive_strip_size,
 		 history_hpacucli_logical_drives.hpacucli_logical_drive_stripe_size,
 		 history_hpacucli_logical_drives.hpacucli_logical_drive_status,
-		 history_hpacucli_logical_drives.hpacucli_logical_drive_wwn,
 		 history_hpacucli_logical_drives.modified_date);
 	RETURN NULL;
 END;

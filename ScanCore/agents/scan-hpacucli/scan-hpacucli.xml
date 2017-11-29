@@ -199,6 +199,47 @@ WARNING: If enough sensors go critical, emergency power off will occure to prote
 		</key>
 		<key name="scan_hpacucli_note_0031">The HP RAID array: [#!variable!name!#] on the controller: [#!variable!serial_number!#] has vanished!</key>
 		<key name="scan_hpacucli_note_0032">The HP RAID array: [#!variable!name!#] on the controller: [#!variable!serial_number!#] has returned.</key>
+		<key name="scan_hpacucli_note_0033">The HP RAID array: [#!variable!name!#] has a new logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#]:
+- Status: .............. [#!variable!new_status!#]
+- Write-Back Caching: .. [#!variable!new_caching!#]
+- Device Name in the OS: [#!variable!new_os_device_name!#]
+- Drive Type: .......... [#!variable!new_type!#]
+- RAID Level: .......... [#!variable!new_raid_level!#]
+- Logical Drive Size: .. [#!variable!new_size!#]
+- Strip Size: .......... [#!variable!new_strip_size!#]
+- Stripe Size: ......... [#!variable!new_stripe_size!#]
+		</key>
+		<key name="scan_hpacucli_note_0034">The write-back caching on the HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] has changed!
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_hpacucli_note_0035">The write-back caching has been re-enabled on the HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#].</key>
+		<key name="scan_hpacucli_note_0036">The write-back caching has been disabled on the HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#].
+WARNING: Storage performance can be significantly impacted when write-back caching has been disabled! This can be caused by a failed battery or capacitor on the RAID controller.
+		</key>
+		<key name="scan_hpacucli_note_0037">The status on the HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] has changed!
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_hpacucli_note_0038">The HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] is back to normal.</key>
+		<key name="scan_hpacucli_note_0039">The HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] is has begun recovering.
+NOTE: The array is still degraded, and will remain so until the rebuild process is complete. How long this rebuild will take is a factor of the replacement drive's speed and size.
+		</key>
+		<key name="scan_hpacucli_note_0040">The rebuild of the HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] is now at: [#!variable!recovered!# %].
+		<key name="scan_hpacucli_note_0041">The HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] is degraded!
+WARNING: This is generally caused by a drive failing or having been removed. Please replace the drive as soon as possible.
+		</key>
+		<key name="scan_hpacucli_note_0042">The HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] has changed!
+- Drive Name in OS: [#!variable!old_os_drive_name!#] -> [#!variable!new_os_drive_name!#]
+- Drive Type: ..... [#!variable!old_type!#] -> [#!variable!new_type!#]
+- RAID Level: ..... [#!variable!old_raid_level!#] -> [#!variable!new_raid_level!#]
+- Drive Size: ..... [#!variable!old_size!#] -> [#!variable!new_size!#]
+- Strip Size: ..... [#!variable!old_strip_size!#] -> [#!variable!new_strip_size!#]
+- Stripe Size: .... [#!variable!old_stripe_size!#] -> [#!variable!new_stripe_size!#]
+		</key>
+		<key name="scan_hpacucli_note_0043">A variable on the HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] has changed!
+- #!variable!variable_name!#: [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_hpacucli_note_0044">The HP RAID logical drive: [#!variable!logical_drive!#] has vanished!</key>
+		<key name="scan_hpacucli_note_0045">The HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] has returned!</key>
 		
 		<!-- Log strings -->
 		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>
