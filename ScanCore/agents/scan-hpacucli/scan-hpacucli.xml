@@ -103,7 +103,15 @@ https://alteeve.com/w/Support
 		<key name="scan_hpacucli_error_0007">Non-numeric value in a numeric variable; cache module size: [#!variable!size!#]. This is likely a program error.</key>
 		<key name="scan_hpacucli_error_0008">Non-numeric value in a numeric variable; array unused space: [#!variable!unused_space!#]. This is likely a program error.</key>
 		<key name="scan_hpacucli_error_0009">Non-numeric value in a numeric variable; logical drive size: [#!variable!logical_drive_size!#], strip size: [#!variable!strip_size!#], or stripe size: [#!variable!stripe_size!#]. This is likely a program error.</key>
-		<key name="scan_hpacucli_error_0010">Non-numeric value in a numeric variable; drive size: [#!variable!size!#], or RPM: [#!variable!rpm!#]. This is likely a program error.</key>
+		<key name="scan_hpacucli_error_0010">Non-numeric value in a numeric variable; drive size: [#!variable!size!#], RPM: [#!variable!rpm!#] or temperature: [#!variable!temperature!#]. This is likely a program error.</key>
+		<key name="scan_hpacucli_error_0011">Failed to find the serial number of the physical drive at the following location:
+- RAID Controller Serial Number: [#!variable!serial_number!#]
+- Array Name: .................. [#!variable!array_name!#]
+- Logical Drive Name: .......... [#!variable!logical_drive_name!#]
+- Port: ........................ [#!variable!port!#]
+- Box: ......................... [#!variable!box!#]
+- Bay: ......................... [#!variable!bay!#]
+		</key>
 		
 		<!-- Notices -->
 		<key name="scan_hpacucli_note_0001">A new HP RAID controller has been found.
@@ -240,6 +248,20 @@ WARNING: This is generally caused by a drive failing or having been removed. Ple
 		</key>
 		<key name="scan_hpacucli_note_0044">The HP RAID logical drive: [#!variable!logical_drive!#] has vanished!</key>
 		<key name="scan_hpacucli_note_0045">The HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] has returned!</key>
+		<key name="scan_hpacucli_note_0046">A new physical disk was found on the HP RAID controller: [#!variable!controller_serial_number!#]:
+- Serial Number: [#!variable!drive_serial_number!#]
+- Model: ....... [#!variable!model!#]
+- Size: ........ [#!variable!size!#]
+- Status: ...... [#!variable!status!#]
+- Temperature: . [#!variable!temperature!#]
+- Interface: ... [#!variable!interface!#]
+- Type: ........ [#!variable!rpm!#]
+- Array: ....... [#!variable!array_name!#]
+- Logical Drive: [#!variable!logical_drive_name!#]
+- Port: ........ [#!variable!port!#]
+- Box: ......... [#!variable!box!#]
+- Bay: ......... [#!variable!bay!#]
+		</key>
 		
 		<!-- Log strings -->
 		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>

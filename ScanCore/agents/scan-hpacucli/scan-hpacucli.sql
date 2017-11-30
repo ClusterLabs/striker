@@ -393,6 +393,7 @@ CREATE TABLE hpacucli_physical_drives (
 	hpacucli_physical_drive_size			numeric				not null,	-- In bytes
 	hpacucli_physical_drive_type			text				not null,
 	hpacucli_physical_drive_rpm			numeric				not null,	-- '0' for SSDs.
+	hpacucli_physical_drive_temperature		numeric				not null,	-- In celslius
 	modified_date					timestamp with time zone	not null,
 	
 	FOREIGN KEY(hpacucli_physical_drive_host_uuid)          REFERENCES hosts(host_uuid),
@@ -412,6 +413,7 @@ CREATE TABLE history.hpacucli_physical_drives (
 	hpacucli_physical_drive_size			numeric,
 	hpacucli_physical_drive_type			text,
 	hpacucli_physical_drive_rpm			numeric,
+	hpacucli_physical_drive_temperature		numeric,
 	modified_date					timestamp with time zone
 );
 ALTER TABLE history.hpacucli_physical_drives OWNER TO #!variable!user!#;
@@ -432,7 +434,8 @@ BEGIN
 		 hpacucli_physical_drive_status,
 		 hpacucli_physical_drive_size,
 		 hpacucli_physical_drive_type,
-		 hpacucli_physical_drive_rpm,
+		 hpacucli_physical_drive_rpm, 
+		 hpacucli_physical_drive_temperature, 
 		 modified_date)
 	VALUES 
 		(history_hpacucli_physical_drives.hpacucli_physical_drive_uuid,
@@ -445,6 +448,7 @@ BEGIN
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_size,
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_type,
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_rpm,
+		 history_hpacucli_physical_drives.hpacucli_physical_drive_temperature,
 		 history_hpacucli_physical_drives.modified_date);
 	RETURN NULL;
 END;
