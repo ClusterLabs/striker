@@ -394,6 +394,10 @@ CREATE TABLE hpacucli_physical_drives (
 	hpacucli_physical_drive_type			text				not null,
 	hpacucli_physical_drive_rpm			numeric				not null,	-- '0' for SSDs.
 	hpacucli_physical_drive_temperature		numeric				not null,	-- In celslius
+	hpacucli_physical_drive_last_failure_reason	text				not null,	-- This is usually an empty string
+	hpacucli_physical_drive_port			text				not null,	-- These three form the ID for the drive; <port>:<box>:<bay>
+	hpacucli_physical_drive_box			text				not null,
+	hpacucli_physical_drive_bay			text				not null,
 	modified_date					timestamp with time zone	not null,
 	
 	FOREIGN KEY(hpacucli_physical_drive_host_uuid)          REFERENCES hosts(host_uuid),
@@ -414,6 +418,10 @@ CREATE TABLE history.hpacucli_physical_drives (
 	hpacucli_physical_drive_type			text,
 	hpacucli_physical_drive_rpm			numeric,
 	hpacucli_physical_drive_temperature		numeric,
+	hpacucli_physical_drive_last_failure_reason	text,
+	hpacucli_physical_drive_port			text,
+	hpacucli_physical_drive_box			text,
+	hpacucli_physical_drive_bay			text,
 	modified_date					timestamp with time zone
 );
 ALTER TABLE history.hpacucli_physical_drives OWNER TO #!variable!user!#;
@@ -436,6 +444,10 @@ BEGIN
 		 hpacucli_physical_drive_type,
 		 hpacucli_physical_drive_rpm, 
 		 hpacucli_physical_drive_temperature, 
+		 hpacucli_physical_drive_last_failure_reason, 
+		 hpacucli_physical_drive_port, 
+		 hpacucli_physical_drive_box, 
+		 hpacucli_physical_drive_bay, 
 		 modified_date)
 	VALUES 
 		(history_hpacucli_physical_drives.hpacucli_physical_drive_uuid,
@@ -449,6 +461,10 @@ BEGIN
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_type,
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_rpm,
 		 history_hpacucli_physical_drives.hpacucli_physical_drive_temperature,
+		 history_hpacucli_physical_drives.hpacucli_physical_drive_last_failure_reason, 
+		 history_hpacucli_physical_drives.hpacucli_physical_drive_port, 
+		 history_hpacucli_physical_drives.hpacucli_physical_drive_box, 
+		 history_hpacucli_physical_drives.hpacucli_physical_drive_bay, 
 		 history_hpacucli_physical_drives.modified_date);
 	RETURN NULL;
 END;

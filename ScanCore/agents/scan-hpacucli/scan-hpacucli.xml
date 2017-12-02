@@ -249,19 +249,84 @@ WARNING: This is generally caused by a drive failing or having been removed. Ple
 		<key name="scan_hpacucli_note_0044">The HP RAID logical drive: [#!variable!logical_drive!#] has vanished!</key>
 		<key name="scan_hpacucli_note_0045">The HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] has returned!</key>
 		<key name="scan_hpacucli_note_0046">A new physical disk was found on the HP RAID controller: [#!variable!controller_serial_number!#]:
-- Serial Number: [#!variable!drive_serial_number!#]
-- Model: ....... [#!variable!model!#]
-- Size: ........ [#!variable!size!#]
-- Status: ...... [#!variable!status!#]
-- Temperature: . [#!variable!temperature!#]
-- Interface: ... [#!variable!interface!#]
-- Type: ........ [#!variable!rpm!#]
-- Array: ....... [#!variable!array_name!#]
-- Logical Drive: [#!variable!logical_drive_name!#]
-- Port: ........ [#!variable!port!#]
-- Box: ......... [#!variable!box!#]
-- Bay: ......... [#!variable!bay!#]
+- Serial Number: ..... [#!variable!drive_serial_number!#]
+- Model: ............. [#!variable!model!#]
+- Size: .............. [#!variable!size!#]
+- Status: ............ [#!variable!status!#]
+- Temperature: ....... [#!variable!temperature!#]
+- Interface: ......... [#!variable!interface!#]
+- Location: .......... [#!variable!port!#:#!variable!box!#:#!variable!bay!#] (Port:Box:Bay)
+- Type: .............. [#!variable!rpm!#]
+- Array: ............. [#!variable!array_name!#]
+- Logical Drive: ..... [#!variable!logical_drive_name!#]
+- Last Failure Reason: [#!variable!last_failure_reason!#]
 		</key>
+		<key name="scan_hpacucli_note_0047">The physical disk [#!variable!drive_serial_number!#] has moved to a new logical disk.
+- Host: ........................ [#!variable!old_host_name!#] -> [#!variable!new_host_name!#]
+- RAID Controller Serial Number: [#!variable!old_controller_serial_number!#] -> [#!variable!new_controller_serial_number!#]
+- Array Name: .................. [#!variable!old_array_name!#] -> [#!variable!new_array_name!#]
+- Logical Drive Name: .......... [#!variable!old_logical_drive_name!#] -> [#!variable!new_logical_drive_name!#]
+		</key>
+		<key name="scan_hpacucli_note_0048">The status of the physical disk [#!variable!serial_number!#] has changed! [#!variable!old_status!#] -> [#!variable!new_status!#]</key>
+		<key name="scan_hpacucli_note_0049">The physical disk [#!variable!serial_number!#] has vanished!</key>
+		<key name="scan_hpacucli_note_0050">The physical disk [#!variable!serial_number!#] has returned.</key>
+		<key name="scan_hpacucli_note_0051">The physical disk [#!variable!serial_number!#] is back to normal.</key>
+		<key name="scan_hpacucli_note_0052">The physical disk [#!variable!serial_number!#] has changed in an unusual way:
+- Model: ............. [#!variable!old_model!#] -> [#!variable!new_model!#]
+- Interface: ......... [#!variable!old_interface!#] -> [#!variable!new_interface!#]
+- Size: .............. [#!variable!old_size!#] -> [#!variable!new_size!#]
+- RPM: ............... [#!variable!old_rpm!#] -> [#!variable!new_rpm!#]
+- Last Failure Reason: [#!variable!old_last_failure_reason!#] -> [#!variable!new_last_failure_reason!#]
+- Location: .......... [#!variable!old_port!#:#!variable!old_box!#:#!variable!old_bay!#] -> [#!variable!new_port!#:#!variable!new_box!#:#!variable!new_bay!#] (Port:Box:Bay)
+		</key>
+		<key name="scan_hpacucli_note_0053">The temperature of the physical disk [#!variable!serial_number!#] has changed: [#!variable!old_temperature!#] -> [#!variable!new_temperature!#]</key>
+		<key name="scan_hpacucli_note_0054">The temperature of the physical disk: [#!variable!serial_number!#] is no longer critically hot.
+- [#!variable!old_temperature!#] -> [#!variable!new_temperature!#]
+		</key>
+		<key name="scan_hpacucli_note_0055">The temperature of the physical disk: [#!variable!serial_number!#] is no longer hot enough to be in a warning state.
+- [#!variable!old_temperature!#] -> [#!variable!new_temperature!#]
+		</key>
+		<key name="scan_hpacucli_note_0056">The temperature of the physical disk: [#!variable!serial_number!#] is no longer critically cold.
+- [#!variable!old_temperature!#] -> [#!variable!new_temperature!#]
+		</key>
+		<key name="scan_hpacucli_note_0057">The temperature of the physical disk: [#!variable!serial_number!#] is no longer cold enough to be in a warning state.
+- [#!variable!old_temperature!#] -> [#!variable!new_temperature!#]
+		</key>
+		<key name="scan_hpacucli_note_0058">The temperature of the physical disk: [#!variable!serial_number!#] has jumped: [#!variable!delta!#] since the last scan.
+- [#!variable!old_temperature!#] -> [#!variable!new_temperature!#]
+		</key>
+		<key name="scan_hpacucli_note_0059">The temperature of the physical disk: [#!variable!serial_number!#] has dropped: [#!variable!delta!#] since the last scan.
+- [#!variable!old_temperature!#] -> [#!variable!new_temperature!#]
+		</key>
+		<key name="scan_hpacucli_note_0060">
+The temperature of the physical drive: [#!variable!serial_number!#] is above the high critical temperature of: [#!variable!high_critical_temperature!#]!:
+- Current temperature: [#!variable!new_temperature!#]
+NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
+NOTE:    If enough temperature sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
+WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
+		</key>
+		<key name="scan_hpacucli_note_0061">
+The temperature of the physical drive: [#!variable!serial_number!#] is above the high warning temperature of: [#!variable!high_warning_temperature!#]. It will go critical at: [#!variable!high_critical_temperature!#]!:
+- Current temperature: [#!variable!new_temperature!#]
+NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
+NOTE:    If enough temperature sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
+WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
+		</key>
+		<key name="scan_hpacucli_note_0062">
+The temperature of the physical drive: [#!variable!serial_number!#] is below the low critical temperature of: [#!variable!low_critical_temperature!#]!:
+- Current temperature: [#!variable!new_temperature!#]
+NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
+NOTE:    If enough sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
+WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
+		</key>
+		<key name="scan_hpacucli_note_0063">
+The temperature of the physical drive: [#!variable!serial_number!#] is below the low warning temperature of: [#!variable!low_warning_temperature!#]. It will go critical at: [#!variable!low_critical_temperature!#]!:
+- Current temperature: [#!variable!new_temperature!#]
+NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
+NOTE:    If enough sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
+WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
+		</key>
+		<key name="scan_hpacucli_note_0064">The new physical disk with the serial number: [#!variable!drive_serial_number!#] is not healthy!</key>
 		
 		<!-- Log strings -->
 		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>
