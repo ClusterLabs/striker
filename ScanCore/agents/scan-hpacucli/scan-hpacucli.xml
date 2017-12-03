@@ -327,6 +327,12 @@ NOTE:    If enough sensors go into warning or critical on both nodes, load shedd
 WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
 		</key>
 		<key name="scan_hpacucli_note_0064">The new physical disk with the serial number: [#!variable!drive_serial_number!#] is not healthy!</key>
+		<key name="scan_hpacucli_note_0065">A variable on the physical drive: [#!variable!serial_number!#] has changed:
+- #!variable!variable_name!#: [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_hpacucli_note_0066">A variable on the logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] has changed:
+- #!variable!variable_name!#: [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
 		
 		<!-- Log strings -->
 		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>
