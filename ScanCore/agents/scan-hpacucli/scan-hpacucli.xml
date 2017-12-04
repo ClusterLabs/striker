@@ -333,6 +333,8 @@ WARNING: If enough sensors go critical, emergency power off will occure to prote
 		<key name="scan_hpacucli_note_0066">A variable on the logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] has changed:
 - #!variable!variable_name!#: [#!variable!old_value!#] -> [#!variable!new_value!#]
 		</key>
+		<key name="scan_hpacucli_note_0067">The variable: [#!variable!name!#] on the physical drive with the serial number: [#!variable!serial_number!#] has vanished!</key>
+		<key name="scan_hpacucli_note_0068">The diagnostics variable: [#!variable!name!#] on the physical drive with the serial number: [#!variable!serial_number!#] has vanished!</key>
 		
 		<!-- Log strings -->
 		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>
