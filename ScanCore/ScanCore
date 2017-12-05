@@ -11363,10 +11363,10 @@ sub scan_directory
 sub avoid_duplicate_run
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $my_pid = $$;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "my_pid", value1 => $my_pid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -11374,27 +11374,27 @@ sub avoid_duplicate_run
 	# be waiting on the lock. We don't worry about lock age because any other node or dashboard will reap
 	# the lock if it gets too old.
 	my $lock = $an->DB->locking({check => 1});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "lock", value1 => $lock,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $already_running = 0;
 	my $other_pids      = [];
 	my $shell_call      = $an->data->{path}{ps}." aux | ".$an->data->{path}{'grep'}." -v grep | ".$an->data->{path}{'grep'}." -v tail | ".$an->data->{path}{'grep'}." -v '\/bin\/sh' | ".$an->data->{path}{'grep'}." $THIS_FILE";
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^.*?\s+(\d+)\s/)
 		{
 			my $pid = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "pid", value1 => $pid,
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -11402,7 +11402,7 @@ sub avoid_duplicate_run
 			{
 				# Another copy is running.
 				$already_running = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "already_running", value1 => $already_running,
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -11419,7 +11419,7 @@ sub avoid_duplicate_run
 		my $last_updated = $an->ScanCore->lock_file({'do' => "get"});
 		my $current_time = time;
 		my $difference   = $current_time - $last_updated;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "last_updated",               value1 => $last_updated, 
 			name2 => "current_time",               value2 => $current_time, 
 			name3 => "difference",                 value3 => $difference, 
@@ -11440,8 +11440,8 @@ sub avoid_duplicate_run
 				$an->Log->entry({log_level => 0, message_key => "scancore_log_0090", message_variables => { pid => $pid }, file => $THIS_FILE, line => __LINE__});
 				
 				# Kill it
-				my $shell_call = $an->data->{path}{'kill'}." $pid";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				my $shell_call = $an->data->{path}{'kill'}." -9 $pid";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -11449,7 +11449,7 @@ sub avoid_duplicate_run
 				{
 					chomp;
 					my $line = $_;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}

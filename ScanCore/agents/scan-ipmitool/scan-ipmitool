@@ -3213,11 +3213,11 @@ sub query_ipmi_targets
 			machine => $machine, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Call!
-		my $shell_call = "$ipmitool_command sensor list all";
+		# Call with a timeout in case the call hangs.
+		my $shell_call = $an->data->{path}{timeout}." 30 ".$ipmitool_command." sensor list all || ".$an->data->{path}{echo}." timeout";
 		if ($ipmi_password)
 		{
-			$shell_call = "$ipmitool_command -f $temp_file sensor list all";
+			$shell_call = $an->data->{path}{timeout}." 30 ".$ipmitool_command." -f ".$temp_file." sensor list all || ".$an->data->{path}{echo}." timeout";
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
@@ -3482,7 +3482,7 @@ sub find_ipmi_targets
 	# Do I have local IPMI access?
 	if ((-e '/dev/ipmi0') or (-e '/dev/ipmi/0') or (-e '/dev/ipmidev/0'))
 	{
-		my $shell_call = $an->data->{path}{ipmitool}." chassis power status; ".$an->data->{path}{echo}." rc:\$?";
+		my $shell_call = $an->data->{path}{timeout}." 30 ".$an->data->{path}{ipmitool}." chassis power status; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3506,9 +3506,9 @@ sub find_ipmi_targets
 					# We're good.
 					$ipmi_targets++;
 					my $node_name                                                             = $an->hostname();
-					$an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command} = "";
-					$an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command}    = $an->data->{path}{ipmitool};
-					$an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmi_password}       = "";
+					   $an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command} = "";
+					   $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command}    = $an->data->{path}{ipmitool};
+					   $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmi_password}       = "";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 						name1 => "scan-ipmitool::machine::${node_name}::power_check_command", value1 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command},
 						name2 => "scan-ipmitool::machine::${node_name}::ipmitool_command",    value2 => $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command},

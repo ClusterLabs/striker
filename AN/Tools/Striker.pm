@@ -3830,8 +3830,6 @@ sub _check_peer_access
 	return($peer_access, $peer_cman_up);
 }
 
-### TODO: Make this handle a case where load-shedding fails if neither node can be stopped because both nodes
-###       are SyncSource.
 # This sequentially stops all servers, withdraws both nodes and powers down the Anvil!.
 sub _cold_stop_anvil
 {
@@ -3945,6 +3943,11 @@ sub _cold_stop_anvil
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "password", value1 => $password,
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# We're going to shutdown the servers in the reverse order that they are configured to start 
+		# in.
+		$an->data->{sys}{stop_server} = {};
+		
 		foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
 		{
 			my $host  = $an->data->{server}{$server}{host};
