@@ -393,7 +393,7 @@ CREATE TABLE hpacucli_physical_drives (
 	hpacucli_physical_drive_size			numeric				not null,	-- In bytes
 	hpacucli_physical_drive_type			text				not null,
 	hpacucli_physical_drive_rpm			numeric				not null,	-- '0' for SSDs.
-	hpacucli_physical_drive_temperature		numeric				not null,	-- In celslius
+	hpacucli_physical_drive_temperature		numeric,					-- In celslius
 	hpacucli_physical_drive_last_failure_reason	text				not null,	-- This is usually an empty string
 	hpacucli_physical_drive_port			text				not null,	-- These three form the ID for the drive; <port>:<box>:<bay>
 	hpacucli_physical_drive_box			text				not null,

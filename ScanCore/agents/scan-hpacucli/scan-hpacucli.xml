@@ -338,5 +338,7 @@ WARNING: If enough sensors go critical, emergency power off will occure to prote
 		
 		<!-- Log strings -->
 		<key name="scan_hpacucli_log_0001">Found: [#!variable!count!#] controller(s).</key>
+		<key name="scan_hpacucli_log_0002">The thermal sensor named: [#!variable!sensor_name!#], on: [#!variable!sensor_host!#] has not changed.</key>
+		<key name="scan_hpacucli_log_0003">Running: [#!variable!shell_call!#] to gather drive diagnostics. This will take up to fifteen seconds to run.</key>
 	</lang>
 </strings>
