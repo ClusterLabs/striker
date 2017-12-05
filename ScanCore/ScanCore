@@ -4986,10 +4986,18 @@ sub get_string_from_double_bang
 sub translate_sensor_name
 {
 	my ($an, $ipmitool_sensor_name, $ipmitool_sensor_units) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "translate_sensor_name" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 1, title_key => "tools_log_0001", title_variables => { function => "translate_sensor_name" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "ipmitool_sensor_name",  value1 => $ipmitool_sensor_name, 
 		name2 => "ipmitool_sensor_units", value2 => $ipmitool_sensor_units, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (not defined $ipmitool_sensor_units)
+	{
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "ipmitool_sensor_name",  value1 => $ipmitool_sensor_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		return($ipmitool_sensor_name)
+	}
 	
 	my $say_sensor_name = $ipmitool_sensor_name;
 	

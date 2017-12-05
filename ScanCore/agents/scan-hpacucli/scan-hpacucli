@@ -103,6 +103,7 @@ SET search_path = history, pg_catalog;
 			# there abouts). Change the interval if you want to check more or less often.
 			diagnostics_interval	=>	600,
 			disable			=>	0,
+			ignore_maximum_temperature =>	0,
 			language		=>	"en_CA",
 			log_level		=>	1,
 			log_language		=>	"en_CA",
@@ -304,7 +305,8 @@ sub find_changes
 UPDATE 
     hpacucli_controllers
 SET 
-    hpacucli_controller_last_diagnostics = ".time." 
+    hpacucli_controller_last_diagnostics = ".time.", 
+    modified_date                        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
     hpacucli_controller_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
@@ -1305,6 +1307,8 @@ WHERE
 						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_hpacucli_note_0033",
 						alert_message_variables	=>	{
+							name			=>	$hpacucli_array_name,
+							logical_drive		=>	$hpacucli_logical_drive_name,
 							new_caching		=>	$new_hpacucli_logical_drive_caching, 
 							new_os_device_name	=>	$new_hpacucli_logical_drive_os_device_name, 
 							new_type		=>	$new_hpacucli_logical_drive_type, 
@@ -1315,6 +1319,18 @@ WHERE
 							new_status		=>	$new_hpacucli_logical_drive_status, 
 						},
 					});
+					
+					### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_sort		=>	$an->data->{sys}{alert_sort}++,	
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_hpacucli_note_0003",
+						alert_message_variables	=>	{},
+					});
+					
+					# Quote some stuff manually
 					my $quoted_hpacucli_logical_drive_size        =  $an->data->{sys}{use_db_fh}->quote($new_hpacucli_logical_drive_size);
 					my $quoted_hpacucli_logical_drive_strip_size  =  $an->data->{sys}{use_db_fh}->quote($new_hpacucli_logical_drive_strip_size);
 					my $quoted_hpacucli_logical_drive_stripe_size =  $an->data->{sys}{use_db_fh}->quote($new_hpacucli_logical_drive_stripe_size);
@@ -1360,16 +1376,6 @@ INSERT INTO
 						name1 => "query", value1 => $query
 					}, file => $THIS_FILE, line => __LINE__});
 					push @{$an->data->{sys}{sql}}, $query;
-					
-					### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
-					$an->Alert->register_alert({
-						alert_level		=>	"notice", 
-						alert_agent_name	=>	$THIS_FILE,
-						alert_sort		=>	$an->data->{sys}{alert_sort}++,	
-						alert_title_key		=>	"an_alert_title_0003",
-						alert_message_key	=>	"scan_hpacucli_note_0003",
-						alert_message_variables	=>	{},
-					});
 				}
 				
 				# Process logical drive variables now. Note that there are no temperatures.
@@ -1681,7 +1687,7 @@ sub process_a_drive
 	if ($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$hpacucli_logical_drive_name}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}{current_temperature})
 	{
 		$new_hpacucli_physical_drive_temperature = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$hpacucli_logical_drive_name}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}{current_temperature};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "new_hpacucli_physical_drive_temperature", value1 => $new_hpacucli_physical_drive_temperature, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1697,11 +1703,11 @@ sub process_a_drive
 	if ($an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$hpacucli_logical_drive_name}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}{maximum_temperature})
 	{
 		$maximum_drive_temperature = delete $an->data->{controller}{$hpacucli_controller_serial_number}{array}{$hpacucli_array_name}{logical_drive}{$hpacucli_logical_drive_name}{physical_drive}{port}{$port}{box}{$box}{bay}{$bay}{temperature}{maximum_temperature};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "maximum_drive_temperature", value1 => $maximum_drive_temperature, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 		name1  => "hpacucli_physical_drive_serial_number",           value1  => $hpacucli_physical_drive_serial_number, 
 		name2  => "new_hpacucli_physical_drive_model",               value2  => $new_hpacucli_physical_drive_model, 
 		name3  => "new_hpacucli_physical_drive_interface",           value3  => $new_hpacucli_physical_drive_interface, 
@@ -1741,7 +1747,7 @@ sub process_a_drive
 	$quoted_hpacucli_physical_drive_size        = "NULL" if $quoted_hpacucli_physical_drive_size        eq "";
 	$quoted_hpacucli_physical_drive_rpm         = "NULL" if $quoted_hpacucli_physical_drive_rpm         eq "";
 	$quoted_hpacucli_physical_drive_temperature = "NULL" if $quoted_hpacucli_physical_drive_temperature eq "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "quoted_hpacucli_physical_drive_size",        value1 => $quoted_hpacucli_physical_drive_size, 
 		name2 => "quoted_hpacucli_physical_drive_rpm",         value2 => $quoted_hpacucli_physical_drive_rpm, 
 		name3 => "quoted_hpacucli_physical_drive_temperature", value3 => $quoted_hpacucli_physical_drive_temperature, 
@@ -1783,7 +1789,7 @@ sub process_a_drive
 		my $old_hpacucli_physical_drive_port                = $an->data->{sql}{hpacucli_physical_drives}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_port};
 		my $old_hpacucli_physical_drive_box                 = $an->data->{sql}{hpacucli_physical_drives}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_box};
 		my $old_hpacucli_physical_drive_bay                 = $an->data->{sql}{hpacucli_physical_drives}{hpacucli_physical_drive_uuid}{$hpacucli_physical_drive_uuid}{hpacucli_physical_drive_bay};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 			name1  => "old_hpacucli_logical_drive_uuid",                 value1  => $old_hpacucli_logical_drive_uuid, 
 			name2  => "old_hpacucli_physical_drive_model",               value2  => $old_hpacucli_physical_drive_model, 
 			name3  => "old_hpacucli_physical_drive_interface",           value3  => $old_hpacucli_physical_drive_interface, 
@@ -1951,10 +1957,11 @@ AND
 		}
 		
 		# Did we get a maximum temperature from the drive?
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "maximum_drive_temperature", value1 => $maximum_drive_temperature, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "maximum_drive_temperature",                 value1 => $maximum_drive_temperature, 
+			name2 => "scan-hpacucli::ignore_maximum_temperature", value2 => $an->data->{'scan-hpacucli'}{ignore_maximum_temperature}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($maximum_drive_temperature)
+		if (($maximum_drive_temperature) && (not $an->data->{'scan-hpacucli'}{ignore_maximum_temperature}))
 		{
 			$high_critical       = $maximum_drive_temperature;
 			$high_warning        = $maximum_drive_temperature - 2;
@@ -1990,7 +1997,7 @@ AND
 		# any cleared messages.
 		my $alert_level = "notice";
 		my $title_key   = "an_alert_title_0003";
-		my $message_key = "";
+		my $message_key = "scan_hpacucli_note_0053";
 		my $delta       = 0;
 		if ($new_hpacucli_physical_drive_temperature)
 		{
@@ -2243,7 +2250,7 @@ AND
 			$an->data->{new}{temperature}{hpacucli_physical_drive_temperature}{$sensor_host_key}{temperature_celsius} = $new_hpacucli_physical_drive_temperature;
 			$an->data->{new}{temperature}{hpacucli_physical_drive_temperature}{$sensor_host_key}{temperature_state}   = $temperature_state;
 			$an->data->{new}{temperature}{hpacucli_physical_drive_temperature}{$sensor_host_key}{temperature_is}      = $temperature_is;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "new::temperature::hpacucli_physical_drive_temperature::${sensor_host_key}::temperature_celsius", value1 => $an->data->{new}{temperature}{hpacucli_physical_drive_temperature}{$sensor_host_key}{temperature_celsius}, 
 				name2 => "new::temperature::hpacucli_physical_drive_temperature::${sensor_host_key}::temperature_state",   value2 => $an->data->{new}{temperature}{hpacucli_physical_drive_temperature}{$sensor_host_key}{temperature_state}, 
 				name3 => "new::temperature::hpacucli_physical_drive_temperature::${sensor_host_key}::temperature_is",      value3 => $an->data->{new}{temperature}{hpacucli_physical_drive_temperature}{$sensor_host_key}{temperature_is}, 
@@ -2448,10 +2455,11 @@ WHERE
 			}
 			
 			# Did we get a maximum temperature from the drive?
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "maximum_drive_temperature", value1 => $maximum_drive_temperature, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "maximum_drive_temperature",                 value1 => $maximum_drive_temperature, 
+				name2 => "scan-hpacucli::ignore_maximum_temperature", value2 => $an->data->{'scan-hpacucli'}{ignore_maximum_temperature}, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($maximum_drive_temperature)
+			if (($maximum_drive_temperature) && (not $an->data->{'scan-hpacucli'}{ignore_maximum_temperature}))
 			{
 				$high_critical       = $maximum_drive_temperature;
 				$high_warning        = $maximum_drive_temperature - 2;
@@ -2613,13 +2621,22 @@ WHERE
 					alert_message_key	=>	$message_key,
 					alert_message_variables	=>	{
 						serial_number		=>	$hpacucli_controller_serial_number,
-						name			=>	"hpacucli_physical_drive_temperature",
-						value			=>	$new_hpacucli_physical_drive_temperature ? $new_hpacucli_physical_drive_temperature." C" : "--",
+						temperature		=>	$new_hpacucli_physical_drive_temperature ? $new_hpacucli_physical_drive_temperature." C" : "--",
 						high_critical_temperature =>	$high_critical." C", 
 						high_warning_temperature =>	$high_warning." C", 
 						low_critical_temperature =>	$low_critical." C", 
 						low_warning_temperature	=>	$low_warning." C", 
 					},
+				});
+				
+				### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,	
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_hpacucli_note_0003",
+					alert_message_variables	=>	{},
 				});
 			}
 		}
@@ -2667,16 +2684,6 @@ INSERT INTO
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$an->data->{sys}{sql}}, $query;
-		
-		### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
-		$an->Alert->register_alert({
-			alert_level		=>	"notice", 
-			alert_agent_name	=>	$THIS_FILE,
-			alert_sort		=>	$an->data->{sys}{alert_sort}++,	
-			alert_title_key		=>	"an_alert_title_0003",
-			alert_message_key	=>	"scan_hpacucli_note_0003",
-			alert_message_variables	=>	{},
-		});
 	}
 	
 	# Process physical drive variables now. Note that there are no temperatures.
@@ -3202,7 +3209,7 @@ sub process_controllers
 		# that have vanished. They will not be deleted, but their value will be set to 'VANISHED'.
 		if ($controller_is_new)
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "hpacucli_controller_serial_number",              value1 => $hpacucli_controller_serial_number,
 				name2 => "new_hpacucli_controller_model",                  value2 => $new_hpacucli_controller_model,
 				name3 => "new_hpacucli_controller_cache_present",          value3 => $new_hpacucli_controller_cache_present, 
@@ -3425,6 +3432,16 @@ AND
 					},
 				});
 				
+				### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_sort		=>	$an->data->{sys}{alert_sort}++,	
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_hpacucli_note_0003",
+					alert_message_variables	=>	{},
+				});
+				
 				# INSERT
 				my $query = "
 INSERT INTO 
@@ -3530,6 +3547,16 @@ INSERT INTO
 						},
 					});
 					
+					### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
+					$an->Alert->register_alert({
+						alert_level		=>	"warning", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_sort		=>	$an->data->{sys}{alert_sort}++,	
+						alert_title_key		=>	"an_alert_title_0004",
+						alert_message_key	=>	"scan_hpacucli_note_0003",
+						alert_message_variables	=>	{},
+					});
+					
 					# Update the database.
 					$query = "
 UPDATE 
@@ -3554,20 +3581,6 @@ WHERE
 				}
 			}
 		}
-		else
-		{
-			# There is no cache on this controller.
-		}
-		
-		### NOTE: The rest of the alerts will be in the format '- Variable: [$value]'.
-		$an->Alert->register_alert({
-			alert_level		=>	"notice", 
-			alert_agent_name	=>	$THIS_FILE,
-			alert_sort		=>	$an->data->{sys}{alert_sort}++,	
-			alert_title_key		=>	"an_alert_title_0003",
-			alert_message_key	=>	"scan_hpacucli_note_0003",
-			alert_message_variables	=>	{},
-		});
 		
 		# We do this after the cache so that the alerts make since when a new controller is found.
 		foreach my $type ("detail", "temperature")
@@ -5848,8 +5861,8 @@ WHERE
 			my $hpacucli_logical_drive_strip_size      = $row->[8];
 			my $hpacucli_logical_drive_stripe_size     = $row->[9];
 			my $hpacucli_logical_drive_status          = $row->[10];
-			my $modified_date                          = $row->[12];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+			my $modified_date                          = $row->[11];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 				name1  => "hpacucli_logical_drive_uuid",           value1  => $hpacucli_logical_drive_uuid, 
 				name2  => "hpacucli_logical_drive_array_uuid",     value2  => $hpacucli_logical_drive_array_uuid, 
 				name3  => "hpacucli_logical_drive_name",           value3  => $hpacucli_logical_drive_name, 
@@ -5859,9 +5872,9 @@ WHERE
 				name7  => "hpacucli_logical_drive_raid_level",     value7  => $hpacucli_logical_drive_raid_level, 
 				name8  => "hpacucli_logical_drive_size",           value8  => $hpacucli_logical_drive_size, 
 				name9  => "hpacucli_logical_drive_strip_size",     value9  => $hpacucli_logical_drive_strip_size, 
-				name11 => "hpacucli_logical_drive_stripe_size",    value11 => $hpacucli_logical_drive_stripe_size, 
-				name12 => "hpacucli_logical_drive_status",         value12 => $hpacucli_logical_drive_status, 
-				name13 => "modified_date",                         value13 => $modified_date
+				name10 => "hpacucli_logical_drive_stripe_size",    value10 => $hpacucli_logical_drive_stripe_size, 
+				name11 => "hpacucli_logical_drive_status",         value11 => $hpacucli_logical_drive_status, 
+				name12 => "modified_date",                         value12 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			### There can only be one entry per host, so we don't have a subhash.
@@ -6482,7 +6495,10 @@ WHERE
 			# We need to sanity check the three numeric strings because calling 'quote' directly
 			# will wrap the numeric values in single quotes which violates 'numeric' forms.
 			my $quoted_hpacucli_cache_module_size =  $an->data->{sys}{use_db_fh}->quote($hpacucli_cache_module_size);
-			   $hpacucli_cache_module_size        =~ s/^'(.*?)'$/$1/;
+			   $quoted_hpacucli_cache_module_size =~ s/^'(.*?)'$/$1/;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "quoted_hpacucli_cache_module_size", value1 => $quoted_hpacucli_cache_module_size, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ((($quoted_hpacucli_cache_module_size) && ($quoted_hpacucli_cache_module_size =~ /\D/)))
 			{
 				$an->Alert->error({title_key => "an_0003", message_key => "scan_hpacucli_error_0007", message_variables => { 
@@ -7539,7 +7555,7 @@ sub get_diagnostics
 	{
 		# Is it time?
 		my $query = "SELECT hpacucli_controller_last_diagnostics FROM hpacucli_controllers WHERE hpacucli_controller_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -7549,7 +7565,7 @@ sub get_diagnostics
 		   $last_diagnostics = 0 if not defined $last_diagnostics;
 		my $current_time     = time;
 		my $last_scan_was    = $current_time - $last_diagnostics;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "last_diagnostics",                    value1 => $last_diagnostics, 
 			name2 => "current_time",                        value2 => $current_time, 
 			name3 => "last_scan_was",                       value3 => $last_scan_was, 

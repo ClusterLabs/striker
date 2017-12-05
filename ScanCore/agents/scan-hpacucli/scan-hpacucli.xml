@@ -121,7 +121,6 @@ https://alteeve.com/w/Support
 - Drive Write Cache: ....... [#!variable!drive_write_cache!#]
 - Firmware: ................ [#!variable!firmware_version!#]
 - Write-Back on bad FBU/BBU: [#!variable!unsafe_writeback_cache!#]
-- Temperature: ............. [#!variable!temperature!#]
 		</key>
 		<key name="scan_hpacucli_note_0002">A new cache module has been found.
 - Serial Number: [#!variable!serial_number!#]
@@ -129,7 +128,7 @@ https://alteeve.com/w/Support
 - Status: ...... [#!variable!status!#]
 - Type: ........ [#!variable!type!#]
 		</key>
-		<key name="scan_hpacucli_note_0003">Other detected variables:</key>
+		<key name="scan_hpacucli_note_0003">Other detected variables (if any):</key>
 		<key name="scan_hpacucli_note_0004">- #!variable!name!#: [#!variable!value!#]</key>
 		<key name="scan_hpacucli_note_0005">
 The temperature sensor: [#!variable!sensor_name!#] on the controller: [#!variable!serial_number!#] is above the high critical temperature of: [#!variable!high_critical_temperature!#]!:
@@ -207,7 +206,7 @@ WARNING: If enough sensors go critical, emergency power off will occure to prote
 		</key>
 		<key name="scan_hpacucli_note_0031">The HP RAID array: [#!variable!name!#] on the controller: [#!variable!serial_number!#] has vanished!</key>
 		<key name="scan_hpacucli_note_0032">The HP RAID array: [#!variable!name!#] on the controller: [#!variable!serial_number!#] has returned.</key>
-		<key name="scan_hpacucli_note_0033">The HP RAID array: [#!variable!name!#] has a new logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#]:
+		<key name="scan_hpacucli_note_0033">The HP RAID array: [#!variable!name!#] has a new logical drive: [#!variable!logical_drive!#]:
 - Status: .............. [#!variable!new_status!#]
 - Write-Back Caching: .. [#!variable!new_caching!#]
 - Device Name in the OS: [#!variable!new_os_device_name!#]
@@ -300,28 +299,28 @@ WARNING: This is generally caused by a drive failing or having been removed. Ple
 		</key>
 		<key name="scan_hpacucli_note_0060">
 The temperature of the physical drive: [#!variable!serial_number!#] is above the high critical temperature of: [#!variable!high_critical_temperature!#]!:
-- Current temperature: [#!variable!new_temperature!#]
+- Current temperature: [#!variable!temperature!#]
 NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
 NOTE:    If enough temperature sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
 WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
 		</key>
 		<key name="scan_hpacucli_note_0061">
 The temperature of the physical drive: [#!variable!serial_number!#] is above the high warning temperature of: [#!variable!high_warning_temperature!#]. It will go critical at: [#!variable!high_critical_temperature!#]!:
-- Current temperature: [#!variable!new_temperature!#]
+- Current temperature: [#!variable!temperature!#]
 NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
 NOTE:    If enough temperature sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
 WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
 		</key>
 		<key name="scan_hpacucli_note_0062">
 The temperature of the physical drive: [#!variable!serial_number!#] is below the low critical temperature of: [#!variable!low_critical_temperature!#]!:
-- Current temperature: [#!variable!new_temperature!#]
+- Current temperature: [#!variable!temperature!#]
 NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
 NOTE:    If enough sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
 WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
 		</key>
 		<key name="scan_hpacucli_note_0063">
 The temperature of the physical drive: [#!variable!serial_number!#] is below the low warning temperature of: [#!variable!low_warning_temperature!#]. It will go critical at: [#!variable!low_critical_temperature!#]!:
-- Current temperature: [#!variable!new_temperature!#]
+- Current temperature: [#!variable!temperature!#]
 NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
 NOTE:    If enough sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
 WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
