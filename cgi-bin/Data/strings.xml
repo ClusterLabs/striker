@@ -1723,7 +1723,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="message_0384"><![CDATA[Registration with RHN failed. The install will try to proceed, but may fail.<br />If it does, please check the RHN credentials you passed or manually register the nodes.]]></key>
 		<key name="message_0385">RHN registration not possible. The user name and password must both be passed.</key>
 		<key name="message_0386"><![CDATA[The <span class="code">perl</span> programming language is not available and could not be installed.<br />Without this, the tools needed to configure the nodes won't run.<br />]]></key>
-		<key name="message_0387">#!free!#</key>
+		<key name="message_0387"><![CDATA[The size of the storage partitions on the nodes is not the same!<br />Node 1: [<span class="highlight_detail">#!variable!node1_name!#</span>] is: [<span class="highlight_detail">#!variable!node1_hr_size!#</span>] (<span class="highlight_detail">#!variable!node1_byte_size!#</span> bytes).<br />Node 2: [<span class="highlight_detail">#!variable!node2_name!#</span>] is: [<span class="highlight_detail">#!variable!node2_hr_size!#</span>] (<span class="highlight_detail">#!variable!node2_byte_size!#</span> bytes).<br />The smaller size of the two will be used on both nodes.]]></key>
 		<key name="message_0388"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!name!#</span>] #!string!brand_0003!# failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!anvils!#</span>] system(s) and [<span class="highlight_detail">#!variable!nodes!#</span>] node(s) remained.]]></key>
 		<key name="message_0389"><![CDATA[I was asked to create a partition, but I couldn't determine where the free space started and ended.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], partition size: [<span class="fixed_width">#!variable!size!#</span>], shell call: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
 		<key name="message_0390"><![CDATA[An error was received while trying to create a partition.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>]<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
@@ -1921,7 +1921,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 # Finished updating: [#!variable!target!#]
 #############################################################################################################
 		</key>
-		<key name="log_0004">#!free!#</key>
+		<key name="log_0004">This is an HP system. Issuing a warm reset of the iLO BMC so that it picks up network configuration changes.</key>
 		<key name="log_0005">#!free!#</key>
 		<key name="log_0006">#!free!#</key>
 		<key name="log_0007">#!free!#</key>

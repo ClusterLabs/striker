@@ -447,8 +447,8 @@ sub calculate_storage_pool_sizes
 	my $pool2_size = "";
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node::${node1}::pool1::existing_size", value1 => $an->data->{node}{$node1}{pool1}{existing_size},
-		name2 => "node::${node2}::pool1::existing_size", value2 => $an->data->{node}{$node2}{pool1}{existing_size},
+		name1 => "node::${node1}::pool1::existing_size", value1 => $an->data->{node}{$node1}{pool1}{existing_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node1}{pool1}{existing_size} }).")",
+		name2 => "node::${node2}::pool1::existing_size", value2 => $an->data->{node}{$node2}{pool1}{existing_size}." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node2}{pool1}{existing_size} }).")",
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{node}{$node1}{pool1}{existing_size}) or ($an->data->{node}{$node2}{pool1}{existing_size}))
 	{
@@ -478,15 +478,13 @@ sub calculate_storage_pool_sizes
 						name1 => "pool1_size", value1 => $pool1_size,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
-				my $say_node1_size = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node1}{pool1}{existing_size} })." (".$an->data->{node}{$node1}{pool1}{existing_size}." #!string!suffix_0009!#)";
-				my $say_node2_size = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node2}{pool1}{existing_size} })." (".$an->data->{node}{$node2}{pool1}{existing_size}." #!string!suffix_0009!#)";
-				my $message = $an->String->get({key => "message_0394", variables => { 
-						node1		=>	$node1,
-						node1_device	=>	$an->data->{node}{$node1}{pool1}{partition},
-						node1_size	=>	$say_node1_size,
-						node2		=>	$node2,
-						node2_device	=>	$an->data->{node}{$node1}{pool1}{partition},
-						node1_size	=>	$say_node2_size,
+				my $message = $an->String->get({key => "message_0387", variables => { 
+						node1_name	=>	$an->data->{sys}{anvil}{node1}{short_name},
+						node1_hr_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node1}{pool1}{existing_size} }),
+						node1_byte_size	=>	$an->Readable->comma($an->data->{node}{$node1}{pool1}{existing_size}),
+						node2_name	=>	$an->data->{sys}{anvil}{node2}{short_name},
+						node2_hr_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node2}{pool1}{existing_size} }),
+						node2_byte_size	=>	$an->Readable->comma($an->data->{node}{$node2}{pool1}{existing_size}),
 					}});
 				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 					message	=>	$message,
@@ -3533,6 +3531,66 @@ sub configure_ipmi_on_node
 						last;
 					}
 				}
+			}
+		}
+	}
+	
+	# HP Proliants will report that their IP address changed, but not actually update until the BMC is 
+	# reset. 
+	if ($return_code eq "0")
+	{
+		my $reset_bmc  = 0;
+		my $shell_call = $an->data->{path}{dmidecode}." --string system-manufacturer";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (lc($line) eq "hp")
+			{
+				$reset_bmc = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "reset_bmc", value1 => $reset_bmc, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "reset_bmc", value1 => $reset_bmc, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($reset_bmc)
+		{
+			# Tell the user that we're resetting the BMC.
+			$an->Log->entry({log_level => 1, message_key => "log_0004", file => $THIS_FILE, line => __LINE__});
+			
+			# Do the reset.
+			my $shell_call = $an->data->{path}{ipmitool}." bmc reset warm";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
