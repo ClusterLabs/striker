@@ -3707,6 +3707,10 @@ WHERE
 					my $delta             = 0;
 					if ($type eq "temperature")
 					{
+						# Change the log level to info as temperatures change often.
+						$alert_level = "info";
+						$title_key   = "an_alert_title_0002";
+						
 						# Now see if the temperature has crossed into a 
 						# warning or critical state.
 						if ($new_hpacucli_variable_value > $high_critical)
