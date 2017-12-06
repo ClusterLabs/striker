@@ -299,28 +299,28 @@ WARNING: This is generally caused by a drive failing or having been removed. Ple
 		</key>
 		<key name="scan_hpacucli_note_0060">
 The temperature of the physical drive: [#!variable!serial_number!#] is above the high critical temperature of: [#!variable!high_critical_temperature!#]!:
-- Current temperature: [#!variable!temperature!#]
+- Current temperature: [#!variable!new_temperature!#]
 NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
 NOTE:    If enough temperature sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
 WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
 		</key>
 		<key name="scan_hpacucli_note_0061">
 The temperature of the physical drive: [#!variable!serial_number!#] is above the high warning temperature of: [#!variable!high_warning_temperature!#]. It will go critical at: [#!variable!high_critical_temperature!#]!:
-- Current temperature: [#!variable!temperature!#]
+- Current temperature: [#!variable!new_temperature!#]
 NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
 NOTE:    If enough temperature sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
 WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
 		</key>
 		<key name="scan_hpacucli_note_0062">
 The temperature of the physical drive: [#!variable!serial_number!#] is below the low critical temperature of: [#!variable!low_critical_temperature!#]!:
-- Current temperature: [#!variable!temperature!#]
+- Current temperature: [#!variable!new_temperature!#]
 NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
 NOTE:    If enough sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
 WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.
 		</key>
 		<key name="scan_hpacucli_note_0063">
 The temperature of the physical drive: [#!variable!serial_number!#] is below the low warning temperature of: [#!variable!low_warning_temperature!#]. It will go critical at: [#!variable!low_critical_temperature!#]!:
-- Current temperature: [#!variable!temperature!#]
+- Current temperature: [#!variable!new_temperature!#]
 NOTE:    If the other node is cooler, automatic live migration of hosted servers (if any) will occur soon.
 NOTE:    If enough sensors go into warning or critical on both nodes, load shedding will occur to slow room heating.
 WARNING: If enough sensors go critical, emergency power off will occure to protect the node from damage.

@@ -126,7 +126,7 @@ SET search_path = history, pg_catalog;
 					high_critical			=>	55,
 					low_warning			=>	5,
 					low_critical			=>	0,
-					jump				=>	3,
+					jump				=>	5,
 					buffer				=>	2,
 				},
 				# I've not found official ranges on this yet... These are best-guess values
@@ -1995,8 +1995,8 @@ AND
 		# clearing a critical when a sensor goes critical -> ok in one scan. Once done, we'll
 		# check if we've crossed into a warning or critical state. If so, those will replace 
 		# any cleared messages.
-		my $alert_level = "notice";
-		my $title_key   = "an_alert_title_0003";
+		my $alert_level = "info";
+		my $title_key   = "an_alert_title_0002";
 		my $message_key = "scan_hpacucli_note_0053";
 		my $delta       = 0;
 		if ($new_hpacucli_physical_drive_temperature)
@@ -2276,7 +2276,7 @@ AND
 					serial_number		=>	$hpacucli_physical_drive_serial_number,
 					old_temperature		=>	$old_hpacucli_physical_drive_temperature ? $old_hpacucli_physical_drive_temperature." C" : "--",
 					new_temperature		=>	$new_hpacucli_physical_drive_temperature ? $new_hpacucli_physical_drive_temperature." C" : "--",
-					delta			=>	$delta,
+					delta			=>	$delta." C",
 					high_critical_temperature =>	$high_critical." C", 
 					high_warning_temperature =>	$high_warning." C", 
 					low_critical_temperature =>	$low_critical." C", 
