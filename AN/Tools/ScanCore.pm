@@ -835,7 +835,7 @@ FROM
 WHERE 
     health_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($target)."
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 		
@@ -851,19 +851,19 @@ WHERE
 		my $health_agent_name    = $row->[0]; 
 		my $health_source_name   = $row->[1]; 
 		my $health_source_weight = $row->[2];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "health_agent_name",    value1 => $health_agent_name, 
 			name2 => "health_source_name",   value2 => $health_source_name, 
 			name3 => "health_source_weight", value3 => $health_source_weight, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$health_score += $health_source_weight;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "health_score", value1 => $health_score, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "health_score", value1 => $health_score, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($health_score);
@@ -1315,14 +1315,14 @@ WHERE
 	}
 	$query .= "
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return  = [];
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1334,7 +1334,7 @@ WHERE
 		my $recipient_notify_level = defined $row->[3] ? $row->[3] : "";
 		my $recipient_note         = defined $row->[4] ? $row->[4] : "";
 		my $modified_date          =         $row->[5];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "recipient_uuid",         value1 => $recipient_uuid, 
 			name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid, 
 			name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid, 
@@ -2398,18 +2398,18 @@ FROM
 WHERE 
     health_uuid = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 			
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
 			$old_health_source_weight = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "old_health_source_weight", value1 => $old_health_source_weight, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -2429,7 +2429,7 @@ AND
 AND 
     health_source_name = ".$an->data->{sys}{use_db_fh}->quote($health_source_name)."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 			
@@ -2441,7 +2441,7 @@ AND
 		{
 			$health_uuid              = $row->[0]; 
 			$old_health_source_weight = $row->[1];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "health_uuid",              value1 => $health_uuid, 
 				name2 => "old_health_source_weight", value2 => $old_health_source_weight, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -2464,7 +2464,7 @@ SET
 WHERE 
     health_uuid        = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)."
 ;";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -2475,7 +2475,7 @@ DELETE FROM
 WHERE 
     health_uuid        = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)."
 ;";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -2498,7 +2498,7 @@ SET
 WHERE 
     health_uuid          = ".$an->data->{sys}{use_db_fh}->quote($health_uuid)."
 ;";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -2531,7 +2531,7 @@ INSERT INTO
 );
 ";
 			$query =~ s/'NULL'/NULL/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -3402,7 +3402,7 @@ sub insert_or_update_servers
 	my $server_post_migration_script    = $parameter->{server_post_migration_script}    ? $parameter->{server_post_migration_script}    : "";
 	my $server_post_migration_arguments = $parameter->{server_post_migration_arguments} ? $parameter->{server_post_migration_arguments} : "";
 	my $just_definition                 = $parameter->{just_definition}                 ? $parameter->{just_definition}                 : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
 		name1  => "server_uuid",                     value1  => $server_uuid, 
 		name2  => "server_anvil_uuid",               value2  => $server_anvil_uuid, 
 		name3  => "server_name",                     value3  => $server_name, 
@@ -3448,20 +3448,20 @@ WHERE
 AND 
     server_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_anvil_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
 			$server_uuid = $row->[0] ? $row->[0] : "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "server_uuid", value1 => $server_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3471,7 +3471,7 @@ AND
 	if (not $server_migration_type)
 	{
 		$server_migration_type = $an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "cold" : "live";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_migration_type", value1 => $server_migration_type, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -3497,7 +3497,7 @@ FROM
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3509,7 +3509,7 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			my $old_server_definition = defined $row->[0] ? $row->[0] : "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "old_server_definition", value1 => $old_server_definition, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3531,7 +3531,7 @@ WHERE
     server_uuid       = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -3554,7 +3554,7 @@ WHERE
 		}
 		
 		# Return now.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_uuid", value1 => $server_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 		return($server_uuid);
@@ -3613,7 +3613,7 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -3642,7 +3642,7 @@ FROM
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3667,7 +3667,7 @@ WHERE
 			my $old_server_pre_migration_arguments  = defined $row->[11] ? $row->[11] : "";
 			my $old_server_post_migration_script    = defined $row->[12] ? $row->[12] : "";
 			my $old_server_post_migration_arguments = defined $row->[13] ? $row->[13] : "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
 				name1  => "old_server_anvil_uuid",               value1  => $old_server_anvil_uuid, 
 				name2  => "old_server_name",                     value2  => $old_server_name, 
 				name3  => "old_server_stop_reason",              value3  => $old_server_stop_reason, 
@@ -3724,7 +3724,7 @@ WHERE
     server_uuid                     = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -5980,7 +5980,7 @@ sub parse_install_manifest
 					my $privlvl         = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{privlvl};
 					my $password        = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{password};
 					my $password_script = $an->data->{install_manifest}{$uuid}{node}{$node}{ipmi}{$reference}{password_script};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 						name1 => "name",            value1 => $name,
 						name2 => "ip",              value2 => $ip,
 						name3 => "user",            value3 => $user,
@@ -6022,7 +6022,7 @@ sub parse_install_manifest
 					$string =~ s/\s+/ /g;
 					$an->data->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
 					
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "fence::node::${node}::order::${i}::method::${method}::device::${j}::string", value1 => $an->data->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string},
 					}, file => $THIS_FILE, line => __LINE__});
 					$j++;
@@ -6872,7 +6872,7 @@ sub update_server_stop_reason
 	
 	my $server_name = $parameter->{server_name} ? $parameter->{server_name} : "";
 	my $stop_reason = $parameter->{stop_reason} ? $parameter->{stop_reason} : "NULL";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "server_name", value1 => $server_name,
 		name2 => "stop_reason", value2 => $stop_reason,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6890,7 +6890,7 @@ sub update_server_stop_reason
 		my $this_server_uuid        = $hash_ref->{server_uuid};
 		my $this_server_name        = $hash_ref->{server_name};
 		my $this_server_stop_reason = $hash_ref->{server_stop_reason};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "this_server_uuid",        value1 => $this_server_uuid,
 			name2 => "this_server_name",        value2 => $this_server_name,
 			name3 => "this_server_stop_reason", value3 => $this_server_stop_reason,
@@ -6912,7 +6912,7 @@ WHERE
     server_uuid        = ".$an->data->{sys}{use_db_fh}->quote($this_server_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});

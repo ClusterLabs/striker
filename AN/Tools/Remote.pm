@@ -743,7 +743,7 @@ sub wait_on_peer
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "program", value1 => $program, 
 		name2 => "target",  value2 => $target, 
 		name3 => "port",    value3 => $port, 

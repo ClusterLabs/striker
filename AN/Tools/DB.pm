@@ -93,7 +93,7 @@ sub archive_table
 	my $conditionals = ref($parameter->{conditionals}) eq "HASH"  ? $parameter->{conditionals} : "";
 	my $columns      = ref($parameter->{columns})      eq "ARRAY" ? $parameter->{columns}      : [];
 	my $column_count = @{$columns};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 		name1 => "table",        value1 => $table, 
 		name2 => "join_table",   value2 => $join_table, 
 		name3 => "offset",       value3 => $offset, 
@@ -138,7 +138,7 @@ sub archive_table
 	
 	# If the offset is greater than 'division' and 'loop' is '0', don't actually archive here. Instead,
 	# go into a loop, setting the offset to the division amount until we hit the original offset.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "loop",                        value1 => $loop, 
 		name2 => "division",                    value2 => $division,
 		name3 => "scancore::archive::division", value3 => $an->data->{scancore}{archive}{division},
@@ -169,7 +169,7 @@ sub archive_table
 		for (1..$chunks)
 		{
 			$chunk++;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "chunk", value1 => $chunk, 
 			}, file => $THIS_FILE, line => __LINE__});
 			my $this_chunk = $chunk_size;
@@ -197,7 +197,7 @@ sub archive_table
 				columns      => $columns,
 				loop         => $chunk, 
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "this_archive",      value1 => $this_archive, 
 				name2 => "this_archive->[0]", value2 => $this_archive->[0], 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -207,12 +207,12 @@ sub archive_table
 		# Logging...
 		foreach my $archive_file (@{$archives})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "archive_file", value1 => $archive_file, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		my $total_archive_time = time - $start_time;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "total_archive_time", value1 => $total_archive_time, 
 		}, file => $THIS_FILE, line => __LINE__});
 		return($archives);
@@ -246,7 +246,7 @@ LIMIT 1
 ;";
 
 	# If we are using a joined table, re-write this accordingly.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "join_table", value1 => $join_table, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($join_table)
@@ -279,13 +279,13 @@ OFFSET ".$an->data->{sys}{use_db_fh}->quote($offset)."
 LIMIT 1
 ";
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $date = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 	   $date = "" if not defined $date;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "date", value1 => $date, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -295,7 +295,7 @@ LIMIT 1
 	if ($date)
 	{
 		# If archiving to disk is enabled, do so now.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "scancore::archive::save_to_disk", value1 => $an->data->{scancore}{archive}{save_to_disk}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{scancore}{archive}{save_to_disk})
@@ -305,7 +305,7 @@ LIMIT 1
 			$date_and_time =~ s/:/-/g;
 			$archive_file  =  $an->data->{path}{scancore_archive}."/scancore-archive_".$table."_".$an->hostname."_".$date_and_time."_".$loop.".out";
 			$archive_file  =~ s/\/+/\//g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "loop",          value1 => $loop,
 				name2 => "date_and_time", value2 => $date_and_time,
 				name3 => "archive_file",  value3 => $archive_file,
@@ -316,7 +316,7 @@ LIMIT 1
 			my $query  = "\nSELECT \n";
 			foreach my $column (@{$columns})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "column", value1 => $column, 
 				}, file => $THIS_FILE, line => __LINE__});
 				next if (($column eq "modified_date") or ($column eq "history_id"));
@@ -342,7 +342,7 @@ WHERE
     modified_date DESC
 ;";
 			# Rebuild the query if we have a join table.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "join_table", value1 => $join_table, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($join_table)
@@ -351,7 +351,7 @@ WHERE
 				$query = "\nSELECT \n";
 				foreach my $column (@{$columns})
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "column", value1 => $column, 
 					}, file => $THIS_FILE, line => __LINE__});
 					next if (($column eq "modified_date") or ($column eq "history_id"));
@@ -383,7 +383,7 @@ WHERE
     a.modified_date DESC
 ;";
 			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "header", value1 => $header, 
 				name2 => "query",  value2 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -391,7 +391,7 @@ WHERE
 			# Open the file
 			my $header_date = $an->Get->date_and_time({split_date_time => 0});
 			my $shell_call  = $archive_file;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, ">$shell_call") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -402,7 +402,7 @@ WHERE
 			# Do the query against the source DB and loop through the results.
 			my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 			my $count   = @{$results};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "count",   value1 => $count, 
 				name2 => "results", value2 => $results, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -416,7 +416,7 @@ WHERE
 					next if (($column eq "modified_date") or ($column eq "history_id"));
 					my $value = defined $row->[$i] ? $row->[$i] : '\N';
 					$i++;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "i",      value1 => $i, 
 						name2 => "column", value2 => $column, 
 						name3 => "value",  value3 => $value, 
@@ -425,7 +425,7 @@ WHERE
 					# We need to convert tabs and newlines into \t and \n
 					$value =~ s/\t/\\t/g;
 					$value =~ s/\n/\\n/g;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "<< value", value1 => $value, 
 					}, file => $THIS_FILE, line => __LINE__});
 				
@@ -435,7 +435,7 @@ WHERE
 				# Add the modified_date and close the line
 				my $modified_date =  defined $row->[$i] ? $row->[$i] : '\N';
 				$line          .= $modified_date."\n";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "i",             value1 => $i, 
 					name2 => "modified_date", value2 => $modified_date, 
 					name3 => "line",          value3 => $line, 
@@ -453,7 +453,7 @@ WHERE
 			if ($compress)
 			{
 				my ($compressed_file, $output) = $an->System->compress_file({file => $archive_file});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "compressed_file", value1 => $compressed_file, 
 					name2 => "output",          value2 => $output, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -461,7 +461,7 @@ WHERE
 				if ($compressed_file)
 				{
 					$archive_file = $compressed_file;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "archive_file", value1 => $archive_file, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -491,7 +491,7 @@ DELETE FROM
     modified_date <= '$date' 
 ;";
 		# Rebuild the query if we have a join table.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "join_table", value1 => $join_table, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($join_table)
@@ -521,7 +521,7 @@ WHERE
 			}
 			$query .= ";";
 		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -530,13 +530,13 @@ WHERE
 		
 		# Record how long all this took
 		my $archive_time = time - $start_time;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "archive_time", value1 => $archive_time, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	push @{$archives}, $archive_file;
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "archives", value1 => $archives, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($archives);
@@ -585,7 +585,7 @@ sub check_lock_age
 			   $renewed                            = 1;
 			   $an->data->{sys}{local_lock_active} = time;
 			my $lock_file_age                      = $an->ScanCore->lock_file({'do' => "set"});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "renewed",                value1 => $renewed, 
 				name2 => "sys::local_lock_active", value2 => $an->data->{sys}{local_lock_active}, 
 				name3 => "lock_file_age",          value3 => $lock_file_age, 
@@ -1498,14 +1498,14 @@ AND
 			if ($id eq $an->data->{sys}{read_db_id})
 			{
 				# Switch.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => ">> sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $this_id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 				{
 					next if $this_id eq $id;
 					$an->data->{sys}{read_db_id} = $this_id;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "<< sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
@@ -1844,7 +1844,7 @@ sub initialize_db
 	
 	my $success = 1;
 	my $id      = $parameter->{id} ? $parameter->{id} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "id", value1 => $id
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1892,7 +1892,7 @@ sub initialize_db
 	
 	# Create the read shell call.
 	my $shell_call = $an->data->{path}{scancore_sql};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
@@ -1915,20 +1915,20 @@ sub initialize_db
 	close $file_handle;
 	
 	# Now we should be ready.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sql", value1 => $sql, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now that I am ready, disable autocommit, write and commit.
 	$an->DB->do_db_write({id => $id, query => $sql, source => $THIS_FILE, line => __LINE__});
 	$an->data->{sys}{db_initialized}{$id} = 1;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::db_initialized::$id", value1 => $an->data->{sys}{db_initialized}{$id}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Mark that we need to update the DB.
 	$an->data->{scancore}{db_resync_needed} = 1;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2057,7 +2057,7 @@ sub load_schema
 	
 	# Mark that we need to update the DB.
 	$an->data->{scancore}{db_resync_needed} = 1;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2520,7 +2520,7 @@ sub wait_if_db_is_updating
 	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "wait_if_db_is_updating" }, file => $THIS_FILE, line => __LINE__});
 	
 	my ($last_peer_state, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "last_peer_state", value1 => $last_peer_state,
 		name2 => "variable_uuid",   value2 => $variable_uuid, 
 		name3 => "modified_date",   value3 => $modified_date, 
@@ -2534,7 +2534,7 @@ sub wait_if_db_is_updating
 			sleep 10;
 			
 			($last_peer_state, $variable_uuid, $modified_date) = $an->ScanCore->read_variable({variable_name => 'db_resync_in_progress'});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "last_peer_state", value1 => $last_peer_state,
 				name2 => "variable_uuid",   value2 => $variable_uuid, 
 				name3 => "modified_date",   value3 => $modified_date, 

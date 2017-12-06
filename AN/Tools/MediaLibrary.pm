@@ -79,7 +79,7 @@ sub _abort_download
 	my $subtask    = $an->data->{cgi}{subtask} eq "delete" ? "delete" : "abort";
 	my $job_uuid   = $an->data->{cgi}{job_uuid};
 	my $url        = $an->data->{cgi}{url};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "subtask",    value2 => $subtask,
 		name3 => "job_uuid",   value3 => $job_uuid,
@@ -100,7 +100,7 @@ sub _abort_download
 		my $port      = $an->data->{sys}{anvil}{$node_key}{use_port}; 
 		my $password  = $an->data->{sys}{anvil}{$node_key}{password};
 		my $online    = $an->data->{sys}{anvil}{$node_key}{online};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "node_name", value1 => $node_name, 
 			name2 => "target",    value2 => $target, 
 			name3 => "port",      value3 => $port, 
@@ -117,7 +117,7 @@ sub _abort_download
 		# Still alive? Good. Is this the node hosting the download?
 		my $opened_list = 0;
 		my $shell_call  = $an->data->{path}{'anvil-download-file'}." --status";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target, 
 			name2 => "shell_call", value2 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -129,7 +129,7 @@ sub _abort_download
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next if $found_node;
@@ -145,7 +145,7 @@ sub _abort_download
 				my $seconds_left     = $7;
 				my $url              = $8;
 				my $out_file         = $9;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 					name1 => "uuid",             value1 => $uuid, 
 					name2 => "bytes_downloaded", value2 => $bytes_downloaded, 
 					name3 => "percent",          value3 => $percent, 
@@ -161,7 +161,7 @@ sub _abort_download
 				{
 					$found_node = $node_key;
 					$do_abort   = 1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "found_node", value1 => $found_node, 
 						name2 => "do_abort",   value2 => $do_abort, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -176,7 +176,7 @@ sub _abort_download
 				my $seconds_running  = $5;
 				my $url              = $6;
 				my $out_file         = $7;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 					name1 => "done",             value1 => $done, 
 					name2 => "uuid",             value2 => $uuid, 
 					name3 => "bytes_downloaded", value3 => $bytes_downloaded, 
@@ -189,7 +189,7 @@ sub _abort_download
 				if ($uuid eq $job_uuid)
 				{
 					$found_node = $node_key;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "found_node", value1 => $found_node, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -199,7 +199,7 @@ sub _abort_download
 	}
 	
 	# If I found the host and I need to do the abort, do it.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "found_node", value1 => $found_node, 
 		name2 => "do_abort",   value2 => $do_abort, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -211,7 +211,7 @@ sub _abort_download
 		my $port      = $an->data->{sys}{anvil}{$node_key}{use_port}; 
 		my $password  = $an->data->{sys}{anvil}{$node_key}{password};
 		my $online    = $an->data->{sys}{anvil}{$node_key}{online};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "node_key",  value1 => $node_key, 
 			name2 => "node_name", value2 => $node_name, 
 			name3 => "target",    value3 => $target, 
@@ -233,7 +233,7 @@ sub _abort_download
 		{
 			$shell_call .= " --delete";
 		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target, 
 			name2 => "shell_call", value2 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -246,7 +246,7 @@ sub _abort_download
 		# There should be no output.
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next if $found_node;
@@ -277,7 +277,7 @@ sub _check_local_dvd
 	
 	my $dev        = "";
 	my $shell_call = $an->data->{path}{check_dvd}." ".$an->data->{args}{check_dvd};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -348,7 +348,7 @@ sub _confirm_abort_download
 	my $subtask    = $an->data->{cgi}{subtask} eq "delete" ? "delete" : "abort";
 	my $job_uuid   = $an->data->{cgi}{job_uuid};
 	my $url        = $an->data->{cgi}{url};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "subtask",    value2 => $subtask,
 		name3 => "job_uuid",   value3 => $job_uuid,
@@ -391,7 +391,7 @@ sub _confirm_delete_file
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $name       = $an->data->{cgi}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "name",       value3 => $name,
@@ -411,7 +411,7 @@ sub _confirm_delete_file
 		my $server_post_migration_script    = $hash_ref->{server_post_migration_script};
 		my $server_post_migration_arguments = $hash_ref->{server_post_migration_arguments};
 		my $server_anvil_uuid               = $hash_ref->{server_anvil_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "server_uuid",                     value1 => $server_uuid,
 			name2 => "server_name",                     value2 => $server_name,
 			name3 => "server_definition",               value3 => $server_definition,
@@ -464,7 +464,7 @@ sub _confirm_delete_file
 				{
 					# Found an optical disk (DVD/CD).
 					$in_cdrom = 1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "in_cdrom", value1 => $in_cdrom, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -473,7 +473,7 @@ sub _confirm_delete_file
 					if ($line =~ /<\/disk>/)
 					{
 						$in_cdrom = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "in_cdrom", value1 => $in_cdrom, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -481,7 +481,7 @@ sub _confirm_delete_file
 					{
 						# Found media
 						my $this_media = $1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "this_media", value1 => $this_media, 
 						}, file => $THIS_FILE, line => __LINE__});
 						
@@ -489,7 +489,7 @@ sub _confirm_delete_file
 						{
 							# This file is an ISO mounted on this server.
 							$warning .= $an->String->get({key => "warning_0005", variables => { server_name => $server_name }});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "warning", value1 => $warning, 
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -503,7 +503,7 @@ sub _confirm_delete_file
 	if ($warning)
 	{
 		$warning .= $an->String->get({key => "warning_0006"});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "warning", value1 => $warning, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -545,7 +545,7 @@ sub _delete_file
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $name       = $an->data->{cgi}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "name",       value3 => $name,
@@ -554,7 +554,7 @@ sub _delete_file
 	# Scan the Anvil!
 	$an->Striker->scan_anvil();
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 		name2 => "target",    value2 => $target,
 		name3 => "port",      value3 => $port,
@@ -597,7 +597,7 @@ sub _delete_file
 			my $server_post_migration_script    = $hash_ref->{server_post_migration_script};
 			my $server_post_migration_arguments = $hash_ref->{server_post_migration_arguments};
 			my $server_anvil_uuid               = $hash_ref->{server_anvil_uuid};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "server_uuid",                     value1 => $server_uuid,
 				name2 => "server_name",                     value2 => $server_name,
 				name3 => "server_definition",               value3 => $server_definition,
@@ -625,13 +625,13 @@ SET
 WHERE 
     server_uuid                    = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 				
 				$warning .= $an->String->get({key => "warning_0007", variables => { server_name => $server_name }});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "warning", value1 => $warning, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -647,13 +647,13 @@ SET
 WHERE 
     server_uuid                     = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 				
 				$warning .= $an->String->get({key => "warning_0008", variables => { server_name => $server_name }});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "warning", value1 => $warning, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -671,7 +671,7 @@ WHERE
 					{
 						# Found an optical disk (DVD/CD).
 						$in_cdrom = 1;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "in_cdrom", value1 => $in_cdrom, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -680,7 +680,7 @@ WHERE
 						if ($line =~ /<\/disk>/)
 						{
 							$in_cdrom = 0;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "in_cdrom", value1 => $in_cdrom, 
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -688,7 +688,7 @@ WHERE
 						{
 							# Found media
 							my $this_media = $1;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "this_media", value1 => $this_media, 
 							}, file => $THIS_FILE, line => __LINE__});
 							
@@ -696,14 +696,14 @@ WHERE
 							{
 								# Eject this disk
 								my $server_is_running = 0;
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "server::${server_name}::current_host", value1 => $an->data->{server}{$server_name}{current_host},
 								}, file => $THIS_FILE, line => __LINE__});
 								if ($an->data->{server}{$server_name}{current_host})
 								{
 									# Read the current server config from virsh.
 									$server_is_running = 1;
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 										name1 => "server_is_running", value1 => $server_is_running,
 									}, file => $THIS_FILE, line => __LINE__});
 								}
@@ -716,7 +716,7 @@ WHERE
 								});
 								
 								$warning .= $an->String->get({key => "warning_0009", variables => { server_name => $server_name }});
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "warning", value1 => $warning, 
 								}, file => $THIS_FILE, line => __LINE__});
 							}
@@ -727,7 +727,7 @@ WHERE
 		}
 		
 		my $shell_call = $an->data->{path}{rm}." -f \"".$an->data->{path}{shared_files}."/$name\"";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -739,7 +739,7 @@ WHERE
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -779,7 +779,7 @@ sub _confirm_download_url
 	my $anvil_name    = $an->data->{sys}{anvil}{name};
 	my $url           = $an->data->{cgi}{url};
 	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "url",        value3 => $url,
@@ -814,7 +814,7 @@ sub _confirm_image_and_upload
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $dev        = $an->data->{cgi}{dev};
 	my $name       = $an->data->{cgi}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "dev",        value3 => $dev,
@@ -865,7 +865,7 @@ sub _confirm_image_and_upload
 		}});
 	$submit_button =~ s/^\s+//; 
 	$submit_button =~ s/\s+$//s;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "submit_button", value1 => $submit_button,
 	}, file => $THIS_FILE, line => __LINE__});
 
@@ -893,7 +893,7 @@ sub _download_url
 	my $url           =  $an->data->{cgi}{url};
 	my ($base, $file) =  ($url =~ /^(.*)\/(.*?)$/);
 	   $base          .= "/" if $base !~ /\/$/;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "url",        value3 => $url,
@@ -904,7 +904,7 @@ sub _download_url
 	# Scan the Anvil!
 	$an->Striker->scan_anvil();
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 		name2 => "target",    value2 => $target,
 		name3 => "port",      value3 => $port,
@@ -942,7 +942,7 @@ sub _download_url
 	{
 		$shell_call .= " --script";
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -953,7 +953,7 @@ sub _download_url
 		password => $password,
 		port     => $port,
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "token",              value1 => $token,
 		name2 => "problem",            value2 => $problem,
 		name3 => "delayed_run_output", value3 => $delayed_run_output,
@@ -981,7 +981,7 @@ sub _image_and_upload
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $dev        = $an->data->{cgi}{dev};
 	my $name       = $an->data->{cgi}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "dev",        value3 => $dev,
@@ -991,7 +991,7 @@ sub _image_and_upload
 	# Scan the Anvil!
 	$an->Striker->scan_anvil();
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 		name2 => "target",    value2 => $target,
 		name3 => "port",      value3 => $port,
@@ -1032,7 +1032,7 @@ sub _image_and_upload
 		# Tell the user a file with that name already exists. 
 		my $message = $an->String->get({key => "message_0302", variables => { name => $name }});
 		print $an->Web->template({file => "media-library.html", template => "image-and-upload-name-conflict", replace => { message => $message }});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "name", value1 => $name,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1041,7 +1041,7 @@ sub _image_and_upload
 		# Now make sure the disc is still in the drive.
 		$an->MediaLibrary->_check_local_dvd();
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "drive::${dev}::reload",  value1 => $an->data->{drive}{$dev}{reload},
 			name2 => "drive::${dev}::no_disc", value2 => $an->data->{drive}{$dev}{no_disc},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1089,7 +1089,7 @@ sub _image_and_upload
 			# Ok, we're good to go.
 			my $out_file = "'".$an->data->{path}{media}."/$name'";
 			my $in_dev   = $dev;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "dev",       value1 => $dev,
 				name2 => "directory", value2 => $an->data->{path}{media},
 				name3 => "name",      value3 => $name,
@@ -1099,13 +1099,13 @@ sub _image_and_upload
 					name		=>	$name,
 					directory	=>	$an->data->{path}{media},
 				}});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "message", value1 => $message,
 			}, file => $THIS_FILE, line => __LINE__});
 			print $an->Web->template({file => "media-library.html", template => "image-and-upload-proceed-header", replace => { message => $message }});
 			
 			my $shell_call = $an->data->{path}{do_dd}." if=$in_dev of=$out_file bs=".$an->data->{sys}{dd_block_size};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -1122,7 +1122,7 @@ sub _image_and_upload
 					print $an->Web->template({file => "common.html", template => "open-shell-call-output"});
 					$header_printed = 1;
 				}
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "output", value1 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ /Is a directory/i)
@@ -1186,7 +1186,7 @@ sub _monitor_downloads
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_monitor_downloads" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid}, 
 		name2 => "cgi::subtask",    value2 => $an->data->{cgi}{subtask}, 
 		name3 => "cgi::job_uuid",   value3 => $an->data->{cgi}{job_uuid}, 
@@ -1229,7 +1229,7 @@ sub _monitor_downloads
 		my $port      = $an->data->{sys}{anvil}{$node_key}{use_port}; 
 		my $password  = $an->data->{sys}{anvil}{$node_key}{password};
 		my $online    = $an->data->{sys}{anvil}{$node_key}{online};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "node_name", value1 => $node_name, 
 			name2 => "target",    value2 => $target, 
 			name3 => "port",      value3 => $port, 
@@ -1258,7 +1258,7 @@ sub _monitor_downloads
 		# Still alive? Gooood.
 		my $opened_list = 0;
 		my $shell_call  = $an->data->{path}{'anvil-download-file'}." --status";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target, 
 			name2 => "shell_call", value2 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1270,7 +1270,7 @@ sub _monitor_downloads
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -1282,7 +1282,7 @@ sub _monitor_downloads
 			
 			# Update our counters
 			$file_displayed++;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "file_displayed", value1 => $file_displayed, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -1297,7 +1297,7 @@ sub _monitor_downloads
 				my $seconds_left     = $7;
 				my $url              = $8;
 				my $out_file         = $9;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 					name1 => "uuid",             value1 => $uuid, 
 					name2 => "bytes_downloaded", value2 => $bytes_downloaded, 
 					name3 => "percent",          value3 => $percent, 
@@ -1311,7 +1311,7 @@ sub _monitor_downloads
 				
 				# Update our counters
 				$something_downloading++;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "something_downloading", value1 => $something_downloading, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -1322,7 +1322,7 @@ sub _monitor_downloads
 				my $say_average_rate = $an->Readable->bytes_to_hr({'bytes' => $average_rate})."/s";
 				my $say_running_time = $an->Readable->time({'time' => $seconds_running, suffix => "long"});
 				my $say_time_left    = $an->Readable->time({'time' => $seconds_left, suffix => "long"});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 					name1 => "say_downloaded",   value1 => $say_downloaded, 
 					name2 => "say_percent",      value2 => $say_percent, 
 					name3 => "say_current_rate", value3 => $say_current_rate, 
@@ -1354,7 +1354,7 @@ sub _monitor_downloads
 				my $seconds_running  = $5;
 				my $url              = $6;
 				my $out_file         = $7;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 					name1 => "done",             value1 => $done, 
 					name2 => "uuid",             value2 => $uuid, 
 					name3 => "bytes_downloaded", value3 => $bytes_downloaded, 
@@ -1368,7 +1368,7 @@ sub _monitor_downloads
 				my $say_downloaded   = $an->Readable->bytes_to_hr({'bytes' => $bytes_downloaded});
 				my $say_average_rate = $an->Readable->bytes_to_hr({'bytes' => $average_rate})."/s";
 				my $say_running_time = $an->Readable->time({'time' => $seconds_running, suffix => "long"});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "say_downloaded",   value1 => $say_downloaded, 
 					name2 => "say_average_rate", value2 => $say_average_rate, 
 					name3 => "say_running_time", value3 => $say_running_time, 
@@ -1389,7 +1389,7 @@ sub _monitor_downloads
 				my $uuid         = $2;
 				my $out_file     = $3;
 				my $url          = $4;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "failed",   value1 => $failed, 
 					name2 => "uuid",     value2 => $uuid, 
 					name3 => "out_file", value3 => $out_file, 
@@ -1399,7 +1399,7 @@ sub _monitor_downloads
 				if (($failed =~ /\D/) or (($failed < 1) or ($failed > 7)))
 				{
 					$failed = 99;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "failed", value1 => $failed, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1410,7 +1410,7 @@ sub _monitor_downloads
 					out_file => $out_file,
 					url      => $url,
 				}});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "error_string", value1 => $error_string, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -1427,7 +1427,7 @@ sub _monitor_downloads
 				my $uuid     = $2;
 				my $url      = $3;
 				my $out_file = $4;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "abort",    value1 => $abort, 
 					name2 => "uuid",     value2 => $uuid, 
 					name3 => "url",      value3 => $url, 
@@ -1436,7 +1436,7 @@ sub _monitor_downloads
 				
 				my $say_time     = $an->Get->date_and_time({use_time => $abort});
 				my $error_string = $an->String->get({key => "adf_warning_0003", variables => { 'time' => $say_time }});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "error_string", value1 => $error_string, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -1450,7 +1450,7 @@ sub _monitor_downloads
 			if ($line =~ /queued=(.*)$/)
 			{
 				my $url = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "url", value1 => $url, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -1507,14 +1507,14 @@ sub _process_task
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::task",    value1 => $an->data->{cgi}{task}, 
 		name2 => "cgi::confirm", value2 => $an->data->{cgi}{confirm}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1601,7 +1601,7 @@ sub _read_shared
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $no_scan    = $parameter->{no_scan} ? $parameter->{no_scan} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "no_scan",    value1 => $no_scan,
 		name2 => "anvil_uuid", value2 => $anvil_uuid,
 		name3 => "anvil_name", value3 => $anvil_name,
@@ -1614,7 +1614,7 @@ sub _read_shared
 		$an->Striker->scan_anvil();
 	}
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 		name2 => "target",    value2 => $target,
 		name3 => "port",      value3 => $port,
@@ -1863,7 +1863,7 @@ sub _save_file_to_disk
 	
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1871,7 +1871,7 @@ sub _save_file_to_disk
 	# Scan the Anvil!
 	$an->Striker->scan_anvil();
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 		name2 => "target",    value2 => $target,
 		name3 => "port",      value3 => $port,
@@ -1912,7 +1912,7 @@ sub _save_file_to_disk
 		# TODO: Make sure characters like spaces and whatnot don't need to be escaped.
 		my $out_file =  $an->data->{path}{media}."/".$an->data->{cgi}{file};
 		   $out_file =~ s/\/\//\//g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "out_file", value1 => $out_file,
 			name2 => "in_fh",    value2 => $in_fh,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1965,7 +1965,7 @@ sub _toggle_executable
 	my $mark       = $parameter->{mark} ? $parameter->{mark} : "";
 	my $file       = $an->data->{path}{shared_files}."/".$an->data->{cgi}{name};
 	my $mode       = $parameter->{mark} eq "on" ? "755" : "644";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "mark",       value3 => $mark,
@@ -1976,7 +1976,7 @@ sub _toggle_executable
 	# Scan the Anvil!.
 	$an->Striker->scan_anvil();
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 		name2 => "target",    value2 => $target,
 		name3 => "port",      value3 => $port,
@@ -1986,7 +1986,7 @@ sub _toggle_executable
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $an->data->{path}{'chmod'}." $mode $file";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target, 
 		name2 => "shell_call", value2 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1998,7 +1998,7 @@ sub _toggle_executable
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -2023,7 +2023,7 @@ sub _upload_to_shared
 	my $target     = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port       = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password   = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "source",     value3 => $source,
@@ -2038,7 +2038,7 @@ sub _upload_to_shared
 	my $switches    = $an->data->{args}{rsync};
 	my $file        = ($source =~ /^.*\/(.*)$/)[0];
 	my $destination = "root\@${target}:".$an->data->{path}{shared_files}."/";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "switches",    value1 => $switches,
 		name2 => "destination", value2 => $destination,
 		name3 => "file",        value3 => $file,
@@ -2059,7 +2059,7 @@ sub _upload_to_shared
 	if ($an->data->{cgi}{script})
 	{
 		my $shell_call = $an->data->{path}{'chmod'}." 755 ".$an->data->{path}{shared_files}."/".$file;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2071,13 +2071,13 @@ sub _upload_to_shared
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "failed", value1 => $failed,
 	}, file => $THIS_FILE, line => __LINE__});
 	return ($failed);

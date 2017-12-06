@@ -75,7 +75,7 @@ sub _add_disk_to_array
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -87,7 +87,7 @@ sub _add_disk_to_array
 	my $return_string     = "";
 	
 	my $shell_call = $an->data->{path}{megacli64}." PdReplaceMissing PhysDrv [".$an->data->{cgi}{disk_address}."] -array".$an->data->{cgi}{logical_disk}." -row".$an->data->{cgi}{row}." -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -102,7 +102,7 @@ sub _add_disk_to_array
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -164,7 +164,7 @@ sub _control_disk_id_led
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "action", value1 => $action,
 		name2 => "target", value2 => $target,
 		name3 => "port",   value3 => $port,
@@ -184,13 +184,13 @@ sub _control_disk_id_led
 	{
 		$action = "start";
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "action",     value1 => $action,
 		name2 => "say_action", value2 => $say_action,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $an->data->{path}{megacli64}." PdLocate $action physdrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -205,7 +205,7 @@ sub _control_disk_id_led
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -255,7 +255,7 @@ sub _clear_foreign_state
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -267,7 +267,7 @@ sub _clear_foreign_state
 	my $success       = 0;
 	my $return_string = "";
 	my $shell_call    = $an->data->{path}{megacli64}." CfgForeign Clear -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -282,7 +282,7 @@ sub _clear_foreign_state
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -331,7 +331,7 @@ sub _display_node_health
 	my $target     = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port       = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password   = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
 		name2 => "anvil_name", value2 => $anvil_name,
 		name3 => "node_name",  value3 => $node_name,
@@ -357,25 +357,25 @@ sub _display_node_health
 		$an->Log->entry({log_level => 2, message_key => "log_0218", file => $THIS_FILE, line => __LINE__});
 		foreach my $this_adapter (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "this_adapter", value1 => $this_adapter,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			foreach my $this_logical_disk (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "this_logical_disk", value1 => $this_logical_disk,
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "this_enclosure_device_id", value1 => $this_enclosure_device_id,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					foreach my $this_slot_number (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
 					{
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "this_slot_number", value1 => $this_slot_number,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -394,7 +394,7 @@ sub _display_node_health
 				flash_module			=>	$say_flash,
 				restore_hotspare_on_insert	=>	$say_restore_hotspare_on_insert,
 			}});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "storage::lsi::adapter::${this_adapter}::bbu_is", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu_is},
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu_is})
@@ -462,12 +462,12 @@ sub _display_node_health
 				my $logical_disk_state_class = "highlight_good";
 				my $say_missing    = "";
 				my $allow_offline  = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 					}, file => $THIS_FILE, line => __LINE__});
 					
@@ -506,7 +506,7 @@ sub _display_node_health
 				{
 					# Real logical disk
 					next if not $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 					}, file => $THIS_FILE, line => __LINE__});
 					my $title = $an->String->get({key => "title_0021", variables => { logical_disk => $this_logical_disk }});
@@ -576,7 +576,7 @@ sub _display_node_health
 							}
 						}
 						
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::enclosure_device_id::${this_enclosure_device_id}::slot_number::${this_slot_number}::firmware_state", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state},
 						}, file => $THIS_FILE, line => __LINE__});
 						my $disk_state_class = "highlight_good";
@@ -591,7 +591,7 @@ sub _display_node_health
 									button_text	=>	"#!string!button_0008!#",
 									id		=>	"make_disk_good_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "say_disk_action", value1 => $say_disk_action,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -611,7 +611,7 @@ sub _display_node_health
 									id		=>	"spin_disk_down",
 								}});
 							$say_disk_action .= " - $say_put_disk_online_button - $say_spin_disk_down_button";
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "say_disk_action", value1 => $say_disk_action,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -630,7 +630,7 @@ sub _display_node_health
 									rebuild_percent		=>	$rebuild_percent,
 									time_to_complete	=>	$time_to_complete,
 								}});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "say_disk_action", value1 => $say_disk_action,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -639,7 +639,7 @@ sub _display_node_health
 							$disk_state_class = "highlight_detail";
 							foreach my $this_logical_disk (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
 							{
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 								}, file => $THIS_FILE, line => __LINE__});
 								next if $this_logical_disk eq "";
@@ -656,13 +656,13 @@ sub _display_node_health
 									#       open row.
 									foreach my $this_row (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}})
 									{
-										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+										$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 											name1 => "this_row", value1 => $this_row,
 										}, file => $THIS_FILE, line => __LINE__});
 										if ($raw_size_bytes >= $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row})
 										{
 											my $say_button = $an->String->get({key => "button_0010", variables => { logical_disk => $this_logical_disk }});
-											$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 												name1 => "say_button", value1 => $say_button,
 											}, file => $THIS_FILE, line => __LINE__});
 											
@@ -674,7 +674,7 @@ sub _display_node_health
 												id		=>	"add_disk_to_array_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 											}});
 											$say_disk_action .= $an->Web->template({file => "common.html", template => "new_line"});
-											$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+											$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 												name1 => "say_disk_action", value1 => $say_disk_action,
 											}, file => $THIS_FILE, line => __LINE__});
 										}
@@ -690,7 +690,7 @@ sub _display_node_health
 											id		=>	"make_disk_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 										}});
 									$say_disk_action .= $an->Web->template({file => "common.html", template => "new_line"});
-									$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 										name1 => "say_disk_action", value1 => $say_disk_action,
 									}, file => $THIS_FILE, line => __LINE__});
 								}
@@ -707,7 +707,7 @@ sub _display_node_health
 								}});
 							$say_temperature  = "<span class=\"highlight_unavailable\">".$an->String->get({key => "message_0055"})."</a>";
 							$offline_button   = $an->String->get({key => "message_0054"});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "say_disk_action", value1 => $say_disk_action,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -718,7 +718,7 @@ sub _display_node_health
 							$say_disk_action  .= $an->String->get({key => "message_0056"});
 							$say_temperature  =  "<span class=\"highlight_unavailable\">".$an->String->get({key => "message_0057"})."</span>";
 							$offline_button   =  $an->String->get({key => "message_0058"});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "say_disk_action", value1 => $say_disk_action,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -731,7 +731,7 @@ sub _display_node_health
 									button_text	=>	"#!string!button_0013!#",
 									id		=>	"unmake_disk_as_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}});
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "say_disk_action", value1 => $say_disk_action,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -824,7 +824,7 @@ sub _get_missing_disks
 	my $target            = defined $parameter->{target}       ? $parameter->{target}       : "";
 	my $port              = defined $parameter->{port}         ? $parameter->{port}         : "";
 	my $password          = defined $parameter->{password}     ? $parameter->{password}     : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "this_adapter",      value1 => $this_adapter,
 		name2 => "this_logical_disk", value2 => $this_logical_disk,
 		name3 => "target",            value3 => $target,
@@ -835,7 +835,7 @@ sub _get_missing_disks
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $an->data->{path}{megacli64}." PdGetMissing a$this_adapter";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -850,7 +850,7 @@ sub _get_missing_disks
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -883,7 +883,7 @@ sub _get_rebuild_progress
 	my $target       = defined $parameter->{target}       ? $parameter->{target}       : "";
 	my $port         = defined $parameter->{port}         ? $parameter->{port}         : "";
 	my $password     = defined $parameter->{password}     ? $parameter->{password}     : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "adapter",      value1 => $adapter,
 		name2 => "disk_address", value2 => $disk_address,
 		name3 => "target",       value3 => $target,
@@ -896,7 +896,7 @@ sub _get_rebuild_progress
 	my $rebuild_percent  = "";
 	my $time_to_complete = "";
 	my $shell_call       = $an->data->{storage}{is}{lsi}." PDRbld ShowProg PhysDrv [$disk_address] a$adapter";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -912,7 +912,7 @@ sub _get_rebuild_progress
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		next if not $line;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -938,7 +938,7 @@ sub _get_storage_data
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -981,7 +981,7 @@ sub _get_storage_data
 	   $shell_call     .= $an->data->{path}{echo}." '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; ";
 	   $shell_call     .= $an->data->{path}{echo}." '==] Start physical_disk_info'; $megacli64_path PDList aAll; ";
 	   $shell_call     .= $an->data->{path}{echo}." '==] Start pd_id_led_state'; ".$an->data->{path}{'grep'}." \"PD Locate\" /root/MegaSAS.log;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1780,7 +1780,7 @@ sub _make_disk_good
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1791,7 +1791,7 @@ sub _make_disk_good
 	my $success       = 0;
 	my $return_string = "";
 	my $shell_call    = $an->data->{path}{megacli64}." PDMakeGood PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1806,7 +1806,7 @@ sub _make_disk_good
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1854,7 +1854,7 @@ sub _make_disk_hot_spare
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1866,7 +1866,7 @@ sub _make_disk_hot_spare
 	my $success       = 0;
 	my $return_string = "";
 	my $shell_call    = $an->data->{path}{megacli64}." PDHSP Set PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1881,7 +1881,7 @@ sub _make_disk_hot_spare
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1930,7 +1930,7 @@ sub _mark_disk_missing
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1941,7 +1941,7 @@ sub _mark_disk_missing
 	my $success       = 0;
 	my $return_string = "";
 	my $shell_call    = $an->data->{path}{megacli64}." PDMarkMissing PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1956,7 +1956,7 @@ sub _mark_disk_missing
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2027,7 +2027,7 @@ sub _put_disk_offline
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2043,7 +2043,7 @@ sub _put_disk_offline
 	my $return_string     = "";
 	my $this_adapter      = $an->data->{cgi}{adapter};
 	my $this_logical_disk = $an->data->{cgi}{logical_disk};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i) && ($this_logical_disk != 9999))
@@ -2096,7 +2096,7 @@ sub _put_disk_offline
 	}
 	
 	my $shell_call = $an->data->{path}{megacli64}." PDOffline PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2111,7 +2111,7 @@ sub _put_disk_offline
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2169,7 +2169,7 @@ sub _put_disk_online
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2180,7 +2180,7 @@ sub _put_disk_online
 	my $success       = 0;
 	my $return_string = "";
 	my $shell_call    = $an->data->{path}{megacli64}." PDRbld Start PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2195,7 +2195,7 @@ sub _put_disk_online
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2242,7 +2242,7 @@ sub _spin_disk_down
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2253,7 +2253,7 @@ sub _spin_disk_down
 	my $success       = 0;
 	my $return_string = "";
 	my $shell_call    = $an->data->{path}{megacli64}." PDPrpRmv PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2268,7 +2268,7 @@ sub _spin_disk_down
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2348,7 +2348,7 @@ sub _spin_disk_up
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2360,7 +2360,7 @@ sub _spin_disk_up
 	my $success       = 0;
 	my $return_string = "";
 	my $shell_call    = $an->data->{path}{megacli64}." PDPrpRmv Undo PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2375,7 +2375,7 @@ sub _spin_disk_up
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -2423,7 +2423,7 @@ sub _unmake_disk_as_hot_spare
 	my $target   = defined $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = defined $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = defined $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
 		name2 => "port",   value2 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2435,7 +2435,7 @@ sub _unmake_disk_as_hot_spare
 	my $success       = 0;
 	my $return_string = "";
 	my $shell_call    = $an->data->{path}{megacli64}." PDHSP Rmv PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2450,7 +2450,7 @@ sub _unmake_disk_as_hot_spare
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		

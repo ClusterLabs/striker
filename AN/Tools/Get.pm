@@ -1334,7 +1334,7 @@ sub hostname_from_uuid
 	
 	my $host_uuid = $parameter->{host_uuid} ? $parameter->{host_uuid} : "";
 	my $node_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "host_uuid", value1 => $host_uuid,
 		name2 => "node_uuid", value2 => $node_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1372,12 +1372,12 @@ AND
     b.node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)." 
 ";
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $hostname = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 	$hostname = "" if not defined $hostname;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "hostname", value1 => $hostname, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2251,7 +2251,7 @@ sub manifest_data
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "manifest_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $manifest_uuid = $parameter->{manifest_uuid} ? $parameter->{manifest_uuid} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "manifest_uuid", value1 => $manifest_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2822,7 +2822,7 @@ sub other_alert_recipients
 	my $user       = defined $parameter->{user}       ? $parameter->{user}       : "";
 	my $user_level = defined $parameter->{level}      ? $parameter->{level}      : "";
 	my $anvil_uuid = defined $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "user",       value1 => $user, 
 		name2 => "user_level", value2 => $user_level, 
 		name3 => "anvil_uuid", value3 => $anvil_uuid, 
@@ -2838,7 +2838,7 @@ sub other_alert_recipients
 		foreach my $this_user (split/,/, $an->data->{striker}{email}{notify})
 		{
 			$this_user =~ s/\s+//;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "this_user", value1 => $this_user, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -2846,7 +2846,7 @@ sub other_alert_recipients
 			{
 				$this_user  = $1;
 				$this_level = $2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_user",  value1 => $this_user, 
 					name2 => "this_level", value2 => $this_level, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2857,7 +2857,7 @@ sub other_alert_recipients
 			
 			# Convert the level to a number and see if it is lower than this user's level.
 			$this_level = $an->Alert->convert_level_name_to_number({level => $this_level});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "this_level", value1 => $this_level, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -2865,14 +2865,14 @@ sub other_alert_recipients
 			next if not $this_level;
 			
 			# If this user is equal to or less than the user, add them to the recipients list.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "user_level", value1 => $user_level, 
 				name2 => "this_level", value1 => $this_level, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($user_level >= $this_level)
 			{
 				$recipients .= "$this_user, ";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "recipients", value1 => $recipients, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -2905,13 +2905,13 @@ AND
 AND 
     a.anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2921,7 +2921,7 @@ AND
 			my $notify_name   = $row->[1];
 			my $notify_target = $row->[2];
 			my $notify_level  = $row->[3];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "anvil_name",    value1 => $anvil_name, 
 				name2 => "notify_name",   value2 => $notify_name,
 				name3 => "notify_target", value3 => $notify_target,
@@ -2933,19 +2933,19 @@ AND
 			
 			# Convert this alert level to a number.
 			$notify_level = $an->Alert->convert_level_name_to_number({level => $notify_level});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "notify_level", value1 => $notify_level, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# If this user is equal to or less than the user, add them to the recipients list.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "user_level",   value1 => $user_level, 
 				name2 => "notify_level", value2 => $notify_level, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($user_level <= $notify_level)
 			{
 				$recipients .= "$notify_target, ";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "recipients", value1 => $recipients, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -2953,7 +2953,7 @@ AND
 	}
 	
 	$recipients =~ s/, $//;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "recipients", value1 => $recipients, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($recipients);
@@ -4005,7 +4005,7 @@ sub server_host
 		my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 		my $password   = $an->data->{sys}{anvil}{$node_key}{password};
 		my $shell_call = $an->data->{path}{virsh}." list --all";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "online",     value1 => $online,
 			name2 => "target",     value2 => $target,
 			name3 => "port",       value3 => $port,
@@ -4021,21 +4021,21 @@ sub server_host
 		foreach my $line (@{$return})
 		{
 			$line = $an->String->clean_spaces({string => $line});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($line =~ /\d+ $server (.*)$/)
 			{
 				my $state = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "state", value1 => $state, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				if (($state =~ /running/) or ($state =~ /paused/))
 				{
 					$host = $an->data->{sys}{anvil}{$node_key}{name};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "host", value1 => $host, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
@@ -4044,7 +4044,7 @@ sub server_host
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "host", value1 => $host, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($host);
@@ -4917,7 +4917,7 @@ sub striker_peers
 	my $i_am_short = $an->short_hostname();
 	my $local_id   = "";
 	my $db_count   = 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "i_am_long",  value1 => $i_am_long, 
 		name2 => "i_am_short", value2 => $i_am_short, 
 		name3 => "local_id",   value3 => $local_id, 
@@ -4927,7 +4927,7 @@ sub striker_peers
 	{
 		   $db_count++;
 		my $this_host = $an->data->{scancore}{db}{$id}{host};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "this_host", value1 => $this_host, 
 			name2 => "db_count",  value2 => $db_count, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4935,7 +4935,7 @@ sub striker_peers
 		if (($this_host eq $i_am_long) or ($this_host eq $i_am_short))
 		{
 			$local_id = $id;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "local_id", value1 => $local_id, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -4948,7 +4948,7 @@ sub striker_peers
 		{
 			my $peer_name     = $an->data->{scancore}{db}{$id}{host};
 			my $peer_password = $an->data->{scancore}{db}{$id}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "peer_name",     value1 => $peer_name, 
 				name2 => "peer_password", value2 => $peer_password, 
 			}, file => $THIS_FILE, line => __LINE__});

@@ -69,7 +69,7 @@ sub cleanup_gfs2
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target, 
 		name2 => "port",   value2 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -84,7 +84,7 @@ sub cleanup_gfs2
 	if ($target)
 	{
 		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -115,13 +115,13 @@ sub cleanup_gfs2
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Any return means that something is running and we DON'T want to remove the lock file.
 		$gfs2_running = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "gfs2_running", value1 => $gfs2_running, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -135,7 +135,7 @@ sub cleanup_gfs2
 		if ($target)
 		{
 			# Remote call.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "target",     value2 => $target,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -166,7 +166,7 @@ sub cleanup_gfs2
 		}
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -986,7 +986,7 @@ sub rsync
 	my $source      = $parameter->{source}      ? $parameter->{source}      : "";
 	my $destination = $parameter->{destination} ? $parameter->{destination} : "";
 	my $switches    = $parameter->{switches}    ? $parameter->{switches}    : "-av";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "node",        value1 => $node, 
 		name2 => "target",      value2 => $target, 
 		name3 => "port",        value3 => $port, 
@@ -1002,7 +1002,7 @@ sub rsync
 	if (($port) && ($port ne "22"))
 	{
 		$switches .= " -e 'ssh -p $port'";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "switches", value1 => $switches, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1030,7 +1030,7 @@ sub rsync
 	{
 		$remote_user    = $1;
 		$remote_machine = $2;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "remote_user",    value1 => $remote_user, 
 			name2 => "remote_machine", value2 => $remote_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1039,7 +1039,7 @@ sub rsync
 	{
 		$remote_user    = $1;
 		$remote_machine = $2;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "remote_user",    value1 => $remote_user, 
 			name2 => "remote_machine", value2 => $remote_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1058,7 +1058,7 @@ sub rsync
 		{
 			# No target, set the 'remote_machine' as the target.
 			$target = $remote_machine;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "target", value1 => $target, 
 			}, file => $THIS_FILE, line => __LINE__});
 			#$an->Alert->error({title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => $THIS_FILE, line => __LINE__});
@@ -1116,7 +1116,7 @@ sub rsync
 			   $failed      = 1;
 			my $source      = $path.".ssh\/known_hosts";
 			my $destination = $path."known_hosts.".$an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "path",        value1 => $path, 
 				name2 => "line_number", value2 => $line_number, 
 				name3 => "failed",      value3 => $failed, 
@@ -1136,7 +1136,7 @@ sub rsync
 					# There should never be any output, but just in case...
 					chomp;
 					my $line = $_;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}

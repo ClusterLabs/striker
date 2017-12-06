@@ -1113,7 +1113,7 @@ sub get_clustat_data
 		$xml_data .= $line."\n";
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "xml_data", value1 => $xml_data,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($xml_data)
@@ -1127,7 +1127,7 @@ sub get_clustat_data
 		# Gather the data we used to parse out of a normal clustat call...
 		$details->{cluster}{name}    = $clustat->{cluster}->[0]->{name};
 		$details->{cluster}{quorate} = $clustat->{quorum}->[0]->{quorate};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "details->cluster::name",    value1 => $details->{cluster}{name}, 
 			name2 => "details->cluster::quorate", value2 => $details->{cluster}{quorate}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1157,7 +1157,7 @@ sub get_clustat_data
 					cman      => $cman_up, 
 					rgmanager => $rgmanager_up, 
 				},
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "details->node::local::name",      value1 => $details->{node}{'local'}{name}, 
 					name2 => "details->node::local::id",        value2 => $details->{node}{'local'}{id}, 
 					name3 => "details->node::local::cman",      value3 => $details->{node}{'local'}{cman}, 
@@ -1173,7 +1173,7 @@ sub get_clustat_data
 					cman      => $cman_up,
 					rgmanager => $rgmanager_up
 				},
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "details->node::peer::name",      value1 => $details->{node}{peer}{name}, 
 					name2 => "details->node::peer::id",        value2 => $details->{node}{peer}{id}, 
 					name3 => "details->node::peer::cman",      value3 => $details->{node}{peer}{cman}, 
@@ -1229,7 +1229,7 @@ sub get_clustat_data
 				my $server                             = $service_name;
 				   $details->{server}{$server}{host}   = $host;
 				   $details->{server}{$server}{status} = $state;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "details->server::${server}::host",   value1 => $details->{server}{$server}{host}, 
 					name2 => "details->server::${server}::status", value2 => $details->{server}{$server}{status}, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1240,7 +1240,7 @@ sub get_clustat_data
 				my $service                              = $service_name;
 				   $details->{service}{$service}{host}   = $host;
 				   $details->{service}{$service}{status} = $state;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "details->service::${service}::host",   value1 => $details->{service}{$service}{host}, 
 					name2 => "details->service::${service}::status", value2 => $details->{service}{$service}{status}, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1322,13 +1322,13 @@ sub migrate_server
 	{
 		chomp;
 		my $line =  $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /return_code:(\d+)$/)
 		{
 			my $return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code,
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($return_code eq "1")
@@ -1508,7 +1508,7 @@ sub stop_server
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $reason   = $parameter->{reason}   ? $parameter->{reason}   : "clean";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "server", value1 => $server, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
@@ -1532,7 +1532,7 @@ sub stop_server
 	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
 		### Remote calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1546,7 +1546,7 @@ sub stop_server
 	else
 	{
 		### Local calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -1561,14 +1561,14 @@ sub stop_server
 	my $success = 1;
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		$output .= "$line\n";
 		if ($line =~ /fail/i)
 		{
 			$success = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "success", value1 => $success,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1596,14 +1596,14 @@ SET
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "success", value1 => $success, 
 		name2 => "output",  value2 => $output, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2944,7 +2944,7 @@ SET
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});

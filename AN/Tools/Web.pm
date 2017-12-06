@@ -106,7 +106,7 @@ sub build_select
 		{
 			$blank_string = "#!string!".$say_blank."!#";
 			$blank_class  = "class=\"subtle_text\"";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "blank_string", value1 => $blank_string,
 				name2 => "blank_class",  value2 => $blank_class,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -570,7 +570,7 @@ sub get_cgi
 # 		#if (($variable eq "anvil_uuid") && (defined $cgi->param($variable)) && (not $an->validate->is_uuid({uuid => $cgi->param($variable)})) && ($an->data->{cgi}{anvil_uuid}))
 # 		{
 # 			$an->data->{sys}{cgi_string} .= "$variable=".$an->data->{cgi}{$variable}."&";
-# 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+# 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 # 				name1 => "variable", value1 => $variable, 
 # 				name2 => "value",    value2 => $an->data->{cgi}{$variable},
 # 			}, file => $THIS_FILE, line => __LINE__});
@@ -588,7 +588,7 @@ sub get_cgi
 			
 			if ($variable eq "file")
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "variable", value1 => $variable,
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $cgi->upload($variable))
@@ -601,7 +601,7 @@ sub get_cgi
 					   $an->data->{cgi_fh}{$variable}       = $cgi->upload($variable);
 					my $file                                = $an->data->{cgi_fh}{$variable};
 					   $an->data->{cgi_mimetype}{$variable} = $cgi->uploadInfo($file)->{'Content-Type'};
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "variable",                value1 => $variable,
 						name2 => "cgi_fh::$variable",       value2 => $an->data->{cgi_fh}{$variable},
 						name3 => "cgi_mimetype::$variable", value3 => $an->data->{cgi_mimetype}{$variable},
@@ -690,7 +690,7 @@ sub get_cgi
 		# THis prevents the same CGI being logged when this method is run a second time.
 		if (not exists $an->data->{cgi_seen}{$variable})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cgi::$say_variable", value1 => $an->data->{cgi}{$variable},
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{cgi_seen}{$variable} = 1;
