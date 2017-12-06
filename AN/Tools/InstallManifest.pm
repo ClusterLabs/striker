@@ -13925,6 +13925,7 @@ sub run_new_install_manifest
 		'perl-Net-Telnet'		=>	0,
 		'perl-Mail-RFC822-Address'	=>	0,
 		'perl-Sys-Virt'			=>	0,
+		'perl-XML-SAX'			=>	0,
 		'perl-XML-Simple'		=>	0,
 		'policycoreutils-python'	=>	0,
 		postgresql95			=>	0,

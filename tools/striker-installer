@@ -251,6 +251,7 @@ my $conf = {
 			'perl-Mail-RFC822-Address'	=>	0, 
 			'perl-TermReadKey'		=>	0,
 			'perl-Test-Simple'		=>	0,
+			'perl-XML-SAX'			=>	0,
 			'perl-XML-Simple'		=>	0,
 			'perl-YAML-Tiny'		=>	0, 
 			'policycoreutils-python'	=>	0, 

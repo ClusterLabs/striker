@@ -85,6 +85,7 @@ https://alteeve.com/w/Support
 - Status: ................ [#!variable!old_status!#] -> [#!variable!new_status!#]
 - Type: .................. [#!variable!old_type!#] -> [#!variable!new_type!#]
 - Size: .................. [#!variable!say_old_size!#] -> [#!variable!say_new_size!#]
+		</key>
 		<key name="scan_hpacucli_warning_0005">The RAID controller's cache module has returned:
 - Serial Number: ......... [#!variable!new_serial_number!#]
 - Controller: ............ [#!variable!new_controller_serial_number!#]
@@ -230,7 +231,7 @@ WARNING: Storage performance can be significantly impacted when write-back cachi
 		<key name="scan_hpacucli_note_0039">The HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] is has begun recovering.
 NOTE: The array is still degraded, and will remain so until the rebuild process is complete. How long this rebuild will take is a factor of the replacement drive's speed and size.
 		</key>
-		<key name="scan_hpacucli_note_0040">The rebuild of the HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] is now at: [#!variable!recovered!# %].
+		<key name="scan_hpacucli_note_0040">The rebuild of the HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] is now at: [#!variable!recovered!# %].</key>
 		<key name="scan_hpacucli_note_0041">The HP RAID logical drive: [#!variable!logical_drive!#] under the array: [#!variable!array!#] on the controller: [#!variable!serial_number!#] is degraded!
 WARNING: This is generally caused by a drive failing or having been removed. Please replace the drive as soon as possible.
 		</key>
