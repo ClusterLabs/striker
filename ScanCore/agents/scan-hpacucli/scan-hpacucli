@@ -1904,7 +1904,7 @@ AND
 				alert_title_key		=>	$title_key,
 				alert_message_key	=>	$message_key,
 				alert_message_variables	=>	{
-					drive_serial_number	=>	$hpacucli_physical_drive_serial_number, 
+					serial_number		=>	$hpacucli_physical_drive_serial_number, 
 					old_status		=>	$old_hpacucli_physical_drive_status,
 					new_status		=>	$new_hpacucli_physical_drive_status,
 				},

@@ -197,8 +197,8 @@ WARNING: If enough sensors go critical, emergency power off will occure to prote
 		<key name="scan_hpacucli_note_0026">The error message for the HP RAID array: [#!variable!name!#] has changed:
 - [#!variable!old_error_message!#] -> [#!variable!new_error_message!#]
 		</key>
-		<key name="scan_hpacucli_note_0027">The HP RAID array: [#!variable!name!#] has an error message: [#!variable!new_error_message!#]</key>
-		<key name="scan_hpacucli_note_0028">The HP RAID array: [#!variable!name!#] has cleared the old error message: [#!variable!old_error_message!#]</key>
+		<key name="scan_hpacucli_note_0027">The HP RAID array: [#!variable!name!#] has cleared the old error message: [#!variable!old_error_message!#]</key>
+		<key name="scan_hpacucli_note_0028">The HP RAID array: [#!variable!name!#] has an error message: [#!variable!new_error_message!#]</key>
 		<key name="scan_hpacucli_note_0029">The error message for the HP RAID array: [#!variable!name!#] has changed:
 - [#!variable!old_error_message!#] -> [#!variable!new_error_message!#]
 		</key>
@@ -261,17 +261,17 @@ WARNING: This is generally caused by a drive failing or having been removed. Ple
 - Logical Drive: ..... [#!variable!logical_drive_name!#]
 - Last Failure Reason: [#!variable!last_failure_reason!#]
 		</key>
-		<key name="scan_hpacucli_note_0047">The physical disk [#!variable!drive_serial_number!#] has moved to a new logical disk.
+		<key name="scan_hpacucli_note_0047">The physical disk: [#!variable!drive_serial_number!#] has moved to a new logical disk.
 - Host: ........................ [#!variable!old_host_name!#] -> [#!variable!new_host_name!#]
 - RAID Controller Serial Number: [#!variable!old_controller_serial_number!#] -> [#!variable!new_controller_serial_number!#]
 - Array Name: .................. [#!variable!old_array_name!#] -> [#!variable!new_array_name!#]
 - Logical Drive Name: .......... [#!variable!old_logical_drive_name!#] -> [#!variable!new_logical_drive_name!#]
 		</key>
 		<key name="scan_hpacucli_note_0048">The status of the physical disk [#!variable!serial_number!#] has changed! [#!variable!old_status!#] -> [#!variable!new_status!#]</key>
-		<key name="scan_hpacucli_note_0049">The physical disk [#!variable!serial_number!#] has vanished!</key>
-		<key name="scan_hpacucli_note_0050">The physical disk [#!variable!serial_number!#] has returned.</key>
-		<key name="scan_hpacucli_note_0051">The physical disk [#!variable!serial_number!#] is back to normal.</key>
-		<key name="scan_hpacucli_note_0052">The physical disk [#!variable!serial_number!#] has changed in an unusual way:
+		<key name="scan_hpacucli_note_0049">The physical disk: [#!variable!serial_number!#] has vanished!</key>
+		<key name="scan_hpacucli_note_0050">The physical disk: [#!variable!serial_number!#] has returned.</key>
+		<key name="scan_hpacucli_note_0051">The physical disk: [#!variable!serial_number!#] is back to normal.</key>
+		<key name="scan_hpacucli_note_0052">The physical disk: [#!variable!serial_number!#] has changed in an unusual way:
 - Model: ............. [#!variable!old_model!#] -> [#!variable!new_model!#]
 - Interface: ......... [#!variable!old_interface!#] -> [#!variable!new_interface!#]
 - Size: .............. [#!variable!old_size!#] -> [#!variable!new_size!#]
