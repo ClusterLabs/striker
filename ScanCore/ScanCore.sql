@@ -1299,7 +1299,7 @@ CREATE TRIGGER trigger_dr_jobs
 
 -- This stores information about the RAM used by ScanCore and its agents.
 CREATE TABLE ram_used (
-	ram_used_uuid		bigserial,
+	ram_used_uuid		uuid				not null,
 	ram_used_host_uuid	uuid				not null,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
 	ram_used_bytes		numeric				not null,
@@ -1311,7 +1311,7 @@ ALTER TABLE ram_used OWNER TO #!variable!user!#;
 
 CREATE TABLE history.ram_used (
 	history_id		bigserial,
-	ram_used_uuid		bigint				not null,
+	ram_used_uuid		uuid				not null,
 	ram_used_host_uuid	uuid				not null,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
 	ram_used_bytes		numeric				not null,

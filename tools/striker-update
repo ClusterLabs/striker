@@ -1006,6 +1006,31 @@ CREATE TRIGGER trigger_storcli_physical_drives
 			}
 		}
 		
+		### NOTE: This requires deleting all data from this table.
+		# Fifth: Check to see now if the ram_used_uuid is 'bigint' and convert it to UUID, if so.
+		$query = "SELECT data_type FROM information_schema.columns WHERE table_name = 'ram_used' AND table_schema = 'public' AND column_name = 'ram_used_uuid';";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $data_type = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "data_type", value1 => $data_type, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($data_type eq "bigint")
+		{
+			# Fix needed.
+			print "[ Warning ] - This database has the old 'ram_used -> ram_used_uuid' data type.\n";
+			print "[ Warning ]   All data in the 'ram_used' history and public tables need to be removed for this fix.\n";
+			
+			push @{$queue}, "DELETE FROM history.ram_used;";
+			push @{$queue}, "DELETE FROM ram_used;";
+			push @{$queue}, "DELETE FROM history.ram_used;";
+			push @{$queue}, "ALTER TABLE history.ram_used ALTER COLUMN ram_used_uuid SET DATA TYPE uuid USING null::uuid;";
+			push @{$queue}, "ALTER TABLE public.ram_used ALTER COLUMN ram_used_uuid DROP DEFAULT;";
+			push @{$queue}, "ALTER TABLE public.ram_used ALTER COLUMN ram_used_uuid SET DATA TYPE uuid USING null::uuid;";
+		}
+		
 		# Do I have pending queries?
 		my $queue_length = @{$queue};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {

@@ -8230,7 +8230,7 @@ WHERE
 			my $ram_used_by    = $row->[1];
 			my $ram_used_bytes = $row->[2];
 			my $modified_date  = $row->[3];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "ram_used_uuid",  value1 => $ram_used_uuid, 
 				name2 => "ram_used_by",    value2 => $ram_used_by, 
 				name3 => "ram_used_bytes", value3 => $ram_used_bytes, 
@@ -8312,7 +8312,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -8340,7 +8340,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -8373,7 +8373,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});

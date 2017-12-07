@@ -3188,7 +3188,7 @@ sub query_ipmi_targets
 			name1 => "machine",          value1 => $machine,
 			name2 => "ipmitool_command", value2 => $ipmitool_command,
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ipmi_password", value1 => $ipmi_password, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3398,7 +3398,6 @@ sub query_ipmi_targets
 	return(0);
 }
 
-### TODO: This currently has no way of dealing with IPMI-equipped dashboards.
 # This calls anvil-report-ipmi-details to find IPMI devices to scan. It also handles any user-defined IPMI 
 # devices set in striker.conf.
 sub find_ipmi_targets
@@ -3424,7 +3423,7 @@ sub find_ipmi_targets
 		my $node_name           = $hash_ref->{node_name};
 		my $node_uuid           = $hash_ref->{node_uuid};
 		my $power_check_command = $hash_ref->{power_check_command};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
 			name1 => "node_name",           value1 => $node_name,
 			name2 => "node_uuid",           value2 => $node_uuid, 
 			name3 => "power_check_command", value3 => $power_check_command, 
@@ -3449,25 +3448,69 @@ sub find_ipmi_targets
 		
 		# I need to remove the double-quotes from the '-p "<password>"'.
 		$power_check_command =~ s/-p "(.*?)"/-p $1/;
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "power_check_command", value1 => $power_check_command,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Convert to an 'ipmitool' call.
 		my $ipmitool_command = $an->data->{path}{ipmitool};
 		my $ipmi_password    = "";
-		if ($power_check_command =~ /-A (.*?) /) { $ipmitool_command .= " -A $1"; }	# IPMI Lan Auth type (md5, password, or none)
-		if ($power_check_command =~ /-a (.*?) /) { $ipmitool_command .= " -H $1"; }	# IPMI Lan IP to talk to
-		if ($power_check_command =~ /-P (.*?) /) { $ipmitool_command .= " -I $1"; }	# Use Lanplus to improve security of connection
-		if ($power_check_command =~ /-l (.*?) /) { $ipmitool_command .= " -U $1"; }	# Username/Login (if required) to control power on IPMI device
-		if ($power_check_command =~ /-C (.*?) /) { $ipmitool_command .= " -C $1"; }	# Ciphersuite to use (same as ipmitool -C parameter)
-		if ($power_check_command =~ /-L (.*?) /) { $ipmitool_command .= " -L $1"; }	# Privilege level on IPMI device
-		
-		if ($power_check_command =~ /-p (.*?) /) { $ipmi_password .= "$1"; }	# Password (if required) to control power on IPMI device
-		
-		### TODO: Find a way to get this info... may need to add it to the cache.
-		#if ($power_check_command =~ /-S (.*?) /) { $ipmi_password .= "$1"; }	# Script to retrieve password (if required)
-		
-		# Currently unsupported.
-		#if ($power_check_command =~ /-t (.*?) /) { $ipmitool_command .= " - $1"; }	# Timeout (sec) for IPMI operation
-		#if ($power_check_command =~ /-T (.*?) /) { $ipmitool_command .= " - $1"; }	# Wait X seconds after on/off operation (Default Value: 2)
+		if ($power_check_command =~ /-A (.*?) /)
+		{
+			# IPMI Lan Auth type (md5, password, or none)
+			$ipmitool_command .= " -A $1";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ipmitool_command", value1 => $ipmitool_command, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($power_check_command =~ /-a (.*?) /)
+		{
+			# IPMI Lan IP to talk to
+			$ipmitool_command .= " -H $1";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ipmitool_command", value1 => $ipmitool_command, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($power_check_command =~ /-P /)
+		{
+			# Use Lanplus to improve security of connection
+			$ipmitool_command .= " -I lanplus";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ipmitool_command", value1 => $ipmitool_command, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($power_check_command =~ /-l (.*?) /)
+		{
+			# Username/Login (if required) to control power on IPMI device
+			$ipmitool_command .= " -U $1";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ipmitool_command", value1 => $ipmitool_command, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($power_check_command =~ /-C (.*?) /)
+		{
+			# Ciphersuite to use (same as ipmitool -C parameter)
+			$ipmitool_command .= " -C $1";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ipmitool_command", value1 => $ipmitool_command, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($power_check_command =~ /-L (.*?) /)
+		{
+			# Privilege level on IPMI device
+			$ipmitool_command .= " -L $1";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ipmitool_command", value1 => $ipmitool_command, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($power_check_command =~ /-p (.*?) -/)
+		{
+			# Password (if required) to control power on IPMI device
+			$ipmi_password .= "$1";
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "ipmi_password", value1 => $ipmi_password, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		
 		$an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command} = $power_check_command;
 		$an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command}    = $ipmitool_command;
