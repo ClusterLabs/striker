@@ -1491,7 +1491,6 @@ gd
 gfs2-utils
 kmod-drbd84
 libvirt
-lvm2-cluster
 net-snmp
 qemu-kvm
 qemu-kvm-tools
