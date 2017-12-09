@@ -3753,6 +3753,7 @@ sub get_package_list
 		"dmz-cursor-themes.noarch",
 		"dnsmasq.x86_64",
 		"docbook-dtds.noarch",
+		"dos2unix.x86_64",
 		"dosfstools.x86_64",
 		"dracut-kernel.noarch",
 		"dracut.noarch",
