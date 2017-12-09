@@ -1922,7 +1922,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 #############################################################################################################
 		</key>
 		<key name="log_0004">This is an HP system. Issuing a warm reset of the iLO BMC so that it picks up network configuration changes.</key>
-		<key name="log_0005">#!free!#</key>
+		<key name="log_0005">Sleeping for: [#!variable!sleep!#] seconds to give the BMC time to reset.</key>
 		<key name="log_0006">#!free!#</key>
 		<key name="log_0007">#!free!#</key>
 		<key name="log_0008">#!free!#</key>
