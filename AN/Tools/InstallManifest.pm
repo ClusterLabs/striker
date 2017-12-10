@@ -3148,6 +3148,9 @@ sub configure_ipmi_on_node
 			name1 => "node", value1 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		$return_code = 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "return_code", value1 => $return_code, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
@@ -3168,8 +3171,7 @@ sub configure_ipmi_on_node
 			}
 			
 			# check to see if this is the write channel
-			my $return_code = "";
-			my $shell_call  = $an->data->{path}{ipmitool}." lan print $channel; ".$an->data->{path}{echo}." return_code:\$?";
+			my $shell_call = $an->data->{path}{ipmitool}." lan print $channel; ".$an->data->{path}{echo}." return_code:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "target",     value1 => $target,
 				name2 => "shell_call", value2 => $shell_call,
@@ -3226,8 +3228,7 @@ sub configure_ipmi_on_node
 				}
 				
 				# check to see if this is the write channel
-				my $return_code = "";
-				my $shell_call  = $an->data->{path}{ipmitool}." user list $channel";
+				my $shell_call = $an->data->{path}{ipmitool}." user list $channel";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "target",     value1 => $target,
 					name2 => "shell_call", value2 => $shell_call,
@@ -3319,6 +3320,9 @@ sub configure_ipmi_on_node
 					{
 						# Password didn't take. :(
 						$return_code = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "return_code", value1 => $return_code, 
+						}, file => $THIS_FILE, line => __LINE__});
 						$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => { target => $channel }, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -3350,6 +3354,9 @@ sub configure_ipmi_on_node
 						{
 							# Password didn't take. :(
 							$return_code = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "return_code", value1 => $return_code, 
+							}, file => $THIS_FILE, line => __LINE__});
 							$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => { target => $channel }, file => $THIS_FILE, line => __LINE__});
 						}
 					}
@@ -3361,10 +3368,16 @@ sub configure_ipmi_on_node
 		if (not $lan_found)
 		{
 			$return_code = 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (not $uid_found)
 		{
 			$return_code = 4;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($return_code ne "1")
 		{
@@ -3486,6 +3499,9 @@ sub configure_ipmi_on_node
 							node => $node, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 5;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "return_code", value1 => $return_code, 
+						}, file => $THIS_FILE, line => __LINE__});
 						last;
 					}
 				}
@@ -3494,8 +3510,11 @@ sub configure_ipmi_on_node
 					my $ip = ($line =~ /(\d+\.\d+\.\d+\.\d+)$/)[0];
 					if ($ip eq $ipmi_ip)
 					{
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "ipmi_ip", value1 => $ipmi_ip,
+						# Success!
+						$return_code = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "return_code", value1 => $return_code, 
+							name2 => "ipmi_ip",     value2 => $ipmi_ip,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					else
@@ -3507,6 +3526,9 @@ sub configure_ipmi_on_node
 							node       => $node, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 6;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "return_code", value1 => $return_code, 
+						}, file => $THIS_FILE, line => __LINE__});
 						last;
 					}
 				}
@@ -3528,6 +3550,9 @@ sub configure_ipmi_on_node
 							node           => $node, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 7;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "return_code", value1 => $return_code, 
+						}, file => $THIS_FILE, line => __LINE__});
 						last;
 					}
 				}
@@ -3537,6 +3562,9 @@ sub configure_ipmi_on_node
 	
 	# HP Proliants will report that their IP address changed, but not actually update until the BMC is 
 	# reset. 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($return_code eq "0")
 	{
 		my $reset_bmc  = 0;
@@ -3592,6 +3620,11 @@ sub configure_ipmi_on_node
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			
+			# Sleep for a minute to give time for the BMC to reset.
+			my $sleep = 60;
+			$an->Log->entry({log_level => 1, message_key => "log_0005", message_variables => { 'sleep' => $sleep }, file => $THIS_FILE, line => __LINE__});
+			sleep $sleep;
 		}
 	}
 	
