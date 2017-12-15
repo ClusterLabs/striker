@@ -1357,25 +1357,11 @@ sub check_device_for_drbd_metadata
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($is_drbd) eq ($an->data->{node}{$node}{'wipe-md'}{$resource}))
 	{
-		# Wipe the MD
-		   $is_drbd    = 0;
-		my $shell_call = $an->data->{path}{wipefs}." --all $device; ".$an->data->{path}{echo}." return_code:\$?";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target",     value1 => $target,
-			name2 => "shell_call", value2 => $shell_call,
+		# Set 'is_drbd' back to 0 so that a new MD is force-created.
+		$is_drbd = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "is_drbd", value1 => $is_drbd, 
 		}, file => $THIS_FILE, line => __LINE__});
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			shell_call	=>	$shell_call,
-		});
-		foreach my $line (@{$return})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {

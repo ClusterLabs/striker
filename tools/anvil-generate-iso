@@ -1125,33 +1125,39 @@ DRIVE=\"sda\";
 if grep -q vda /proc/partitions; then
 	DRIVE=\"vda\"
 fi
-";
-		if ($target eq "usb")
-		{
-			$ks_body .= "
+
 ### The USB drives come up as 'sdb', so the Eee's HDD is /dev/sdc
 # /dev/sdc ASUS EeeBox machine
 if grep -q sdc /proc/partitions; then
 	DRIVE=\"sdc\"
 fi
-";
-		}
-		else
-		{
-			$ks_body .= "
+
 # /dev/sdb ASUS EeeBox machine
 if grep -q sdb /proc/partitions; then
 	DRIVE=\"sdb\"
 fi
 ";
-		}
+# 		if ($target eq "usb")
+# 		{
+# 			$ks_body .= "
+# ### The USB drives come up as 'sdb', so the Eee's HDD is /dev/sdc
+# # /dev/sdc ASUS EeeBox machine
+# if grep -q sdc /proc/partitions; then
+# 	DRIVE=\"sdc\"
+# fi
+# ";
+# 		}
+# 		else
+# 		{
+# 			$ks_body .= "
+# # /dev/sdb ASUS EeeBox machine
+# if grep -q sdb /proc/partitions; then
+# 	DRIVE=\"sdb\"
+# fi
+# ";
+# 		}
 
 		$ks_body .= "
-### Dashboards with NVMe drives will use '/dev/nvme0n1'
-if grep -q nvme0n1 /proc/partitions; then
-	DRIVE=\"nvme0n1\"
-fi
-
 ### Dashboards with NVMe drives will use '/dev/nvme0n1'
 if grep -q nvme0n1 /proc/partitions; then
 	DRIVE=\"nvme0n1\"
@@ -1635,6 +1641,8 @@ sub generate_kickstart_files
 			}
 		}
 	}
+	
+	die;
 	
 	return(0);
 }
@@ -3421,6 +3429,7 @@ sub validate_source
 		exit(4);
 	}
 	
+	my $disk = 1;
 	foreach my $iso (sort {$a cmp $b} @{$conf->{sys}{source}{iso}})
 	{
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - iso: [$iso]\n" if $conf->{sys}{debug} >= 2;
@@ -3437,67 +3446,113 @@ sub validate_source
 			exit(1);
 		}
 		
-		print "- Generating md5sum of the source: [$iso], please wait a moment...\n";
-		   $conf->{source}{$iso}{sum} = "";
-		my $shell_call                = $conf->{executable}{md5sum}." ".$iso;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-		while(<$file_handle>)
+		$conf->{switches}{'no-source-validation'} = 0 if not defined $conf->{switches}{'no-source-validation'};
+		if ($conf->{switches}{'no-source-validation'})
 		{
-			chomp;
-			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
-			
-			if ($line =~ /^(\S+)\s+$iso/)
+			print "- Skipping validation on user request, assuming: [$iso] is good.\n";
+			if ($iso =~ /rhel/i)
 			{
-				$conf->{source}{$iso}{sum} = $1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::sum: [$conf->{source}{$iso}{sum}]\n" if $conf->{sys}{debug} >= 2;
-			}
-		}
-		close $file_handle;
-		
-		# If we got a sum, make sure it matches an expected one.
-		if ($conf->{source}{$iso}{sum})
-		{
-			foreach my $this_sum (sort {$a cmp $b} keys %{$conf->{sys}{md5sum}})
-			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::sum: [$conf->{source}{$iso}{sum}]\n" if $conf->{sys}{debug} >= 2;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - this_sum:            [$this_sum]\n" if $conf->{sys}{debug} >= 2;
-				if ($conf->{source}{$iso}{sum} eq $this_sum)
+				$conf->{sys}{os_type}       = "rhel";
+				$conf->{sys}{os}            = "RHEL 6.9, Disk ".$disk;
+				$conf->{sys}{name}{release} = "6.9";
+				if ($iso =~ /(6\.\d)/)
 				{
-					# Match!
-					$conf->{sys}{os}            = $conf->{sys}{md5sum}{$this_sum};
-					$conf->{source}{$iso}{name} = $conf->{sys}{md5sum}{$this_sum};
-					print "- Source identified as: [$conf->{sys}{os}] (sum: [$this_sum])\n" if $conf->{sys}{debug} >= 2;
-					
-					# If this is a 6.8 ISO, change the 'release'
-					if ($conf->{sys}{os} =~ /(6\.\d+)/)
-					{
-						$conf->{sys}{name}{release} = $1;
-						print "- Set the release version as: [$conf->{sys}{name}{release}].\n" if $conf->{sys}{debug} >= 2;
-					}
+					$conf->{sys}{name}{release} = $1;
+					$conf->{sys}{os}            = "RHEL ".$conf->{sys}{name}{release}.", Disk ".$disk;
 				}
+				$conf->{source}{$iso}{name} = $conf->{sys}{os};
+				$disk++;
+				print "- The source ISO is: [$conf->{sys}{os}] (guessing from ISO file name).\n";
 			}
-			
-			# Did I find an OS?
-			if ($conf->{sys}{os} =~ /rhel/i)
+			elsif ($iso =~ /centos/i)
 			{
-				$conf->{sys}{os_type} = "rhel";
-				print "- The source ISO is: [$conf->{sys}{os}].\n";
-			}
-			elsif ($conf->{sys}{os} =~ /centos/i)
-			{
-				$conf->{sys}{os_type} = "centos";
-				print "- The source ISO is: [$conf->{sys}{os}].\n";
+				$conf->{sys}{os_type}       = "centos";
+				$conf->{sys}{os}            = "CentOS 6.9, Disk ".$disk;
+				$conf->{sys}{name}{release} = "6.9";
+				if ($iso =~ /(6\.\d)/)
+				{
+					$conf->{sys}{name}{release} = $1;
+					$conf->{sys}{os}            = "CentOS ".$conf->{sys}{name}{release}.", Disk ".$disk;
+				}
+				$conf->{source}{$iso}{name} = $conf->{sys}{os};
+				$disk++;
+				print "- The source ISO is: [$conf->{sys}{os}] (guessing from ISO file name).\n";
 			}
 			else
 			{
 				print "
+[ Error ] - Failed to determine the underlying OS for the ISO: [$iso]
+[ Error ]   If this is a custom ISO, please change the file name to contain the
+[ Error ]   string 'RHEL' or 'CentOS', depending on which underlying OS your
+[ Error ]   source ISO is based on.
+";
+				exit(3);
+			}
+		}
+		else
+		{
+			print "- Generating md5sum of the source: [$iso], please wait a moment...\n";
+			   $conf->{source}{$iso}{sum} = "";
+			my $shell_call                = $conf->{executable}{md5sum}." ".$iso;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+				
+				if ($line =~ /^(\S+)\s+$iso/)
+				{
+					$conf->{source}{$iso}{sum} = $1;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::sum: [$conf->{source}{$iso}{sum}]\n" if $conf->{sys}{debug} >= 2;
+				}
+			}
+			close $file_handle;
+			
+			# If we got a sum, make sure it matches an expected one.
+			if ($conf->{source}{$iso}{sum})
+			{
+				foreach my $this_sum (sort {$a cmp $b} keys %{$conf->{sys}{md5sum}})
+				{
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::sum: [$conf->{source}{$iso}{sum}]\n" if $conf->{sys}{debug} >= 2;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - this_sum:            [$this_sum]\n" if $conf->{sys}{debug} >= 2;
+					if ($conf->{source}{$iso}{sum} eq $this_sum)
+					{
+						# Match!
+						$conf->{sys}{os}            = $conf->{sys}{md5sum}{$this_sum};
+						$conf->{source}{$iso}{name} = $conf->{sys}{md5sum}{$this_sum};
+						print "- Source identified as: [$conf->{sys}{os}] (sum: [$this_sum])\n" if $conf->{sys}{debug} >= 2;
+						
+						# If this is a 6.8 ISO, change the 'release'
+						if ($conf->{sys}{os} =~ /(6\.\d+)/)
+						{
+							$conf->{sys}{name}{release} = $1;
+							print "- Set the release version as: [$conf->{sys}{name}{release}].\n" if $conf->{sys}{debug} >= 2;
+						}
+					}
+				}
+				
+				# Did I find an OS?
+				if ($conf->{sys}{os} =~ /rhel/i)
+				{
+					$conf->{sys}{os_type} = "rhel";
+					print "- The source ISO is: [$conf->{sys}{os}].\n";
+				}
+				elsif ($conf->{sys}{os} =~ /centos/i)
+				{
+					$conf->{sys}{os_type} = "centos";
+					print "- The source ISO is: [$conf->{sys}{os}].\n";
+				}
+				else
+				{
+					print "
 [ Error ] - Failed to match the source ISO: [$iso]
 [ Error ]   'md5sum': [$conf->{source}{$iso}{sum}] to a known sum.
 [ Error ]   It is important to verify the source ISO, so unfortunately, we can not proceed.
 ";
-				exit(3);
+					exit(3);
+				}
 			}
 		}
 	}
@@ -4715,6 +4770,13 @@ SWITCHES
 	be removed and re-downloaded to make sure it is the latest version. 
 	This switch tells the program NOT to download again, and just use the
 	existing version.
+
+--no-source-validation
+
+	Normally, this toold runs an md5sum against the source ISO(s) and 
+	varifies that the sum matches a known-good sum. If you are using a 
+	modified source, you can use this switch to skip that validation 
+	process.
 
 --release <tag>
 
