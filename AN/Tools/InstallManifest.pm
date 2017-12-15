@@ -1294,15 +1294,17 @@ sub check_device_for_drbd_metadata
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_device_for_drbd_metadata" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $device   = $parameter->{device}   ? $parameter->{device}   : "";
+	my $resource = $parameter->{resource} ? $parameter->{resource} : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "device", value1 => $device, 
-		name2 => "node",   value2 => $node, 
-		name3 => "target", value3 => $target, 
-		name4 => "port",   value4 => $port, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "device",   value1 => $device, 
+		name2 => "resource", value2 => $resource, 
+		name3 => "node",     value3 => $node, 
+		name4 => "target",   value4 => $target, 
+		name5 => "port",     value5 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
@@ -1322,7 +1324,7 @@ sub check_device_for_drbd_metadata
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1345,6 +1347,34 @@ sub check_device_for_drbd_metadata
 					device => $device, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+		}
+	}
+	
+	# If we need to, wipe the MD.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "is_drbd",                             value1 => $is_drbd,
+		name2 => "node::${node}::wipe-md::${resource}", value2 => $an->data->{node}{$node}{'wipe-md'}{$resource},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($is_drbd) eq ($an->data->{node}{$node}{'wipe-md'}{$resource}))
+	{
+		# Wipe the MD
+		   $is_drbd    = 0;
+		my $shell_call = $an->data->{path}{wipefs}." --all $device; ".$an->data->{path}{echo}." return_code:\$?";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -1483,15 +1513,17 @@ sub check_for_drbd_metadata
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_for_drbd_metadata" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $device   = $parameter->{device}   ? $parameter->{device}   : "";
+	my $resource = $parameter->{resource} ? $parameter->{resource} : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "device", value1 => $device, 
-		name2 => "node",   value2 => $node, 
-		name3 => "target", value3 => $target, 
-		name4 => "port",   value4 => $port, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "device",   value1 => $device, 
+		name2 => "resource", value2 => $resource, 
+		name3 => "node",     value3 => $node, 
+		name4 => "target",   value4 => $target, 
+		name5 => "port",     value5 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
@@ -1515,6 +1547,7 @@ sub check_for_drbd_metadata
 			port     => $port, 
 			password => $password,
 			device   => $device,
+			resource => $resource,
 		});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -15698,11 +15731,24 @@ sub setup_drbd_on_node
 		}
 	}
 	
+	# If either node has no resource config file but does have metadata, wipe the MD.
+	$an->data->{node}{$node}{'wipe-md'}{r0} = 0;
+	$an->data->{node}{$node}{'wipe-md'}{r1} = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node}::wipe-md::r0", value1 => $an->data->{node}{$node}{'wipe-md'}{r0},
+		name2 => "node::${node}::wipe-md::r1", value2 => $an->data->{node}{$node}{'wipe-md'}{r1},
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	# r0.res
 	if (not $an->data->{node}{$node}{drbd_file}{r0})
 	{
+		$an->data->{node}{$node}{'wipe-md'}{r0} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::${node}::wipe-md::r0", value1 => $an->data->{node}{$node}{'wipe-md'}{r0},
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		# Resource 0 config
-		my $shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{drbd_r0}." << EOF\n";
+		my $shell_call = $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{drbd_r0}." << EOF\n";
 		   $shell_call .= $an->data->{drbd}{r0}."\n";
 		   $shell_call .= "EOF";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -15728,6 +15774,11 @@ sub setup_drbd_on_node
 	{
 		if (not $an->data->{node}{$node}{drbd_file}{r1})
 		{
+			$an->data->{node}{$node}{'wipe-md'}{r1} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node}::wipe-md::r1", value1 => $an->data->{node}{$node}{'wipe-md'}{r1},
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			# Resource 0 config
 			my $shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{drbd_r1}." << EOF\n";
 			   $shell_call .= $an->data->{drbd}{r1}."\n";
@@ -15764,6 +15815,7 @@ sub setup_drbd_on_node
 			port     => $port, 
 			password => $password,
 			device   => $an->data->{node}{$node}{pool1}{device},
+			resource => "r0",
 		});
 	my  $pool2_return_code  = 7;
 	if ($an->data->{cgi}{anvil_storage_pool2_byte_size})
@@ -15774,6 +15826,7 @@ sub setup_drbd_on_node
 				port     => $port, 
 				password => $password,
 				device   => $an->data->{node}{$node}{pool2}{device},
+				resource => "r1",
 			});
 	}
 	

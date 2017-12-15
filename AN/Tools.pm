@@ -622,6 +622,7 @@ sub _set_defaults
 	# This is the LSB wrapper.
 	$an->data->{path}{nodes}{'wait-for-drbd'}         = "/sbin/striker/wait-for-drbd";
 	$an->data->{path}{nodes}{'wait-for-drbd_initd'}   = "/etc/init.d/wait-for-drbd";
+	$an->data->{path}{nodes}{wipefs}                  = "/sbin/wipefs";
 	
 	# ScanCore things set here are meant to be overwritable by the user in striker.conf.
 	$an->data->{scancore}{archive}{save_to_disk}           = 0;
@@ -1226,6 +1227,7 @@ sub _set_paths
 	$an->data->{path}{wc}                     = "/usr/bin/wc";
 	$an->data->{path}{wget}                   = "/usr/bin/wget";
 	$an->data->{path}{whereis}                = "/usr/bin/whereis";
+	$an->data->{path}{wipefs}                 = "/sbin/wipefs";
 	$an->data->{path}{yum}                    = "/usr/bin/yum";
 	
 	# Text files
