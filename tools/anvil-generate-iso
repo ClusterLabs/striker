@@ -1642,8 +1642,6 @@ sub generate_kickstart_files
 		}
 	}
 	
-	die;
-	
 	return(0);
 }
 
