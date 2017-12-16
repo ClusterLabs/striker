@@ -18084,140 +18084,10 @@ sub test_internet_connection
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# After installing, sometimes/often the system will come up with multiple interfaces on the same 
-	# subnet, causing default route problems. So the first thing to do is look for the interface the IP
-	# we're using to connect is on, see its subnet and see if anything else is on the same subnet. If 
-	# so, delete the other interface(s) from the route table.
-	my $dg_device  = "";
-	my $shell_call = $an->data->{path}{route}." -n";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "target",     value1 => $target,
-		name2 => "shell_call", value2 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__});
-	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$target,
-		port		=>	$port, 
-		password	=>	$password,
-		shell_call	=>	$shell_call,
-	});
-	foreach my $line (@{$return})
-	{
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /UG/)
-		{
-			$dg_device = ($line =~ /.* (.*?)$/)[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "dg_device", value1 => $dg_device,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		elsif ($line =~ /^(\d+\.\d+\.\d+\.\d+) .*? (\d+\.\d+\.\d+\.\d+) .*? \d+ \d+ \d+ (.*?)$/)
-		{
-			my $network   = $1;
-			my $netmask   = $2;
-			my $interface = $3;
-			$an->data->{conf}{node}{$node}{routes}{interface}{$interface} = "$network/$netmask";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node}::routes::interface::${interface}", value1 => $an->data->{conf}{node}{$node}{routes}{interface}{$interface},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	# Now look for offending devices 
-	$an->Log->entry({log_level => 2, message_key => "log_0198", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
-	
-	my ($dg_network, $dg_netmask) = ($an->data->{conf}{node}{$node}{routes}{interface}{$dg_device} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "dg_device",  value1 => $dg_device,
-		name2 => "dg_network", value2 => $dg_network,
-		name3 => "dg_netmask", value3 => $dg_netmask,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	foreach my $interface (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node}{routes}{interface}})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "interface", value1 => $interface,
-			name2 => "dg_device", value2 => $dg_device,
-		}, file => $THIS_FILE, line => __LINE__});
-		next if $interface eq $dg_device;
-		
-		my ($network, $netmask) = ($an->data->{conf}{node}{$node}{routes}{interface}{$interface} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "conf::node::${node}::routes::interface::${interface}", value1 => $an->data->{conf}{node}{$node}{routes}{interface}{$interface},
-			name2 => "network",                                              value2 => $network,
-			name3 => "netmask",                                              value3 => $netmask,
-		}, file => $THIS_FILE, line => __LINE__});
-		if (($dg_network eq $network) && ($dg_netmask eq $netmask))
-		{
-			# Conflicting route
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "interface", value1 => $interface,
-				name2 => "network",   value2 => $network,
-				name3 => "netmask",   value3 => $netmask,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			my $shell_call = $an->data->{path}{route}." del -net $network netmask $netmask dev $interface; ".$an->data->{path}{echo}." return_code:\$?";
-			my $password   = $an->data->{sys}{root_password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "target",     value1 => $target,
-				name2 => "shell_call", value2 => $shell_call,
-			}, file => $THIS_FILE, line => __LINE__});
-			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$target,
-				port		=>	$port, 
-				password	=>	$password,
-				shell_call	=>	$shell_call,
-			});
-			foreach my $line (@{$return})
-			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				if ($line =~ /^return_code:(\d+)/)
-				{
-					my $return_code = $1;
-					if ($return_code eq "0")
-					{
-						# Success
-						$an->Log->entry({log_level => 1, message_key => "log_0199", message_variables => {
-							network   => $network, 
-							netmask   => $netmask, 
-							interface => $interface, 
-							node      => $node, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-					else
-					{
-						# Failed.
-						$an->Log->entry({log_level => 1, message_key => "log_0200", message_variables => {
-							network     => $network, 
-							netmask     => $netmask, 
-							interface   => $interface, 
-							node        => $node, 
-							return_code => $return_code, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-				}
-			}
-		}
-		else
-		{
-			# Route is OK, for another network.
-			$an->Log->entry({log_level => 3, message_key => "log_0201", message_variables => {
-				node => $node, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
 	# Default to no connection
 	$an->data->{node}{$node}{internet} = 0;
 	
+	### Before we do anything complicated, see if we can ping 8.8.8.8.
 	# 1 == pingable, 0 == failed.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target,
@@ -18239,8 +18109,164 @@ sub test_internet_connection
 		$ok                                = 1;
 		$an->data->{node}{$node}{internet} = 1;
 	}
+	else
+	{
+		### No connection, lets see if we need to clean up routes.
+		# After installing, sometimes/often the system will come up with multiple interfaces on the 
+		# same subnet, causing default route problems. So the first thing to do is look for the 
+		# interface the IP we're using to connect is on, see its subnet and see if anything else is 
+		# on the same subnet. If so, delete the other interface(s) from the route table.
+		my $dg_device  = "";
+		my $shell_call = $an->data->{path}{route}." -n";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /UG/)
+			{
+				$dg_device = ($line =~ /.* (.*?)$/)[0];
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "dg_device", value1 => $dg_device,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($line =~ /^(\d+\.\d+\.\d+\.\d+) .*? (\d+\.\d+\.\d+\.\d+) .*? \d+ \d+ \d+ (.*?)$/)
+			{
+				my $network   = $1;
+				my $netmask   = $2;
+				my $interface = $3;
+				$an->data->{conf}{node}{$node}{routes}{interface}{$interface} = "$network/$netmask";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "conf::node::${node}::routes::interface::${interface}", value1 => $an->data->{conf}{node}{$node}{routes}{interface}{$interface},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Now look for offending devices 
+		$an->Log->entry({log_level => 2, message_key => "log_0198", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
+		
+		my ($dg_network, $dg_netmask) = ($an->data->{conf}{node}{$node}{routes}{interface}{$dg_device} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "dg_device",  value1 => $dg_device,
+			name2 => "dg_network", value2 => $dg_network,
+			name3 => "dg_netmask", value3 => $dg_netmask,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		foreach my $interface (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node}{routes}{interface}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "interface", value1 => $interface,
+				name2 => "dg_device", value2 => $dg_device,
+			}, file => $THIS_FILE, line => __LINE__});
+			next if $interface eq $dg_device;
+			
+			my ($network, $netmask) = ($an->data->{conf}{node}{$node}{routes}{interface}{$interface} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "conf::node::${node}::routes::interface::${interface}", value1 => $an->data->{conf}{node}{$node}{routes}{interface}{$interface},
+				name2 => "network",                                              value2 => $network,
+				name3 => "netmask",                                              value3 => $netmask,
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($dg_network eq $network) && ($dg_netmask eq $netmask))
+			{
+				# Conflicting route
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "interface", value1 => $interface,
+					name2 => "network",   value2 => $network,
+					name3 => "netmask",   value3 => $netmask,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $shell_call = $an->data->{path}{route}." del -net $network netmask $netmask dev $interface; ".$an->data->{path}{echo}." return_code:\$?";
+				my $password   = $an->data->{sys}{root_password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $target,
+					name2 => "shell_call", value2 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if ($line =~ /^return_code:(\d+)/)
+					{
+						my $return_code = $1;
+						if ($return_code eq "0")
+						{
+							# Success
+							$an->Log->entry({log_level => 1, message_key => "log_0199", message_variables => {
+								network   => $network, 
+								netmask   => $netmask, 
+								interface => $interface, 
+								node      => $node, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						else
+						{
+							# Failed.
+							$an->Log->entry({log_level => 1, message_key => "log_0200", message_variables => {
+								network     => $network, 
+								netmask     => $netmask, 
+								interface   => $interface, 
+								node        => $node, 
+								return_code => $return_code, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+				}
+			}
+			else
+			{
+				# Route is OK, for another network.
+				$an->Log->entry({log_level => 3, message_key => "log_0201", message_variables => {
+					node => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		### Try pinging again...
+		# 1 == pingable, 0 == failed.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target", value1 => $target,
+			name2 => "port",   value2 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($ping) = $an->Check->ping({
+			ping		=>	"8.8.8.8", 
+			count		=>	3,
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ping", value1 => $ping,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($ping)
+		{
+			$ok                                = 1;
+			$an->data->{node}{$node}{internet} = 1;
+		}
+	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node", value1 => $node,
 		name2 => "ok",   value2 => $ok,
 	}, file => $THIS_FILE, line => __LINE__});
