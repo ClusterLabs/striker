@@ -1125,37 +1125,26 @@ DRIVE=\"sda\";
 if grep -q vda /proc/partitions; then
 	DRIVE=\"vda\"
 fi
-
+";
+		if ($target eq "usb")
+		{
+			$ks_body .= "
 ### The USB drives come up as 'sdb', so the Eee's HDD is /dev/sdc
 # /dev/sdc ASUS EeeBox machine
 if grep -q sdc /proc/partitions; then
 	DRIVE=\"sdc\"
 fi
-
+";
+		}
+		else
+		{
+			$ks_body .= "
 # /dev/sdb ASUS EeeBox machine
 if grep -q sdb /proc/partitions; then
 	DRIVE=\"sdb\"
 fi
 ";
-# 		if ($target eq "usb")
-# 		{
-# 			$ks_body .= "
-# ### The USB drives come up as 'sdb', so the Eee's HDD is /dev/sdc
-# # /dev/sdc ASUS EeeBox machine
-# if grep -q sdc /proc/partitions; then
-# 	DRIVE=\"sdc\"
-# fi
-# ";
-# 		}
-# 		else
-# 		{
-# 			$ks_body .= "
-# # /dev/sdb ASUS EeeBox machine
-# if grep -q sdb /proc/partitions; then
-# 	DRIVE=\"sdb\"
-# fi
-# ";
-# 		}
+		}
 
 		$ks_body .= "
 ### Dashboards with NVMe drives will use '/dev/nvme0n1'
