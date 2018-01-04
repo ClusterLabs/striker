@@ -3453,7 +3453,7 @@ sub query_ipmi_targets
 					name4 => "psu_wattage", value4 => $psu_wattage, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				if (lc($psu_status) eq "ok") && (lc($psu_wattage) eq "no reading"))
+				if ((lc($psu_status) eq "ok") && (lc($psu_wattage) eq "no reading"))
 				{
 					# Change the status to 'no signal'
 					$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$psu_key}{ipmitool_sensor_status} = "ns";
