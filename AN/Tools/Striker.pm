@@ -2409,6 +2409,14 @@ fi
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		if ($line =~ /No space left on device/)
+		{
+			print $an->Web->template({file => "server.html", template => "general-error-message", replace => { 
+				row	=>	"#!string!row_0096!#",
+				message	=>	"#!string!message_0511!#",
+			}});
+		}
+		
 		if ($line =~ /virsh:(\d+)/)
 		{
 			$virsh_exit_code = $1;

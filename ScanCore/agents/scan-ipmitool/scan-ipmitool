@@ -3235,6 +3235,8 @@ sub query_ipmi_targets
 			   $line =~ s/\s+\|/|/g;
 			   $line =~ s/\|\s+/|/g;
 			
+			# This will change 'na' to NULL, but we don't want NULL for status, so we'll flip it 
+			# back below.
 			my $i = 0;
 			while ($line =~ /\|na\|/)
 			{
@@ -3306,7 +3308,8 @@ sub query_ipmi_targets
 			$units = "W" if $units =~ /watt/i;
 			$units = "V" if $units =~ /volt/i;
 			
-			# The BBU, as reported by IPMI, is flaky and redundant. We monitor it via storcli (or OEM variant of), so we ignore it here.
+			# The BBU, as reported by IPMI, is flaky and redundant. We monitor it via 
+			# storcli/hpacucli (or OEM variant of), so we ignore it here.
 			next if $sensor_name eq "BBU";
 			
 			# The status line is NOT NULL, so I need to change it to 'na' (not available).
@@ -3330,7 +3333,7 @@ sub query_ipmi_targets
 			$high_critical = 'NULL' if $high_critical eq "inf";
 			$high_fail     = 'NULL' if $high_fail     eq "inf";
 			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 				name1  => "sensor_name",   value1  => $sensor_name, 
 				name2  => "current_value", value2  => $current_value, 
 				name3  => "units",         value3  => $units, 
@@ -3350,13 +3353,44 @@ sub query_ipmi_targets
 				$high_warning  = $an->Convert->convert_to_celsius({temperature => $high_warning})  if $high_warning  ne "";
 				$low_critical  = $an->Convert->convert_to_celsius({temperature => $low_critical})  if $low_critical  ne "";
 				$low_warning   = $an->Convert->convert_to_celsius({temperature => $low_warning})   if $low_warning   ne "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				$units         = "C";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 					name1 => "low_critical",  value1 => $low_critical, 
 					name2 => "low_warning",   value2 => $low_warning, 
 					name3 => "high_warning",  value3 => $high_warning, 
 					name4 => "high_critical", value4 => $high_critical, 
+					name5 => "units",         value5 => $units, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			
+			### TODO: It looks like the PSU state and the PSU temperature are called, simply, 
+			###       'PSUx'... If so, change the temperature to 'PSUx Temperature'
+			if (($units eq "C") && ($sensor_name =~ /^PSU\d/i))
+			{
+				$sensor_name .= " Temperature";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "sensor_name", value1 => $sensor_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Similarly, 'PSUx Power' is used for power status and wattage....
+			if (($units eq "W") && ($sensor_name =~ /PSU\d Power/i))
+			{
+				$sensor_name =~ s/Power/Wattage/;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "sensor_name", value1 => $sensor_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# And again, 'FAN PSUx' is used for both RPM and state...
+			if (($units eq "RPM") && ($sensor_name =~ /^FAN PSU\d/i))
+			{
+				$sensor_name .= " RPM";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "sensor_name", value1 => $sensor_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
 			# Record
 			$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_value_sensor_value}   = $current_value;
 			$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_units}         = $units;
@@ -3390,9 +3424,50 @@ sub query_ipmi_targets
 		# Record how long it took.
 		my $sensor_read_time = $an->Readable->time({'time' => (time - $read_start_time)});
 		$an->Log->entry({log_level => 2, message_key => "scan_ipmitool_log_0002", message_variables => {
-			machine	=>	$machine, 
-			'time'	=>	$sensor_read_time
+			machine => $machine, 
+			'time'  => $sensor_read_time
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If a PSU is OK, but its wattage is 0, input power was lost. We'll switch the PSU state to 
+		# ensure this sets a health value. We'll check for five PSUs, though very very few should 
+		# have more than 2.
+		foreach my $i (1..5)
+		{
+			my $psu_key = "PSU".$i;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "i",       value1 => $i, 
+				name2 => "psu_key", value2 => $psu_key, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (exists $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$psu_key})
+			{
+				# TODO: Is this the key for HP machines, too?
+				my $wattage_key = $psu_key." Power";
+				my $psu_value   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$psu_key}{ipmitool_value_sensor_value};
+				my $psu_status  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$psu_key}{ipmitool_sensor_status};
+				my $psu_wattage = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$wattage_key}{ipmitool_value_sensor_value};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "wattage_key", value1 => $wattage_key, 
+					name2 => "psu_value",   value2 => $psu_value, 
+					name3 => "psu_status",  value3 => $psu_status, 
+					name4 => "psu_wattage", value4 => $psu_wattage, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (lc($psu_status) eq "ok") && (lc($psu_wattage) eq "no reading"))
+				{
+					# Change the status to 'no signal'
+					$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$psu_key}{ipmitool_sensor_status} = "ns";
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+						name1 => "ipmi::${machine}::ipmitool_sensor_name::${psu_key}::ipmitool_sensor_status", value1 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$psu_key}{ipmitool_sensor_status}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# This PSU doesn't exist, we're done.
+				last;
+			}
+		}
 	}
 	
 	return(0);

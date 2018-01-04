@@ -1834,7 +1834,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="message_0495"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!job!#</span>] disaster recovery job?]]></key>
 		<key name="message_0496"><![CDATA[The schedule nickname '<span class="highlight_detail">#!data!cgi::dr_job_schedule!#</span>' is a valid cron table nickname, but it is not supported by Striker.]]></key>
 		<key name="message_0497"><![CDATA[The schedule string: [<span class="highlight_detail">#!data!cgi::dr_job_schedule!#</span>] is malformed. There should be five sections (separated by spaces).]]></key>
-		<key name="message_0498">#!free!#</key>
+		<key name="message_0498"><![CDATA[There is no space left in the <span class="code">/shared</span> file system!<br />Please grow it or remove so old files from the Media Library and try again.]]>/key>
 		<key name="message_0499">#!free!#</key>
 		<key name="message_0500">#!free!#</key>
 		<key name="message_0501"><![CDATA[Running the install for <span class="highlight_detail">#!variable!anvil!#</span>.]]></key>

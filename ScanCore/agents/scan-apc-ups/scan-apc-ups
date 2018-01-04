@@ -1255,7 +1255,7 @@ sub find_changes
 					# *1 - The UPS's health is in an unknown state.
 					#  2 - The UPS is operating normally.
 					#  3 - The UPS is running on its batteries. See below for checks if input voltage remains. If not, this will indicate a power loss event.
-					#  4 - The UPS is compensating for low input power.
+					#  4 - The UPS is compensating for low input power. This is treated as being on batteries.
 					#  5 - The UPS is in a timed sleep. It will power back on when the timer has expired.
 					#  6 - The UPS is in bypass-mode and was placed in this mode by software. Power is passing to downstream devices through a radio frequency interference filter, but is not conditioned in any other way. Batter protection is not available.
 					# *7 - The UPS is off. No power is being provided to down-stream equipment.
@@ -3110,6 +3110,7 @@ SELECT
     a.apc_ups_uuid, 
     a.apc_ups_serial_number, 
     a.apc_ups_name, 
+    a.apc_ups_health, 
     c.apc_ups_input_voltage, 
     d.apc_ups_output_estimated_runtime, 
     b.apc_ups_battery_percentage_charge 
@@ -3139,23 +3140,32 @@ AND
 		my $apc_ups_uuid                      = $row->[0];
 		my $apc_ups_serial_number             = $row->[1];
 		my $apc_ups_name                      = $row->[2];
-		my $apc_ups_input_voltage             = $row->[3];
-		my $apc_ups_output_estimated_runtime  = $row->[4];
-		my $apc_ups_battery_percentage_charge = $row->[5];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		my $apc_ups_health                    = $row->[3];
+		my $apc_ups_input_voltage             = $row->[4];
+		my $apc_ups_output_estimated_runtime  = $row->[5];
+		my $apc_ups_battery_percentage_charge = $row->[6];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "apc_ups_uuid",                      value1 => $apc_ups_serial_number,
 			name2 => "apc_ups_serial_number",             value2 => $apc_ups_serial_number,
 			name3 => "apc_ups_name",                      value3 => $apc_ups_name,
-			name4 => "apc_ups_input_voltage",             value4 => $apc_ups_input_voltage,
-			name5 => "apc_ups_output_estimated_runtime",  value5 => $apc_ups_output_estimated_runtime,
-			name6 => "apc_ups_battery_percentage_charge", value6 => $apc_ups_battery_percentage_charge,
+			name4 => "apc_ups_health",                    value4 => $apc_ups_health,
+			name5 => "apc_ups_input_voltage",             value5 => $apc_ups_input_voltage,
+			name6 => "apc_ups_output_estimated_runtime",  value6 => $apc_ups_output_estimated_runtime,
+			name7 => "apc_ups_battery_percentage_charge", value7 => $apc_ups_battery_percentage_charge,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Convert the input voltage into a boolean value.
-		my $apc_ups_on_battery = $apc_ups_input_voltage eq "0" ? "1" : "0";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "apc_ups_on_battery", value1 => $apc_ups_on_battery,
-		}, file => $THIS_FILE, line => __LINE__});
+		# If the UPS health is '4' (boosting for low input voltage), or if there is no input voltage,
+		# we'll set that we're on batteries.
+		my $apc_ups_on_battery = 0;
+		if (($apc_ups_input_voltage eq "0") or ($apc_ups_health eq "4"))
+		{
+			$apc_ups_on_battery = 1;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+				name1 => "apc_ups_health",        value1 => $apc_ups_health,
+				name2 => "apc_ups_input_voltage", value2 => $apc_ups_input_voltage,
+				name3 => "apc_ups_on_battery",    value3 => $apc_ups_on_battery,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		
 		# For each UPS, see if there is an existing entry in the 'power' table.
 		my $query = "
