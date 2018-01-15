@@ -967,7 +967,7 @@ sub find_changes
 		my $new_apc_ups_input_voltage                  = defined $an->data->{ups}{$ups_name}{apc_ups_input_voltage}                  ? $an->data->{ups}{$ups_name}{apc_ups_input_voltage}                  : 0;
 		my $new_apc_ups_input_1m_maximum_input_voltage = defined $an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} ? $an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} : 0;
 		my $new_apc_ups_input_1m_minimum_input_voltage = defined $an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} ? $an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} : 0;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 			name1 => "new_apc_ups_input_frequency",                value1 => $new_apc_ups_input_frequency,
 			name2 => "new_apc_ups_input_sensitivity",              value2 => $new_apc_ups_input_sensitivity,
 			name3 => "new_apc_ups_input_voltage",                  value3 => $new_apc_ups_input_voltage,
@@ -5149,7 +5149,8 @@ sub gather_ups_data
 		
 		# Get the AC restore delay, if set. (High-precision, divide by 10 to get seconds).
 		$an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{ac_restore_delay});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} = 0 if $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} eq "--";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_ac_restore_delay", value1 => $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay} =~ /\D/)
@@ -5170,6 +5171,7 @@ sub gather_ups_data
 		
 		# Get the shut down delay, if set. (in ticks, divide by 100).
 		$an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{shutdown_delay});
+		$an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} = 0 if $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} eq "--";
 		if ($an->data->{ups}{$ups_name}{apc_ups_shutdown_delay} =~ /\D/)
 		{
 			# This should have been an integer...
@@ -5350,7 +5352,12 @@ sub gather_ups_data
 		# Get the temperature at which the system throws a fit. This is stated as a standard integer,
 		# no need to divide by 10.
 		$an->data->{ups}{$ups_name}{apc_ups_battery_alarm_temperature} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{battery}{alarm_temperature});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		if ($an->data->{ups}{$ups_name}{apc_ups_battery_alarm_temperature} eq "--")
+		{
+			$an->data->{ups}{$ups_name}{apc_ups_battery_alarm_temperature} = 40 ;
+			$an->data->{ups}{$ups_name}{apc_ups_temperature_units}         = "C";
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_temperature_units",         value1 => $an->data->{ups}{$ups_name}{apc_ups_temperature_units},
 			name2 => "ups::${ups_name}::apc_ups_battery_alarm_temperature", value2 => $an->data->{ups}{$ups_name}{apc_ups_battery_alarm_temperature}
 		}, file => $THIS_FILE, line => __LINE__});
@@ -5435,6 +5442,7 @@ sub gather_ups_data
 		
 		# High-precision maximum and minimum input voltages (vAC) over the last 60 seconds.
 		$an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{input}{'1m_maximum_input_voltage_hp'});
+		$an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} = -1 if $an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} eq "--";
 		if ($an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} =~ /\D/)
 		{
 			# This should have been an integer...
@@ -5448,6 +5456,7 @@ sub gather_ups_data
 			$an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} /= 10;
 		}
 		$an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{input}{'1m_minimum_input_voltage_hp'});
+		$an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} = -1 if $an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} eq "--";
 		if ($an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} =~ /\D/)
 		{
 			# This should have been an integer...
@@ -5593,6 +5602,9 @@ sub gather_ups_data
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "no_ups_found", value1 => $no_ups_found, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($no_ups_found);
 }
 
@@ -5716,7 +5728,7 @@ sub find_upses
 	{
 		# Read in /etc/hosts and look for anything with 'ups' in the name.
 		my $shell_call = "<".$an->data->{path}{etc_hosts};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, $shell_call) or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
@@ -5725,7 +5737,7 @@ sub find_upses
 			chomp;
 			my $line = $_;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
+				name1 => ">> line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Clear out comments, knock out white spaces and then skip anything without 'ups' in
@@ -5737,7 +5749,7 @@ sub find_upses
 			next if not $line;
 			next if $line !~ /ups/;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
+				name1 => "<< line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# This should be a UPS entry.
@@ -5759,7 +5771,7 @@ sub find_upses
 			if (($ups_name) && ($ip))
 			{
 				$an->data->{'scan-apc-ups'}{ups}{$ups_name} = $ip;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "scan-apc-ups::ups::$ups_name", value1 => $an->data->{'scan-apc-ups'}{ups}{$ups_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -5819,11 +5831,13 @@ sub find_upses
 	foreach my $ups_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-ups'}{ups}})
 	{
 		my $ip = $an->data->{'scan-apc-ups'}{ups}{$ups_name};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "ups_name", value1 => $ups_name, 
 			name2 => "ip",       value2 => $ip, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
+	
+	return(0);
 }
 
 # Print the usage information.

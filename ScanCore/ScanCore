@@ -1761,8 +1761,9 @@ WHERE
 	
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "count", value1 => $count
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "count",   value1 => $count, 
+		name2 => "results", value2 => $results, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $count)
 	{
@@ -1779,7 +1780,7 @@ WHERE
 			my $power_ups_name = $row->[0];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "power_ups_name",                value1 => $power_ups_name, 
-				name2 => "ref(power::${power_ups_name})", value2 => ref($an->data->{power}{$power_ups_name}),
+				name2 => "ref(power::${power_ups_name})", value2 => $an->data->{power}{$power_ups_name},
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Do I know about this UPS?
@@ -2075,7 +2076,6 @@ FROM
 WHERE 
     power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
-	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});

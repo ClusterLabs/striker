@@ -178,7 +178,7 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0015">The preferred node: [#!variable!preferred_node!#]'s storage is not ready, but the secondary: [#!variable!secondary_node!#] node is healthy. Booting: [#!variable!server!#] it there now.</key>
 		<key name="tools_log_0016">The preferred node: [#!variable!preferred_node!#]'s storage is not ready, but the secondary: [#!variable!secondary_node!#]'s storage is. The secondary node is not healthy, but the boot was forced. Booting: [#!variable!server!#] it there now.</key>
 		<key name="tools_log_0017">Successfully booted: [#!variable!server!#] on: [#!variable!node!#].</key>
-		<key name="tools_log_0018">Testing access to the ScanCore database on: [#!variable!host!#:#!variable!host!#] prior to query or write. Program will exit if it fails.</key>
+		<key name="tools_log_0018">Testing access to the ScanCore database on: [#!variable!host!#:#!variable!port!#] prior to query or write. Program will exit if it fails.</key>
 		<key name="tools_log_0019">Connected to database: [#!variable!name!#] (id: [#!variable!id!#]) on host: [#!variable!host!#:#!variable!port!#].</key>
 		<key name="tools_log_0020">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be initialized.</key>
 		<key name="tools_log_0021">[ #!variable!title!# ] - #!variable!message!#</key>
