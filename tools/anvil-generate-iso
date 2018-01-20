@@ -2051,7 +2051,7 @@ sub download_striker
 	{
 		# 
 		print "- Specific release requested: [".$conf->{switches}{release}."]\n";
-		$download = "https://github.com/ClusterLabs/striker/archive/".$conf->{switches}{release}.".zip";
+		$download = "https://github.com/ClusterLabs/striker/archive/v".$conf->{switches}{release}.".zip";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: [$download]\n" if $conf->{sys}{debug} >= 2;
 	}
 	else
