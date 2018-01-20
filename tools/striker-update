@@ -3498,13 +3498,13 @@ sub update_local_repo
 	}, file => $THIS_FILE, line => __LINE__});
 	rsync_data($an, $fence_source, $fence_destination);
 	
-	my $fence_source      = $an->data->{path}{updates}{striker}."/tools/*";
-	my $fence_destination = $an->data->{path}{img_directory}."/striker/tools/";
+	my $tools_source      = $an->data->{path}{updates}{striker}."/tools/*";
+	my $tools_destination = $an->data->{path}{img_directory}."/striker/tools/";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "fence_source",      value1 => $fence_source,
-		name2 => "fence_destination", value2 => $fence_destination,
+		name1 => "tools_source",      value1 => $tools_source,
+		name2 => "tools_destination", value2 => $tools_destination,
 	}, file => $THIS_FILE, line => __LINE__});
-	rsync_data($an, $fence_source, $fence_destination);
+	rsync_data($an, $tools_source, $tools_destination);
 	
 	return(0);
 }
