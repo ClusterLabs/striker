@@ -2226,6 +2226,7 @@ sub _put_disk_online
 		title		=>	"#!string!lsi_0030!#",
 		row		=>	$title_message,
 		row_class	=>	$title_class,
+		message		=>	$message_body, 
 	}});
 
 	return(0);
