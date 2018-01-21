@@ -10994,7 +10994,8 @@ fi";
 			elsif ($line =~ /^(\d+)B (\d+)B (\d+)B Free Space/)
 			{
 				# In some cases, there will be two or more "Free Space" entries. We'll watch
-				# for the largest.
+				# for the largest and ignore any under 100 MiB to avoid small bits of space 
+				# left over from aligned partitions.
 				my $free_space_start  = $1;
 				my $free_space_end    = $2;
 				my $free_space_size   = $3;
@@ -11004,6 +11005,8 @@ fi";
 					name3 => "free_space_size",                                value3 => $free_space_size,
 					name4 => "node::${node}::disk::${disk}::free_space::size", value4 => $an->data->{node}{$node}{disk}{$disk}{free_space}{size},
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				next if $free_space_size <= 268435456;
 				
 				# If it is the first free space, or larger than ones seen before, record it.
 				if (($free_space_size =~ /^\d+$/) && ($free_space_size > $an->data->{node}{$node}{disk}{$disk}{free_space}{size}))
@@ -11506,7 +11509,8 @@ sub install_programs_on_node
 	
 	if ($to_install)
 	{
-		my $shell_call = $an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." install $to_install";
+		# Clear the old cache and install missing packages.
+		my $shell_call = $an->data->{path}{yum}." clean expire-cache && ".$an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." install $to_install";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
@@ -13167,6 +13171,9 @@ sub reboot_nodes
 	my $ok                = 1;
 	my $node1_return_code = 1;
 	my $node2_return_code = 255;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::anvil_node1_bcn_ip", value1 => $an->data->{cgi}{anvil_node1_bcn_ip},
+	}, file => $THIS_FILE, line => __LINE__});
 	($node1_return_code) = $an->InstallManifest->do_node_reboot({
 			node       => $node1, 
 			target     => $an->data->{sys}{anvil}{node1}{use_ip}, 
@@ -13182,8 +13189,10 @@ sub reboot_nodes
 	if ($node1_return_code eq "0")
 	{
 		$an->data->{cgi}{anvil_node1_current_ip} = $an->data->{cgi}{anvil_node1_bcn_ip};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->data->{sys}{anvil}{node1}{use_ip}   = $an->data->{cgi}{anvil_node1_bcn_ip};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "cgi::anvil_node1_current_ip", value1 => $an->data->{cgi}{anvil_node1_current_ip},
+			name2 => "sys::anvil::node1::use_ip",   value2 => $an->data->{sys}{anvil}{node1}{use_ip},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -13191,6 +13200,9 @@ sub reboot_nodes
 	if ((not $node1_return_code) or ($node1_return_code eq "1") or ($node1_return_code eq "5"))
 	{
 		$node2_return_code = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_node2_bcn_ip", value1 => $an->data->{cgi}{anvil_node2_bcn_ip},
+		}, file => $THIS_FILE, line => __LINE__});
 		($node2_return_code) = $an->InstallManifest->do_node_reboot({
 				node       => $node2, 
 				target     => $an->data->{sys}{anvil}{node2}{use_ip}, 
@@ -13206,8 +13218,10 @@ sub reboot_nodes
 		if ($node2_return_code eq "0")
 		{
 			$an->data->{cgi}{anvil_node2_current_ip} = $an->data->{cgi}{anvil_node2_bcn_ip};
+			$an->data->{sys}{anvil}{node2}{use_ip}   = $an->data->{cgi}{anvil_node2_bcn_ip};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "cgi::anvil_node2_current_ip", value1 => $an->data->{cgi}{anvil_node2_current_ip},
+				name2 => "sys::anvil::node2::use_ip",   value2 => $an->data->{sys}{anvil}{node2}{use_ip},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -13233,6 +13247,9 @@ sub reboot_nodes
 	{
 		# Node rebooted, change the IP we're using for it now.
 		$an->data->{sys}{anvil}{node1}{use_ip} = $an->data->{cgi}{anvil_node1_bcn_ip};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::anvil::node1::use_ip", value1 => $an->data->{sys}{anvil}{node1}{use_ip},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($node1_return_code eq "1")
 	{
@@ -13281,6 +13298,9 @@ sub reboot_nodes
 	{
 		# Node rebooted, change the IP we're using for it now.
 		$an->data->{sys}{anvil}{node2}{use_ip} = $an->data->{cgi}{anvil_node2_bcn_ip};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::anvil::node2::use_ip", value1 => $an->data->{sys}{anvil}{node2}{use_ip},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($node2_return_code eq "1")
 	{
@@ -15490,22 +15510,28 @@ sub set_ricci_password
 	my $ok             = 1;
 	my $node1_ricci_pw = "";
 	my $node2_ricci_pw = "";
-	($node1_ricci_pw) = $an->InstallManifest->set_password_on_node({
-			node         => $an->data->{sys}{anvil}{node1}{name}, 
-			target       => $an->data->{sys}{anvil}{node1}{use_ip}, 
-			port         => $an->data->{sys}{anvil}{node1}{use_port}, 
-			password     => $an->data->{sys}{anvil}{node1}{password},
-			user         => "ricci",
-			new_password => $an->data->{sys}{anvil}{password},
-		}) if not $an->data->{node}{node1}{has_servers};
-	($node2_ricci_pw) = $an->InstallManifest->set_password_on_node({
-			node         => $an->data->{sys}{anvil}{node2}{name}, 
-			target       => $an->data->{sys}{anvil}{node2}{use_ip}, 
-			port         => $an->data->{sys}{anvil}{node2}{use_port}, 
-			password     => $an->data->{sys}{anvil}{node2}{password},
-			user         => "ricci",
-			new_password => $an->data->{sys}{anvil}{password},
-		}) if not $an->data->{node}{node2}{has_servers};
+	if (not $an->data->{node}{node1}{has_servers})
+	{
+		($node1_ricci_pw) = $an->InstallManifest->set_password_on_node({
+				node         => $an->data->{sys}{anvil}{node1}{name}, 
+				target       => $an->data->{sys}{anvil}{node1}{use_ip}, 
+				port         => $an->data->{sys}{anvil}{node1}{use_port}, 
+				password     => $an->data->{sys}{anvil}{node1}{password},
+				user         => "ricci",
+				new_password => $an->data->{sys}{anvil}{password},
+			});
+	}
+	if (not $an->data->{node}{node2}{has_servers})
+	{
+		($node2_ricci_pw) = $an->InstallManifest->set_password_on_node({
+				node         => $an->data->{sys}{anvil}{node2}{name}, 
+				target       => $an->data->{sys}{anvil}{node2}{use_ip}, 
+				port         => $an->data->{sys}{anvil}{node2}{use_port}, 
+				password     => $an->data->{sys}{anvil}{node2}{password},
+				user         => "ricci",
+				new_password => $an->data->{sys}{anvil}{password},
+			});
+	}
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_ricci_pw", value1 => $node1_ricci_pw,
 		name2 => "node2_ricci_pw", value2 => $node2_ricci_pw,
@@ -15588,30 +15614,48 @@ sub set_root_password
 		name1 => "cgi::anvil_node1_current_password", value1 => $an->data->{sys}{anvil}{node1}{password},
 		name2 => "cgi::anvil_node2_current_password", value2 => $an->data->{sys}{anvil}{node2}{password},
 	}, file => $THIS_FILE, line => __LINE__});
-	($an->data->{sys}{anvil}{node1}{password}) = $an->InstallManifest->set_password_on_node({
-			node         => $an->data->{sys}{anvil}{node1}{name}, 
-			target       => $an->data->{sys}{anvil}{node1}{use_ip}, 
-			port         => $an->data->{sys}{anvil}{node1}{use_port}, 
-			password     => $an->data->{sys}{anvil}{node1}{password},
-			user         => "root",
-			new_password => $an->data->{sys}{anvil}{password},
-		}) if not $an->data->{node}{node1}{has_servers};
-	($an->data->{sys}{anvil}{node2}{password}) = $an->InstallManifest->set_password_on_node({
-			node         => $an->data->{sys}{anvil}{node2}{name}, 
-			target       => $an->data->{sys}{anvil}{node2}{use_ip}, 
-			port         => $an->data->{sys}{anvil}{node2}{use_port}, 
-			password     => $an->data->{sys}{anvil}{node2}{password},
-			user         => "root",
-			new_password => $an->data->{sys}{anvil}{password},
-		}) if not $an->data->{node}{node2}{has_servers};
+	if (not $an->data->{node}{node1}{has_servers})
+	{
+		($an->data->{sys}{anvil}{node1}{password}) = $an->InstallManifest->set_password_on_node({
+				node         => $an->data->{sys}{anvil}{node1}{name}, 
+				target       => $an->data->{sys}{anvil}{node1}{use_ip}, 
+				port         => $an->data->{sys}{anvil}{node1}{use_port}, 
+				password     => $an->data->{sys}{anvil}{node1}{password},
+				user         => "root",
+				new_password => $an->data->{sys}{anvil}{password},
+			});
+		
+		# Set the CGI variable in case we abort and have to start over.
+		$an->data->{cgi}{anvil_node1_current_password} = $an->data->{sys}{anvil}{node1}{password}; 
+		$an->data->{sys}{anvil}{node1}{password}       = $an->data->{sys}{anvil}{password};
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+			name1 => "cgi::anvil_node1_current_password", value1 => $an->data->{cgi}{anvil_node1_current_password},
+			name2 => "sys::anvil::node1::password",       value2 => $an->data->{sys}{anvil}{node1}{password},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if (not $an->data->{node}{node2}{has_servers})
+	{
+		($an->data->{sys}{anvil}{node2}{password}) = $an->InstallManifest->set_password_on_node({
+				node         => $an->data->{sys}{anvil}{node2}{name}, 
+				target       => $an->data->{sys}{anvil}{node2}{use_ip}, 
+				port         => $an->data->{sys}{anvil}{node2}{use_port}, 
+				password     => $an->data->{sys}{anvil}{node2}{password},
+				user         => "root",
+				new_password => $an->data->{sys}{anvil}{password},
+			});
+		
+		# Set the CGI variable in case we abort and have to start over.
+		$an->data->{cgi}{anvil_node2_current_password} = $an->data->{sys}{anvil}{node2}{password}; 
+		$an->data->{sys}{anvil}{node2}{password}       = $an->data->{sys}{anvil}{password};
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+			name1 => "cgi::anvil_node2_current_password", value1 => $an->data->{cgi}{anvil_node2_current_password},
+			name2 => "sys::anvil::node2::password",       value2 => $an->data->{sys}{anvil}{node2}{password},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::anvil_node1_current_password", value1 => $an->data->{sys}{anvil}{node1}{password},
 		name2 => "cgi::anvil_node2_current_password",    value2 => $an->data->{sys}{anvil}{node2}{password},
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Update our system passwords for the nodes.
-	$an->data->{sys}{anvil}{node1}{password} = $an->data->{sys}{anvil}{password};
-	$an->data->{sys}{anvil}{node2}{password} = $an->data->{sys}{anvil}{password};
 	
 	# Test the new password.
 	($node1_access) = $an->Check->access({

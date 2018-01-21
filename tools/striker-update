@@ -2514,6 +2514,31 @@ done
 				print "- The operating system's kernel was updated.\n";
 				print "- You will need to reboot this machine when the update process completes.\n";
 			}
+			
+			# Now download the RPMs used only on the nodes so that we have updated cache.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::offline", value1 => $an->data->{sys}{offline}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $an->data->{sys}{offline})
+			{
+				print "Downloading node-specific packages.\n";
+				my $shell_call = $an->data->{path}{yum}." -y install lvm2-cluster dos2unix --disablerepo=*striker* --downloadonly";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				print "/-----[ Command output ]------------------------------------------------------\n";
+				open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; [ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				close $file_handle;
+				print "\\-----------------------------------------------------------------------------\n";
+			}
 		}
 		else
 		{
@@ -2750,10 +2775,10 @@ done
 			my $mode      = $an->data->{permissions}{$target}{mode};
 			my $recursive = $an->data->{permissions}{$target}{recursive};
 			
-			my $shell_call = $an->data->{path}{'chown'}." ".$owner.":".$group." ".$path." && ".$an->data->{path}{'chmod'}." ".$path;
+			my $shell_call = $an->data->{path}{'chown'}." ".$owner.":".$group." ".$path." && ".$an->data->{path}{'chmod'}." ".$mode." ".$path;
 			if ($recursive)
 			{
-				$shell_call = $an->data->{path}{'chown'}." -R ".$owner.":".$group." ".$path." && ".$an->data->{path}{'chmod'}." -R ".$path;
+				$shell_call = $an->data->{path}{'chown'}." -R ".$owner.":".$group." ".$path." && ".$an->data->{path}{'chmod'}." -R ".$mode." ".$path;
 			}
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
@@ -3477,6 +3502,12 @@ sub update_local_repo
 	print "- Copying new RPMs to the RPM repository.\n";
 	my $packages_dir = $an->data->{path}{img_directory}."/Packages";
 	rsync_data($an, $an->data->{path}{updates}{rpms}."/*", $packages_dir);
+	
+	# Copy third party RPMs to the repo.
+	my $packages_source      = $an->data->{path}{img_directory}."/Packages/*";
+	my $packages_destination = $an->data->{path}{img_directory}."/";
+	print "Copying source packages (including optional third party packages) to the repo.\n";
+	rsync_data($an, $packages_source, $packages_destination);
 	
 	# Copy over any of our RPMs from cache to the repo source.
 	my ($xml_file1, $xml_file2) = get_repodata_xml_file_name($an);

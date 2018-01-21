@@ -3135,7 +3135,7 @@ sub manifests_menu
 			# Do it.
 			   $show_form     = 0;
 			my ($return_code) = $an->InstallManifest->run_new_install_manifest();
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "show_form",   value1 => $show_form,
 				name2 => "return_code", value2 => $return_code,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3152,7 +3152,7 @@ sub manifests_menu
 						value	=>	"#!string!button_0063!#",
 					}});
 				my $message = $an->String->get({key => "message_0432", variables => { try_again_button => $button }});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 					name1  => "cgi::anvil_node1_bcn_link1_mac", value1  => $an->data->{cgi}{anvil_node1_bcn_link1_mac},
 					name2  => "cgi::anvil_node1_bcn_link2_mac", value2  => $an->data->{cgi}{anvil_node1_bcn_link2_mac},
 					name3  => "cgi::anvil_node1_sn_link1_mac",  value3  => $an->data->{cgi}{anvil_node1_sn_link1_mac},
@@ -3196,7 +3196,7 @@ sub manifests_menu
 						rhn_password			=>	$an->data->{cgi}{rhn_password},
 						manifest_uuid			=>	$an->data->{cgi}{manifest_uuid},
 					}});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "restart_html", value1 => $restart_html,
 				}, file => $THIS_FILE, line => __LINE__});
 				print $restart_html;
