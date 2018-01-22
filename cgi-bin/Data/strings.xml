@@ -175,7 +175,7 @@
 		<key name="explain_0031">Windows servers tend to work best with 2 CPUs.</key>
 		<key name="explain_0032">More is not always better. When in doubt, start with 2 to 4. You can change this easily later.</key>
 		<key name="explain_0033">Please use only one node's storage pool.</key>
-		<key name="explain_0034"><![CDATA[Enter a fixed size or a percentage of remaining free space to use for this server.]]></key>
+		<key name="explain_0034"><![CDATA[Enter a fixed size or a percentage of remaining free space to use for this server.<br />If you separate two sizes with a colon, like '<span class="fixed_width">80:250</span> [ GiB ]', it will create two partition<br /> sized '<span class="fixed_width">80</span> GiB' for the first drive and '<span class="fixed_width">250</span> GiB' for the second one.]]></key>
 		<key name="explain_0035">This is the user names used to log in to you IPMI interface.</key>
 		<key name="explain_0036"><![CDATA[If you need to use "Lanplus" to talk to the node's IPMI interface, change this to '#!string!state_0038!#'. This is often needed for HP Proliant nodes.]]></key>
 		<key name="explain_0037">#!free!#</key>

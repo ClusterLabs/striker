@@ -4804,6 +4804,8 @@ sub _confirm_provision_server
 			selected => $an->data->{cgi}{cpu_cores},
 			width    => 60,
 		});
+	
+	# Storage select(s).
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::max_storage", value1 => $an->data->{cgi}{max_storage},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4813,17 +4815,29 @@ sub _confirm_provision_server
 			name1 => "storage", value1 => $storage,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my ($vg, $space)                    =  ($storage =~ /^(.*?):(\d+)$/);
+		my ($vg, $space) =  ($storage =~ /^(.*?):(\d+)$/);
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "vg",    value1 => $vg,
 			name2 => "space", value2 => $space,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $say_max_storage                 =  $an->Readable->bytes_to_hr({'bytes' => $space });
-		   $say_max_storage                 =~ s/\.(\d+)//;
+		my $say_max_storage =  $an->Readable->bytes_to_hr({'bytes' => $space});
+		   $say_max_storage =~ s/\.(\d+)//;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "say_max_storage", value1 => $say_max_storage,
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Make anything over a TiB report in GiB
+		if ($space >= (2 ** 30))
+		{
+			   $say_max_storage   =  $an->Readable->bytes_to_hr({'bytes' => $space, unit => "GiB"});
+			   $say_max_storage   =~ s/\.(\d+)//;
+			my ($number, $suffix) = ($say_max_storage =~ /^(\d+) (.*)$/);
+			   $say_max_storage   =  $an->Readable->comma($number)." ".$suffix;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "say_max_storage", value1 => $say_max_storage,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		
 		   $an->data->{cgi}{vg_list}        .= "$vg,";
 		my $vg_key                          =  "vg_$vg";
@@ -4836,7 +4850,7 @@ sub _confirm_provision_server
 			name3 => "cgi::$vg_suffix_key", value3 => $an->data->{cgi}{$vg_suffix_key},
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $select_vg_suffix                =  $an->Web->build_select({
+		my $select_vg_suffix = $an->Web->build_select({
 				name     => $vg_suffix_key, 
 				options  => ["MiB", "GiB", "TiB", "%"], 
 				blank    => 0,
@@ -4987,7 +5001,7 @@ sub _confirm_provision_server
 			selected => $an->data->{cgi}{ram_suffix},
 			width    => 60,
 		});
-	   $an->data->{cgi}{os_variant} = "rhel6" if not $an->data->{cgi}{os_variant};
+	   $an->data->{cgi}{os_variant} = "rhel7" if not $an->data->{cgi}{os_variant};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "select_ram_suffix", value1 => $select_ram_suffix,
 		name2 => "cgi::os_variant",   value2 => $an->data->{cgi}{os_variant},
@@ -5020,7 +5034,7 @@ sub _confirm_provision_server
 	my $select_os_variant = $an->Web->build_select({
 			name     => "os_variant", 
 			options  => $an->data->{sys}{os_variant}, 
-			'sort'   => 1,
+			'sort'   => 0,
 			blank    => 0,
 			selected => $an->data->{cgi}{os_variant},
 			width    => 300,
@@ -5513,7 +5527,7 @@ sub _display_anvil_safe_start_notice
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_display_anvil_safe_start_notice" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_display_anvil_safe_start_notice" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_safe_start_notice = "";
 	my $display_notice          = 0;
