@@ -2013,7 +2013,7 @@ sub check_storage
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = $an->String->get({key => "state_0054", variables => { 
 			pool1_device	=>	$an->data->{node}{$node1}{pool1}{disk}.$an->data->{node}{$node1}{pool1}{partition},
-			pool1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }),
+			pool1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size}}),
 			pool2_device	=>	$an->data->{cgi}{anvil_storage_pool2_byte_size} ? $an->data->{node}{$node1}{pool2}{disk}.$an->data->{node}{$node1}{pool2}{partition}        : "--",
 			pool2_size	=>	$an->data->{cgi}{anvil_storage_pool2_byte_size} ? $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }) : "--",
 			media_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_media_library_byte_size} }),
@@ -2021,7 +2021,7 @@ sub check_storage
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = $an->String->get({key => "state_0054", variables => { 
 			pool1_device	=>	$an->data->{node}{$node2}{pool1}{disk}.$an->data->{node}{$node2}{pool1}{partition},
-			pool1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }),
+			pool1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size}}),
 			pool2_device	=>	$an->data->{cgi}{anvil_storage_pool2_byte_size} ? $an->data->{node}{$node2}{pool2}{disk}.$an->data->{node}{$node2}{pool2}{partition}        : "--",
 			pool2_size	=>	$an->data->{cgi}{anvil_storage_pool2_byte_size} ? $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }) : "--",
 			media_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_media_library_byte_size} }),
@@ -5981,7 +5981,7 @@ sub configure_storage_stage1
 					node    => $node1, 
 					disk    => $node1_pool1_disk, 
 					size    => $an->data->{cgi}{anvil_storage_pool1_byte_size}, 
-					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }), 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size}}), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($return_code eq "2")
@@ -5994,7 +5994,7 @@ sub configure_storage_stage1
 					node    => $node1, 
 					disk    => $node1_pool1_disk, 
 					size    => $an->data->{cgi}{anvil_storage_pool1_byte_size}, 
-					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }), 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size}}), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -6102,7 +6102,7 @@ sub configure_storage_stage1
 					node    => $node2, 
 					disk    => $node2_pool1_disk, 
 					size    => $an->data->{cgi}{anvil_storage_pool1_byte_size}, 
-					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }), 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size}}), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($return_code eq "2")
@@ -6115,7 +6115,7 @@ sub configure_storage_stage1
 					node    => $node2, 
 					disk    => $node2_pool1_disk, 
 					size    => $an->data->{cgi}{anvil_storage_pool1_byte_size}, 
-					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }), 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size}}), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -11006,7 +11006,12 @@ fi";
 					name4 => "node::${node}::disk::${disk}::free_space::size", value4 => $an->data->{node}{$node}{disk}{$disk}{free_space}{size},
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				next if $free_space_size <= 268435456;
+				if ($free_space_size <= 268435456)
+				{
+					# Small amount of space, ignore it.
+					$an->Log->entry({log_level => 2, message_key => "log_0172", file => $THIS_FILE, line => __LINE__});
+					next;
+				}
 				
 				# If it is the first free space, or larger than ones seen before, record it.
 				if (($free_space_size =~ /^\d+$/) && ($free_space_size > $an->data->{node}{$node}{disk}{$disk}{free_space}{size}))
@@ -11083,7 +11088,7 @@ sub get_partition_data_from_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: Parted, in its infinite wisdom, doesn't show the partition type when called with --machine
-	my $shell_call = $an->data->{path}{parted}." /dev/$disk unit GiB print free";
+	my $shell_call = $an->data->{path}{parted}." /dev/$disk unit B print free";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
@@ -11104,7 +11109,7 @@ sub get_partition_data_from_node
 			name2 => "disk", value2 => $disk,
 			name3 => "line", value3 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /([\d\.]+)GiB ([\d\.]+)GiB ([\d\.]+)GiB Free/i)
+		if ($line =~ /(\d+)B (\d+)B (\d+)B Free/i)
 		{
 			my $start = $1;
 			my $end   = $2;
@@ -11112,15 +11117,16 @@ sub get_partition_data_from_node
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "start", value1 => $start,
 				name2 => "end",   value2 => $end,
-				name3 => "size",  value3 => $size,
+				name3 => "size",  value3 => $size." (".$an->Readable->bytes_to_hr({'bytes' => $size}).")",
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Sometimes there is a tiny bit of free space in some places, like the start of a 
-			# disk. Ignore those.
-			if ((not $size) or ($size =~ /^0\./))
+			# disk. Ignore anything with less that 256 MiB of space.
+			if ((not $size) or ($size <= 268435456))
 			{
 				# Small amount of space, ignore it.
 				$an->Log->entry({log_level => 2, message_key => "log_0172", file => $THIS_FILE, line => __LINE__});
+				next;
 			}
 			
 			### NOTE: This will miss multiple sizable free chunks.
@@ -11129,7 +11135,7 @@ sub get_partition_data_from_node
 			$an->data->{node}{$node}{partition}{free_space}{end}   = $end;
 			$an->data->{node}{$node}{partition}{free_space}{size}  = $size;
 		}
-		elsif ($line =~ /(\d+) ([\d\.]+)GiB ([\d\.]+)GiB ([\d\.]+)GiB(.*)$/)
+		elsif ($line =~ /(\d+) (\d+)B (\d+)B (\d+)B(.*)$/)
 		{
 			my $partition = $1;
 			my $start     = $2;
@@ -11140,7 +11146,7 @@ sub get_partition_data_from_node
 				name1 => "partition", value1 => $partition,
 				name2 => "start",     value2 => $start,
 				name3 => "end",       value3 => $end,
-				name4 => "size",      value4 => $size,
+				name4 => "size",      value4 => $size." (".$an->Readable->bytes_to_hr({'bytes' => $size}).")",
 				name5 => "details",   value5 => $details,
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -11226,10 +11232,11 @@ sub get_storage_pool_partitions
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($disk =~ /da$/)
 		{
+			### NOTE: The code for a second storage pool remains, but is not actually used.
 			# I need to know the label type to determine the partition numbers to use:
-			# * If it is 'msdos', I need an extended partition and then two logical partitions. 
-			#   (4, 5 and 6)
-			# * If it is 'gpt', I just use two logical partition. (4 and 5).
+			# * If it is 'msdos', I need an extended partition and then a logical partitions. 
+			#   (4 for extended, 5 for logical)
+			# * If it is 'gpt', I just use one logical partition. (4).
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node::${node}::disk::${disk}::label", value1 => $an->data->{node}{$node}{disk}{$disk}{label},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -11238,22 +11245,95 @@ sub get_storage_pool_partitions
 				$create_extended_partition = 1;
 				$pool1_partition           = 5;
 				$pool2_partition           = 6;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "node::${node}::disk::${disk}::partition_count", value1 => $an->data->{node}{$node}{disk}{$disk}{partition_count},
 					name2 => "create_extended_partition",                     value2 => $create_extended_partition,
 					name3 => "pool1_partition",                               value3 => $pool1_partition,
-					name4 => "pool2_partition",                               value4 => $pool2_partition,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($an->data->{node}{$node}{disk}{$disk}{partition_count} >= 4)
 			{
-				# This is probably a UEFI system, so there will be 4 partitions.
-				$pool1_partition = 5;
-				$pool2_partition = 6;
+				# This is either a UEFI system and partition 4 will be /, or we failed on a 
+				# previous install between when we partitioned the node and wrote the DRBD 
+				# resource config. To tell the difference, we'll look to see what partition
+				# type partition 4 is. If nothing, we'll use it. Otherwise it's UEFI and 
+				# we'll use partitions 5 and 6 (well, '5').
+				my $target   = $an->data->{sys}{anvil}{node1}{use_ip};
+				my $port     = $an->data->{sys}{anvil}{node1}{use_port};
+				my $password = $an->data->{sys}{anvil}{node1}{password};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "pool1_partition", value1 => $pool1_partition,
-					name2 => "pool2_partition", value2 => $pool2_partition,
+					name1 => "sys::anvil::node1::name", value1 => $an->data->{sys}{anvil}{node1}{name},
+					name2 => "node1",                   value2 => $node1,
 				}, file => $THIS_FILE, line => __LINE__});
+				if ($an->data->{sys}{anvil}{node2}{name} eq $node)
+				{
+					$target     = $an->data->{sys}{anvil}{node1}{use_ip};
+					$port       = $an->data->{sys}{anvil}{node1}{use_port};
+					$password   = $an->data->{sys}{anvil}{node1}{password};
+				}
+				
+				my $use_4      = 1;
+				my $shell_call = $an->data->{path}{blkid}." -c /dev/null /dev/".$disk."4";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $target,
+					name2 => "shell_call", value2 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if ($line =~ /UUID=/)
+					{
+						$use_4 = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "use_4", value1 => $use_4,
+						}, file => $THIS_FILE, line => __LINE__});
+						last;
+					}
+				}
+				
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "use_4", value1 => $use_4,
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($use_4)
+				{
+					# It's a blank partition, we'll use it.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "sys::anvil::node1::name", value1 => $an->data->{sys}{anvil}{node1}{name},
+						name2 => "node1",                   value2 => $node1,
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{sys}{anvil}{node1}{name} eq $node)
+					{
+						$node1_r0_device = "/dev/".$disk."4";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "node1_r0_device", value1 => $node1_r0_device,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					else
+					{
+						$node2_r0_device = "/dev/".$disk."4";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "node2_r0_device", value1 => $node2_r0_device,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				else
+				{
+					$pool1_partition = 5;
+					$pool2_partition = 6;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "pool1_partition", value1 => $pool1_partition,
+						name2 => "pool2_partition", value2 => $pool2_partition,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "create_extended_partition", value1 => $create_extended_partition,
@@ -17250,11 +17330,11 @@ sub summarize_build_plan
 		ifn_link2_name			=>	$an->String->get({key => "script_0063", variables => { number => "2" }}),
 		ifn_link2_node1_mac		=>	$an->data->{conf}{node}{$node1}{set_nic}{ifn_link2},
 		ifn_link2_node2_mac		=>	$an->data->{conf}{node}{$node2}{set_nic}{ifn_link2},
-		media_library_size		=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_media_library_byte_size} }),
-		pool1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }),
-		pool2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }),
-		partition1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_partition_1_byte_size} }),
-		partition2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_partition_2_byte_size} }),
+		media_library_size		=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_media_library_byte_size}}),
+		pool1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size}}),
+		pool2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size}}),
+		partition1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_partition_1_byte_size}}),
+		partition2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_partition_2_byte_size}}),
 		edit_manifest_url		=>	"?task=manifests&manifest_uuid=".$an->data->{cgi}{manifest_uuid},
 		remap_network_url		=>	$an->data->{sys}{cgi_string}."&remap_network=true",
 		anvil_node1_current_ip		=>	$an->data->{sys}{anvil}{node1}{use_ip},

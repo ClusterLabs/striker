@@ -285,6 +285,10 @@ check_hostname_for_changes($an);
 # agents that have registered alerts (pending or historical).
 load_agent_strings($an);
 
+# Record the time. This prevents us getting killed if it takes as a while to run after this machine was off
+# for a while.
+$an->DB->update_time({file => $THIS_FILE});
+
 # Archive, if needed. 
 archive_if_needed($an);
 
