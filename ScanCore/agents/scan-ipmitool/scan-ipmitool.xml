@@ -27,9 +27,6 @@ with 'scan_ipmitool_'.
 		<key name="scan_ipmitool_log_0008">The sensor named: [#!variable!sensor_name!#] appears to have actually vanished. It has been gone for: [#!data!scan-ipmitool::sensor_loss_count_to_alarm!#] scans.</key>
 		<key name="scan_ipmitool_log_0009">The sensor named: [#!variable!sensor_name!#] appears to have vanished. It hasn't been seen in: [#!variable!scans!#] scans. If it is gone for: [#!data!scan-ipmitool::sensor_loss_count_to_alarm!#] scans, we'll send an alarm.</key>
 		
-		<!-- Errors -->
-		<key name="scan_ipmitool_error_0001">The query: [#!variable!query!#] against DB: [#!variable!id!#] returned: [#!variable!count!#] rows. Only '1' should have been returned!</key>
-		
 		<!-- Sensor names -->
 		<key name="scan_ipmitool_sensor_name_0001">Ambient Temperature</key>
 		<key name="scan_ipmitool_sensor_name_0002">#!variable!voltage!#vDC Battery</key>
@@ -188,6 +185,12 @@ The new sensor: [#!variable!sensor_name!#] has been found.
   - Low warning:   [#!variable!low_warning!#]
   - Low critical:  [#!variable!low_critical!#]
 		</key>
+		<key name="scan_ipmitool_message_0016">
+The IPMI sensor: [#!variable!sensor!#] with the value: [#!variable!value!#] on host: [#!variable!host!#] has: [#!variable!count!#] values recoreded. 
+- Note: This is likely a bug in the agent. To correct it, the values will be deleted. Expect a follow up alert indicating that the values were found again.
+		</key>
+		<key name="scan_ipmitool_message_0017">There was no IPMI sensor value units set for sensor: [#!variable!sensor!#] on the machine: [#!variable!machine!#].</key>
+		<key name="scan_ipmitool_message_0018">There was no IPMI sensor value set for sensor: [#!variable!sensor!#] on the machine: [#!variable!machine!#].</key>
 		
 		<!-- Sensor message titles -->
 		<key name="scan_ipmitool_title_0001">New sensor found on: [#!variable!machine!#]</key>

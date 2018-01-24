@@ -66,6 +66,8 @@ my $an = AN::Tools->new({data =>
 		scancore			=>	{
 			# Set to '1' to add the footer warning that the email did not come from alteeve.com.
 			append_email_footer	=>	0,
+			# This is how long an agent is allowed to run for before we terminate it.
+			agent_timeout		=>	300,
 			archive			=>	{
 				directory		=>	"/var/ScanCore/archives/",
 				division		=>	60000,
@@ -11198,21 +11200,35 @@ sub call_agents
 		
 		# I call these sequentially to minimize the load on the host.
 		my $agent_rc   = "9999";
-		my $shell_call = "$agent; ".$an->data->{path}{echo}." rc:\$?";
+		my $shell_call = $an->data->{path}{timeout}." ".$an->data->{scancore}{agent_timeout}." ".$agent;
 		if ($an->data->{scancore}{user_set_log_level})
 		{
-			$shell_call = "$agent ".$an->data->{scancore}{user_set_log_level}."; echo rc:\$?";
+			$shell_call .= " ".$an->data->{scancore}{user_set_log_level};
 		}
+		$shell_call .= "; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line =  $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => "$line"
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($line =~ /rc:(\d+)/)
+			if ($line eq "rc:124")
+			{
+				# Something went wrong, register a notice-level alert.
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scancore_log_0001",
+					alert_message_variables	=>	{
+						agent			=>	$agent,
+					}
+				});
+			}
+			elsif ($line =~ /rc:(\d+)/)
 			{
 				$agent_rc = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

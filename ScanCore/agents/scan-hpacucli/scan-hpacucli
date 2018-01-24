@@ -2340,7 +2340,7 @@ SET
     hpacucli_physical_drive_type                = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_physical_drive_type).", 
     hpacucli_physical_drive_rpm                 = $quoted_hpacucli_physical_drive_rpm, 
     hpacucli_physical_drive_temperature         = $quoted_hpacucli_physical_drive_temperature, 
-    hpacucli_physical_drive_last_failure_reason = ".$an->data->{sys}{use_db_fh}->quote($old_hpacucli_physical_drive_last_failure_reason).", 
+    hpacucli_physical_drive_last_failure_reason = ".$an->data->{sys}{use_db_fh}->quote($new_hpacucli_physical_drive_last_failure_reason).", 
     hpacucli_physical_drive_port                = ".$an->data->{sys}{use_db_fh}->quote($port).", 
     hpacucli_physical_drive_box                 = ".$an->data->{sys}{use_db_fh}->quote($box).", 
     hpacucli_physical_drive_bay                 = ".$an->data->{sys}{use_db_fh}->quote($bay).", 

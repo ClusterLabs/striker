@@ -749,6 +749,36 @@ sub find_changes
 					name7 => "new_ipmitool_sensor_low_warning",   value7 => $new_ipmitool_sensor_low_warning, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				### NOTE: These were added to debug duplicate ipmitool_value entries.
+				if (not $new_ipmitool_sensor_units)
+				{
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_ipmitool_message_0017",
+						alert_message_variables	=>	{
+							machine			=>	$machine,
+							sensor			=>	$ipmitool_sensor_name,
+						},
+					});
+					next;
+				}
+				if (not $new_ipmitool_value_sensor_value)
+				{
+					$an->Alert->register_alert({
+						alert_level		=>	"notice", 
+						alert_agent_name	=>	$THIS_FILE,
+						alert_title_key		=>	"an_alert_title_0003",
+						alert_message_key	=>	"scan_ipmitool_message_0018",
+						alert_message_variables	=>	{
+							machine			=>	$machine,
+							sensor			=>	$ipmitool_sensor_name,
+						},
+					});
+					next;
+				}
+				
 				# If the value is NULL and it's a digit-based value, switch it to '0'
 				if ((($new_ipmitool_sensor_units eq "C") or ($new_ipmitool_sensor_units eq "F") or ($new_ipmitool_sensor_units eq "RPM")) && ($new_ipmitool_value_sensor_value eq "NULL"))
 				{
@@ -1031,6 +1061,23 @@ WHERE
 							name1 => "new_ipmitool_sensor_low_warning", value1 => $new_ipmitool_sensor_low_warning, 
 							name2 => "old_ipmitool_sensor_low_warning", value2 => $old_ipmitool_sensor_low_warning, 
 						}, file => $THIS_FILE, line => __LINE__});
+						
+						### NOTE: These were added to debug duplicate ipmitool_value entries.
+						if (not $new_ipmitool_sensor_units)
+						{
+							$an->Alert->register_alert({
+								alert_level		=>	"notice", 
+								alert_agent_name	=>	$THIS_FILE,
+								alert_title_key		=>	"an_alert_title_0003",
+								alert_message_key	=>	"scan_ipmitool_message_0017",
+								alert_message_variables	=>	{
+									machine			=>	$machine,
+									sensor			=>	$ipmitool_sensor_name,
+								},
+							});
+							next;
+						}
+						
 						my $query = "
 UPDATE 
     ipmitool 
@@ -1121,6 +1168,36 @@ AND
 					
 					# Record the new UUID
 					$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid} = $ipmitool_uuid;
+					
+					### NOTE: These were added to debug duplicate ipmitool_value entries.
+					if (not $new_ipmitool_sensor_units)
+					{
+						$an->Alert->register_alert({
+							alert_level		=>	"notice", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_ipmitool_message_0017",
+							alert_message_variables	=>	{
+								machine			=>	$machine,
+								sensor			=>	$ipmitool_sensor_name,
+							},
+						});
+						next;
+					}
+					if (not $new_ipmitool_value_sensor_value)
+					{
+						$an->Alert->register_alert({
+							alert_level		=>	"notice", 
+							alert_agent_name	=>	$THIS_FILE,
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_ipmitool_message_0018",
+							alert_message_variables	=>	{
+								machine			=>	$machine,
+								sensor			=>	$ipmitool_sensor_name,
+							},
+						});
+						next;
+					}
 					
 					# Save the new sensor.
 					my $query = "
@@ -1259,8 +1336,10 @@ INSERT INTO
 					next;
 				}
 				
-				# Generate and record the UUID
-				my $ipmitool_uuid                     = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
+				# Generate the UUID.
+				my $ipmitool_uuid = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});
+				
+				# Record it.
 				$an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid} = $ipmitool_uuid;
 				
 				my $new_ipmitool_value_sensor_value   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value};
@@ -1270,7 +1349,7 @@ INSERT INTO
 				my $new_ipmitool_sensor_high_warning  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning};
 				my $new_ipmitool_sensor_low_critical  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical};
 				my $new_ipmitool_sensor_low_warning   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 					name1 => "ipmitool_uuid",                     value1 => $ipmitool_uuid, 
 					name2 => "new_ipmitool_sensor_units",         value2 => $new_ipmitool_sensor_units, 
 					name3 => "new_ipmitool_sensor_status",        value3 => $new_ipmitool_sensor_status, 
@@ -1279,6 +1358,9 @@ INSERT INTO
 					name6 => "new_ipmitool_sensor_low_critical",  value6 => $new_ipmitool_sensor_low_critical, 
 					name7 => "new_ipmitool_sensor_low_warning",   value7 => $new_ipmitool_sensor_low_warning, 
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				die "No IPMI units for sensor: [$ipmitool_sensor_name]."            if not $new_ipmitool_sensor_units;
+				die "No IPMI value for sensor: [$new_ipmitool_value_sensor_value]." if not $new_ipmitool_value_sensor_value;
 				
 				# If the value is NULL and it's a digit-based value, switch it to '0'
 				if ((($new_ipmitool_sensor_units eq "C") or ($new_ipmitool_sensor_units eq "F") or ($new_ipmitool_sensor_units eq "RPM")) && ($new_ipmitool_value_sensor_value eq "NULL"))
@@ -2467,7 +2549,7 @@ sub process_temperature_change
 sub read_last_scan
 {
 	my ($an, $machine) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "machine", value1 => "$machine" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2509,25 +2591,16 @@ AND
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
-		my $ipmitool_uuid                 = $row->[0];
-		my $ipmitool_sensor_name          = $row->[1];
-		my $ipmitool_sensor_units         = $row->[2];
-		my $ipmitool_sensor_status        = $row->[3];
-		my $ipmitool_sensor_high_critical = $row->[4];
-		my $ipmitool_sensor_high_warning  = $row->[5];
-		my $ipmitool_sensor_low_critical  = $row->[6];
-		my $ipmitool_sensor_low_warning   = $row->[7];
-		my $ipmitool_value_sensor_value   = $row->[8];
-		
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid}                 = $ipmitool_uuid;
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}         = $ipmitool_sensor_units;
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}        = $ipmitool_sensor_status;
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical} = $ipmitool_sensor_high_critical ? $ipmitool_sensor_high_critical : "NULL";
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning}  = $ipmitool_sensor_high_warning  ? $ipmitool_sensor_high_warning  : "NULL";
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical}  = $ipmitool_sensor_low_critical  ? $ipmitool_sensor_low_critical  : "NULL";
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning}   = $ipmitool_sensor_low_warning   ? $ipmitool_sensor_low_warning   : "NULL";
-		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value}   = $ipmitool_value_sensor_value;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+		my $ipmitool_uuid                                                                                         =         $row->[0];
+		my $ipmitool_sensor_name                                                                                  =         $row->[1];
+		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}         =         $row->[2];
+		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}        =         $row->[3];
+		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical} = defined $row->[4] ? $row->[4] : 'NULL';
+		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning}  = defined $row->[5] ? $row->[5] : 'NULL';
+		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical}  = defined $row->[6] ? $row->[6] : 'NULL';
+		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning}   = defined $row->[7] ? $row->[7] : 'NULL';
+		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value}   = defined $row->[8] ? $row->[8] : 'NULL';
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_uuid",                 value1 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid}, 
 			name2 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_units",         value2 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}, 
 			name3 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_status",        value3 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}, 
@@ -2598,13 +2671,15 @@ AND
 ;";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
-			name2 => "query", value2 => $query
+			name2 => "query", value2 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "results", value1 => $results
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count, 
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
@@ -2685,7 +2760,7 @@ WHERE
     ipmitool_value_ipmitool_uuid = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_ipmitool_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -2708,7 +2783,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2747,7 +2822,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -2785,7 +2860,8 @@ sub get_ipmitool_value_id
 		name2 => "id",                           value2 => $id, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $query = "
+	my $ipmitool_value_id = 'NULL';
+	my $query             = "
 SELECT 
     ipmitool_value_id 
 FROM 
@@ -2793,7 +2869,7 @@ FROM
 WHERE 
     ipmitool_value_ipmitool_uuid = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_ipmitool_uuid)."
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "id",    value1 => $id, 
 		name2 => "query", value2 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2801,7 +2877,7 @@ WHERE
 	# Do the query against the source DB and loop through the results.
 	my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2809,34 +2885,103 @@ WHERE
 	# There should be only one result
 	if ($count != 1)
 	{
-		my $i = 1;
-		foreach my $row (@{$results})
-		{
-			my $ipmitool_value_id = $row->[0]; 
-			$an->Log->entry({log_level => 0, message_key => "an_variables_0002", message_variables => {
-				name1 => "i",                 value1 => $i, 
-				name2 => "ipmitool_value_id", value2 => $ipmitool_value_id, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$i++;
-		}
-		$an->Log->entry({log_level => 0, message_key => "scan_ipmitool_error_0001", message_variables => {
-			query => $query,
-			id    => $id, 
-			count => $count, 
+		### We need to fix this. So we'll register a notice level alert and then delete the entries.
+		# Get the other details on this sensor.
+		my $query = "
+SELECT 
+    a.ipmitool_sensor_host, 
+    a.ipmitool_sensor_name, 
+    a.ipmitool_sensor_units, 
+    a.ipmitool_sensor_status, 
+    b.ipmitool_value_id, 
+    b.ipmitool_value_sensor_value, 
+    b.modified_date 
+FROM 
+    ipmitool a, 
+    ipmitool_value b 
+WHERE 
+    a.ipmitool_uuid = b.ipmitool_value_ipmitool_uuid 
+AND 
+    b.ipmitool_value_ipmitool_uuid = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_ipmitool_uuid)."
+ORDER BY 
+    b.ipmitool_value_id ASC
+;";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		#$an->Alert->warning({title_key => "an_0003", message_key => "scan_ipmitool_error_0001", message_variables => { 
-		#	query => $query,
-		#	id    => $id, 
-		#	count => $count, 
-		#}, code => 2, file => $THIS_FILE, line => __LINE__});
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Delete
+		my $alerted = 0;
+		foreach my $row (@{$results})
+		{
+			my $ipmitool_sensor_host        = defined $row->[0] ? $row->[0] : "--";
+			my $ipmitool_sensor_name        = defined $row->[1] ? $row->[1] : "--";
+			my $ipmitool_sensor_units       = defined $row->[2] ? $row->[2] : "--";
+			my $ipmitool_sensor_status      = defined $row->[3] ? $row->[3] : "--";
+			my $this_ipmitool_value_id      = defined $row->[4] ? $row->[4] : "--";
+			my $ipmitool_value_sensor_value = defined $row->[5] ? $row->[5] : "--";
+			my $modified_date               = defined $row->[6] ? $row->[6] : "--";
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0007", message_variables => {
+				name1 => "ipmitool_sensor_host",        value1 => $ipmitool_sensor_host, 
+				name2 => "ipmitool_sensor_name",        value2 => $ipmitool_sensor_name, 
+				name3 => "ipmitool_sensor_units",       value3 => $ipmitool_sensor_units, 
+				name4 => "ipmitool_sensor_status",      value4 => $ipmitool_sensor_status, 
+				name5 => "this_ipmitool_value_id",      value5 => $this_ipmitool_value_id, 
+				name6 => "ipmitool_value_sensor_value", value6 => $ipmitool_value_sensor_value, 
+				name7 => "modified_date",               value7 => $modified_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (not $alerted)
+			{
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_ipmitool_message_0016",
+					alert_message_variables	=>	{
+						sensor			=>	$ipmitool_sensor_name,
+						host			=>	$ipmitool_sensor_host,
+						value			=>	$ipmitool_value_sensor_value." ".$ipmitool_sensor_units." (".$ipmitool_sensor_status.")",
+						count			=>	$count,
+					},
+				});
+				$ipmitool_value_id = $this_ipmitool_value_id;
+				$alerted           = 1;
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+					name1 => "ipmitool_value_id", value1 => $ipmitool_value_id, 
+					name2 => "alerted",           value2 => $alerted, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# We kept the first one, now we'll delete the rest.
+				my $query = "DELETE FROM ipmitool_value WHERE ipmitool_value_ipmitool_uuid = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_ipmitool_uuid)." AND ipmitool_value_id = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_value_id);
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "done", value1 => "-----", 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
-	
-	# Return only the first.
-	my $ipmitool_value_id = $results->[0]->[0]; 
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "ipmitool_value_id", value1 => $ipmitool_value_id, 
-	}, file => $THIS_FILE, line => __LINE__});
+	else
+	{
+		# Return only the first.
+		$ipmitool_value_id = $results->[0]->[0]; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ipmitool_value_id", value1 => $ipmitool_value_id, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 
 	return($ipmitool_value_id);
 }
@@ -2880,8 +3025,10 @@ WHERE
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "results", value1 => $results
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count, 
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
@@ -3016,7 +3163,7 @@ AND
     ipmitool_uuid      = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_uuid)." 
 ;";
 							# Now record the query in the array
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -3055,7 +3202,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -3285,7 +3432,7 @@ sub query_ipmi_targets
 				$high_critical, 
 				$high_fail) = split /\|/, $line;
 			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 				name1  => "sensor_name",   value1  => $sensor_name, 
 				name2  => "current_value", value2  => $current_value, 
 				name3  => "units",         value3  => $units, 
@@ -3300,8 +3447,10 @@ sub query_ipmi_targets
 			
 			next if not $sensor_name;
 			next if not $status;
+			next if not $units;
 			next if $units =~ /discrete/;
 			#next if $status =~ /^0x/;
+			
 			$units = "C" if $units =~ /degrees C/i;
 			$units = "F" if $units =~ /degrees F/i;
 			$units = "%" if $units =~ /percent/i;
@@ -3491,17 +3640,19 @@ sub find_ipmi_targets
 		name2 => "hostname", value2 => $hostname
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# This returns an array of power_check commands that this machine knows about.
+	# This returns an array reference of power_check commands that this machine knows about.
 	my $power_check_data = $an->ScanCore->get_power_check_data();
 	foreach my $hash_ref (@{$power_check_data})
 	{
 		my $node_name           = $hash_ref->{node_name};
 		my $node_uuid           = $hash_ref->{node_uuid};
 		my $power_check_command = $hash_ref->{power_check_command};
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
-			name1 => "node_name",           value1 => $node_name,
-			name2 => "node_uuid",           value2 => $node_uuid, 
-			name3 => "power_check_command", value3 => $power_check_command, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node_name", value1 => $node_name,
+			name2 => "node_uuid", value2 => $node_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "power_check_command", value1 => $power_check_command, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Get the ipaddress and see if I can ping the target. If I can't, there is no sense in 
@@ -3622,7 +3773,7 @@ sub find_ipmi_targets
 				if ($rc eq "0")
 				{
 					# We're good.
-					$ipmi_targets++;
+					   $ipmi_targets++;
 					my $node_name                                                             = $an->hostname();
 					   $an->data->{'scan-ipmitool'}{machine}{$node_name}{power_check_command} = "";
 					   $an->data->{'scan-ipmitool'}{machine}{$node_name}{ipmitool_command}    = $an->data->{path}{ipmitool};

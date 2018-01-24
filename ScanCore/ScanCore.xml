@@ -60,7 +60,7 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 		<key name="scancore_title_0007">#!free!#</key>
 		
 		<!-- Log messages -->
-		<key name="scancore_log_0001">#!free!#</key>
+		<key name="scancore_log_0001">The agent: [#!variable!agent!#] timed out. It was given: [#!data!scancore::agent_timeout!#] seconds to run, but it didn't return, so it was terminated.</key>
 		<key name="scancore_log_0002">#!free!#</key>
 		<key name="scancore_log_0003">#!free!#</key>
 		<key name="scancore_log_0004">#!free!#</key>
