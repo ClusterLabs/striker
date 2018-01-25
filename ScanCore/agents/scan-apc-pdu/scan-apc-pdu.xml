@@ -80,7 +80,7 @@ https://alteeve.com/w/Support
 		<key name="scan_apc_pdu_message_0005">Connection to the PDU: [#!variable!pdu_name!#] has been restored.</key>
 		<key name="scan_apc_pdu_message_0006">Down</key>
 		<key name="scan_apc_pdu_message_0007">
-A new PDU: [#!variable!name!# has been found
+A new PDU: [#!variable!name!#] has been found
 - Serial Number: .............. [#!variable!serial_number!#]
 - Model Number: ............... [#!variable!model_number!#]
 - Manufacture Date: ........... [#!variable!manufacture_date!#]

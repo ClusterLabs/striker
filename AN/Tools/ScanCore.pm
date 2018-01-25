@@ -98,7 +98,7 @@ sub check_ram_usage
 	my $program_name = defined $parameter->{program_name} ? $parameter->{program_name} : "";
 	my $check_usage  = defined $parameter->{check_usage}  ? $parameter->{check_usage}  : 1;
 	my $maximum_ram  = defined $parameter->{maximum_ram}  ? $parameter->{maximum_ram}  : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "program_name", value1 => $program_name, 
 		name2 => "check_usage",  value2 => $check_usage, 
 		name3 => "maximum_ram",  value3 => $maximum_ram, 
@@ -111,7 +111,7 @@ sub check_ram_usage
 	
 	# Read in how much RAM we're using.
 	my $used_ram = $an->Get->ram_used_by_program({program_name => $program_name});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "used_ram", value1 => $used_ram, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -126,7 +126,7 @@ sub check_ram_usage
 	if (not $an->data->{sys}{host_uuid})
 	{
 		$an->Get->uuid({get => 'host_uuid'});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -145,7 +145,7 @@ WHERE
 AND
     ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -154,7 +154,7 @@ AND
 		my $return         = [];
 		my $results        = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count          = @{$results};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
@@ -162,14 +162,14 @@ AND
 		{
 			$ram_used_uuid  = $row->[0];
 			$ram_used_bytes = $row->[1];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "ram_used_uuid",  value1 => $ram_used_uuid, 
 				name2 => "ram_used_bytes", value2 => $ram_used_bytes, 
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "ram_used_uuid",  value1 => $ram_used_uuid, 
 			name2 => "ram_used_bytes", value2 => $ram_used_bytes, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -195,7 +195,7 @@ INSERT INTO
 );
 ";
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -211,7 +211,7 @@ SET
 WHERE 
     ram_used_uuid  = ".$an->data->{sys}{use_db_fh}->quote($ram_used_uuid)."
 ;";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});

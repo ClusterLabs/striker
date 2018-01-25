@@ -160,8 +160,11 @@ SET search_path = history, pg_catalog;
 				apc_pdu_firmware_version	=>	".1.3.6.1.4.1.318.1.1.4.1.2.0", 
 				apc_pdu_hardware_version	=>	".1.3.6.1.4.1.318.1.1.4.1.1.0", 
 				apc_pdu_mac_address		=>	".1.3.6.1.2.1.2.2.1.6.2", 
+				apc_pdu_mac_address_alt		=>	".1.3.6.1.2.1.2.2.1.6.1", 	# Some PDUs use this
 				apc_pdu_mtu_size		=>	".1.3.6.1.2.1.2.2.1.4.2", 
+				apc_pdu_mtu_size_alt		=>	".1.3.6.1.2.1.2.2.1.4.1", 	# Some PDUs use this
 				apc_pdu_link_speed		=>	".1.3.6.1.2.1.2.2.1.5.2", 
+				apc_pdu_link_speed_alt		=>	".1.3.6.1.2.1.2.2.1.5.1", 
 				apc_pdu_phase_count		=>	".1.3.6.1.4.1.318.1.1.12.2.1.2.0", 
 				apc_pdu_outlet_count		=>	".1.3.6.1.4.1.318.1.1.4.4.1.0", 
 			},
@@ -193,6 +196,7 @@ SET search_path = history, pg_catalog;
 		},
 		snmp			=>	{
 			community		=>	{
+				version			=>	"2c",
 				'read'			=>	"public",
 				'write'			=>	"private",
 			},
@@ -1678,8 +1682,10 @@ INSERT INTO
 		# Gone! Is this the first time it's disappeared?
 		my $apc_pdu_uuid         = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_uuid};
 		my $apc_pdu_note         = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_note};
+		   $apc_pdu_note         = "--" if not defined $apc_pdu_note;
 		my $apc_pdu_model_number = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_model_number};
 		my $apc_pdu_ipv4_address = $an->data->{sql}{$apc_pdu_serial_number}{apc_pdus}{apc_pdu_ipv4_address};
+		   $apc_pdu_ipv4_address = "--" if not defined $apc_pdu_ipv4_address;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 			name1 => "apc_pdu_serial_number",              value1 => $apc_pdu_serial_number, 
 			name2 => "apc_pdu_uuid",                       value2 => $apc_pdu_uuid,
@@ -1688,7 +1694,7 @@ INSERT INTO
 			name5 => "apc_pdu_ipv4_address",               value5 => $apc_pdu_ipv4_address,
 			name6 => "dont_delete::$apc_pdu_ipv4_address", value6 => $apc_pdu_ipv4_address,
 		}, file => $THIS_FILE, line => __LINE__});
-		
+	
 		# Skip a PDU that just recently went missing 
 		next if $an->data->{dont_delete}{$apc_pdu_ipv4_address};
 		
@@ -3387,6 +3393,21 @@ WHERE
 				name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
+			# If the serial number is '#!no_connection!#', this might be an old PDU that only supports SNMP v1.
+			if ($apc_pdu_serial_number eq "#!no_connection!#")
+			{
+				# Try SNMP v1
+				$an->data->{snmp}{community}{version} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "snmp::community::version", value1 => $an->data->{snmp}{community}{version}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$apc_pdu_serial_number = read_oid($an, $pdu_ip,, $an->data->{oids}{apc_pdu}{apc_pdu_serial_number});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "apc_pdu_serial_number", value1 => $apc_pdu_serial_number, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
 			# These are set to avoid 'undefined' variable warnings later if we fail to reach this PDU.
 			$an->data->{pdu}{$apc_pdu_serial_number}{pdu_host_name}                         = $pdu_name;
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_serial_number}        = "";
@@ -3471,9 +3492,33 @@ WHERE
 		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_firmware_version} =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_firmware_version});
 		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_hardware_version} =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_hardware_version});
 		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address}      =  lc(read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_mac_address}, $an->data->{path}{striker_mib}));
+		if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address} eq "#!no_value!#")
+		{
+			# Some older PDUs use a different OID.
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address} = lc(read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_mac_address_alt}, $an->data->{path}{striker_mib}));
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_mac_address", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address}      =~ s/ /:/g;
 		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mtu_size}         =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_mtu_size});
+		if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mtu_size} eq "#!no_value!#")
+		{
+			# Some older PDUs use a different OID.
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mtu_size} = lc(read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_mtu_size_alt}, $an->data->{path}{striker_mib}));
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_mtu_size", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mtu_size}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_link_speed}       =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_link_speed});
+		if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_link_speed} eq "#!no_value!#")
+		{
+			# Some older PDUs use a different OID.
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_link_speed} = lc(read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_link_speed_alt}, $an->data->{path}{striker_mib}));
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_link_speed", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_link_speed}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_phase_count}      =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_phase_count});
 		$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_outlet_count}     =  read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu}{apc_pdu_outlet_count});
 		
@@ -3487,7 +3532,7 @@ WHERE
 		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning}  = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{phase_high_amp_warning});
 		$an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical} = read_oid($an, $pdu_ip, $an->data->{oids}{apc_pdu_phases}{phase_high_amp_critical});
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0016", message_variables => {
 			name1  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_model_number",         value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_model_number}, 
 			name2  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_manufacture_date",     value2  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_manufacture_date}, 
 			name3  => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_firmware_version",     value3  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_firmware_version}, 
@@ -3505,7 +3550,41 @@ WHERE
 			name15 => "pdu::${apc_pdu_serial_number}::amperage::high_warning",                value15 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_warning}, 
 			name16 => "pdu::${apc_pdu_serial_number}::amperage::high_critical",               value16 => $an->data->{pdu}{$apc_pdu_serial_number}{amperage}{high_critical}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
+	
+		### Convert some unknown values to values we can store in the database
+		# MAC address
+		if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address} eq "#!no_value!#")
+		{
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address} = "xx:xx:xx:xx:xx:xx";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_mac_address", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mac_address}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		# MTU
+		if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mtu_size} eq "#!no_value!#")
+		{
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mtu_size} = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_mtu_size", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_mtu_size}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		# Link speed
+		if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_link_speed} eq "#!no_value!#")
+		{
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_link_speed} = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdu::${apc_pdu_serial_number}::apc_pdu::apc_pdu_link_speed", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu}{apc_pdu_link_speed}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		# Wattage isn't available on older PDUs
+		if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw} eq "#!no_value!#")
+		{
+			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw} = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdu::${apc_pdu_serial_number}::apc_pdu_variables::total_wattage_draw", value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_variables}{total_wattage_draw}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+
 		### TODO: We should probably sanity check the various values. Error or set?
 		
 		# If the (high critical amperage + 'scan-apc-pdu::critical_amps_below_max') > maximum 
@@ -3613,7 +3692,7 @@ WHERE
 			
 			# Read the OID
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage} = read_oid($an, $pdu_ip, $oid);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1  => "pdu::${apc_pdu_serial_number}::apc_pdu_phases::${apc_pdu_phase_number}::apc_pdu_phase_current_amperage", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3621,7 +3700,7 @@ WHERE
 			if ($an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage} =~ /^\d+$/)
 			{
 				$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage} /= 10;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1  => "pdu::${apc_pdu_serial_number}::apc_pdu_phases::${apc_pdu_phase_number}::apc_pdu_phase_current_amperage", value1  => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_phases}{$apc_pdu_phase_number}{apc_pdu_phase_current_amperage}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3650,7 +3729,7 @@ WHERE
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name}     = read_oid($an, $pdu_ip, $outlet_name_oid);
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase} = read_oid($an, $pdu_ip, $outlet_phase_oid);
 			$an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}    = read_oid($an, $pdu_ip, $outlet_state_oid);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_name",     value1 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_name}, 
 				name2 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_on_phase", value2 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_on_phase}, 
 				name3 => "pdu::${apc_pdu_serial_number}::apc_pdu_outlets::${apc_pdu_outlet_number}::apc_pdu_outlet_state",    value3 => $an->data->{pdu}{$apc_pdu_serial_number}{apc_pdu_outlets}{$apc_pdu_outlet_number}{apc_pdu_outlet_state}, 
@@ -3680,7 +3759,7 @@ WHERE
 			}
 		}
 	}
-	
+
 	return($no_pdu_found);
 }
 
@@ -4107,10 +4186,10 @@ sub read_oid
 	die "No OID passed!\n" if not $oid;
 	
 	my $value      = "#!no_value!#";
-	my $shell_call = $an->data->{path}{snmpget}." -v 2c -c ".$an->data->{snmp}{community}{'read'}." $pdu $oid";
+	my $shell_call = $an->data->{path}{snmpget}." -v ".$an->data->{snmp}{community}{version}." -c ".$an->data->{snmp}{community}{'read'}." $pdu $oid";
 	if ($mib)
 	{
-		$shell_call = $an->data->{path}{snmpget}." -v 2c -c ".$an->data->{snmp}{community}{'read'}." -m $mib $pdu $oid";
+		$shell_call = $an->data->{path}{snmpget}." -v ".$an->data->{snmp}{community}{version}." -c ".$an->data->{snmp}{community}{'read'}." -m $mib $pdu $oid";
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => "$shell_call"
