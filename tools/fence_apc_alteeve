@@ -89,6 +89,7 @@ my $conf={
 		community	=>	"private",
 		int_on		=>	1,
 		int_off		=>	2,
+		version		=>	"2c",
 	},
 	device		=>	{
 		ports		=>	16,
@@ -213,7 +214,7 @@ sub connect_to_pdu
 	# Make sure I can talk to the PDU.
 	my $serial_number = "";
 	my $file_handle   = IO::Handle->new();
-	my $shell_call    = $conf->{path}{snmpget}." -v 2c -c ".$conf->{snmp}{community}." ".$conf->{snmp}{ipaddr}.":".$conf->{snmp}{tcp_port}." ".$conf->{snmp}{oid_serial_number};
+	my $shell_call    = $conf->{path}{snmpget}." -v ".$conf->{snmp}{version}." -c ".$conf->{snmp}{community}." ".$conf->{snmp}{ipaddr}.":".$conf->{snmp}{tcp_port}." ".$conf->{snmp}{oid_serial_number};
 	record($conf, $log, "calling: [$shell_call]\n") if $conf->{'system'}{debug};
 	open ($file_handle, "$shell_call 2>&1 |") || die "Shell call: [$shell_call] failed; Error: $!\n";
 	while (<$file_handle>)
@@ -234,10 +235,38 @@ sub connect_to_pdu
 	# Problems accessing the PDU should cause the agent to exit with exit code '1'.
 	if ($exit > 0)
 	{
-		record($conf, $log, "Invalid exit code when trying to contact pdu: [".$conf->{snmp}{ipaddr}."] on TCP port: [".$conf->{snmp}{tcp_port}."]. Exit code: [$exit]\n", 1);
-		do_exit($conf, $log, 1);
+		# This might be an old PDU. Try again with SNMP version 1.
+		$conf->{snmp}{version} = 1;
+		record($conf, $log, "Failed to connect on SNMP version 2c, trying v1\n") if $conf->{'system'}{debug};
+		
+		my $file_handle   = IO::Handle->new();
+		my $shell_call    = $conf->{path}{snmpget}." -v ".$conf->{snmp}{version}." -c ".$conf->{snmp}{community}." ".$conf->{snmp}{ipaddr}.":".$conf->{snmp}{tcp_port}." ".$conf->{snmp}{oid_serial_number};
+		record($conf, $log, "calling: [$shell_call]\n") if $conf->{'system'}{debug};
+		open ($file_handle, "$shell_call 2>&1 |") || die "Shell call: [$shell_call] failed; Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, $log, "Output: [$line]\n") if $conf->{'system'}{debug};
+			
+			($serial_number) = ($line =~ /STRING: "(.*?)"$/);
+			record($conf, $log, "serial_number: [$serial_number]\n") if $conf->{'system'}{debug};
+		}
+		close $file_handle;
+		
+		my $exit          = $?;
+		   $serial_number = "" if not defined $serial_number;
+		record($conf, $log, "Serial number: [$serial_number], Exit code: [$exit]\n") if $conf->{'system'}{debug};
+		
+		if ($exit > 0)
+		{
+			# If I still can't connect, we're done.
+			record($conf, $log, "Invalid exit code when trying to contact pdu: [".$conf->{snmp}{ipaddr}."] on TCP port: [".$conf->{snmp}{tcp_port}."]. Exit code: [$exit]\n", 1);
+			do_exit($conf, $log, 1);
+		}
 	}
-	elsif (not $serial_number)
+	
+	if (not $serial_number)
 	{
 		record($conf, $log, "Invalid serial number returned from PDU: [".$conf->{snmp}{ipaddr}."] on TCP port: [".$conf->{snmp}{tcp_port}."]. Saw the serial number: [$serial_number]\n", 1);
 		do_exit($conf, $log, 1);
@@ -271,7 +300,7 @@ sub get_state
 	my $state;
 	my $snmp_string = $conf->{snmp}{oid_status}.$node;
 	my $file_handle = IO::Handle->new();
-	my $shell_call  = $conf->{path}{snmpget}." -v 2c -c ".$conf->{snmp}{community}." ".$conf->{snmp}{ipaddr}.":".$conf->{snmp}{tcp_port}." $snmp_string";
+	my $shell_call  = $conf->{path}{snmpget}." -v ".$conf->{snmp}{version}." -c ".$conf->{snmp}{community}." ".$conf->{snmp}{ipaddr}.":".$conf->{snmp}{tcp_port}." $snmp_string";
 	record($conf, $log, "calling: [$shell_call]\n") if $conf->{'system'}{debug};
 	open ($file_handle, "$shell_call 2>&1 |") || die "Shell call: [$shell_call] failed; Error: $!\n";
 	while (<$file_handle>)
@@ -314,7 +343,7 @@ sub set_state_off
 	# Set the state of the port to off. (1 = off, 2 = on)
 	my $snmp_string = $conf->{snmp}{oid_control}.$node;
 	my $file_handle = IO::Handle->new();
-	my $shell_call  = $conf->{path}{snmpset}." -v 2c -c ".$conf->{snmp}{community}." ".$conf->{snmp}{ipaddr}.":".$conf->{snmp}{tcp_port}." $snmp_string i ".$conf->{snmp}{int_off};
+	my $shell_call  = $conf->{path}{snmpset}." -v ".$conf->{snmp}{version}." -c ".$conf->{snmp}{community}." ".$conf->{snmp}{ipaddr}.":".$conf->{snmp}{tcp_port}." $snmp_string i ".$conf->{snmp}{int_off};
 	record($conf, $log, "calling: [$shell_call]\n") if $conf->{'system'}{debug};
 	open ($file_handle, "$shell_call 2>&1 |") || die "Shell call: [$shell_call] failed; Error: $!\n";
 	while (<$file_handle>)
@@ -360,7 +389,7 @@ sub set_state_on
 	# Set the state of the port to on. (1 = off, 2 = on)
 	my $snmp_string = $conf->{snmp}{oid_control}.$node;
 	my $file_handle = IO::Handle->new();
-	my $shell_call  = $conf->{path}{snmpset}." -v 2c -c ".$conf->{snmp}{community}." ".$conf->{snmp}{ipaddr}.":".$conf->{snmp}{tcp_port}." $snmp_string i ".$conf->{snmp}{int_on};
+	my $shell_call  = $conf->{path}{snmpset}." -v ".$conf->{snmp}{version}." -c ".$conf->{snmp}{community}." ".$conf->{snmp}{ipaddr}.":".$conf->{snmp}{tcp_port}." $snmp_string i ".$conf->{snmp}{int_on};
 	record($conf, $log, "calling: [$shell_call]\n") if $conf->{'system'}{debug};
 	open ($file_handle, "$shell_call 2>&1 |") || die "Shell call: [$shell_call] failed; Error: $!\n";
 	while (<$file_handle>)

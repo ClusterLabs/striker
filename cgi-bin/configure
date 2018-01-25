@@ -1059,6 +1059,16 @@ sub save_notify_form
 		push @{$notices},      $notice;
 		push @{$error_fields}, "notify_target";
 	}
+	if (not $an->data->{cgi}{notify_name})
+	{
+		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0283!#" }});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice", value1 => $notice,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$notices},      $notice;
+		push @{$error_fields}, "notify_name";
+	}
 	
 	my $error_count = @{$error_fields};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {

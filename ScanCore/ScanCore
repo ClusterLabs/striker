@@ -3912,6 +3912,15 @@ ORDER BY
 					name6 => "recipient_notify_level", value6 => $recipient_notify_level,
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				# If the notification name isn't set, set the default.
+				if (not $notify_name)
+				{
+					$notify_name = "#!string!scancore_message_0003!#";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "notify_name", value1 => $notify_name,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
 				# If I am a dashboard, make sure I want to send to this notification target.
 				if ($an->Get->what_am_i eq "dashboard")
 				{

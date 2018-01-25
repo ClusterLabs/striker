@@ -242,7 +242,7 @@ one of the nodes will now be withdrawn and shutdown. Which node will shutdown wi
 		<!-- ScanCore-specific messages -->
 		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>
 		<key name="scancore_message_0002">[ #!variable!title!# ] - #!variable!message!#</key>
-		<key name="scancore_message_0003">#!free!#</key>
+		<key name="scancore_message_0003">Unspecified Recipient</key>	<!-- This is the notification recipient name used when no name was entered. -->
 		<key name="scancore_message_0004">This change was not anticipated. Please report it (#!string!brand_0012!#) so that we can improve #!string!brand_0019!# by catching this change in the future.</key>
 		<key name="scancore_message_0005">#!string!scancore_brand_0001!# has been enabled. It will start within one minute.</key>
 		<key name="scancore_message_0006">#!string!scancore_brand_0001!# has been disabled. It will exit when the next sweep is called.</key>
