@@ -3568,6 +3568,17 @@ sub update_local_repo
 	}, file => $THIS_FILE, line => __LINE__});
 	rsync_data($an, $tools_source, $tools_destination);
 	
+	# Copy fence agents.
+	print "- Copying fence agents to the system directory.\n";
+	my $fence_source      = $an->data->{path}{updates}{striker}."/tools/fence*";
+	my $fence_destination = "/usr/sbin/";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "tools_source",      value1 => $tools_source,
+		name2 => "tools_destination", value2 => $tools_destination,
+	}, file => $THIS_FILE, line => __LINE__});
+	rsync_data($an, $tools_source, $tools_destination);
+	
+	
 	return(0);
 }
 

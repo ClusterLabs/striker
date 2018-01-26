@@ -127,7 +127,7 @@ if ($conf->{snmp}{action} eq "metadata")
 }
 
 # Start the logs.
-record($conf, $log, "-=] Called at: . [".get_date_time($conf)."]\n") if $conf->{'system'}{debug};
+record($conf, $log, "-=] Called at: ... [".get_date_time($conf)."]\n") if $conf->{'system'}{debug};
 
 # This loops until the lock file is removed. This is a terrible hack to deal with two different sources 
 # calling this at once. This will be removed as soon as I update NAOS with a proper semaphore.
