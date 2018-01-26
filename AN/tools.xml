@@ -668,7 +668,7 @@ Variables:
 		<key name="warning_message_0004">Booting the server: [#!variable!server!#] failed. No healthy node was found and the boot wasn't forced, so the server will be left off.</key>
 		<key name="warning_message_0005">One or more virtual hard drives used by the server: [#!variable!server!#] is on a replicated storage that is not 'UpToDate' on both nodes. The boot was forced though, so it will be booted on: [#!variable!server!#] now. If either node goes offline, this server will lose access to its storage!</key>
 		<key name="warning_message_0006">Failed to boot the server: [#!variable!server!#]. Neither node has a fully updated view of the storage backing this server. Booting would be unsafe.</key>
-		<key name="warning_message_0007">Failed to boot the server: [#!variable!server!#] on the node: [#!variable!#]. The error was: [#!variable!error!#].</key>
+		<key name="warning_message_0007">Failed to boot the server: [#!variable!server!#] on the node: [#!variable!node!#]. The error was: [#!variable!error!#].</key>
 		<key name="warning_message_0008">The database: [#!variable!name!#] on host: [#!variable!host!#] with ID: [#!variable!id!#] can not be used, skipping it.</key>
 		<key name="warning_message_0009">
 The error was:
