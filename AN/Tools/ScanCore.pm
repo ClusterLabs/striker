@@ -220,7 +220,7 @@ WHERE
 	
 	if ($check_usage)
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "maximum_ram", value1 => $maximum_ram, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -228,7 +228,7 @@ WHERE
 		if (not $maximum_ram)
 		{
 			$maximum_ram = $an->data->{scancore}{maximum_ram} ? $an->data->{scancore}{maximum_ram} : (128 * 1048576);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "maximum_ram", value1 => $maximum_ram, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -236,12 +236,12 @@ WHERE
 		{
 			# Bad value, set the default.
 			$maximum_ram = 1073741824;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "maximum_ram", value1 => $maximum_ram, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "used_ram",    value1 => $used_ram." (".$an->Readable->bytes_to_hr({'bytes' => $used_ram}).")", 
 			name2 => "maximum_ram", value2 => $maximum_ram." (".$an->Readable->bytes_to_hr({'bytes' => $maximum_ram}).")", 
 		}, file => $THIS_FILE, line => __LINE__});
