@@ -302,6 +302,8 @@ Warning: The UPS watchdog feature is enabled! If the UPS was counting down
          If communication is lost to both/all UPSes, all power could soon be
          lost and the full Anvil! stack will hard power cycle!
 		</key>
+		<key name="scan_apc_ups_note_0063">The UPS: [#!variable!ups_name!#] no longer appears to be powering this machine. Marking it as 'deleted'.</key>
+		<key name="scan_apc_ups_note_0064">The UPS: [#!variable!ups_name!#] has been marked as 'deleted'. Removing it from the 'power' table</key>
 		
 		<!-- Errors -->
 		<key name="scan_apc_ups_error_0001">The variable: [#!variable!name!#] should have been an integer, but it appears it was not. Read: [#!variable!value!#].</key>

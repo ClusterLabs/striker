@@ -10358,7 +10358,7 @@ sub _parse_cluster_conf
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_parse_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
 	my $data      = $parameter->{data} ? $parameter->{data} : "";
@@ -10766,13 +10766,12 @@ sub _parse_cluster_conf
 		}
 		$an->data->{node}{$this_node}{info}{fence_methods} =~ s/\s+$//;
 	}
+	
 	### NOTE: These expose passwords!
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node_name}::info::fence_methods", value1 => $an->data->{node}{$node_name}{info}{fence_methods},
 		name2 => "node::${peer}::info::fence_methods",      value2 => $an->data->{node}{$peer}{info}{fence_methods},
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	### TODO: Make sure this works
 	if ($an->data->{sys}{node_name}{$node_name}{uuid})
 	{
 		$an->ScanCore->insert_or_update_nodes_cache({

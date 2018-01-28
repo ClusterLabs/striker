@@ -3096,15 +3096,24 @@ AND
 	return(0);
 }
 
-# This adds or updates entries in the 'power' table that ScanCore will use to decide if a given node needs to
-# be shutdown.
+# This adds, updates or removes entries in the 'power' table that ScanCore will use to decide if a given node
+# needs to be shutdown.
 sub process_power
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# The main bits we need to know is, for each UPS, is there input power?
+	# UPSes we found on this scan
+	foreach my $ups_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-ups'}{ups}})
+	{
+		my $ip = $an->data->{'scan-apc-ups'}{ups}{$ups_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "ups_name", value1 => $ups_name, 
+			name2 => "ip",       value2 => $ip, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
+	# The main bits we need to know is, for each UPS, is there input power?
 	my $query = "
 SELECT 
     a.apc_ups_uuid, 
@@ -3113,22 +3122,23 @@ SELECT
     a.apc_ups_health, 
     c.apc_ups_input_voltage, 
     d.apc_ups_output_estimated_runtime, 
-    b.apc_ups_battery_percentage_charge 
+    b.apc_ups_battery_percentage_charge, 
+    a.apc_ups_model
 FROM     
-    apc_ups a, 
+    apc_ups         a, 
     apc_ups_battery b, 
-    apc_ups_input c, 
-    apc_ups_output d 
+    apc_ups_input   c, 
+    apc_ups_output  d 
 WHERE 
-    a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+    a.apc_ups_host_uuid =  ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
-    a.apc_ups_uuid = b.apc_ups_battery_apc_ups_uuid 
+    a.apc_ups_uuid      = b.apc_ups_battery_apc_ups_uuid 
 AND 
-    a.apc_ups_uuid = c.apc_ups_input_apc_ups_uuid 
+    a.apc_ups_uuid      = c.apc_ups_input_apc_ups_uuid 
 AND 
-    a.apc_ups_uuid = d.apc_ups_output_apc_ups_uuid;
-";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+    a.apc_ups_uuid      = d.apc_ups_output_apc_ups_uuid 
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -3144,7 +3154,8 @@ AND
 		my $apc_ups_input_voltage             = $row->[4];
 		my $apc_ups_output_estimated_runtime  = $row->[5];
 		my $apc_ups_battery_percentage_charge = $row->[6];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		my $apc_ups_model                     = $row->[7];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "apc_ups_uuid",                      value1 => $apc_ups_serial_number,
 			name2 => "apc_ups_serial_number",             value2 => $apc_ups_serial_number,
 			name3 => "apc_ups_name",                      value3 => $apc_ups_name,
@@ -3152,7 +3163,30 @@ AND
 			name5 => "apc_ups_input_voltage",             value5 => $apc_ups_input_voltage,
 			name6 => "apc_ups_output_estimated_runtime",  value6 => $apc_ups_output_estimated_runtime,
 			name7 => "apc_ups_battery_percentage_charge", value7 => $apc_ups_battery_percentage_charge,
+			name8 => "apc_ups_model",                     value8 => $apc_ups_model,
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If the UPS no longer exists under this node, remove it.
+		if ((not exists $an->data->{'scan-apc-ups'}{ups}{$apc_ups_name}) && ($apc_ups_model ne "DELETED"))
+		{
+			# Remove it from the apc_ups table and send a notice.
+			$an->Log->entry({log_level => 1, message_key => "scan_apc_ups_note_0063", message_variables => { ups_name => $apc_ups_name }, file => $THIS_FILE, line => __LINE__});
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scan_apc_ups_note_0063",
+				alert_message_variables	=>	{
+					ups_name		=>	$apc_ups_name,
+				},
+			});
+			
+			my $query = "UPDATE apc_ups SET apc_ups_model = 'DELETED' WHERE apc_ups_uuid = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_uuid).";";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+		}
 		
 		# If the UPS health is '4' (boosting for low input voltage), or if there is no input voltage,
 		# we'll set that we're on batteries.
@@ -3170,6 +3204,7 @@ AND
 		# For each UPS, see if there is an existing entry in the 'power' table.
 		my $query = "
 SELECT 
+    power_uuid, 
     power_ups_name, 
     power_on_battery, 
     power_seconds_left, 
@@ -3197,16 +3232,31 @@ AND
 		{
 			# I'm not doing the usual 'foreach my $row (@{$results})', so this is a short-cut to 
 			# pull the variables out directly.
-			my $power_ups_name          = $results->[0]->[0];
-			my $power_on_battery        = $results->[0]->[1];
-			my $power_seconds_left      = $results->[0]->[2];
-			my $power_charge_percentage = $results->[0]->[3];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-				name1 => "power_ups_name",          value1 => $power_ups_name,
-				name2 => "power_on_battery",        value2 => $power_on_battery,
-				name3 => "power_seconds_left",      value3 => $power_seconds_left,
-				name4 => "power_charge_percentage", value4 => $power_charge_percentage,
+			my $power_uuid              = $results->[0]->[0];
+			my $power_ups_name          = $results->[0]->[1];
+			my $power_on_battery        = $results->[0]->[2];
+			my $power_seconds_left      = $results->[0]->[3];
+			my $power_charge_percentage = $results->[0]->[4];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "power_uuid",              value1 => $power_uuid,
+				name2 => "power_ups_name",          value2 => $power_ups_name,
+				name3 => "power_on_battery",        value3 => $power_on_battery,
+				name4 => "power_seconds_left",      value4 => $power_seconds_left,
+				name5 => "power_charge_percentage", value5 => $power_charge_percentage,
 			}, file => $THIS_FILE, line => __LINE__});
+				
+			if (not exists $an->data->{'scan-apc-ups'}{ups}{$power_ups_name})
+			{
+				# Remove it from the apc_ups table.
+				$an->Log->entry({log_level => 1, message_key => "scan_apc_ups_note_0064", message_variables => { ups_name => $power_ups_name }, file => $THIS_FILE, line => __LINE__});
+				
+				my $query = "DELETE FROM power WHERE power_uuid = ".$an->data->{sys}{use_db_fh}->quote($power_uuid).";";
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+				next;
+			}
 			
 			# Existing record; If load shedding is disabled, see if anything changed. If load 
 			# shedding is NOT disabled, we'll update always.
@@ -3251,12 +3301,8 @@ SET
     power_charge_percentage = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_battery_percentage_charge).", 
     modified_date           = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    power_host_uuid         = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    power_agent_name        = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
-AND 
-    power_record_locator    = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number).";
-";
+    power_uuid              = ".$an->data->{sys}{use_db_fh}->quote($power_uuid)."
+;";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
