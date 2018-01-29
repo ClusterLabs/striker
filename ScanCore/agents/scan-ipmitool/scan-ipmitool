@@ -2591,17 +2591,26 @@ AND
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
-		my $ipmitool_uuid                                                                                         =         $row->[0];
-		my $ipmitool_sensor_name                                                                                  =         $row->[1];
-		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}         =         $row->[2];
-		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}        =         $row->[3];
-		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical} = defined $row->[4] ? $row->[4] : 'NULL';
-		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning}  = defined $row->[5] ? $row->[5] : 'NULL';
-		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical}  = defined $row->[6] ? $row->[6] : 'NULL';
-		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning}   = defined $row->[7] ? $row->[7] : 'NULL';
-		   $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value}   = defined $row->[8] ? $row->[8] : 'NULL';
+		my $ipmitool_uuid                 = $row->[0];
+		my $ipmitool_sensor_name          = $row->[1];
+		my $ipmitool_sensor_units         = $row->[2];
+		my $ipmitool_sensor_status        = $row->[3];
+		my $ipmitool_sensor_high_critical = $row->[4];
+		my $ipmitool_sensor_high_warning  = $row->[5];
+		my $ipmitool_sensor_low_critical  = $row->[6];
+		my $ipmitool_sensor_low_warning   = $row->[7];
+		my $ipmitool_value_sensor_value   = $row->[8];
+		
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid}                 = $ipmitool_uuid;
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}         = $ipmitool_sensor_units;
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}        = $ipmitool_sensor_status;
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical} = $ipmitool_sensor_high_critical ? $ipmitool_sensor_high_critical : "NULL";
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning}  = $ipmitool_sensor_high_warning  ? $ipmitool_sensor_high_warning  : "NULL";
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical}  = $ipmitool_sensor_low_critical  ? $ipmitool_sensor_low_critical  : "NULL";
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning}   = $ipmitool_sensor_low_warning   ? $ipmitool_sensor_low_warning   : "NULL";
+		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value}   = $ipmitool_value_sensor_value;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
-			name1 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_uuid",                 value1 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid}, 
+			name1 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_uuid",                 value1 => $ipmitool_uuid, 
 			name2 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_units",         value2 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}, 
 			name3 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_status",        value3 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}, 
 			name4 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_high_critical", value4 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical}, 
