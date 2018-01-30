@@ -2610,7 +2610,7 @@ AND
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning}   = $ipmitool_sensor_low_warning   ? $ipmitool_sensor_low_warning   : "NULL";
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value}   = $ipmitool_value_sensor_value;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
-			name1 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_uuid",                 value1 => $ipmitool_uuid, 
+			name1 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_uuid",                 value1 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid}, 
 			name2 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_units",         value2 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}, 
 			name3 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_status",        value3 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}, 
 			name4 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_high_critical", value4 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_critical}, 
@@ -3397,6 +3397,7 @@ sub query_ipmi_targets
 			while ($line =~ /\|na\|/)
 			{
 				$line =~ s/\|na\|/|NULL|/g;
+				$line =~ s/\|na$/|NULL/g;
 				$i++;
 				die "Loop processing: [$line]\n" if $i > 20;
 			}
