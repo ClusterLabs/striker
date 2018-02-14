@@ -1523,7 +1523,7 @@ sub _load_fcntl
 	return (0);
 }
 
-# This loads the 'Math::BigInt' module.
+# This loads the 'IO::Handle' module.
 sub _load_io_handle
 {
 	my $self = shift;

@@ -3586,8 +3586,9 @@ sub configure_ipmi_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($return_code eq "0")
 	{
-		my $reset_bmc  = 0;
-		my $shell_call = $an->data->{path}{dmidecode}." --string system-manufacturer";
+		my $reset_bmc   = "";
+		my $reset_delay = 60;
+		my $shell_call  = $an->data->{path}{dmidecode}." --string system-manufacturer";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
@@ -3606,7 +3607,14 @@ sub configure_ipmi_on_node
 			
 			if (lc($line) eq "hp")
 			{
-				$reset_bmc = 1;
+				$reset_bmc = "warm";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "reset_bmc", value1 => $reset_bmc, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($line =~ /dell/i)
+			{
+				$reset_bmc = "cold";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "reset_bmc", value1 => $reset_bmc, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -3622,7 +3630,7 @@ sub configure_ipmi_on_node
 			$an->Log->entry({log_level => 1, message_key => "log_0004", file => $THIS_FILE, line => __LINE__});
 			
 			# Do the reset.
-			my $shell_call = $an->data->{path}{ipmitool}." bmc reset warm";
+			my $shell_call = $an->data->{path}{ipmitool}." bmc reset ".$reset_bmc;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "target",     value1 => $target,
 				name2 => "shell_call", value2 => $shell_call,
@@ -3641,9 +3649,8 @@ sub configure_ipmi_on_node
 			}
 			
 			# Sleep for a minute to give time for the BMC to reset.
-			my $sleep = 60;
-			$an->Log->entry({log_level => 1, message_key => "log_0005", message_variables => { 'sleep' => $sleep }, file => $THIS_FILE, line => __LINE__});
-			sleep $sleep;
+			$an->Log->entry({log_level => 1, message_key => "log_0005", message_variables => { 'sleep' => $reset_delay }, file => $THIS_FILE, line => __LINE__});
+			sleep $reset_delay;
 		}
 	}
 	
