@@ -143,7 +143,7 @@ FROM
 WHERE 
     ram_used_by        = ".$an->data->{sys}{use_db_fh}->quote($program_name)." 
 AND
-    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ;";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query, 
