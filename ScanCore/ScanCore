@@ -5949,8 +5949,6 @@ INSERT INTO
 		}
 	}
 	
-	die $THIS_FILE." ".__LINE__."; testing...\n";
-	
 	return(0);
 }
 
