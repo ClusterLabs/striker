@@ -3467,9 +3467,10 @@ sub query_ipmi_targets
 			$units = "W" if $units =~ /watt/i;
 			$units = "V" if $units =~ /volt/i;
 			
-			# The BBU, as reported by IPMI, is flaky and redundant. We monitor it via 
-			# storcli/hpacucli (or OEM variant of), so we ignore it here.
+			# The BBU and RAID Controller, as reported by IPMI, is flaky and redundant. We 
+			# monitor it via storcli/hpacucli (or OEM variant of), so we ignore it here.
 			next if $sensor_name eq "BBU";
+			next if $sensor_name eq "RAID Controller";
 			
 			# The status line is NOT NULL, so I need to change it to 'na' (not available).
 			$status = "na" if $status eq "NULL";

@@ -997,7 +997,7 @@ WHERE
 							},
 						});
 					}
-					else
+					elsif ($new_uptime < 300)
 					{
 						# It's rebooted. This is notice level as it's generally just 
 						# the NIC rebooting and doesn't interfere with power.

@@ -13917,12 +13917,18 @@ sub _provision_server
 	$provision .= "  --vcpus ".$an->data->{new_server}{cpu_cores}." \\\\\n";
 	if ($an->data->{cgi}{os_variant} eq "win2016")
 	{
-		# NOTE: We might need to set this to '--cpu Nehalem,+fsgsbase', see:
-		#       https://www.alteeve.com/w/Troubleshooting_Anvil!_m2_Problems
-		$provision .= "  --cpu host \\\\\n";
+		# Windows is picky about the CPU of late and throws storage errors on recent CPUs when 'host'
+		# is used.
+		$provision .= "  --cpu Nehalem,+fsgsbase \\\\\n";
 		
 		# Switch the type to win2k8 as win2016 isn't recognized by virt-install yet.
 		$an->data->{cgi}{os_variant} = "win2k8";
+	}
+	elsif ($an->data->{cgi}{os_variant} eq "win7")
+	{
+		# Windows is picky about the CPU of late and throws storage errors on recent CPUs when 'host'
+		# is used.
+		$provision .= "  --cpu Nehalem,+fsgsbase \\\\\n";
 	}
 	elsif ($an->data->{cgi}{os_variant} eq "solaris11")
 	{
