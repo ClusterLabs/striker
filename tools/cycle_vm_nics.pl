@@ -64,15 +64,15 @@ while(<$file_handle>)
 			if    (($this_bridge =~ /bcn_bridge\d/) || ($this_bridge =~ /bcn-bridge\d/)) { push @bcn_nic, $this_device; }
 			elsif (($this_bridge =~ /sn_bridge\d/)  || ($this_bridge =~ /sn-bridge\d/))  { push @sn_nic, $this_device; }
 			elsif (($this_bridge eq "ifn_bridge1") || ($this_bridge eq "ifn-bridge1")) { push @ifn_nic, $this_device; }
-			else
-			{
-				print "[ Error ] - Interface: [$this_device] on unknown bridge: [$this_bridge]\n";
-				print "[ Error ]   Expected bridge names;\n";
-				print "[ Error ]   - Back-Channel Network:    [bcn_bridge1]\n";
-				print "[ Error ]   - Storage Network:         [sn_bridge1]\n";
-				print "[ Error ]   - Internet-Facing Network: [ifn_bridge1]\n";
-				exit 3;
-			}
+# 			else
+# 			{
+# 				print "[ Error ] - Interface: [$this_device] on unknown bridge: [$this_bridge]\n";
+# 				print "[ Error ]   Expected bridge names;\n";
+# 				print "[ Error ]   - Back-Channel Network:    [bcn_bridge1]\n";
+# 				print "[ Error ]   - Storage Network:         [sn_bridge1]\n";
+# 				print "[ Error ]   - Internet-Facing Network: [ifn_bridge1]\n";
+# 				exit 3;
+# 			}
 		}
 	}
 	#print "- Output: [$line]\n";

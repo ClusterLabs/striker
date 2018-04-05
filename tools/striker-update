@@ -140,7 +140,7 @@ my $an = AN::Tools->new({
 			# access that file, we'll use 'striker_default'. Optionally, the user can request the latest
 			# master with '--master', in which case we will download the 'striker_master' URL. In all
 			# cases, the downloaded file will be saved as 'striker_zip_file'.
-			striker_default		=>	"https://github.com/ClusterLabs/striker/archive/v2.0.6.zip",
+			striker_default		=>	"https://github.com/ClusterLabs/striker/archive/v2.0.7.zip",
 			striker_latest		=>	"https://www.alteeve.com/an-repo/striker_latest.txt",
 			striker_master		=>	"https://codeload.github.com/ClusterLabs/striker/zip/master",
 			support			=>	"https://alteeve.com/w/Support",

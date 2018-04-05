@@ -129,7 +129,7 @@ sub print_summary
 	my @bonds;
 	my $bonds_exist = 0;
 	my $this_nic    = "";
-	my $shell_call  = "$conf->{executable}{ip} addr";
+	my $shell_call  = $conf->{executable}{ip}." addr";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -174,7 +174,7 @@ sub print_summary
 	foreach my $bond (sort {$a cmp $b} @bonds)
 	{
 		my $this_nic   = "";
-		my $shell_call = "$conf->{executable}{cat} /proc/net/bonding/$bond";
+		my $shell_call = $conf->{executable}{cat}." /proc/net/bonding/$bond";
 		#print "shell_call: [$shell_call]\n";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -240,7 +240,7 @@ sub start_all_nics
 		
 		# If I am here, the interface is down
 		my $nic       = $this_iface;
-		my $nic_file = "$conf->{path}{network_configs}/ifcfg-$nic";
+		my $nic_file = $conf->{path}{network_configs}."/ifcfg-$nic";
 		if ($conf->{script})
 		{
 			print "#!string!script_0026!#,,nic=$nic\n" if $conf->{debug};
@@ -290,7 +290,7 @@ sub start_all_nics
 			{
 				print "- Config file exists, changing BOOTPROTO to 'none'.\n" if $conf->{debug};
 			}
-			my $shell_call = "$conf->{executable}{sed} -i 's/BOOTPROTO=.*/BOOTPROTO=\"none\"/\' $nic_file";
+			my $shell_call = $conf->{executable}{sed}." -i 's/BOOTPROTO=.*/BOOTPROTO=\"none\"/\' $nic_file";
 			#print "[ Debug ] - Calling: [$shell_call]\n";
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
@@ -320,7 +320,7 @@ sub start_all_nics
 		{
 			print "- Attempting to bring up: [$nic]...\n" if $conf->{debug};
 		}
-		my $shell_call = "$conf->{executable}{ifup} $nic";
+		my $shell_call = $conf->{executable}{ifup}." $nic";
 		open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -349,7 +349,7 @@ sub start_all_nics
 		}
 		sleep 2;
 		my $is_up   = 0;
-		$shell_call = "$conf->{executable}{ip} link show $nic";
+		$shell_call = $conf->{executable}{ip}." link show $nic";
 		open ($file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -505,7 +505,7 @@ sub backup_original_files
 	{
 		print "- Backing up: [$conf->{path}{persistent_net}]\n" if $conf->{debug};
 	}
-	if (-e "$conf->{path}{backups}/70-persistent-net.rules")
+	if (-e $conf->{path}{backups}."/70-persistent-net.rules")
 	{
 		if ($conf->{script})
 		{
@@ -553,7 +553,7 @@ sub backup_original_files
 	{
 		print "- Backing up: [$conf->{path}{hostname}]\n" if $conf->{debug};
 	}
-	if (-e "$conf->{path}{backups}/network")
+	if (-e $conf->{path}{backups}."/network")
 	{
 		if ($conf->{script})
 		{
@@ -579,7 +579,7 @@ sub backup_original_files
 	{
 		print "- Backing up: [$conf->{path}{hosts}]\n" if $conf->{debug};
 	}
-	if (-e "$conf->{path}{backups}/hosts")
+	if (-e $conf->{path}{backups}."/hosts")
 	{
 		if ($conf->{script})
 		{
@@ -605,7 +605,7 @@ sub backup_original_files
 	{
 		print "- Backing up: [$conf->{path}{network_configs}]\n" if $conf->{debug};
 	}
-	if (-e "$conf->{path}{backups}/network-scripts")
+	if (-e $conf->{path}{backups}."/network-scripts")
 	{
 		if ($conf->{script})
 		{
@@ -710,7 +710,7 @@ sub backup_file
 	# This must be 'undef' or it will error with 'Can't use string ("") as
 	# a symbol ref while "strict refs" in use'.
 	my $file_handle = undef;
-	my $shell_call  = "$conf->{executable}{cp} -ab $file $conf->{path}{backups}";
+	my $shell_call  = $conf->{executable}{cp}." -ab $file $conf->{path}{backups}";
 	if ($conf->{script})
 	{
 		print "#!string!script_0022!#,,file=$file,backups=$conf->{path}{backups}\n" if $conf->{debug};
@@ -1124,7 +1124,7 @@ sub check_nic_states
 	my $this_iface      = "";
 	my $this_mac        = "";
 	my $this_link_state = "";
-	my $shell_call = "$conf->{executable}{ip} addr";
+	my $shell_call = $conf->{executable}{ip}." addr";
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -1150,6 +1150,7 @@ sub check_nic_states
 		}
 		next if not $this_iface;
 		next if $this_iface eq "lo";
+		next if $this_iface eq "bond0";
 		next if $this_iface =~ /wlan/;
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
