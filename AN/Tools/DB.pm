@@ -2229,13 +2229,22 @@ sub locking
 				# Mark 'wait', set inactive and sleep.
 				$an->DB->mark_active({set => 0});
 				
+				# Get the hostname for the logs.
+				my $host_name = $an->Get->hostname_from_uuid({host_uuid => $lock_source_uuid});
+				my $timeout_in = $timeout_time - $current_time;
+				$an->Log->entry({log_level => 1, message_key => "message_0007", message_variables => {
+					host_name => $host_name,
+					timeout   => $timeout_in, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				$waiting = 1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "lock_source_uuid", value1 => $lock_source_uuid, 
 					name2 => "source_uuid",      value2 => $source_uuid, 
 					name3 => "waiting",          value3 => $waiting, 
 				}, file => $THIS_FILE, line => __LINE__});
-				sleep 5;
+				
+				sleep 10;
 			}
 		}
 	}
