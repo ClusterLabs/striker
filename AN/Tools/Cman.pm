@@ -61,7 +61,6 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
-### TODO: Abort if the server is off because of a DR job (or, eventually, a migration to a new Anvil!).
 ### NOTE: This requires being invoked on the node.
 # This boots a server and tries to handle common errors. It will boot on the healthiest node if one host is
 # not ready (ie: The VM's backing storage is on a DRBD resource that is Inconsistent on one of the nodes).
@@ -83,7 +82,7 @@ sub boot_server
 	my $server         = $parameter->{server} ? $parameter->{server} : "";
 	my $requested_node = $parameter->{node}   ? $parameter->{node}   : "";
 	my $force          = $parameter->{force}  ? $parameter->{force}  : 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "server",         value1 => $server, 
 		name2 => "requested_node", value2 => $requested_node, 
 		name3 => "force",          value3 => $force, 
@@ -103,15 +102,16 @@ sub boot_server
 		name1 => "anvil_name", value1 => $anvil_name, 
 		name2 => "anvil_uuid", value2 => $anvil_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
+
+	my $server_found = 0;
+	my $server_state = "";
+	my $server_uuid  = "";
 	
 	# Get a list of servers on the system.
-	my $server_found      = 0;
-	my $server_state      = "";
-	my $server_uuid       = "";
-	my ($servers, $state) = $an->Cman->get_cluster_server_list();
+	my ($servers, $state, $hosts) = $an->Cman->get_cluster_server_list();
 	foreach my $server_name (sort {$a cmp $b} keys %{$state})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "server_name", value1 => $server_name, 
 			name2 => "server",      value2 => $server, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -120,7 +120,7 @@ sub boot_server
 			$server_found = 1;
 			$server_state = $state->{$server_name};
 			$server_uuid  = $an->Get->server_uuid({server => $server_name, anvil => $anvil_uuid});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "server_found", value1 => $server_found, 
 				name2 => "server_state", value2 => $server_state, 
 				name3 => "server_uuid",  value3 => $server_uuid, 
@@ -129,7 +129,7 @@ sub boot_server
 	}
 	
 	# Did we find it?
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_found", value1 => $server_found, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $server_found)
@@ -215,6 +215,32 @@ sub boot_server
 		}
 	}
 	
+	# If one host has more servers, that is the one we'll use.
+	if (not $requested_node)
+	{
+		my $node1 = $an->data->{sys}{anvil}{node1}{name};
+		my $node2 = $an->data->{sys}{anvil}{node2}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "hosts->{$node1}", value1 => $hosts->{$node1}, 
+			name2 => "hosts->{$node2}", value2 => $hosts->{$node2}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($hosts->{$node1} > $hosts->{$node2})
+		{
+			$requested_node = $node1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "requested_node", value1 => $requested_node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($hosts->{$node2} > $hosts->{$node1})
+		{
+			$requested_node = $node2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "requested_node", value1 => $requested_node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+
 	# What is the preferred node given the failover domain?
 	my $failoverdomain = $cluster_data->{server}{$server}{domain};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -316,21 +342,21 @@ sub boot_server
 	my $secondary_node = "";
 	foreach my $node (sort {$a cmp $b} keys %{$nodes})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "node",                     value1 => $node, 
-			name2 => "requested_node",           value2 => $requested_node, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node",                      value1 => $node, 
+			name2 => "requested_node",            value2 => $requested_node, 
 			name3 => "nodes->{$node}{preferred}", value3 => $nodes->{$node}{preferred}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($requested_node)
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "node",           value1 => $node, 
 				name2 => "requested_node", value2 => $requested_node, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($node eq $requested_node)
 			{
 				$preferred_node = $node;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "preferred_node", value1 => $preferred_node, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -338,21 +364,21 @@ sub boot_server
 		elsif ($nodes->{$node}{preferred})
 		{
 			$preferred_node = $node;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "preferred_node", value1 => $preferred_node, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	foreach my $node (sort {$a cmp $b} keys %{$nodes})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node",           value1 => $node, 
 			name2 => "preferred_node", value2 => $preferred_node, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($node ne $preferred_node)
 		{
 			$secondary_node = $node;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "secondary_node", value1 => $secondary_node, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -363,7 +389,7 @@ sub boot_server
 	# failover domain's highest priority node is ready. If not, is the peer? If not, sadness,
 	my $booted      = 0;
 	my $boot_return = "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "nodes->{$preferred_node}{storage_ready}", value1 => $nodes->{$preferred_node}{storage_ready}, 
 		name2 => "nodes->{$secondary_node}{storage_ready}", value2 => $nodes->{$secondary_node}{storage_ready}, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -373,7 +399,7 @@ sub boot_server
 		# - Storage is healhy (or both nodes have the same health state)
 		# - Health is OK *or* both nodes are 'warning' and 'force' was used.
 		# Storage is good. Are we healthy?
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "nodes->{$preferred_node}{healthy}",       value1 => $nodes->{$preferred_node}{healthy}, 
 			name2 => "nodes->{$secondary_node}{storage_ready}", value2 => $nodes->{$secondary_node}{storage_ready}, 
 			name3 => "nodes->{$secondary_node}{healthy}",       value3 => $nodes->{$secondary_node}{healthy}, 
@@ -390,7 +416,7 @@ sub boot_server
 				server => $server, 
 				node   => $preferred_node, 
 			});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "booted", value1 => $booted, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -406,7 +432,7 @@ sub boot_server
 				server => $server, 
 				node   => $secondary_node, 
 			});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "booted", value1 => $booted, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -422,7 +448,7 @@ sub boot_server
 				server => $server, 
 				node   => $preferred_node, 
 			});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "booted", value1 => $booted, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -436,7 +462,7 @@ sub boot_server
 	{
 		# Secondary's storage is healthy, we'll boot here if our health is OK. If not, we'll boot 
 		# here if we were forced.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "nodes->{$secondary_node}{healthy}", value1 => $nodes->{$secondary_node}{healthy}, 
 			name2 => "force",                             value2 => $force, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -452,7 +478,7 @@ sub boot_server
 				server => $server, 
 				node   => $secondary_node, 
 			});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "booted", value1 => $booted, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -469,7 +495,7 @@ sub boot_server
 				node   => $secondary_node, 
 			});
 			$booted = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "booted", value1 => $booted, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -497,15 +523,15 @@ sub boot_server
 	# 0 = Not booted
 	# 1 = Booted
 	# 2 = Failed to boot.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "booted", value1 => $booted, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($booted eq "1")
 	{
-		($servers, $state) = $an->Cman->get_cluster_server_list();
+		($servers, $state, $hosts) = $an->Cman->get_cluster_server_list();
 		foreach my $server_name (sort {$a cmp $b} keys %{$state})
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "server_name", value1 => $server_name, 
 				name2 => "server",      value2 => $server, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -514,7 +540,7 @@ sub boot_server
 				$server_found = 1;
 				$server_state = $state->{$server_name};
 				$server_uuid  = $an->data->{server_name}{$server_name}{uuid};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "server_found", value1 => $server_found, 
 					name2 => "server_state", value2 => $server_state, 
 					name3 => "server_uuid",  value3 => $server_uuid, 
@@ -523,7 +549,7 @@ sub boot_server
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "booted",      value1 => $booted, 
 		name2 => "boot_return", value2 => $boot_return, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1259,6 +1285,16 @@ sub get_cluster_server_list
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_cluster_server_list" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $node1           = $an->data->{sys}{anvil}{node1}{name};
+	my $node2           = $an->data->{sys}{anvil}{node2}{name};
+	my $hosts           = {};;
+	   $hosts->{$node1} = 0;
+	   $hosts->{$node2} = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "hosts->{$node1}", value1 => $hosts->{$node1}, 
+		name2 => "hosts->{$node2}", value2 => $hosts->{$node2}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $servers = [];
 	my $state   = {};
 	my $shell_call = $an->data->{path}{clustat};
@@ -1277,22 +1313,32 @@ sub get_cluster_server_list
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /vm:(.*?) .*? (.*)$/)
+		if ($line =~ /vm:(.*?) (.*?) (.*)$/)
 		{
 			my $server = $1;
-			my $status = $2;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			my $owner  = $2;
+			my $status = $3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "server", value1 => $server, 
-				name2 => "status", value2 => $status, 
+				name2 => "owner",  value2 => $owner, 
+				name3 => "status", value3 => $status, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			push @{$servers}, $server;
 			$state->{$server} = $status;
+			
+			if ($status =~ /start/i)
+			{
+				$hosts->{$owner}++;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "hosts->{$owner}", value1 => $hosts->{$owner}
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	close $file_handle;
 	
-	return($servers, $state);
+	return($servers, $state, $hosts);
 }
 
 ### NOTE: This doesn't seem to be used anymore.
@@ -2902,7 +2948,7 @@ sub _do_server_boot
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $an->data->{path}{clusvcadm}." -e $server -m $node";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => $THIS_FILE, line => __LINE__});
@@ -2912,7 +2958,7 @@ sub _do_server_boot
 		my $line = $_;
 		push @{$boot_return}, $line;
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
