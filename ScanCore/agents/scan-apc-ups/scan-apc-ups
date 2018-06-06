@@ -1428,22 +1428,21 @@ sub find_changes
 						name2 => "old_apc_ups_last_transfer_reason", value2 => $old_apc_ups_last_transfer_reason, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					my $level     = "notice";
-					my $title_key = "an_alert_title_0003";
-					
+					### NOTE: This used to be 'warning' level, but it caused way too many
+					###       false alarms. If a serious issue arises, the input voltage
+					###       will trigger a 'warning' level alert.
 					### There are 10 possible states 
-					### (* == warning, rest are notice):
-					#  0 -  There is no information on when the UPS last transferred to battery.
-					#  1 -  The UPS has not transferred to battery power since the last time it booted.
-					#  2 -  The UPS last transferred to batteries because of high input voltage.
-					# *3 -  The UPS last transferred to batteries because of a brown out. That is, a prolonged drop in input voltage from the mains circuit.
-					# *4 -  The UPS last transferred to batteries because of a black out. That is, a prolonged loss of input voltage from the mains circuit.
-					#  5 -  The UPS last transferred to batteries because of a brief, minor reduction of input voltage from the mains circuit.
-					# *6 -  The UPS last transferred to batteries because of a brief, significant reduction of input voltage from the mains circuit.
-					#  7 -  The UPS last transferred to batteries because of a brief, minor increase of input voltage from the mains circuit.
-					# *8 -  The UPS last transferred to batteries because of a brief, significant spike of input voltage from the mains circuit.
-					#  9 -  The UPS last transferred to batteries as part of a planned self-test.
-					# *10 - The UPS last transferred to batteries because of a significant change of input voltage from the mains circuit.
+					# 0 -  There is no information on when the UPS last transferred to battery.
+					# 1 -  The UPS has not transferred to battery power since the last time it booted.
+					# 2 -  The UPS last transferred to batteries because of high input voltage.
+					# 3 -  The UPS last transferred to batteries because of a brown out. That is, a prolonged drop in input voltage from the mains circuit.
+					# 4 -  The UPS last transferred to batteries because of a black out. That is, a prolonged loss of input voltage from the mains circuit.
+					# 5 -  The UPS last transferred to batteries because of a brief, minor reduction of input voltage from the mains circuit.
+					# 6 -  The UPS last transferred to batteries because of a brief, significant reduction of input voltage from the mains circuit.
+					# 7 -  The UPS last transferred to batteries because of a brief, minor increase of input voltage from the mains circuit.
+					# 8 -  The UPS last transferred to batteries because of a brief, significant spike of input voltage from the mains circuit.
+					# 9 -  The UPS last transferred to batteries as part of a planned self-test.
+					# 10 - The UPS last transferred to batteries because of a significant change of input voltage from the mains circuit.
 					
 					# Make sure we have a valid health integer
 					my $bad_value                            = "";
@@ -1462,33 +1461,10 @@ sub find_changes
 						$say_old_apc_ups_last_transfer_reason = 99;
 					}
 					
-					# If the old or new level is one worthy of a warning, set the alert 
-					# level to warning.
-					if (($new_apc_ups_last_transfer_reason eq "3") or 
-					    ($new_apc_ups_last_transfer_reason eq "4") or 
-					    ($new_apc_ups_last_transfer_reason eq "6") or 
-					    ($new_apc_ups_last_transfer_reason eq "8") or 
-					    ($new_apc_ups_last_transfer_reason eq "10"))
-					{
-						# Entered a warning state.
-						$level     = "warning";
-						$title_key = "an_alert_title_0004";
-					}
-					elsif (($old_apc_ups_last_transfer_reason eq "3") or 
-					       ($old_apc_ups_last_transfer_reason eq "4") or 
-					       ($old_apc_ups_last_transfer_reason eq "6") or 
-					       ($old_apc_ups_last_transfer_reason eq "8") or 
-					       ($old_apc_ups_last_transfer_reason eq "10"))
-					{
-						# Warning state cleared.
-						$level     = "warning";
-						$title_key = "an_alert_title_0006";
-					}
-					
 					$an->Alert->register_alert({
-						alert_level		=>	$level, 
+						alert_level		=>	"notice", 
 						alert_agent_name	=>	$THIS_FILE,
-						alert_title_key		=>	$title_key,
+						alert_title_key		=>	"an_alert_title_0003",
 						alert_message_key	=>	"scan_apc_ups_note_0011",
 						alert_message_variables	=>	{
 							ups_name		=>	$new_apc_ups_name,
