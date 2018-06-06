@@ -150,7 +150,7 @@ SET search_path = history, pg_catalog;
 			machine				=>	{},
 			# This is the number of scans in a row that a sensor needs to be gone for before we
 			# trigger an alarm.
-			sensor_loss_count_to_alarm	=>	3,
+			sensor_loss_count_to_alarm	=>	30,
 			# These are used when no other limits are set for a given sensor.
 			thresholds			=>	{
 				'default'			=>	{
