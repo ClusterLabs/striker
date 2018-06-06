@@ -3865,13 +3865,13 @@ WHERE
 	}
 	
 	# Pull out the RAM.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "data->{currentMemory}->[0]->{content}", value1 => $data->{currentMemory}->[0]->{content}, 
 		name2 => "data->{currentMemory}->[0]->{unit}",    value2 => $data->{currentMemory}->[0]->{unit}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$return->{current_ram} = $an->Readable->hr_to_bytes({size => $data->{currentMemory}->[0]->{content}, type => $data->{currentMemory}->[0]->{unit}});
 	$return->{maximum_ram} = $an->Readable->hr_to_bytes({size => $data->{memory}->[0]->{content}, type => $data->{memory}->[0]->{unit}});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "return->current_ram", value1 => $return->{current_ram}, 
 		name2 => "return->maximum_ram", value2 => $return->{maximum_ram}, 
 	}, file => $THIS_FILE, line => __LINE__});

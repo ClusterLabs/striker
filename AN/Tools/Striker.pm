@@ -1902,6 +1902,16 @@ sub _add_server_to_anvil
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $definition = $an->data->{path}{shared_definitions}."/$server.xml";
 	my $node_name  = $an->data->{new_server}{host_node} ? $an->data->{new_server}{host_node} : $an->data->{cgi}{node_name};
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0008", message_variables => {
+		name1 => "skip_scan",             value1 => $skip_scan, 
+		name2 => "server",                value2 => $server, 
+		name3 => "anvil_uuid",            value3 => $anvil_uuid, 
+		name4 => "anvil_name",            value4 => $anvil_name, 
+		name5 => "definition",            value5 => $definition, 
+		name6 => "cgi}{node_name",        value6 => $an->data->{cgi}{node_name}, 
+		name7 => "new_server::host_node", value7 => $an->data->{new_server}{host_node}, 
+		name8 => "node_name",             value8 => $node_name, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $node_name)
 	{
 		# If I don't have a node name, check to see if the server is running on one of the nodes. If
@@ -1963,7 +1973,7 @@ sub _add_server_to_anvil
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0013", message_variables => {
 		name1  => "skip_scan",  value1  => $skip_scan,
 		name2  => "server",     value2  => $server,
 		name3  => "anvil_uuid", value3  => $anvil_uuid,
@@ -2048,7 +2058,7 @@ sub _add_server_to_anvil
 	# On occasion, the installed server will power off, not reboot. So this checks to see if the server 
 	# needs to be kicked awake.
 	my $host = $an->data->{new_server}{host_node} ? $an->data->{new_server}{host_node} : $an->data->{cgi}{node_name};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 		name1 => "server", value1 => $server,
 		name2 => "host",   value2 => $host,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5159,13 +5169,13 @@ sub _delete_server
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_delete_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 1, title_key => "tools_log_0001", title_variables => { function => "_delete_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure the server name exists.
 	my $server     = $an->data->{cgi}{server}     ? $an->data->{cgi}{server}     : "";
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid} ? $an->data->{cgi}{anvil_uuid} : "";
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
 		name1 => "server",     value1 => $server,
 		name2 => "anvil_uuid", value2 => $anvil_uuid,
 		name3 => "anvil_name", value3 => $anvil_name,
@@ -5181,7 +5191,7 @@ sub _delete_server
 	$an->Striker->scan_anvil();
 	
 	my $server_host = $an->data->{server}{$server}{host};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_host", value1 => $server_host,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -5192,19 +5202,19 @@ sub _delete_server
 		if ($server_host eq $an->data->{sys}{anvil}{node1}{name})
 		{
 			$node_key = "node1";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_key", value1 => $node_key,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($server_host eq $an->data->{sys}{anvil}{node2}{name})
 		{
 			$node_key = "node2";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_key", value1 => $node_key,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_key", value1 => $node_key,
 	}, file => $THIS_FILE, line => __LINE__});
 	my $node_name = "";
@@ -5218,7 +5228,7 @@ sub _delete_server
 		$target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
 		$port      = $an->data->{sys}{anvil}{$node_key}{use_port};
 		$password  = $an->data->{sys}{anvil}{$node_key}{password};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
 			name1 => "node_name", value1 => $node_name,
 			name2 => "target",    value2 => $target,
 			name3 => "port",      value3 => $port,
@@ -5231,7 +5241,7 @@ sub _delete_server
 	{
 		# Pick either node that is up.
 		($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
 			name1 => "node_name", value1 => $node_name,
 			name2 => "target",    value2 => $target,
 			name3 => "port",      value3 => $port,
@@ -5242,7 +5252,7 @@ sub _delete_server
 	}
 	
 	# If I still don't have a target, then we're done.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 		name1 => "target", value1 => $target,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $target)
@@ -5253,7 +5263,7 @@ sub _delete_server
 	}
 	
 	# Has the timer expired?
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 		name1 => "time",        value1 => time,
 		name2 => "cgi::expire", value2 => $an->data->{cgi}{expire},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5278,7 +5288,7 @@ sub _delete_server
 	my $proceed       = 1;
 	my $ccs_exit_code = 255;
 	my $shell_call    = $an->data->{path}{ccs}." -h localhost --activate --sync --password \"".$an->data->{sys}{anvil}{password}."\" --rmvm $server; ".$an->data->{path}{echo}." ccs:\$?";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",       value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5291,7 +5301,7 @@ sub _delete_server
 	foreach my $line (@{$return})
 	{
 		next if not $line;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -5305,7 +5315,7 @@ sub _delete_server
 			print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 		}
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 		name1 => "ccs_exit_code", value1 => $ccs_exit_code,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($ccs_exit_code eq "0")
@@ -5321,7 +5331,7 @@ sub _delete_server
 	print $an->Web->template({file => "server.html", template => "delete-server-start-footer"});
 	
 	my $stop_exit_code = 255;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 		name1 => "server_host",   value1 => $server_host,
 		name2 => "ccs_exit_code", value2 => $ccs_exit_code,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5332,7 +5342,7 @@ sub _delete_server
 		
 		my $virsh_exit_code = 255;;
 		my $shell_call      = $an->data->{path}{virsh}." destroy $server; ".$an->data->{path}{echo}." virsh:\$?";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",       value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -5345,7 +5355,7 @@ sub _delete_server
 		foreach my $line (@{$return})
 		{
 			next if not $line;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -5359,7 +5369,7 @@ sub _delete_server
 				print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 			}
 		}
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "virsh_exit_code", value1 => $virsh_exit_code,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($virsh_exit_code eq "0")
@@ -5377,7 +5387,7 @@ sub _delete_server
 	}
 	
 	# Now delete the backing LVs
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 		name1 => "proceed", value1 => $proceed, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($proceed)
@@ -5391,7 +5401,7 @@ sub _delete_server
 			print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $message }});
 			my $lvremove_exit_code = 255;
 			my $shell_call         = $an->data->{path}{lvremove}." -f $lv; ".$an->data->{path}{echo}." lvremove:\$?";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 				name1 => "target",       value1 => $target,
 				name2 => "shell_call", value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -5404,7 +5414,7 @@ sub _delete_server
 			foreach my $line (@{$return})
 			{
 				next if not $line;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -5417,7 +5427,7 @@ sub _delete_server
 					print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 				}
 			}
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "lvremove exit code", value1 => $lvremove_exit_code,
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($lvremove_exit_code eq "0")
@@ -5450,7 +5460,7 @@ then
     ".$an->data->{path}{echo}." ls:\$?
 fi;
 ";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -5463,7 +5473,7 @@ fi;
 		foreach my $line (@{$return})
 		{
 			next if not $line;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -5478,7 +5488,7 @@ fi;
 				#print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 			}
 		}
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "ls exit code", value1 => $ls_exit_code,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($ls_exit_code eq "2")
@@ -5508,7 +5518,7 @@ SET
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -10358,7 +10368,7 @@ sub _parse_cluster_conf
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_parse_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
 	my $data      = $parameter->{data} ? $parameter->{data} : "";
@@ -10768,7 +10778,7 @@ sub _parse_cluster_conf
 	}
 	
 	### NOTE: These expose passwords!
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node_name}::info::fence_methods", value1 => $an->data->{node}{$node_name}{info}{fence_methods},
 		name2 => "node::${peer}::info::fence_methods",      value2 => $an->data->{node}{$peer}{info}{fence_methods},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -13833,7 +13843,7 @@ sub _provision_server
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_provision_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 1, title_key => "tools_log_0001", title_variables => { function => "_provision_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $say_title = $an->String->get({key => "title_0115", variables => { server => $an->data->{new_server}{name} }});
 	print $an->Web->template({file => "server.html", template => "provision-server-header", replace => { title => $say_title }});
@@ -13849,7 +13859,7 @@ sub _provision_server
 			port     => $port,
 			password => $password,
 		});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0005", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 		name2 => "node_key",  value2 => $node_key,
 		name3 => "target",    value3 => $target,
@@ -13863,19 +13873,19 @@ sub _provision_server
 	# Create the LVs
 	my $provision = "";
 	my @logical_volumes;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 		name1 => "new_server::vg", value1 => $an->data->{new_server}{vg},
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $vg (keys %{$an->data->{new_server}{vg}})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "vg", value1 => $vg,
 		}, file => $THIS_FILE, line => __LINE__});
 		for (my $i = 0; $i < @{$an->data->{new_server}{vg}{$vg}{lvcreate_size}}; $i++)
 		{
 			my $lv_size   = $an->data->{new_server}{vg}{$vg}{lvcreate_size}->[$i];
 			my $lv_device = "/dev/$vg/".$an->data->{new_server}{name}."_$i";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0004", message_variables => {
 				name1 => "i",         value1 => $i,
 				name2 => "vg",        value2 => $vg,
 				name3 => "lv_size",   value3 => $lv_size,
@@ -13963,7 +13973,7 @@ sub _provision_server
 	
 	foreach my $lv_device (@logical_volumes)
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 			name1 => "lv_device",                value1 => $lv_device,
 			name2 => "new_server::virtio::disk", value2 => $an->data->{new_server}{virtio}{disk},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -13982,7 +13992,7 @@ sub _provision_server
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
 	# for why we're using '--noautoconsole --wait -1'.
 	$provision .= "  --noautoconsole --wait -1 > /var/log/anvil-server_".$an->data->{new_server}{name}.".log &\n";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 		name1 => "provision", value1 => $provision,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -13994,7 +14004,7 @@ sub _provision_server
 	print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $message }});
 	
 	my $shell_call = $an->data->{path}{echo}." \"$provision\" > $shell_script && ".$an->data->{path}{'chmod'}." 755 $shell_script";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -14006,7 +14016,7 @@ sub _provision_server
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -14017,7 +14027,7 @@ sub _provision_server
 	### NOTE: Don't try to redirect output (2>&1 |), it causes errors I've not yet solved.
 	# Run the script.
 	$shell_call = $shell_script;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -14032,7 +14042,7 @@ sub _provision_server
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -14060,7 +14070,7 @@ sub _provision_server
 				}});
 		}
 		### Supressing output to clean-up what the user sees.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		#$an->Web->template({file => "server.html", template => "one-line-message-fixed-width", replace => { message => $line }});
@@ -14075,7 +14085,7 @@ sub _provision_server
 		
 		# Verify that the new VM is running.
 		my $shell_call = $an->data->{path}{'sleep'}." 3; ".$an->data->{path}{virsh}." list | ".$an->data->{path}{'grep'}." -q '".$an->data->{new_server}{name}."'; ".$an->data->{path}{echo}." rc:\$?";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -14090,7 +14100,7 @@ sub _provision_server
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -14107,6 +14117,36 @@ sub _provision_server
 				}
 			}
 		}
+		
+		# If there wasn't an error, undefine the VM.
+		if (not $error)
+		{
+			my $shell_call = $an->data->{path}{virsh}." undefine ".$an->data->{new_server}{name}."; ".$an->data->{path}{echo}." rc:\$?";
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /^rc:(\d+)/)
+				{
+					my $rc = $1;
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+						name1 => "rc", value1 => $rc, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
 	}
 	
 	# Done!
@@ -14116,7 +14156,7 @@ sub _provision_server
 	if (not $error)
 	{
 		# Add it and then change the boot device to 'hd'.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "new_server::host_node", value1 => $an->data->{new_server}{host_node},
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -15641,11 +15681,56 @@ sub _verify_server_config
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		# Look at the selected storage. if VGs named for two separate nodes are defined, error.
+		# This will count how many servers are on each node and pick the node with the most servers.
+		# If the count is the same, node 1 will be used.
+		my $node1 = $an->data->{sys}{anvil}{node1}{name};
+		my $node2 = $an->data->{sys}{anvil}{node2}{name};
+		my $hosts = {
+			$node1 => 0,
+			$node2 => 0,
+		};
+		foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
+		{
+			my $host  = $an->data->{server}{$server}{host};
+			my $state = $an->data->{server}{$server}{'state'};
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+				name1 => "host",  value1 => $host, 
+				name2 => "state", value2 => $state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($state =~ /start/)
+			{
+				$hosts->{$host}++;
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "hosts->{$host}", value1 => $hosts->{$host}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Pick the node to provision the server on.
 		$an->data->{new_server}{host_node} = "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "host_node", value1 => $an->data->{new_server}{host_node},
-			name2 => "vg_list",   value2 => $an->data->{cgi}{vg_list},
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "hosts->{$node1}", value1 => $hosts->{$node1}, 
+			name2 => "hosts->{$node2}", value2 => $hosts->{$node2}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($hosts->{$node2} > $hosts->{$node1})
+		{
+			$an->data->{new_server}{host_node} = $node2;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "new_server::host_node", value1 => $an->data->{new_server}{host_node}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$an->data->{new_server}{host_node} = $node1;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "new_server::host_node", value1 => $an->data->{new_server}{host_node}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Look at the selected storage. if VGs named for two separate nodes are defined, error.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "vg_list", value1 => $an->data->{cgi}{vg_list},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# We'll set this to '1' if storage was requested. This is how we catch when someone forgets 
@@ -15672,7 +15757,7 @@ sub _verify_server_config
 			my $say_node      = $short_node;
 			my $vg_key        = "vg_$vg";
 			my $vg_suffix_key = "vg_suffix_$vg";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0004", message_variables => {
 				name1 => "say_node",      value1 => $say_node,
 				name2 => "vg_key",        value2 => $vg_key,
 				name3 => "vg_suffix_key", value3 => $vg_suffix_key,
@@ -15684,35 +15769,40 @@ sub _verify_server_config
 			{
 				my $node       = $an->data->{sys}{anvil}{$node_key}{name};
 				my $short_node = $an->data->{sys}{anvil}{$node_key}{short_name};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
 					name1 => "node",       value1 => $node,
 					name2 => "short_node", value2 => $short_node,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($node =~ /$short_node/)
 				{
 					$say_node = $node;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 						name1 => "say_node", value1 => $say_node,
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
 				}
 			}
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "host_node", value1 => $an->data->{new_server}{host_node},
-			}, file => $THIS_FILE, line => __LINE__});
+			
+			# If I still don't have a target node, pick it based on the VG.
 			if (not $an->data->{new_server}{host_node})
 			{
-				$an->data->{new_server}{host_node} = $say_node;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 					name1 => "host_node", value1 => $an->data->{new_server}{host_node},
 				}, file => $THIS_FILE, line => __LINE__});
-			}
-			elsif ($an->data->{new_server}{host_node} ne $say_node)
-			{
-				# Conflicting Storage
-				my $say_row     = $an->String->get({key => "row_0109"});
-				my $say_message = $an->String->get({key => "message_0134"});
-				push @errors, "$say_row#!#$say_message";
+				if (not $an->data->{new_server}{host_node})
+				{
+					$an->data->{new_server}{host_node} = $say_node;
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+						name1 => "host_node", value1 => $an->data->{new_server}{host_node},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($an->data->{new_server}{host_node} ne $say_node)
+				{
+					# Conflicting Storage
+					my $say_row     = $an->String->get({key => "row_0109"});
+					my $say_message = $an->String->get({key => "message_0134"});
+					push @errors, "$say_row#!#$say_message";
+				}
 			}
 			
 			# Setup the 'lvcreate' call
@@ -15761,7 +15851,7 @@ sub _verify_server_config
 				$storage_requested = 1;
 			}
 		}
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "host_node", value1 => $an->data->{new_server}{host_node},
 		}, file => $THIS_FILE, line => __LINE__});
 		
