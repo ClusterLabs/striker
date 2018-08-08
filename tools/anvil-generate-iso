@@ -133,12 +133,16 @@ my $conf = {
 			'a2bc9de743bfb0bfe1f14676a46a624b'	=>	"RHEL 6.7, Disk 1",
 			'ef0f3bbfbb846491a07e4a02b5d5640a'	=>	"RHEL 6.8, Disk 1",
 			'57e29b68d92e1fc2f294e85baa29c5af'	=>	"RHEL 6.9, Disk 1",
+			'b41cfb8ae90737f9945288bcc3475cc3'	=>	"RHEL 6.10, Disk 1",
+			'5e131530e18bef7ff0a5d70bd2eb9c3d'	=>	"RHEL 6.10, Disk 1, EFDisk Fix",
 			'51f90e8ddd2ea199780065eaf75130ad'	=>	"CentOS 6.7, Disk 1",
 			'efd54b939787519b350d986329e2c7a3'	=>	"CentOS 6.7, Disk 2",
 			'f73c2c4dd333c202ca85ea66120cacdf'	=>	"CentOS 6.8, Disk 1",
 			'cdd5b1c1af837774f4fa3a105365a218'	=>	"CentOS 6.8, Disk 2",
 			'2e227fa14c8a9791293b6525289c7dad'	=>	"CentOS 6.9, Disk 1",
 			'e2152e0eeb082a92c0f925e7a99c872c'	=>	"CentOS 6.9, Disk 2",
+			'8ffcc065c3110e6fa0144cb85e4bb4bc'	=>	"CentOS 6.10, Disk 1",
+			'8ff3b03bbac2224c56943e8936348a9d'	=>	"CentOS 6.10, Disk 2",
 		},
 		# This will be set to 'rhel' or 'centos', depending on the source ISO type.
 		os		=>	"",
@@ -1326,6 +1330,7 @@ yum-plugin-priorities\n";
 redhat-support-tool
 rhnsd
 subscription-manager
+subscription-manager-rhsm
 yum-rhn-plugin
 ";
 	}
