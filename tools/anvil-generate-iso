@@ -1331,6 +1331,7 @@ redhat-support-tool
 rhnsd
 subscription-manager
 subscription-manager-rhsm
+subscription-manager-rhsm-certificates
 yum-rhn-plugin
 ";
 	}
@@ -4545,6 +4546,8 @@ sub get_package_list
 		"rhnlib.noarch",					# rhnlib-2.5.22-15.el6.noarch.rpm
 		"rhnsd.x86_64",						# rhnsd-4.9.3-2.el6.x86_64.rpm
 		"subscription-manager.x86_64",				# subscription-manager-1.14.10-1.el6.x86_64.rpm
+		"subscription-manager-rhsm.x86_64",
+		"subscription-manager-rhsm-certificates.x86_64",
 		"yum-rhn-plugin.noarch",				# yum-rhn-plugin-0.9.1-58.el6.noarch.rpm
 	];
 	$conf->{sys}{packages}{centos} = [
