@@ -283,6 +283,9 @@ avoid_duplicate_run($an) if not $an->data->{switches}{force};
 add_hostname_to_databases($an);
 check_hostname_for_changes($an);
 
+# Check for duplicate hostname entries.
+check_for_duplicate_hostnames($an);
+
 # Before we can process or sync alerts, we need to make sure we've read in the strings files for any
 # agents that have registered alerts (pending or historical).
 load_agent_strings($an);
@@ -340,6 +343,9 @@ while(1)
 	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 	if ($connections)
 	{
+		# Check for duplicate hostname entries.
+		check_for_duplicate_hostnames($an);
+		
 		# Look to see if any databases need to be updated.
 		update_db($an);
 		
@@ -405,11 +411,11 @@ while(1)
 	# Archive, if needed.
 	archive_if_needed($an);
 	
-	# Disconnect from databases.
-	$an->DB->disconnect_from_databases();
-	
 	# Update the lock file timestamp.
 	$an->ScanCore->lock_file({'do' => "set"});
+	
+	# Disconnect from databases.
+	$an->DB->disconnect_from_databases();
 	
 	# Did the user disabled ScanCore while the agents were running (or was this a '--one-shot')?
 	exit_if_one_shot($an);
@@ -444,6 +450,59 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This checks to see if a duplicate hostname exists in the database for this machine. If it does, it will be
+# removed. This can happen if a node with the same name is rebuilt and gets a new host UUID.
+sub check_for_duplicate_hostnames
+{
+	my ($an) = @_;
+	
+	my $query = "SELECT host_uuid FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $host_uuid = $row->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "host_uuid",      value1 => $host_uuid,
+			name2 => "sys::host_uuid", value2 => $an->data->{sys}{host_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($an->data->{sys}{host_uuid} ne $host_uuid)
+		{
+			# Duplicate! We need to send an alert
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scancore_log_0098",
+				alert_message_variables	=>	{
+					host_name		=>	$an->hostname,
+					bad_uuid		=>	$host_uuid, 
+					host_uuid		=>	$an->data->{sys}{host_uuid},
+				},
+			});
+			
+			my $short_hostname =  $an->hostname;
+			   $short_hostname =~ s/\..*$//;
+			my $query = "UPDATE hosts SET host_name = ".$an->data->{sys}{use_db_fh}->quote($short_hostname.'.DELETED')." WHERE host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid).";";
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
 
 # This will archive stuff in the 'history' schema, if needed.
 sub archive_if_needed

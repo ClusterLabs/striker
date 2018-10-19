@@ -168,6 +168,7 @@ error when trying to translate it, the alert will be skipped. The details were:
 - Message Variables: [#!variable!alert_message_variables!#]
 - Sent Date: ....... [#!variable!modified_date!#]
 		</key>
+		<key name="scancore_log_0098">This machine: [#!variable!host_name!#] has an extra entry in 'hosts' with a different host UUID: [#!variable!bad_uuid!#] (this machine's UUID is: [#!variable!host_uuid!#]). Marking the bad entry as 'DELETED'.</key>
 		
 		<!-- Warnings. -->
 		<key name="scancore_warning_0001">
