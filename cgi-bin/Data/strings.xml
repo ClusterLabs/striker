@@ -2193,7 +2193,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="log_0273">Shell call: [#!variable!shell_call!#].</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
-		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.com" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2017]]></key>
+		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.com" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2018]]></key>
 		<key name="legal_0002"><![CDATA[This program is released under the <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_new">GNU GPL v2</a>]]></key>
 		<key name="legal_0003">Release version #!conf!sys::version!#</key>
 		

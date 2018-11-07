@@ -7660,7 +7660,7 @@ WHERE
 		my $old_model         = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_model};
 		my $old_alarm_state   = $an->data->{sql}{storcli_controllers}{storcli_controller_uuid}{$controller_uuid}{storcli_controller_alarm_state};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "controller_uuid",   value1 => $controller_uuid,
+		 	name1 => "controller_uuid",   value1 => $controller_uuid,
 			name2 => "old_serial_number", value2 => $old_serial_number,
 			name3 => "old_model",         value3 => $old_model,
 			name4 => "old_alarm_state",   value4 => $old_alarm_state,
@@ -7714,11 +7714,34 @@ AND
 	return(0);
 }
 
+# In some weird (and so far unreproducable) case, a controller will get recorded twice. If this happens, the 
+# system will think it keeps finding and losing controllers. So this check purges duplicates.
+sub clear_duplicate_controllers
+{
+	my ($an) = @_;
+	
+=cut
+scancore=# SELECT a.host_name, b.storcli_controller_uuid, b.storcli_controller_serial_number, b.storcli_controller_model, b.storcli_controller_alarm_state FROM hosts a, storcli_controllers b WHERE a.host_uuid = b.storcli_controller_host_uuid ORDER BY a.host_name ASC;
+       host_name       |       storcli_controller_uuid        | storcli_controller_serial_number |      storcli_controller_model       | storcli_controller_alarm_state 
+-----------------------+--------------------------------------+----------------------------------+-------------------------------------+--------------------------------
+ an-a01n01.alteeve.com | 2b429e35-8449-45d2-a4b3-f764156ef76c | 0000000043113622                 | RAID Controller SAS 6G 1GB (D3116C) | VANISHED
+ an-a01n01.alteeve.com | 74904bf2-7388-4329-b0ae-fb20e3f8553f | 0000000043113622                 | RAID Controller SAS 6G 1GB (D3116C) | OFF
+ an-a01n02.alteeve.com | 1dfb9cf9-e8af-45b0-963b-178667b22e0a | 0000000043113628                 | RAID Controller SAS 6G 1GB (D3116C) | VANISHED
+ an-a01n02.alteeve.com | 1974289e-797a-47fd-89c2-1b4354732466 | 0000000043113628                 | RAID Controller SAS 6G 1GB (D3116C) | OFF
+(4 rows)
+=cut
+	my $query = "SELECT storcli_controller_uuid, storcli_controller_serial_number, storcli_controller_alarm_state FROM storcli_controllers WHERE storcli_controller_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
+	
+	return(0);
+}
+
 # This reads in the last scan's data.
 sub read_last_scan
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	clear_duplicate_controllers($an);
 	
 	# Read in the controller(s)
 	my $query = "
@@ -7732,7 +7755,7 @@ FROM
     storcli_controllers 
 WHERE 
     storcli_controller_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
