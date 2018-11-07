@@ -12,6 +12,8 @@
 # 5  = The target node is not healthy and '--force' wasn't used.
 # 6  = Failed to stop the server during a cold migration.
 # 
+# TODO: Make a temp file in /shared/migrating.<server> and have scan-server look for this and, if found, ignore paused checks.
+# 
 
 use strict; 
 use warnings;

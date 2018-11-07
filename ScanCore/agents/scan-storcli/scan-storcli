@@ -3570,7 +3570,7 @@ WHERE
 								# Temperature is back.
 								$message_key = "scan_storcli_warning_0032";
 							}
-							elsif ($old_variable_value > $new_variable_value)
+							elsif ($new_variable_value > $old_variable_value)
 							{
 								# Rising
 								my $jumped = $new_variable_value - $old_variable_value;
