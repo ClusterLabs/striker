@@ -1426,7 +1426,7 @@ sub setup_new_interface
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Found a new interface: [$new_interface], creating a base DHCP config, if needed.", 1);
 		my $config_file = "/etc/sysconfig/network-scripts/ifcfg-".$new_interface;
-		logger($conf, $THIS_FILE, __LINE__, "config_file: [$config_file]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "config_file: [".$config_file."]", 3);
 		if (-e $config_file)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- The new interface file already has a config file.", 1);
@@ -1506,7 +1506,7 @@ sub configure_scancore
 	# First, see if we need to initialize the DB. If so, the 'pg_hba.conf' won't exist yet.
 	my $initialized = 0;
 	logger($conf, $THIS_FILE, __LINE__, "Setting up the ScanCore database.", 1);
-	logger($conf, $THIS_FILE, __LINE__, "path::pg_hba_conf: [$conf->{path}{pg_hba_conf}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "path::pg_hba_conf: [".$conf->{path}{pg_hba_conf}."]", 3);
 	if (not -e $conf->{path}{pg_hba_conf})
 	{
 		# Initialization required.
@@ -1707,7 +1707,7 @@ fi";
 		elsif ($line =~ /Failed/i)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Database server is not running and failed to start! Unable to proceed.", 0);
-			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   The cause of the error may be found in: [$conf->{path}{pgsql_log}].", 0);
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   The cause of the error may be found in: [".$conf->{path}{pgsql_log}."].", 0);
 			exit(31);
 		}
 	}
@@ -1718,14 +1718,14 @@ fi";
 	my $striker_user     = $conf->{sys}{striker_user};
 	my $striker_password = $conf->{sys}{striker_password};
 	my $use_password     = 0;
-	logger($conf, $THIS_FILE, __LINE__, "- Looks like the 'postgres' user's password is set. Creating temporary: [$conf->{path}{postgres_pgpass}]", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Looks like the 'postgres' user's password is set. Creating temporary: [".$conf->{path}{postgres_pgpass}."]", 1);
 	   $shell_call = "
-if grep -q -P  \"^local.*?md5\$\" $conf->{path}{pg_hba_conf}; 
+if grep -q -P  \"^local.*?md5\$\" ".$conf->{path}{pg_hba_conf}."; 
 then 
 	echo 'use pgpass'
-	echo \"*:*:*:postgres:$striker_password\" > $conf->{path}{postgres_pgpass} && \
-	$conf->{executable}{chown} postgres:postgres $conf->{path}{postgres_pgpass} && \
-	$conf->{executable}{chmod} 600 $conf->{path}{postgres_pgpass} && \
+	echo \"*:*:*:postgres:$striker_password\" > ".$conf->{path}{postgres_pgpass}." && \
+	$conf->{executable}{chown} postgres:postgres ".$conf->{path}{postgres_pgpass}." && \
+	$conf->{executable}{chmod} 600 ".$conf->{path}{postgres_pgpass}." && \
 	su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.pg_user;'\"
 fi";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
@@ -1948,31 +1948,31 @@ fi";
 	close $file_handle;
 	
 	# Copy AN::Tools into place.
-	logger($conf, $THIS_FILE, __LINE__, "directory::perl_library: [$conf->{directory}{perl_library}], directory::perl_source: [$conf->{directory}{source}/AN].", 3);
-	if ((not -e "$conf->{directory}{perl_library}/AN") && (-e "$conf->{directory}{source}/AN"))
+	logger($conf, $THIS_FILE, __LINE__, "directory::perl_library: [".$conf->{directory}{perl_library}."], directory::perl_source: [".$conf->{directory}{source}."/AN].", 3);
+	if ((not -e $conf->{directory}{perl_library}."/AN") && (-e $conf->{directory}{source}."/AN"))
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Copying AN::Tools perl modules to: [$conf->{directory}{perl_library}/].", 1);
-		rsync_files($conf, "$conf->{directory}{source}/AN", "$conf->{directory}{perl_library}/");
+		logger($conf, $THIS_FILE, __LINE__, "- Copying AN::Tools perl modules to: [".$conf->{directory}{perl_library}."/].", 1);
+		rsync_files($conf, $conf->{directory}{source}."/AN", $conf->{directory}{perl_library}."/");
 	}
-	elsif (-e "$conf->{directory}{perl_library}/AN")
+	elsif (-e $conf->{directory}{perl_library}."/AN")
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- AN::Tools perl modules already exists in: [$conf->{directory}{perl_library}/AN], skipping installing it.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- AN::Tools perl modules already exists in: [".$conf->{directory}{perl_library}."/AN], skipping installing it.", 1);
 	}
-	elsif (not -e "$conf->{directory}{source}/AN")
+	elsif (not -e $conf->{directory}{source}."/AN")
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - AN::Tools perl modules source: [$conf->{directory}{source}/AN] doesn't exist nor is it in the target directory: [$conf->{directory}{perl_library}/AN], skipping installing it. This will cause Striker to fail!", 1);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - AN::Tools perl modules source: [".$conf->{directory}{source}."/AN] doesn't exist nor is it in the target directory: [".$conf->{directory}{perl_library}."/AN], skipping installing it. This will cause Striker to fail!", 1);
 		exit(41);
 	}
 	
 	# Add scanCore to crontab.
 	logger($conf, $THIS_FILE, __LINE__, "- Adding ScanCore to root's cron table.", 1);
 	$shell_call = "
-if [ ! -e '$conf->{path}{cron_root}' ]
+if [ ! -e '".$conf->{path}{cron_root}."' ]
 then
 	echo 'creating empty crontab for root.'
-	echo 'MAILTO=\"\"' > $conf->{path}{cron_root}
-	$conf->{executable}{chown} root:root $conf->{path}{cron_root}
-	$conf->{executable}{chmod} 600 $conf->{path}{cron_root}
+	echo 'MAILTO=\"\"' > ".$conf->{path}{cron_root}."
+	$conf->{executable}{chown} root:root ".$conf->{path}{cron_root}."
+	$conf->{executable}{chmod} 600 ".$conf->{path}{cron_root}."
 fi";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to read: [$shell_call], error was: $!\n";
@@ -1991,7 +1991,7 @@ fi";
 	logger($conf, $THIS_FILE, __LINE__, "- Reading in 'root's cron table.", 1);
 	my $dashboard  = $conf->{executable}{scancore};
 	my $raw_cron   = "";
-	   $shell_call = "$conf->{path}{cron_root}";
+	   $shell_call = $conf->{path}{cron_root};
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call].", 3);
 	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
@@ -2015,7 +2015,7 @@ fi";
 	$raw_cron .= "*/1 * * * * $dashboard 2>&1\n";
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out 'root's updated cron table.", 1);
-	$shell_call = "$conf->{path}{cron_root}";
+	$shell_call = $conf->{path}{cron_root};
 	open ($file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
 	print $file_handle $raw_cron;
 	close $file_handle;
@@ -2024,7 +2024,7 @@ fi";
 	if ($use_password)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Deleting the temporary .pgpass file that was created for the 'postgres' user.", 1);
-		my $shell_call = "rm -f $conf->{path}{postgres_pgpass}";
+		my $shell_call = "rm -f ".$conf->{path}{postgres_pgpass};
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -2037,11 +2037,11 @@ fi";
 	}
 	
 	# Enable ScanCore in striker.conf, unless requested not to, in which case, disable it..
-	   $shell_call = "$conf->{executable}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
+	   $shell_call = $conf->{executable}{sed}." -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' ".$conf->{path}{striker_config}."\n";
 	my $message    = "Enabling ScanCore.";
 	logger($conf, $THIS_FILE, __LINE__, "- $message", 1);
 	$shell_call .= "
-if \$(grep -q '^scancore::enabled\\s*=\\s*1' $conf->{path}{striker_config});
+if \$(grep -q '^scancore::enabled\\s*=\\s*1' ".$conf->{path}{striker_config}.");
 then 
     echo enabled; 
 else 
@@ -2127,27 +2127,27 @@ sub configure_striker_tools
 	# Create the tools directory, if needed.
 	if (not -e $conf->{directory}{striker_tools})
 	{
-		mkdir $conf->{directory}{striker_tools} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{striker_tools}]. The error was: $!\n";
+		mkdir $conf->{directory}{striker_tools} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{striker_tools}."]. The error was: $!\n";
 	}
 	
 	# Now copy the tools we want into place, if they're not already there.
 	logger($conf, $THIS_FILE, __LINE__, "Copying Striker tools and ScanCore into place.", 1);
-	rsync_files($conf, "$conf->{directory}{source}/striker.conf", "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/*",      "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/ScanCore",     "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/AN",           "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/cgi-bin/Data", "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, $conf->{directory}{source}."/striker.conf", $conf->{directory}{striker_tools}."/");
+	rsync_files($conf, $conf->{directory}{source}."/tools/*",      $conf->{directory}{striker_tools}."/");
+	rsync_files($conf, $conf->{directory}{source}."/ScanCore",     $conf->{directory}{striker_tools}."/");
+	rsync_files($conf, $conf->{directory}{source}."/AN",           $conf->{directory}{striker_tools}."/");
+	rsync_files($conf, $conf->{directory}{source}."/cgi-bin/Data", $conf->{directory}{striker_tools}."/");
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	# Create a tarball for downloading by nodes.
 	if (not -e $conf->{directory}{apache_files})
 	{
 		# Create the directory
-		logger($conf, $THIS_FILE, __LINE__, "- Creating the apache-accessible download directory: [$conf->{directory}{apache_files}]", 1);
-		mkdir $conf->{directory}{apache_files} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{apache_files}]. The error was: $!\n";
+		logger($conf, $THIS_FILE, __LINE__, "- Creating the apache-accessible download directory: [".$conf->{directory}{apache_files}."]", 1);
+		mkdir $conf->{directory}{apache_files} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{apache_files}."]. The error was: $!\n";
 	}
-	logger($conf, $THIS_FILE, __LINE__, "Creating downloadable '$conf->{directory}{apache_files}' directory for nodes to grab.", 1);
-	my $shell_call = "$conf->{executable}{tar} -cvjf $conf->{directory}{apache_files}/striker_tools.tar.bz2 -C $conf->{directory}{striker_tools}/ .";
+	logger($conf, $THIS_FILE, __LINE__, "Creating downloadable '".$conf->{directory}{apache_files}."' directory for nodes to grab.", 1);
+	my $shell_call = $conf->{executable}{tar}." -cvjf ".$conf->{directory}{apache_files}."/striker_tools.tar.bz2 -C ".$conf->{directory}{striker_tools}."/ .";
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -2158,7 +2158,7 @@ sub configure_striker_tools
 	close $file_handle;
 	
 	# Copy the tools into /var/www/html/files/ so that InstallManifest can grab what it needs, as needed.
-	rsync_files($conf, "$conf->{directory}{source}/tools/*", "$conf->{directory}{apache_files}/");
+	rsync_files($conf, $conf->{directory}{source}."/tools/*", $conf->{directory}{apache_files}."/");
 	
 	# Setup the USB tools.
 	write_udev_striker_usb($conf);
@@ -2174,8 +2174,8 @@ sub write_udev_striker_usb
 	my ($conf) = @_;
 	
 	
-	my $shell_call = "$conf->{path}{udev_striker_usb}";
-	logger($conf, $THIS_FILE, __LINE__, "Writing the new udev rules file: [$conf->{path}{udev_striker_usb}]", 1);
+	my $shell_call = $conf->{path}{udev_striker_usb};
+	logger($conf, $THIS_FILE, __LINE__, "Writing the new udev rules file: [".$conf->{path}{udev_striker_usb}."]", 1);
 	open (my $file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 	print $file_handle "
@@ -2205,13 +2205,13 @@ sub configure_ntp
 		next if not $ntp_server;
 		logger($conf, $THIS_FILE, __LINE__, "- Checking to see if: [$ntp_server] needs to be added.", 1);
 		my $shell_call = "
-if \$(grep -q 'server $ntp_server iburst' $conf->{path}{ntp_conf}); 
+if \$(grep -q 'server $ntp_server iburst' ".$conf->{path}{ntp_conf}."); 
 then 
 	echo exists; 
 else 
 	echo adding $ntp_server;
-	echo 'server $ntp_server iburst' >> $conf->{path}{ntp_conf}
-	if \$(grep -q 'server $ntp_server iburst' $conf->{path}{ntp_conf});
+	echo 'server $ntp_server iburst' >> ".$conf->{path}{ntp_conf}."
+	if \$(grep -q 'server $ntp_server iburst' ".$conf->{path}{ntp_conf}.");
 	then
 		echo added
 	else
@@ -2234,7 +2234,7 @@ fi";
 			}
 			elsif ($line =~ /failed/i)
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to add: [$ntp_server] to: [$conf->{path}{ntp_conf}]", 0);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to add: [$ntp_server] to: [".$conf->{path}{ntp_conf}."]", 0);
 			}
 		}
 		close $file_handle;
@@ -2252,7 +2252,7 @@ sub get_hostname
 	if (not $conf->{switches}{n})
 	{
 		# user didn't set it, so read it in.
-		my $shell_call = "$conf->{executable}{hostname}";
+		my $shell_call = $conf->{executable}{hostname};
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -2337,7 +2337,7 @@ sub freeze_networkmanager
 			{
 				# Link is up. Check its config file.
 				my $nm_controlled = "";
-				   $shell_call    = "cat $conf->{path}{network_configs}/ifcfg-$iface";
+				   $shell_call    = "cat ".$conf->{path}{network_configs}."/ifcfg-$iface";
 				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
@@ -2370,9 +2370,9 @@ sub freeze_networkmanager
 		my $message    = "Freezing interfaces: ";
 		foreach my $iface (sort {$a cmp $b} keys %{$freeze})
 		{
-			my $nic_file    = "$conf->{path}{network_configs}/ifcfg-$iface";
-			   $shell_call .= "$conf->{executable}{sed} -i 's/ONBOOT=.*/ONBOOT=\"yes\"/\' $nic_file; ";
-			   $shell_call .= "$conf->{executable}{sed} -i 's/NM_CONTROLLED=.*/NM_CONTROLLED=\"no\"/\' $nic_file; ";
+			my $nic_file    = $conf->{path}{network_configs}."/ifcfg-$iface";
+			   $shell_call .= $conf->{executable}{sed}." -i 's/ONBOOT=.*/ONBOOT=\"yes\"/\' $nic_file; ";
+			   $shell_call .= $conf->{executable}{sed}." -i 's/NM_CONTROLLED=.*/NM_CONTROLLED=\"no\"/\' $nic_file; ";
 			   $message    .= "$iface, ";
 		}
 		# If I had any, append the restart
@@ -2413,7 +2413,7 @@ sub add_repo
 	{
 		$conf->{sys}{repositories} .= ",$conf->{switches}{r}";
 	}
-	logger($conf, $THIS_FILE, __LINE__, "repositories: [$conf->{switches}{r}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "repositories: [".$conf->{switches}{r}."]", 3);
 	foreach my $url (split/,/, $conf->{switches}{r})
 	{
 		next if not $url;
@@ -2426,7 +2426,7 @@ sub add_repo
 			exit(24);
 		}
 		
-		my $full_repo_path = "$conf->{directory}{yum_repos}/$repo_file";
+		my $full_repo_path = $conf->{directory}{yum_repos}."/$repo_file";
 		if (-e $full_repo_path)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Already downloaded, skipping.", 1);
@@ -2448,7 +2448,7 @@ sub add_repo
 				{
 					# It needs to be installed.
 					logger($conf, $THIS_FILE, __LINE__, "- The module is not installed, attempting to install it now.", 1);
-					my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install perl-Crypt-SSLeay";
+					my $shell_call = $conf->{executable}{yum}." ".$conf->{sys}{yum_switches}." install perl-Crypt-SSLeay";
 					logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 					logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 					open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -2473,7 +2473,7 @@ sub add_repo
 				}
 			}
 			logger($conf, $THIS_FILE, __LINE__, "- Downloading: [$url]", 1);
-			my $shell_call = "$conf->{executable}{curl} $url > $full_repo_path && $conf->{executable}{yum} clean expire-cache";
+			my $shell_call = $conf->{executable}{curl}." $url > $full_repo_path && ".$conf->{executable}{yum}." clean expire-cache";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
@@ -2511,7 +2511,7 @@ sub add_repo
 								my $key_url  = "$repo_url/$key_name";
 								
 								logger($conf, $THIS_FILE, __LINE__, "- Trying to download: [$key_url].", 1);
-								my $shell_call = "$conf->{executable}{'lwp-download'} $key_url $local_key";
+								my $shell_call = $conf->{executable}{'lwp-download'}." $key_url $local_key";
 								logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 								open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 								logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
@@ -2719,7 +2719,7 @@ sub compile_c_wrappers
 		}
 		
 		# Compile
-		my $shell_call = "$conf->{path}{gcc} -o $out_file $c_file";
+		my $shell_call = $conf->{path}{gcc}." -o $out_file $c_file";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -2752,7 +2752,7 @@ sub remove_yum_priority
 	while(my $file = readdir(DIRECTORY))
 	{
 		next if $file !~ /\.repo$/;
-		my $full_path = "$conf->{directory}{yum_repos}/$file";
+		my $full_path = $conf->{directory}{yum_repos}."/$file";
 		next if not -f $full_path;
 		logger($conf, $THIS_FILE, __LINE__, "- Checking: [$full_path]", 1);
 		
@@ -2837,7 +2837,7 @@ sub configure_gui
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] while. This is likely because of how buffering is handled. If you", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
-		my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install $to_install";
+		my $shell_call = $conf->{executable}{yum}." ".$conf->{sys}{yum_switches}." install $to_install";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -2904,7 +2904,7 @@ sub configure_gui
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Enabling GUI on boot.", 1);
 		backup_file($conf, $conf->{path}{inittab});
-		my $shell_call = "sed -i 's/id:3:initdefault/id:5:initdefault/' $conf->{path}{inittab}";
+		my $shell_call = "sed -i 's/id:3:initdefault/id:5:initdefault/' ".$conf->{path}{inittab};
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -2923,7 +2923,7 @@ sub configure_gui
 		my $create_user      = 1;
 		
 		logger($conf, $THIS_FILE, __LINE__, "- Checking if the system user: [$striker_user] exists.", 1);
-		open (my $file_handle, "<", $conf->{path}{passwd}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{passwd}], the error was: $!\n";
+		open (my $file_handle, "<", $conf->{path}{passwd}) or die "$THIS_FILE ".__LINE__."; Failed to read: [".$conf->{path}{passwd}."], the error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2958,7 +2958,7 @@ sub configure_gui
 		if (not -e "/home/$striker_user/.ssh/id_rsa")
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Creating the SSH RSA key for: [$striker_user]", 1);
-			my $shell_call = "$conf->{executable}{su} $striker_user -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
+			my $shell_call = $conf->{executable}{su}." $striker_user -c \"".$conf->{executable}{'ssh-keygen'}." -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -2974,7 +2974,7 @@ sub configure_gui
 		if (1)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Setting the system password for: [$striker_user]", 1);
-			my $shell_call = "$conf->{executable}{echo} \"$striker_password\" | $conf->{executable}{passwd} $striker_user --stdin";
+			my $shell_call = $conf->{executable}{echo}." \"$striker_password\" | ".$conf->{executable}{passwd}." $striker_user --stdin";
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -2996,7 +2996,7 @@ sub configure_gui
 		   $power_sh .= "PATH=/sbin:/bin:/usr/bin\n";
 		   $power_sh .= "shutdown -h now\n";
 		   
-		my $shell_call = "$conf->{path}{power_sh}";
+		my $shell_call = $conf->{path}{power_sh};
 		open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 		print $file_handle $power_sh;
 		close $file_handle;
@@ -3011,9 +3011,9 @@ sub configure_gui
 		# Create the directory.
 		logger($conf, $THIS_FILE, __LINE__, "- Creating the desktop directory: [$desktop]", 1);
 		mkdir $desktop or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$desktop]. The error was: $!\n";
-		$conf->{permissions}{user_desktop}{path}      = "$desktop";
-		$conf->{permissions}{user_desktop}{owner}     = "$conf->{sys}{striker_user}";
-		$conf->{permissions}{user_desktop}{group}     = "$conf->{sys}{striker_user}",
+		$conf->{permissions}{user_desktop}{path}      = $desktop;
+		$conf->{permissions}{user_desktop}{owner}     = $conf->{sys}{striker_user};
+		$conf->{permissions}{user_desktop}{group}     = $conf->{sys}{striker_user},
 		$conf->{permissions}{user_desktop}{mode}      = "755";
 		$conf->{permissions}{user_desktop}{recursive} = 0;
 	}
@@ -3027,18 +3027,18 @@ sub configure_gui
 		### Add them to the permission setting hash
 		# Firefox
 		$conf->{permissions}{user_firefox_icon}{path}      = "$desktop/firefox.desktop";
-		$conf->{permissions}{user_firefox_icon}{owner}     = "$conf->{sys}{striker_user}";
-		$conf->{permissions}{user_firefox_icon}{group}     = "$conf->{sys}{striker_user}",
+		$conf->{permissions}{user_firefox_icon}{owner}     = $conf->{sys}{striker_user};
+		$conf->{permissions}{user_firefox_icon}{group}     = $conf->{sys}{striker_user},
 		$conf->{permissions}{user_firefox_icon}{mode}      = "755";
 		$conf->{permissions}{user_firefox_icon}{recursive} = 0;
 		
 		# Virtual Machine Manager
 		$conf->{permissions}{user_virt_manager_icon}{path}      = "$desktop/virt-manager.desktop";
-		$conf->{permissions}{user_virt_manager_icon}{owner}     = "$conf->{sys}{striker_user}";
-		$conf->{permissions}{user_virt_manager_icon}{group}     = "$conf->{sys}{striker_user}",
+		$conf->{permissions}{user_virt_manager_icon}{owner}     = $conf->{sys}{striker_user};
+		$conf->{permissions}{user_virt_manager_icon}{group}     = $conf->{sys}{striker_user},
 		$conf->{permissions}{user_virt_manager_icon}{mode}      = "755";
 		$conf->{permissions}{user_virt_manager_icon}{recursive} = 0;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__." - permissions::user_virt_manager_icon::path: [$conf->{permissions}{user_virt_manager_icon}{path}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__." - permissions::user_virt_manager_icon::path: [".$conf->{permissions}{user_virt_manager_icon}{path}."]", 3);
 		
 		### Icon contents
 		# Firefox
@@ -3148,7 +3148,7 @@ sub configure_ipmi
 	my $to_install = "";
 	foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{ipmi_packages}})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "packages::installed::$package: [$conf->{packages}{installed}{$package}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "packages::installed::$package: [".$conf->{packages}{installed}{$package}."]", 3);
 		if ((exists $conf->{packages}{installed}{$package}) && ($conf->{packages}{installed}{$package} == 1))
 		{
 			$conf->{packages}{ipmi_packages}{$package} = 1;
@@ -3170,7 +3170,7 @@ sub configure_ipmi
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] while. This is likely because of how buffering is handled. If you", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
-		my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install $to_install";
+		my $shell_call = $conf->{executable}{yum}." ".$conf->{sys}{yum_switches}." install $to_install";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -3317,14 +3317,14 @@ sub configure_ipmi
 	my $user_id_found = 0;
 	if (($conf->{sys}{ipmi_user}) && ($ipmi_ok))
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Searching for the user ID for: [$conf->{sys}{ipmi_user}]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Searching for the user ID for: [".$conf->{sys}{ipmi_user}."]", 1);
 		while (not $user_id_found)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "user_id: [$user_id]", 3);
 			if ($user_id > 20)
 			{
 				# Give up...
-				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to find the IPMI admin user ID for: [$conf->{sys}{ipmi_user}].", 1);
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Failed to find the IPMI admin user ID for: [".$conf->{sys}{ipmi_user}."].", 1);
 				$user_id = 0;
 				last;
 			}
@@ -3351,10 +3351,10 @@ sub configure_ipmi
 			$user_id++ if not $user_id_found;
 		}
 		# Set the password.
-		logger($conf, $THIS_FILE, __LINE__, "- Setting the password for: [$conf->{sys}{ipmi_user} ($user_id)]:", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Setting the password for: [".$conf->{sys}{ipmi_user}." ($user_id)]:", 1);
 		
 		# Set the password.
-		my $shell_call = "ipmitool user set password $user_id '$conf->{sys}{ipmi_password}'";
+		my $shell_call = "ipmitool user set password $user_id '".$conf->{sys}{ipmi_password}."'";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
@@ -3370,7 +3370,7 @@ sub configure_ipmi
 			# Test the password. If this fails with '16', try '20'.
 			my $password_ok = 0;
 			my $try_20      = 0;
-			my $shell_call  = "ipmitool user test $user_id 16 '$conf->{sys}{ipmi_password}'";
+			my $shell_call  = "ipmitool user test $user_id 16 '".$conf->{sys}{ipmi_password}."'";
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			while (<$file_handle>)
@@ -3381,7 +3381,7 @@ sub configure_ipmi
 				if ($line =~ /Success/i)
 				{
 					# Woo!
-					logger($conf, $THIS_FILE, __LINE__, "- IPMI password for: [$conf->{sys}{ipmi_user}] set successfully as a 16-byte string!", 1);
+					logger($conf, $THIS_FILE, __LINE__, "- IPMI password for: [".$conf->{sys}{ipmi_user}."] set successfully as a 16-byte string!", 1);
 				}
 				elsif ($line =~ /wrong password size/i)
 				{
@@ -3399,7 +3399,7 @@ sub configure_ipmi
 			
 			if ($try_20)
 			{
-				my $shell_call = "ipmitool user test $user_id 20 '$conf->{sys}{ipmi_password}'";
+				my $shell_call = "ipmitool user test $user_id 20 '".$conf->{sys}{ipmi_password}."'";
 				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 				while (<$file_handle>)
@@ -3410,7 +3410,7 @@ sub configure_ipmi
 					if ($line =~ /Success/i)
 					{
 						# Woo!
-						logger($conf, $THIS_FILE, __LINE__, "- IPMI password for: [$conf->{sys}{ipmi_user}] set successfully as a 20-byte string!", 1);
+						logger($conf, $THIS_FILE, __LINE__, "- IPMI password for: [".$conf->{sys}{ipmi_user}."] set successfully as a 20-byte string!", 1);
 					}
 					elsif ($line =~ /password incorrect/i)
 					{
@@ -3440,7 +3440,7 @@ sub configure_ipmi
 		close $file_handle;
 		
 		# Now set the IP
-		$shell_call = "ipmitool lan set $channel ipaddr $conf->{sys}{ipmi_ip}";
+		$shell_call = "ipmitool lan set $channel ipaddr ".$conf->{sys}{ipmi_ip};
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
@@ -3452,7 +3452,7 @@ sub configure_ipmi
 		close $file_handle;
 		
 		# Now the netmask
-		$shell_call = "ipmitool lan set $channel netmask $conf->{sys}{ipmi_netmask}";
+		$shell_call = "ipmitool lan set $channel netmask ".$conf->{sys}{ipmi_netmask};
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
@@ -3465,7 +3465,7 @@ sub configure_ipmi
 		# If the user has specified a gateway, set it
 		if ($conf->{sys}{ipmi_gateway})
 		{
-			my $shell_call = "ipmitool lan set $channel defgw ipaddr $conf->{sys}{ipmi_gateway}";
+			my $shell_call = "ipmitool lan set $channel defgw ipaddr ".$conf->{sys}{ipmi_gateway};
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			while (<$file_handle>)
@@ -3508,11 +3508,11 @@ sub configure_ipmi
 				my $ip = ($line =~ /(\d+\.\d+\.\d+\.\d+)$/)[0];
 				if ($ip eq $conf->{sys}{ipmi_ip})
 				{
-					logger($conf, $THIS_FILE, __LINE__, "- IPMI IP is now: [$conf->{sys}{ipmi_ip}]", 1);
+					logger($conf, $THIS_FILE, __LINE__, "- IPMI IP is now: [".$conf->{sys}{ipmi_ip}."]", 1);
 				}
 				else
 				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - IPMI reported IP: [$ip] doesn't match desired IP: [$conf->{sys}{ipmi_ip}]!", 0);
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - IPMI reported IP: [$ip] doesn't match desired IP: [".$conf->{sys}{ipmi_ip}."]!", 0);
 					$ipmi_ok = 0;
 				}
 			}
@@ -3521,11 +3521,11 @@ sub configure_ipmi
 				my $ip = ($line =~ /(\d+\.\d+\.\d+\.\d+)$/)[0];
 				if ($ip eq $conf->{sys}{ipmi_netmask})
 				{
-					logger($conf, $THIS_FILE, __LINE__, "- IPMI subnet is now: [$conf->{sys}{ipmi_netmask}]", 1);
+					logger($conf, $THIS_FILE, __LINE__, "- IPMI subnet is now: [".$conf->{sys}{ipmi_netmask}."]", 1);
 				}
 				else
 				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - IPMI reported subnet: [$ip] doesn't match desired subnet: [$conf->{sys}{ipmi_netmask}]!", 0);
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - IPMI reported subnet: [$ip] doesn't match desired subnet: [".$conf->{sys}{ipmi_netmask}."]!", 0);
 					$ipmi_ok = 0;
 				}
 			}
@@ -3534,11 +3534,11 @@ sub configure_ipmi
 				my $ip = ($line =~ /(\d+\.\d+\.\d+\.\d+)$/)[0];
 				if ($ip eq $conf->{sys}{ipmi_gateway})
 				{
-					logger($conf, $THIS_FILE, __LINE__, "- IPMI gateway is now: [$conf->{sys}{ipmi_gateway}]", 1);
+					logger($conf, $THIS_FILE, __LINE__, "- IPMI gateway is now: [".$conf->{sys}{ipmi_gateway}."]", 1);
 				}
 				else
 				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - IPMI reported gateway: [$ip] doesn't match desired gateway: [$conf->{sys}{ipmi_gateway}]!", 0);
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - IPMI reported gateway: [$ip] doesn't match desired gateway: [".$conf->{sys}{ipmi_gateway}."]!", 0);
 					$ipmi_ok = 0;
 				}
 			}
@@ -3568,8 +3568,8 @@ sub configure_pxe
 	my ($conf) = @_;
 	
 	# Expand these by prepending the docroot.
-	$conf->{directory}{centos_pxe_web} = "$conf->{directory}{document_root}/$conf->{directory}{centos_pxe_web}";
-	$conf->{directory}{rhel_pxe_web}   = "$conf->{directory}{document_root}/$conf->{directory}{rhel_pxe_web}";
+	$conf->{directory}{centos_pxe_web} = $conf->{directory}{document_root}."/".$conf->{directory}{centos_pxe_web};
+	$conf->{directory}{rhel_pxe_web}   = $conf->{directory}{document_root}."/".$conf->{directory}{rhel_pxe_web};
 	if ($conf->{switches}{p} eq "none")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "PXE configuration disabled, skipping.", 1);
@@ -3615,7 +3615,7 @@ sub configure_shorewall
 	logger($conf, $THIS_FILE, __LINE__, "bcn_interface: [$bcn_interface], ifn_interface: [$ifn_interface]", 3);
 	if (not $bcn_interface)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "sys::create_bonds: [$conf->{sys}{create_bonds}], sys::bonds_exist: [$conf->{sys}{bonds_exist}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "sys::create_bonds: [".$conf->{sys}{create_bonds}."], sys::bonds_exist: [".$conf->{sys}{bonds_exist}."]", 3);
 		if (($conf->{sys}{create_bonds}) or ($conf->{sys}{bonds_exist}))
 		{
 			$bcn_interface = "bcn_bond1";
@@ -3639,7 +3639,7 @@ sub configure_shorewall
 	if ($cidr_bcn_netmask eq "#!INVALID!#")
 	{
 		# We can't setup the firewall.
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to convert the BCN subnet mask: [$conf->{network}{bcn}{netmask}] to CIDR notation.", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to convert the BCN subnet mask: [".$conf->{network}{bcn}{netmask}."] to CIDR notation.", 0);
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Unable to configure Striker in router-mode.", 0);
 		exit(39);
 	}
@@ -3779,7 +3779,7 @@ $ifn_interface		$bcn_network/$cidr_bcn_netmask
 	# Read in the shorewall.conf file and change 'STARTUP_ENABLED=No' to
 	# 'STARTUP_ENABLED=Yes'.
 	my $shorewall_conf = "";
-	my $shell_call     = "$conf->{path}{shorewall}{shorewall_conf}";
+	my $shell_call     = $conf->{path}{shorewall}{shorewall_conf};
 	open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
@@ -3911,11 +3911,11 @@ sub configure_iso_source
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- CentOS source defined, configuring.", 1);
 			# Setup the directories.
-			my @subdirectories = ($conf->{directory}{centos_pxe_web}, "$conf->{directory}{centos_pxe_web}/x86_64");
+			my @subdirectories = ($conf->{directory}{centos_pxe_web}, $conf->{directory}{centos_pxe_web}."/x86_64");
 			foreach my $subdirectory (@{$conf->{directory}{pxe_iso_subdirs}})
 			{
-				logger($conf, $THIS_FILE, __LINE__, "directory::centos_pxe_web: [$conf->{directory}{centos_pxe_web}], subdirectory: [$subdirectory], combined: [$conf->{directory}{centos_pxe_web}/x86_64/$subdirectory]", 3);
-				push @subdirectories, "$conf->{directory}{centos_pxe_web}/x86_64/$subdirectory";
+				logger($conf, $THIS_FILE, __LINE__, "directory::centos_pxe_web: [".$conf->{directory}{centos_pxe_web}."], subdirectory: [$subdirectory], combined: [".$conf->{directory}{centos_pxe_web}."/x86_64/$subdirectory]", 3);
+				push @subdirectories, $conf->{directory}{centos_pxe_web}."/x86_64/$subdirectory";
 			}
 			foreach my $directory (@subdirectories)
 			{
@@ -3935,7 +3935,7 @@ sub configure_iso_source
 			if ($conf->{switches}{'centos-iso'} eq "dvd")
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- A CentOS ISO will be generated from the disk in the optical drive.", 1);
-				my ($rc, $local_copy) = generate_iso($conf, "$conf->{directory}{centos_pxe_web}/x86_64/iso/", "centos");
+				my ($rc, $local_copy) = generate_iso($conf, $conf->{directory}{centos_pxe_web}."/x86_64/iso/", "centos");
 				# 0 == OK
 				# 1 == Rip failed.
 				# 2 == Wrong disk.
@@ -3956,8 +3956,8 @@ sub configure_iso_source
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- CentOS ISO appears to be a URL, will attempt to download now...", 1);
 				   $file_name  = ($conf->{switches}{'centos-iso'} =~ /^.*\/(.*?)$/)[0];
-				   $local_copy = "$conf->{directory}{centos_pxe_web}/x86_64/iso/$file_name";
-				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'centos-iso'} -O $local_copy";
+				   $local_copy = $conf->{directory}{centos_pxe_web}."/x86_64/iso/$file_name";
+				my $shell_call = $conf->{executable}{wget}." -c ".$conf->{switches}{'centos-iso'}." -O $local_copy";
 				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
@@ -3977,7 +3977,7 @@ sub configure_iso_source
 				}
 				else
 				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to download: [$conf->{switches}{'centos-iso'}]", 0);
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to download: [".$conf->{switches}{'centos-iso'}."]", 0);
 					exit(22);
 				}
 			}
@@ -3985,7 +3985,7 @@ sub configure_iso_source
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- CentOS ISO is local, will copy into place.", 1);
 				$file_name  = ($conf->{switches}{'centos-iso'} =~ /^.*\/(.*?)$/)[0];
-				$local_copy = "$conf->{directory}{centos_pxe_web}/x86_64/iso/$file_name";
+				$local_copy = $conf->{directory}{centos_pxe_web}."/x86_64/iso/$file_name";
 				if ($local_copy eq $conf->{switches}{'centos-iso'})
 				{
 					logger($conf, $THIS_FILE, __LINE__, "- Local copy already in the right place.", 1);
@@ -3993,25 +3993,25 @@ sub configure_iso_source
 				else
 				{
 					logger($conf, $THIS_FILE, __LINE__, "- Copying the local ISO into the apache directory.", 1);
-					rsync_files($conf, "$conf->{switches}{'centos-iso'}", "$conf->{directory}{centos_pxe_web}/x86_64/iso/");
+					rsync_files($conf, $conf->{switches}{'centos-iso'}, $conf->{directory}{centos_pxe_web}."/x86_64/iso/");
 				}
 			}
 			else
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The CentOS ISO doesn't appear to be valid. Is this right?:", 0);
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   [$conf->{switches}{'centos-iso'}]", 0);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   [".$conf->{switches}{'centos-iso'}."]", 0);
 				exit(22);
 			}
 			
 			# If I'm here, we're ready to configure.
 			logger($conf, $THIS_FILE, __LINE__, "- Mounting the ISO: [$local_copy]", 1);
-			logger($conf, $THIS_FILE, __LINE__, "- At mount point:   [$conf->{directory}{centos_pxe_web}/x86_64/img/]", 1);
-			mount_iso($conf, $local_copy, "$conf->{directory}{centos_pxe_web}/x86_64/img/");
+			logger($conf, $THIS_FILE, __LINE__, "- At mount point:   [".$conf->{directory}{centos_pxe_web}."/x86_64/img/]", 1);
+			mount_iso($conf, $local_copy, $conf->{directory}{centos_pxe_web}."/x86_64/img/");
 			
 			# copy the isolinux directory.
 			logger($conf, $THIS_FILE, __LINE__, "- Copying isolinux boot files to TFTP.", 1);
-			my $isolinux_source = "$conf->{directory}{centos_pxe_web}/x86_64/img/isolinux/*";
-			my $isolinux_target = "$conf->{directory}{pxelinux_boot}/$conf->{directory}{centos_tftp_boot}/x86_64/";
+			my $isolinux_source = $conf->{directory}{centos_pxe_web}."/x86_64/img/isolinux/*";
+			my $isolinux_target = $conf->{directory}{pxelinux_boot}."/".$conf->{directory}{centos_tftp_boot}."/x86_64/";
 			if (not -e $isolinux_target)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- Creating tftp boot target: [$isolinux_target]", 1);
@@ -4033,10 +4033,10 @@ sub configure_iso_source
 			my $centos_node2_ks         = generate_kickstart($conf, "centos", "node", 2);
 			my $centos_striker1_ks      = generate_kickstart($conf, "centos", "striker", 1);
 			my $centos_striker2_ks      = generate_kickstart($conf, "centos", "striker", 2);
-			my $centos_node1_ks_file    = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{node1_ks}";
-			my $centos_node2_ks_file    = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{node2_ks}";
-			my $centos_striker1_ks_file = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{striker1_ks}";
-			my $centos_striker2_ks_file = "$conf->{directory}{centos_pxe_web}/x86_64/ks/$conf->{pxe}{centos}{striker2_ks}";
+			my $centos_node1_ks_file    = $conf->{directory}{centos_pxe_web}."/x86_64/ks/".$conf->{pxe}{centos}{node1_ks};
+			my $centos_node2_ks_file    = $conf->{directory}{centos_pxe_web}."/x86_64/ks/".$conf->{pxe}{centos}{node2_ks};
+			my $centos_striker1_ks_file = $conf->{directory}{centos_pxe_web}."/x86_64/ks/".$conf->{pxe}{centos}{striker1_ks};
+			my $centos_striker2_ks_file = $conf->{directory}{centos_pxe_web}."/x86_64/ks/".$conf->{pxe}{centos}{striker2_ks};
 			
 			# Write out the files.
 			logger($conf, $THIS_FILE, __LINE__, "- Writing out CentOS node 01 kickstart file.", 1);
@@ -4107,10 +4107,10 @@ sub configure_iso_source
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- RHEL source defined, configuring.", 1);
 			# Setup the directories.
-			my @subdirectories = ($conf->{directory}{rhel_pxe_web}, "$conf->{directory}{rhel_pxe_web}/x86_64");
+			my @subdirectories = ($conf->{directory}{rhel_pxe_web}, $conf->{directory}{rhel_pxe_web}."/x86_64");
 			foreach my $subdirectory (@{$conf->{directory}{pxe_iso_subdirs}})
 			{
-				push @subdirectories, "$conf->{directory}{rhel_pxe_web}/x86_64/$subdirectory";
+				push @subdirectories, $conf->{directory}{rhel_pxe_web}."/x86_64/$subdirectory";
 			}
 			foreach my $directory (@subdirectories)
 			{
@@ -4129,7 +4129,7 @@ sub configure_iso_source
 			if ($conf->{switches}{'rhel-iso'} eq "dvd")
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- A RHEL ISO will be generated from the disk in the optical drive.", 1);
-				(my $rc, $local_copy) = generate_iso($conf, "$conf->{directory}{rhel_pxe_web}/x86_64/iso/", "rhel");
+				(my $rc, $local_copy) = generate_iso($conf, $conf->{directory}{rhel_pxe_web}."/x86_64/iso/", "rhel");
 				# 0 == OK
 				# 1 == Rip failed.
 				# 2 == Wrong disk.
@@ -4150,8 +4150,8 @@ sub configure_iso_source
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- RHEL ISO appears to be a URL, will attempt to download now...", 1);
 				   $file_name  = ($conf->{switches}{'rhel-iso'} =~ /^.*\/(.*?)$/)[0];
-				   $local_copy = "$conf->{directory}{rhel_pxe_web}/x86_64/iso/$file_name";
-				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'rhel-iso'} -O $local_copy";
+				   $local_copy = $conf->{directory}{rhel_pxe_web}."/x86_64/iso/$file_name";
+				my $shell_call = $conf->{executable}{wget}." -c ".$conf->{switches}{'rhel-iso'}." -O $local_copy";
 				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
@@ -4171,7 +4171,7 @@ sub configure_iso_source
 				}
 				else
 				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to download: [$conf->{switches}{'rhel-iso'}]", 0);
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to download: [".$conf->{switches}{'rhel-iso'}."]", 0);
 					exit(22);
 				}
 			}
@@ -4179,7 +4179,7 @@ sub configure_iso_source
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- RHEL ISO is local, will copy into place.", 1);
 				$file_name  = ($conf->{switches}{'rhel-iso'} =~ /^.*\/(.*?)$/)[0];
-				$local_copy = "$conf->{directory}{rhel_pxe_web}/x86_64/iso/$file_name";
+				$local_copy = $conf->{directory}{rhel_pxe_web}."/x86_64/iso/$file_name";
 				if ($local_copy eq $conf->{switches}{'rhel-iso'})
 				{
 					logger($conf, $THIS_FILE, __LINE__, "- Local copy already in the right place.", 1);
@@ -4187,25 +4187,25 @@ sub configure_iso_source
 				else
 				{
 					logger($conf, $THIS_FILE, __LINE__, "- Copying the local ISO into the apache directory.", 1);
-					rsync_files($conf, "$conf->{switches}{'rhel-iso'}", "$conf->{directory}{rhel_pxe_web}/x86_64/iso/");
+					rsync_files($conf, $conf->{switches}{'rhel-iso'}, $conf->{directory}{rhel_pxe_web}."/x86_64/iso/");
 				}
 			}
 			else
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The RHEL ISO doesn't appear to be valid. Is this right?:", 0);
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   [$conf->{switches}{'rhel-iso'}]", 0);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   [".$conf->{switches}{'rhel-iso'}."]", 0);
 				exit(22);
 			}
 			
 			# If I'm here, we're ready to configure.
 			logger($conf, $THIS_FILE, __LINE__, "- Mounting the ISO: [$local_copy]", 1);
-			logger($conf, $THIS_FILE, __LINE__, "- At mount point:   [$conf->{directory}{rhel_pxe_web}/x86_64/img/]", 1);
-			mount_iso($conf, $local_copy, "$conf->{directory}{rhel_pxe_web}/x86_64/img/");
+			logger($conf, $THIS_FILE, __LINE__, "- At mount point:   [".$conf->{directory}{rhel_pxe_web}."/x86_64/img/]", 1);
+			mount_iso($conf, $local_copy, $conf->{directory}{rhel_pxe_web}."/x86_64/img/");
 			
 			# copy the isolinux directory.
 			logger($conf, $THIS_FILE, __LINE__, "- Copying isolinux boot files to TFTP.", 1);
-			my $isolinux_source = "$conf->{directory}{rhel_pxe_web}/x86_64/img/isolinux/*";
-			my $isolinux_target = "$conf->{directory}{pxelinux_boot}/$conf->{directory}{rhel_tftp_boot}/x86_64/";
+			my $isolinux_source = $conf->{directory}{rhel_pxe_web}."/x86_64/img/isolinux/*";
+			my $isolinux_target = $conf->{directory}{pxelinux_boot}."/".$conf->{directory}{rhel_tftp_boot}."/x86_64/";
 			if (not -e $isolinux_target)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- Creating tftp boot target: [$isolinux_target]", 1);
@@ -4227,10 +4227,10 @@ sub configure_iso_source
 			my $rhel_node2_ks         = generate_kickstart($conf, "rhel", "node", 2);
 			my $rhel_striker1_ks      = generate_kickstart($conf, "rhel", "striker", 1);
 			my $rhel_striker2_ks      = generate_kickstart($conf, "rhel", "striker", 2);
-			my $rhel_node1_ks_file    = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{node1_ks}";
-			my $rhel_node2_ks_file    = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{node2_ks}";
-			my $rhel_striker1_ks_file = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{striker1_ks}";
-			my $rhel_striker2_ks_file = "$conf->{directory}{rhel_pxe_web}/x86_64/ks/$conf->{pxe}{rhel}{striker2_ks}";
+			my $rhel_node1_ks_file    = $conf->{directory}{rhel_pxe_web}."/x86_64/ks/".$conf->{pxe}{rhel}{node1_ks};
+			my $rhel_node2_ks_file    = $conf->{directory}{rhel_pxe_web}."/x86_64/ks/".$conf->{pxe}{rhel}{node2_ks};
+			my $rhel_striker1_ks_file = $conf->{directory}{rhel_pxe_web}."/x86_64/ks/".$conf->{pxe}{rhel}{striker1_ks};
+			my $rhel_striker2_ks_file = $conf->{directory}{rhel_pxe_web}."/x86_64/ks/".$conf->{pxe}{rhel}{striker2_ks};
 			
 			# Write out the files.
 			logger($conf, $THIS_FILE, __LINE__, "- Writing out RHEL node 01 kickstart file.", 1);
@@ -4440,7 +4440,7 @@ sub unmount_iso
 	my ($conf, $target) = @_;
 	
 	# First make sure the target isn't already mounted.
-	my $shell_call = "$conf->{executable}{umount} $target; echo \"umount:\$?\"";
+	my $shell_call = $conf->{executable}{umount}." $target; echo \"umount:\$?\"";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -4653,10 +4653,10 @@ plymouth-set-default-theme details -R
 ###       be worth approaching this differently later.
 # Add local repos
 cat > /etc/yum.repos.d/$conf->{sys}{hostname}_$os.repo << EOF
-[$conf->{sys}{hostname}-$os]
-name=Striker $conf->{sys}{hostname}'s $say_os 6 repository
-baseurl=http://$conf->{network}{bcn}{ip}/$os_directory/x86_64/img/
-baseurl=http://$conf->{network}{ifn}{ip}/$os_directory/x86_64/img/
+[".$conf->{sys}{hostname}."-$os]
+name=Striker ".$conf->{sys}{hostname}."'s $say_os 6 repository
+baseurl=http://".$conf->{network}{bcn}{ip}."/$os_directory/x86_64/img/
+baseurl=http://".$conf->{network}{ifn}{ip}."/$os_directory/x86_64/img/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
@@ -4949,13 +4949,13 @@ LABEL generic-rhel-striker
 	
 	# Write out the new one.
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out dhcp daemon configuration file.", 1);
-	open (my $file_handle, ">", $conf->{path}{pxe_default_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{pxe_default_config}], the error was: $!\n";
+	open (my $file_handle, ">", $conf->{path}{pxe_default_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{pxe_default_config}."], the error was: $!\n";
 	print $file_handle $default_config;
 	close $file_handle;
 	
 	# Copy the PXE menu background into place.
 	logger($conf, $THIS_FILE, __LINE__, "- Copying PXE server's wallpaper into place.", 1);
-	rsync_files($conf, "$conf->{path}{pxe_background_source}", "$conf->{directory}{pxelinux}/");
+	rsync_files($conf, $conf->{path}{pxe_background_source}, $conf->{directory}{pxelinux}."/");
 	
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
@@ -4973,7 +4973,7 @@ sub configure_xinetd
 		backup_file($conf, $conf->{path}{xinetd_tftp_config});
 	}
 	
-	logger($conf, $THIS_FILE, __LINE__, "- Reading in current: [$conf->{path}{xinetd_tftp_config}]", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Reading in current: [".$conf->{path}{xinetd_tftp_config}."]", 1);
 	my $xinetd_tftp_config = "";
 	my $shell_call         = $conf->{path}{xinetd_tftp_config};
 	open (my $file_handle, "<", $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], the error was: $!\n";
@@ -4991,22 +4991,22 @@ sub configure_xinetd
 	close $file_handle;
 	# Next, write it out.
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out the new version.", 1);
-	open ($file_handle, ">", $conf->{path}{xinetd_tftp_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{xinetd_tftp_config}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{xinetd_tftp_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{xinetd_tftp_config}."], the error was: $!\n";
 	print $file_handle $xinetd_tftp_config;
 	close $file_handle;
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Verifying the PXE config directory exists.", 1);
 	if (not -e $conf->{directory}{pxelinux_config})
 	{
-		mkdir $conf->{directory}{pxelinux_config} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{pxelinux_config}], error was: $!\n";
-		logger($conf, $THIS_FILE, __LINE__, "- Created: [$conf->{directory}{pxelinux_config}]", 1);
+		mkdir $conf->{directory}{pxelinux_config} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{pxelinux_config}."], error was: $!\n";
+		logger($conf, $THIS_FILE, __LINE__, "- Created: [".$conf->{directory}{pxelinux_config}."]", 1);
 	}
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Verifying the PXE boot directory exists.", 1);
 	if (not -e $conf->{directory}{pxelinux_boot})
 	{
-		mkdir $conf->{directory}{pxelinux_boot} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{pxelinux_boot}], error was: $!\n";
-		logger($conf, $THIS_FILE, __LINE__, "- Created: [$conf->{directory}{pxelinux_boot}]", 1);
+		mkdir $conf->{directory}{pxelinux_boot} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{pxelinux_boot}."], error was: $!\n";
+		logger($conf, $THIS_FILE, __LINE__, "- Created: [".$conf->{directory}{pxelinux_boot}."]", 1);
 	}
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
@@ -5028,14 +5028,14 @@ sub configure_dhcp
 	# If the user didn't specify a BCN IP, then read it from the config
 	# file. If that doesn't exist, fail.
 	my $ifcfg_file = "";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::ip: [".$conf->{network}{bcn}{ip}."]", 3);
 	if (not $conf->{network}{bcn}{ip})
 	{
 		# BCN not specified.
-		if (-e "$conf->{path}{network_configs}/ifcfg-bcn_bond1")
+		if (-e $conf->{path}{network_configs}."/ifcfg-bcn_bond1")
 		{
 			# Read in the IP from the bond file.
-			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn_bond1";
+			   $ifcfg_file = $conf->{path}{network_configs}."/ifcfg-bcn_bond1";
 			my $shell_call = "grep -e IPADDR -e NETMASK $ifcfg_file";
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
@@ -5047,20 +5047,20 @@ sub configure_dhcp
 				if ($line =~ /IPADDR=(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$conf->{network}{bcn}{ip} = $1;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]", 3);
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::ip: [".$conf->{network}{bcn}{ip}."]", 3);
 				}
 				if ($line =~ /NETMASK=(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$conf->{network}{bcn}{netmask} = $1;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]", 3);
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::netmask: [".$conf->{network}{bcn}{netmask}."]", 3);
 				}
 			}
 			close $file_handle;
 		}
-		elsif (-e "$conf->{path}{network_configs}/ifcfg-bcn_link1")
+		elsif (-e $conf->{path}{network_configs}."/ifcfg-bcn_link1")
 		{
 			# Read in the IP from the link file
-			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn_link1";
+			   $ifcfg_file = $conf->{path}{network_configs}."/ifcfg-bcn_link1";
 			my $shell_call = "grep IPADDR $ifcfg_file";
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
@@ -5072,12 +5072,12 @@ sub configure_dhcp
 				if ($line =~ /IPADDR=(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$conf->{network}{bcn}{ip} = $1;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]", 3);
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::ip: [".$conf->{network}{bcn}{ip}."]", 3);
 				}
 				if ($line =~ /NETMASK=(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$conf->{network}{bcn}{netmask} = $1;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]", 3);
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::netmask: [".$conf->{network}{bcn}{netmask}."]", 3);
 				}
 			}
 			close $file_handle;
@@ -5087,8 +5087,8 @@ sub configure_dhcp
 			# Error out.
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - PXE configuration was requested but the BCN IP wasn't specified.", 0);
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Tried to read the current BCN IP from either config file:", 0);
-			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   - Bond: [$conf->{path}{network_configs}/ifcfg-bcn_bond1]", 0);
-			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   - Link: [$conf->{path}{network_configs}/ifcfg-bcn_link1]", 0);
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   - Bond: [".$conf->{path}{network_configs}."/ifcfg-bcn_bond1]", 0);
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   - Link: [".$conf->{path}{network_configs}."/ifcfg-bcn_link1]", 0);
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Neither was found, so the BCN IP can not be determined. There is", 0);
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   no way to configure the DHCP server.", 0);
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Install exiting.\n", 0);
@@ -5097,7 +5097,7 @@ sub configure_dhcp
 	}
 	
 	# See if we have the IP now.
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::ip: [$conf->{network}{bcn}{ip}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::ip: [".$conf->{network}{bcn}{ip}."]", 3);
 	if (not $conf->{network}{bcn}{ip})
 	{
 		# Error out.
@@ -5123,10 +5123,10 @@ sub configure_dhcp
 		$bcn_network =  ($conf->{network}{bcn}{netmask} =~ /^(\d+\.\d+\.\d+\.)/)[0];
 		$bcn_network .= "0";
 	}
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::netmask: [$conf->{network}{bcn}{netmask}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__."; - network::bcn::netmask: [".$conf->{network}{bcn}{netmask}."]", 3);
 	
 	# Not all users will use DNS.
-	my $say_dns = "option domain-name-servers $conf->{network}{ifn}{dns1}, $conf->{network}{ifn}{dns2};";
+	my $say_dns = "option domain-name-servers ".$conf->{network}{ifn}{dns1}.", ".$conf->{network}{ifn}{dns2}.";";
 	if ((not $conf->{network}{ifn}{dns1}) && (not $conf->{network}{ifn}{dns2}))
 	{
 		$say_dns =  "# DNS disabled by the installer. Uncomment the line below to enable.\n";
@@ -5135,12 +5135,12 @@ sub configure_dhcp
 	elsif (not $conf->{network}{ifn}{dns2})
 	{
 		# Only DNS1 defined
-		$say_dns = "option domain-name-servers $conf->{network}{ifn}{dns1};";
+		$say_dns = "option domain-name-servers ".$conf->{network}{ifn}{dns1}.";";
 	}
 	elsif (not $conf->{network}{ifn}{dns1})
 	{
 		# Only DNS2 defined... Whatever, I don't judge people.
-		$say_dns = "option domain-name-servers $conf->{network}{ifn}{dns2};";
+		$say_dns = "option domain-name-servers ".$conf->{network}{ifn}{dns2}.";";
 	}
 	
 	# This is the new UEFI one. The commented out one below is legacy-BIOS only
@@ -5165,19 +5165,19 @@ ddns-update-style none;
 #allow bootp;
 
 ### Subnet options
-subnet $bcn_network netmask $conf->{network}{bcn}{netmask} {
+subnet $bcn_network netmask ".$conf->{network}{bcn}{netmask}." {
 	# These two options tell clients where to go to get the file needed to
 	# start the boot process.
-	next-server $conf->{network}{bcn}{ip};
+	next-server ".$conf->{network}{bcn}{ip}.";
  
 	# Our servers are installed on the BCN where they have no Internet
 	# access, so this value is largely meaningless. We set it to this
 	# machine for reasons.
-	option routers $conf->{network}{bcn}{ip};
+	option routers ".$conf->{network}{bcn}{ip}.";
  
 	# Set our range. This can be whatever you want so long as it fits in
 	# your netmask.
-	range $conf->{switches}{lease_start} $conf->{switches}{lease_end};
+	range ".$conf->{switches}{lease_start}." ".$conf->{switches}{lease_end}.";
  
 	# If clients don't ask, make the lease available for the following
 	# number of seconds. If the client does ask, allow up to this number of
@@ -5206,7 +5206,7 @@ class \"pxeclient\" {
 	
 	# Write out the new one.
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out dhcp daemon configuration file.", 1);
-	open (my $file_handle, ">", $conf->{path}{dhcpd_conf}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{dhcpd_conf}], the error was: $!\n";
+	open (my $file_handle, ">", $conf->{path}{dhcpd_conf}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{dhcpd_conf}."], the error was: $!\n";
 	print $file_handle $dhcpd_config;
 	close $file_handle;
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
@@ -5225,10 +5225,10 @@ sub manage_daemons
 	{
 		# No sense proceeding if the daemon doesn't exist.
 		next if not -e "/etc/init.d/$daemon";
-		my $shell_call = "$conf->{executable}{chkconfig} $daemon off && /etc/init.d/$daemon stop";
+		my $shell_call = $conf->{executable}{chkconfig}." $daemon off && /etc/init.d/$daemon stop";
 		if ($daemon eq "NetworkManager")
 		{
-			$shell_call = "$conf->{executable}{chkconfig} $daemon off";
+			$shell_call = $conf->{executable}{chkconfig}." $daemon off";
 			logger($conf, $THIS_FILE, __LINE__, "- Disabling: [$daemon] on boot but NOT stopping it.", 1);
 		}
 		else
@@ -5252,11 +5252,11 @@ sub manage_daemons
 	{
 		# No sense proceeding if the daemon doesn't exist.
 		next if not -e "/etc/init.d/$daemon";
-		my $shell_call = "$conf->{executable}{chkconfig} $daemon on && /etc/init.d/$daemon restart";
+		my $shell_call = $conf->{executable}{chkconfig}." $daemon on && /etc/init.d/$daemon restart";
 		if ($daemon eq "network")
 		{
 			# Checkconfig only
-			$shell_call = "$conf->{executable}{chkconfig} $daemon on";
+			$shell_call = $conf->{executable}{chkconfig}." $daemon on";
 			logger($conf, $THIS_FILE, __LINE__, "- Enabling: [$daemon] on boot but NOT restarting it.", 1);
 		}
 		else
@@ -5303,14 +5303,14 @@ sub set_file_ownership_and_modes
 		my $mode      = $conf->{permissions}{$file}{mode};
 		my $recursive = $conf->{permissions}{$file}{recursive} ? "-R" : "";
 		my $selinux   = $conf->{permissions}{$file}{selinux};
-		logger($conf, $THIS_FILE, __LINE__, "- Setting ownership and mode to: [$owner:$group] and: [$mode] ($conf->{permissions}{$file}{recursive}) on: [$path]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Setting ownership and mode to: [$owner:$group] and: [$mode] (".$conf->{permissions}{$file}{recursive}.") on: [$path]", 1);
 		
 		# Recompile the setuid C-wrappers.
 		my $c_file = $path.".c";
 		if (-e $c_file)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- This is a 'setuid' C-wrapper; recompiling it first.", 1);
-			my $shell_call = "$conf->{executable}{gcc} -o $path $c_file";
+			my $shell_call = $conf->{executable}{gcc}." -o $path $c_file";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
@@ -5322,7 +5322,7 @@ sub set_file_ownership_and_modes
 			close $file_handle;
 		}
 		
-		my $shell_call = "$conf->{executable}{chown} $recursive $owner:$group $path";
+		my $shell_call = $conf->{executable}{'chown'}." $recursive $owner:$group $path";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -5335,7 +5335,7 @@ sub set_file_ownership_and_modes
 			}
 		}
 		close $file_handle;
-		$shell_call = "$conf->{executable}{chmod} $recursive $mode $path";
+		$shell_call = $conf->{executable}{'chmod'}." $recursive $mode $path";
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] ".__LINE__." - shell_call: [$shell_call]", 3);
 		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -5357,7 +5357,7 @@ sub set_file_ownership_and_modes
 			#[root@striker ~]# semanage fcontext -a -t httpd_sys_content_t /var/log/striker.log 
 			#[root@striker ~]# restorecon /var/log/striker.log 
 			logger($conf, $THIS_FILE, __LINE__, "  Setting selinux context to: [$selinux].", 1);
-			my $shell_call = "$conf->{executable}{semanage} fcontext -a -t $selinux $path && $conf->{executable}{restorecon} $path";
+			my $shell_call = $conf->{executable}{semanage}." fcontext -a -t $selinux $path && ".$conf->{executable}{restorecon}." $path";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
@@ -5374,7 +5374,7 @@ sub set_file_ownership_and_modes
 	if (0)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Giving apache permission to create network connections.", 1);
-		my $shell_call = "$conf->{executable}{setsebool} -P httpd_can_network_connect on";
+		my $shell_call = $conf->{executable}{setsebool}." -P httpd_can_network_connect on";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -5390,7 +5390,7 @@ sub set_file_ownership_and_modes
 	if (0)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Allowing fence_virsh to call ssh.", 1);
-		my $shell_call = "$conf->{executable}{setsebool} -P fenced_can_ssh on";
+		my $shell_call = $conf->{executable}{setsebool}." -P fenced_can_ssh on";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -5416,7 +5416,7 @@ sub install_striker_files
 	# Copy the 'html' directory
 	logger($conf, $THIS_FILE, __LINE__, "Copying Striker program files into place.", 1);
 	
-	if (-e "$conf->{path}{backups}/www")
+	if (-e $conf->{path}{backups}."/www")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Backup already made, skipping.", 1);
 	}
@@ -5429,20 +5429,20 @@ sub install_striker_files
 	}
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Copying HTML files and skins.", 1);
-	rsync_files($conf, "$conf->{directory}{source}/html", $conf->{directory}{document_root});
+	rsync_files($conf, $conf->{directory}{source}."/html", $conf->{directory}{document_root});
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Copying executable files and languages.", 1);
-	rsync_files($conf, "$conf->{directory}{source}/cgi-bin", $conf->{directory}{document_root});
+	rsync_files($conf, $conf->{directory}{source}."/cgi-bin", $conf->{directory}{document_root});
 	
 	#logger($conf, $THIS_FILE, __LINE__, "- Copying tools.", 1);
-	#rsync_files($conf, "$conf->{directory}{source}/tools", $conf->{directory}{document_root});
+	#rsync_files($conf, $conf->{directory}{source}."/tools", $conf->{directory}{document_root});
 	
 	#logger($conf, $THIS_FILE, __LINE__, "- Copying ScanCore.", 1);
-	#rsync_files($conf, "$conf->{directory}{source}/ScanCore", $conf->{directory}{document_root});
+	#rsync_files($conf, $conf->{directory}{source}."/ScanCore", $conf->{directory}{document_root});
 	
 	# Split the directory from the file.
 	my ($striker_config_directory, $striker_config_file) = ($conf->{path}{striker_config} =~ /^(.*)\/(.*)$/);
-	if (-e "$conf->{path}{striker_config}")
+	if (-e $conf->{path}{striker_config})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Existing Striker configuration file found, not replacing it.", 1);
 	}
@@ -5468,14 +5468,14 @@ sub install_striker_files
 			if (-e $conf->{switches}{'custom-config'})
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- It does.", 1);
-				logger($conf, $THIS_FILE, __LINE__, "- Copying: [$conf->{switches}{'custom-config'}]", 1);
-				logger($conf, $THIS_FILE, __LINE__, "       to: [$conf->{path}{striker_config}]", 1);
+				logger($conf, $THIS_FILE, __LINE__, "- Copying: [".$conf->{switches}{'custom-config'}."]", 1);
+				logger($conf, $THIS_FILE, __LINE__, "       to: [".$conf->{path}{striker_config}."]", 1);
 				copy_file($conf, $conf->{switches}{'custom-config'}, $conf->{path}{striker_config});
 			}
 			else
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - I was asked to load the custom Striker configuration file:", 0);
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   [$conf->{switches}{'custom-config'}]", 0);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   [".$conf->{switches}{'custom-config'}."]", 0);
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   However, it doesn't seem to exist.\n", 0);
 				exit(30);
 			}
@@ -5483,7 +5483,7 @@ sub install_striker_files
 		else
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Copying base Striker configuration file.", 1);
-			my $source      = "$conf->{directory}{source}/$striker_config_file";
+			my $source      = $conf->{directory}{source}."/$striker_config_file";
 			my $destination = "$striker_config_directory/";
 			logger($conf, $THIS_FILE, __LINE__, "- Copying: [$source]", 1);
 			logger($conf, $THIS_FILE, __LINE__, "       to: [$destination]", 1);
@@ -5500,7 +5500,7 @@ sub install_striker_files
 		{
 			# Valid, record it.
 			logger($conf, $THIS_FILE, __LINE__, "- The UUID is valid, recording it.", 1);
-			open (my $file_handle, ">", $conf->{path}{host_uuid}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{host_uuid}], the error was: $!\n";
+			open (my $file_handle, ">", $conf->{path}{host_uuid}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{host_uuid}."], the error was: $!\n";
 			print $file_handle lc($conf->{switches}{'host-uuid'})."\n";
 			close $file_handle;
 		}
@@ -5534,7 +5534,7 @@ sub install_striker_files
 		if ($host_uuid)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- The system UUID is being used for the host UUID.", 1);
-			open (my $file_handle, ">", $conf->{path}{host_uuid}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{host_uuid}], the error was: $!\n";
+			open (my $file_handle, ">", $conf->{path}{host_uuid}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{host_uuid}."], the error was: $!\n";
 			print $file_handle $host_uuid."\n";
 			close $file_handle;
 		}
@@ -5545,9 +5545,9 @@ sub install_striker_files
 	{
 		# Update the striker.conf file.
 		logger($conf, $THIS_FILE, __LINE__, "- Updating striker.conf.", 1);
-		logger($conf, $THIS_FILE, __LINE__, "Reading: [$conf->{path}{striker_config}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "Reading: [".$conf->{path}{striker_config}."]", 3);
 		my $striker_config = "";
-		open (my $file_handle, "<", $conf->{path}{striker_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{striker_config}], the error was: $!\n";
+		open (my $file_handle, "<", $conf->{path}{striker_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [".$conf->{path}{striker_config}."], the error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5564,7 +5564,7 @@ sub install_striker_files
 				$striker_config .= "scancore::db::1::password			=	$conf->{sys}{striker_password}\n\n";
 				
 				# If they told us about the peer, add it.
-				logger($conf, $THIS_FILE, __LINE__, "switches::peer-dashboard: [$conf->{switches}{'peer-dashboard'}]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "switches::peer-dashboard: [".$conf->{switches}{'peer-dashboard'}."]", 3);
 				if ($conf->{switches}{'peer-dashboard'})
 				{
 					my $peer_hostname =  ($conf->{switches}{'peer-dashboard'} =~ /hostname=(.*)$/)[0];
@@ -5584,7 +5584,7 @@ sub install_striker_files
 		close $file_handle;
 		# Next, write it out.
 		logger($conf, $THIS_FILE, __LINE__, "- Writing out the new version.", 1);
-		open ($file_handle, ">", $conf->{path}{striker_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{striker_config}], the error was: $!\n";
+		open ($file_handle, ">", $conf->{path}{striker_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{striker_config}."], the error was: $!\n";
 		print $file_handle $striker_config;
 		close $file_handle;
 		logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
@@ -5593,11 +5593,11 @@ sub install_striker_files
 	# Copy the striker.conf file to /sbin/striker/ so that nodes can use it
 	# as a template.
 	#logger($conf, $THIS_FILE, __LINE__, "- Copying striker.conf for use as a template by nodes.", 1);
-	#rsync_files($conf, "$conf->{path}{striker_config}", "$conf->{directory}{striker_tools}/");
+	#rsync_files($conf, $conf->{path}{striker_config}, $conf->{directory}{striker_tools}."/");
 	
 	# Create an empty log file
 	logger($conf, $THIS_FILE, __LINE__, "- Creating empty Striker log file.", 1);
-	open (my $file_handle, ">", $conf->{path}{striker_log}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{striker_log}], the error was: $!\n";
+	open (my $file_handle, ">", $conf->{path}{striker_log}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{striker_log}."], the error was: $!\n";
 	print $file_handle "";
 	close $file_handle;
 	
@@ -5611,7 +5611,7 @@ sub rsync_files
 {
 	my ($conf, $source, $destination) = @_;
 	
-	my $shell_call = "$conf->{executable}{rsync} -a $source $destination";
+	my $shell_call = $conf->{executable}{rsync}." -a $source $destination";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -5641,7 +5641,7 @@ sub copy_file
 {
 	my ($conf, $source, $destination) = @_;
 	
-	my $shell_call = "$conf->{executable}{cp} -af $source $destination";
+	my $shell_call = $conf->{executable}{cp}." -af $source $destination";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -5692,7 +5692,7 @@ sub download_striker
 		$download                  = $conf->{url}{git_master};
 		$extract                   = ($conf->{url}{git_master} =~ /^.*\/(.*)$/)[0];
 		$conf->{directory}{source} = "./striker-master";
-		logger($conf, $THIS_FILE, __LINE__, "directory::source: [$conf->{directory}{source}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "directory::source: [".$conf->{directory}{source}."]", 3);
 	}
 	else
 	{
@@ -5715,8 +5715,8 @@ sub download_striker
 			}
 			else
 			{
-				logger($conf, $THIS_FILE, __LINE__, "- Local version: [$version] doesn't match requested version: [$conf->{sys}{install_version}]", 1);
-				logger($conf, $THIS_FILE, __LINE__, "- Downloading requested version from: [$conf->{url}{striker}]", 1);
+				logger($conf, $THIS_FILE, __LINE__, "- Local version: [$version] doesn't match requested version: [".$conf->{sys}{install_version}."]", 1);
+				logger($conf, $THIS_FILE, __LINE__, "- Downloading requested version from: [".$conf->{url}{striker}."]", 1);
 				$download                  = $conf->{url}{striker};
 				$extract                   = ($conf->{url}{striker} =~ /^.*\/(.*)$/)[0];
 				$conf->{directory}{source} = "./striker-".$conf->{sys}{install_version};
@@ -5725,7 +5725,7 @@ sub download_striker
 		else
 		{
 			# Download needed.
-			logger($conf, $THIS_FILE, __LINE__, "- Downloading version: [$conf->{sys}{install_version}] from: [$conf->{url}{striker}]", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- Downloading version: [".$conf->{sys}{install_version}."] from: [".$conf->{url}{striker}."]", 1);
 			$download                  = $conf->{url}{striker};
 			$extract                   = ($conf->{url}{striker} =~ /^.*\/(.*)$/)[0];
 			$conf->{directory}{source} = "./striker-".$conf->{sys}{install_version};
@@ -5742,7 +5742,7 @@ sub download_striker
 		}
 		else
 		{
-			my $shell_call = "$conf->{executable}{wget} -c $download";
+			my $shell_call = $conf->{executable}{wget}." -c $download";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
@@ -5774,7 +5774,7 @@ sub download_striker
 	if ($extract)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Extracting: [$extract]", 1);
-		logger($conf, $THIS_FILE, __LINE__, "Checking if the directory: [$conf->{directory}{source}] exists already.", 3);
+		logger($conf, $THIS_FILE, __LINE__, "Checking if the directory: [".$conf->{directory}{source}."] exists already.", 3);
 		if (-d $conf->{directory}{source})
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- The source appears to already be extracted, skipping.", 1);
@@ -5782,10 +5782,10 @@ sub download_striker
 		else
 		{
 			my $source_dir_found = 0;
-			my $shell_call       = "$conf->{executable}{tar} -xvf $extract";
+			my $shell_call       = $conf->{executable}{tar}." -xvf $extract";
 			if ($extract =~ /\.zip$/)
 			{
-				$shell_call = "$conf->{executable}{unzip} $extract";
+				$shell_call = $conf->{executable}{unzip}." $extract";
 			}
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -5808,7 +5808,7 @@ sub download_striker
 						#print __LINE__."; source: [$source]\n";
 					}
 					$conf->{directory}{source} = "./$source";
-					#print __LINE__."; directory::source: [$conf->{directory}{source}]\n";
+					#print __LINE__."; directory::source: [".$conf->{directory}{source}."]\n";
 					$source_dir_found          = 1;
 				}
 				logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
@@ -5816,7 +5816,7 @@ sub download_striker
 			close $file_handle;
 		}
 	}
-	logger($conf, $THIS_FILE, __LINE__, "- Will use the source directory: [$conf->{directory}{source}]", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Will use the source directory: [".$conf->{directory}{source}."]", 1);
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	return(0);
@@ -5829,13 +5829,13 @@ sub configure_iptables
 	
 	# Read in the current rules so we don't recreate rules that already exist.
 	logger($conf, $THIS_FILE, __LINE__, "Configuring the firewall to allow normal and secure web access.", 1);
-	if (-e "$conf->{path}{backups}/iptables")
+	if (-e $conf->{path}{backups}."/iptables")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Backup already made, skipping.", 1);
 	}
 	else
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Backing up: [$conf->{path}{iptables}].", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Backing up: [".$conf->{path}{iptables}."].", 1);
 		backup_file($conf, $conf->{path}{iptables});
 	}
 	
@@ -5847,7 +5847,7 @@ sub configure_iptables
 	my $pgsql_open = 0;
 	my $nfs_open   = 0;	# This is needed for remote USB mount.
 	logger($conf, $THIS_FILE, __LINE__, "- Reading the current firewall configuration.", 1);
-	my $shell_call = "$conf->{executable}{'iptables-save'}";
+	my $shell_call = $conf->{executable}{'iptables-save'};
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -5913,8 +5913,8 @@ sub configure_iptables
 	if (not $tftp_open)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for trivial FTP (needed for PXE booting).", 1);
-		my $shell_call =  "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 69 -j ACCEPT && ";
-		   $shell_call .= "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p udp --dport 69 -j ACCEPT";
+		my $shell_call =  $conf->{executable}{iptables}." -I INPUT -m state --state NEW -p tcp --dport 69 -j ACCEPT && ";
+		   $shell_call .= $conf->{executable}{iptables}." -I INPUT -m state --state NEW -p udp --dport 69 -j ACCEPT";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -5928,8 +5928,8 @@ sub configure_iptables
 	if (not $nfs_open)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for NFS (needed for Remote USB).", 1);
-		my $shell_call =  "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 2049 -j ACCEPT && ";
-		   $shell_call .= "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p udp --dport 2049 -j ACCEPT";
+		my $shell_call =  $conf->{executable}{iptables}." -I INPUT -m state --state NEW -p tcp --dport 2049 -j ACCEPT && ";
+		   $shell_call .= $conf->{executable}{iptables}." -I INPUT -m state --state NEW -p udp --dport 2049 -j ACCEPT";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -5943,7 +5943,7 @@ sub configure_iptables
 	if (not $http_open)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for standard web access.", 1);
-		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT";
+		my $shell_call = $conf->{executable}{iptables}." -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -5957,7 +5957,7 @@ sub configure_iptables
 	if (not $https_open)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for secure web access.", 1);
-		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT";
+		my $shell_call = $conf->{executable}{iptables}." -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -5971,9 +5971,9 @@ sub configure_iptables
 	if (not $vnc_open)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for VNC to the dashboard desktop.", 1);
-		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5800 -j ACCEPT; ";
-		   $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5900 -j ACCEPT; ";
-		   $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 6000 -j ACCEPT; ";
+		my $shell_call = $conf->{executable}{iptables}." -I INPUT -m state --state NEW -p tcp --dport 5800 -j ACCEPT; ";
+		   $shell_call = $conf->{executable}{iptables}." -I INPUT -m state --state NEW -p tcp --dport 5900 -j ACCEPT; ";
+		   $shell_call = $conf->{executable}{iptables}." -I INPUT -m state --state NEW -p tcp --dport 6000 -j ACCEPT; ";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -5987,7 +5987,7 @@ sub configure_iptables
 	if (not $pgsql_open)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for PostgreSQL.", 1);
-		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5432 -j ACCEPT; ";
+		my $shell_call = $conf->{executable}{iptables}." -I INPUT -m state --state NEW -p tcp --dport 5432 -j ACCEPT; ";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -6028,20 +6028,20 @@ sub configure_ssh
 	
 	logger($conf, $THIS_FILE, __LINE__, "Configuring SSH daemon to allow faster logins.", 1);
 	        
-	if (-e "$conf->{path}{backups}/sshd_config")
+	if (-e $conf->{path}{backups}."/sshd_config")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Backup already made, skipping.", 1);
 	}
 	else
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Backing up: [$conf->{path}{sshd_config}].", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Backing up: [".$conf->{path}{sshd_config}."].", 1);
 		backup_file($conf, $conf->{path}{sshd_config});
 	}
 	
 	# Read in and then write out the server.xml file to enable UTF-8
 	my $sshd_config = "";
 	logger($conf, $THIS_FILE, __LINE__, "- Reading in the existing ssh daemon configuration file.", 1);
-	open (my $file_handle, "<", $conf->{path}{sshd_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{sshd_config}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{sshd_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [".$conf->{path}{sshd_config}."], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6057,19 +6057,19 @@ sub configure_ssh
 	close $file_handle;
 	# Next, write it out.
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out the new version.", 1);
-	open ($file_handle, ">", $conf->{path}{sshd_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{sshd_config}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{sshd_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{sshd_config}."], the error was: $!\n";
 	print $file_handle $sshd_config;
 	close $file_handle;
 	
-	if (-e "$conf->{path}{apache_home}/.ssh/id_rsa")
+	if (-e $conf->{path}{apache_home}."/.ssh/id_rsa")
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- SSH RSA keys for: [$conf->{sys}{apache_user}] already created, skipping.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- SSH RSA keys for: [".$conf->{sys}{apache_user}."] already created, skipping.", 1);
 	}
 	else
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Generating: [$conf->{sys}{apache_user}]'s RSA keys.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Generating: [".$conf->{sys}{apache_user}."]'s RSA keys.", 1);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient! It might take time to collect entropy.", 1);
-		my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
+		my $shell_call = $conf->{executable}{su}." apache -c \"".$conf->{executable}{'ssh-keygen'}." -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -6085,7 +6085,7 @@ sub configure_ssh
 	if (not -e "/root/.ssh/id_rsa")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Creating the SSH RSA key for 'root'.", 1);
-		my $shell_call = "$conf->{executable}{'ssh-keygen'} -t rsa -N \"\" -b 8191 -f ~/.ssh/id_rsa";
+		my $shell_call = $conf->{executable}{'ssh-keygen'}." -t rsa -N \"\" -b 8191 -f ~/.ssh/id_rsa";
 		logger($conf, $THIS_FILE, __LINE__, "- shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -6109,13 +6109,13 @@ sub configure_selinux
 	### TODO: Get the media library stuff working... ;_;
 	logger($conf, $THIS_FILE, __LINE__, "Making sure that selinux is enabled.", 3);
 	logger($conf, $THIS_FILE, __LINE__, "Making sure that selinux is permissive.", 1);
-	if (-e "$conf->{path}{backups}/config")
+	if (-e $conf->{path}{backups}."/config")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Backup already made, skipping.", 1);
 	}
 	else
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Backing up: [$conf->{path}{selinux_config}].", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Backing up: [".$conf->{path}{selinux_config}."3].", 1);
 		backup_file($conf, $conf->{path}{selinux_config});
 	}
 	
@@ -6123,7 +6123,7 @@ sub configure_selinux
 	my $current_policy = "";
 	my $selinux_config = "";
 	logger($conf, $THIS_FILE, __LINE__, "- Reading in the existing selinux config file.", 1);
-	open (my $file_handle, "<", $conf->{path}{selinux_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{selinux_config}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{selinux_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [".$conf->{path}{selinux_config}."], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6158,7 +6158,7 @@ sub configure_selinux
 	{
 		# Set enforcing to 0.
 		logger($conf, $THIS_FILE, __LINE__, "- Setting selinux to 'permissive'.", 1);
-		my $shell_call = "$conf->{executable}{setenforce} 0";
+		my $shell_call = $conf->{executable}{setenforce}." 0";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -6171,7 +6171,7 @@ sub configure_selinux
 	
 	# Next, write it out.
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out the new version.", 1);
-	open ($file_handle, ">", $conf->{path}{selinux_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{selinux_config}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{selinux_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{selinux_config}."], the error was: $!\n";
 	print $file_handle $selinux_config;
 	close $file_handle;
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
@@ -6190,7 +6190,7 @@ sub set_hostname
 	logger($conf, $THIS_FILE, __LINE__, "Configuring this system's host name.", 1);
 	logger($conf, $THIS_FILE, __LINE__, "- Reading in the existing hostname file.", 1);
 	my $hostname = "";
-	open (my $file_handle, "<", $conf->{path}{hostname}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{hostname}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{hostname}) or die "$THIS_FILE ".__LINE__."; Failed to read: [".$conf->{path}{hostname}."], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6211,13 +6211,13 @@ sub set_hostname
 	
 	# Next, write it out.
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out the new version.", 1);
-	open ($file_handle, ">", $conf->{path}{hostname}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{hostname}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{hostname}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{hostname}."], the error was: $!\n";
 	print $file_handle $hostname;
 	close $file_handle;
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	# And finally, change the hostname for the current session.
-	system("hostname $conf->{sys}{hostname}");
+	system("hostname ".$conf->{sys}{hostname});
 	
 	return(0);
 }
@@ -6230,7 +6230,7 @@ sub configure_apache
 	logger($conf, $THIS_FILE, __LINE__, "Configuring Apache.", 1);
 	
 	# Start by backing things up.
-	if (-e "$conf->{path}{backups}/httpd")
+	if (-e $conf->{path}{backups}."/httpd")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Backup already made, skipping.", 1);
 	}
@@ -6252,7 +6252,7 @@ sub configure_apache
 	# Now to start updating.
 	logger($conf, $THIS_FILE, __LINE__, "- Reading in the existing config file and adjusting as needed.", 1);
 	my $apache_config = "";
-	open (my $file_handle, "<", $conf->{path}{apache_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{apache_config}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{apache_config}) or die "$THIS_FILE ".__LINE__."; Failed to read: [".$conf->{path}{apache_config}."], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6274,13 +6274,13 @@ sub configure_apache
 			$apache_config .= "$line\n";
 			$apache_config .= "    # Password login\n";
 			$apache_config .= "    AuthType Basic\n";
-			$apache_config .= "    AuthName \"Striker - $conf->{sys}{customer}\"\n";
-			$apache_config .= "    AuthUserFile $conf->{path}{apache_htpasswd}\n";
-			$apache_config .= "    Require user $conf->{sys}{striker_user}\n";
+			$apache_config .= "    AuthName \"Striker - ".$conf->{sys}{customer}."\"\n";
+			$apache_config .= "    AuthUserFile ".$conf->{path}{apache_htpasswd}."\n";
+			$apache_config .= "    Require user ".$conf->{sys}{striker_user}."\n";
 		}
 		elsif ($line =~ /^Timeout /)
 		{
-			$apache_config .= "Timeout $conf->{sys}{apache_timeout}\n";
+			$apache_config .= "Timeout ".$conf->{sys}{apache_timeout}."\n";
 		}
 		else
 		{
@@ -6291,7 +6291,7 @@ sub configure_apache
 	
 	# Now write it out.
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out the new version.", 1);
-	open ($file_handle, ">", $conf->{path}{apache_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{apache_config}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{apache_config}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{apache_config}."], the error was: $!\n";
 	print $file_handle $apache_config;
 	close $file_handle;
 	
@@ -6303,7 +6303,7 @@ sub configure_apache
 	}
 	else
 	{
-		open ($file_handle, ">", $conf->{path}{apache_manifest_conf}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{apache_manifest_conf}], the error was: $!\n";
+		open ($file_handle, ">", $conf->{path}{apache_manifest_conf}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{apache_manifest_conf}."], the error was: $!\n";
 		print $file_handle "<Directory \"/var/www/html/manifests/\">\n";
 		print $file_handle "  <FilesMatch \"\.xml\$\">\n";
 		print $file_handle "    Header set Content-Disposition attachment\n";
@@ -6323,7 +6323,7 @@ sub enable_apache_user
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Reading in the existing system user file.", 1);
 	my $passwd = "";
-	open (my $file_handle, "<", $conf->{path}{passwd}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{passwd}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{passwd}) or die "$THIS_FILE ".__LINE__."; Failed to read: [".$conf->{path}{passwd}."], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6348,7 +6348,7 @@ sub enable_apache_user
 	
 	# Now write it out.
 	logger($conf, $THIS_FILE, __LINE__, "- Writing out the new version.", 1);
-	open ($file_handle, ">", $conf->{path}{passwd}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{passwd}], the error was: $!\n";
+	open ($file_handle, ">", $conf->{path}{passwd}) or die "$THIS_FILE ".__LINE__."; Failed to write: [".$conf->{path}{passwd}."], the error was: $!\n";
 	print $file_handle $passwd;
 	close $file_handle;
 	
@@ -6364,7 +6364,7 @@ sub set_root_password
 	if ($conf->{sys}{striker_password})
 	{
 		$conf->{sys}{striker_password} =~ s/"/\\"/g;
-		my $shell_call = "$conf->{executable}{echo} \"$conf->{sys}{striker_password}\" | $conf->{executable}{passwd} root --stdin";
+		my $shell_call = $conf->{executable}{echo}." \"".$conf->{sys}{striker_password}."\" | ".$conf->{executable}{passwd}." root --stdin";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -6398,14 +6398,14 @@ sub create_apache_htpasswd
 	logger($conf, $THIS_FILE, __LINE__, "- Setting up Striker's authentication via Apache's htpasswd...", 1);
 	if (-e $conf->{path}{apache_htpasswd})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Old: [$conf->{path}{apache_htpasswd}] found, deleting it.", 1);
-		unlink $conf->{path}{apache_htpasswd} or die "$THIS_FILE ".__LINE__."; Failed to delete: [$conf->{path}{apache_htpasswd}], error was: $!\n";
+		logger($conf, $THIS_FILE, __LINE__, "- Old: [".$conf->{path}{apache_htpasswd}."] found, deleting it.", 1);
+		unlink $conf->{path}{apache_htpasswd} or die "$THIS_FILE ".__LINE__."; Failed to delete: [".$conf->{path}{apache_htpasswd}."], error was: $!\n";
 	}
 	
 	# Escape any single-quotes in the user's password.
 	$conf->{sys}{striker_password} =~ s/"/\\\\\\\"/g;
-	logger($conf, $THIS_FILE, __LINE__, "- Generating: [$conf->{sys}{striker_user}]'s: [$conf->{path}{apache_htpasswd}] password file.", 1);
-	my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{htpasswd} -cdb $conf->{path}{apache_htpasswd} $conf->{sys}{striker_user} \\\"$conf->{sys}{striker_password}\\\"\"";
+	logger($conf, $THIS_FILE, __LINE__, "- Generating: [".$conf->{sys}{striker_user}."]'s: [".$conf->{path}{apache_htpasswd}."] password file.", 1);
+	my $shell_call = $conf->{executable}{su}." apache -c \"".$conf->{executable}{htpasswd}." -cdb ".$conf->{path}{apache_htpasswd}." ".$conf->{sys}{striker_user}." \\\"".$conf->{sys}{striker_password}."\\\"\"";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -6429,16 +6429,16 @@ sub create_apache_home_directories
 	push @dirs, $conf->{path}{apache_home};
 	if (not -e $conf->{path}{apache_home})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Creating: [$conf->{path}{apache_home}].", 1);
-		mkdir $conf->{path}{apache_home} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{path}{apache_home}], the error was: $!\n";
+		logger($conf, $THIS_FILE, __LINE__, "- Creating: [".$conf->{path}{apache_home}."].", 1);
+		mkdir $conf->{path}{apache_home} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{path}{apache_home}."], the error was: $!\n";
 	}
 	else
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Home already exists: [$conf->{path}{apache_home}].", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Home already exists: [".$conf->{path}{apache_home}."].", 1);
 	}
 	foreach my $directory (@{$conf->{directory}{apache_subdirs}})
 	{
-		my $full_path = "$conf->{path}{apache_home}/$directory";
+		my $full_path = $conf->{path}{apache_home}."/$directory";
 		push @dirs, $full_path;
 		if (not -e $full_path)
 		{
@@ -6454,27 +6454,27 @@ sub create_apache_home_directories
 	# Make sure the directory that install manifests will be stored in is available.
 	if (not -e $conf->{directory}{apache_manifests})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Creating: [$conf->{directory}{apache_manifests}].", 1);
-		mkdir $conf->{directory}{apache_manifests} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{apache_manifests}], the error was: $!\n";
+		logger($conf, $THIS_FILE, __LINE__, "- Creating: [".$conf->{directory}{apache_manifests}."].", 1);
+		mkdir $conf->{directory}{apache_manifests} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [".$conf->{directory}{apache_manifests}."], the error was: $!\n";
 	}
 	else
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Install manifests directory already exists: [$conf->{directory}{apache_manifests}].", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Install manifests directory already exists: [".$conf->{directory}{apache_manifests}."].", 1);
 	}
 	
-	logger($conf, $THIS_FILE, __LINE__, "- Setting ownership to: [$conf->{sys}{apache_user}:$conf->{sys}{apache_group}].", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Setting ownership to: [".$conf->{sys}{apache_user}.":".$conf->{sys}{apache_group}."].", 1);
 	my $apache_uid = getpwnam($conf->{sys}{apache_user}); 
 	my $apache_gid = getgrnam($conf->{sys}{apache_group});
 	my $dir_mode   = 0775;
 	if (not $apache_uid)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unable to get the User ID for the apache user: [$conf->{sys}{apache_user}]", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unable to get the User ID for the apache user: [".$conf->{sys}{apache_user}."]", 0);
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Did apache actually install properly?", 0);
 		exit(15);
 	}
 	if (not $apache_gid)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unable to get the Group ID for the apache group: [$conf->{sys}{apache_group}]", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unable to get the Group ID for the apache group: [".$conf->{sys}{apache_group}."]", 0);
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Did apache actually install properly?", 0);
 		exit(16);
 	}
@@ -6572,8 +6572,8 @@ sub register_with_rhn
 		logger($conf, $THIS_FILE, __LINE__, "- Registration required, proceeding now.", 1);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient, this might take a minute...", 1);
 		my $shell_call = $conf->{executable}{'subscription-manager'}." register --username '".$conf->{sys}{rhn_user}."' --password '".$conf->{sys}{rhn_password}."' --name=".$conf->{sys}{hostname}." --auto-attach --force";
-		logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
-		logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [".$conf->{sys}{rhn_password}."]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [".$conf->{sys}{rhn_user}."]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -6650,7 +6650,7 @@ sub verify_os
 	my $major = -1;
 	my $minor = -1;
 	logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checking version.", 1);
-	open (my $file_handle, "<", $conf->{path}{os_release}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{os_release}], error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{os_release}) or die "$THIS_FILE ".__LINE__."; Failed to read: [".$conf->{path}{os_release}."], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6749,7 +6749,7 @@ sub verify_internet_access
 	
 	logger($conf, $THIS_FILE, __LINE__, "Checking for an Internet connection...", 1);
 	my $ok         = 0;
-	my $shell_call = "$conf->{executable}{ping} 8.8.8.8 -c 3 -q";
+	my $shell_call = $conf->{executable}{ping}." 8.8.8.8 -c 3 -q";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -6771,7 +6771,7 @@ sub verify_internet_access
 			else
 			{
 				$conf->{sys}{internet_access} = 0;
-				logger($conf, $THIS_FILE, __LINE__, "not internet access: [$conf->{sys}{internet_access}]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "not internet access: [".$conf->{sys}{internet_access}."]", 3);
 			}
 		}
 	}
@@ -6857,18 +6857,18 @@ sub install_packages
 		
 		# MegaCli64 first
 		my $shell_call = "
-if [ -e '$conf->{executable}{MegaCli64}' ]; 
+if [ -e '".$conf->{executable}{MegaCli64}."' ]; 
 then 
-    if [ -e '$conf->{executable}{MegaCli64_link}' ]
+    if [ -e '".$conf->{executable}{MegaCli64_link}."' ]
     then
-        echo '$conf->{executable}{MegaCli64_link} symlink exists';
+        echo '".$conf->{executable}{MegaCli64_link}." symlink exists';
     else
-        ln -s $conf->{executable}{MegaCli64} $conf->{executable}{MegaCli64_link}
-        if [ -e '$conf->{executable}{MegaCli64_link}' ]
+        ln -s ".$conf->{executable}{MegaCli64}." ".$conf->{executable}{MegaCli64_link}."
+        if [ -e '".$conf->{executable}{MegaCli64_link}."' ]
         then
-            echo '$conf->{executable}{MegaCli64_link} symlink created';
+            echo '".$conf->{executable}{MegaCli64_link}." symlink created';
         else
-            echo 'Failed to create $conf->{executable}{MegaCli64_link} symlink';
+            echo 'Failed to create ".$conf->{executable}{MegaCli64_link}." symlink';
         fi
     fi
 else
@@ -6902,18 +6902,18 @@ fi";
 		
 		# Now storcli
 		$shell_call = "
-if [ -e '$conf->{executable}{storcli64}' ]; 
+if [ -e '".$conf->{executable}{storcli64}."' ]; 
 then 
-	if [ -e '$conf->{executable}{storcli64_link}' ]
+	if [ -e '".$conf->{executable}{storcli64_link}."' ]
 	then
-		echo '$conf->{executable}{storcli64_link} symlink exists';
+		echo '".$conf->{executable}{storcli64_link}." symlink exists';
 	else
-		ln -s $conf->{executable}{storcli64} $conf->{executable}{storcli64_link}
-		if [ -e '$conf->{executable}{storcli64_link}' ]
+		ln -s ".$conf->{executable}{storcli64}." ".$conf->{executable}{storcli64_link}."
+		if [ -e '".$conf->{executable}{storcli64_link}."' ]
 		then
-			echo '$conf->{executable}{storcli64_link} symlink created';
+			echo '".$conf->{executable}{storcli64_link}." symlink created';
 		else
-			echo 'Failed to create $conf->{executable}{storcli64_link} symlink';
+			echo 'Failed to create ".$conf->{executable}{storcli64_link}." symlink';
 		fi
 	fi
 else
@@ -7005,7 +7005,7 @@ sub install_missing_packages
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] while. This is likely because of how buffering is handled. If you", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
-		my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install $to_install";
+		my $shell_call = $conf->{executable}{yum}." ".$conf->{sys}{yum_switches}." install $to_install";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -7064,7 +7064,7 @@ sub update_os
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] while. This is likely because of how buffering is handled. If you", 3);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
-	my $shell_call = "$conf->{executable}{yum} clean all && $conf->{executable}{yum} $conf->{sys}{yum_switches} update";
+	my $shell_call = $conf->{executable}{yum}." clean all && ".$conf->{executable}{yum}." ".$conf->{sys}{yum_switches}." update";
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 	while(<$file_handle>)
@@ -7089,7 +7089,7 @@ sub get_list_of_installed_packages
 	my ($conf) = @_;
 	
 	logger($conf, $THIS_FILE, __LINE__, "Getting a list of currently installed packages.", 1);
-	my $shell_call = "$conf->{executable}{yum} list installed";
+	my $shell_call = $conf->{executable}{yum}." list installed";
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -7176,7 +7176,7 @@ sub start_all_nics
 		
 		# If I am here, the interface is down
 		my $nic       = $this_iface;
-		my $nic_file = "$conf->{path}{network_configs}/ifcfg-$nic";
+		my $nic_file = $conf->{path}{network_configs}."/ifcfg-$nic";
 		logger($conf, $THIS_FILE, __LINE__, "- The network interface: [$nic] is down. It must be started for the next stage.", 1);
 		logger($conf, $THIS_FILE, __LINE__, "- Checking if: [$nic_file] exists.", 1);
 		if (not -e $nic_file)
@@ -7197,7 +7197,7 @@ sub start_all_nics
 		{
 			# It exists, edit it if needed.
 			logger($conf, $THIS_FILE, __LINE__, "- Config file exists, changing BOOTPROTO to 'none'.", 1);
-			my $shell_call = "$conf->{executable}{sed} -i 's/BOOTPROTO=.*/BOOTPROTO=\"none\"/\' $nic_file";
+			my $shell_call = $conf->{executable}{sed}." -i 's/BOOTPROTO=.*/BOOTPROTO=\"none\"/\' $nic_file";
 			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
@@ -7213,7 +7213,7 @@ sub start_all_nics
 			
 		# Now start the nic.
 		logger($conf, $THIS_FILE, __LINE__, "- Attempting to bring up: [$nic]...", 1);
-		my $shell_call = "$conf->{executable}{ifup} $nic";
+		my $shell_call = $conf->{executable}{ifup}." $nic";
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -7228,7 +7228,7 @@ sub start_all_nics
 		logger($conf, $THIS_FILE, __LINE__, "- Checking to see if it is up now.", 1);
 		sleep 2;
 		my $is_up   = 0;
-		$shell_call = "$conf->{executable}{ip} link show $nic";
+		$shell_call = $conf->{executable}{ip}." link show $nic";
 		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -7283,13 +7283,13 @@ sub update_hosts
 {
 	my ($conf) = @_;
 	
-	logger($conf, $THIS_FILE, __LINE__, "- Updating: [$conf->{path}{hosts}]", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Updating: [".$conf->{path}{hosts}."]", 1);
 	
 	# See if the user passed the peer dashboard info.
 	my $peer_short_name = "";
 	my $peer_hostname   = "";
 	my $peer_bcn_ip     = "";
-	logger($conf, $THIS_FILE, __LINE__, "switches::peer-dashboard: [$conf->{switches}{'peer-dashboard'}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "switches::peer-dashboard: [".$conf->{switches}{'peer-dashboard'}."]", 3);
 	if ($conf->{switches}{'peer-dashboard'})
 	{
 		$peer_hostname =  ($conf->{switches}{'peer-dashboard'} =~ /hostname=(.*)$/)[0];
@@ -7310,7 +7310,7 @@ sub update_hosts
 	my $hostname     = $conf->{sys}{hostname};
 	my $short_name   = ($hostname =~ /^(.*?)\./)[0];
 	   $short_name   = $hostname if not $short_name;
-	open (my $file_handle, "<", $conf->{path}{hosts}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{hosts}], the error was: $!\n";
+	open (my $file_handle, "<", $conf->{path}{hosts}) or die "$THIS_FILE ".__LINE__."; Failed to read: [".$conf->{path}{hosts}."], the error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -7347,13 +7347,13 @@ sub update_hosts
 	if ($conf->{network}{bcn}{ip})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Using the BCN IP for the hostname: [$hostname]", 1);
-		$new_hosts .= "$conf->{network}{bcn}{ip}\t$hostname $short_name ${short_name}.bcn\n";
+		$new_hosts .= $conf->{network}{bcn}{ip}."\t$hostname $short_name ${short_name}.bcn\n";
 		$updated   =  1;
 	}
 	if ($conf->{network}{ifn}{ip})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Using the IFN IP for the hostname: [$hostname]", 1);
-		$new_hosts .= "$conf->{network}{ifn}{ip}\t${short_name}.ifn\n";
+		$new_hosts .= $conf->{network}{ifn}{ip}."\t${short_name}.ifn\n";
 		$updated   =  1;
 	}
 	# See if I need to inject the peer's details.
@@ -7377,7 +7377,7 @@ sub update_hosts
 	{
 		# Write out the updated hosts file.
 		logger($conf, $THIS_FILE, __LINE__, "- Writing out the updated hosts file.", 1);
-		open (my $file_handle, ">", "$conf->{path}{hosts}") or die "Failed to write to: [$conf->{path}{hosts}], error was: $!\n";
+		open (my $file_handle, ">", $conf->{path}{hosts}) or die "Failed to write to: [".$conf->{path}{hosts}."], error was: $!\n";
 		print $file_handle $new_hosts;
 		close $file_handle;
 	}
@@ -7405,7 +7405,7 @@ sub update_network_config_files
 		next if $file eq "ifcfg-lo";
 		if ($file =~ /^ifcfg-/)
 		{
-			my $full_path = "$conf->{path}{network_configs}/$file";
+			my $full_path = $conf->{path}{network_configs}."/$file";
 			logger($conf, $THIS_FILE, __LINE__, "- Deleting file: [$full_path]", 1);
 			unlink $full_path or die "Unable to delete: [$full_path]. The error was: $!\n";
 		}
@@ -7420,17 +7420,17 @@ sub update_network_config_files
 	# How I proceed depends on whether I am creating bonds or not.
 	if ($conf->{sys}{create_bonds})
 	{
-		my $ifcfg_bcn_bond1_file = "$conf->{path}{network_configs}/ifcfg-bcn_bond1";
-		my $ifcfg_bcn_link1_file = "$conf->{path}{network_configs}/ifcfg-bcn_link1";
-		my $ifcfg_bcn_link2_file = "$conf->{path}{network_configs}/ifcfg-bcn_link2";
-		my $ifcfg_ifn_bond1_file = "$conf->{path}{network_configs}/ifcfg-ifn_bond1";
-		my $ifcfg_ifn_link1_file = "$conf->{path}{network_configs}/ifcfg-ifn_link1";
-		my $ifcfg_ifn_link2_file = "$conf->{path}{network_configs}/ifcfg-ifn_link2";
+		my $ifcfg_bcn_bond1_file = $conf->{path}{network_configs}."/ifcfg-bcn_bond1";
+		my $ifcfg_bcn_link1_file = $conf->{path}{network_configs}."/ifcfg-bcn_link1";
+		my $ifcfg_bcn_link2_file = $conf->{path}{network_configs}."/ifcfg-bcn_link2";
+		my $ifcfg_ifn_bond1_file = $conf->{path}{network_configs}."/ifcfg-ifn_bond1";
+		my $ifcfg_ifn_link1_file = $conf->{path}{network_configs}."/ifcfg-ifn_link1";
+		my $ifcfg_ifn_link2_file = $conf->{path}{network_configs}."/ifcfg-ifn_link2";
 		
 		my $ifcfg_bcn_link1 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_bcn_link1 .= "# Back-Channel Network - Link 1\n";
 		   $ifcfg_bcn_link1 .= "DEVICE=\"bcn_link1\"\n";
-		   $ifcfg_bcn_link1 .= "MTU=\"$conf->{switches}{mtu}\"\n" if $conf->{switches}{mtu} ne "1500";
+		   $ifcfg_bcn_link1 .= "MTU=\"".$conf->{switches}{mtu}."\n" if $conf->{switches}{mtu} ne "1500";
 		   $ifcfg_bcn_link1 .= "NM_CONTROLLED=\"no\"\n";
 		   $ifcfg_bcn_link1 .= "BOOTPROTO=\"none\"\n";
 		   $ifcfg_bcn_link1 .= "ONBOOT=\"yes\"\n";
@@ -7438,14 +7438,14 @@ sub update_network_config_files
 		   $ifcfg_bcn_link1 .= "MASTER=\"bcn_bond1\"";
 		if ($conf->{switches}{ethtool_opts})
 		{
-			$ifcfg_bcn_link1 .= "\nETHTOOL_OPTS=\"$conf->{switches}{ethtool_opts}\"";
+			$ifcfg_bcn_link1 .= "\nETHTOOL_OPTS=\"".$conf->{switches}{ethtool_opts}."\"";
 		}
 		
 		#$conf->{path}{nodes}{bcn_link2_config};
 		my $ifcfg_bcn_link2 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_bcn_link2 .= "# Back-Channel Network - Link 2\n";
 		   $ifcfg_bcn_link2 .= "DEVICE=\"bcn_link2\"\n";
-		   $ifcfg_bcn_link2 .= "MTU=\"$conf->{switches}{mtu}\"\n" if $conf->{switches}{mtu} ne "1500";
+		   $ifcfg_bcn_link2 .= "MTU=\"".$conf->{switches}{mtu}."\"\n" if $conf->{switches}{mtu} ne "1500";
 		   $ifcfg_bcn_link2 .= "NM_CONTROLLED=\"no\"\n";
 		   $ifcfg_bcn_link2 .= "BOOTPROTO=\"none\"\n";
 		   $ifcfg_bcn_link2 .= "ONBOOT=\"yes\"\n";
@@ -7453,19 +7453,19 @@ sub update_network_config_files
 		   $ifcfg_bcn_link2 .= "MASTER=\"bcn_bond1\"";
 		if ($conf->{switches}{ethtool_opts})
 		{
-			$ifcfg_bcn_link2 .= "\nETHTOOL_OPTS=\"$conf->{switches}{ethtool_opts}\"";
+			$ifcfg_bcn_link2 .= "\nETHTOOL_OPTS=\"".$conf->{switches}{ethtool_opts}."\"";
 		}
 		
 		#$conf->{path}{nodes}{bcn_bond1_config};
 		my $ifcfg_bcn_bond1 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_bcn_bond1 .= "# Back-Channel Network - Bond 1\n";
 		   $ifcfg_bcn_bond1 .= "DEVICE=\"bcn_bond1\"\n";
-		   $ifcfg_bcn_bond1 .= "MTU=\"$conf->{switches}{mtu}\"\n" if $conf->{switches}{mtu} ne "1500";
+		   $ifcfg_bcn_bond1 .= "MTU=\"".$conf->{switches}{mtu}."\"\n" if $conf->{switches}{mtu} ne "1500";
 		   $ifcfg_bcn_bond1 .= "BOOTPROTO=\"static\"\n";
 		   $ifcfg_bcn_bond1 .= "ONBOOT=\"yes\"\n";
 		   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=bcn_link1 primary_reselect=always\"\n";
-		   $ifcfg_bcn_bond1 .= "IPADDR=\"$conf->{network}{bcn}{ip}\"\n";
-		   $ifcfg_bcn_bond1 .= "NETMASK=\"$conf->{network}{bcn}{netmask}\"\n";
+		   $ifcfg_bcn_bond1 .= "IPADDR=\"".$conf->{network}{bcn}{ip}."\"\n";
+		   $ifcfg_bcn_bond1 .= "NETMASK=\"".$conf->{network}{bcn}{netmask}."\"\n";
 		   $ifcfg_bcn_bond1 .= "DEFROUTE=\"no\"";
 		
 		### Setup my IFN files.
@@ -7473,7 +7473,7 @@ sub update_network_config_files
 		my $ifcfg_ifn_link1 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_ifn_link1 .= "# Internet-Facing Network - Link 1\n";
 		   $ifcfg_ifn_link1 .= "DEVICE=\"ifn_link1\"\n";
-		   $ifcfg_ifn_link1 .= "MTU=\"$conf->{switches}{mtu}\"\n" if $conf->{switches}{mtu} ne "1500";
+		   $ifcfg_ifn_link1 .= "MTU=\"".$conf->{switches}{mtu}."\"\n" if $conf->{switches}{mtu} ne "1500";
 		   $ifcfg_ifn_link1 .= "NM_CONTROLLED=\"no\"\n";
 		   $ifcfg_ifn_link1 .= "BOOTPROTO=\"none\"\n";
 		   $ifcfg_ifn_link1 .= "ONBOOT=\"yes\"\n";
@@ -7481,14 +7481,14 @@ sub update_network_config_files
 		   $ifcfg_ifn_link1 .= "MASTER=\"ifn_bond1\"";
 		if ($conf->{switches}{ethtool_opts})
 		{
-			$ifcfg_ifn_link1 .= "\nETHTOOL_OPTS=\"$conf->{switches}{ethtool_opts}\"";
+			$ifcfg_ifn_link1 .= "\nETHTOOL_OPTS=\"".$conf->{switches}{ethtool_opts}."\"";
 		}
 		
 		# IFN Link 2
 		my $ifcfg_ifn_link2 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_ifn_link2 .= "# Internet-Facing Network - Link 2\n";
 		   $ifcfg_ifn_link2 .= "DEVICE=\"ifn_link2\"\n";
-		   $ifcfg_ifn_link2 .= "MTU=\"$conf->{switches}{mtu}\"\n" if $conf->{switches}{mtu} ne "1500";
+		   $ifcfg_ifn_link2 .= "MTU=\"".$conf->{switches}{mtu}."\"\n" if $conf->{switches}{mtu} ne "1500";
 		   $ifcfg_ifn_link2 .= "NM_CONTROLLED=\"no\"\n";
 		   $ifcfg_ifn_link2 .= "BOOTPROTO=\"none\"\n";
 		   $ifcfg_ifn_link2 .= "ONBOOT=\"yes\"\n";
@@ -7496,22 +7496,22 @@ sub update_network_config_files
 		   $ifcfg_ifn_link2 .= "MASTER=\"ifn_bond1\"";
 		if ($conf->{switches}{ethtool_opts})
 		{
-			$ifcfg_ifn_link2 .= "\nETHTOOL_OPTS=\"$conf->{switches}{ethtool_opts}\"";
+			$ifcfg_ifn_link2 .= "\nETHTOOL_OPTS=\"".$conf->{switches}{ethtool_opts}."\"";
 		}
 		
 		# IFN Bond 1
 		my $ifcfg_ifn_bond1 =  "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 		   $ifcfg_ifn_bond1 .= "# Internet-Facing Network - Bond 1\n";
 		   $ifcfg_ifn_bond1 .= "DEVICE=\"ifn_bond1\"\n";
-		   $ifcfg_ifn_bond1 .= "MTU=\"$conf->{switches}{mtu}\"\n" if $conf->{switches}{mtu} ne "1500";
+		   $ifcfg_ifn_bond1 .= "MTU=\"".$conf->{switches}{mtu}."\"\n" if $conf->{switches}{mtu} ne "1500";
 		   $ifcfg_ifn_bond1 .= "BOOTPROTO=\"static\"\n";
 		   $ifcfg_ifn_bond1 .= "ONBOOT=\"yes\"\n";
 		   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn_link1 primary_reselect=always\"\n";
-		   $ifcfg_ifn_bond1 .= "IPADDR=\"$conf->{network}{ifn}{ip}\"\n";
-		   $ifcfg_ifn_bond1 .= "NETMASK=\"$conf->{network}{ifn}{netmask}\"\n";
-		   $ifcfg_ifn_bond1 .= "GATEWAY=\"$conf->{network}{ifn}{gateway}\"\n";
-		   $ifcfg_ifn_bond1 .= "DNS1=\"$conf->{network}{ifn}{dns1}\"\n" if $conf->{network}{ifn}{dns1};
-		   $ifcfg_ifn_bond1 .= "DNS2=\"$conf->{network}{ifn}{dns2}\"\n" if $conf->{network}{ifn}{dns2};
+		   $ifcfg_ifn_bond1 .= "IPADDR=\"".$conf->{network}{ifn}{ip}."\"\n";
+		   $ifcfg_ifn_bond1 .= "NETMASK=\"".$conf->{network}{ifn}{netmask}."\"\n";
+		   $ifcfg_ifn_bond1 .= "GATEWAY=\"".$conf->{network}{ifn}{gateway}."\"\n";
+		   $ifcfg_ifn_bond1 .= "DNS1=\"".$conf->{network}{ifn}{dns1}."\"\n" if $conf->{network}{ifn}{dns1};
+		   $ifcfg_ifn_bond1 .= "DNS2=\"".$conf->{network}{ifn}{dns2}."\"\n" if $conf->{network}{ifn}{dns2};
 		   $ifcfg_ifn_bond1 .= "DEFROUTE=\"yes\"";
 		   
 		### Don't die here! Only warn so hopefully at least one link
@@ -7550,7 +7550,7 @@ sub update_network_config_files
 	else
 	{
 		# BCN first
-		my $bcn_link1_file = "$conf->{path}{network_configs}/ifcfg-bcn_link1";
+		my $bcn_link1_file = "".$conf->{path}{network_configs}."/ifcfg-bcn_link1";
 		logger($conf, $THIS_FILE, __LINE__, "- BCN Link 1: [$bcn_link1_file]", 1);
 		my $shell_call = $bcn_link1_file;
 		open (my $file_handle, '>', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -7559,21 +7559,21 @@ sub update_network_config_files
 		print $file_handle "DEVICE=\"bcn_link1\"\n";
 		if ($conf->{switches}{mtu} ne "1500")
 		{
-			print $file_handle "MTU=\"$conf->{switches}{mtu}\"\n";
+			print $file_handle "MTU=\"".$conf->{switches}{mtu}."\"\n";
 		}
 		print $file_handle "BOOTPROTO=\"static\"\n";
 		print $file_handle "NM_CONTROLLED=\"no\"\n";
-		print $file_handle "IPADDR=\"$conf->{network}{bcn}{ip}\"\n";
-		print $file_handle "NETMASK=\"$conf->{network}{bcn}{netmask}\"\n";
+		print $file_handle "IPADDR=\"".$conf->{network}{bcn}{ip}."\"\n";
+		print $file_handle "NETMASK=\"".$conf->{network}{bcn}{netmask}."\"\n";
 		print $file_handle "DEFROUTE=\"no\"\n";
 		if ($conf->{switches}{ethtool_opts})
 		{
-			print $file_handle "\nETHTOOL_OPTS=\"$conf->{switches}{ethtool_opts}\"";
+			print $file_handle "\nETHTOOL_OPTS=\"".$conf->{switches}{ethtool_opts}."\"";
 		}
 		close $file_handle;
 		
 		# Now the IFN
-		my $ifn_link1_file = "$conf->{path}{network_configs}/ifcfg-ifn_link1";
+		my $ifn_link1_file = $conf->{path}{network_configs}."/ifcfg-ifn_link1";
 		logger($conf, $THIS_FILE, __LINE__, "- IFN Link 1: [$ifn_link1_file]", 1);
 		$shell_call = $ifn_link1_file;
 		open ($file_handle, '>', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -7582,19 +7582,19 @@ sub update_network_config_files
 		print $file_handle "DEVICE=\"ifn_link1\"\n";
 		if ($conf->{switches}{mtu} ne "1500")
 		{
-			print $file_handle "MTU=\"$conf->{switches}{mtu}\"\n";
+			print $file_handle "MTU=\"".$conf->{switches}{mtu}."\"\n";
 		}
 		print $file_handle "BOOTPROTO=\"static\"\n";
 		print $file_handle "NM_CONTROLLED=\"no\"\n";
-		print $file_handle "IPADDR=\"$conf->{network}{ifn}{ip}\"\n";
-		print $file_handle "NETMASK=\"$conf->{network}{ifn}{netmask}\"\n";
-		print $file_handle "GATEWAY=\"$conf->{network}{ifn}{gateway}\"\n";
-		print $file_handle "DNS1=\"$conf->{network}{ifn}{dns1}\"\n";
-		print $file_handle "DNS2=\"$conf->{network}{ifn}{dns2}\"\n";
+		print $file_handle "IPADDR=\"".$conf->{network}{ifn}{ip}."\"\n";
+		print $file_handle "NETMASK=\"".$conf->{network}{ifn}{netmask}."\"\n";
+		print $file_handle "GATEWAY=\"".$conf->{network}{ifn}{gateway}."\"\n";
+		print $file_handle "DNS1=\"".$conf->{network}{ifn}{dns1}."\"\n";
+		print $file_handle "DNS2=\"".$conf->{network}{ifn}{dns2}."\"\n";
 		print $file_handle "DEFROUTE=\"yes\"\n";
 		if ($conf->{switches}{ethtool_opts})
 		{
-			print $file_handle "\nETHTOOL_OPTS=\"$conf->{switches}{ethtool_opts}\"";
+			print $file_handle "\nETHTOOL_OPTS=\"".$conf->{switches}{ethtool_opts}."\"";
 		}
 		close $file_handle;
 		
@@ -7640,8 +7640,8 @@ sub write_udev_persistent_net
 {
 	my ($conf) = @_;
 	
-	my $shell_call = "$conf->{path}{udev_persistent_net}";
-	logger($conf, $THIS_FILE, __LINE__, "Writing the new udev rules file: [$conf->{path}{udev_persistent_net}]", 1);
+	my $shell_call = $conf->{path}{udev_persistent_net};
+	logger($conf, $THIS_FILE, __LINE__, "Writing the new udev rules file: [".$conf->{path}{udev_persistent_net}."]", 1);
 	open (my $file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 	foreach my $nic (@{$conf->{nics}})
@@ -7679,8 +7679,8 @@ sub backup_original_files
 	}
 	elsif (not -e $conf->{path}{backups})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- The backup directory: [$conf->{path}{backups}] doesn't exist, creting it.", 1);
-		mkdir $conf->{path}{backups} or die warn "[ Warning ] - Failed to create the directory: [$conf->{path}{backups}].\n[ Warning ] - The error was: $!\n";
+		logger($conf, $THIS_FILE, __LINE__, "- The backup directory: [".$conf->{path}{backups}."] doesn't exist, creting it.", 1);
+		mkdir $conf->{path}{backups} or die warn "[ Warning ] - Failed to create the directory: [".$conf->{path}{backups}."].\n[ Warning ] - The error was: $!\n";
 		if (not -e $conf->{path}{backups})
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The backup directory was not created.", 0);
@@ -7695,8 +7695,8 @@ sub backup_original_files
 	
 	# If there is already a backup created, skip it as we're probably being
 	# run a second (of thirteenth) time.
-	logger($conf, $THIS_FILE, __LINE__, "- Backing up: [$conf->{path}{udev_persistent_net}]", 1);
-	if (-e "$conf->{path}{backups}/70-persistent-net.rules")
+	logger($conf, $THIS_FILE, __LINE__, "- Backing up: [".$conf->{path}{udev_persistent_net}."]", 1);
+	if (-e $conf->{path}{backups}."/70-persistent-net.rules")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Previous backup exists, skipping.", 1);
 	}
@@ -7715,8 +7715,8 @@ sub backup_original_files
 	}
 	
 	# Backup the '/etc/sysconfig/network-scripts' directory.
-	logger($conf, $THIS_FILE, __LINE__, "- Backing up: [$conf->{path}{network_configs}]", 1);
-	if (-e "$conf->{path}{backups}/network-scripts")
+	logger($conf, $THIS_FILE, __LINE__, "- Backing up: [".$conf->{path}{network_configs}."]", 1);
+	if (-e $conf->{path}{backups}."/network-scripts")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Previous backup exists, skipping.", 1);
 	}
@@ -7738,8 +7738,8 @@ sub backup_original_files
 	}
 	
 	# Backup rc.local
-	logger($conf, $THIS_FILE, __LINE__, "- Backing up: [$conf->{path}{rc_local}]", 1);
-	if (-e "$conf->{path}{backups}/rc.local")
+	logger($conf, $THIS_FILE, __LINE__, "- Backing up: [".$conf->{path}{rc_local}."]", 1);
+	if (-e $conf->{path}{backups}."/rc.local")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Previous backup exists, skipping.", 1);
 	}
@@ -7780,8 +7780,8 @@ sub backup_file
 	$file =~ s/\/$//g;
 	$conf->{path}{backups} .= "/" if $conf->{path}{backups} !~ /\/$/;
 	
-	my $shell_call = "$conf->{executable}{cp} -ab $file $conf->{path}{backups}";
-	logger($conf, $THIS_FILE, __LINE__, "- Copying: [$file] to: [$conf->{path}{backups}]", 1);
+	my $shell_call = $conf->{executable}{cp}." -ab $file ".$conf->{path}{backups};
+	logger($conf, $THIS_FILE, __LINE__, "- Copying: [$file] to: [".$conf->{path}{backups}."]", 1);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -7805,7 +7805,7 @@ sub get_existing_ips
 	logger($conf, $THIS_FILE, __LINE__, "- Reading existing config:", 1);
 	my $ok         = 1;
 	my $in_iface   = "";
-	my $shell_call = "$conf->{executable}{ip} addr show";
+	my $shell_call = $conf->{executable}{ip}." addr show";
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -7819,7 +7819,7 @@ sub get_existing_ips
 		{
 			$conf->{network}{raw}{$in_iface}{ip}      = $1;
 			$conf->{network}{raw}{$in_iface}{netmask} = convert_cidr_to_dotted_decimal($conf, $2);
-			logger($conf, $THIS_FILE, __LINE__, "in_iface: [$in_iface], IP: [$conf->{network}{raw}{$in_iface}{ip}], netmask: [$conf->{network}{raw}{$in_iface}{netmask}]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "in_iface: [$in_iface], IP: [".$conf->{network}{raw}{$in_iface}{ip}."], netmask: [".$conf->{network}{raw}{$in_iface}{netmask}."]", 3);
 		}
 	}
 	close $file_handle;
@@ -7831,7 +7831,7 @@ sub get_existing_ips
 		$conf->{network}{bcn}{ip}        = $conf->{network}{raw}{bcn_bond1}{ip};
 		$conf->{network}{bcn}{netmask}   = $conf->{network}{raw}{bcn_bond1}{netmask};
 		$conf->{network}{bcn}{interface} = "bcn_bond1";
-		logger($conf, $THIS_FILE, __LINE__, "- BCN IP found on 'bcn_bond1': [$conf->{network}{bcn}{ip}/$conf->{network}{bcn}{netmask}]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- BCN IP found on 'bcn_bond1': [".$conf->{network}{bcn}{ip}."/".$conf->{network}{bcn}{netmask}."]", 1);
 	}
 	elsif ($conf->{network}{raw}{bcn_link1}{ip})
 	{
@@ -7839,7 +7839,7 @@ sub get_existing_ips
 		$conf->{network}{bcn}{ip}        = $conf->{network}{raw}{bcn_link1}{ip};
 		$conf->{network}{bcn}{netmask}   = $conf->{network}{raw}{bcn_link1}{netmask};
 		$conf->{network}{bcn}{interface} = "bcn_link1";
-		logger($conf, $THIS_FILE, __LINE__, "- BCN IP found on 'bcn_link1': [$conf->{network}{bcn}{ip}/$conf->{network}{bcn}{netmask}]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- BCN IP found on 'bcn_link1': [".$conf->{network}{bcn}{ip}."/".$conf->{network}{bcn}{netmask}."]", 1);
 	}
 	else
 	{
@@ -7857,7 +7857,7 @@ sub get_existing_ips
 		$conf->{network}{ifn}{ip}        = $conf->{network}{raw}{ifn_bond1}{ip};
 		$conf->{network}{ifn}{netmask}   = $conf->{network}{raw}{ifn_bond1}{netmask};
 		$conf->{network}{ifn}{interface} = "ifn_bond1";
-		logger($conf, $THIS_FILE, __LINE__, "- IFN IP found on 'ifn_bond1': [$conf->{network}{ifn}{ip}/$conf->{network}{ifn}{netmask}]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- IFN IP found on 'ifn_bond1': [".$conf->{network}{ifn}{ip}."/".$conf->{network}{ifn}{netmask}."]", 1);
 	}
 	elsif ($conf->{network}{raw}{ifn_link1}{ip})
 	{
@@ -7865,7 +7865,7 @@ sub get_existing_ips
 		$conf->{network}{ifn}{ip}        = $conf->{network}{raw}{ifn_link1}{ip};
 		$conf->{network}{ifn}{netmask}   = $conf->{network}{raw}{ifn_link1}{netmask};
 		$conf->{network}{ifn}{interface} = "ifn_link1";
-		logger($conf, $THIS_FILE, __LINE__, "- IFN IP found on 'ifn_link1': [$conf->{network}{ifn}{ip}/$conf->{network}{ifn}{netmask}]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- IFN IP found on 'ifn_link1': [".$conf->{network}{ifn}{ip}."/".$conf->{network}{ifn}{netmask}."]", 1);
 	}
 	else
 	{
@@ -7949,7 +7949,7 @@ sub sanity_check_switches
 	# See if they set an owner name
 	if (not $conf->{switches}{c})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- No customer/owner name given, will use: [$conf->{sys}{customer}]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- No customer/owner name given, will use: [".$conf->{sys}{customer}."]", 1);
 		# TODO: check to see if apache limits the names allowed.
 	}
 	else
@@ -7962,7 +7962,7 @@ sub sanity_check_switches
 	# See if they've asked for a specific version.
 # 	if ((not $conf->{switches}{d}) or ($conf->{switches}{d} eq "latest"))
 # 	{
-# 		logger($conf, $THIS_FILE, __LINE__, "- No specific version requested, will install: [$conf->{sys}{stable_version}]", 1);
+# 		logger($conf, $THIS_FILE, __LINE__, "- No specific version requested, will install: [".$conf->{sys}{stable_version}."]", 1);
 # 		$conf->{sys}{install_version} = $conf->{sys}{stable_version};
 # 		$conf->{url}{striker}         =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
 # 		$conf->{sys}{tarball_dir}     =~ s/#!striker_version!#/$conf->{sys}{install_version}/;
@@ -7988,7 +7988,7 @@ sub sanity_check_switches
 	# Check to see if either the htpasswd file exists or the user is giving us a user now.
 	if ((not -e $conf->{path}{apache_htpasswd}) && (not $conf->{switches}{u}))
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - No apache credentials were set, and: [$conf->{path}{apache_htpasswd}]", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - No apache credentials were set, and: [".$conf->{path}{apache_htpasswd}."]", 0);
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   doesn't exist. This is required for Striker to work securely.", 0);
 		$bad_value = 1;
 	}
@@ -8068,7 +8068,7 @@ sub sanity_check_switches
 		$conf->{sys}{ipmi_ip} = validate_ip_address($conf, $conf->{sys}{ipmi_ip});
 		if ($conf->{sys}{ipmi_ip} eq "#!INVALID!#")
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The specified IPMI IP address: [$conf->{sys}{ipmi_ip}] is not valid.", 0);
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The specified IPMI IP address: [".$conf->{sys}{ipmi_ip}."] is not valid.", 0);
 			$bad_value = 1;
 		}
 		
@@ -8084,7 +8084,7 @@ sub sanity_check_switches
 		}
 		if ($conf->{sys}{ipmi_netmask} eq "#!INVALID!#")
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The specified IPMI netmask value: [$conf->{sys}{ipmi_netmask}] is not valid.", 0);
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The specified IPMI netmask value: [".$conf->{sys}{ipmi_netmask}."] is not valid.", 0);
 			$bad_value = 1;
 		}
 		
@@ -8094,7 +8094,7 @@ sub sanity_check_switches
 			$conf->{sys}{ipmi_gateway} = validate_ip_address($conf, $conf->{sys}{ipmi_gateway});
 			if ($conf->{sys}{ipmi_gateway} eq "#!INVALID!#")
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The specified IPMI gateway: [$conf->{sys}{ipmi_gateway}] is not valid.", 0);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The specified IPMI gateway: [".$conf->{sys}{ipmi_gateway}."] is not valid.", 0);
 				$bad_value = 1;
 			}
 		}
@@ -8216,7 +8216,7 @@ sub sanity_check_dhcp
 	}
 	elsif ($start_prefix ne $end_prefix)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The DHCP lease start: [$conf->{switches}{lease_start}] and end: [$conf->{switches}{lease_end}]", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The DHCP lease start: [".$conf->{switches}{lease_start}."] and end: [".$conf->{switches}{lease_end}."]", 0);
 		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   IPs do not appear to be in the same subnet: [xxx.xxx.xxx.xxx].", 0);
 		logger($conf, $THIS_FILE, __LINE__, "- Only the BCN subnet is used for DHCP.", 1);
 		$bad_value = 1;
@@ -8449,7 +8449,7 @@ sub sanity_check_network
 			else
 			{
 				$conf->{network}{ifn}{gateway} = $gateway;
-				logger($conf, $THIS_FILE, __LINE__, "$THIS_FILE ".__LINE__."; network::ifn::gateway: [$conf->{network}{ifn}{gateway}]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "$THIS_FILE ".__LINE__."; network::ifn::gateway: [".$conf->{network}{ifn}{gateway}."]", 3);
 			}
 		}
 		else
@@ -8590,7 +8590,7 @@ sub remove_an_repo
 	logger($conf, $THIS_FILE, __LINE__, "Removing AN! software repository if it exists.", 1);
 	if (-e $conf->{path}{an_repo})
 	{
-		my $shell_call = "$conf->{executable}{yum} remove alteeve-repo";
+		my $shell_call = $conf->{executable}{yum}." remove alteeve-repo";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -8609,7 +8609,7 @@ sub remove_an_repo
 		else
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Failed! Removing it manually...\n", 1);
-			unlink $conf->{path}{an_repo} or die "Unable to delete: [$conf->{path}{an_repo}]. The error was: $!\n";
+			unlink $conf->{path}{an_repo} or die "Unable to delete: [".$conf->{path}{an_repo}."]. The error was: $!\n";
 			logger($conf, $THIS_FILE, __LINE__, "- removed.", 1);
 		}
 	}
@@ -8975,7 +8975,7 @@ sub get_switches
 	# Debug
 	foreach my $variable (sort {$a cmp $b} keys %{$conf->{switches}})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "Variable: [$variable]\t-> value: [$conf->{switches}{$variable}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "Variable: [$variable]\t-> value: [".$conf->{switches}{$variable}."]", 3);
 	}
 	#exit;
 	
@@ -8989,7 +8989,7 @@ sub select_nics
 	my ($conf, $cache_read) = @_;
 	
 	# If a cache file exists, read it and see if we've got the same MAC addresses.
-	logger($conf, $THIS_FILE, __LINE__, "sys::network_map_cache_read: [$conf->{sys}{network_map_cache_read}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "sys::network_map_cache_read: [".$conf->{sys}{network_map_cache_read}."]", 3);
 	### BUG: Cache is broken, fix it. 'Til then...
 	#if (not $conf->{sys}{network_map_cache_read})
 	if (1)
@@ -9021,15 +9021,15 @@ sub select_nics
 				{
 					if ($conf->{nic}{mac}{$down_links}{new_name})
 					{
-						logger($conf, $THIS_FILE, __LINE__, "- The NIC with MAC address: [$down_links] is already allocated to: [$conf->{nic}{mac}{$down_links}{new_name}]", 1);
+						logger($conf, $THIS_FILE, __LINE__, "- The NIC with MAC address: [$down_links] is already allocated to: [".$conf->{nic}{mac}{$down_links}{new_name}."]", 1);
 						$last_conflict = $down_links;
 					}
 					else
 					{
 						$conf->{nic}{mac}{$down_links}{new_name} = $nic;
 						$conf->{nic}{name}{$nic}                 = $down_links;
-						logger($conf, $THIS_FILE, __LINE__, "- NIC with MAC: [$down_links] will become: [$conf->{nic}{mac}{$down_links}{new_name}]", 1);
-						logger($conf, $THIS_FILE, __LINE__, "  (it is currently: [$conf->{nic}{mac}{$down_links}{current_name}])", 1);
+						logger($conf, $THIS_FILE, __LINE__, "- NIC with MAC: [$down_links] will become: [".$conf->{nic}{mac}{$down_links}{new_name}."]", 1);
+						logger($conf, $THIS_FILE, __LINE__, "  (it is currently: [".$conf->{nic}{mac}{$down_links}{current_name}."])", 1);
 						last;
 					}
 				}
@@ -9062,7 +9062,7 @@ sub select_nics
 		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
 		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
 		$conf->{cache}{nic}{name}{$nic} = "" if not defined $conf->{cache}{nic}{name}{$nic};
-		logger($conf, $THIS_FILE, __LINE__, "nic::name::$nic: [$conf->{nic}{name}{$nic}], cache::nic::name::$nic: [$conf->{cache}{nic}{name}{$nic}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "nic::name::$nic: [".$conf->{nic}{name}{$nic}."], cache::nic::name::$nic: [".$conf->{cache}{nic}{name}{$nic}."]", 3);
 		my $this_mac = $conf->{cache}{nic}{name}{$nic} ? $conf->{cache}{nic}{name}{$nic} : $conf->{nic}{name}{$nic};
 		logger($conf, $THIS_FILE, __LINE__, "this_mac: [$this_mac]", 3);
 		if (not $this_mac)
@@ -9172,10 +9172,10 @@ sub load_network_map_cache
 				my $mac = $2;
 				$conf->{cache}{nic}{$nic}{mac} = $mac;
 				$conf->{cache}{mac}{$mac}{nic} = $nic;
-				logger($conf, $THIS_FILE, __LINE__, "- Cached interface called: [$nic ($conf->{cache}{mac}{$mac}{nic})] uses mac: [$conf->{cache}{nic}{$nic}{mac} ($mac)].", 1);
+				logger($conf, $THIS_FILE, __LINE__, "- Cached interface called: [$nic (".$conf->{cache}{mac}{$mac}{nic}.")] uses mac: [".$conf->{cache}{nic}{$nic}{mac}." ($mac)].", 1);
 				#$conf->{cache}{nic}{name}{$nic} = lc($mac);
 				#$conf->{cache}{nic}{mac}{$mac}  = $nic;
-				#logger($conf, $THIS_FILE, __LINE__, "- Cached interface: [$nic ($conf->{cache}{nic}{name}{$nic})] to use: [$mac ($conf->{cache}{nic}{mac}{$mac})].", 1);
+				#logger($conf, $THIS_FILE, __LINE__, "- Cached interface: [$nic (".$conf->{cache}{nic}{name}{$nic}.")] to use: [$mac (".$conf->{cache}{nic}{mac}{$mac}.")].", 1);
 			}
 		}
 		close $file_handle;
@@ -9183,7 +9183,7 @@ sub load_network_map_cache
 		# Call 'ip addr'
 		my $this_iface = "";
 		my $this_mac   = "";
-		   $shell_call = "$conf->{executable}{ip} addr";
+		   $shell_call = $conf->{executable}{ip}." addr";
 		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -9215,7 +9215,7 @@ sub load_network_map_cache
 			if ($line =~ /ether ([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})/)
 			{
 				$this_mac = lc($1);
-				logger($conf, $THIS_FILE, __LINE__, "this_mac: [$this_mac], this_iface: [$this_iface], nic: [$conf->{cache}{mac}{$this_mac}{nic}]", 3);
+				logger($conf, $THIS_FILE, __LINE__, "this_mac: [$this_mac], this_iface: [$this_iface], nic: [".$conf->{cache}{mac}{$this_mac}{nic}."]", 3);
 				
 				# Is this MAC cached?
 				if ($conf->{cache}{mac}{$this_mac}{nic})
@@ -9225,7 +9225,7 @@ sub load_network_map_cache
 					logger($conf, $THIS_FILE, __LINE__, ": this_mac: [$this_mac], this_iface: [$this_iface]", 3);
 					$conf->{nic}{name}{$this_iface}            = $this_mac;
 					$conf->{nic}{mac}{$this_mac}{current_name} = $this_iface;
-					logger($conf, $THIS_FILE, __LINE__, ": nic::name::$this_iface: [$conf->{nic}{name}{$this_iface}], nic::mac::${this_mac}::current_name: [$conf->{nic}{mac}{$this_mac}{current_name}]", 3);
+					logger($conf, $THIS_FILE, __LINE__, ": nic::name::$this_iface: [".$conf->{nic}{name}{$this_iface}."], nic::mac::${this_mac}::current_name: [".$conf->{nic}{mac}{$this_mac}{current_name}."]", 3);
 					
 					# Find the NIC we want this mac to be.
 					#my $new_nic = $conf->{cache}{mac}{$mac}{nic};
@@ -9258,7 +9258,7 @@ sub load_network_map_cache
 		$ok = 0;
 	}
 	$conf->{sys}{network_map_cache_read} = $ok;
-	logger($conf, $THIS_FILE, __LINE__, "sys::network_map_cache_read: [$conf->{sys}{network_map_cache_read}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "sys::network_map_cache_read: [".$conf->{sys}{network_map_cache_read}."]", 3);
 
 	return($ok);
 }
@@ -9298,7 +9298,7 @@ sub check_nic_states
 	my $this_mac        = "";
 	my $this_link_state = "";
 	my $this_ip         = "";
-	my $shell_call = "$conf->{executable}{ip} addr";
+	my $shell_call = $conf->{executable}{ip}." addr";
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -9331,7 +9331,7 @@ sub check_nic_states
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Bonded interfaces exist. This network appears to already be mapped,", 1);
 			logger($conf, $THIS_FILE, __LINE__, "  skipping. If you want to force a remap, please run:", 1);
-			logger($conf, $THIS_FILE, __LINE__, "  rsync -av --delete $conf->{path}{backups}/network-scripts /etc/sysconfig/", 1);
+			logger($conf, $THIS_FILE, __LINE__, "  rsync -av --delete ".$conf->{path}{backups}."/network-scripts /etc/sysconfig/", 1);
 			logger($conf, $THIS_FILE, __LINE__, "  and then reboot your dashboard. This will reset the networking to how it was", 1);
 			logger($conf, $THIS_FILE, __LINE__, "  before the first install, so your IP address will change!", 1);
 			$conf->{sys}{bonds_exist} = 1;
@@ -9385,7 +9385,7 @@ sub check_nic_states
 		else
 		{
 			$nic_count++;
-			logger($conf, $THIS_FILE, __LINE__, "NIC: [$this_iface] w/ MAC: [$this_mac]; Link: [$conf->{nic}{mac}{$this_mac}{link_state}], current name: [$conf->{nic}{mac}{$this_mac}{current_name}]", 3);
+			logger($conf, $THIS_FILE, __LINE__, "NIC: [$this_iface] w/ MAC: [$this_mac]; Link: [".$conf->{nic}{mac}{$this_mac}{link_state}."], current name: [".$conf->{nic}{mac}{$this_mac}{current_name}."]", 3);
 		}
 		if ($conf->{nic}{mac}{$this_mac}{link_state} ne "1")
 		{

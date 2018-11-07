@@ -738,6 +738,80 @@ INSERT INTO
 	return(0);
 }
 
+sub check_for_duplicate_anvils
+{
+	my ($an, $id) = @_;
+	
+	### TODO: Create a check. If two or more entries exist for the same Anvil!, delete the wrong 
+	###       one (or delete all and reload the data), even if the host_uuid differs as it might
+	###       be a thus-far-unreproducable-bug. Clearing and reloading doesn't hurt anything.
+	###       SELECT clustat_cluster_name, clustat_uuid, clustat_host_uuid FROM clustat; 
+	###       Feed the host name into a hash and if the key already exists, trigger the drop.
+	my $anvils = {};
+	my $query  = "
+SELECT 
+    clustat_uuid, 
+    clustat_cluster_name, 
+    clustat_host_uuid 
+FROM 
+    clustat;"
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "id",    value1 => $id, 
+		name2 => "query", value2 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Do the query against the source DB and loop through the results.
+	my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name1 => "count",   value2 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $clustat_uuid         = $row->[0];
+		my $clustat_cluster_name = $row->[1];
+		my $clustat_host_uuid    = $row->[2];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "clustat_cluster_name", value1 => $clustat_cluster_name, 
+			name2 => "clustat_uuid",         value2 => $clustat_uuid, 
+			name3 => "clustat_host_uuid",    value3 => $clustat_host_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$anvil->{$clustat_cluster_name}{$clustat_uuid} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvil->${clustat_cluster_name}::${clustat_uuid}", value1 => $anvil->{$clustat_cluster_name}{$clustat_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	foreach my $clustat_cluster_name (sort {$a cmp $b} keys %{$anvil})
+	{
+		my $count = keys %{$anvil->{$clustat_cluster_name}};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "count",                value1 => $count, 
+			name2 => "clustat_cluster_name", value2 => $clustat_cluster_name,
+		}, file => $THIS_FILE, line => __LINE__});
+		next if $count < 1;
+		
+		# If we're still alive, we've got a duplicate entry, so delete them entirely and we'll re-
+		# populate on this scan.
+		foreach my $clustat_uuid (keys %{$anvil->{$clustat_cluster_name}})
+		{
+			# Record the queries in the array
+			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM history.clustat_service WHERE clustat_service_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
+			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM clustat_service WHERE clustat_service_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
+			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM history.clustat_node WHERE clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
+			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM clustat_node WHERE clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
+			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM history.clustat WHERE _clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
+			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM clustat WHERE clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
+		}
+		$an->DB->do_db_write({id => $id, query => $an->data->{db_cleanup}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+		delete $an->data->{db_cleanup};
+	}
+	
+	return(0);
+}
+
 # Update the 'clustat' table.
 sub update_db_clustat
 {
@@ -751,6 +825,8 @@ sub update_db_clustat
 		$an->data->{db_resync}{$id}{sql}          = [];
 		$an->data->{db_resync}{$id}{public}{sql}  = [];
 		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		check_for_duplicate_anvils($an, $id);
 		
 		# Read in the history schema
 		my $query = "
@@ -771,8 +847,10 @@ WHERE
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "results", value1 => $results
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name1 => "count",   value2 => $count, 
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
@@ -1017,7 +1095,11 @@ sub find_changes
 	my $host_name        = $an->hostname;
 	my $say_cluster_name = $an->data->{clustat}{cluster_name};
 	my $say_quorate      = $an->data->{clustat}{quorate};
-	if (read_last_scan($an))
+	my $new_entry        = read_last_scan($an);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "new_entry", value1 => $new_entry, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($new_entry)
 	{
 		# No record found, INSERT everything.
 		   $an->data->{sql}{clustat}{clustat_uuid} = $an->Get->uuid() or $an->Alert->error({title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => $THIS_FILE, line => __LINE__});;
@@ -2655,19 +2737,23 @@ FROM
 WHERE 
     a.clustat_host_uuid = b.host_uuid 
 AND 
-    b.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
-";
+    b.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+LIMIT 1
+;";
 	# TODO: This query should only ever return one row, but this fact should be explicitely checked for.
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "query",        value1 => $query, 
-		name2 => "results->[0]", value2 => $results->[0], 
+		name1 => "query", value1 => $query, 
+		name2 => "count", value2 => $count, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($results->[0])
+	if ($count)
 	{
 		# We've got an entry in the 'clustat' table, so now we'll look for data in the node and 
 		# services tables.
-		my ($clustat_uuid, $clustat_quorate, $clustat_cluster_name) = @{$results->[0]};
+		my $clustat_uuid         = $results->[0]->[0];
+		my $clustat_quorate      = $results->[0]->[1];
+		my $clustat_cluster_name = $results->[0]->[2];
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "clustat_uuid",         value1 => $clustat_uuid,
 			name2 => "clustat_quorate",      value2 => $clustat_quorate, 
@@ -2677,7 +2763,7 @@ AND
 		$an->data->{sql}{clustat}{clustat_uuid}                  = $clustat_uuid;
 		$an->data->{clustat}{sql}{clustat}{clustat_quorate}      = $clustat_quorate ? "TRUE" : "FALSE";
 		$an->data->{clustat}{sql}{clustat}{clustat_cluster_name} = $clustat_cluster_name;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "sql::clustat::clustat_uuid",                  value1 => $an->data->{sql}{clustat}{clustat_uuid}, 
 			name2 => "clustat::sql::clustat::clustat_quorate",      value2 => $an->data->{clustat}{sql}{clustat}{clustat_quorate}, 
 			name3 => "clustat::sql::clustat::clustat_cluster_name", value3 => $an->data->{clustat}{sql}{clustat}{clustat_cluster_name}
@@ -2697,17 +2783,19 @@ WHERE
 AND 
     b.clustat_host_uuid = c.host_uuid 
 AND 
-    c.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
-";
+    c.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
 		
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "query",   value1 => $query, 
 			name2 => "results", value2 => $results, 
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $array_reference (@{$results})
+		foreach my $row (@{$results})
 		{
-			my ($clustat_node_name, $clustat_node_cluster_id, $clustat_node_status) = @{$array_reference};
+			my $clustat_node_name       = $row->[0];
+			my $clustat_node_cluster_id = $row->[1];
+			my $clustat_node_status     = $row->[2];
 			
 			# Record the values directly as we received them.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -2717,17 +2805,13 @@ AND
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Push them into the hash
-			$an->data->{clustat}{sql}{clustat_node}{$clustat_node_name} = {
-				clustat_node_cluster_id	=>	$clustat_node_cluster_id,
-				clustat_node_status	=>	$clustat_node_status,
-			};
+			$an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_cluster_id} = $clustat_node_cluster_id;
+			$an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_status}     = $clustat_node_status;
 			
 			# Record the now-in-the-hash data.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "clustat::sql::clustat_node::${clustat_node_name}::clustat_node_cluster_id", value1 => $an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_cluster_id}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "clustat::sql::clustat_node::${clustat_node_name}::clustat_node_status",     value1 => $an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_status}
+				name2 => "clustat::sql::clustat_node::${clustat_node_name}::clustat_node_status",     value2 => $an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_status}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
@@ -2755,9 +2839,13 @@ AND
 			name1 => "query",   value1 => $query, 
 			name2 => "results", value2 => $results, 
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $array_reference (@{$results})
+		foreach my $row (@{$results})
 		{
-			my ($clustat_service_name, $clustat_service_host, $clustat_service_status, $clustat_service_notes, $clustat_service_is_vm) = @{$array_reference};
+			my $clustat_service_name   = $row->[0];
+			my $clustat_service_host   = $row->[1]; 
+			my $clustat_service_status = $row->[2];
+			my $clustat_service_notes  = $row->[3];
+			my $clustat_service_is_vm  = $row->[4];;
 			
 			# Record the values directly as we received them.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
@@ -2770,15 +2858,13 @@ AND
 			
 			# Push them into the hash
 			$clustat_service_is_vm = $clustat_service_is_vm ? "TRUE" : "FALSE";
-			$an->data->{clustat}{sql}{clustat_service}{$clustat_service_name} = {
-				clustat_service_host	=>	$clustat_service_host, 
-				clustat_service_status	=>	$clustat_service_status, 
-				clustat_service_notes	=>	$clustat_service_notes, 
-				clustat_service_is_vm	=>	$clustat_service_is_vm
-			};
+			$an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_host}   = $clustat_service_host;
+			$an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_status} = $clustat_service_status; 
+			$an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_notes}  = $clustat_service_notes; 
+			$an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_is_vm}  = $clustat_service_is_vm;
 			
 			# Record the now-in-the-hash data.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_host",   value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_host}, 
 				name2 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_status", value2 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_status}, 
 				name3 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_notes",  value3 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_notes}, 
@@ -2790,8 +2876,14 @@ AND
 	{
 		# Looks like this is the first run ever.
 		$new = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "new", value1 => $new, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "new", value1 => $new, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($new);
 }
 

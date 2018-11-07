@@ -275,10 +275,38 @@ sub prep_uuid
 	# If I wasn't passed in a UUID, set one now.
 	if (not $host_uuid)
 	{
-		$host_uuid = $an->Get->uuid();
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "host_uuid", value1 => $host_uuid, 
+		# Read the system UUID, if possible, and use it.
+		my $shell_call = $an->data->{path}{dmidecode}." --string system-uuid";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($an->Validate->is_uuid({uuid => $line}))
+			{
+				$host_uuid = $line;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "host_uuid", value1 => $host_uuid,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		close $file_handle;
+		
+		# If we still don't have a host UUID, generate a new UUID to use.
+		if (not $host_uuid)
+		{
+			$host_uuid = $an->Get->uuid();
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "host_uuid", value1 => $host_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
 	# The shell call needs to work locally and remotely, so we can't use perl built-in file tests (well,
