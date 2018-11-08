@@ -585,6 +585,8 @@ sub check_libvirtd
 	return(0);
 }
 
+### NOTE: This has caused more concern than it has helped. It's fired during live migrations (thankfully to
+###       no effect). Disabling it.
 # This tries to resume a 'paused' server, which can happen sometimes when rgmanager tries to start a server.
 sub resume_server
 {
@@ -592,6 +594,8 @@ sub resume_server
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "resume_server" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "server_name", value1 => "$server_name" 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
 	
 	my $server_state = "";
 	my $force_reset  = 0;
@@ -776,15 +780,17 @@ sub scan_servers
 					name2 => "server_state", value2 => $server_state, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				### NOTE: This has caused more concern than it has helped. It's fired during 
+				###       live migrations (thankfully to no effect). Disabling it.
 				# If the 'state' is 'paused', try and resume it.
-				if ($server_state eq "paused")
-				{
-					$server_state = resume_server($an, $server_name);
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-						name1 => "server_name",  value1 => $server_name, 
-						name2 => "server_state", value2 => $server_state, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
+# 				if ($server_state eq "paused")
+# 				{
+# 					$server_state = resume_server($an, $server_name);
+# 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+# 						name1 => "server_name",  value1 => $server_name, 
+# 						name2 => "server_state", value2 => $server_state, 
+# 					}, file => $THIS_FILE, line => __LINE__});
+# 				}
 				
 				$an->data->{server_name}{$server_name} = {
 					host	=>	$an->data->{sys}{local_node},
