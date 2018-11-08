@@ -7720,17 +7720,217 @@ sub clear_duplicate_controllers
 {
 	my ($an) = @_;
 	
-=cut
-scancore=# SELECT a.host_name, b.storcli_controller_uuid, b.storcli_controller_serial_number, b.storcli_controller_model, b.storcli_controller_alarm_state FROM hosts a, storcli_controllers b WHERE a.host_uuid = b.storcli_controller_host_uuid ORDER BY a.host_name ASC;
-       host_name       |       storcli_controller_uuid        | storcli_controller_serial_number |      storcli_controller_model       | storcli_controller_alarm_state 
------------------------+--------------------------------------+----------------------------------+-------------------------------------+--------------------------------
- an-a01n01.alteeve.com | 2b429e35-8449-45d2-a4b3-f764156ef76c | 0000000043113622                 | RAID Controller SAS 6G 1GB (D3116C) | VANISHED
- an-a01n01.alteeve.com | 74904bf2-7388-4329-b0ae-fb20e3f8553f | 0000000043113622                 | RAID Controller SAS 6G 1GB (D3116C) | OFF
- an-a01n02.alteeve.com | 1dfb9cf9-e8af-45b0-963b-178667b22e0a | 0000000043113628                 | RAID Controller SAS 6G 1GB (D3116C) | VANISHED
- an-a01n02.alteeve.com | 1974289e-797a-47fd-89c2-1b4354732466 | 0000000043113628                 | RAID Controller SAS 6G 1GB (D3116C) | OFF
-(4 rows)
-=cut
+	# Get a list of controllers on this host and count them by their serial numbers.
 	my $query = "SELECT storcli_controller_uuid, storcli_controller_serial_number, storcli_controller_alarm_state FROM storcli_controllers WHERE storcli_controller_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($count > 1)
+	{
+		### NOTE: This works a little differently from originally intended, but it actually works 
+		###       better. This should track 'uuid::serial_number' as the UUIDs are unique, the serial
+		###       numbers aren't. As it is now, only the first seen UUID is deleted. In most cases, 
+		###       there are only two entries, so this deletes one and leaves the other, so everything
+		###       isn't discovered again new. When we re-do this for M3, swap the logic but skip the
+		###       most recently updated one.
+		# We'll loop through and track controllers by their serial numbers. If any controller serial 
+		# number is seen 2 or more times, it will be purged and re-added on the next scan.
+		my $duplicate_controllers = {};
+		foreach my $row (@{$results})
+		{
+			my $storcli_controller_uuid          = $row->[0]; 
+			my $storcli_controller_serial_number = $row->[1]; 
+			my $storcli_controller_alarm_state   = $row->[2]; 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "storcli_controller_uuid",          value1 => $storcli_controller_uuid, 
+				name2 => "storcli_controller_serial_number", value2 => $storcli_controller_serial_number, 
+				name3 => "storcli_controller_alarm_state",   value3 => $storcli_controller_alarm_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Add this to the controllers we know about
+			if (not exists $duplicate_controllers->{$storcli_controller_serial_number})
+			{
+				$duplicate_controllers->{$storcli_controller_serial_number}{count}           = 1;
+				$duplicate_controllers->{$storcli_controller_serial_number}{controller_uuid} = $storcli_controller_uuid;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "duplicate_controllers->${storcli_controller_serial_number}::count",           value1 => $duplicate_controllers->{$storcli_controller_serial_number}{count}, 
+					name2 => "duplicate_controllers->${storcli_controller_serial_number}::controller_uuid", value2 => $duplicate_controllers->{$storcli_controller_serial_number}{controller_uuid}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				$duplicate_controllers->{$storcli_controller_serial_number}{count}++;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "duplicate_controllers->${storcli_controller_serial_number}", value1 => $duplicate_controllers->{$storcli_controller_serial_number}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		foreach my $storcli_controller_serial_number (sort {$a cmp $b} keys %{$duplicate_controllers})
+		{
+			my $count                   = $duplicate_controllers->{$storcli_controller_serial_number}{count};
+			my $storcli_controller_uuid = $duplicate_controllers->{$storcli_controller_serial_number}{controller_uuid}; 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "storcli_controller_serial_number", value1 => $storcli_controller_serial_number, 
+				name2 => "count",                            value2 => $count, 
+				name3 => "storcli_controller_uuid",          value3 => $storcli_controller_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($count > 1)
+			{
+				# Duplicate. Send an alert and then purge.
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	$THIS_FILE,
+					alert_sort		=>	1,
+					alert_header		=>	'TRUE',
+					alert_title_key		=>	"an_alert_title_0003",,
+					alert_message_key	=>	"scan_storcli_warning_0052",
+					alert_message_variables	=>	{
+						serial_number		=>	$storcli_controller_serial_number,
+						count			=>	$count,
+					},
+				});
+				
+				# We'll commit this batch of queries per controller
+				my $queries = [];
+				
+				# Delete all physical drives
+				my $query = "SELECT storcli_physical_drive_uuid FROM storcli_physical_drives WHERE storcli_physical_drive_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).";";
+				my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+				my $count   = @{$results};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "results", value1 => $results, 
+					name2 => "count",   value2 => $count,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $row (@{$results})
+				{
+					my $storcli_physical_drive_uuid = $row->[0]; 
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "storcli_physical_drive_uuid", value1 => $storcli_physical_drive_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					push @{$queries}, "DELETE FROM history.storcli_variables WHERE storcli_variable_source_table = 'storcli_physical_drives' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).";";
+					push @{$queries}, "DELETE FROM storcli_variables         WHERE storcli_variable_source_table = 'storcli_physical_drives' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).";";
+					
+					push @{$queries}, "DELETE FROM history.storcli_physical_drives WHERE storcli_physical_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).";";
+					push @{$queries}, "DELETE FROM storcli_physical_drives         WHERE storcli_physical_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_physical_drive_uuid).";";
+				}
+				
+				# The storcli_drive_groups are linked to the virtual drives, so we need to 
+				# pull up all the VDs on this controller and use their UUIDs to delete 
+				# down-stream DGs
+				$query = "SELECT storcli_virtual_drive_uuid FROM storcli_virtual_drives WHERE storcli_virtual_drive_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).";";
+				$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+				$count   = @{$results};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "results", value1 => $results, 
+					name2 => "count",   value2 => $count,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $row (@{$results})
+				{
+					my $storcli_virtual_drive_uuid = $row->[0]; 
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "storcli_virtual_drive_uuid", value1 => $storcli_virtual_drive_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Select the DGs under this VD.
+					my $query = "SELECT storcli_drive_group_uuid FROM storcli_drive_groups WHERE storcli_drive_group_virtual_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).";";
+					my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+					my $count   = @{$results};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "results", value1 => $results, 
+						name2 => "count",   value2 => $count,
+					}, file => $THIS_FILE, line => __LINE__});
+					foreach my $row (@{$results})
+					{
+						my $storcli_drive_group_uuid = $row->[0]; 
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "storcli_drive_group_uuid", value1 => $storcli_drive_group_uuid,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						push @{$queries}, "DELETE FROM history.storcli_variables WHERE storcli_variable_source_table = 'storcli_drive_groups' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid).";";
+						push @{$queries}, "DELETE FROM storcli_variables         WHERE storcli_variable_source_table = 'storcli_drive_groups' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid).";";
+						
+						push @{$queries}, "DELETE FROM history.storcli_drive_groups WHERE storcli_drive_group_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid).";";
+						push @{$queries}, "DELETE FROM storcli_drive_groups         WHERE storcli_drive_group_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_drive_group_uuid).";";
+					}
+					
+					push @{$queries}, "DELETE FROM history.storcli_variables WHERE storcli_variable_source_table = 'storcli_virtual_drives' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).";";
+					push @{$queries}, "DELETE FROM storcli_variables         WHERE storcli_variable_source_table = 'storcli_virtual_drives' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).";";
+					
+					push @{$queries}, "DELETE FROM history.storcli_virtual_drives WHERE storcli_virtual_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).";";
+					push @{$queries}, "DELETE FROM storcli_virtual_drives         WHERE storcli_virtual_drive_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_virtual_drive_uuid).";";
+				}
+				
+				# Delete all cachevaults (FBUs)
+				$query = "SELECT storcli_cachevault_uuid FROM storcli_cachevaults WHERE storcli_cachevault_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).";";
+				$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+				$count   = @{$results};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "results", value1 => $results, 
+					name2 => "count",   value2 => $count,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $row (@{$results})
+				{
+					my $storcli_cachevault_uuid = $row->[0]; 
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "storcli_cachevault_uuid", value1 => $storcli_cachevault_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					push @{$queries}, "DELETE FROM history.storcli_variables WHERE storcli_variable_source_table = 'storcli_cachevaults' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid).";";
+					push @{$queries}, "DELETE FROM storcli_variables         WHERE storcli_variable_source_table = 'storcli_cachevaults' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid).";";
+					
+					push @{$queries}, "DELETE FROM history.storcli_cachevaults WHERE storcli_cachevault_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid).";";
+					push @{$queries}, "DELETE FROM storcli_cachevaults         WHERE storcli_cachevault_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_cachevault_uuid).";";
+				}
+				
+				# Delete all BBUs
+				$query = "SELECT storcli_bbu_uuid FROM storcli_bbus WHERE storcli_bbu_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).";";
+				$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+				$count   = @{$results};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "results", value1 => $results, 
+					name2 => "count",   value2 => $count,
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $row (@{$results})
+				{
+					my $storcli_bbu_uuid = $row->[0]; 
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "storcli_bbu_uuid", value1 => $storcli_bbu_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					push @{$queries}, "DELETE FROM history.storcli_variables WHERE storcli_variable_source_table = 'storcli_bbus' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid).";";
+					push @{$queries}, "DELETE FROM storcli_variables         WHERE storcli_variable_source_table = 'storcli_bbus' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid).";";
+					
+					push @{$queries}, "DELETE FROM history.storcli_bbus WHERE storcli_bbu_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid).";";
+					push @{$queries}, "DELETE FROM storcli_bbus         WHERE storcli_bbu_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_bbu_uuid).";";
+				}
+				
+				# Finally, delete the controller.
+				push @{$queries}, "DELETE FROM history.storcli_variables WHERE storcli_variable_source_table = 'storcli_controllers' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).";";
+				push @{$queries}, "DELETE FROM storcli_variables         WHERE storcli_variable_source_table = 'storcli_controllers' AND storcli_variable_source_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).";";
+				
+				push @{$queries}, "DELETE FROM history.storcli_controllers WHERE storcli_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).";";
+				push @{$queries}, "DELETE FROM storcli_controllers         WHERE storcli_controller_uuid = ".$an->data->{sys}{use_db_fh}->quote($storcli_controller_uuid).";";
+				
+				# Commit. Because it's an array, it'll be done as a single transaction
+				foreach my $query (@{$queries})
+				{
+					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
 	
 	return(0);
 }
