@@ -747,14 +747,14 @@ sub check_for_duplicate_anvils
 	###       be a thus-far-unreproducable-bug. Clearing and reloading doesn't hurt anything.
 	###       SELECT clustat_cluster_name, clustat_uuid, clustat_host_uuid FROM clustat; 
 	###       Feed the host name into a hash and if the key already exists, trigger the drop.
-	my $anvils = {};
-	my $query  = "
+	my $anvil = {};
+	my $query = "
 SELECT 
     clustat_uuid, 
     clustat_cluster_name, 
     clustat_host_uuid 
 FROM 
-    clustat;"
+    clustat;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "id",    value1 => $id, 
 		name2 => "query", value2 => $query
