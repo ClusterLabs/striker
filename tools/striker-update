@@ -886,7 +886,6 @@ CREATE TRIGGER trigger_hosts
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "bad", value1 => $bad, 
 			}, file => $THIS_FILE, line => __LINE__});
-			die if $bad;
 			if ($bad)
 			{
 				print "[ Warning ] - This database has the bugged 'history_storcli_physical_drives()' function.\n";
