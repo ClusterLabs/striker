@@ -802,7 +802,7 @@ FROM
 			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM clustat_service WHERE clustat_service_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
 			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM history.clustat_node WHERE clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
 			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM clustat_node WHERE clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
-			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM history.clustat WHERE _clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
+			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM history.clustat WHERE clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
 			push @{$an->data->{db_cleanup}{$id}{sql}}, "DELETE FROM clustat WHERE clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."; ";
 		}
 		$an->DB->do_db_write({id => $id, query => $an->data->{db_cleanup}{$id}{sql}, source => $THIS_FILE, line => __LINE__});

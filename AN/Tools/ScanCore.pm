@@ -98,7 +98,7 @@ sub check_ram_usage
 	my $program_name = defined $parameter->{program_name} ? $parameter->{program_name} : "";
 	my $check_usage  = defined $parameter->{check_usage}  ? $parameter->{check_usage}  : 1;
 	my $maximum_ram  = defined $parameter->{maximum_ram}  ? $parameter->{maximum_ram}  : 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "program_name", value1 => $program_name, 
 		name2 => "check_usage",  value2 => $check_usage, 
 		name3 => "maximum_ram",  value3 => $maximum_ram, 
@@ -111,7 +111,7 @@ sub check_ram_usage
 	
 	# Read in how much RAM we're using.
 	my $used_ram = $an->Get->ram_used_by_program({program_name => $program_name});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "used_ram", value1 => $used_ram, 
 	}, file => $THIS_FILE, line => __LINE__});
 	

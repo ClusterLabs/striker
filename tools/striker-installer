@@ -205,6 +205,7 @@ my $conf = {
 			'cluster-cim'			=>	0,
 			'compat-libstdc++-33.i686'	=>	0,
 			cpp				=>	0,
+			createrepo			=>	0,
 			'cyrus-sasl'			=>	0, 
 			'cyrus-sasl-plain'		=>	0,
 			dhcp				=>	0,
@@ -731,7 +732,7 @@ my $conf = {
 		skip_mail		=>	1,
 		skip_network		=>	0,
 		ssl_checked		=>	0,
-		stable_version		=>	"2.0.0",
+		stable_version		=>	"2.0.8",
 		### If you change these, change the matching values in 
 		### Common.pm so that InstallManifest runs match.
 		scancore_database	=>	"scancore",

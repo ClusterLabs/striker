@@ -824,6 +824,9 @@ sub find_changes
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					
+					# In some odd cases, there is no old sensor value
+					$old_ipmitool_value_sensor_value = "NULL" if not defined $old_ipmitool_value_sensor_value;
+					
 					# These will be used in alert messages, if needed.
 					my $sensor_name      = "name=$ipmitool_sensor_name:units=$new_ipmitool_sensor_units";
 					my $new_sensor_value = "value=$new_ipmitool_value_sensor_value:units=$new_ipmitool_sensor_units";

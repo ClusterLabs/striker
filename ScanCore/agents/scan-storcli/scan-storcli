@@ -13516,7 +13516,7 @@ sub find_lsi_controllers
 	{
 		# Nope, exit.
 		print $an->String->get({key => "scan_storcli_error_0001", variables => { path => $an->data->{path}{storcli64} }})."\n";
-		$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0001", message_variables => { path => $an->data->{path}{storcli64} }, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scan_storcli_error_0001", message_variables => { path => $an->data->{path}{storcli64} }, file => $THIS_FILE, line => __LINE__});
 		$an->nice_exit({exit_code => 1});
 	}
 	
