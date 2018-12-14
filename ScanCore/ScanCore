@@ -290,6 +290,9 @@ check_for_duplicate_hostnames($an);
 # agents that have registered alerts (pending or historical).
 load_agent_strings($an);
 
+# Record the time
+$an->DB->update_time({file => $THIS_FILE});
+
 # Archive, if needed. 
 archive_if_needed($an);
 
@@ -343,6 +346,9 @@ while(1)
 	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 	if ($connections)
 	{
+		# Record the time
+		$an->DB->update_time({file => $THIS_FILE});
+		
 		# Check for duplicate hostname entries.
 		check_for_duplicate_hostnames($an);
 		
