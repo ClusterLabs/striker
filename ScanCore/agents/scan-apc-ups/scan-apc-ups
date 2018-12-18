@@ -5602,6 +5602,7 @@ sub gather_ups_data
 		}
 		elsif ($an->data->{ups}{$ups_name}{apc_ups_output_total_output} =~ /\D/)
 		{
+			### TODO: This is being set to '#!no_value!#', shouldn't fail out, probably changed OID.
 			# This should have been an integer...
 			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
 				name  => "ups::${ups_name}::apc_ups_output_total_output", 

@@ -3358,7 +3358,7 @@ sub ram_used_by_program
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ram_used_by_program" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $program_name = $parameter->{program_name} ? $parameter->{program_name} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "program_name", value1 => $program_name, 
 	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	
@@ -3371,7 +3371,7 @@ sub ram_used_by_program
 	
 	my $total_bytes = 0;
 	my $shell_call  = $an->data->{path}{'anvil-report-memory'}." --program $program_name";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__ });
@@ -3379,14 +3379,14 @@ sub ram_used_by_program
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => "$line"
 		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 		
 		if ($line =~ /^$program_name = (\d+)/)
 		{
 			$total_bytes = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "total_bytes", value1 => $total_bytes
 			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 		}
