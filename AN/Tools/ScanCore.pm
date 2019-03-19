@@ -2790,6 +2790,27 @@ sub insert_or_update_nodes_cache
 		return("");
 	}
 	
+	# Verify that the host_uuid is valid. It's possible we're talking to a machine before it's added 
+	# itself to the database.
+	if ($node_cache_host_uuid)
+	{
+		my $query = "SELECT COUNT(*) FROM hosts WHERE host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_host_uuid).";";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (not $count)
+		{
+			# Host doesn't exist yet, return.
+			$an->Log->entry({log_level => 1, message_key => "log_0006", message_variables => { host_uuid => $node_cache_host_uuid }, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
 	# If we don't have a UUID, see if we can find one for the given host UUID.
 	if (not $node_cache_uuid)
 	{

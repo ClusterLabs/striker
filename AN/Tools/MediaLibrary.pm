@@ -1895,7 +1895,7 @@ sub _save_file_to_disk
 	});
 	
 	print $an->Web->template({file => "media-library.html", template => "save-to-disk-header"});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "cgi_fh::file", value1 => $an->data->{cgi_fh}{file},
 		name2 => "path::media",  value2 => $an->data->{path}{media},
 		name3 => "cgi::file",    value3 => $an->data->{cgi}{file},
@@ -1912,7 +1912,7 @@ sub _save_file_to_disk
 		# TODO: Make sure characters like spaces and whatnot don't need to be escaped.
 		my $out_file =  $an->data->{path}{media}."/".$an->data->{cgi}{file};
 		   $out_file =~ s/\/\//\//g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "out_file", value1 => $out_file,
 			name2 => "in_fh",    value2 => $in_fh,
 		}, file => $THIS_FILE, line => __LINE__});

@@ -61,6 +61,7 @@ sub parse_oui
 {
 	my ($conf) = @_;
 
+	my $lines   = 0;
 	my $oui     = "";
 	my $vendor  = "";
 	my $address = "";
@@ -70,13 +71,19 @@ sub parse_oui
 	while(<$fh>)
 	{
 		chomp;
-		my $line = $_;
-		#print "file: [$line]\n";
+		my $line =  $_;
+		   $line =~ s/\r$//;
+		   $lines++;
+		#print "file: [$lines]:[$line]\n";
 		if (not $line)
 		{
-			$address =~ s/, $//;
-			$conf->{oui}{$oui}{vendor}  = $vendor;
-			$conf->{oui}{$oui}{address} = $address;
+			if ($oui)
+			{
+				$address =~ s/, $//;
+				$conf->{oui}{$oui}{vendor}  = $vendor;
+				$conf->{oui}{$oui}{address} = $address;
+				#print "oui::${oui}::vendor: [".$conf->{oui}{$oui}{vendor}."], oui::${oui}::address: [".$conf->{oui}{$oui}{address}."]\n";
+			}
 			$oui     = "";
 			$vendor  = "";
 			$address = "";
@@ -89,6 +96,7 @@ sub parse_oui
 			$oui    =  $1;
 			$vendor =  $2;
 			$oui    =~ s/-//g;
+			#print "oui: [$oui], vendor: [".$vendor."]\n";
 			next;
 		}
 		next if not $oui;
@@ -98,11 +106,13 @@ sub parse_oui
 			my $vendor2 = $2;
 			   $oui     = $oui2    if not $oui;
 			   $vendor  = $vendor2 if not $vendor;
+			#print "oui2: [$oui2], vendor2: [".$vendor2."]\n";
 			next;
 		}
 		else
 		{
 			$address .= "$line, ";
+			#print "address: [".$address."]\n";
 		}
 	}
 	$fh->close();
@@ -117,9 +127,8 @@ sub download_oui
 
 	if (-e $conf->{path}{temp})
 	{
-		print "Removing old OUI file: [$conf->{path}{temp}]... ";
-		unlink $conf->{path}{temp} or die "Failed!\nFailed to remove: [$conf->{path}{temp}], error; $!\n";
-		print "Done.\n";
+		print "OUI file: [".$conf->{path}{temp}."] already exists. Delete it and try again if you want to refresh.\n";
+		return(0);
 	}
 	print "Downloading: [$conf->{url}{oui_list}] to: [$conf->{path}{temp}]\n";
 	my $sc = "$conf->{path}{wget} $conf->{url}{oui_list} -O $conf->{path}{temp}";
