@@ -3275,7 +3275,19 @@ sub gather_pdu_data
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $pinged)
 		{
-			# Nope. Alert the user, if this is the PDU has been missing long enough.
+			# Nope. Have we ever seen this (or any other) PDU?
+			my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='apc_pdus' AND schemaname='public';";
+			my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "count", value1 => $count
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($count < 1)
+			{
+				# No table, no reason to check.
+				next;
+			}
+			
+			# Alert the user, if this is the PDU has been missing long enough.
 			if ((($pdu_missing =~ /^\d+$/) && ($pdu_missing > 0)) or ($an->data->{'scan-apc-pdu'}{sensor_loss_count_to_alarm} == 1))
 			{
 				# Bump the missing count to account for this scan.

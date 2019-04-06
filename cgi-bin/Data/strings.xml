@@ -1924,7 +1924,7 @@ If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within
 		<key name="log_0004">This is an HP system. Issuing a warm reset of the iLO BMC so that it picks up network configuration changes.</key>
 		<key name="log_0005">Sleeping for: [#!variable!sleep!#] seconds to give the BMC time to reset.</key>
 		<key name="log_0006"><![CDATA[Unable to update Scancore->insert_or_update_nodes_cache() because the host with UUID: [#!variable!host_uuid!#] isn't in the hosts() table yet.]]></key>
-		<key name="log_0007">#!free!#</key>
+		<key name="log_0007"><![CDATA[Unable to update Scancore->insert_or_update_nodes_cache() because the node with UUID: [#!variable!host_uuid!#] isn't in the nodes() table yet.]]></key>
 		<key name="log_0008">#!free!#</key>
 		<key name="log_0009">#!free!#</key>
 		<key name="log_0010">#!free!#</key>
@@ -2756,6 +2756,12 @@ SWITCHES
  --shed-load
 
 	Picks a node to turn off based on the above criteria.
+
+ --suicide
+
+	When set, 'anvil-node-suicide' is called as a backgroud progress before
+	starting the withdraw. That will cause this machine to commit suicide 
+	via self-fence if the machine hasn't stopped cman in 120 seconds. 
 
  --withdraw-only
 

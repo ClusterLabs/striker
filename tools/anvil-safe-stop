@@ -13,12 +13,7 @@
 # 6  = Migrating a server failed.
 # 7  = Stopping a server failed.
 #
-# TODO:
-# - Abort the start if any interfaces are missing (ie: after a mobo was changed)
-# - Make this work without DB access
-# - Check if the node has anvil-kick-apc-ups enabled and stop it unless overridden by a switch.
-# - Add a '--script' option that prints parsable output about server migrations/shutdowns and so on so that
-#   Striker's "Cold Stop" output can be cleaner.
+# NOTE:
 #
 
 use strict;

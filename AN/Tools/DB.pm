@@ -1484,28 +1484,28 @@ AND
 			
 			# A database is behind, resync
 			$an->data->{scancore}{db_resync_needed} = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "scancore::db_to_update::${id}::behind", value1 => $an->data->{scancore}{db_to_update}{$id}{behind}, 
 				name2 => "scancore::db_resync_needed",            value2 => $an->data->{scancore}{db_resync_needed}, 
 			}, file => $THIS_FILE, line => __LINE__});
 				
 			# We can't trust this database for reads, so switch to another database for reads if
 			# necessary.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "id",              value1 => $id, 
 				name2 => "sys::read_db_id", value2 => $an->data->{sys}{read_db_id}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($id eq $an->data->{sys}{read_db_id})
 			{
 				# Switch.
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => ">> sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $this_id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 				{
 					next if $this_id eq $id;
 					$an->data->{sys}{read_db_id} = $this_id;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "<< sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
@@ -1928,7 +1928,7 @@ sub initialize_db
 	
 	# Mark that we need to update the DB.
 	$an->data->{scancore}{db_resync_needed} = 1;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2057,7 +2057,7 @@ sub load_schema
 	
 	# Mark that we need to update the DB.
 	$an->data->{scancore}{db_resync_needed} = 1;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2407,8 +2407,22 @@ sub update_time
 	
 	foreach my $id (@db_ids)
 	{
+		### NOTE: It's possible, though rare, that this is called before a host is in the hosts table
+		###       (to be updated momentarily in update_db_hosts). As such, we verify that the 
+		###       host_uuid exists and skips if not.
+		my $query = "SELECT COUNT(*) FROM hosts WHERE host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__ });
+		if (not $count)
+		{
+			# Skip this database.
+			next;
+		}
+		
 		# Check to see if there is a time record yet.
-		my $query = "
+		$query = "
 SELECT 
     COUNT(*) 
 FROM 
@@ -2422,7 +2436,7 @@ AND
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__ });
 		
-		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+		$count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__ });

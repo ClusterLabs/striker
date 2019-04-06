@@ -152,7 +152,7 @@ my $conf = {
 		name		=>	{
 			centos		=>	"CentOS",
 			rhel		=>	"RHEL",
-			release		=>	"6.8",
+			release		=>	"6.10",
 			suffix		=>	"",
 			mark		=>	"m2",
 			version		=>	"2.0.7",
@@ -1701,13 +1701,13 @@ sub build_iso
 	my $say_anvil   =  $conf->{sys}{ks}{anvil_name};
 	   $say_anvil   =~ s/!/\\\\\\/;
 	my $volume_id   = "Anvil_".$conf->{sys}{name}{mark}."-v".$conf->{sys}{name}{version};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::name::version: [$conf->{sys}{name}{version}], volume_id: [$volume_id]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::name::version: [".$conf->{sys}{name}{version}."], volume_id: [$volume_id]\n" if $conf->{sys}{debug} >= 2;
 	if ($conf->{sys}{name}{version} =~ /^v2/)
 	{
 		$volume_id = "Anvil_".$conf->{sys}{name}{mark}."-".$conf->{sys}{name}{version};
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - volume_id: [$volume_id]\n" if $conf->{sys}{debug} >= 2;
 	}
-	my $shell_call     =  $conf->{executable}{mkisofs}." -rock -joliet-long -translation-table -no-emul-boot -boot-load-size 4 -boot-info-table -V '$volume_id' -appid '$say_anvil ".$conf->{sys}{name}{mark}." v".$conf->{sys}{name}{version}." Installer' -publisher \"$say_company - $conf->{sys}{ks}{support_url}\" -preparer 'Built by $say_user on $say_host at $say_date' -eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat -x 'lost+found' -o $output_file $conf->{path}{iso}{source_directory}";
+	my $shell_call     =  $conf->{executable}{mkisofs}." -rock -joliet-long -translation-table -no-emul-boot -boot-load-size 4 -boot-info-table -V '".$volume_id."' -appid '".$say_anvil." ".$conf->{sys}{name}{mark}." v".$conf->{sys}{name}{version}." Installer' -publisher \"$say_company - $conf->{sys}{ks}{support_url}\" -preparer 'Built by $say_user on $say_host at $say_date' -eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat -x 'lost+found' -o $output_file ".$conf->{path}{iso}{source_directory};
 	my $mkisofs_output = "";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
@@ -2051,7 +2051,7 @@ sub download_striker
 			$conf->{path}{iso}{file_name} .= "-".$conf->{sys}{name}{suffix};
 		}
 		$conf->{path}{iso}{file_name} .= "_".$conf->{sys}{name}{$os_type}."-".$conf->{sys}{name}{release}.".iso";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: [$download], sys::name::version: [$conf->{sys}{name}{version}], path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - download: [$download], sys::name::version: [".$conf->{sys}{name}{version}."], path::iso::file_name: [".$conf->{path}{iso}{file_name}."]\n" if $conf->{sys}{debug} >= 2;
 	}
 	elsif ($conf->{switches}{release})
 	{
@@ -2134,6 +2134,12 @@ sub download_striker
 		print "- This might take a few minutes on slow connections, please be patient.\n";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - About to download: [$download] to: [$out_file]\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $download, $out_file, 0644);
+	}
+	
+	# Do nothing more if '--no-refresh' set.
+	if ($conf->{switches}{'no-refresh'})
+	{
+		return(0);
 	}
 	
 	# Unzip the source file.
@@ -2916,17 +2922,17 @@ sub setup_build_environment
 	$conf->{path}{iso}{iso_avago}   = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{avago})   if $conf->{sys}{third_party}{Avago}{agreed};
 	if ($conf->{sys}{debug} >= 2)
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::source_path: .......... [$conf->{path}{source_path}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::working_directory: [$conf->{path}{iso}{working_directory}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::source_directory:  [$conf->{path}{iso}{source_directory}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_tools: ....... [$conf->{path}{iso}{iso_tools}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_kickstart: ... [$conf->{path}{iso}{iso_kickstart}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_packages: .... [$conf->{path}{iso}{iso_packages}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_striker: ..... [$conf->{path}{iso}{iso_striker}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fence: ....... [$conf->{path}{iso}{iso_fence}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fujitsu: ..... [$conf->{path}{iso}{iso_fujitsu}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_asix: ........ [$conf->{path}{iso}{iso_asix}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_avago: ....... [$conf->{path}{iso}{iso_avago}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::source_path: .......... [".$conf->{path}{source_path}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::working_directory: [".$conf->{path}{iso}{working_directory}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::source_directory:  [".$conf->{path}{iso}{source_directory}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_tools: ....... [".$conf->{path}{iso}{iso_tools}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_kickstart: ... [".$conf->{path}{iso}{iso_kickstart}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_packages: .... [".$conf->{path}{iso}{iso_packages}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_striker: ..... [".$conf->{path}{iso}{iso_striker}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fence: ....... [".$conf->{path}{iso}{iso_fence}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fujitsu: ..... [".$conf->{path}{iso}{iso_fujitsu}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_asix: ........ [".$conf->{path}{iso}{iso_asix}."]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_avago: ....... [".$conf->{path}{iso}{iso_avago}."]\n";
 	}
 	
 	# Make sure any old repodata files are removed.
@@ -3397,7 +3403,7 @@ sub validate_source
 {
 	my ($conf) = @_;
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - switches::source: [$conf->{switches}{source}]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - switches::source: [".$conf->{switches}{source}."]\n" if $conf->{sys}{debug} >= 2;
 	if ($conf->{switches}{source})
 	{
 		foreach my $source (split/,/, $conf->{switches}{source})
@@ -3446,30 +3452,30 @@ sub validate_source
 			if ($iso =~ /rhel/i)
 			{
 				$conf->{sys}{os_type}       = "rhel";
-				$conf->{sys}{os}            = "RHEL 6.9, Disk ".$disk;
-				$conf->{sys}{name}{release} = "6.9";
-				if ($iso =~ /(6\.\d)/)
+				$conf->{sys}{os}            = "RHEL 6, Disk ".$disk;
+				$conf->{sys}{name}{release} = "6";
+				if ($iso =~ /(6\.\d+)/)
 				{
 					$conf->{sys}{name}{release} = $1;
 					$conf->{sys}{os}            = "RHEL ".$conf->{sys}{name}{release}.", Disk ".$disk;
 				}
 				$conf->{source}{$iso}{name} = $conf->{sys}{os};
 				$disk++;
-				print "- The source ISO is: [$conf->{sys}{os}] (guessing from ISO file name).\n";
+				print "- The source ISO is: [".$conf->{sys}{os}."] (guessing from ISO file name).\n";
 			}
 			elsif ($iso =~ /centos/i)
 			{
 				$conf->{sys}{os_type}       = "centos";
-				$conf->{sys}{os}            = "CentOS 6.9, Disk ".$disk;
-				$conf->{sys}{name}{release} = "6.9";
-				if ($iso =~ /(6\.\d)/)
+				$conf->{sys}{os}            = "CentOS 6, Disk ".$disk;
+				$conf->{sys}{name}{release} = "6";
+				if ($iso =~ /(6\.\d+)/)
 				{
 					$conf->{sys}{name}{release} = $1;
 					$conf->{sys}{os}            = "CentOS ".$conf->{sys}{name}{release}.", Disk ".$disk;
 				}
 				$conf->{source}{$iso}{name} = $conf->{sys}{os};
 				$disk++;
-				print "- The source ISO is: [$conf->{sys}{os}] (guessing from ISO file name).\n";
+				print "- The source ISO is: [".$conf->{sys}{os}."] (guessing from ISO file name).\n";
 			}
 			else
 			{
@@ -3508,7 +3514,7 @@ sub validate_source
 			{
 				foreach my $this_sum (sort {$a cmp $b} keys %{$conf->{sys}{md5sum}})
 				{
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::sum: [$conf->{source}{$iso}{sum}]\n" if $conf->{sys}{debug} >= 2;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::sum: [".$conf->{source}{$iso}{sum}."]\n" if $conf->{sys}{debug} >= 2;
 					print "$THIS_FILE ".__LINE__."; [ Debug ] - this_sum:            [$this_sum]\n" if $conf->{sys}{debug} >= 2;
 					if ($conf->{source}{$iso}{sum} eq $this_sum)
 					{
@@ -3521,7 +3527,7 @@ sub validate_source
 						if ($conf->{sys}{os} =~ /(6\.\d+)/)
 						{
 							$conf->{sys}{name}{release} = $1;
-							print "- Set the release version as: [$conf->{sys}{name}{release}].\n" if $conf->{sys}{debug} >= 2;
+							print "- Set the release version as: [".$conf->{sys}{name}{release}."].\n" if $conf->{sys}{debug} >= 2;
 						}
 					}
 				}

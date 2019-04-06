@@ -2360,7 +2360,7 @@ WHERE
 			
 			# And now die via 'anvil-safe-stop'. We should be dead before this exits. So ya, so 
 			# long and thanks for all the fish.
-			$shell_call = $an->data->{path}{'anvil-safe-stop'}." --local";
+			$shell_call = $an->data->{path}{'anvil-safe-stop'}." --local --suicide";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -10847,7 +10847,7 @@ SELECT
 FROM 
     history.hosts
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10855,7 +10855,7 @@ FROM
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10869,7 +10869,7 @@ FROM
 			my $host_stop_reason    = $row->[5] ? $row->[5] : "";
 			my $host_health         = $row->[6] ? $row->[6] : "";
 			my $modified_date       = $row->[7];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 				name1 => "host_uuid",           value1 => $host_uuid, 
 				name2 => "host_location_uuid",  value2 => $host_location_uuid, 
 				name3 => "host_name",           value3 => $host_name, 
@@ -10906,12 +10906,12 @@ FROM
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "db_data::unified::hosts::modified_date", value1 => $an->data->{db_data}{unified}{hosts}{modified_date},
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hosts}{modified_date}})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $host_uuid (keys %{$an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}})
@@ -10922,7 +10922,7 @@ FROM
 			my $host_emergency_stop = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_emergency_stop};
 			my $host_stop_reason    = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_stop_reason};
 			my $host_health         = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_health};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 				name1 => "host_uuid",           value1 => $host_uuid, 
 				name2 => "host_location_uuid",  value2 => $host_location_uuid, 
 				name3 => "host_name",           value3 => $host_name, 
@@ -10942,7 +10942,7 @@ FROM
 				#   \- If we have, see if it exists at the current timestamp.
 				#      \- If not, _INSERT_ it into history schema.
 				#
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "db_data::${id}::hosts::host_uuid::${host_uuid}::seen", value1 => $an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{seen})
@@ -10951,13 +10951,13 @@ FROM
 					$an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "db_data::${id}::hosts::host_uuid::${host_uuid}::exists", value1 => $an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1  => "db_data::${id}::hosts::modified_date::${modified_date}::host_uuid::${host_uuid}", value1 => $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if (not $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid})
@@ -10979,7 +10979,7 @@ WHERE
 ;";
 							# Now record the query in the array
 							$query =~ s/'NULL'/NULL/g;
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "id",    value1 => $id, 
 								name2 => "query", value2 => $query
 							}, file => $THIS_FILE, line => __LINE__});
@@ -11013,7 +11013,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -11052,7 +11052,7 @@ INSERT INTO
 );";
 						# Now record the query in the array
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "id",    value1 => $id, 
 							name2 => "query", value2 => $query
 						}, file => $THIS_FILE, line => __LINE__});

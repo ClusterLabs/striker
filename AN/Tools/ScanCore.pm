@@ -2756,7 +2756,7 @@ sub insert_or_update_nodes_cache
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_nodes_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "insert_or_update_nodes_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_cache_uuid      = $parameter->{node_cache_uuid}      ? $parameter->{node_cache_uuid}      : "";
 	my $node_cache_host_uuid = $parameter->{node_cache_host_uuid} ? $parameter->{node_cache_host_uuid} : "";
@@ -2764,7 +2764,7 @@ sub insert_or_update_nodes_cache
 	my $node_cache_name      = $parameter->{node_cache_name}      ? $parameter->{node_cache_name}      : "";
 	my $node_cache_data      = $parameter->{node_cache_data}      ? $parameter->{node_cache_data}      : "NULL";
 	my $node_cache_note      = $parameter->{node_cache_note}      ? $parameter->{node_cache_note}      : "NULL";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "node_cache_uuid",      value1 => $node_cache_uuid, 
 		name2 => "node_cache_host_uuid", value2 => $node_cache_host_uuid, 
 		name3 => "node_cache_node_uuid", value3 => $node_cache_node_uuid, 
@@ -2808,6 +2808,26 @@ sub insert_or_update_nodes_cache
 		{
 			# Host doesn't exist yet, return.
 			$an->Log->entry({log_level => 1, message_key => "log_0006", message_variables => { host_uuid => $node_cache_host_uuid }, file => $THIS_FILE, line => __LINE__});
+			return("");
+		}
+	}
+	if ($node_cache_node_uuid)
+	{
+		my $query = "SELECT COUNT(*) FROM nodes WHERE node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_node_uuid).";";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (not $count)
+		{
+			# Host doesn't exist yet, return.
+			$an->Log->entry({log_level => 1, message_key => "log_0007", message_variables => { host_uuid => $node_cache_host_uuid }, file => $THIS_FILE, line => __LINE__});
+			return("");
 		}
 	}
 	
@@ -2826,20 +2846,20 @@ AND
 AND 
     node_cache_name      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_name)." 
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
 			$node_cache_uuid = $row->[0];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_cache_uuid", value1 => $node_cache_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -2871,7 +2891,7 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -2892,13 +2912,13 @@ FROM
 WHERE 
     node_cache_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid)." 
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2911,7 +2931,7 @@ WHERE
 			my $old_node_cache_data      = $row->[4] ? $row->[4] : "NULL";
 			my $old_node_cache_note      = $row->[5] ? $row->[5] : "NULL";
 			### NOTE: When loading fence cache data, this will usually contain a password, hence log level 4.
-			$an->Log->entry({log_level => 4, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "old_node_cache_uuid",      value1 => $old_node_cache_uuid, 
 				name2 => "old_node_cache_host_uuid", value2 => $old_node_cache_host_uuid, 
 				name3 => "old_node_cache_node_uuid", value3 => $old_node_cache_node_uuid, 
@@ -2944,7 +2964,7 @@ WHERE
     node_cache_uuid      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});

@@ -1,0 +1,136 @@
+#!/usr/bin/perl
+# 
+# This tool is used to deal with cases where rgmanager refuses to exit during an automated (emergency) 
+# shutdown. It's operation is extremely simple; It will sleep for 120 seconds, then self-fence the node if
+# cman is still running.
+# 
+# Exit Codes;
+# 0  = OK
+#
+# NOTE:
+#
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+use Data::Dumper;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $time = time;
+
+my $an = AN::Tools->new({data => {
+		path		=>	{
+			cluster_conf		=>	"/etc/cluster/cluster.conf", 
+			log_file		=>	"/var/log/striker.log",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+		},
+		peer		=>	{
+			short_name		=>	"",
+			bcn_name		=>	"",
+			sn_name			=>	"",
+			ifn_name		=>	"",
+		},
+		daemon		=>	{
+			cman			=>	{
+				'local'			=>	0,
+				peer			=>	0,
+			},
+			rgmanager			=>	{
+				'local'			=>	0,
+				peer			=>	0,
+			},
+		},
+		drbd		=>	{
+			resource		=>	{},
+		},
+		sys		=>	{
+			# Don't print the webUI footer when invoked by a web-called parent
+			language		=>	"en_CA",
+			log_language		=>	"en_CA",
+			log_level		=>	2,
+			peer_node		=>	"",
+			program_name		=>	$THIS_FILE,
+			stop_reason		=>	"host_poweroff",
+		},
+	},
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+$an->Log->db_transactions(1) if $an->data->{'anvil-safe-stop'}{log_db_transactions};
+$an->Readable->base2(1);
+
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or 
+    ($an->data->{switches}{help}))
+{
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+
+# Log our startup
+$an->Log->entry({log_level => 1, message_key => "assp_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+
+# Can I connect to a database? I don't care if I can't, though.
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	name1 => "connections", value1 => $connections, 
+}, file => $THIS_FILE, line => __LINE__});
+
+# Who am I and what Anvil! do I belong to?
+find_myself($an);
+
+# Find out which node I am.
+
+
+# We're done.
+$an->Log->entry({log_level => 1, message_key => "asst_log_0006", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+$an->nice_exit({exit_code => 0});
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This figures out who I am, what Anvil! I am in and who my peer is.
+sub find_myself
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_myself" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# We'll get our hostnmame, then parse cluster.conf to figure out fence methods will kill us. We do 
+	# this to avoid a crashed cman from holding things up.
+	my $hostname_full  = $an->hostname();
+	my $hostname_short = $an->short_hostname();
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "hostname_full",  value1 => $hostname_full, 
+		name2 => "hostname_short", value2 => $hostname_short, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	
+	return(0);
+}
