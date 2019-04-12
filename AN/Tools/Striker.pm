@@ -10653,12 +10653,12 @@ sub _parse_cluster_conf
 		# This will contain the command needed to check the node's power.
 		$an->data->{node}{$this_node}{info}{power_check_command} = "";
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "this_node", value1 => $this_node,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $in_method (sort {$a cmp $b} keys %{$an->data->{node}{$this_node}{fence}{method}})
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "this_node", value1 => $this_node,
 				name2 => "in_method", value2 => $in_method,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -10666,7 +10666,7 @@ sub _parse_cluster_conf
 			foreach my $device_count (sort {$a cmp $b} keys %{$an->data->{node}{$this_node}{fence}{method}{$in_method}{device}})
 			{
 				#$fence_command .= " [$device_count]";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::name",   value1 => $an->data->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name},
 					name2 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::port",   value2 => $an->data->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port},
 					name3 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::action", value3 => $an->data->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action},
@@ -10714,7 +10714,7 @@ sub _parse_cluster_conf
 						{
 							# Convert the script to a password.
 							my $shell_call = $password_script;
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 								name1 => "target",     value1 => $target,
 								name2 => "shell_call", value2 => $shell_call,
 							}, file => $THIS_FILE, line => __LINE__});
@@ -10727,7 +10727,7 @@ sub _parse_cluster_conf
 							foreach my $line (@{$return})
 							{
 								$password = $line;
-								$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 									name1 => "password", value1 => $password, 
 								}, file => $THIS_FILE, line => __LINE__});
 								last;
@@ -10741,7 +10741,7 @@ sub _parse_cluster_conf
 						   $command .= "-n $port "            if $port;
 						   $command =~ s/ $//;
 						$an->data->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command} = $command;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "node::${this_node}::fence_method::${in_method}::device::${device_count}::command", value1 => $an->data->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command},
 						}, file => $THIS_FILE, line => __LINE__});
 						if (($agent eq "fence_ipmilan") or ($agent eq "fence_virsh"))
@@ -10761,14 +10761,14 @@ sub _parse_cluster_conf
 			if ($node_name eq $this_node)
 			{
 				$an->data->{node}{$node_name}{info}{fence_methods} .= $fence_command;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "node::${node_name}::info::fence_methods", value1 => $an->data->{node}{$node_name}{info}{fence_methods},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				$an->data->{node}{$peer}{info}{fence_methods} .= $fence_command;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "node", value1 => $this_node,
 					name2 => "peer", value2 => $peer,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -10778,7 +10778,7 @@ sub _parse_cluster_conf
 	}
 	
 	### NOTE: These expose passwords!
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node_name}::info::fence_methods", value1 => $an->data->{node}{$node_name}{info}{fence_methods},
 		name2 => "node::${peer}::info::fence_methods",      value2 => $an->data->{node}{$peer}{info}{fence_methods},
 	}, file => $THIS_FILE, line => __LINE__});

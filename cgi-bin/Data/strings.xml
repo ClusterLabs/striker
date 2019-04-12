@@ -2666,6 +2666,11 @@ SUPPORT
 		<key name="asst_error_0013">While trying to start 'rgmanager', something went wrong. A recovery will now be attempted. If this doesn't work, this machine will crash itself on purpose in hopes that the peer is healthy and fences it.</key>
 		<key name="asst_error_0014">While trying to start 'rgmanager', something went wrong. It did not start properly and an earlier recovery attempt failed. This machine is going to suicide and the peer should fence and reboot in a clean state.</key>
 		
+		<!-- anvil-node-suicide -->
+		<key name="ans_log_0001">#!variable!this_file!# has started.</key>
+		<key name="anp_log_0002">No databases were available. Direct analysis of local data will be performed.</key>
+		<key name="ans_log_0003">Failed to find this host in #!data!path::cman_config!#. Unable to self-fence.</key>
+		<key name="ans_log_0004">#!variable!this_file!# has finished.</key>
 		
 		<!-- anvil-safe-stop -->
 		<!-- log entries -->
