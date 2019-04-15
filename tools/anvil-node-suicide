@@ -64,7 +64,7 @@ my $an = AN::Tools->new({data => {
 			resource		=>	{},
 		},
 		sys		=>	{
-			# Don't print the webUI footer when invoked by a web-called parent
+			delay			=>	120,
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",
 			log_level		=>	2,
@@ -112,7 +112,7 @@ if (not $connections)
 get_fence_methods($an);
 
 # Find out which node I am.
-
+go_to_sleep($an);
 
 # We're done.
 $an->Log->entry({log_level => 1, message_key => "ans_log_0004", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
@@ -122,11 +122,82 @@ $an->nice_exit({exit_code => 0});
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This loops through the fence methods until we die. It should never exit this function.
+sub go_to_sleep
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "go_to_sleep" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Sleep for how long?
+	my $delay = $an->data->{sys}{delay};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "delay", value1 => $delay, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((defined $an->data->{switches}{delay}) && ($an->data->{switches}{delay} =~ /^\d+$/) && ($an->data->{switches}{delay} > 0))
+	{
+		$delay = $an->data->{switches}{delay};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "delay", value1 => $delay, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ($delay !~ /^\d+$/)
+	{
+		$delay = 120;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "delay", value1 => $delay, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Sleep
+	sleep $delay;
+	
+	# Go into the suicide loop.
+	while (1)
+	{
+		foreach my $source_machine (sort {$a cmp $b} keys %{$an->data->{fence}{source}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "source_machine", value1 => $source_machine, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $order (sort {$a cmp $b} keys %{$an->data->{fence}{source}{$source_machine}{order}})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "order", value1 => $order, 
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $method (sort {$a cmp $b} keys %{$an->data->{fence}{source}{$source_machine}{order}{$order}{method}})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "method", value1 => $method, 
+					}, file => $THIS_FILE, line => __LINE__});
+					foreach my $number (sort {$a cmp $b} keys %{$an->data->{fence}{source}{$source_machine}{order}{$order}{method}{$method}{device}})
+					{
+						my $shell_call = $an->data->{fence}{source}{$source_machine}{order}{$order}{method}{$method}{device}{$number};
+						$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+							name1 => "number",     value1 => $number,
+							name2 => "shell_call", value2 => $shell_call,
+						}, file => $THIS_FILE, line => __LINE__});
+						open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+						while(<$file_handle>)
+						{
+							chomp;
+							my $line = $_;
+							$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+								name1 => "line", value1 => $line, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						close $file_handle;
+					}
+				}
+			}
+		}
+	}
+}
+
 # This finds the fence method(s) I can self-fence with. 
 sub get_fence_methods
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_myself" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_fence_methods" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read the method(s) in.
 	my $query = "
@@ -189,22 +260,11 @@ AND
 			if (not exists $an->data->{fence}{seen_devices}{$device})
 			{
 				$an->data->{fence}{seen_devices}{$device} = 1;
-				$an->data->{fence}{order}{$order}{method}{$method}{device}{$number} = $device;
-				print "fence::order::${order}::method::${method}::device::${number}: [".$an->data->{fence}{order}{$order}{method}{$method}{device}{$number}."]\n";
-				my $shell_call = $an->data->{fence}{order}{$order}{method}{$method}{device}{$number};
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-					name1 => "shell_call", value1 => $shell_call,
+				$an->data->{fence}{source}{$source_machine}{order}{$order}{method}{$method}{device}{$number} = $device;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "fence::seen_devices::${device}",                                                          value1 => $an->data->{fence}{seen_devices}{$device}, 
+					name2 => "fence::source::${source_machine}::order::${order}::method::${method}::device::${number}", value2 => $an->data->{fence}{source}{$source_machine}{order}{$order}{method}{$method}{device}{$number}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
-				while(<$file_handle>)
-				{
-					chomp;
-					my $line = $_;
-					$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				close $file_handle;
 			}
 		}
 		
