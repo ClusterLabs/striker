@@ -70,9 +70,9 @@ my $an = AN::Tools->new({data =>
 			agent_timeout		=>	300,
 			archive			=>	{
 				directory		=>	"/var/ScanCore/archives/",
-				division		=>	60000,
-				trigger			=>	100000,
-				count			=>	50000,
+				division		=>	20000,
+				trigger			=>	10000,
+				count			=>	30000,
 				dump_file_header	=>	"
 SET statement_timeout = 0;
 SET lock_timeout = 0;

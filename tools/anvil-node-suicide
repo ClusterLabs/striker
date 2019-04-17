@@ -64,7 +64,7 @@ my $an = AN::Tools->new({data => {
 			resource		=>	{},
 		},
 		sys		=>	{
-			delay			=>	120,
+			delay			=>	300,
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",
 			log_level		=>	2,
@@ -142,7 +142,7 @@ sub go_to_sleep
 	}
 	if ($delay !~ /^\d+$/)
 	{
-		$delay = 120;
+		$delay = 300;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "delay", value1 => $delay, 
 		}, file => $THIS_FILE, line => __LINE__});

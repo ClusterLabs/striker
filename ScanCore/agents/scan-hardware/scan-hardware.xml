@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This strings file is for the IPMI Scan Agent. Please be careful not to use
+names used by the main Striker strings file. Do this by prefixing all strings
+with 'scan_hardware_'.
+-->
+<strings>
+	<!-- Canadian English -->
+	<name>scan-apc-ups.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA</langs>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the local hardware Scan Agent.</key>
+		
+		<!-- Strings that can change by rebranding -->
+		<key name="scan_hardware_brand_0001">Hardware sensor data read from sources local to the host system.</key>
+		
+		<!-- Log strings -->
+		<key name="scan_hardware_log_0001">Starting to read the hardware data for: [#!variable!machine!#]</key>
+		
+		<!-- IPMI Agent-specific messages -->
+		<key name="scan_hardware_message_0001">Starting #!string!scan_hardware_brand_0001!#</key>
+		<key name="scan_hardware_message_0002"><![CDATA[
+ -=] IPMI Scan Agent
+
+DESCRIPTION
+
+This program is a "scan agent" for the ScanCore alert, monitoring and recovery
+tool for the Anvil! Intelligent Availability™ platform.
+
+It monitors health of systems using tools locally available on most systems. 
+Examples including information about memory available via /proc/meminfo and
+dmidecode, CPU data available via /proc/cpuinfo, etc.
+
+VARIABLES
+
+
+
+SWITCHES
+
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+ --prep-db
+
+	If passed, the schema will be loaded into the database (if not 
+	already), even if no bonds are found. Note: This won't work if the 
+	agent has been manually disabled via 'scan-ipmitool::disable'.
+
+                  
+SUPPORT
+
+https://alteeve.com/w/Support
+
+							      Alteeve's Niche!
+		]]></key>
+	</lang>
+</strings>

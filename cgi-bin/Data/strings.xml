@@ -2766,7 +2766,10 @@ SWITCHES
 
 	When set, 'anvil-node-suicide' is called as a backgroud progress before
 	starting the withdraw. That will cause this machine to commit suicide 
-	via self-fence if the machine hasn't stopped cman in 120 seconds. 
+	via self-fence if the machine hasn't withdrawn from the cluster in 300 
+	seconds (or as set via 'anvil-node-suicide --delay X'.
+	
+	NOTE: The timer starts AFTER the last server has shut down.
 
  --withdraw-only
 

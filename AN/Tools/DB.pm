@@ -2386,7 +2386,7 @@ sub update_time
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_time" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_time" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $id   = $parameter->{id};
 	my $file = $parameter->{file};
@@ -2412,7 +2412,7 @@ sub update_time
 		###       host_uuid exists and skips if not.
 		my $query = "SELECT COUNT(*) FROM hosts WHERE host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__ });
 		if (not $count)
@@ -2432,12 +2432,12 @@ WHERE
 AND
     updated_by        = ".$an->data->{sys}{use_db_fh}->quote($file).";"; 
 
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__ });
 		
 		$count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__ });
 		if (not $count)
@@ -2456,7 +2456,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__ });
 			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
@@ -2474,7 +2474,7 @@ WHERE
 AND
     updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__ });
 			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});

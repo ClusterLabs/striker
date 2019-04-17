@@ -466,7 +466,7 @@ sub comma
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "comma" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Return if nothing passed.
-	return undef if not defined $number;
+	return(undef) if not defined $number;
 	
 	# Strip out any existing commas.
 	$number =~ s/,//g;

@@ -1170,6 +1170,7 @@ sub _set_paths
 	$an->data->{path}{'less'}                 = "/usr/bin/less";
 	$an->data->{path}{ln}                     = "/bin/ln";
 	$an->data->{path}{ls}                     = "/bin/ls";
+	$an->data->{path}{lscpu}                  = "/usr/bin/lscpu",
 	$an->data->{path}{lsblk}                  = "/bin/lsblk";
 	$an->data->{path}{lsmod}                  = "/sbin/lsmod";
 	$an->data->{path}{lvchange}               = "/sbin/lvchange";
@@ -1317,6 +1318,7 @@ sub _set_paths
 	$an->data->{path}{'anvil-run-jobs'}                = "/sbin/striker/anvil-run-jobs";
 	$an->data->{path}{'anvil-map-network'}             = "/sbin/striker/anvil-map-network";
 	$an->data->{path}{'anvil-migrate-server'}          = "/sbin/striker/anvil-migrate-server";
+	$an->data->{path}{'anvil-node-suicide'}            = "/sbin/striker/anvil-node-suicide";
 	$an->data->{path}{'anvil-report-ipmi-details'}     = "/sbin/striker/anvil-report-ipmi-details";	# Deprecated, will be deleted soon
 	$an->data->{path}{'anvil-report-memory'}           = "/sbin/striker/anvil-report-memory";
 	$an->data->{path}{'anvil-report-state'}            = "/sbin/striker/anvil-report-state";

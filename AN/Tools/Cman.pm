@@ -2611,9 +2611,11 @@ sub withdraw_node
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "target", value1 => $target, 
-		name2 => "port",   value2 => $port, 
+	my $suicide  = $parameter->{suicide}  ? $parameter->{suicide}  : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",  value1 => $target, 
+		name2 => "port",    value2 => $port, 
+		name3 => "suicide", value3 => $suicide, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
@@ -2639,8 +2641,16 @@ sub withdraw_node
 	
 	# First, stop rgmanager.
 	my $rgmanager_stop = 1;
-	my $shell_call     = $an->data->{path}{initd}."/rgmanager stop";
 	my $return         = [];
+	
+	# Should I commit suicide if I don't shut off fast enough?
+	my $shell_call = "";
+	if ($suicide)
+	{
+		# Yup. Will background it prior to calling 'rgmanager stop'.
+		$shell_call = $an->data->{path}{'anvil-node-suicide'}." & ";
+	}
+	$shell_call .= $an->data->{path}{initd}."/rgmanager stop";
 	
 	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
 	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))

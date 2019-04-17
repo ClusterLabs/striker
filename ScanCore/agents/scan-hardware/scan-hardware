@@ -1,0 +1,521 @@
+#!/usr/bin/perl
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released
+# under the terms of the GNU GPL version 2.
+#
+# ScanCore Scan Agent for monitoring status of equipment available through standard tools, like proc file
+# data for CPUs and memory.
+#
+# https://alteeve.com
+# 
+# Exit Codes:
+# 0   - Success
+
+
+# Use my modules.
+use strict;
+use warnings;
+use AN::Tools;
+use Data::Dumper;
+use Socket;
+no warnings 'recursion';
+#use utf8;
+#binmode STDOUT, 'encoding(utf8)';
+
+# Disable buffering.
+$| = 1;
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0];
+
+### TODO: Rework this whole agent...
+# Get the handle to the AN::Tools and preset some variables I will use.
+my $an = AN::Tools->new({data => 
+	{
+		path			=>	{
+			core_strings		=>	"$scancore_directory/ScanCore.xml",
+			sql			=>	"$running_directory/$THIS_FILE.sql",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+			strings			=>	"$running_directory/$THIS_FILE.xml",
+		},
+		sys			=>	{
+			# When a lock is requested, this is set to the time the lock was set. 
+			# DB->do_db_write() and DB->do_db_read() will check this and if its age is >50% of
+			# scancore::locking::reap_age, it will renew the lock.
+			local_lock_active	=>	0,
+			scanning_myself		=>	0,
+			sql			=>	[],
+		},
+		scancore		=>	{
+			archive			=>	{
+				directory		=>	"/var/ScanCore/archives/",
+				division		=>	20000,
+				trigger			=>	10000,
+				count			=>	30000,
+				dump_file_header	=>	"
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET search_path = history, pg_catalog;
+",
+			},
+		},
+		'scan-hardware'		=>	{
+			disable			=>	0,
+			language			=>	"en_CA",
+			log_file			=>	"/var/log/ScanCore.log",
+			log_level			=>	1,
+			log_language			=>	"en_CA",
+			log_db_transactions		=>	0,
+		},
+	},
+});
+
+# Read the config file
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+
+# Set some defaults
+$an->default_language    ($an->data->{'scan-hardware'}{language});
+$an->default_log_language($an->data->{'scan-hardware'}{log_language});
+$an->default_log_file    ($an->data->{'scan-hardware'}{log_file});
+
+# Set the log level.
+$an->Log->level($an->data->{'scan-hardware'}{log_level});
+$an->Log->db_transactions(1) if $an->data->{'scan-hardware'}{log_db_transactions};
+
+# Read in the language strings.
+$an->Storage->read_words({file => $an->data->{path}{strings}});
+$an->Storage->read_words({file => $an->data->{path}{core_strings}});
+$an->Storage->read_words({file => $an->data->{path}{striker_strings}});
+
+# Get the switches before printing anything in case the user is asking for help.
+$an->Get->switches();
+$an->Log->adjust_log_level({key => $THIS_FILE});
+
+# Help?
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or
+    ($an->data->{switches}{help}))
+{
+	# Help!
+	print_usage($an);
+	$an->nice_exit({exit_code => 0});
+}
+
+# Exit if we're disabled.
+if ($an->data->{'scan-hardware'}{disable})
+{
+	$an->nice_exit({exit_code => 1});
+}
+
+print $an->String->get({key => "scan_hardware_message_0001"})."\n";
+
+# I'll need to loop through the DBs and ensure our schema is loaded for each one.
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => { connections => $connections }, file => $THIS_FILE, line => __LINE__});
+
+# Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
+# running ScanCore, it won't be.
+=cut
+if (not $an->DB->verify_host_uuid())
+{
+	# ScanCore hasn't run, this host isn't in the 'hosts' table.
+	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
+}
+=cut
+
+# If we were called with '--prep-db', we'll prep the database schema regardless.
+if ($an->data->{switches}{'prep-db'})
+{
+	if ($connections)
+	{
+		prep_databases($an);
+	}
+	else
+	{
+		# Failed
+		$an->Log->entry({log_level => 1, message_key => "scancore_warning_0031", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "scancore_warning_0031"})."\n";
+	}
+}
+
+# Read the data.
+collect_data($an);
+
+# Update the database
+$an->DB->update_time({file => $THIS_FILE});
+
+# Clean up and go away.
+$an->nice_exit({exit_code => 0});
+
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This reads in all the data we can find on the local system
+sub collect_data
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "collect_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Collect CPU info.
+	collect_cpu_data($an);
+	
+	# Collect RAM data.
+	collect_ram_data($an);
+	
+	return(0);
+}
+
+# This reads in data about the RAM
+sub collect_ram_data
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "collect_ram_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $total_size = 0;
+	my $size       = "";
+	my $locator    = "";
+	my $shell_call = $an->data->{path}{dmidecode}." --type memory";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+:\s+/: /;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	
+		if ($line =~ /^Locator: (.*?)$/)
+		{
+			$locator = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "locator", value1 => $locator, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /^Size: (.*?)$/)
+		{
+			$size = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "size", value1 => $size, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# THis reports in 'MB' but it's really 'MiB'.
+			$size = $an->Readable->hr_to_bytes({
+				base2 => 1,
+				size  => $size,
+			});
+			$total_size += $size;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "size",       value1 => $size, 
+				name2 => "total_size", value2 => $total_size, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		next if not $locator;
+		if (not $line)
+		{
+			$an->data->{ram}{dmi}{locator}{$locator}{size} = $size;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ram::dmi::locator::${locator}::size", value1 => $an->Readable->comma($an->data->{ram}{dmi}{locator}{$locator}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{ram}{dmi}{locator}{$locator}{size}}).")", 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$size    = "";
+			$locator = "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "size",    value1 => $size, 
+				name2 => "locator", value2 => $locator, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	if (-r '/proc/meminfo')
+	{
+		my $shell_call = "/proc/meminfo";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+:\s+/: /;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^(.*?):\s+(\d+.*?)$/)
+			{
+				my $variable = $1;
+				my $size     = $2;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable, 
+					name2 => "size",     value2 => $size, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# We care about a few variables only.
+				my $say_variable = "";
+				if ($variable eq "MemTotal")
+				{
+					$say_variable = "memory_total";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "say_variable", value1 => $say_variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($variable eq "MemFree")
+				{
+					$say_variable = "memory_free";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "say_variable", value1 => $say_variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($variable eq "SwapTotal")
+				{
+					$say_variable = "swap_total";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "say_variable", value1 => $say_variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($variable eq "SwapFree")
+				{
+					$say_variable = "swap_free";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "say_variable", value1 => $say_variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				next if not $say_variable;
+				
+				# This reports sizes as 'kB', but it's really base2.
+				$size = $an->Readable->hr_to_bytes({
+					base2 => 1,
+					size  => $size,
+				});
+				
+				$an->data->{summary}{ram}{proc}{$say_variable} = $size;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "summary::ram::proc::${say_variable}", value1 => $an->Readable->comma($an->data->{summary}{ram}{proc}{$say_variable})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{proc}{$say_variable}}).")", 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		close $file_handle;
+	}
+	
+	$an->data->{summary}{ram}{size} = $total_size;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "summary::ram::size", value1 => $an->Readable->comma($an->data->{summary}{ram}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{summary}{ram}{size}}).")", 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+# This reads in data about the CPU
+sub collect_cpu_data
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "collect_cpu_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+
+	my $total_cores   = 0;
+	my $total_threads = 0;
+	my $cores         = 0;
+	my $threads       = 0;
+	my $in_cpu        = "";
+	
+	my $shell_call = $an->data->{path}{dmidecode}." --type processor";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /Socket Designation: (.*+)$/)
+		{
+			$in_cpu = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_cpu", value1 => $in_cpu, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (not $line)
+		{
+			# TODO: Process here?
+			$in_cpu  = "";
+			$cores   = 0;
+			$threads = 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "in_cpu",  value1 => $in_cpu, 
+				name2 => "cores",   value2 => $cores, 
+				name3 => "threads", value3 => $threads, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		next if $in_cpu eq "";
+		
+		if ($line =~ /Core Count: (\d+)$/)
+		{
+			$cores       =  $1;
+			$total_cores += $cores; 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "cores",       value1 => $cores, 
+				name2 => "total_cores", value2 => $total_cores, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Thread Count: (\d+)$/)
+		{
+			$threads       =  $1;
+			$total_threads += $threads; 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "threads",       value1 => $threads, 
+				name2 => "total_threads", value2 => $total_threads, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# Read in /proc/cpuinfo.
+	my $model = "";
+	my $flags = "";
+	my $bugs  = "";
+	if (-r '/proc/cpuinfo')
+	{
+		my $shell_call = "/proc/cpuinfo";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+:\s+/: /;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^flags: (.*?)$/)
+			{
+				my $these_flags = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "these_flags", value1 => $these_flags, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $flags)
+				{
+					$flags = $these_flags;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "flags", value1 => $flags, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($flags ne $these_flags)
+				{
+					### TODO: Handle this
+					# This should never happen.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "these_flags", value1 => $these_flags, 
+						name2 => "flags",       value2 => $flags, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			if ($line =~ /^bugs: (.*?)$/)
+			{
+				my $these_bugs = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "these_bugs", value1 => $these_bugs, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $bugs)
+				{
+					$bugs = $these_bugs;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "bugs", value1 => $bugs, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($bugs ne $these_bugs)
+				{
+					### TODO: Handle this
+					# This should never happen.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "these_bugs", value1 => $these_bugs, 
+						name2 => "bugs",       value2 => $bugs, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			if ($line =~ /^model name: (.*?)$/)
+			{
+				my $this_model = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_model", value1 => $this_model, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $model)
+				{
+					$model = $this_model;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "model", value1 => $model, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($model ne $this_model)
+				{
+					### TODO: Handle this
+					# This should never happen.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "this_model", value1 => $this_model, 
+						name2 => "model",      value2 => $model, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		close $file_handle;
+	}
+	
+	# Record what we found.
+	$an->data->{summary}{cpu}{model}   = $model;
+	$an->data->{summary}{cpu}{cores}   = $total_cores;
+	$an->data->{summary}{cpu}{threads} = $total_threads;
+	$an->data->{summary}{cpu}{bugs}    = $bugs;
+	$an->data->{summary}{cpu}{flags}   = $flags;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "summary::cpu::model",   value1 => $an->data->{summary}{cpu}{model}, 
+		name2 => "summary::cpu::cores",   value2 => $an->data->{summary}{cpu}{cores}, 
+		name3 => "summary::cpu::threads", value3 => $an->data->{summary}{cpu}{threads}, 
+		name4 => "summary::cpu::bugs",    value4 => $an->data->{summary}{cpu}{bugs}, 
+		name5 => "summary::cpu::flags",   value5 => $an->data->{summary}{cpu}{flags}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	print $an->String->get({key => "scan_hardware_message_0002"})."\n";
+
+	return(0);
+}

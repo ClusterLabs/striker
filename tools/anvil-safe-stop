@@ -637,11 +637,19 @@ sub shutdown_node
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($proceed)
 	{
+		# Withdraw with suicide?
+		$an->data->{switches}{suicide} = 0 if not defined $an->data->{switches}{suicide};
+		my $suicide = $an->data->{switches}{suicide} ? 1 : 0;
+		$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
+			name1 => "suicide", value1 => $suicide, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		# Stop rgmanager, then stop cman.
 		print $an->String->get({key => "assp_message_0014", variables => { node => $node }})."\n";
 		my ($return_code, $withdraw_output) = $an->Cman->withdraw_node({
 			target   => $node,
 			password => $an->data->{sys}{anvil_password}, 
+			suicide  => $suicide, 
 		});
 		# 0 == success
 		# 1 == failed, restart succeeded.
