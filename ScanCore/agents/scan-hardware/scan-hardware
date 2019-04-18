@@ -177,6 +177,24 @@ sub collect_data
 	# Collect RAM data.
 	collect_ram_data($an);
 	
+	# If this is a machine with IPMI, see if we can gather more info.
+	# dmidecode --type chassis | grep Manufacture
+	
+	### Fujitsu:
+	# # ipmi-oem Fujitsu get-system-status
+	# System Power             : On
+	# SEL Entries Available    : Yes
+	# Watchdog Active          : Yes
+	# Agent Connected          : No
+	# System in POST           : No
+	# Identify LED             : Off
+	# CSS LED                  : Off
+	# Global Error LED         : Off
+	# Last POST Code (Port 80) : C0h
+	
+	### HP: 
+	# # 
+	
 	return(0);
 }
 
