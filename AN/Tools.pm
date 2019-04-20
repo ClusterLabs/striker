@@ -1165,6 +1165,7 @@ sub _set_paths
 	$an->data->{path}{ifconfig}               = "/sbin/ifconfig";
 	$an->data->{path}{ip}                     = "/sbin/ip";
 	$an->data->{path}{ipmitool}               = "/usr/bin/ipmitool";
+	$an->data->{path}{'ipmi-oem'}             = "/usr/sbin/ipmi-oem";
 	$an->data->{path}{'iptables-save'}        = "/sbin/iptables-save";
 	$an->data->{path}{'kill'}                 = "/bin/kill";
 	$an->data->{path}{'less'}                 = "/usr/bin/less";

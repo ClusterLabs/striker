@@ -29,6 +29,9 @@
 # 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
 # TODO:
+# - DELETE a remaining_reserve_space variable from a history.storcli_variables on one dashboard and then 
+#   trigger a resync. Appears to be causing a duplicate insert error.
+#  
 # - Check the cache policy and reset it to 'writeback' if the BBU/FBU is healthy and the cache changes to 
 #   write-through.
 # - When two or more drives have errors, 'drive:other_error_count' is only set to '1'. It should be the 
@@ -3973,6 +3976,26 @@ WHERE
 							# change, we make this a warning.
 							if ($variable =~ /error/)
 							{
+								### TODO: Make this not set a health value 
+								###       below 5, 1 for 6~50, 2 for 51+. 
+								###       Likewise, 'warning' only when 
+								###       crossing 1, 6 and 51, 'notice' 
+								###       otherwise.
+								### NOTE: We will want to set health to '1'
+								###       for _any_ 'predictive' error.
+								if ($new_variable_value > 51)
+								{
+								}
+								elsif ($new_variable_value > 6)
+								{
+								}
+								elsif ($new_variable_value > 0)
+								{
+								}
+								else
+								{
+									# Clear all alerts.
+								}
 								$alert_level = "warning";
 								$title_key   = "an_alert_title_0004";
 								$message_key = "scan_storcli_warning_0044";

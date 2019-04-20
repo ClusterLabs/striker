@@ -178,22 +178,110 @@ sub collect_data
 	collect_ram_data($an);
 	
 	# If this is a machine with IPMI, see if we can gather more info.
-	# dmidecode --type chassis | grep Manufacture
+	collect_led_states($an);
 	
-	### Fujitsu:
-	# # ipmi-oem Fujitsu get-system-status
-	# System Power             : On
-	# SEL Entries Available    : Yes
-	# Watchdog Active          : Yes
-	# Agent Connected          : No
-	# System in POST           : No
-	# Identify LED             : Off
-	# CSS LED                  : Off
-	# Global Error LED         : Off
-	# Last POST Code (Port 80) : C0h
+	return(0);
+}
+
+# If this is a machine with IPMI, see if we can gather more info.
+sub collect_led_states
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "collect_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### HP: 
-	# # 
+	# I need to know what kind of machine I am. 
+	my $manufacturer = "";
+	my $id_led       = "unknown";
+	my $css_led      = "unknown";
+	my $error_led    = "unknown";
+	
+	my $shell_call = $an->data->{path}{dmidecode}." --string system-manufacturer";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		$manufacturer = lc($_);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "manufacturer", value1 => $manufacturer, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	if ($manufacturer eq "fujitsu")
+	{
+		my $shell_call = $an->data->{path}{'ipmi-oem'}." Fujitsu get-system-status";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+:\s+/: /;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /Identify LED: (.*)$/)
+			{
+				$id_led = lc($1);
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "id_led", value1 => $id_led, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /CSS LED: (.*)$/)
+			{
+				$css_led = lc($1);
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "css_led", value1 => $css_led, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /Global Error LED: (.*)$/)
+			{
+				$error_led = lc($1);
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "error_led", value1 => $error_led, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		close $file_handle;
+		
+		# Record.
+		$an->data->{summary}{led}{id_led}    = $id_led;
+		$an->data->{summary}{led}{css_led}   = $css_led;
+		$an->data->{summary}{led}{error_led} = $error_led;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "summary::led::id_led",    value1 => $an->data->{summary}{led}{id_led}, 
+			name2 => "summary::led::css_led",   value2 => $an->data->{summary}{led}{css_led}, 
+			name3 => "summary::led::error_led", value3 => $an->data->{summary}{led}{error_led}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($manufacturer eq "fujitsu")
+	{
+		my $shell_call = $an->data->{path}{'ipmi-oem'}." Fujitsu get-system-status";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+:\s+/: /;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
 	
 	return(0);
 }
@@ -204,9 +292,12 @@ sub collect_ram_data
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "collect_ram_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $total_size = 0;
-	my $size       = "";
-	my $locator    = "";
+	my $total_size    = 0;
+	my $size          = "";
+	my $locator       = "";
+	my $manufacturer  = "";
+	my $part_number   = "";
+	my $serial_number = "";
 	my $shell_call = $an->data->{path}{dmidecode}." --type memory";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
@@ -237,6 +328,18 @@ sub collect_ram_data
 				name1 => "size", value1 => $size, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
+			# If the "size" is "no module installed", we're done here.
+			if ($size !~ /^\d/)
+			{
+				$locator = "";
+				$size    = "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "locator", value1 => $locator, 
+					name2 => "size",    value2 => $size, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			
 			# THis reports in 'MB' but it's really 'MiB'.
 			$size = $an->Readable->hr_to_bytes({
 				base2 => 1,
@@ -248,19 +351,55 @@ sub collect_ram_data
 				name2 => "total_size", value2 => $total_size, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		if ($line =~ /^Manufacturer: (.*)$/)
+		{
+			$manufacturer = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "manufacturer", value1 => $manufacturer, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /^Part Number: (.*)$/)
+		{
+			$part_number = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "part_number", value1 => $part_number, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /^Serial Number: (.*)$/)
+		{
+			$serial_number = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "serial_number", value1 => $serial_number, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		next if not $locator;
 		if (not $line)
 		{
-			$an->data->{ram}{dmi}{locator}{$locator}{size} = $size;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "ram::dmi::locator::${locator}::size", value1 => $an->Readable->comma($an->data->{ram}{dmi}{locator}{$locator}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{ram}{dmi}{locator}{$locator}{size}}).")", 
-			}, file => $THIS_FILE, line => __LINE__});
+			if ($size)
+			{
+				$an->data->{ram}{dmi}{locator}{$locator}{size}          = $size;
+				$an->data->{ram}{dmi}{locator}{$locator}{manufacturer}  = $manufacturer;
+				$an->data->{ram}{dmi}{locator}{$locator}{part_number}   = $part_number;
+				$an->data->{ram}{dmi}{locator}{$locator}{serial_number} = $serial_number;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "ram::dmi::locator::${locator}::size",          value1 => $an->Readable->comma($an->data->{ram}{dmi}{locator}{$locator}{size})." (".$an->Readable->bytes_to_hr({'bytes' => $an->data->{ram}{dmi}{locator}{$locator}{size}}).")", 
+					name2 => "ram::dmi::locator::${locator}::manufacturer",  value2 => $an->data->{ram}{dmi}{locator}{$locator}{manufacturer}, 
+					name3 => "ram::dmi::locator::${locator}::part_number",   value3 => $an->data->{ram}{dmi}{locator}{$locator}{part_number}, 
+					name4 => "ram::dmi::locator::${locator}::serial_number", value4 => $an->data->{ram}{dmi}{locator}{$locator}{serial_number}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
-			$size    = "";
-			$locator = "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "size",    value1 => $size, 
-				name2 => "locator", value2 => $locator, 
+			$size          = "";
+			$locator       = "";
+			$manufacturer  = "";
+			$part_number   = "";
+			$serial_number = "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "size",          value1 => $size, 
+				name2 => "locator",       value2 => $locator, 
+				name3 => "manufacturer",  value3 => $manufacturer, 
+				name4 => "part_number",   value4 => $part_number, 
+				name5 => "serial_number", value5 => $serial_number, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
