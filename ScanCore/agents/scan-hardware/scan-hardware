@@ -128,13 +128,11 @@ $an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_v
 
 # Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
 # running ScanCore, it won't be.
-=cut
 if (not $an->DB->verify_host_uuid())
 {
 	# ScanCore hasn't run, this host isn't in the 'hosts' table.
 	$an->Alert->error({title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { uuid => $an->data->{sys}{host_uuid} }, code => 255, file => $THIS_FILE, line => __LINE__});
 }
-=cut
 
 # If we were called with '--prep-db', we'll prep the database schema regardless.
 if ($an->data->{switches}{'prep-db'})
@@ -153,6 +151,15 @@ if ($an->data->{switches}{'prep-db'})
 
 # Read the data.
 collect_data($an);
+
+# Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
+prep_databases($an);
+
+# Archive, if needed.
+archive_if_needed($an);
+
+# Look to see if any databases need to be updated.
+update_db($an);
 
 # Update the database
 $an->DB->update_time({file => $THIS_FILE});
@@ -662,6 +669,896 @@ sub collect_cpu_data
 		name4 => "summary::cpu::bugs",    value4 => $an->data->{summary}{cpu}{bugs}, 
 		name5 => "summary::cpu::flags",   value5 => $an->data->{summary}{cpu}{flags}, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+# This will archive stuff in the 'history' schema, if needed.
+sub archive_if_needed
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_if_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If the 'trigger' is '0', archiving is disabled.
+	if (not $an->data->{scancore}{archive}{trigger})
+	{
+		return(1);
+	}
+	
+	### NOTE: If a ScanCore db server was offline when an archive ran, when it returns, it's records will
+	###       sync back, triggering a sooner-than-expected subsequent archive. This shouldn't happen 
+	###       often, and the complexity of tracking archive dates is such that we'll not try to account
+	###       for these cases. 
+	### TODO: What we can do later is, when we write the restore stuff, build in a dedupe function.
+	
+	### Process:
+	# 1. Count the records in history for each table, restricting the results to those from this host 
+	#    (save for special tables like 'server') and if the number of records is greater than 
+	#    'scancore::archive::trigger', start an archive.
+	# 2. Set/update the 'archive_date' state.
+	# 3. Lock the database.
+	# 4. Select 'modified_date' from history.foo, offset by 
+	#    ('scancore::archive::trigger' - 'scancore::archive::count').
+	# 5. Make sure the 'scancore::archive::directory' exists, creating it if needed.
+	# 6. Select all records older that the 'modified_date', write them to a file and then DELETE those
+	#    records from the database.
+	
+	# Update the archive path, if set by a user. Also verify that there are sane archive values.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "path::scancore_archive",       value1 => $an->data->{path}{scancore_archive}, 
+		name2 => "scancore::archive::directory", value2 => $an->data->{scancore}{archive}{directory}, 
+		name3 => "scancore::archive::trigger",   value3 => $an->data->{scancore}{archive}{trigger}, 
+		name4 => "scancore::archive::count",     value4 => $an->data->{scancore}{archive}{count}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{archive}{directory} =~ /\/.*/)
+	{
+		$an->data->{path}{scancore_archive} = $an->data->{scancore}{archive}{directory};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::scancore_archive", value1 => $an->data->{path}{scancore_archive}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{trigger}) or ($an->data->{scancore}{archive}{trigger} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{trigger} = 100000;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::trigger", value1 => $an->data->{scancore}{archive}{trigger}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ((not $an->data->{scancore}{archive}{count}) or ($an->data->{scancore}{archive}{count} =~ /\D/))
+	{
+		$an->data->{scancore}{archive}{count} = 50000;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "scancore::archive::count", value1 => $an->data->{scancore}{archive}{count}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	if (not -e $an->data->{path}{scancore_archive})
+	{
+		my $shell_call = $an->data->{path}{'mkdir'}." -p '".$an->data->{path}{scancore_archive}."'";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# Did it work?
+		if (not -e $an->data->{path}{scancore_archive})
+		{
+			# Nope. :(
+			$an->Alert->warning({message_key => "scancore_warning_0030", message_variables => { directory => $an->data->{path}{scancore_archive} }, quiet => 1, file => $THIS_FILE, line => __LINE__});
+			return(1);
+		}
+	}
+	
+	$an->data->{archive}{table} = {
+		hardware		=>	{
+			archive_date		=>	"",
+			host_column		=>	"hardware_host_uuid",
+			offset			=>	0,
+		},
+		hardware_ram_module	=>	{
+			archive_date		=>	"",
+			host_column		=>	"hardware_ram_module_host_uuid",
+			offset			=>	0,
+		},
+	};
+	my $archive_needed = 0;
+	foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "table", value1 => $table, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    history.$table 
+WHERE 
+    ".$an->data->{archive}{table}{$table}{host_column}." = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $records = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		   $records = 0 if not defined $records;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "records", value1 => $records, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($records > $an->data->{scancore}{archive}{trigger})
+		{
+			   $archive_needed                             = 1;
+			my $records_to_save                            = ($an->data->{scancore}{archive}{trigger} - $an->data->{scancore}{archive}{count});
+			my $offset                                     = $records - $records_to_save;
+			   $an->data->{archive}{table}{$table}{offset} = $offset;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "archive_needed",                   value1 => $archive_needed, 
+				name2 => "records_to_save",                  value2 => $records_to_save, 
+				name3 => "archive::table::${table}::offset", value3 => $an->data->{archive}{table}{$table}{offset}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I have something to archive, do so now.
+	if ($archive_needed)
+	{
+		# This will store the files to compress after we release the locks.
+		my $compress = [];
+		
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
+		# Now loop through the table(s) that need to be archived.
+		foreach my $table (sort {$a cmp $b} keys %{$an->data->{archive}{table}})
+		{
+			next if not $an->data->{archive}{table}{$table}{offset};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "table", value1 => $table, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Now to do the archive.
+			if ($table eq "hardware")
+			{
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["hardware_uuid", "hardware_host_uuid", "hardware_cpu_model", "hardware_cpu_cores", "hardware_cpu_threads", "hardware_cpu_bugs", "hardware_cpu_flags", "hardware_memory_total", "hardware_memory_free", "hardware_swap_total", "hardware_swap_free", "hardware_led_id_led", "hardware_led_css_led", "hardware_led_error_led"],
+				});
+			}
+			elsif ($table eq "hardware_ram_module")
+			{
+				$an->DB->archive_table({
+					table        => $table, 
+					offset       => $an->data->{archive}{table}{$table}{offset}, 
+					conditionals => { $an->data->{archive}{table}{$table}{host_column} => $an->data->{sys}{host_uuid} },
+					columns      => ["hardware_ram_module_uuid", "hardware_ram_module_hardware_uuid", "hardware_ram_module_locator", "hardware_ram_module_size", "hardware_ram_module_manufacturer", "hardware_ram_module_model", "hardware_ram_module_serial_number"],
+				});
+			}
+		}
+		
+		### TODO: Make this less of a hackish mc-hackington...
+		# VACUUM FULL, if the database is on this machine. I need to do this from the command line 
+		# because the user we connect as isn't allowed to do it. We'll also only vacuum our DB.
+		my $db_name = "";
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "id",                        value1 => $id, 
+				name2 => "scancore::db::${id}::host", value2 => $an->data->{scancore}{db}{$id}{host}, 
+				name3 => "hostname",                  value3 => $an->hostname, 
+				name4 => "short_hostname",            value4 => $an->short_hostname, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($an->data->{scancore}{db}{$id}{host} eq $an->hostname) or ($an->data->{scancore}{db}{$id}{host} eq $an->short_hostname))
+			{
+				$db_name = $an->data->{scancore}{db}{$id}{name};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "db_name",                   value1 => $db_name, 
+					name2 => "scancore::db::${id}::name", value2 => $an->data->{scancore}{db}{$id}{name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+		if ($db_name)
+		{
+			my $start      = time;
+			my $shell_call = $an->data->{path}{su}." - postgres -c \"".$an->data->{path}{psql}." $db_name -c 'VACUUM FULL;'\"";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "start",      value1 => $start, 
+				name2 => "shell_call", value2 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => $THIS_FILE, line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			my $finished = time - $start;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "finished", value1 => $finished, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
+	}
+	
+	return(0);
+}
+
+# This checks to see if this agent's databases tables exist and, if not, load the schema. If the schema gets
+# loaded, we'll check other databases for older information and load it.
+sub prep_databases
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='hardware' AND schemaname='public';";
+		#                     The actual query -----------------.        .------- Row 0
+		#                        Query this DB --.              |        |    .-- Columns 0
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($count < 1)
+		{
+			# Need to load the database schema.
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
+			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
+			
+			# Send an alert telling the user that we've initialized this database.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"notice_message_0002",
+				alert_message_variables	=>	{
+					name			=>	$an->data->{scancore}{db}{$id}{name},
+					host			=>	$an->data->{scancore}{db}{$id}{host},
+					agent			=>	$THIS_FILE,
+				},
+			});
+		}
+		else
+		{
+			# Table exists, schema load is not needed.
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+# This looks at each DB's 'updated' table entry to see if any tables are behind. If any are, it will update
+# the tables based on the time the last entry was made for a given host.
+sub update_db
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{db_resync_needed})
+	{
+		# Request a lock.
+		$an->DB->locking({request => 1});
+		
+		# Make a note in the databases that we're starting an update and ask it to wait 10 seconds 
+		# before returning to give other instances time to finish their scans. (our scans end quickly
+		# enough).
+		#$an->DB->set_update_db_flag({set => time, 'wait' => 10});
+		
+		# Update hardware and ram modules
+		update_db_hardware($an);
+		update_db_hardware_ram_modules($an);
+		
+		# Release the lock
+		$an->DB->locking({release => 1});
+		
+		# Clear the update flag.
+		#$an->DB->set_update_db_flag({set => 0});
+	}
+	
+	return(0);
+}
+
+# Update the 'hardware_ram_modules' table.
+sub update_db_hardware_ram_modules
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_hardware_ram_modules" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'apc_pdu' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    hardware_ram_module_uuid, 
+    hardware_ram_module_locator, 
+    hardware_ram_module_size, 
+    hardware_ram_module_manufacturer, 
+    hardware_ram_module_model, 
+    hardware_ram_module_serial_number, 
+    modified_date 
+FROM 
+    history.hardware_ram_modules 
+WHERE 
+    hardware_ram_module_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $hardware_ram_module_uuid          = $row->[0];
+			my $hardware_ram_module_locator       = $row->[1]; 
+			my $hardware_ram_module_size          = $row->[2]; 
+			my $hardware_ram_module_manufacturer  = $row->[3]; 
+			my $hardware_ram_module_model         = $row->[4]; 
+			my $hardware_ram_module_serial_number = $row->[5]; 
+			my $modified_date                     = $row->[6];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+				name1 => "hardware_ram_module_uuid",          value1 => $hardware_ram_module_uuid, 
+				name2 => "hardware_ram_module_locator",       value2 => $hardware_ram_module_locator, 
+				name3 => "hardware_ram_module_size",          value3 => $hardware_ram_module_size, 
+				name4 => "hardware_ram_module_manufacturer",  value4 => $hardware_ram_module_manufacturer, 
+				name5 => "hardware_ram_module_model",         value5 => $hardware_ram_module_model, 
+				name6 => "hardware_ram_module_serial_number", value6 => $hardware_ram_module_serial_number, 
+				name7 => "modified_date",                     value7 => $modified_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}{$hardware_ram_module_uuid} = {
+				hardware_ram_module_host_uuid     => $hardware_ram_module_host_uuid, 
+				hardware_ram_module_locator       => $hardware_ram_module_locator, 
+				hardware_ram_module_size          => $hardware_ram_module_size, 
+				hardware_ram_module_manufacturer  => $hardware_ram_module_manufacturer, 
+				hardware_ram_module_model         => $hardware_ram_module_model, 
+				hardware_ram_module_serial_number => $hardware_ram_module_serial_number, 
+			};
+			$an->data->{db_data}{$id}{hardware_ram_modules}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{hardware_ram_modules}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}{$hardware_ram_module_uuid} = {
+				hardware_ram_module_host_uuid     => $hardware_ram_module_host_uuid, 
+				hardware_ram_module_locator       => $hardware_ram_module_locator, 
+				hardware_ram_module_size          => $hardware_ram_module_size, 
+				hardware_ram_module_manufacturer  => $hardware_ram_module_manufacturer, 
+				hardware_ram_module_model         => $hardware_ram_module_model, 
+				hardware_ram_module_serial_number => $hardware_ram_module_serial_number, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hardware_ram_modules}{modified_date}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $hardware_ram_module_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}})
+		{
+			my $hardware_ram_module_locator       = $an->data->{db_data}{unified}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_locator};
+			my $hardware_ram_module_size          = $an->data->{db_data}{unified}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_size};
+			my $hardware_ram_module_manufacturer  = $an->data->{db_data}{unified}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_manufacturer};
+			my $hardware_ram_module_model         = $an->data->{db_data}{unified}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_model};
+			my $hardware_ram_module_serial_number = $an->data->{db_data}{unified}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_serial_number};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+				name1 => "hardware_ram_module_uuid",          value1 => $hardware_ram_module_uuid, 
+				name2 => "hardware_ram_module_locator",       value2 => $hardware_ram_module_locator, 
+				name3 => "hardware_ram_module_size",          value3 => $hardware_ram_module_size, 
+				name4 => "hardware_ram_module_manufacturer",  value4 => $hardware_ram_module_manufacturer, 
+				name5 => "hardware_ram_module_model",         value5 => $hardware_ram_module_model, 
+				name6 => "hardware_ram_module_serial_number", value6 => $hardware_ram_module_serial_number, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'hardware_ram_module_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::hardware_ram_modules::hardware_ram_module_uuid::${hardware_ram_module_uuid}::seen", value1 => $an->data->{db_data}{$id}{hardware_ram_modules}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{hardware_ram_modules}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{hardware_ram_modules}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::hardware_ram_modules::hardware_ram_module_uuid::${hardware_ram_module_uuid}::exists", value1 => $an->data->{db_data}{$id}{hardware_ram_modules}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{hardware_ram_modules}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::hardware_ram_modules::modified_date::${modified_date}::hardware_ram_module_uuid::${hardware_ram_module_uuid}", value1 => $an->data->{db_data}{$id}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}{$hardware_ram_module_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.hardware_ram_modules 
+SET
+    hardware_ram_module_locator       = ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_locator).", 
+    hardware_ram_module_size          = ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_size).", 
+    hardware_ram_module_manufacturer  = ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_manufacturer).", 
+    hardware_ram_module_model         = ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_model).", 
+    hardware_ram_module_serial_number = ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_serial_number).", 
+    modified_date                     = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    hardware_ram_module_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    hardware_ram_module_uuid          = ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.hardware_ram_modules 
+(
+    hardware_ram_module_host_uuid, 
+    hardware_ram_module_uuid, 
+    hardware_ram_module_locator, 
+    hardware_ram_module_size, 
+    hardware_ram_module_manufacturer, 
+    hardware_ram_module_model, 
+    hardware_ram_module_serial_number, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_locator).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_manufacturer).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'hardware_ram_module_uuid' before, so it is just a question of 
+					# whether the entry for the current timestamp exists in the history 
+					# schema.
+					if (not $an->data->{db_data}{$id}{hardware_ram_modules}{modified_date}{$modified_date}{hardware_ram_module_uuid}{$hardware_ram_module_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.hardware_ram_modules 
+(
+    hardware_ram_module_host_uuid, 
+    hardware_ram_module_uuid, 
+    hardware_ram_module_locator, 
+    hardware_ram_module_size, 
+    hardware_ram_module_manufacturer, 
+    hardware_ram_module_model, 
+    hardware_ram_module_serial_number, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_locator).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_size).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_manufacturer).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_ram_module_serial_number).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen hardware_ram_module_uuid?
+			} # foreach my $id 
+		} # foreach my $hardware_ram_module_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'hardware' table.
+sub update_db_hardware
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_hardware" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'hardware' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    hardware_uuid, 
+    hardware_cpu_model, 
+    hardware_cpu_cores, 
+    hardware_cpu_threads, 
+    hardware_cpu_bugs, 
+    hardware_cpu_flags, 
+    hardware_memory_total, 
+    hardware_memory_free, 
+    hardware_swap_total, 
+    hardware_swap_free, 
+    hardware_led_id_led, 
+    hardware_led_css_led, 
+    hardware_led_error_led, 
+    modified_date 
+FROM 
+    history.hardwares 
+WHERE 
+    hardware_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $hardware_uuid          = $row->[0];
+			my $hardware_cpu_model     = $row->[1]; 
+			my $hardware_cpu_cores     = $row->[2]; 
+			my $hardware_cpu_threads   = $row->[3]; 
+			my $hardware_cpu_bugs      = $row->[4]; 
+			my $hardware_cpu_flags     = $row->[5]; 
+			my $hardware_memory_total  = $row->[6]; 
+			my $hardware_memory_free   = $row->[7]; 
+			my $hardware_swap_total    = $row->[8]; 
+			my $hardware_swap_free     = $row->[9]; 
+			my $hardware_led_id_led    = $row->[10]; 
+			my $hardware_led_css_led   = $row->[11]; 
+			my $hardware_led_error_led = $row->[12]; 
+			my $modified_date          = $row->[13];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+				name1  => "hardware_uuid",          value1  => $hardware_uuid, 
+				name2  => "hardware_cpu_model",     value2  => $hardware_cpu_model, 
+				name3  => "hardware_cpu_cores",     value3  => $hardware_cpu_cores, 
+				name4  => "hardware_cpu_threads",   value4  => $hardware_cpu_threads, 
+				name5  => "hardware_cpu_bugs",      value5  => $hardware_cpu_bugs, 
+				name6  => "hardware_cpu_flags",     value6  => $hardware_cpu_flags, 
+				name7  => "hardware_memory_total",  value7  => $hardware_memory_total, 
+				name8  => "hardware_memory_free",   value8  => $hardware_memory_free, 
+				name9  => "hardware_swap_total",    value9  => $hardware_swap_total, 
+				name10 => "hardware_swap_free",     value10 => $hardware_swap_free, 
+				name11 => "hardware_led_id_led",    value11 => $hardware_led_id_led, 
+				name12 => "hardware_led_css_led",   value12 => $hardware_led_css_led, 
+				name13 => "hardware_led_error_led", value13 => $hardware_led_error_led, 
+				name14 => "modified_date",          value14 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid} = {
+				hardware_cpu_model     => $hardware_cpu_model, 
+				hardware_cpu_cores     => $hardware_cpu_cores, 
+				hardware_cpu_threads   => $hardware_cpu_threads, 
+				hardware_cpu_bugs      => $hardware_cpu_bugs, 
+				hardware_cpu_flags     => $hardware_cpu_flags, 
+				hardware_memory_total  => $hardware_memory_total, 
+				hardware_memory_free   => $hardware_memory_free, 
+				hardware_swap_total    => $hardware_swap_total, 
+				hardware_swap_free     => $hardware_swap_free, 
+				hardware_led_id_led    => $hardware_led_id_led, 
+				hardware_led_css_led   => $hardware_led_css_led, 
+				hardware_led_error_led => $hardware_led_error_led, 
+			};
+			$an->data->{db_data}{$id}{hardware}{hardware_uuid}{$hardware_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{hardware}{hardware_uuid}{$hardware_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid} = {
+				hardware_cpu_model     => $hardware_cpu_model, 
+				hardware_cpu_cores     => $hardware_cpu_cores, 
+				hardware_cpu_threads   => $hardware_cpu_threads, 
+				hardware_cpu_bugs      => $hardware_cpu_bugs, 
+				hardware_cpu_flags     => $hardware_cpu_flags, 
+				hardware_memory_total  => $hardware_memory_total, 
+				hardware_memory_free   => $hardware_memory_free, 
+				hardware_swap_total    => $hardware_swap_total, 
+				hardware_swap_free     => $hardware_swap_free, 
+				hardware_led_id_led    => $hardware_led_id_led, 
+				hardware_led_css_led   => $hardware_led_css_led, 
+				hardware_led_error_led => $hardware_led_error_led, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hardware}{modified_date}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $hardware_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}})
+		{
+			my $hardware_cpu_model     = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_cpu_model};
+			my $hardware_cpu_cores     = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_cpu_cores};
+			my $hardware_cpu_threads   = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_cpu_threads};
+			my $hardware_cpu_bugs      = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_cpu_bugs};
+			my $hardware_cpu_flags     = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_cpu_flags};
+			my $hardware_memory_total  = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_memory_total};
+			my $hardware_memory_free   = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_memory_free};
+			my $hardware_swap_total    = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_swap_total};
+			my $hardware_swap_free     = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_swap_free};
+			my $hardware_led_id_led    = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_led_id_led};
+			my $hardware_led_css_led   = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_led_css_led};
+			my $hardware_led_error_led = $an->data->{db_data}{unified}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}{hardware_led_error_led};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+				name1  => "hardware_uuid",          value1  => $hardware_uuid, 
+				name2  => "hardware_cpu_model",     value2  => $hardware_cpu_model, 
+				name3  => "hardware_cpu_cores",     value3  => $hardware_cpu_cores, 
+				name4  => "hardware_cpu_threads",   value4  => $hardware_cpu_threads, 
+				name5  => "hardware_cpu_bugs",      value5  => $hardware_cpu_bugs, 
+				name6  => "hardware_cpu_flags",     value6  => $hardware_cpu_flags, 
+				name7  => "hardware_memory_total",  value7  => $hardware_memory_total, 
+				name8  => "hardware_memory_free",   value8  => $hardware_memory_free, 
+				name9  => "hardware_swap_total",    value9  => $hardware_swap_total, 
+				name10 => "hardware_swap_free",     value10 => $hardware_swap_free, 
+				name11 => "hardware_led_id_led",    value11 => $hardware_led_id_led, 
+				name12 => "hardware_led_css_led",   value12 => $hardware_led_css_led, 
+				name13 => "hardware_led_error_led", value13 => $hardware_led_error_led, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'hardware_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::hardware::hardware_uuid::${hardware_uuid}::seen", value1 => $an->data->{db_data}{$id}{hardware}{hardware_uuid}{$hardware_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{hardware}{hardware_uuid}{$hardware_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{hardware}{hardware_uuid}{$hardware_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::hardware::hardware_uuid::${hardware_uuid}::exists", value1 => $an->data->{db_data}{$id}{hardware}{hardware_uuid}{$hardware_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{hardware}{hardware_uuid}{$hardware_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::hardware::modified_date::${modified_date}::hardware_uuid::${hardware_uuid}", value1 => $an->data->{db_data}{$id}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.hardwares 
+SET
+    hardware_cpu_model     = ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_model).", 
+    hardware_cpu_cores     = ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_cores).", 
+    hardware_cpu_threads   = ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_threads).", 
+    hardware_cpu_bugs      = ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_bugs).", 
+    hardware_cpu_flags     = ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_flags).", 
+    hardware_memory_total  = ".$an->data->{sys}{use_db_fh}->quote($hardware_memory_total).", 
+    hardware_memory_free   = ".$an->data->{sys}{use_db_fh}->quote($hardware_memory_free).", 
+    hardware_swap_total    = ".$an->data->{sys}{use_db_fh}->quote($hardware_swap_total).", 
+    hardware_swap_free     = ".$an->data->{sys}{use_db_fh}->quote($hardware_swap_free).", 
+    hardware_led_id_led    = ".$an->data->{sys}{use_db_fh}->quote($hardware_led_id_led).", 
+    hardware_led_css_led   = ".$an->data->{sys}{use_db_fh}->quote($hardware_led_css_led).", 
+    hardware_led_error_led = ".$an->data->{sys}{use_db_fh}->quote($hardware_led_error_led).", 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    hardware_host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    hardware_uuid          = ".$an->data->{sys}{use_db_fh}->quote($hardware_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.hardwares 
+(
+    hardware_host_uuid, 
+    hardware_uuid, 
+    hardware_cpu_model, 
+    hardware_cpu_cores, 
+    hardware_cpu_threads, 
+    hardware_cpu_bugs, 
+    hardware_cpu_flags, 
+    hardware_memory_total, 
+    hardware_memory_free, 
+    hardware_swap_total, 
+    hardware_swap_free, 
+    hardware_led_id_led, 
+    hardware_led_css_led, 
+    hardware_led_error_led, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_cores).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_threads).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_bugs).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_flags).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_memory_total).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_memory_free).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_swap_total).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_swap_free).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_led_id_led).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_led_css_led).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_led_error_led).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'hardware_uuid' before, so it is just a question of 
+					# whether the entry for the current timestamp exists in the history 
+					# schema.
+					if (not $an->data->{db_data}{$id}{hardware}{modified_date}{$modified_date}{hardware_uuid}{$hardware_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.hardwares 
+(
+    hardware_host_uuid, 
+    hardware_uuid, 
+    hardware_cpu_model, 
+    hardware_cpu_cores, 
+    hardware_cpu_threads, 
+    hardware_cpu_bugs, 
+    hardware_cpu_flags, 
+    hardware_memory_total, 
+    hardware_memory_free, 
+    hardware_swap_total, 
+    hardware_swap_free, 
+    hardware_led_id_led, 
+    hardware_led_css_led, 
+    hardware_led_error_led, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_model).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_cores).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_threads).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_bugs).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_cpu_flags).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_memory_total).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_memory_free).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_swap_total).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_swap_free).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_led_id_led).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_led_css_led).", 
+    ".$an->data->{sys}{use_db_fh}->quote($hardware_led_error_led).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen hardware_uuid?
+			} # foreach my $id 
+		} # foreach my $hardware_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
 	
 	return(0);
 }
