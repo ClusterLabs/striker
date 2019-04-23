@@ -161,6 +161,15 @@ archive_if_needed($an);
 # Look to see if any databases need to be updated.
 update_db($an);
 
+# Read in the last scan data, if any.
+read_last_scan($an);
+
+# Look for changes.
+find_changes($an);
+
+# Finally, process health weights.
+#process_health($an);
+
 # Update the database
 $an->DB->update_time({file => $THIS_FILE});
 
@@ -171,6 +180,250 @@ $an->nice_exit({exit_code => 0});
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This reads in the last scan data from one of the databases and compares it against the just-read data. If 
+# anything changed, register an alert.
+sub find_changes
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Walk through what I know
+	### TODO: Left off here
+=cut
+	
+	# Any RAM modules vanished?
+	foreach my $node (sort {$a cmp $b} keys %{$an->data->{sql}{hardware_ram_module}})
+	{
+		next if not $node;
+		# I only want to consider a service deleted *IF* the node's
+		# 'rgmanager' is running.
+		next if ($an->data->{hardware}{node}{$node}{status} !~ /rgmanager/i);
+
+		# Node disappeared. Update the last entry to have the status
+		# 'DELETED'. Then record a 'notice' level warning.
+		$an->data->{hardware}{node}{$node}{status} = "DELETED";
+		update_hardware_node($an, $node);
+		
+		# Enter ther alert.
+		$an->Alert->register_alert({
+			alert_level		=>	"notice", 
+			alert_agent_name	=>	$THIS_FILE,
+			alert_title_key		=>	"an_alert_title_0003",
+			alert_message_key	=>	"scan_hardware_note_0001",
+			alert_message_variables	=>	{
+				node			=>	$node,
+			},
+		});
+		
+		# I process the services here so that I don't try and process
+		# them if the node isn't running rgmanager.
+		foreach my $service (sort {$a cmp $b} keys %{$an->data->{hardware}{sql}{hardware_service}})
+		{
+			next if not $service;
+			
+			# Which message I use depends on whether this was a server or not.
+			my $message_key = "scan_hardware_note_0002";
+			if ($an->data->{hardware}{sql}{hardware_service}{$service}{hardware_service_is_vm} eq "TRUE")
+			{
+				$message_key = "scan_hardware_note_0003";
+			}
+			
+			# Enter ther alert.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	$THIS_FILE,
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"$message_key",	# Node deleted
+				alert_message_variables	=>	{
+					service			=>	$service,
+				},
+			});
+			
+			# Delete it so that I don't process it again on the
+			# second node's pass.
+			delete $an->data->{hardware}{sql}{hardware_service}{$service};
+		}
+	}
+	
+	# Now commit the changes.
+	$an->DB->commit_sql({source => $THIS_FILE, line => __LINE__});
+=cut
+
+	return(0);
+}
+
+# This reads in the last scan's data.
+sub read_last_scan
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_last_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# This calls up the entry for this host. There will only be one.
+	my $query = "
+SELECT 
+    hardware_uuid, 
+    hardware_cpu_model, 
+    hardware_cpu_cores, 
+    hardware_cpu_threads, 
+    hardware_cpu_bugs, 
+    hardware_cpu_flags, 
+    hardware_memory_total, 
+    hardware_memory_free, 
+    hardware_swap_total, 
+    hardware_swap_free, 
+    hardware_led_id_led, 
+    hardware_led_css_led, 
+    hardware_led_error_led 
+FROM 
+    hardware 
+WHERE 
+    hardware_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+	# TODO: This query should only ever return one row, but this fact should be explicitely checked for.
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "query", value1 => $query, 
+		name2 => "count", value2 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		# We've got an entry in the 'hardware' table, so now we'll look for data in the node and 
+		# services tables.
+		my $hardware_uuid          = $row->[0]; 
+		my $hardware_cpu_model     = $row->[1]; 
+		my $hardware_cpu_cores     = $row->[2]; 
+		my $hardware_cpu_threads   = $row->[3]; 
+		my $hardware_cpu_bugs      = $row->[4]; 
+		my $hardware_cpu_flags     = $row->[5]; 
+		my $hardware_memory_total  = $row->[6]; 
+		my $hardware_memory_free   = $row->[7]; 
+		my $hardware_swap_total    = $row->[8]; 
+		my $hardware_swap_free     = $row->[9]; 
+		my $hardware_led_id_led    = $row->[10]; 
+		my $hardware_led_css_led   = $row->[11]; 
+		my $hardware_led_error_led = $row->[12];  
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+			name1  => "hardware_uuid",          value1  => $hardware_uuid,
+			name2  => "hardware_cpu_model",     value2  => $hardware_cpu_model,
+			name3  => "hardware_cpu_cores",     value3  => $hardware_cpu_cores,
+			name4  => "hardware_cpu_threads",   value4  => $hardware_cpu_threads,
+			name5  => "hardware_cpu_bugs",      value5  => $hardware_cpu_bugs,
+			name6  => "hardware_cpu_flags",     value6  => $hardware_cpu_flags,
+			name7  => "hardware_memory_total",  value7  => $hardware_memory_total,
+			name8  => "hardware_memory_free",   value8  => $hardware_memory_free,
+			name9  => "hardware_swap_total",    value9  => $hardware_swap_total,
+			name10 => "hardware_swap_free",     value10 => $hardware_swap_free,
+			name11 => "hardware_led_id_led",    value11 => $hardware_led_id_led,
+			name12 => "hardware_led_css_led",   value12 => $hardware_led_css_led,
+			name13 => "hardware_led_error_led", value13 => $hardware_led_error_led,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Record the hardware_uuid in an easy to find place for later when looking for changes.
+		$an->data->{sql}{hardware_uuid} = $hardware_uuid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sql::hardware_uuid", value1 => $an->data->{sql}{hardware_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the old data now.
+		$an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid} = {
+			hardware_cpu_model     => $hardware_cpu_model,
+			hardware_cpu_cores     => $hardware_cpu_cores,
+			hardware_cpu_threads   => $hardware_cpu_threads,
+			hardware_cpu_bugs      => $hardware_cpu_bugs,
+			hardware_cpu_flags     => $hardware_cpu_flags,
+			hardware_memory_total  => $hardware_memory_total,
+			hardware_memory_free   => $hardware_memory_free,
+			hardware_swap_total    => $hardware_swap_total,
+			hardware_swap_free     => $hardware_swap_free,
+			hardware_led_id_led    => $hardware_led_id_led,
+			hardware_led_css_led   => $hardware_led_css_led,
+			hardware_led_error_led => $hardware_led_error_led,
+		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			name1  => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_cpu_model",     value1 => $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_cpu_model},
+			name2  => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_cpu_cores",     value2 => $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_cpu_cores},
+			name3  => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_cpu_threads",   value3 => $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_cpu_threads},
+			name4  => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_cpu_bugs",      value4 => $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_cpu_bugs},
+			name5  => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_cpu_flags",     value5 => $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_cpu_flags},
+			name6  => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_memory_total",  value6 => $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_memory_total},
+			name7  => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_memory_free",   value7 => $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_memory_free},
+			name8  => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_swap_total",    value8 => $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_swap_total},
+			name9  => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_swap_free",     value9 => $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_swap_free},
+			name10 => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_led_id_led",    value10=> $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_led_id_led},
+			name11 => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_led_css_led",   value11=> $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_led_css_led},
+			name12 => "sql::hardware::hardware_uuid::${hardware_uuid}::hardware_led_error_led", value12=> $an->data->{sql}{hardware}{hardware_uuid}{$hardware_uuid}{hardware_led_error_led},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	undef $count;
+	undef $results;
+	
+	# Read in the RAM module data.
+	$query = "
+SELECT 
+    hardware_ram_module_uuid, 
+    hardware_ram_module_locator, 
+    hardware_ram_module_size, 
+    hardware_ram_module_manufacturer, 
+    hardware_ram_module_model, 
+    hardware_ram_module_serial_number 
+FROM 
+    hardware_ram_module 
+WHERE 
+    hardware_ram_module_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+	# TODO: This query should only ever return one row, but this fact should be explicitely checked for.
+	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "query", value1 => $query, 
+		name2 => "count", value2 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		# We've got an entry in the 'hardware_ram_module' table, so now we'll look for data in the node and 
+		# services tables.
+		my $hardware_ram_module_uuid          = $row->[0]; 
+		my $hardware_ram_module_locator       = $row->[1]; 
+		my $hardware_ram_module_size          = $row->[2]; 
+		my $hardware_ram_module_manufacturer  = $row->[3]; 
+		my $hardware_ram_module_model         = $row->[4]; 
+		my $hardware_ram_module_serial_number = $row->[5]; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "hardware_ram_module_uuid",          value1 => $hardware_ram_module_uuid,
+			name2 => "hardware_ram_module_locator",       value2 => $hardware_ram_module_locator,
+			name3 => "hardware_ram_module_size",          value3 => $hardware_ram_module_size,
+			name4 => "hardware_ram_module_manufacturer",  value4 => $hardware_ram_module_manufacturer,
+			name5 => "hardware_ram_module_model",         value5 => $hardware_ram_module_model,
+			name6 => "hardware_ram_module_serial_number", value6 => $hardware_ram_module_serial_number,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Record the hardware_ram_module_uuid in an easy to find place for later when looking for changes.
+		$an->data->{sql}{hardware_ram_module_uuid}{$hardware_ram_module_locator} = $hardware_ram_module_uuid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sql::hardware_ram_module_uuid::${hardware_ram_module_locator}", value1 => $an->data->{sql}{hardware_ram_module_uuid}{$hardware_ram_module_locator}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store the old data now.
+		$an->data->{sql}{hardware_ram_module}{hardware_ram_module_uuid}{$hardware_ram_module_uuid} = {
+			hardware_ram_module_locator       => $hardware_ram_module_locator,
+			hardware_ram_module_size          => $hardware_ram_module_size,
+			hardware_ram_module_manufacturer  => $hardware_ram_module_manufacturer,
+			hardware_ram_module_model         => $hardware_ram_module_model,
+			hardware_ram_module_serial_number => $hardware_ram_module_serial_number,
+		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "sql::hardware_ram_module::hardware_ram_module_uuid::${hardware_ram_module_uuid}::hardware_ram_module_locator",       value1 => $an->data->{sql}{hardware_ram_module}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_locator},
+			name2 => "sql::hardware_ram_module::hardware_ram_module_uuid::${hardware_ram_module_uuid}::hardware_ram_module_size",          value2 => $an->data->{sql}{hardware_ram_module}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_size},
+			name3 => "sql::hardware_ram_module::hardware_ram_module_uuid::${hardware_ram_module_uuid}::hardware_ram_module_manufacturer",  value3 => $an->data->{sql}{hardware_ram_module}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_manufacturer},
+			name4 => "sql::hardware_ram_module::hardware_ram_module_uuid::${hardware_ram_module_uuid}::hardware_ram_module_model",         value4 => $an->data->{sql}{hardware_ram_module}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_model},
+			name5 => "sql::hardware_ram_module::hardware_ram_module_uuid::${hardware_ram_module_uuid}::hardware_ram_module_serial_number", value5 => $an->data->{sql}{hardware_ram_module}{hardware_ram_module_uuid}{$hardware_ram_module_uuid}{hardware_ram_module_serial_number},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
 
 # This reads in all the data we can find on the local system
 sub collect_data

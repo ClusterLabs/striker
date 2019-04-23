@@ -9733,7 +9733,10 @@ sub generate_cluster_conf
 			$an->data->{sys}{cluster_conf} .= "\t\t\t\t</method>\n";
 		}
 	}
-	$an->data->{sys}{cluster_conf} .= "\t\t\t</fence>
+	$an->data->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"delay\">
+					<device action=\"off\" />
+				</method>
+			</fence>
 		</clusternode>
 		<clusternode name=\"".$an->data->{sys}{anvil}{node2}{name}."\" nodeid=\"2\">
 			<fence>\n";
@@ -9781,7 +9784,10 @@ sub generate_cluster_conf
 			$an->data->{sys}{cluster_conf} .= "\t\t\t\t</method>\n";
 		}
 	}
-	$an->data->{sys}{cluster_conf} .= "\t\t\t</fence>
+	$an->data->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"delay\">
+					<device action=\"off\" />
+				</method>
+			</fence>
 		</clusternode>
 	</clusternodes>
 	<fencedevices>\n";

@@ -1,0 +1,451 @@
+#!/usr/bin/perl
+#
+# This is a passive agent that simply injects a delay. It is designed to be 
+# used at the end of a list of fence methods to give time for previous attempts
+# to recover. Specifically, if PDU fencing cut power to the node but somehow 
+# reported as failed. The fence would move back up and try to fence via the 
+# IPMI BMC, but given it hasn't had time to boot, would fail, leaving the 
+# system stuck in a loop.
+# 
+# Digimer; digimer@digimer.ca
+# http://alteeve.com/w
+#
+# This software is released under the GPL v2. See the LICENSE file in the
+# configuration directory for a copy of the GPL v2.
+#
+# Bugs;
+# - None known
+# 
+# Warnings;
+# - This is not a real fence agent, and it will always return failure. This is
+#   by design.
+#
+
+# Play safe!
+use strict;
+use warnings;
+use IO::Handle;
+
+# Catch signals for clean exits.
+$SIG{INT}  = \&_catch_sig;
+$SIG{TERM} = \&_catch_sig;
+
+# These are the default values and will be over-written by the config file's
+# variables which in turn can, in some cases, be over-written by command line
+# arguments.
+my $conf = {
+	'system'	=>	{
+		action		=>	"off",
+		agent_version	=>	"1.0",
+		log_level	=>	1,
+		delay		=>	60,
+		device		=>	"",
+		list		=>	"",
+		'log'		=>	"/var/log/fence_delay.log",
+		monitor		=>	"",
+		node_name	=>	"",	# My name, as reported by cman_tool
+		nodes		=>	0,	# Number of nodes in the cluster
+		password	=>	"",
+		quiet		=>	0,
+		version		=>	0,
+	},
+	path		=>	{
+	},
+};
+
+# Log file for output.
+my $log = IO::Handle->new();
+open ($log, ">>".$conf->{'system'}{'log'}) || die "Failed to open: [".$conf->{'system'}{'log'}."] for writing; Error: $!\n";
+# Set $log and STDOUT to hot (unbuffered) output.
+if (1)
+{
+	select $log;
+	$| = 1;
+	
+	select STDOUT;
+	$| = 1;
+}
+record($conf, $log, "'fence_delay' called at: [".get_date_time($conf)."].\n", 1);
+
+# Read in arguments from the command line.
+read_cla($conf, $log);
+
+# Now read in arguments from STDIN, which is how 'fenced' passes arguments.
+read_stdin($conf, $log);
+
+# If I've been asked to show the metadata XML, do so and then exit.
+if ($conf->{'system'}{action} eq "metadata")
+{
+	metadata($conf, $log);
+	do_exit($conf, $log, 0);
+}
+
+# If I've been asked to show the version information, do so and then exit.
+if ($conf->{'system'}{version})
+{
+	version($conf, $log);
+	do_exit($conf, $log, 0);
+}
+
+# When asked to 'monitor' or 'list'. being multi-port, this will return a CSV
+# of ports and their current state.
+record($conf, $log, "Requested action: [".$conf->{'system'}{action}."].\n", 2);
+if (($conf->{'system'}{action} eq "monitor") or ($conf->{'system'}{action} eq "list"))
+{
+	show_list($conf, $log);
+	do_exit($conf, $log, 0);
+}
+
+# Do it!
+do_delay($conf, $log);
+
+# Cleanup and exit.
+do_exit($conf, $log, );
+
+
+###############################################################################
+# Here be functions.                                                          #
+###############################################################################
+
+# This cleanly exits the agent.
+sub do_exit
+{
+	my ($conf, $log, $exit_status) = @_;
+	$exit_status = 9 if not defined $exit_status;
+	
+	# Close the log file handle, if it exists.
+	$log->close() if $log;
+	
+	exit ($exit_status);
+}
+
+# This returns the 'help' message.
+sub help
+{
+	my ($conf, $log) = @_;
+	
+	# Point the user at the man page.
+	print "
+Passive fence agent used to inject a delay at the end of a list of fence 
+methods. Can take '--delay X' or 'delay=X' via the command line or STDIN
+respectively. Otherwise, the default of '60' is used.
+
+This method is meant to ensure that devices that require time to boot get that
+time before the clusters starts working through the list again.
+
+The genesis of this was a case where fencing was set as IPMI -> 2x PDUs, and a
+firmware bug in the PDUs caused them to properly power cycle the node, but 
+failed to return success, causing the fence agent to consider it a failed 
+fence. The cluster would then try the IPMI interface again, but it had not 
+booted, so the IPMI failed and the PDUs were again cycled. This left the 
+cluster hung in a loop.
+
+By adding this agent as a third method, it will introduce enough of a delay 
+that the IPMI BMC will have a chance to boot before fence_ipmilan (or the like)
+are reinvoked.
+\n";
+	
+	do_exit($conf, $log, 0);
+}
+
+# This simply prints the 'metadata' XML data to STDOUT.
+sub metadata
+{
+	my ($conf, $log) = @_;
+	
+	print q`
+<?xml version="1.0" ?>
+<resource-agent name="fence_delay" shortdesc="Agent designed to pause at the end of a list of methods, before trying the first method again. Always returns 'failed' to the cluster.">
+<longdesc>
+This is a passive agent that simply injects a delay. 
+
+It is designed to be used at the end of a list of fence methods to give time for previous attempts to recover. Specifically, if PDU fencing cut power to the node but somehow reported as failed. The fence would move back up and try to fence via the IPMI BMC, but given it hasn't had time to boot, would fail, leaving the  system stuck in a loop.
+</longdesc>
+<parameters>
+	<parameter name="action" unique="1">
+		<getopt mixed="-o" />
+		<content type="string" default="off"/>
+		<shortdesc lang="en">Action (operation) to take. The 'reboot' and 'off' actions trigger the delay.</shortdesc>
+	</parameter>
+	<parameter name="quiet" unique="1">
+		<getopt mixed="-q" />
+		<content type="boolean" />
+		<shortdesc lang="en">(default) Supress all output to STDOUT, including critical messages. Check logfile if used. Default 1 (quiet).</shortdesc>
+	</parameter>
+	<parameter name="debug" unique="1">
+		<getopt mixed="-d" />
+		<content type="boolean" />
+		<shortdesc lang="en">Print extensive debug information to STDOUT and to the log file.</shortdesc>
+	</parameter>
+	<parameter name="version" unique="1">
+		<getopt mixed="--version" />
+		<content type="boolean" />
+		<shortdesc lang="en">Prints the fence agent version and exits.</shortdesc>
+	</parameter>
+	<parameter name="delay" unique="1">
+		<getopt mixed="--delay" />
+		<content type="string" />
+		<shortdesc lang="en">Set the delay before the agent exits. The default is '60' seconds. </shortdesc>
+	</parameter>
+</parameters>
+<actions>
+	<action name="on" />
+	<action name="off" />
+	<action name="reboot" />
+	<action name="status" />
+	<action name="list" />
+	<action name="monitor" />
+	<action name="metadata" />
+</actions>
+</resource-agent>
+`;
+	
+	# Done, exit.
+	do_exit($conf, $log, 0);
+}
+
+# This handles the actual actions.
+sub do_delay
+{
+	my ($conf, $log) = @_;
+	record($conf, $log, "In the 'do_delay' function.\n", 2);
+	
+	# Make this more readable.
+	my $delay  = $conf->{'system'}{delay} =~ /^\d+$/ ? $conf->{'system'}{delay} : 60;
+	my $action = $conf->{'system'}{action};
+	if (($action eq "off") or ($action eq "reboot"))
+	{
+		record($conf, $log, "Sleeping for: [".$delay."] seconds.\n", 1);
+		
+		sleep $delay;
+		record($conf, $log, "Delay complete, exiting with failure code so fencing will try the next device in the list.\n", 1);
+		
+		# Report a successful failure.
+		do_exit($conf, $log, 1);
+	}
+	elsif ($action eq "on")
+	{
+		# This is allowed to succeed.
+		record($conf, $log, "Asked to turn on, this is safe (and meaningless) so we'll exit with a success code.\n", 1);
+		do_exit($conf, $log, 0);
+	}
+	elsif ($action eq "status")
+	{
+		# This is allowed to succeed.
+		record($conf, $log, "Asked for a status, this is safe (and meaningless) so we'll exit with a success code.\n", 1);
+		do_exit($conf, $log, 0);
+	}
+	else
+	{
+		record($conf, $log, "[ Error ] - Action request: [$action] not recognized!\n", 0);
+		do_exit($conf, $log, 1);
+	}
+	
+	return (0);
+}
+
+# Read in command line arguments
+sub read_cla
+{
+	my ($conf, $log) = @_;
+	
+	# Loop through the passed arguments, if any.
+	record($conf, $log, "Got args:\n", 2);
+	my $set_next="";
+	foreach my $arg (@ARGV)
+	{
+		$conf->{'system'}{got_cla} = 1;
+		
+		# If 'set_next' has a value, push this argument into the 'conf'
+		# hash.
+		if ($set_next)
+		{
+			# Record the values.
+			$conf->{'system'}{$set_next} = $arg;
+			record($conf, $log, "[ Debug ] - 'system::$set_next': [".$conf->{'system'}{$set_next}."]\n", 2);
+			
+			# Clear it now for the next go-round.
+			$set_next = "";
+			next;
+		}
+		
+		if ($arg =~ /-h/)
+		{
+			# Print the help message and then exit.
+			help($conf, $log);
+		}
+		elsif ($arg eq "--version")
+		{
+			# Print the version information and then exit.
+			$conf->{'system'}{version} = 1;
+			record($conf, $log, "[ Debug ] - 'system::version': [".$conf->{'system'}{version}."]\n", 2);
+		}
+		elsif (($arg eq "-q") or ($arg eq "--quiet"))
+		{
+			# Suppress all messages, including critical messages, from STDOUT.
+			$conf->{'system'}{log_level} = 0;
+			record($conf, $log, "[ Debug ] - 'system::log_level': [".$conf->{'system'}{quiet}."]\n", 2);
+		}
+		elsif ($arg eq "--debug")
+		{
+			# Enable debug mode.
+			$conf->{'system'}{log_level} = 2;
+			record($conf, $log, "[ Debug ] - 'system::log_level': [".$conf->{'system'}{log_level}."]\n", 2);
+		}
+		elsif (($arg eq "-d") or ($arg eq "--delay"))
+		{
+			# Enable debug mode.
+			$set_next = "delay";
+			record($conf, $log, "[ Debug ] - 'set_next': [".$set_next."]\n", 2);
+		}
+		elsif (($arg eq "-o") or ($arg eq "--action"))
+		{
+			# This is the action to take.
+			$set_next = "action";
+			record($conf, $log, "[ Debug ] - 'set_next': [".$set_next."]\n", 2);
+		}
+		else
+		{
+			# Bad argument.
+			record($conf, $log, "[ Warning ] - Argument: [".$arg."] is not valid arguments.\n", 2);
+		}
+	}
+	
+	return(0);
+}
+
+# Read arguments from STDIN. This is adapted from the 'fence_brocade' agent.
+sub read_stdin
+{
+	my ($conf, $log) = @_;
+	
+	return (0) if $conf->{'system'}{got_cla};
+	
+	my $option;
+	my $line_count = 0;
+	while(defined (my $option=<>))
+	{
+		# Get rid of newlines.
+		chomp $option;
+		
+		# Record the line for now, but comment this out before release.
+		record($conf, $log, "Processing option line: [$option]\n", 2);
+		
+		# strip leading and trailing whitespace
+		$option =~ s/^\s*//;
+		$option =~ s/\s*$//;
+		
+		# Increment my option line count.
+		$line_count++;
+		
+		# skip comments
+		next if ($option=~ /^#/);
+		
+		# Go to the next line if the option line is empty.
+		next if not $option;
+		
+		# Split the option up into the name and the value.
+		my ($name, $value) = split /\s*=\s*/, $option;
+		
+		# Record the line for now, but comment this out before release.
+		record ($conf, $log, "Name: [$name], value: [$value].\n");
+		
+		# Set my variables depending on the veriable name.
+		if ($name eq "agent")
+		{
+			# This is only used by 'fenced', but I record it for
+			# potential debugging.
+			$conf->{'system'}{agent} = $value;
+			record($conf, $log, "[ Debug ] - 'system::delay': [".$conf->{'system'}{agent}."]\n", 2);
+		}
+		elsif ($name eq "action")
+		{
+			$conf->{'system'}{action} = $value;
+			record($conf, $log, "[ Debug ] - 'system::delay': [".$conf->{'system'}{action}."]\n", 2);
+		}
+		elsif ($name eq "quiet")
+		{
+			$conf->{'system'}{log_level} = 0;
+			record($conf, $log, "[ Debug ] - 'system::log_level': [".$conf->{'system'}{log_level}."]\n", 2);
+		}
+		elsif ($name eq "debug")
+		{
+			$conf->{'system'}{log_level} = 2;
+			record($conf, $log, "[ Debug ] - 'system::log_level': [".$conf->{'system'}{log_level}."]\n", 2);
+		}
+		elsif ($name eq "delay")
+		{
+			$conf->{'system'}{delay} = $value;
+			record($conf, $log, "[ Debug ] - 'system::delay': [".$conf->{'system'}{delay}."]\n", 2);
+		}
+		else
+		{
+			record($conf, $log, "[ Warning ] - Unexpected name in option: [$option] at line: [$line_count]\n", 1);
+		}
+	}
+	return (0);
+}
+
+# This function simply prints messages to both the log and to stdout.
+sub record
+{
+	my ($conf, $log, $msg, $level) = @_;
+	$level = 1 if not defined $level;
+	
+	#print "level: [".$level."], 'system::log_level': [".$conf->{'system'}{log_level}."], msg: [".$msg."]\n";
+	return if $level > $conf->{'system'}{log_level};
+	
+	# Print to the log
+	print $log $msg;
+	
+	# Print to the screen
+	print $msg;
+	
+	return(0);
+}
+
+# When asked to 'monitor' or 'list', show a CSV of all nodes and their aliases,
+# when found in the config file.
+sub show_list
+{
+	my ($conf, $log) = @_;
+
+	record($conf, $log, "This is not a multi-port device. The 'list' action is useless.\n", 2);
+	
+	do_exit($conf, $log, 0);
+}
+
+# This prints the version information of this fence agent and of any configured
+# fence devices.
+sub version
+{
+	my ($conf, $log) = @_;
+	
+	# Print the Fence Agent version first.
+	record ($conf, $log, "Fence Agent ver. ".$conf->{'system'}{agent_version}."\n", 1);
+	
+	do_exit($conf, $log, 0);
+}
+
+# This returns the current date and time.
+sub get_date_time
+{
+	my ($conf) = @_;
+	
+	# Get the current date and time,
+	my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime(time);
+	
+	# Format it to 'YYYY-MM-DD HH:MM:SS'.
+	my $now = (1900 + $year)."-".sprintf("%02d", ($mon + 1))."-".sprintf("%02d", $mday)." ".sprintf("%02d", $hour).":".sprintf("%02d", $min).":".sprintf("%02d", $sec);
+
+	return($now);
+}
+
+# Catch SIG, move zig!
+sub _catch_sig
+{
+	my $signame = shift;
+	
+	record($conf, $log, "fence_delay process with PID $$ Exiting on SIG".$signame.".\n", 1);
+	do_exit($conf, $log, 1);
+}

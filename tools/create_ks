@@ -170,7 +170,7 @@ print "Generating Anvil! kickstart scripts\n";
 foreach my $distro (sort {$a cmp $b} keys %{$conf->{ks}})
 {
 	print "- Distro: [$distro]\n";
-	my $directory = "$conf->{sys}{output_dir}/$distro/$conf->{sys}{os_version}/Anvil/ks";
+	my $directory = $conf->{sys}{output_dir}."/$distro/".$conf->{sys}{os_version}."/Anvil/ks";
 	if (not -e $directory)
 	{
 		mkdir $directory or die "Failed to create: [$directory], error: $!\n";
@@ -188,7 +188,7 @@ foreach my $distro (sort {$a cmp $b} keys %{$conf->{ks}})
 					{
 						$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name} = "pxe-new-node0${number}_from-striker0${source}.ks";
 						$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{contents}  = generate_ks($conf, $distro, $target, $machine, $number, $source);
-						my $shell_call = "$directory/$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name}";
+						my $shell_call = "$directory/".$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name};
 						open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error: $!\n";
 						print $file_handle $conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{contents};
 						close $file_handle;
@@ -199,7 +199,7 @@ foreach my $distro (sort {$a cmp $b} keys %{$conf->{ks}})
 				{
 					$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name} = "${target}-new-${machine}0${number}.ks";
 					$conf->{ks}{$distro}{$target}{$machine}{$number}{contents}  = generate_ks($conf, $distro, $target, $machine, $number, 0);
-					my $shell_call = "$directory/$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name}";
+					my $shell_call = "$directory/".$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name};
 					open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error: $!\n";
 					print $file_handle $conf->{ks}{$distro}{$target}{$machine}{$number}{contents};
 					close $file_handle;
@@ -220,7 +220,7 @@ sub generate_ks
 	my $say_target     = $target eq "pxe" ? "Network Install (PXE)" : 
 			     $target eq "dvd" ? "Optical Media (DVD)" : 
 			     "USB Drive";
-	my $say_machine    = $machine eq "striker" ? "$conf->{sys}{striker_name} Dashboard" : "$conf->{sys}{anvil_name} Node";
+	my $say_machine    = $machine eq "striker" ? $conf->{sys}{striker_name}." Dashboard" : $conf->{sys}{anvil_name}." Node";
 	   $say_machine   .= " #0".$number;
 	my $peer_number    = $number eq "1" ? 2 : 1;
 	my $hostname       = "new-${machine}0${number}";
@@ -361,7 +361,7 @@ curl http://${striker_bcn}.${source}/$os_dir/x86_64/img/Striker/striker-master/t
 chown root:root /sbin/striker/list-ips
 chmod 755 /sbin/striker/list-ips
 
-# Download 'fence_raritan_snmp' and 'fence_apc_alteeve' from the Striker we're installing from.
+# Download 'fence_raritan_snmp', 'fence_apc_alteeve' and 'fence_delay' from the Striker we're installing from.
 echo \"Downloading 'fence_raritan_snmp'.\"
 curl http://${striker_bcn}.${source}/$os_dir/x86_64/img/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
 chown root:root /usr/sbin/fence_raritan_snmp
@@ -371,6 +371,11 @@ echo \"Downloading 'fence_apc_alteeve'.\"
 curl http://${striker_bcn}.${source}/$os_dir/x86_64/img/Tools/fence/fence_apc_alteeve > /usr/sbin/fence_apc_alteeve
 chown root:root /usr/sbin/fence_apc_alteeve
 chmod 755 /usr/sbin/fence_apc_alteeve
+
+echo \"Downloading 'fence_delay'.\"
+curl http://${striker_bcn}.${source}/$os_dir/x86_64/img/Tools/fence/fence_delay > /usr/sbin/fence_delay
+chown root:root /usr/sbin/fence_delay
+chmod 755 /usr/sbin/fence_delay
 
 # Download 'anvil-map-network' from the Striker we're installing from.
 echo \"Downloading 'anvil-map-network'.\"
@@ -546,6 +551,9 @@ cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
 echo 'Copying fence_apc_alteeve into /usr/sbin/'
 cp /mnt/source/Tools/fence/fence_apc_alteeve /mnt/sysimage/usr/sbin/
 
+echo 'Copying fence_delay into /usr/sbin/'
+cp /mnt/source/Tools/fence/fence_delay /mnt/sysimage/usr/sbin/
+
 # Copy the node and dashboard KSes into place
 echo 'Copying the KS scripts into place.'
 cp /mnt/source/ks/pxe-new-node01_from-striker0${number}.ks /mnt/sysimage/var/www/html/$os_dir/x86_64/ks/pxe-new-node01.ks
@@ -559,9 +567,9 @@ cp /mnt/source/syslinux/$background /mnt/sysimage/var/lib/tftpboot/
 
 # Copy the $striker_name source files and installer into place
 echo 'Copying the $striker_name installer and source code into place.'
-cp      /mnt/source/$conf->{sys}{striker_name}/master.zip                             /mnt/sysimage/root/
-cp -Rvp /mnt/source/$conf->{sys}{striker_name}/striker-master                         /mnt/sysimage/root/
-cp      /mnt/source/$conf->{sys}{striker_name}/striker-master/tools/striker-installer /mnt/sysimage/root/
+cp      /mnt/source/".$conf->{sys}{striker_name}."/master.zip                             /mnt/sysimage/root/
+cp -Rvp /mnt/source/".$conf->{sys}{striker_name}."/striker-master                         /mnt/sysimage/root/
+cp      /mnt/source/".$conf->{sys}{striker_name}."/striker-master/tools/striker-installer /mnt/sysimage/root/
 
 echo \"Copying 'Tools' into /mnt/sysimage/var/www/html/$os_dir/x86_64/files/\"
 rsync -av /mnt/source/Tools /mnt/sysimage/var/www/html/$os_dir/x86_64/files/
