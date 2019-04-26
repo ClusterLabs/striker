@@ -6513,7 +6513,7 @@ sub check_if_registered_with_rhn
 		elsif ($line =~ /system identity: (.*)$/)
 		{
 			my $uuid       = $1;
-				$registered = 1;
+			   $registered = 1;
 			logger($conf, $THIS_FILE, __LINE__, "The system's registration UUID is: [$uuid].", 2);
 		}
 	}
@@ -6802,6 +6802,29 @@ sub install_packages
 	
 	logger($conf, $THIS_FILE, __LINE__, "Checking if anything needs to be installed.", 1);
 	
+	# Check for OS updates. This needs to come before RPM install to avoid multilib errors in case we're
+	# calling in a new library that would be newer than an installed (different arch) version.
+	$conf->{sys}{update_os} = 0 if $conf->{switches}{'no-os-updates'};
+	logger($conf, $THIS_FILE, __LINE__, "Checking for OS updates (with priority on on local repo).", 1);
+	if ($conf->{sys}{update_os})
+	{
+		# Update the OS
+		update_os($conf);
+		
+		# Remove the 'priority=1' from our repos.
+		logger($conf, $THIS_FILE, __LINE__, "Removing priority on on local repo.", 1);
+		remove_yum_priority($conf);
+		
+		# Running the update again without local priority
+		logger($conf, $THIS_FILE, __LINE__, "Checking for OS updates again.", 1);
+		update_os($conf);
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- OS update disabled, removing the local repo priority only.", 1);
+		remove_yum_priority($conf);
+	}
+	
 	# If the user has set 'router-mode', add 'shorewall' to the list of packages to install.
 	if ($conf->{switches}{'router-mode'})
 	{
@@ -6945,28 +6968,6 @@ fi";
 			}
 		}
 		close $file_handle;
-	}
-	
-	# Check for OS updates.
-	$conf->{sys}{update_os} = 0 if $conf->{switches}{'no-os-updates'};
-	logger($conf, $THIS_FILE, __LINE__, "Checking for OS updates (with priority on on local repo).", 1);
-	if ($conf->{sys}{update_os})
-	{
-		# Update the OS
-		update_os($conf);
-		
-		# Remove the 'priority=1' from our repos.
-		logger($conf, $THIS_FILE, __LINE__, "Removing priority on on local repo.", 1);
-		remove_yum_priority($conf);
-		
-		# Running the update again without local priority
-		logger($conf, $THIS_FILE, __LINE__, "Checking for OS updates again.", 1);
-		update_os($conf);
-	}
-	else
-	{
-		logger($conf, $THIS_FILE, __LINE__, "- OS update disabled, removing the local repo priority only.", 1);
-		remove_yum_priority($conf);
 	}
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	

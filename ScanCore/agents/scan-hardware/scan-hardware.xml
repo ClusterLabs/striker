@@ -19,7 +19,68 @@ with 'scan_hardware_'.
 		<!-- Log strings -->
 		<key name="scan_hardware_log_0001">Starting to read the hardware data for: [#!variable!machine!#]</key>
 		
-		<!-- IPMI Agent-specific messages -->
+		<!-- Notice level alerts -->
+		<key name="scan_hardware_note_0001">The CPU, RAM and LED (if possible) has been recorded;
+- CPU Model: ... [#!variable!cpu_model!#]
+- Total Cores: . [#!variable!total_cores!#]
+- Total Threads: [#!variable!total_threads!#]
+- CPU Bugs: .... [#!variable!cpu_bugs!#]
+- CPU Flags: ... [#!variable!cpu_flags!#]
+- ID LED state:  [#!variable!id_led!#]
+- CSS LED: ..... [#!variable!css_led!#] (CSS = Customer Self-Service)
+- Error LED: ... [#!variable!error_led!#]
+- Total RAM: ... [#!variable!ram_total_size!#]
+- Usable RAM: .. [#!variable!ram_memory_total!#] (Available to the OS)
+- Free Memory: . [#!variable!ram_memory_free!#]
+- Total swap: .. [#!variable!ram_swap_total!#]
+- Free swap: ... [#!variable!ram_swap_free!#]
+		</key>
+		<key name="scan_hardware_note_0002">The amount of swap used has risen above: [#!data!scan-hardware::swap::high!#%]. It is now using: [#!variable!swap_used_percent!#%] of a total: [#!variable!swap_total!#] available.</key>
+		<key name="scan_hardware_note_0003">The amount of swap used has dropped below: [#!data!scan-hardware::swap::low!#%]. It is now using: [#!variable!swap_used_percent!#%] of a total: [#!variable!swap_total!#] available.</key>
+		<key name="scan_hardware_note_0004">Either the CPU, RAM and LED information has changed. This generally shouldn't happen;
+- CPU Model: ... [#!variable!old_cpu_model!#] -> [#!variable!new_cpu_model!#]
+- Total Cores: . [#!variable!old_total_cores!#] -> [#!variable!new_total_cores!#]
+- Total Threads: [#!variable!old_total_threads!#] -> [#!variable!new_total_threads!#]
+- CPU Bugs: .... [#!variable!old_cpu_bugs!#] -> [#!variable!new_cpu_bugs!#]
+- CPU Flags: ... [#!variable!old_cpu_flags!#] -> [#!variable!new_cpu_flags!#]
+- ID LED state:  [#!variable!old_id_led!#] -> [#!variable!new_id_led!#]
+- CSS LED: ..... [#!variable!old_css_led!#] -> [#!variable!new_css_led!#] (CSS = Customer Self-Service)
+- Error LED: ... [#!variable!old_error_led!#] -> [#!variable!new_error_led!#]
+- Total RAM: ... [#!variable!old_ram_total_size!#] -> [#!variable!new_ram_total_size!#]
+- Usable RAM: .. [#!variable!old_ram_memory_total!#] -> [#!variable!new_ram_memory_total!#] (Available to the OS)
+- Free Memory: . [#!variable!old_ram_memory_free!#] -> [#!variable!new_ram_memory_free!#]
+- Total swap: .. [#!variable!old_ram_swap_total!#] -> [#!variable!new_ram_swap_total!#]
+- Free swap: ... [#!variable!old_ram_swap_free!#] -> [#!variable!new_ram_swap_free!#]
+		</key>
+		<key name="scan_hardware_note_0005">A new RAM memory module has been found;
+- Locator: ..... [#!variable!locator!#]
+- Size: ........ [#!variable!size!#]
+- Manufacturer:  [#!variable!manufacturer!#]
+- Model: ....... [#!variable!model!#]
+- Serial Number: [#!variable!serial_number!#]
+		</key>
+		<key name="scan_hardware_note_0006">Something about the RAM module [#!variable!locator!#] has changed. 
+This shouldn't normally happen. Was the RAM module replaced?
+- Size: ........ [#!variable!old_size!#] -> [#!variable!new_size!#]
+- Manufacturer:  [#!variable!old_manufacturer!#] -> [#!variable!new_manufacturer!#]
+- Model: ....... [#!variable!old_model!#] -> [#!variable!new_model!#]
+- Serial Number: [#!variable!old_serial_number!#] -> [#!variable!new_serial_number!#]
+		</key>
+		<key name="scan_hardware_note_0007">The RAM module [#!variable!locator!#] has vanished! 
+Was the module intentionally removed? If not, it may have failed. 
+- Size: ........ [#!variable!old_size!#]
+- Manufacturer:  [#!variable!old_manufacturer!#]
+- Model: ....... [#!variable!old_model!#]
+- Serial Number: [#!variable!old_serial_number!#]
+		</key>
+		<key name="scan_hardware_note_0008">The RAM module [#!variable!locator!#] has returned! 
+- Size: ........ [#!variable!old_size!#]
+- Manufacturer:  [#!variable!old_manufacturer!#]
+- Model: ....... [#!variable!old_model!#]
+- Serial Number: [#!variable!old_serial_number!#]
+		</key>
+		
+		<!-- Hardware Agent-specific messages -->
 		<key name="scan_hardware_message_0001">Starting #!string!scan_hardware_brand_0001!#</key>
 		<key name="scan_hardware_message_0002"><![CDATA[
  -=] IPMI Scan Agent

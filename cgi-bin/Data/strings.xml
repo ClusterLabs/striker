@@ -1011,8 +1011,8 @@
 		<key name="state_0036">Not Installed</key>
 		<key name="state_0037">Unable to proceed</key>
 		<key name="state_0038">Enabled</key>
-		<key name="state_0039">#!free!#</key>
-		<key name="state_0040">#!free!#</key>
+		<key name="state_0039">Lit</key>
+		<key name="state_0040">Off</key>
 		<key name="state_0041">#!free!#</key>
 		<key name="state_0042">Partition Error</key>
 		<key name="state_0043">Partition Resized</key>

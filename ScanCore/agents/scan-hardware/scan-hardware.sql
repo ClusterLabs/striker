@@ -8,7 +8,8 @@ CREATE TABLE hardware (
 	hardware_cpu_threads		numeric				not null, 
 	hardware_cpu_bugs		text				not null, 
 	hardware_cpu_flags		text				not null,	--  
-	hardware_memory_total		numeric				not null,	--  
+	hardware_ram_total		numeric				not null,	-- This is the sum of the hardware memory module capacity
+	hardware_memory_total		numeric				not null,	-- This is the amount seen by the OS, minus shared memory, like that allocated to video
 	hardware_memory_free		numeric				not null,	--  
 	hardware_swap_total		numeric				not null,	--  
 	hardware_swap_free		numeric				not null,	--  
@@ -30,6 +31,7 @@ CREATE TABLE history.hardware (
 	hardware_cpu_threads		numeric, 
 	hardware_cpu_bugs		text, 
 	hardware_cpu_flags		text, 
+	hardware_ram_total		numeric,
 	hardware_memory_total		numeric, 
 	hardware_memory_free		numeric, 
 	hardware_swap_total		numeric, 
@@ -55,6 +57,7 @@ BEGIN
 		 hardware_cpu_threads, 
 		 hardware_cpu_bugs, 
 		 hardware_cpu_flags, 
+		 hardware_ram_total, 
 		 hardware_memory_total, 
 		 hardware_memory_free, 
 		 hardware_swap_total, 
@@ -71,6 +74,7 @@ BEGIN
 		 history_hardware.hardware_cpu_threads, 
 		 history_hardware.hardware_cpu_bugs, 
 		 history_hardware.hardware_cpu_flags, 
+		 history_hardware.hardware_ram_total, 
 		 history_hardware.hardware_memory_total, 
 		 history_hardware.hardware_memory_free, 
 		 history_hardware.hardware_swap_total, 
@@ -89,7 +93,7 @@ CREATE TRIGGER trigger_hardware
 	AFTER INSERT OR UPDATE ON hardware
 	FOR EACH ROW EXECUTE PROCEDURE history_hardware();
 
-CREATE TABLE hardware_ram_module (
+CREATE TABLE hardware_ram_modules (
 	hardware_ram_module_uuid		uuid				primary key,
 	hardware_ram_module_host_uuid		uuid				not null,
 	hardware_ram_module_locator		text				not null, 
@@ -101,9 +105,9 @@ CREATE TABLE hardware_ram_module (
 	
 	FOREIGN KEY(hardware_ram_module_host_uuid) REFERENCES hosts(host_uuid)
 );
-ALTER TABLE hardware_ram_module OWNER TO #!variable!user!#;
+ALTER TABLE hardware_ram_modules OWNER TO #!variable!user!#;
 
-CREATE TABLE history.hardware_ram_module (
+CREATE TABLE history.hardware_ram_modules (
 	history_id				bigserial,
 	hardware_ram_module_uuid		uuid,
 	hardware_ram_module_host_uuid		uuid,
@@ -114,15 +118,15 @@ CREATE TABLE history.hardware_ram_module (
 	hardware_ram_module_serial_number	text, 
 	modified_date				timestamp with time zone	not null
 );
-ALTER TABLE history.hardware_ram_module OWNER TO #!variable!user!#;
+ALTER TABLE history.hardware_ram_modules OWNER TO #!variable!user!#;
 
-CREATE FUNCTION history_hardware_ram_module() RETURNS trigger
+CREATE FUNCTION history_hardware_ram_modules() RETURNS trigger
 AS $$
 DECLARE
-	history_hardware_ram_module RECORD;
+	history_hardware_ram_modules RECORD;
 BEGIN
-	SELECT INTO history_hardware_ram_module * FROM hardware_ram_module WHERE hardware_ram_module_uuid=new.hardware_ram_module_uuid;
-	INSERT INTO history.hardware_ram_module
+	SELECT INTO history_hardware_ram_modules * FROM hardware_ram_modules WHERE hardware_ram_module_uuid=new.hardware_ram_module_uuid;
+	INSERT INTO history.hardware_ram_modules
 		(hardware_ram_module_uuid,
 		 hardware_ram_module_host_uuid, 
 		 hardware_ram_module_locator, 
@@ -144,8 +148,8 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_hardware_ram_module() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_hardware_ram_modules() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_hardware_ram_module
-	AFTER INSERT OR UPDATE ON hardware_ram_module
-	FOR EACH ROW EXECUTE PROCEDURE history_hardware_ram_module();
+CREATE TRIGGER trigger_hardware_ram_modules
+	AFTER INSERT OR UPDATE ON hardware_ram_modules
+	FOR EACH ROW EXECUTE PROCEDURE history_hardware_ram_modules();
