@@ -2047,7 +2047,7 @@ sub load_schema
 	close $file_handle;
 	
 	# Now we should be ready.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
 		name1 => "id",  value1 => $id, 
 		name2 => "sql", value2 => $sql
 	}, file => $THIS_FILE, line => __LINE__});

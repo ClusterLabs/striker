@@ -496,6 +496,7 @@ sub comma
 	{
 		my $an = $self->parent;
 		$an->Alert->error({title_key => "error_title_0010", message_key => "error_message_0014", message_variables => { number => $number }, code => 4, file => $THIS_FILE, line => __LINE__});
+		
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
@@ -504,11 +505,15 @@ sub comma
 	
 	1 while s/^(-?\d+)(\d{3})/$1,$2/;
 	$whole = $_;
+	$whole = 0 if $whole eq "";
+	#print "$THIS_FILE ".__LINE__."; whole: [$whole]\n";
 	
 	my $return = $decimal ? "$whole.$decimal" : $whole;
+	#print "$THIS_FILE ".__LINE__."; return: [$return]\n";
 	if ($sign)
 	{
 		$return = $sign.$return;
+		#print "$THIS_FILE ".__LINE__."; return: [$return]\n";
 	}
 	
 	return ($return);

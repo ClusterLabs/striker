@@ -13,9 +13,9 @@ CREATE TABLE hardware (
 	hardware_memory_free		numeric				not null,	--  
 	hardware_swap_total		numeric				not null,	--  
 	hardware_swap_free		numeric				not null,	--  
-	hardware_led_id_led		text				not null,	--  
-	hardware_led_css_led		text				not null,	--  
-	hardware_led_error_led		text				not null,	--  
+	hardware_led_id			text				not null,	--  
+	hardware_led_css		text				not null,	--  
+	hardware_led_error		text				not null,	--  
 	modified_date			timestamp with time zone	not null,
 	
 	FOREIGN KEY(hardware_host_uuid) REFERENCES hosts(host_uuid)
@@ -36,9 +36,9 @@ CREATE TABLE history.hardware (
 	hardware_memory_free		numeric, 
 	hardware_swap_total		numeric, 
 	hardware_swap_free		numeric, 
-	hardware_led_id_led		text, 
-	hardware_led_css_led		text, 
-	hardware_led_error_led		text, 
+	hardware_led_id			text, 
+	hardware_led_css		text, 
+	hardware_led_error		text, 
 	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.hardware OWNER TO #!variable!user!#;
@@ -62,9 +62,9 @@ BEGIN
 		 hardware_memory_free, 
 		 hardware_swap_total, 
 		 hardware_swap_free, 
-		 hardware_led_id_led, 
-		 hardware_led_css_led, 
-		 hardware_led_error_led, 
+		 hardware_led_id, 
+		 hardware_led_css, 
+		 hardware_led_error, 
 		 modified_date)
 	VALUES
 		(history_hardware.hardware_uuid,
@@ -79,9 +79,9 @@ BEGIN
 		 history_hardware.hardware_memory_free, 
 		 history_hardware.hardware_swap_total, 
 		 history_hardware.hardware_swap_free, 
-		 history_hardware.hardware_led_id_led, 
-		 history_hardware.hardware_led_css_led, 
-		 history_hardware.hardware_led_error_led, 
+		 history_hardware.hardware_led_id, 
+		 history_hardware.hardware_led_css, 
+		 history_hardware.hardware_led_error, 
 		 history_hardware.modified_date);
 	RETURN NULL;
 END;
@@ -136,14 +136,14 @@ BEGIN
 		 hardware_ram_module_serial_number, 
 		 modified_date)
 	VALUES
-		(history_hardware_ram_module.hardware_ram_module_uuid,
-		 history_hardware_ram_module.hardware_ram_module_host_uuid, 
-		 history_hardware_ram_module.hardware_ram_module_locator, 
-		 history_hardware_ram_module.hardware_ram_module_size, 
-		 history_hardware_ram_module.hardware_ram_module_manufacturer, 
-		 history_hardware_ram_module.hardware_ram_module_model, 
-		 history_hardware_ram_module.hardware_ram_module_serial_number, 
-		 history_hardware_ram_module.modified_date);
+		(history_hardware_ram_modules.hardware_ram_module_uuid,
+		 history_hardware_ram_modules.hardware_ram_module_host_uuid, 
+		 history_hardware_ram_modules.hardware_ram_module_locator, 
+		 history_hardware_ram_modules.hardware_ram_module_size, 
+		 history_hardware_ram_modules.hardware_ram_module_manufacturer, 
+		 history_hardware_ram_modules.hardware_ram_module_model, 
+		 history_hardware_ram_modules.hardware_ram_module_serial_number, 
+		 history_hardware_ram_modules.modified_date);
 	RETURN NULL;
 END;
 $$

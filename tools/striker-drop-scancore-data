@@ -82,7 +82,7 @@ COMMIT;
 echo "Dropping 'scan-clustat' data..."
 su - postgres -c "psql -d scancore -c '
 BEGIN TRANSACTION; 
-DROP FUNCTION IF EXISTS history_hardware_ram_module() CASCADE; 
+DROP FUNCTION IF EXISTS history_hardware_ram_modules() CASCADE; 
 DROP FUNCTION IF EXISTS history_hardware() CASCADE; 
 DROP TABLE history.hardware_ram_modules; 
 DROP TABLE history.hardware; 

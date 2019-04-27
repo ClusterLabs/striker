@@ -79,6 +79,16 @@ Was the module intentionally removed? If not, it may have failed.
 - Model: ....... [#!variable!old_model!#]
 - Serial Number: [#!variable!old_serial_number!#]
 		</key>
+		<key name="scan_hardware_note_0009">This node has: [#!variable!difference!#] less RAM than the peer node.
+If the RAM is being updated, this alert will clear once this node has been upgraded to have the same amount of RAM as the peer. If a memory module has failed, this warning will clear when the module has been replaced.
+- Local RAM:  [#!variable!local_ram!#]
+- Peer's RAM: [#!variable!peer_ram!#]
+		</key>
+		<key name="scan_hardware_note_0010">This node and the peer node now have (nearly) the same amount of RAM, with a difference of: [#!variable!difference!#].
+Clearing the previous alert and health warning.
+- Local RAM:  [#!variable!local_ram!#]
+- Peer's RAM: [#!variable!peer_ram!#]
+		</key>
 		
 		<!-- Hardware Agent-specific messages -->
 		<key name="scan_hardware_message_0001">Starting #!string!scan_hardware_brand_0001!#</key>
