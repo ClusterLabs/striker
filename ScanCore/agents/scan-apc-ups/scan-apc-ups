@@ -64,9 +64,9 @@ my $an = AN::Tools->new({data =>
 		scancore		=>	{
 			archive			=>	{
 				directory		=>	"/var/ScanCore/archives/",
-				division		=>	20000,
-				trigger			=>	10000,
-				count			=>	30000,
+				division		=>	25000,
+				trigger			=>	20000,
+				count			=>	10000,
 				dump_file_header	=>	"
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5602,12 +5602,12 @@ sub gather_ups_data
 		}
 		elsif ($an->data->{ups}{$ups_name}{apc_ups_output_total_output} =~ /\D/)
 		{
-			### TODO: This is being set to '#!no_value!#', shouldn't fail out, probably changed OID.
 			# This should have been an integer...
-			$an->Alert->error({title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 
+			$an->Log->entry({log_level => 1, message_key => "scan_apc_ups_error_0001", message_variables => {
 				name  => "ups::${ups_name}::apc_ups_output_total_output", 
-				value => $an->data->{ups}{$ups_name}{apc_ups_output_total_output}
-			}, code => 2, file => $THIS_FILE, line => __LINE__});
+				value => $an->data->{ups}{$ups_name}{apc_ups_output_total_output}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{ups}{$ups_name}{apc_ups_output_total_output} = 0;
 		}
 		else
 		{

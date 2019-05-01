@@ -88,9 +88,9 @@ my $an = AN::Tools->new({data =>
 		scancore		=>	{
 			archive			=>	{
 				directory		=>	"/var/ScanCore/archives/",
-				division		=>	20000,
-				trigger			=>	10000,
-				count			=>	30000,
+				division		=>	25000,
+				trigger			=>	20000,
+				count			=>	10000,
 				dump_file_header	=>	"
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -737,33 +737,34 @@ sub pre_process_health
 					foreach my $variable (sort {$a cmp $b} keys %{$an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}})
 					{
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "virtual_drive::${storcli_virtual_drive_id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::$variable", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
+							name1 => "virtual_drive::${storcli_virtual_drive_id_string}::drive_group::${drive_group}::enclosure_id::${enclosure_id}::slot_number::${slot_number}::variable::${variable}", value1 => $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						
 						my $value = $an->data->{virtual_drive}{$storcli_virtual_drive_id_string}{drive_group}{$drive_group}{enclosure_id}{$enclosure_id}{slot_number}{$slot_number}{variable}{$variable};
-						if (($variable eq "media_error_count") && ($value ne "0"))
+						if ((($variable eq "media_error_count") or ($variable eq "other_error_count")) && ($value ne "0"))
 						{
-							# TODO: I might want to scale this where 1~X = 1, Y~Z = 3, etc
-							my $health_source_name                           = "drive:".$variable;
-							   $an->data->{health}{new}{$health_source_name} = 1;
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-								name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
-							}, file => $THIS_FILE, line => __LINE__});
-						}
-						elsif (($variable eq "other_error_count") && ($value ne "0"))
-						{
-							# TODO: I might want to scale this where 1~X = 1, Y~Z = 3, etc
-							my $health_source_name                           = "drive:".$variable;
-							   $an->data->{health}{new}{$health_source_name} = 1;
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-								name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
-							}, file => $THIS_FILE, line => __LINE__});
+							# If the count is over 50, set to '2'. If over 5, set to 1.
+							my $health_source_name = "drive:".$variable;
+							if ($value > 50)
+							{
+								$an->data->{health}{new}{$health_source_name} = 2;
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+									name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+							elsif ($value > 5)
+							{
+								$an->data->{health}{new}{$health_source_name} = 1;
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+									name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
+								}, file => $THIS_FILE, line => __LINE__});
+							}
 						}
 						elsif (($variable eq "predictive_failure_count") && ($value ne "0"))
 						{
-							# TODO: I might want to scale this where 1~X = 3, Y~Z = 3, etc
+							# A single tick of this requires immediate replacement.
 							my $health_source_name                           = "drive:".$variable;
-							   $an->data->{health}{new}{$health_source_name} = 3;
+							   $an->data->{health}{new}{$health_source_name} = 2;
 							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "health::new::controller:alarm-state", value1 => $an->data->{health}{new}{'controller:alarm-state'}, 
 							}, file => $THIS_FILE, line => __LINE__});
@@ -3400,6 +3401,9 @@ INSERT INTO
 		my $old_vendor                       = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_vendor};
 		my $old_model                        = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_model};
 		my $old_self_encrypting_drive        = $an->data->{sql}{storcli_physical_drives}{storcli_physical_drive_uuid}{$storcli_physical_drive_uuid}{storcli_physical_drive_self_encrypting_drive};
+		$old_controller_uuid              = "" if not defined $old_controller_uuid;
+		$old_physical_drive_serial_number = "" if not defined $old_physical_drive_serial_number;
+		$old_model                        = "" if not defined $old_model;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0022", message_variables => {
 			name1  => "storcli_physical_drive_serial_number", value1  => $storcli_physical_drive_serial_number,
 			name2  => "old_physical_drive_serial_number",     value2  => $old_physical_drive_serial_number,
@@ -3974,35 +3978,31 @@ WHERE
 							
 							# We want to watch for the 'error' counters. If they 
 							# change, we make this a warning.
-							if ($variable =~ /error/)
+							if ($variable =~ /error_count/)
 							{
-								### TODO: Make this not set a health value 
-								###       below 5, 1 for 6~50, 2 for 51+. 
-								###       Likewise, 'warning' only when 
-								###       crossing 1, 6 and 51, 'notice' 
-								###       otherwise.
-								### NOTE: We will want to set health to '1'
-								###       for _any_ 'predictive' error.
-								if ($new_variable_value > 51)
+								# If we're over 6, it's a warning. If its 
+								# under 6, a notice. If it's 0, clear.
+								if ($new_variable_value > 6)
 								{
-								}
-								elsif ($new_variable_value > 6)
-								{
+									$alert_level = "warning";
+									$title_key   = "an_alert_title_0004";
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+										name1 => "alert_level", value1 => $alert_level,
+										name2 => "title_key",   value2 => $title_key,
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 								elsif ($new_variable_value > 0)
 								{
+									$alert_level = "notice";
+									$title_key   = "an_alert_title_0003";
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+										name1 => "alert_level", value1 => $alert_level,
+										name2 => "title_key",   value2 => $title_key,
+									}, file => $THIS_FILE, line => __LINE__});
 								}
-								else
-								{
-									# Clear all alerts.
-								}
-								$alert_level = "warning";
-								$title_key   = "an_alert_title_0004";
 								$message_key = "scan_storcli_warning_0044";
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-									name1 => "alert_level", value1 => $alert_level,
-									name2 => "title_key",   value2 => $title_key,
-									name3 => "message_key", value3 => $message_key,
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+									name1 => "message_key", value1 => $message_key,
 								}, file => $THIS_FILE, line => __LINE__});
 							}
 							elsif ($variable =~ /fail/)
