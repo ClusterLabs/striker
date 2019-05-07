@@ -4988,31 +4988,33 @@ sub configure_scancore_on_node
 	my $download_1       = "http://".$an->data->{cgi}{anvil_striker1_bcn_ip}."/files/$tarball";
 	my $download_2       = "http://".$an->data->{cgi}{anvil_striker2_bcn_ip}."/files/$tarball";
 	my $shell_call       = "
-if [ ! -e '".$an->data->{path}{nodes}{striker_tarball}."' ]; 
-then 
-    ".$an->data->{path}{echo}." download needed;
-    if [ ! -e '$path' ];
+if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
+then
+    ".$an->data->{path}{echo}." 'removing previously downloaded source'
+    ".$an->data->{path}{rm}." -f ".$an->data->{path}{nodes}{striker_tarball}."
+fi;
+".$an->data->{path}{echo}." download source;
+if [ ! -e '$path' ];
+then
+    ".$an->data->{path}{'mkdir'}." -p $path
+fi
+".$an->data->{path}{wget}." -c $download_1 -O ".$an->data->{path}{nodes}{striker_tarball}."
+if [ -s '".$an->data->{path}{nodes}{striker_tarball}."' ];
+then
+    ".$an->data->{path}{echo}." 'downloaded from $download_1 successfully'
+else
+    ".$an->data->{path}{echo}." 'download from $download_1 failed, trying alternate.'
+    if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
     then
-        ".$an->data->{path}{'mkdir'}." -p $path
-    fi
-    ".$an->data->{path}{wget}." -c $download_1 -O ".$an->data->{path}{nodes}{striker_tarball}."
-    if [ -s '".$an->data->{path}{nodes}{striker_tarball}."' ];
+        ".$an->data->{path}{echo}." 'Deleting zero-size file'
+        ".$an->data->{path}{rm}." -f ".$an->data->{path}{nodes}{striker_tarball}."
+    fi;
+    ".$an->data->{path}{wget}." -c $download_2 -O ".$an->data->{path}{nodes}{striker_tarball}."
+    if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
     then
-        ".$an->data->{path}{echo}." 'downloaded from $download_1 successfully'
+        ".$an->data->{path}{echo}." 'downloaded from $download_2 successfully'
     else
-        ".$an->data->{path}{echo}." 'download from $download_1 failed, trying alternate.'
-        if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
-        then
-            ".$an->data->{path}{echo}." 'Deleting zero-size file'
-            ".$an->data->{path}{rm}." -f ".$an->data->{path}{nodes}{striker_tarball}."
-        fi;
-        ".$an->data->{path}{wget}." -c $download_2 -O ".$an->data->{path}{nodes}{striker_tarball}."
-        if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
-        then
-            ".$an->data->{path}{echo}." 'downloaded from $download_2 successfully'
-        else
-            ".$an->data->{path}{echo}." 'download from $download_2 failed, giving up.'
-        fi;
+        ".$an->data->{path}{echo}." 'download from $download_2 failed, giving up.'
     fi;
 fi;
 
@@ -5083,7 +5085,7 @@ fi;
 	}
 	
 	# Setup striker.conf if we've not hit a problem and if it doesn't exist already.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "return_code",     value1 => $return_code,
 		name2 => "generate_config", value2 => $generate_config,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -9734,7 +9736,7 @@ sub generate_cluster_conf
 		}
 	}
 	$an->data->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"delay\">
-					<device action=\"off\" />
+					<device name=\"delay\" port=\"".$node1_short_name."\" action=\"off\" />
 				</method>
 			</fence>
 		</clusternode>
@@ -9784,7 +9786,7 @@ sub generate_cluster_conf
 			$an->data->{sys}{cluster_conf} .= "\t\t\t\t</method>\n";
 		}
 	}
-	$an->data->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"delay\">
+	$an->data->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"delay\" port=\"".$node2_short_name."\" name=\"delay\">
 					<device action=\"off\" />
 				</method>
 			</fence>
@@ -9798,7 +9800,8 @@ sub generate_cluster_conf
 			$an->data->{sys}{cluster_conf} .= "\t\t".$an->data->{fence}{device}{$device}{name}{$name}{string}."\n";
 		}
 	}
-	$an->data->{sys}{cluster_conf} .= "\t</fencedevices>
+	$an->data->{sys}{cluster_conf} .= "\t\t<fencedevice agent=\"fence_delay\" name=\"delay\"/>
+	</fencedevices>
 	<fence_daemon post_join_delay=\"".$an->data->{sys}{post_join_delay}."\" />
 	<totem rrp_mode=\"none\" secauth=\"off\"/>
 	<rm log_level=\"5\">
