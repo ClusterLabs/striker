@@ -9736,7 +9736,7 @@ sub generate_cluster_conf
 		}
 	}
 	$an->data->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"delay\">
-					<device name=\"delay\" port=\"".$node1_short_name."\" action=\"off\" />
+					<device name=\"delay\" port=\"".$node1_short_name."\" action=\"off\"/>
 				</method>
 			</fence>
 		</clusternode>
@@ -9786,8 +9786,8 @@ sub generate_cluster_conf
 			$an->data->{sys}{cluster_conf} .= "\t\t\t\t</method>\n";
 		}
 	}
-	$an->data->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"delay\" port=\"".$node2_short_name."\" name=\"delay\">
-					<device action=\"off\" />
+	$an->data->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"delay\">
+					<device name=\"delay\" port=\"".$node2_short_name."\" action=\"off\" />
 				</method>
 			</fence>
 		</clusternode>
