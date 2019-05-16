@@ -1,0 +1,52 @@
+#!/usr/bin/perl
+# 
+# This tool moves a virtual machine from one Anvil! node pair to another. It reaches out to a peer Anvil!, 
+# verifies the server isn't running, creates a local LV(s) (if needed), and then use 'dd' over SSH to image
+# the source LVs over to the new local LVs. It also copies over the server's XML definition file, updating
+# the LV path in the process.
+# 
+# NOTE: This does NOT remove or otherwise touch the server on the source. When the migration is complete, 
+#       test it! If the tests show that the migration succeeded, manually delete the server from the target
+# 
+# Exit Codes;
+# 0  = OK
+# 1  = 
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+use Data::Dumper;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $program_name        =  $0;
+my $THIS_FILE           =  ($program_name =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($program_name =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $time = time;
+
+my $an = AN::Tools->new({data => {
+		path		=>	{
+		},
+		switches	=>	{
+			target			=>	"",	# The host-name or IP address of one of the nodes. It must be a cluster member.
+			server			=>	"",	# The name of the server to migrate.
+		},
+});
+
+
